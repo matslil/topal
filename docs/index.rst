@@ -10,7 +10,7 @@ Welcome to Topal's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+   design_decisions
 
 Indices and tables
 ==================
