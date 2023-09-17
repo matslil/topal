@@ -2,58 +2,111 @@
 Core Language
 ======================
 
+Lexer
+=====
+
+.. uml:: lexer.ebnf
+
 Primitive types
 ===============
 
 Primitive type is a type that is defined by the language. All other types are derived from the primitive types.
 
 Value
+
 - Data
+
   - Number
+
     - Real
+
       - Float
+
       - Fraction
+
     - Integer
+
       - Signed integer
+
       - Unsigned integer
+
   - Character
+
     - ASCII
+
     - Unicode
+
   - Boolean
+
 - Set
+
 - Dictionary
+
   - Unique dictionary
+
 - List
+
   - Finite list
+
   - Infinite list
+
 - Enum
+
 - Identifier
+
   - Private
+
   - Public
+
   - Imported
+
 - Accessability
+
   - Read-only
+
   - Read/write
+
   - Write-only
+
   - None
+
 - Storage
+
   - Alignment
+
   - Size (bits/bytes)
+
 - Pattern
+
 - Operation
+
 - Scope
+
   - Contextual scope
+
   - Thread scope
+
 - Constraint
+
   - Unit
+
   - Valid value range
+
   - Valid size range
+
 - Lifetime
+
 - Dependency
+  
+
   - Is-a (compatible with)
+
   - Derived from
+
 - State
+
   - Unassigned
+
   - Assigned
 
 
@@ -138,13 +191,15 @@ Cross product
    A x B is:
    f: A x B -> A, g: A x B -> B, h: C -> A, i: C -> B
 
-    A <- f -- A x B -- g -> B
-    ^           ^           ^
-     \          |          /
-      f         h         g
-       \        |        /
-        \       |       /
-         ------ C -----
+(*
+        A <- f -- A x B -- g -> B
+        ^           ^           ^
+         \          |          /
+          f         h         g
+           \        |        /
+            \       |       /
+             ------ C -----
+*)
 
 Currying
    Transform a function taking multiple arguments into a function taking a single argument producing a new function taking next argument and so on.
@@ -162,13 +217,14 @@ Ordinal data
 
 Mapping category theory to programming language type system:
 
-===============          ============
+=======================  ====================
 Category theory          Programming
-===============          ============
+=======================  ====================
 object                   type
 morphism                 function
 functor                  polymorphic type
 natural transformation   polymorphic function
+=======================  ====================
 
 Mapping category theory into programming language
 -------------------------------------------------
@@ -249,9 +305,13 @@ Universal constructs
    General properties that apply to all objects in a category
    Each construct has a dual, formed by reversing the morphisms
    Examples:
+
    - initial and terminal objects
+
    - pushouts and pullbacks
+
    - colimits and limits
+
    - co-completeness and completeness
 
 Initial objects
@@ -267,19 +327,33 @@ Categories
 ----------
 
 Modularity
+
    - Decompose into processes/threads
+
    - Decompose into source code components
+
    - Decompose into different use cases/requirements
+
    Goal
+
    - Information hiding
+
    - Compositional verification
+
    - Compositional refinement
+
    Building blocks
+
    - Modules
+
      - Interface
+
      - Structure
+
      - Behavior
+
    - Module interconnections
+     
    - Operations on modules (e.g. compose two modules to form a third)
 
 Algebra
@@ -366,10 +440,15 @@ VALUE is VALUE -> SCOPE
    Returns the scope the alias lives in.
 
 VALUE = VALUE -> BOOLEAN
+
 VALUE > VALUE -> BOOLEAN
+
 VALUE < VALUE -> BOOLEAN
+
 VALUE >= VALUE -> BOOLEAN
+
 VALUE <= VALUE -> BOOLEAN
+
 VALUE <> VALUE -> BOOLEAN
    true if VALUE is equal, greater than, less than, greater than equal, less than equal, or not equal to VALUE, false otherwise.
 

@@ -1,0 +1,75 @@
+@startebnf
+File = {Line}-;
+Line = (Indent | {Unindent}), {Token}, [Comment], CharNewLine;
+
+Indent = {CharTab}-;
+(* One more than previous line *)
+
+Unindent = {CharTab};
+(* One less than previous line *)
+
+Token = ( Identifier | LiteralNumber | LiteralString | GroupStart | GroupEnd );
+
+Identifier = CharIdentifierStart, {CharIdentifier};
+
+GroupStart = (( CharGroupLeft, {CharGroupLeftContinued} ) | ( {CharGroupLeftContinued}, CharGroupLeft ));
+GroupEnd   = (( CharGroupRight, {CharGroupRightContinued} ) | ( {CharGroupRightContinued}, CharGroupRight ));
+
+LiteralNumber = LiteralFloat | LiteralInteger;
+
+LiteralFloat = (( {DecDigit}-, ".", {DecDigit} ) | ( ".", {DecDigit}- )), ["E", {DecDigit}-];
+
+LiteralInteger = LiteralIntegerBin | LiterallIntegerOct | LiteralIntegerDec | LiteralIntegerHex;
+
+LiteralIntegerBin = "0b", {BinDigit}-;
+
+LiteralIntegerOct = "0c", {OctDigit}-;
+
+LiteralIntegerDec = {DecDigit}-;
+
+LiteralIntegerHex = "0x", {HexDigit}-;
+
+LiteralString = CharDQuote, {CharString}, CharDQuote;
+
+CharIdentifier = CharAnyExcept, CharIdentifierInvalid;
+
+CharIdentifierStart = CharAnyExcept, CharIdentifierStartInvalid;
+
+CharIdentifierInvalid = ( CharWhitespace | CharGroupLeft | CharGroupRight | CharDQuote );
+
+CharIdentifierStartInvalid = ( CharIdentifierInvalid | CharDecDigit );
+
+CharIdentfierStart = CharAnyExcept, ( CharDecDigit | CharWhitespace | CharGroupLeft | CharGroupRight | CharDQuote );
+
+CharGroupLeftContinued = CharAnyExcept, CharGroupLeftContinuedInvalid;
+
+CharGroupRightContinued = CharAnyExcept, CharGroupRightContinuedInvalid;
+
+CharGroupLeftContinuedInvalid = ( CharWhitespace | CharGroupRight | CharDQuote );
+
+CharGroupRightContinuedInvalid = ( CharWhiteSpace | CharGroupLeft | CharDQuote );
+
+CharAnyExcept = ? Any-char-except-what-follows ?;
+
+CharWhitespace = CharSpace | CharTab | CharNewline;
+
+CharNewline = ? #x0a ?;
+
+CharString = CharAnyExcept, CharDQuote;
+
+CharGroupLeft = ( "(" | "{" | "[" );
+CharGroupRight   = ( ")" | "}" | "]" );
+
+CharDQuote = ? #x22 ?;
+
+CharSpace = ? #x20 ?;
+
+CharTab = ? #x09 ?;
+
+BinDigit = "0" | "1";
+OctDigit = BinDigit | "2" | "3" | "4" | "5" | "6" | "7";
+DecDigit = OctDigit | "8" | "9";
+HexDigit = DecDigit | "a" | "b" | "c" | "d" | "e";
+
+@endebnf
+
