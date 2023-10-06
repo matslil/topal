@@ -1,8 +1,12 @@
 //! Main file for Topal
 
-use topal::print_hello_world;
+use topal::object_storage::{Storage, Handle};
 
 /// Main function
 fn main() {
-    print_hello_world();
+    let mut storage = Storage::new();
+
+    let _handle = storage.get_handle(&"Testing".to_string());
+
+    println!("{:#?}", storage);
 }

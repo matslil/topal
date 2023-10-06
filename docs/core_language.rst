@@ -5,7 +5,103 @@ Core Language
 Lexer
 =====
 
+.. uml::
+
+   @startebnf
+   Test = A, B;
+   A = "A";
+   B = "B";
+   @endebnf
+
 .. uml:: lexer.ebnf
+
+Parser
+======
+
+.. uml::
+
+   @startebnf
+   Expression = ( Literal | Constant | Function | ExpressionBlock | ExpressionGroup | ExpressionList);
+   @endbnf
+
+This is basically the core of the language: Expression. Expression represents a value, where value does not necessarily need to be a number, it can be a string, list, or custom type or even meta type.
+
+`Literal` comes from lexer.
+
+.. uml::
+
+   @startebnf
+   Constant = ExpressionIdentifier;
+   @endbnf
+
+`Constant` represents a value, where value can be integer, float, string, type, meta type, custom type or nil.
+
+.. uml::
+
+   @startebnf
+   Function = ExpressionIdentifier, Expression;
+   @endbnf
+
+`Function` evaluates to a value, just like `Constant`, but need a value to do so.
+
+.. uml::
+
+   @startebnf
+   ExpressionIdentifier = Scope, Identifier;
+   Scope = Expression;
+   @endbnf
+
+`Identifier` is a named reference to a value, where a value can be pretty much anything, from integers, float and strings to more abstract values as types, functions and scopes.
+
+`Scope` is a value telling where the `Identifier` resides. `Scope` can itself be an `Identifier` (recursively), or an expression evaluating to a scope. It is possible to have a function that evaluates to a scope telling where to find `Identifier`.
+
+.. uml::
+
+   @startebnf
+   ExpressionBlock = Indent, Expression, Unindent;
+   @endbnf
+
+Using indentation to group a number of expressions. The last expression executed will determine the value of the sequence of expressions. Note that each expression in the sequence of expressions shares the same scope, which is the expression initiating the sequence. Example::
+
+   a > b
+        if-true println "a"
+        if-false println "b"
+
+`a > b` becomes scope for both `true:` expression as well as `false:`.       
+
+.. uml::
+
+   @startebnf
+   ExpressionGroup = ( ExpressionGroupParenthesis | ExpressionGroupCurly | ExpressionGroupBracket );
+   ExpressionGroupParenthesis = "(", Expression, ")";
+   ExpressionGroupCurly = "{", Expression, "}";
+   ExpressionGroupBracket = "[", Expression, "]";
+   @endbnf
+
+Similar to indentation, groups a number of expressions but using parenthesis, curly braces or brackets. Currently only parenthesis is supported, the other two are reserved for future use.
+
+Parenthesis can be used to limit the expression, e.g. for argument to a function. The following expression will evaluate to false::
+
+   false == false == true if-true true
+
+To clarify how the expression above should be read, and why it evaluates to false, see following expression with added parenthesis::
+
+   false == ( false == ( true if-true true ) )
+
+If we add parenthesis around second false value, we will change evaluation order making it evaulate to true::
+
+   false == ( false ) == true if-true true
+
+To clarify the new evaluation order, here is a corresponding expression with added parenthesis::
+
+   ( false == false ) == ( true if-true true )
+
+.. uml::
+
+   @startebnf
+   ExpressionList = ExpressionListSimple, { ";", ExpressionListSimple };
+   ExpressionListSimple = Expression, { ",", Expression }-;
+   @endbnf
 
 Primitive types
 ===============

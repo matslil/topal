@@ -78,6 +78,8 @@ todo_include_todos = False
 
 plantuml = 'java -jar plantuml-1.2023.10.jar'
 
+plantuml_output_format = 'svg_img'
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for

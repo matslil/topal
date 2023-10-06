@@ -1,0 +1,28 @@
+@startebnf
+
+Expression = { Literal | Constant | Function | ExpressionBlock | ExpressionGroup | ExpressionList };
+
+Constant = ExpressionIdentifier;
+
+Function = ExpressionIdentifier, Expression;
+
+ExpressionIdentifier = Scope, Identifier;
+
+Scope = Expression;
+
+ExpressionBlock = Indent, Expression, Unindent;
+
+ExpressionGroup = ( ExpressionGroupParenthesis | ExpressionGroupCurly | ExpressionGroupBracket );
+
+ExpressionGroupParenthesis = "(", Expression, ")";
+
+ExpressionGroupCurly = "{", Expression, "}";
+
+ExpressionGroupBracket = "[", Expression, "]";
+
+ExpressionList = ExpressionListSimple, { ";", ExpressionListSimple };
+
+ExpressionListSimple = Expression, { ",", Expression }-;
+
+@endebnf
+

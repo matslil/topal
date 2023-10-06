@@ -6,18 +6,16 @@ Indent = {CharTab}-;
 (* One more than previous line *)
 
 Unindent = {CharTab};
-(* One less than previous line *)
 
-Token = ( Identifier | LiteralNumber | LiteralString | GroupStart | GroupEnd );
+Token = ( Identifier | Literal | CharGroup );
 
 Identifier = CharIdentifierStart, {CharIdentifier};
 
-GroupStart = (( CharGroupLeft, {CharGroupLeftContinued} ) | ( {CharGroupLeftContinued}, CharGroupLeft ));
-GroupEnd   = (( CharGroupRight, {CharGroupRightContinued} ) | ( {CharGroupRightContinued}, CharGroupRight ));
+Literal = ( LiteralNumber | LiteralString );
 
 LiteralNumber = LiteralFloat | LiteralInteger;
 
-LiteralFloat = (( {DecDigit}-, ".", {DecDigit} ) | ( ".", {DecDigit}- )), ["E", {DecDigit}-];
+LiteralFloat = (( {DecDigit}-, ".", {DecDigit} ) | ( ".", {DecDigit}- ));
 
 LiteralInteger = LiteralIntegerBin | LiterallIntegerOct | LiteralIntegerDec | LiteralIntegerHex;
 
@@ -35,19 +33,11 @@ CharIdentifier = CharAnyExcept, CharIdentifierInvalid;
 
 CharIdentifierStart = CharAnyExcept, CharIdentifierStartInvalid;
 
-CharIdentifierInvalid = ( CharWhitespace | CharGroupLeft | CharGroupRight | CharDQuote );
+CharIdentifierInvalid = ( CharWhitespace | CharGroup | CharDQuote );
 
 CharIdentifierStartInvalid = ( CharIdentifierInvalid | CharDecDigit );
 
-CharIdentfierStart = CharAnyExcept, ( CharDecDigit | CharWhitespace | CharGroupLeft | CharGroupRight | CharDQuote );
-
-CharGroupLeftContinued = CharAnyExcept, CharGroupLeftContinuedInvalid;
-
-CharGroupRightContinued = CharAnyExcept, CharGroupRightContinuedInvalid;
-
-CharGroupLeftContinuedInvalid = ( CharWhitespace | CharGroupRight | CharDQuote );
-
-CharGroupRightContinuedInvalid = ( CharWhiteSpace | CharGroupLeft | CharDQuote );
+CharIdentfierStart = CharAnyExcept, ( CharDecDigit | CharWhitespace | CharGroup | CharDQuote );
 
 CharAnyExcept = ? Any-char-except-what-follows ?;
 
@@ -57,8 +47,7 @@ CharNewline = ? #x0a ?;
 
 CharString = CharAnyExcept, CharDQuote;
 
-CharGroupLeft = ( "(" | "{" | "[" );
-CharGroupRight   = ( ")" | "}" | "]" );
+CharGroup = ( "(" | "{" | "[" | ")" | "}" | "]" );
 
 CharDQuote = ? #x22 ?;
 
