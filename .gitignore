@@ -9,3 +9,10 @@
 
 # venv default place
 /venv/
+
+# VI files
+*.swp
+
+# Test file
+/object_token_serialize_test.json
+

@@ -2,13 +2,26 @@
 // You'll need to add serde and serde_derive to your dependencies.
 use serde::{Serialize, Deserialize};
 use std::vec::Vec;
+use std::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Handle(usize);
+pub struct Handle<T> {
+    index: usize,
+    t: PhantomData<T>,
+}
 
-impl From<Handle> for usize {
-    fn from(handle: Handle) -> usize {
-        handle.0
+impl<T> Handle<T> {
+    fn new(idx: usize) -> Self {
+        Self {
+            index: idx,
+            t: PhantomData,
+        }
+    }
+}
+
+impl<T> From<Handle<T>> for usize {
+    fn from(handle: Handle<T>) -> usize {
+        handle.index
     }
 }
 
@@ -28,18 +41,18 @@ where
     }
 
     // Add an item and return its integer handle.
-    pub fn get_handle(&mut self, item: &T) -> Handle {
+    pub fn get_handle(&mut self, item: &T) -> Handle<T> {
         let idx = self.objects.iter().position(|r| r == item).unwrap_or_else(|| {
             self.objects.push((*item).clone());
             self.objects.len() - 1
         });
 
-        let handle = Handle(idx);
+        let handle = Handle::<T>::new(idx);
         handle
     }
 
     // Get a reference to an item by its handle.
-    pub fn get(&self, handle: Handle) -> Option<&T> {
+    pub fn get(&self, handle: Handle<T>) -> Option<&T> {
         let index : usize = usize::from(handle);
         self.objects.get(index)
     }

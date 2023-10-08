@@ -1,6 +1,6 @@
 //! Main file for Topal
 
-use topal::object_storage::{Storage, Handle};
+use topal::object_storage::{Storage};
 
 /// Main function
 fn main() {
