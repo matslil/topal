@@ -1,12 +1,10 @@
 //! Main file for Topal
 
-use topal::object_storage::{Storage};
+use topal::stream::Stream;
 
 /// Main function
 fn main() {
-    let mut storage = Storage::new();
+    let mut stream = Stream::new("-");
 
-    let _handle = storage.get_handle(&"Testing".to_string());
-
-    println!("{:#?}", storage);
+    println!("{:#?}", stream);
 }
