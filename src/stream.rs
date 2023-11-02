@@ -1,14 +1,16 @@
-use curl::easy::Easy;
-use curl::Error as CurlError;
-use std::io::{self, BufRead, Cursor};
-use std::fs::File;
-use std::{thread, fmt};
-use crossbeam_channel as crossbeam;
+use url::Url;
+use std::io::{self, BufRead, BufReader};
+use std::fs;
+use std::fmt;
+use utf8_chars::BufReadCharsExt;
+
+mod curl_reader;
+use crate::stream::curl_reader::CurlReader;
 
 pub trait Parseable {
-    fn take(&self) -> Result<char, ParseError>;
-    fn peek(&self) -> Result<char, ParseError>;
-    fn skip(&self) -> Result<(), ParseError>;
+    fn take(&mut self) -> Result<char, ParseError>;
+    fn peek(&mut self) -> Result<char, ParseError>;
+    fn skip(&mut self) -> Result<(), ParseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -52,23 +54,113 @@ impl fmt::Display for CharPos {
 // that takes precedence.
 #[derive(Debug)]
 pub enum StreamError {
-    Open((String, io::Error, CurlError)),
+    Open(String),
 }
 
 impl fmt::Display for StreamError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Open((name, io_err, curl_err)) =>
-                write!(f, "Failed to open file '{}':\n  Tried as URL: {}\n  Tried as local file: {}",
-                    name, io_err, curl_err)
+            Self::Open(name) =>
+                write!(f, "Failed to open file '{}':\n", name)
+        }
+    }
+}
+
+// struct StdinReader {
+//     stdin : io::StdinLock<'static>,
+// }
+// 
+// impl BufReadCharsExt for StdinReader {
+// }
+// 
+// impl BufRead for StdinReader {
+//     fn fill_buf(&mut self) -> io::Result<&[u8]> {
+//         self.stdin.fill_buf()
+//     }
+// }
+// 
+// impl Read for StdinReader {
+//     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+//         self.stdin.read(buf)
+//     }
+// }
+// 
+// struct FileReader {
+//     file : fs::File;
+// }
+// 
+// impl BufReadCharsExt for FileReader {
+// }
+// 
+// impl BufRead for FileReader {
+//     fn fill_buf(&mut self) -> io::Result<&[u8]> {
+//         self.file.fill_buf()
+//     }
+// }
+// 
+// impl Read for FileReader {
+//     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+//         self.file.read(buf)
+//     }
+// }
+// 
+enum StreamType {
+    Stdin(io::StdinLock<'static>),
+    Curl(CurlReader),
+    File(BufReader<fs::File>),
+}
+
+struct StreamReader {
+    stream: StreamType,
+}
+
+impl StreamReader {
+    pub fn from_stdin(stdin: io::StdinLock<'static>) -> Self {
+        Self { stream: StreamType::Stdin(stdin) }
+    }
+
+    pub fn from_curl(curl: CurlReader) -> Self {
+        Self { stream: StreamType::Curl(curl) }
+    }
+
+    pub fn from_file(file: fs::File) -> Self {
+        Self { stream: StreamType::File(BufReader::<fs::File>::new(file)) }
+    }
+}
+
+impl BufRead for StreamReader {
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        match &mut self.stream {
+            StreamType::Stdin(s) => s.fill_buf(),
+            StreamType::Curl(s) =>  s.fill_buf(),
+            StreamType::File(s) =>  s.fill_buf(),
+        }
+    }
+
+    fn consume(&mut self, amount: usize) {
+        match &mut self.stream {
+            StreamType::Stdin(s) => s.consume(amount),
+            StreamType::Curl(s) =>  s.consume(amount),
+            StreamType::File(s) =>  s.consume(amount),
+        }
+    }
+}
+
+impl io::Read for StreamReader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match &mut self.stream {
+            StreamType::Stdin(s) => s.read(buf),
+            StreamType::Curl(s) => s.read(buf),
+            StreamType::File(s) => s.read(buf),
         }
     }
 }
 
 pub struct Stream {
     name: String,
-    buf:  Box<dyn BufRead>,
-    pos:  CharPos,
+    chr: Option<char>,
+    pos: CharPos,
+    reader: StreamReader,
 }
 
 impl Stream {
@@ -76,33 +168,37 @@ impl Stream {
         if path == "-" {
             Ok(Self {
                 name: "<stdin>".to_string(),
-                buf: Box::new(io::stdin().lock()),
+                chr: None,
                 pos: CharPos::new(),
+                reader: StreamReader::from_stdin(io::stdin().lock()),
             })
         } else {
-            let mut easy = Easy::new();
-            match easy.url(path) {
-                Ok(_) =>
-                    Ok(Self {
-                        name: match easy.effective_url() {
-                            Ok(opt_url) => match opt_url {
-                                Some(url) => url.to_string(),
-                                None => "".to_string(),
-                            },
-                            Err(err) => format!("<Invalid URL: {}>", err),
+            match Url::parse(path) {
+                // Could be parsed as URL, assume it is
+                Ok(_) => {
+                    match CurlReader::new(path) {
+                        Ok(curl_reader) => {
+                            Ok(Self {
+                                name: path.into(),
+                                chr: None,
+                                pos: CharPos::new(),
+                                reader: StreamReader::from_curl(curl_reader),
+                            })
                         },
-                        buf: Box::new(CurlReader::new(easy)),
-                        pos: CharPos::new(),
-                    }),
-                Err(urlerr) => match File::open(path) {
-                    Ok(file) =>
+                        Err(err) => Err(StreamError::Open(err.to_string())),
+                    }
+                },
+                // Not an URL, assume it's a file path
+                Err(_) => match fs::File::open(path) {
+                    Ok(file) => {
                         Ok(Self {
                             name: path.to_string(),
-                            buf: Box::new(io::BufReader::new(file)),
+                            chr: None,
                             pos: CharPos::new(),
-                        }),
-                    Err(fileerr) =>
-                        Err(StreamError::Open((path.to_string(), fileerr, urlerr))),
+                            reader: StreamReader::from_file(file),
+                        })
+                    },
+                    Err(fileerr) => Err(StreamError::Open(fileerr.to_string())),
                 }
             }
         }
@@ -121,89 +217,45 @@ impl fmt::Debug for Stream {
     }
 }
 
-struct CurlReader {
-    rx: crossbeam::Receiver<Result<Vec<u8>, CurlError>>,
-    buffer: Vec<u8>,
-    cursor: Cursor<Vec<u8>>,
-    error: Option<CurlError>,
-}
-
-impl CurlReader {
-    fn new(mut handle: Easy) -> Self {
-        let (tx, rx) = crossbeam::bounded(0);
-        let tx2 = tx.clone();
-
-        thread::spawn(move || {
-            let mut transfer = handle.transfer();
-            if let Err(err) = transfer.write_function(move |new_data| {
-                tx.send(Ok(new_data.to_vec())).unwrap();
-                Ok(new_data.len())
-            }) {
-                tx2.send(Err(err)).unwrap();
-                return;
-            }
-
-            if let Err(err) = transfer.perform() {
-                tx2.send(Err(err)).unwrap();
-            }
-        });
-
-        CurlReader {
-            rx,
-            buffer: Vec::new(),
-            cursor: Cursor::new(Vec::new()),
-            error: None,
-        }
-    }
-}
-
-impl BufRead for CurlReader {
-    fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        if self.cursor.position() as usize == self.buffer.len() {
-            match self.rx.recv() {
-                Ok(Ok(data)) => {
-                    self.buffer = data;
-                    self.cursor = Cursor::new(self.buffer.clone());
-                }
-                Ok(Err(curl_error)) => {
-                    self.error = Some(curl_error);
-                    return Err(io::Error::new(io::ErrorKind::Other, "Curl error occurred"));
-                }
-                Err(_) => {
-                    return Ok(&[]);
-                }
+impl Parseable for Stream {
+    fn take(&mut self) -> Result<char, ParseError> {
+        match self.chr.take() {
+            Some(c) => Ok(c),
+            None => match self.reader.read_char_raw() {
+                Ok(Some(c)) => Ok(c),
+                Ok(None) => Err(ParseError::EOS),
+                Err(err) => Err(ParseError::Broken(err.to_string())),
             }
         }
-
-        self.cursor.fill_buf()
     }
-
-    fn consume(&mut self, amt: usize) {
-        self.cursor.consume(amt);
+    fn peek(&mut self) -> Result<char, ParseError> {
+        match self.chr {
+            None => {
+                match self.reader.read_char_raw() {
+                    Ok(Some(c)) => {
+                        self.chr = Some(c);
+                        Ok(c)
+                    }
+                    Ok(None) => Err(ParseError::EOS),
+                    Err(err) => Err(ParseError::Broken(err.to_string())),
+                }
+            }
+            Some(c) => Ok(c),
+        }
+    }
+    fn skip(&mut self) -> Result<(), ParseError> {
+        if self.chr == None {
+            match self.reader.read_char_raw() {
+                Ok(Some(_)) => Ok(()),
+                Ok(None) => Err(ParseError::EOS),
+                Err(err) => Err(ParseError::Broken(err.to_string())),
+            }
+        } else {
+            self.chr = None;
+            Ok(())
+        }
     }
 }
-
-impl io::Read for CurlReader {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if let Some(ref err) = self.error {
-            return Err(io::Error::new(io::ErrorKind::Other, err.to_string()));
-        }
-
-        // Check the remaining data in the buffer first.
-        let available = self.fill_buf()?;
-        if available.is_empty() {
-            return Ok(0);
-        }
-
-        let len = std::cmp::min(available.len(), buf.len());
-        buf[0..len].copy_from_slice(&available[0..len]);
-        self.consume(len);
-
-        Ok(len)
-    }
-}
-
-
 
 #[cfg(test)]
 mod tests {
@@ -214,35 +266,11 @@ mod tests {
         let path = "[::::1]";
         let url = "http://".to_owned() + path;
         let StreamError::Open(err) = Stream::new(&url).unwrap_err();
-        assert_eq!(err.0, path);
-        assert_eq!(err.1.kind(), io::ErrorKind::NotFound);
-        assert!(err.2.is_url_malformed());
+        assert_eq!(err, "".to_string());
     }
 
     #[test]
     fn test_stream_stdin_new() {
         assert_eq!(format!("{}", Stream::new("-").unwrap()), "<stdin>:0:0");
-    }
-
-    #[test]
-    fn test_curl_reader() {
-        let url = "https://www.example.com";
-        let mut handle = Easy::new();
-        handle.url(url).unwrap();
-        let mut reader = CurlReader::new(handle);
-
-        let mut line = String::new();
-        while let Ok(bytes_read) = reader.read_line(&mut line) {
-            if bytes_read == 0 {
-                break;
-            }
-            println!("{}", line);
-            line.clear();
-        }
-
-        // Handle the error, if any
-        if let Some(err) = reader.error {
-            println!("Error occurred: {}", err);
-        }
     }
 }
