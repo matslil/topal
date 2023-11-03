@@ -220,9 +220,27 @@ impl fmt::Debug for Stream {
 impl Parseable for Stream {
     fn take(&mut self) -> Result<char, ParseError> {
         match self.chr.take() {
-            Some(c) => Ok(c),
+            Some(c) => {
+                if self.pos.chr == 0 { self.pos.chr = 1; }
+                if self.pos.line == 0 { self.pos.line = 1; }
+                match c {
+                    '\t' => self.pos.chr += 8,
+                    '\n' => self.pos.line += 1,
+                    _    => self.pos.chr += 1,
+                };
+                Ok(c)
+            },
             None => match self.reader.read_char_raw() {
-                Ok(Some(c)) => Ok(c),
+                Ok(Some(c)) => {
+                    if self.pos.chr == 0 { self.pos.chr = 1; }
+                    if self.pos.line == 0 { self.pos.line = 1; }
+                    match c {
+                        '\t' => self.pos.chr += 8,
+                        '\n' => self.pos.line += 1,
+                        _    => self.pos.chr += 1,
+                    };
+                    Ok(c)
+                },
                 Ok(None) => Err(ParseError::EOS),
                 Err(err) => Err(ParseError::Broken(err.to_string())),
             }
@@ -244,15 +262,9 @@ impl Parseable for Stream {
         }
     }
     fn skip(&mut self) -> Result<(), ParseError> {
-        if self.chr == None {
-            match self.reader.read_char_raw() {
-                Ok(Some(_)) => Ok(()),
-                Ok(None) => Err(ParseError::EOS),
-                Err(err) => Err(ParseError::Broken(err.to_string())),
-            }
-        } else {
-            self.chr = None;
-            Ok(())
+        match self.take() {
+            Ok(_) => Ok(()),
+            Err(err) => Err(err),
         }
     }
 }

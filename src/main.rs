@@ -1,6 +1,6 @@
 //! Main file for Topal
 
-use topal::stream::Stream;
+use topal::stream::{Stream, ParseError, Parseable};
 use clap;
 
 /// Main function
@@ -21,7 +21,19 @@ fn main() {
     };
     let stream_file = matches.get_one::<String>("file").unwrap();
 
-    let mut stream = Stream::new(stream_file);
+    let mut stream = Stream::new(stream_file).unwrap();
 
+    println!("{:#?}", stream);
+    loop {
+        let ret = stream.take();
+        match ret {
+            Err(ParseError::EOS) => break,
+            Err(ParseError::Broken(why)) => {
+                println!("ERROR: {}", why);
+                break;
+            },
+            Ok(c) => print!("{}", c),
+        }
+    }
     println!("{:#?}", stream);
 }
