@@ -1,7 +1,8 @@
 //! Main file for Topal
 
-use topal::stream::{Stream, ParseError, Parseable};
+use topal::stream::{StreamReader, ParseError, Parseable};
 use clap;
+use url::Url;
 
 /// Main function
 fn main() {
@@ -19,13 +20,22 @@ fn main() {
         Some(("stream", matches)) => matches,
         _ => unreachable!("Something went wrong with parsing"),
     };
-    let stream_file = matches.get_one::<String>("file").unwrap();
+    let path = matches.get_one::<String>("file").unwrap();
 
-    let mut stream = Stream::new(stream_file).unwrap();
+    let mut streamreader = if path == "-" {
+        Ok(StreamReader::from_stdin())
+    } else {
+        match Url::parse(path) {
+            // Could be parsed as URL, assume it is
+            Ok(_) => StreamReader::from_url(path),
+            // Not an URL, assume it's a file path
+            Err(_) => StreamReader::from_path(path),
+        }
+    }.unwrap();
 
-    println!("{:#?}", stream);
+    println!("{:#?}", streamreader);
     loop {
-        let ret = stream.take();
+        let ret = streamreader.take();
         match ret {
             Err(ParseError::EOS) => break,
             Err(ParseError::Broken(why)) => {
@@ -35,5 +45,5 @@ fn main() {
             Ok(c) => print!("{}", c),
         }
     }
-    println!("{:#?}", stream);
+    println!("{:#?}", streamreader);
 }

@@ -16,3 +16,6 @@
 # Test file
 /object_token_serialize_test.json
 
+# VIM tags file
+/tags
+
