@@ -4,7 +4,7 @@ use std::fmt;
 use utf8_chars::BufReadCharsExt;
 
 mod curl_reader;
-use crate::stream::curl_reader::CurlReader;
+use crate::streamreader::curl_reader::CurlReader;
 
 pub trait Parseable {
     fn take(&mut self) -> Result<char, ParseError>;

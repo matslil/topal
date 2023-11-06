@@ -1,4 +1,4 @@
 //! This is library part
 
-pub mod stream;
+pub mod streamreader;
 
