@@ -93,7 +93,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_curl_reader() {
+    fn example_dot_com() {
         let url = "https://www.example.com";
         let mut reader = CurlReader::new(url).unwrap();
 

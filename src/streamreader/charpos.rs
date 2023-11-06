@@ -1,5 +1,7 @@
 use std::fmt;
 
+const SPACES_PER_TAB: usize = 8;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CharPos {
     line: usize,
@@ -14,14 +16,14 @@ impl CharPos {
         }
     }
 
-    pub fn skip(&self, c: char) {
+    pub fn skip(&mut self, c: char) {
         match c {
-            '\t' => self.pos.chr += 8,
+            '\t' => self.chr += SPACES_PER_TAB,
             '\n' => {
-                self.pos.line += 1;
-                self.pos.chr = 1;
+                self.line += 1;
+                self.chr = 1;
             },
-            _    => self.pos.char += 1,
+            _    => self.chr += 1,
         };
     }
 }
@@ -29,6 +31,18 @@ impl CharPos {
 impl fmt::Display for CharPos {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}:{}", self.line, self.chr)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn skip_tab() {
+        let mut c = CharPos::new();
+        c.skip('\t');
+        assert_eq!("1:9", format!("{}", c));
     }
 }
 

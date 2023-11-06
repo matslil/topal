@@ -1,10 +1,13 @@
-use std::io::{self, BufRead, BufReader};
+use std::io::{self,BufReader};
 use std::fs;
 use std::fmt;
-use utf8_chars::BufReadCharsExt;
 
 mod curl_reader;
+mod charpos;
+mod stream;
 use crate::streamreader::curl_reader::CurlReader;
+use crate::streamreader::charpos::CharPos;
+use crate::streamreader::stream::Stream;
 
 pub trait Parseable {
     fn take(&mut self) -> Result<char, ParseError>;
@@ -24,27 +27,6 @@ impl fmt::Display for ParseError {
             Self::EOS => write!(f, "End of stream"),
             Self::Broken(str) => write!(f, "{}", str),
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct CharPos {
-    pub line: usize,
-    pub chr: usize,
-}
-
-impl CharPos {
-    fn new() -> Self {
-        Self {
-            line: 0,
-            chr:  0,
-        }
-    }
-}
-
-impl fmt::Display for CharPos {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}", self.line, self.chr)
     }
 }
 
@@ -105,7 +87,10 @@ impl StreamReader {
                                 io::BufReader::new(file), path)
                             )
             }),
-            Err(fileerr) => Err(StreamError::Open(fileerr.to_string())),
+            Err(fileerr) => {
+                let msg = format!("{}: {}", path, fileerr);
+                Err(StreamError::Open(msg.to_string()))
+            },
         }
     }
 }
@@ -156,115 +141,21 @@ impl fmt::Debug for StreamReader {
     }
 }
 
-struct Stream<T>
-where T: BufRead
-{
-    name: String,
-    chr: Option<char>,
-    pos: CharPos,
-    reader: T,
-}
-
-impl<T: BufRead> Stream<T>
-{
-    pub fn new(buf: T, name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            chr: None,
-            pos: CharPos::new(),
-            reader: buf,
-        }
-    }
-}
-
-impl<T: BufRead> fmt::Display for Stream<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}", self.name, self.pos)
-    }
-}
-
-impl<T: BufRead> fmt::Debug for Stream<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}", self.name, self.pos)
-    }
-}
-
-impl<T: BufRead> Parseable for Stream<T> {
-    fn take(&mut self) -> Result<char, ParseError> {
-        match self.chr.take() {
-            Some(c) => {
-                if self.pos.chr == 0 { self.pos.chr = 1; }
-                if self.pos.line == 0 { self.pos.line = 1; }
-                match c {
-                    '\t' => self.pos.chr += 8,
-                    '\n' => {
-                        self.pos.line += 1;
-                        self.pos.chr = 1;
-                    },
-                    _    => self.pos.chr += 1,
-                };
-                Ok(c)
-            },
-            None => match self.reader.read_char_raw() {
-                Ok(Some(c)) => {
-                    if self.pos.chr == 0 { self.pos.chr = 1; }
-                    if self.pos.line == 0 { self.pos.line = 1; }
-                    match c {
-                        '\t' => self.pos.chr += 8,
-                        '\n' => self.pos.line += 1,
-                        _    => self.pos.chr += 1,
-                    };
-                    Ok(c)
-                },
-                Ok(None) => Err(ParseError::EOS),
-                Err(err) => Err(ParseError::Broken(err.to_string())),
-            }
-        }
-    }
-    fn peek(&mut self) -> Result<char, ParseError> {
-        match self.chr {
-            None => {
-                match self.reader.read_char_raw() {
-                    Ok(Some(c)) => {
-                        self.chr = Some(c);
-                        Ok(c)
-                    }
-                    Ok(None) => Err(ParseError::EOS),
-                    Err(err) => Err(ParseError::Broken(err.to_string())),
-                }
-            }
-            Some(c) => Ok(c),
-        }
-    }
-    fn skip(&mut self) -> Result<(), ParseError> {
-        match self.take() {
-            Ok(_) => Ok(()),
-            Err(err) => Err(err),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_stream_peek() {
-        let buf = bufread_from_url_or_file("-");
-        let stream = Stream::new(buf);
-        println!("{}", stream);
+    fn file_1_5() {
+        let filename = "testfiles/1.5";
+        let mut streamreader = StreamReader::from_path(filename).unwrap();
+        loop {
+            match streamreader.skip() {
+                Ok(_) => (),
+                Err(ParseError::EOS) => break,
+                Err(err) => panic!("{}", err),
+            };
+        }
+        assert_eq!(format!("{}:1:5", filename), format!("{}", streamreader));
     }
-
-//    #[test]
-//    fn test_stream_new_illegal_url() {
-//        let path = "[::::1]";
-//        let url = "http://".to_owned() + path;
-//        let StreamError::Open(err) = Stream::new(&url).unwrap_err();
-//        assert_eq!(err, "".to_string());
-//    }
-//
-//    #[test]
-//    fn test_stream_stdin_new() {
-//        assert_eq!(format!("{}", Stream::new("-").unwrap()), "<stdin>:0:0");
-//    }
 }

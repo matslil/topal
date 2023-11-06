@@ -1,6 +1,10 @@
-use crate::streamreader::charpos::CharPos;
+use std::io::BufRead;
+use std::fmt;
+use utf8_chars::BufReadCharsExt;
+use super::CharPos;
+use super::{Parseable, ParseError};
 
-struct Stream<T>
+pub struct Stream<T>
 where T: BufRead
 {
     name: String,
@@ -36,7 +40,10 @@ impl<T: BufRead> fmt::Debug for Stream<T> {
 impl<T: BufRead> Parseable for Stream<T> {
     fn take(&mut self) -> Result<char, ParseError> {
         match self.chr.take() {
-            Some(c) => self.pos.skip(c),
+            Some(c) => {
+                self.pos.skip(c);
+                Ok(c)
+            },
             None => match self.reader.read_char_raw() {
                 Ok(Some(c)) => {
                     self.pos.skip(c);
@@ -74,12 +81,15 @@ impl<T: BufRead> Parseable for Stream<T> {
 
 mod tests {
     use super::*;
+    use std::io;
+
+    const TESTFILE: &str = "First line\nSecond line\n";
 
     #[test]
-    fn test_stream_peek() {
-        let testfile = "First line\nSecond line\n";
-        let bufreader = BufReader::new(testfile);
-        let streamreader = StreamReader::new(bufreader);
+    fn peek() {
+        let buf = io::BufReader::new(TESTFILE.as_bytes());
+        let mut stream = Stream::new(buf, "Test");
+        assert_eq!('F', stream.peek().unwrap());
     }
 }
 
