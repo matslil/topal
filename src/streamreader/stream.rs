@@ -90,6 +90,23 @@ mod tests {
         let buf = io::BufReader::new(TESTFILE.as_bytes());
         let mut stream = Stream::new(buf, "Test");
         assert_eq!('F', stream.peek().unwrap());
+        assert_eq!("Test:1:1", format!("{}", stream));
+    }
+
+    #[test]
+    fn take() {
+        let buf = io::BufReader::new(TESTFILE.as_bytes());
+        let mut stream = Stream::new(buf, "Test");
+        assert_eq!('F', stream.take().unwrap());
+        assert_eq!("Test:1:2", format!("{}", stream));
+    }
+
+    #[test]
+    fn skip() {
+        let buf = io::BufReader::new(TESTFILE.as_bytes());
+        let mut stream = Stream::new(buf, "Test");
+        stream.skip().unwrap();
+        assert_eq!("Test:1:2", format!("{}", stream));
     }
 }
 

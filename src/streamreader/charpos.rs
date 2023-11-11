@@ -1,5 +1,8 @@
 use std::fmt;
 
+// Keeps track of line and character position based on
+// what characters are being processed
+
 const SPACES_PER_TAB: usize = 8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -23,6 +26,7 @@ impl CharPos {
                 self.line += 1;
                 self.chr = 1;
             },
+            '\r' => self.chr = 1,
             _    => self.chr += 1,
         };
     }
@@ -43,6 +47,28 @@ mod tests {
         let mut c = CharPos::new();
         c.skip('\t');
         assert_eq!("1:9", format!("{}", c));
+    }
+
+    #[test]
+    fn skip_ln() {
+        let mut c = CharPos::new();
+        c.skip('\n');
+        assert_eq!("2:1", format!("{}", c));
+    }
+
+    #[test]
+    fn skip_char() {
+        let mut c = CharPos::new();
+        c.skip('f');
+        assert_eq!("1:2", format!("{}", c));
+    }
+
+    #[test]
+    fn skip_ret() {
+        let mut c = CharPos::new();
+        c.skip('a');
+        c.skip('\r');
+        assert_eq!("1:1", format!("{}", c));
     }
 }
 

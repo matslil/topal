@@ -4,10 +4,18 @@ use std::io::{self, BufRead, Cursor};
 use std::thread;
 use crossbeam_channel as crossbeam;
 
+// Make a url implementation for BufReader using cURL
+
 pub struct CurlReader {
+    // A separate thread is being spawned that communicates with cURL.
+    // This threads provides data being received via this channel.
     rx: crossbeam::Receiver<Result<Vec<u8>, CurlError>>,
-    buffer: Vec<u8>,
+
+    // When fill_buf() is called, data received from rx above is
+    // written to this cursor containing the buffered data.
     cursor: Cursor<Vec<u8>>,
+
+    // If rx channel fails, this is the error.
     error: Option<CurlError>,
 }
 
@@ -35,7 +43,6 @@ impl CurlReader {
 
         Ok(CurlReader {
             rx,
-            buffer: Vec::new(),
             cursor: Cursor::new(Vec::new()),
             error: None,
         })
@@ -44,15 +51,14 @@ impl CurlReader {
 
 impl BufRead for CurlReader {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        if self.cursor.position() as usize == self.buffer.len() {
+        if self.cursor.position() as usize == self.cursor.get_ref().len() {
             match self.rx.recv() {
                 Ok(Ok(data)) => {
-                    self.buffer = data;
-                    self.cursor = Cursor::new(self.buffer.clone());
+                    self.cursor = Cursor::new(data);
                 }
                 Ok(Err(curl_error)) => {
-                    self.error = Some(curl_error);
-                    return Err(io::Error::new(io::ErrorKind::Other, "Curl error occurred"));
+                    self.error = Some(curl_error.clone());
+                    return Err(io::Error::new(io::ErrorKind::BrokenPipe, curl_error));
                 }
                 Err(_) => {
                     return Ok(&[]);
@@ -71,7 +77,7 @@ impl BufRead for CurlReader {
 impl io::Read for CurlReader {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         if let Some(ref err) = self.error {
-            return Err(io::Error::new(io::ErrorKind::Other, err.to_string()));
+            return Err(io::Error::new(io::ErrorKind::BrokenPipe, err.clone()));
         }
 
         // Check the remaining data in the buffer first.
@@ -110,5 +116,17 @@ mod tests {
         if let Some(err) = reader.error {
             println!("Error occurred: {}", err);
         }
+    }
+
+    #[test]
+    fn something_dot_invalid() {
+        // This URL has the correct format, but should not be resolvable
+        let url = "https://something.invalid";
+        let mut reader = CurlReader::new(url).unwrap();
+
+        let mut line = String::new();
+        let err = reader.read_line(&mut line).unwrap_err();
+        assert_eq!(io::ErrorKind::BrokenPipe, err.kind());
+        assert_eq!("[6] Couldn't resolve host name (Could not resolve host: something.invalid)", format!("{}", err.get_ref().unwrap()));
     }
 }

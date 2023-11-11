@@ -1,6 +1,7 @@
 //! Main file for Topal
 
-use topal::streamreader::{StreamReader, ParseError, Parseable};
+use topal::streamreader::StreamReader;
+use topal::parseable::{Parseable, ParseError};
 use clap;
 use url::Url;
 
