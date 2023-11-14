@@ -7,7 +7,6 @@
 use topal::streamreader::StreamReader;
 use topal::parseable::{Parseable, ParseError};
 use clap::{Parser, Subcommand, command, arg};
-use url::Url;
 use tracing::{instrument, info};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber;
@@ -56,16 +55,7 @@ enum Command {
 
 #[instrument]
 fn cmd_streamreader(path: String) {
-    let mut streamreader = if path == "-" {
-        Ok(StreamReader::from_stdin())
-    } else {
-        match Url::parse(&path) {
-            // Could be parsed as URL, assume it is
-            Ok(_) => StreamReader::from_url(&path),
-            // Not an URL, assume it's a file path
-            Err(_) => StreamReader::from_path(&path),
-        }
-    }.unwrap();
+    let mut streamreader = StreamReader::new(path).unwrap();
 
     println!("{:#?}", streamreader);
     loop {
@@ -109,7 +99,6 @@ fn main() {
 
 // Run the function tests
 mod test {
-    use super::*;
     use assert_cmd;
 
     #[test]

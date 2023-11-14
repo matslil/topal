@@ -1,6 +1,7 @@
 use std::io::{self,BufReader};
 use std::fs;
 use std::fmt;
+use url::Url;
 
 mod curl_reader;
 mod charpos;
@@ -59,6 +60,19 @@ pub struct StreamReader {
 }
 
 impl StreamReader {
+    pub fn new(path: String) -> Result<Self, StreamError> {
+        if path == "-" {
+            Ok(StreamReader::from_stdin())
+        } else {
+            match Url::parse(&path) {
+                // Could be parsed as URL, assume it is
+                Ok(_) => StreamReader::from_url(&path),
+                // Not an URL, assume it's a file path
+                Err(_) => StreamReader::from_path(&path),
+            }
+        }
+    }
+
     pub fn from_stdin() -> Self {
         Self {
             stream: StreamType::Stdin(
