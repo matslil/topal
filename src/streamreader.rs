@@ -9,28 +9,7 @@ mod stream;
 use crate::streamreader::curl_reader::CurlReader;
 use crate::streamreader::charpos::CharPos;
 use crate::streamreader::stream::Stream;
-use crate::parseable::{Parseable, ParseError};
-
-// pub trait Parseable {
-//     fn take(&mut self) -> Result<char, ParseError>;
-//     fn peek(&mut self) -> Result<char, ParseError>;
-//     fn skip(&mut self) -> Result<(), ParseError>;
-// }
-// 
-// #[derive(Debug, Clone)]
-// pub enum ParseError {
-//     EOS,
-//     Broken(String),
-// }
-// 
-// impl fmt::Display for ParseError {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         match self {
-//             Self::EOS => write!(f, "End of stream"),
-//             Self::Broken(str) => write!(f, "{}", str),
-//         }
-//     }
-// }
+use crate::parseable::{self, Parseable};
 
 // Collect different error objects into one. Then let
 // formatted output function figure out which error object
@@ -111,15 +90,15 @@ impl StreamReader {
 }
 
 impl Parseable for StreamReader {
-    fn take(&mut self) -> Result<char, ParseError> {
+    fn pop(&mut self) -> Result<char, parseable::Error> {
         match &mut self.stream {
-            StreamType::Stdin(s) => s.take(),
-            StreamType::Curl(s) =>  s.take(),
-            StreamType::File(s) =>  s.take(),
+            StreamType::Stdin(s) => s.pop(),
+            StreamType::Curl(s) =>  s.pop(),
+            StreamType::File(s) =>  s.pop(),
         }
     }
 
-    fn peek(&mut self) -> Result<char, ParseError> {
+    fn peek(&mut self) -> Result<char, parseable::Error> {
         match &mut self.stream {
             StreamType::Stdin(s) => s.peek(),
             StreamType::Curl(s) =>  s.peek(),
@@ -127,7 +106,7 @@ impl Parseable for StreamReader {
         }
     }
 
-    fn skip(&mut self) -> Result<(), ParseError> {
+    fn skip(&mut self) -> Result<(), parseable::Error> {
         match &mut self.stream {
             StreamType::Stdin(s) => s.skip(),
             StreamType::Curl(s) =>  s.skip(),
@@ -181,7 +160,7 @@ mod tests {
         loop {
             match streamreader.skip() {
                 Ok(_) => (),
-                Err(ParseError::EOS) => break,
+                Err(parseable::Error::EOS) => break,
                 Err(err) => panic!("{}", err),
             };
         }

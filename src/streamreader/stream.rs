@@ -2,7 +2,7 @@ use std::io::BufRead;
 use std::fmt;
 use utf8_chars::BufReadCharsExt;
 use super::CharPos;
-use super::{Parseable, ParseError};
+use crate::parseable::{self, Parseable};
 
 pub struct Stream<T>
 where T: BufRead
@@ -38,7 +38,7 @@ impl<T: BufRead> fmt::Debug for Stream<T> {
 }
 
 impl<T: BufRead> Parseable for Stream<T> {
-    fn take(&mut self) -> Result<char, ParseError> {
+    fn pop(&mut self) -> Result<char, parseable::Error> {
         match self.chr.take() {
             Some(c) => {
                 self.pos.skip(c);
@@ -49,12 +49,12 @@ impl<T: BufRead> Parseable for Stream<T> {
                     self.pos.skip(c);
                     Ok(c)
                 },
-                Ok(None) => Err(ParseError::EOS),
-                Err(err) => Err(ParseError::Broken(err.to_string())),
+                Ok(None) => Err(parseable::Error::EOS),
+                Err(err) => Err(parseable::Error::Broken(err.to_string())),
             }
         }
     }
-    fn peek(&mut self) -> Result<char, ParseError> {
+    fn peek(&mut self) -> Result<char, parseable::Error> {
         match self.chr {
             None => {
                 match self.reader.read_char_raw() {
@@ -62,15 +62,18 @@ impl<T: BufRead> Parseable for Stream<T> {
                         self.chr = Some(c);
                         Ok(c)
                     }
-                    Ok(None) => Err(ParseError::EOS),
-                    Err(err) => Err(ParseError::Broken(err.to_string())),
+                    Ok(None) => Err(parseable::Error::EOS),
+                    Err(err) => Err(parseable::Error::Broken(err.to_string())),
                 }
             }
-            Some(c) => Ok(c),
+            Some(c) => {
+                self.chr = Some(c);
+                Ok(c)
+            }
         }
     }
-    fn skip(&mut self) -> Result<(), ParseError> {
-        match self.take() {
+    fn skip(&mut self) -> Result<(), parseable::Error> {
+        match self.pop() {
             Ok(_) => Ok(()),
             Err(err) => Err(err),
         }
@@ -94,10 +97,38 @@ mod tests {
     }
 
     #[test]
-    fn take() {
+    fn peek_peek() {
         let buf = io::BufReader::new(TESTFILE.as_bytes());
         let mut stream = Stream::new(buf, "Test");
-        assert_eq!('F', stream.take().unwrap());
+        assert_eq!('F', stream.peek().unwrap());
+        assert_eq!('F', stream.peek().unwrap());
+        assert_eq!("Test:1:1", format!("{}", stream));
+    }
+
+    #[test]
+    fn pop() {
+        let buf = io::BufReader::new(TESTFILE.as_bytes());
+        let mut stream = Stream::new(buf, "Test");
+        assert_eq!('F', stream.pop().unwrap());
+        assert_eq!("Test:1:2", format!("{}", stream));
+    }
+
+    #[test]
+    fn pop_peek() {
+        let buf = io::BufReader::new(TESTFILE.as_bytes());
+        let mut stream = Stream::new(buf, "Test");
+        assert_eq!('F', stream.pop().unwrap());
+        assert_eq!('i', stream.peek().unwrap());
+        assert_eq!("Test:1:2", format!("{}", stream));
+    }
+
+    #[test]
+    fn pop_peek_peek() {
+        let buf = io::BufReader::new(TESTFILE.as_bytes());
+        let mut stream = Stream::new(buf, "Test");
+        assert_eq!('F', stream.pop().unwrap());
+        assert_eq!('i', stream.peek().unwrap());
+        assert_eq!('i', stream.peek().unwrap());
         assert_eq!("Test:1:2", format!("{}", stream));
     }
 
@@ -106,6 +137,25 @@ mod tests {
         let buf = io::BufReader::new(TESTFILE.as_bytes());
         let mut stream = Stream::new(buf, "Test");
         stream.skip().unwrap();
+        assert_eq!("Test:1:2", format!("{}", stream));
+    }
+
+    #[test]
+    fn skip_peek() {
+        let buf = io::BufReader::new(TESTFILE.as_bytes());
+        let mut stream = Stream::new(buf, "Test");
+        stream.skip().unwrap();
+        assert_eq!('i', stream.peek().unwrap());
+        assert_eq!("Test:1:2", format!("{}", stream));
+    }
+
+    #[test]
+    fn skip_peek_peek() {
+        let buf = io::BufReader::new(TESTFILE.as_bytes());
+        let mut stream = Stream::new(buf, "Test");
+        stream.skip().unwrap();
+        assert_eq!('i', stream.peek().unwrap());
+        assert_eq!('i', stream.peek().unwrap());
         assert_eq!("Test:1:2", format!("{}", stream));
     }
 }

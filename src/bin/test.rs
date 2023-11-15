@@ -5,7 +5,8 @@
 /// options given after the command are specific to that command.
 
 use topal::streamreader::StreamReader;
-use topal::parseable::{Parseable, ParseError};
+use topal::parseable::Parseable;
+use topal::parseable;
 use clap::{Parser, Subcommand, command, arg};
 use tracing::{instrument, info};
 use tracing::level_filters::LevelFilter;
@@ -59,13 +60,17 @@ fn cmd_streamreader(path: String) {
 
     println!("{:#?}", streamreader);
     loop {
-        let ret = streamreader.take();
+        let ret = streamreader.pop();
         match ret {
-            Err(ParseError::EOS) => break,
-            Err(ParseError::Broken(why)) => {
+            Err(parseable::Error::EOS) => break,
+            Err(parseable::Error::Broken(why)) => {
                 println!("ERROR: {}", why);
                 break;
-            },
+            }
+            Err(parseable::Error::SyntaxError) => {
+                println!("Error parsing");
+                break;
+            }
             Ok(c) => print!("{}", c),
         }
     }
