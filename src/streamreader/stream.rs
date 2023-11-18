@@ -72,12 +72,6 @@ impl<T: BufRead> Parseable for Stream<T> {
             }
         }
     }
-    fn skip(&mut self) -> Result<(), parseable::Error> {
-        match self.pop() {
-            Ok(_) => Ok(()),
-            Err(err) => Err(err),
-        }
-    }
 }
 
 #[cfg(test)]

@@ -105,14 +105,6 @@ impl Parseable for StreamReader {
             StreamType::File(s) =>  s.peek(),
         }
     }
-
-    fn skip(&mut self) -> Result<(), parseable::Error> {
-        match &mut self.stream {
-            StreamType::Stdin(s) => s.skip(),
-            StreamType::Curl(s) =>  s.skip(),
-            StreamType::File(s) =>  s.skip(),
-        }
-    }
 }
 
 impl fmt::Display for StreamReader {
