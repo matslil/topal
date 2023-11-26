@@ -4,7 +4,6 @@
 /// command are generic options that works for all commands, while
 /// options given after the command are specific to that command.
 
-use topal::streamreader::StreamReader;
 use topal::parseable::Parseable;
 use topal::parseable;
 use clap::{Parser, Subcommand, command, arg};
@@ -48,19 +47,19 @@ enum Command {
     /// StreamReader parses stdin if path is '-', a URL if path is
     /// a valid URL or a file name. It parses the stream character
     /// by character and updates line and column position.
-    Streamreader {
+    Parseable{
         #[arg(required(true))]
         path: String,
     },
 }
 
 #[instrument]
-fn cmd_streamreader(path: String) {
-    let mut streamreader = StreamReader::new(path).unwrap();
+fn cmd_parseable(path: String) {
+    let mut parseable = Parseable::from_path(&path).unwrap();
 
-    println!("{:#?}", streamreader);
+    println!("{:#?}", parseable);
     loop {
-        let ret = streamreader.pop();
+        let ret = parseable.pop();
         match ret {
             Err(parseable::Error::EOS) => break,
             Err(parseable::Error::Broken(why)) => {
@@ -74,7 +73,7 @@ fn cmd_streamreader(path: String) {
             Ok(c) => print!("{}", c),
         }
     }
-    println!("{:#?}", streamreader);
+    println!("{:#?}", parseable);
 }
 
 /// Main function
@@ -96,7 +95,7 @@ fn main() {
     info!("Testing tracing");
 
     match args.cmd {
-        Command::Streamreader { path } => cmd_streamreader(path),
+        Command::Parseable{ path } => cmd_parseable(path),
     }
 }
 

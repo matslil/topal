@@ -1,5 +1,15 @@
-use std::fmt;
+use std::fmt::{self, Debug, Display};
 use tracing::{trace, instrument};
+use utf8_chars::BufReadCharsExt;
+use std::io::{self, BufRead, BufReader};
+use url::Url;
+use std::fs;
+
+mod charpos;
+mod curl_reader;
+
+use crate::parseable::charpos::CharPos;
+use crate::parseable::curl_reader::CurlReader;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum Action<T>
@@ -32,135 +42,6 @@ where
     }
 }
 
-/// Parse stream of UTF-8 characters. Supports one character lookahead.
-pub trait Parseable : fmt::Debug {
-    /// Return next character, advance position.
-    fn pop(&mut self) -> Result<char, Error>;
-
-    /// Return next character without advancing position.
-    fn peek(&mut self) -> Result<char, Error>;
-
-    /// Advance position to next character. Each call to `skip()` must have
-    /// been preceded with a call to `peek()`.
-    fn skip(&mut self);
-
-    /// If `target` character matches character at current position,
-    /// advance position to next character and return true,
-    /// otherwise leave position unchanged and return false.
-    #[instrument]
-    fn take(&mut self, target: char) -> Result<bool, Error> {
-        match self.peek() {
-            Ok(c) => if target == c {
-                match self.skip() {
-                    Ok(()) => Ok(true),
-                    Err(err) => {
-                        trace!("Error: {}", err);
-                        Err(err)
-                    }
-                }
-            } else {
-                Ok(false)
-            }
-            Err(err) => Err(err)
-        }
-    }
-
-    #[instrument(skip(cb))]
-    fn scan<T>(&mut self, cb: impl Fn(&str) -> Option<Action<T>>)
-        -> Result<Option<T>, Error>
-    where
-        T: fmt::Debug + Clone + Copy
-    {
-            let mut seq = String::new();
-            let mut require = false;
-            let mut request = None;
-
-            loop {
-                match self.peek() {
-                    Ok(target) => {
-                        seq.push(target);
-                        let cb_result = cb(&seq);
-                        trace!("callback({:?} -> {:?}", seq, cb_result);
-
-                        match cb_result {
-                            Some(Action::Return(result)) => {
-                                match self.skip() {
-                                    Ok(()) => {
-                                        break Ok(Some(result));
-                                    }
-                                    Err(err) => {
-                                        break Err(err);
-                                    }
-                                }
-                            }
-                            Some(Action::Request(result)) => {
-                                match self.skip() {
-                                    Ok(()) => {
-                                        trace!("require: {:?} -> false", require);
-                                        require = false;
-                                        request = Some(result);
-                                    }
-                                    Err(err) => {
-                                        break Err(err);
-                                    }
-                                }
-                            }
-                            Some(Action::Require) => {
-                                match self.skip() {
-                                    Ok(()) => {
-                                        trace!("require: {:?} -> true", require);
-                                        require = true
-                                    }
-                                    Err(err) => {
-                                        break Err(err);
-                                    }
-                                }
-                            }
-                            None => {
-                                if require {
-                                    break Err(Error::SyntaxError)
-                                } else {
-                                    break Ok(request);
-                                }
-                            }
-                        }
-                    }
-                    Err(Error::EOS) => {
-                        trace!("peek: Error::EOS");
-                        if require {
-                            break Err(Error::SyntaxError);
-                        } else {
-                            break Ok(request);
-                        }
-                    }
-                    Err(err) => {
-                        trace!("peek: {:?}", err);
-                        break Err(err);
-                    }
-                }
-            }
-        }
-
-    /// Invoke `cb` with character at current position. Return what `cb` returns,
-    /// but only advance position if return value is not `None`.
-    #[instrument(skip(cb))]
-    fn transform<T>(&mut self, cb: impl FnOnce(char) -> Option<T>)
-        -> Result<Option<T>, Error> {
-        match self.peek() {
-            Ok(input) => match cb(input) {
-                Some(output) => {
-                    match self.skip() {
-                        Ok(()) => Ok(Some(output)),
-                        Err(err) => Err(err),
-                    }
-                }
-                None => Ok(None),
-            }
-            Err(err) => Err(err),
-        }
-    }
-}
-
 #[derive(Clone, PartialEq)]
 pub enum Error {
     EOS,
@@ -187,6 +68,198 @@ impl fmt::Display for Error {
         }
     }
 }
+
+/// Parse stream of UTF-8 characters. Supports one character lookahead.
+pub struct Parseable {
+    name: String,
+    chr: Option<char>,
+    pos: CharPos,
+    reader: Box<dyn BufRead>,
+}
+
+impl Parseable {
+    /// Create a Parseable with given name and stream
+    pub fn new(name: &str, stream: Box<dyn BufRead>) -> Self {
+        Self {
+            name: name.to_string(),
+            chr: None,
+            pos: CharPos::new(),
+            reader: stream,
+        }
+    }
+
+    pub fn from_path(path: &str) -> Result<Self, Error> {
+        if path == "-" {
+            Ok(Self::new("<stdin>", Box::new(BufReader::new(io::stdin()))))
+        } else {
+            match Url::parse(&path) {
+                // Could be parsed as URL, assume it is
+                Ok(_) => match CurlReader::new(path) {
+                    Ok(curl_reader) => Ok(Self::new(path, Box::new(curl_reader))),
+                    Err(err) => Err(Error::Broken(err.to_string())),
+                }
+                // Not an URL, assume it's a file path
+                Err(_) => match fs::File::open(path) {
+                    Ok(file) => Ok(Self::new(path, Box::new(BufReader::new(file)))),
+                    Err(fileerr) => {
+                        let msg = format!("{}: {}", path, fileerr);
+                        Err(Error::Broken(msg.to_string()))
+                    },
+                }
+            }
+        }
+    }
+
+    /// Return next character, advance position.
+    pub fn pop(&mut self) -> Result<char, Error> {
+        match self.chr.take() {
+            Some(c) => {
+                self.pos.skip(c);
+                Ok(c)
+            },
+            None => match self.reader.read_char_raw() {
+                Ok(Some(c)) => {
+                    self.pos.skip(c);
+                    Ok(c)
+                },
+                Ok(None) => Err(Error::EOS),
+                Err(err) => Err(Error::Broken(err.to_string())),
+            }
+        }
+    }
+
+
+    /// Return next character without advancing position.
+    pub fn peek(&mut self) -> Result<char, Error> {
+        match self.chr {
+            None => {
+                match self.reader.read_char_raw() {
+                    Ok(Some(c)) => {
+                        self.chr = Some(c);
+                        Ok(c)
+                    }
+                    Ok(None) => Err(Error::EOS),
+                    Err(err) => Err(Error::Broken(err.to_string())),
+                }
+            }
+            Some(c) => {
+                self.chr = Some(c);
+                Ok(c)
+            }
+        }
+    }
+
+    /// Advance position to next character. Each call to `skip()` must have
+    /// been preceded with a call to `peek()`.
+    pub fn skip(&mut self) {
+        self.pos.skip(self.chr.unwrap());
+        self.chr.unwrap();
+    }
+
+    /// If `target` character matches character at current position,
+    /// advance position to next character and return true,
+    /// otherwise leave position unchanged and return false.
+    #[instrument]
+    pub fn take(&mut self, target: char) -> Result<bool, Error> {
+        match self.peek() {
+            Ok(c) => if target == c {
+                self.skip();
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+            Err(err) => Err(err)
+        }
+    }
+
+    #[instrument(skip(cb))]
+    pub fn scan<T>(&mut self, cb: impl Fn(&str) -> Option<Action<T>>)
+        -> Result<Option<T>, Error>
+    where
+        T: fmt::Debug + Clone + Copy
+    {
+        let mut seq = String::new();
+        let mut require = false;
+        let mut request = None;
+
+        loop {
+            match self.peek() {
+                Ok(target) => {
+                    seq.push(target);
+                    let cb_result = cb(&seq);
+                    trace!("callback({:?} -> {:?}", seq, cb_result);
+
+                    match cb_result {
+                        Some(Action::Return(result)) => {
+                            self.skip();
+                            break Ok(Some(result));
+                        }
+                        Some(Action::Request(result)) => {
+                            self.skip();
+                            trace!("require: {:?} -> false", require);
+                            require = false;
+                            request = Some(result);
+                        }
+                        Some(Action::Require) => {
+                            self.skip();
+                            trace!("require: {:?} -> true", require);
+                            require = true
+                        }
+                        None => {
+                            if require {
+                                break Err(Error::SyntaxError)
+                            } else {
+                                break Ok(request);
+                            }
+                        }
+                    }
+                }
+                Err(Error::EOS) => {
+                    trace!("peek: Error::EOS");
+                    if require {
+                        break Err(Error::SyntaxError);
+                    } else {
+                        break Ok(request);
+                    }
+                }
+                Err(err) => {
+                    trace!("peek: {:?}", err);
+                    break Err(err);
+                }
+            }
+        }
+    }
+
+    /// Invoke `cb` with character at current position. Return what `cb` returns,
+    /// but only advance position if return value is not `None`.
+    #[instrument(skip(cb))]
+    pub fn transform<T>(&mut self, cb: impl FnOnce(char) -> Option<T>)
+        -> Result<Option<T>, Error> {
+        match self.peek() {
+            Ok(input) => match cb(input) {
+                Some(output) => {
+                    self.skip();
+                    Ok(Some(output))
+                }
+                None => Ok(None),
+            }
+            Err(err) => Err(err),
+        }
+    }
+}
+
+impl Debug for Parseable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}:{:?}({:?})", self.name, self.pos, self.chr)
+    }
+}
+
+impl Display for Parseable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}:{}", self.name, self.pos)
+    }
+}
+
 
 #[cfg(test)]
 mod scan {
