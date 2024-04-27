@@ -29,3 +29,32 @@ Structued programming
 
 Object-oriented programming
    Removed the freedom of implicit transfer of execution context using function pointers. Those are instead done using polymorphism or via interface.
+
+Functions
+=========
+
+A function consists of an interface and an implementation.
+
+The interface contains two types of inputs:
+
+- Explicit arguments given in the call to the function
+- Thread environment passed to the function
+
+Explicit arguments takes data from the calling environment and passes it to the function, i.e. calling context exports data and the function will then need to import this data.
+
+Thread environment is data stored for a specific execution thread, not to be confused with CPU threads. The execution thread spans a call chain, even if this crosses applications, computers etc. This means that the transport protocol need to handle the thread environment synchronization between the caller and the callee.
+
+Functions can occur in several abstraction layers:
+
+- Application
+- Module
+- File
+- Operator
+- Scope
+
+The highest level in Topal is the application. The application can be a command line tool, graphical user interface application or a system daemon. The arguments given on the command line are the explicit arguments to the application function. The environment variables exported in the shell that the application is run from is the thread environment for the application function.
+
+Next level in Topal is the module. It collects a source directory tree under one entity, representing all the files it contains. The module implicitly imports
+Next level in Topal is the module. It is a component building up an application. A module can be a source tree on disk existing together with the application, or it can be found in some source or binary repository. Arguments given when importing the module is what becomes the explicit arguments to the module function. In Topal the thread object is used for the passed thread environment, which is passed implicitly but is accessed by the thread scope. Every application has a main module, which is seen as the application itself.
+
+

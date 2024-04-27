@@ -852,3 +852,122 @@ References
 - Elements of Programming
   http://elementsofprogramming.com/eop_bluelinks.pdf
 
+Playground
+==========
+
+Composition
+-----------
+
+SCOPE OPERATOR -> OPERATOR
+   This merely puts operator into a new scope
+SCOPE SCOPE -> SCOPE
+   Selects a sub-scope within a scope
+SCOPE DATA -> SCOPED_DATA
+   Puts data into a new scope
+DATA DATA
+   Custom defined action
+
+Any
+---
+
+- Any
+  - Data
+    - Value
+      - Number
+        - Integer
+          - Signed integer
+          - Unsigned integer
+        - Real
+          - Float
+          - Fraction
+      - Boolean (true, false)
+      - Compare (greater, equel, less)
+      - Character
+      - Identifier
+    - Association
+    - Set (ordered/unordered, with/without duplicates, finite or infitie size) NOTE: Single elements are type compatible with sets
+  - Metadata
+    - Unit
+      - Metric (numbers only)
+    - Constraint
+    - Type
+    - Access (read, write)
+    - Storage (size, alignment)
+    - Dependency
+- Nil
+
+Operators on Number
+-------------------
+
++
+   Add
+
+-
+   Subtract
+
+*
+   Multiply
+
+/
+   Divide
+
+%
+   Modulo
+
+^
+   Power
+
+Operators on Boolean
+--------------------
+
+&
+   And
+
+|
+   Or
+
+!
+   Invert
+
+x|
+   Xor
+
+Ordered set of boolean
+----------------------
+
+All of "Operators on Boolean", plus:
+
+<<
+   Shift left
+
+>>
+   Shift right
+
+Compare
+-------
+
+Cmp
+   Compare
+
+<
+   Less then
+
+>
+   Greater than
+
+=
+   Equal
+
+Combinations? (<=, >=, ...)
+
+Base patterns
+-------------
+
+Patterns defined by language which applies to all compositions of data and metadata defined by the language.
+
+Data Data
+   Merge two sets. If both values are single values, then a set is created containing both. In this case, the created set will be ordered, with duplicates and with finite size.
+   If one Value is set and the order isn't, then the result will be a set of the same type as the value which originally was a set.
+   If both values are sets, then ordered will take precedence over unordered, with duplicates will take precedence over without duplicates and inifite will take precedence over finite. The new set will be a set containing the contents of the other two sets, i.e. the sets will be merged.
+
+

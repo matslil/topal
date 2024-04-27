@@ -79,6 +79,7 @@ pub struct Parseable {
 
 impl Parseable {
     /// Create a Parseable with given name and stream
+    #[instrument(skip(stream))]
     pub fn new(name: &str, stream: Box<dyn BufRead>) -> Self {
         Self {
             name: name.to_string(),
@@ -88,6 +89,7 @@ impl Parseable {
         }
     }
 
+    #[instrument]
     pub fn from_path(path: &str) -> Result<Self, Error> {
         if path == "-" {
             Ok(Self::new("<stdin>", Box::new(BufReader::new(io::stdin()))))
@@ -111,6 +113,7 @@ impl Parseable {
     }
 
     /// Return next character, advance position.
+    #[instrument]
     pub fn pop(&mut self) -> Result<char, Error> {
         match self.chr.take() {
             Some(c) => {
@@ -130,6 +133,7 @@ impl Parseable {
 
 
     /// Return next character without advancing position.
+    #[instrument]
     pub fn peek(&mut self) -> Result<char, Error> {
         match self.chr {
             None => {
@@ -151,6 +155,7 @@ impl Parseable {
 
     /// Advance position to next character. Each call to `skip()` must have
     /// been preceded with a call to `peek()`.
+    #[instrument]
     pub fn skip(&mut self) {
         self.pos.skip(self.chr.unwrap());
         self.chr.unwrap();
@@ -266,36 +271,39 @@ mod scan {
     use super::*;
     use std::sync::Once;
     use std::env;
-    use mry;
     use tracing::level_filters::LevelFilter;
     use std::str::FromStr;
+    use std::io::Read;
 
-    #[mry::mry]
-    #[derive(fmt::Debug)]
-    struct ParseReader {
-    }
-
-    #[mry::mry]
-    impl Parseable for ParseReader {
-        fn pop(&mut self) -> Result<char, Error> {
-            Ok(' ')
-        }
-
-        fn peek(&mut self) -> Result<char, Error> {
-            Ok(' ')
-        }
-    }
-
-    fn mock_scan_callback<T>(returns: Option<Action<T>>)
+    fn mock_scan_callback<T>(return_action: Option<Action<T>>)
         -> impl Fn(&str) -> Option<Action<T>>
         where T: fmt::Debug + Clone + Copy
     {
-        move |input| -> Option<Action<T>> {
-            returns.clone()
+        move |_ignore| -> Option<Action<T>> {
+            return_action
         }
     }
 
     static INIT: Once = Once::new();
+
+    struct MyRead {
+        ret: Result<Vec<u8>, io::Error>,
+    }
+
+    impl MyRead {
+        fn from_str(input: &str) -> Self {
+            let buf = input.as_bytes();
+            Self{ret: buf.to_vec()}
+        }
+    }
+
+    impl Read for MyRead {
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize, io::Error> {
+            let mut vec_copy = self.ret.0.clone();
+            buf = vec_copy.as_slice();
+            self.ret.1
+        }
+    }
 
     fn setup() {
         INIT.call_once(|| {
@@ -318,16 +326,12 @@ mod scan {
 
     #[test]
     fn cb_returns_char() {
+        let mut readMock = MyRead::from_str("a");
+        let mut sut = Parseable::new("Testing", Box::new(BufReader::new(readMock)));
         setup();
 
-        // We use Parseable both at System Under Test as well as mock.
-        // We will mock functions that needs to be provided, but test the
-        // implemented functions.
-        let mut sut = mry::new!(ParseReader{});
-
         let cb = mock_scan_callback(Some(Action::Return('a')));
-        sut.mock_peek().returns(Ok('a'));
-        sut.mock_pop().returns(Ok('a'));
+        let sut = Parseable::new(MyRead::new((b"a", Ok(1))));
 
         assert_eq!('a', sut.scan(cb).unwrap().unwrap());
     }
@@ -339,7 +343,7 @@ mod scan {
         // We use Parseable both at System Under Test as well as mock.
         // We will mock functions that needs to be provided, but test the
         // implemented functions.
-        let mut sut = mry::new!(ParseReader{});
+        let mut sut = mry::new!(Parseable{});
 
         let cb = mock_scan_callback::<char>(None);
         sut.mock_peek().returns(Ok('a'));
@@ -354,7 +358,7 @@ mod scan {
         // We use Parseable both at System Under Test as well as mock.
         // We will mock functions that needs to be provided, but test the
         // implemented functions.
-        let mut sut = mry::new!(ParseReader{});
+        let mut sut = mry::new!(Parseable{});
 
         let cb = mock_scan_callback::<char>(Some(Action::Require));
         sut.mock_peek().returns(Err(Error::EOS));
@@ -369,7 +373,7 @@ mod scan {
         // We use Parseable both at System Under Test as well as mock.
         // We will mock functions that needs to be provided, but test the
         // implemented functions.
-        let mut sut = mry::new!(ParseReader{});
+        let mut sut = mry::new!(Parseable{});
 
         let cb = mock_scan_callback::<char>(Some(Action::Require));
         sut.mock_peek().returns(Ok('a'));
