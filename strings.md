@@ -155,7 +155,9 @@ index : CharacterIndex text
 Such an index proves that it belongs to `text`, lies on a character boundary,
 and is in range. Scalar, character, and encoded-byte indices are distinct. A
 string slice similarly requires boundaries for its chosen unit and cannot split
-a character accidentally.
+a character accidentally. The result remains an ordinary `String`; slice and
+selection provenance may be retained as constraints for checking and
+optimization as described in [the range model](ranges.md).
 
 ## Equality and normalization
 
