@@ -150,7 +150,8 @@ accumulated result:
 
 ```topal
 values fold 0
-  fn sum value -> sum + value
+  fn ( sum : Int , value : Int ) -> Int
+    sum + value
 ```
 
 An ordered fold requires a sequence or an explicitly selected order. Folding an
@@ -220,8 +221,8 @@ One-to-many transformation is most generally expressed by transforming values
 and explicitly collecting the results:
 
 ```topal
-source map expansion then collect List
-source map expansion then collect Set
+source map expansion collect List
+source map expansion collect Set
 ```
 
 This separates expansion from the laws used to combine its results. Sequence
@@ -265,10 +266,12 @@ make indexes, keys, or counts explicit:
 
 ```topal
 values map-entry
-  fn entry -> entry index, transform entry value
+  fn ( entry : IndexedEntry T ) -> IndexedEntry U
+    IndexedEntry ( entry index , transform entry value )
 
 mapping select-entry
-  fn entry -> entry key starts-with "user:"
+  fn ( entry : Entry String V ) -> Boolean
+    entry key starts-with "user:"
 ```
 
 Names such as `map-values`, `select-index`, and `select-key` are algorithms or
@@ -330,7 +333,8 @@ domain:
 
 ```topal
 Array N
-  fn index : Index N -> value
+  fn ( index : Index N ) -> T
+    value-at index
 ```
 
 Products are constructed by supplying all components, variants by injecting one
@@ -492,8 +496,8 @@ directly or use repeated doubling. Repetition also establishes size evidence:
 The desired result kind may be inferred or collected explicitly:
 
 ```topal
-value repeat count then collect Array
-value repeat count then collect List
+value repeat count collect Array
+value repeat count collect List
 ```
 
 A static count can produce `Array N T`. A runtime-known count produces an
