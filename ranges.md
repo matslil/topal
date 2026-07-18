@@ -214,10 +214,12 @@ between the two boundaries. It permits an empty selection when `start = end`, a
 selection ending after the last entry, and adjacent regions that meet without
 overlap.
 
-String selection must also identify its unit. Scalar, character, and encoded
-byte positions are not interchangeable, and a character selection cannot split
-an extended grapheme cluster. The result is still an ordinary `String`; retained
-boundary and source evidence permits safe reuse and optimization.
+Ordinary `String` selection uses character positions and cannot split a
+user-perceived character. Code-point and encoded-byte positions belong to
+specialized exact-Unicode and encoded-data interfaces rather than alternative
+views of `String`. The selection result is still an ordinary normalized
+`String`; retained boundary and source evidence permits safe reuse and
+optimization.
 
 ## Observable meaning and optimization
 
