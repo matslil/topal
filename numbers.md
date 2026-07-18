@@ -204,6 +204,89 @@ Finite decimal addition and multiplication can remain exact. Division may
 produce a `Rational`, require an explicit approximation, or report that no
 finite decimal result exists; the precise division API remains undecided.
 
+## Extended numbers and infinity
+
+Ordered numeric domains may have corresponding extended supertypes that add
+infinite values. These are numeric types in their own right, not wrapper values:
+
+```topal
+ExtendedNat
+ExtendedInt
+ExtendedRational
+ExtendedDecimal
+ExtendedApprox
+```
+
+`ExtendedNat` adds `+Infinity`. The signed extended types add both `-Infinity`
+and `+Infinity`. Here `Approx` denotes a policy without infinite values; a named
+IEEE type may already select the corresponding extended policy. Every finite
+value embeds losslessly in its extended type:
+
+```text
+Nat      <: ExtendedNat
+Int      <: ExtendedInt
+Rational <: ExtendedRational
+Decimal  <: ExtendedDecimal
+Approx   <: ExtendedApprox
+```
+
+Conversion in the other direction is checked. An `ExtendedInt` containing a
+finite integer can become `Int`, while either infinity produces a conversion
+error. A function returning `Int` therefore cannot silently return an infinity;
+one that permits the result declares `ExtendedInt`.
+
+Operation result types still follow the ordinary numeric domain. Exact division
+of two integers may produce `ExtendedRational`, for example, rather than
+`ExtendedInt`. Modular types do not acquire infinities: their cyclic algebra has
+no natural infinite endpoint.
+
+Arithmetic on infinities is defined only where the chosen extended domain gives
+an unambiguous result. In particular, `0 / 0`, `0 * Infinity`, and
+`Infinity - Infinity` are indeterminate and do not become ordinary infinities.
+The initial model reports an arithmetic error for such expressions rather than
+adding a NaN-like value to every extended type.
+
+## Zero directionality
+
+Exact numeric domains have one zero. `Int`, `Nat`, `Rational`, and exact
+`Decimal` do not gain a second numeric value named `-0`. Topal may instead carry
+directional evidence with a calculation:
+
+```text
+zero FromBelow
+zero Exact
+zero FromAbove
+```
+
+This evidence records the side from which a calculation reached zero. It is not
+part of the underlying value's sign, equality, or hash, so ordinary zero retains
+the algebraic laws of its numeric type. A spelling such as `-0` may denote zero
+with `FromBelow` evidence where a directional value is expected; converting it
+to a plain exact number intentionally discards that evidence.
+
+Directionality can accompany calculations over basic numeric types. It does not
+require the input to be extended. An operation that reaches a singularity may
+then produce an extended result:
+
+```text
+positive / zero FromAbove -> +Infinity
+positive / zero FromBelow -> -Infinity
+positive / zero Exact     -> DivisionByZero
+zero Exact / zero Exact   -> Indeterminate
+```
+
+For dense domains such as `Rational` and arbitrary-scale `Decimal`, direction
+can describe an ordinary one-sided limit. Integers are discrete, so direction
+on an `Int` or `Nat` instead records calculation provenance, rounding, or an
+extrapolation; it is not a claim that distinct integers lie arbitrarily close
+to zero. `Nat` calculations cannot approach zero from below while remaining in
+the `Nat` domain.
+
+Direction is useful at nonzero boundaries as well. Retaining `FromBelow` or
+`FromAbove` on a calculation approaching `10` lets a later subtraction expose
+the corresponding direction at zero. Treating it as calculation evidence
+rather than a special zero representation makes this behavior general.
+
 ## Approximate numbers
 
 `Approx` is the provisional name for finite-precision approximate values. It is
@@ -237,6 +320,12 @@ explicit:
 ```
 
 The exact spelling remains provisional.
+
+Finite-precision arithmetic may round a tiny negative value to zero. Its
+negative polarity maps to the same `FromBelow` evidence used by exact and
+symbolic calculations, rather than changing meaning according to physical
+encoding. IEEE formats preserve and emit this evidence for interoperability;
+an approximate type whose policy discards it does so explicitly.
 
 ## Precision and arithmetic laws
 
