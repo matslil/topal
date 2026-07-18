@@ -297,6 +297,299 @@ Collection          fold entries
 A homogeneous tuple may additionally satisfy sequence capabilities. This is a
 derived property rather than a reason to treat every product as a collection.
 
+## Fundamental operations
+
+Collection operations use ordinary Topal application: the primary collection or
+value is the left input and the other operand is the right input. For example:
+
+```topal
+value repeat count
+sequence contains-sequence pattern
+set contains-all other-set
+```
+
+Constructors, pattern matching, and folds form the minimal semantic kernel. The
+operations below remain part of the standard vocabulary because their laws
+carry useful meaning and permit implementations more efficient than a generic
+fold.
+
+### Construction and counting
+
+Finite homogeneous collections support empty and singleton construction where
+their kind permits it:
+
+```topal
+empty CollectionType
+one value
+collection entry-count
+collection empty?
+```
+
+An array whose size is part of its type is constructed over its finite index
+domain:
+
+```topal
+Array N
+  fn index : Index N -> value
+```
+
+Products are constructed by supplying all components, variants by injecting one
+alternative, and recursive lists by their `Empty` and `Entry` alternatives.
+These algebraic constructions do not require collection insertion operations.
+
+### Sequence insertion
+
+Insertion into a sequence occurs at a boundary rather than at an element index.
+A sequence with `N` entries has `N + 1` boundaries, including the positions
+before its first and after its last entry:
+
+```topal
+sequence insert-at boundary value
+sequence insert-at boundary other-sequence
+```
+
+Bulk insertion is foundational. Inserting one value is the specialization that
+inserts a singleton sequence. The operation produces size evidence:
+
+```text
+insert one value:
+  result-count = source-count + 1
+
+insert another sequence:
+  result-count = source-count + inserted-count
+```
+
+Unordered containers have no middle. Their corresponding bulk operations expose
+the applicable combination laws instead:
+
+```topal
+set union other-set
+bag sum other-bag
+map merge other-map resolving collision-policy
+```
+
+Set union is idempotent, bag sum adds multiplicities, and map merge must account
+for duplicate keys. They may reuse insertion machinery without hiding these
+differences behind one universal bulk operation.
+
+### Removal
+
+Sequence removal identifies whether it addresses positions or values:
+
+```topal
+sequence remove index
+sequence remove-indexes index-predicate
+sequence remove-indexes index-range
+sequence remove-first value
+sequence remove-all value
+sequence remove-values value-predicate
+```
+
+An index range uses the ordinary range-as-predicate model. Removing a consecutive
+range retains the strongest size relationship:
+
+```text
+removed-count = end - start
+result-count = source-count - removed-count
+```
+
+The compiler may join retained regions or choose another representation as long
+as the observable sequence is unchanged.
+
+Unordered removal addresses members, counts, or keys:
+
+```topal
+set remove member
+set remove-all members
+
+bag remove-one value
+bag remove value count
+bag remove-all value
+
+map remove-key key
+map remove-keys keys
+```
+
+A range over set members is a value predicate, not a positional range:
+
+```topal
+numbers remove-members ( 10 .. 20 )
+```
+
+Removing from a fixed-size array produces an array with a smaller evidenced size
+or weakens to a general sequence when that evidence is not retained. Replacing
+an entry preserves the array's size:
+
+```topal
+array replace index value
+```
+
+### Containment
+
+Containment distinguishes a single entry, a consecutive sequence, an ordered
+subsequence that may contain gaps, and inclusion of an unordered collection:
+
+```topal
+sequence contains-entry value
+sequence contains-sequence pattern
+sequence contains-subsequence pattern
+set contains-all other-set
+```
+
+`contains-sequence` requires consecutive entries. `contains-subsequence`
+preserves relative order but permits gaps. This parallels the distinction
+between a general `SliceOf` relation and the stronger consecutive range
+selection relation.
+
+For unordered containers, `contains-all` means inclusion according to the
+container's laws:
+
+- A set contains another set when the other is its subset.
+- A bag contains another bag when every required multiplicity is available.
+- A map contains another map when every key maps to an equal value.
+- `map contains-all-keys keys` tests key inclusion without comparing values.
+
+Thus:
+
+```text
+left contains-all right = right subset-of left
+```
+
+Plain `contains` may be an alias for `contains-entry` when its meaning is
+unambiguous. Explicit names remain available because an entry can itself be a
+container:
+
+```topal
+lists contains-entry other-list
+lists contains-sequence other-lists
+```
+
+### Repetition
+
+Finite repetition is a standard sequence operation derived from singleton
+construction, emptiness, and concatenation:
+
+```topal
+value repeat count
+sequence repeat count
+```
+
+Its defining laws are:
+
+```text
+sequence repeat 0 = empty
+sequence repeat (n + 1) = sequence concatenate (sequence repeat n)
+```
+
+These laws do not prescribe an implementation; the compiler may allocate
+directly or use repeated doubling. Repetition also establishes size evidence:
+
+```text
+(value repeat N) entry-count = N
+(sequence repeat N) entry-count = sequence entry-count * N
+```
+
+The desired result kind may be inferred or collected explicitly:
+
+```topal
+value repeat count then collect Array
+value repeat count then collect List
+```
+
+A static count can produce `Array N T`. A runtime-known count produces an
+existentially sized array or another requested sequence kind.
+
+Repetition is primarily meaningful for values and sequences. Repeating a set or
+map is idempotent for positive counts, while bag repetition multiplies
+multiplicity. Bags therefore expose the more descriptive operation:
+
+```topal
+bag scale-counts factor
+```
+
+Unbounded repetition produces a productive generator rather than a finite
+container value. It remains a computation even if it shares the `repeat`
+vocabulary.
+
+### Set, map, and bag algebra
+
+Sets provide the conventional finite set operations and relationships:
+
+```topal
+left union right
+left intersect right
+left difference right
+left symmetric-difference right
+left subset-of right
+left proper-subset-of right
+left disjoint-with right
+```
+
+Maps provide lookup, association, and policy-controlled combination:
+
+```topal
+map get key
+map associate key value
+map update-existing key transformation
+map merge other-map resolving collision-policy
+map merge-disjoint other-map
+```
+
+Lookup returns `Option V` unless membership evidence proves the key is present.
+Association replaces the value when the key already exists. Operations that
+combine independently produced associations require an explicit collision
+policy or evidence that their key sets are disjoint.
+
+Bags distinguish their possible count combinations:
+
+```topal
+left sum right
+left union right
+left intersect right
+left difference right
+```
+
+Bag sum adds counts, union takes their maximum, intersection takes their minimum,
+and difference subtracts without going below zero.
+
+### Operation capabilities
+
+As with iteration, small capabilities share operations without creating a
+universal container interface:
+
+```text
+Empty
+  empty
+
+Counted
+  entry-count
+
+Lookup Address Value
+  get
+
+Replace Address Value
+  replace
+
+Membership Member
+  contains-entry
+
+Concatenable
+  concatenate
+
+SetAlgebra
+  union
+  intersect
+  difference
+
+Merge Key Value
+  merge resolving ...
+```
+
+Single-entry operations are special cases of bulk operations, but operation
+names continue to expose what is addressed and which combination laws apply.
+Operations retain evidence established by their construction, including bounds,
+result counts, membership, key association, subset relations, and disjointness.
+
 ## Derived structures
 
 Many familiar structures are compositions or interfaces, not additional core
@@ -326,6 +619,8 @@ constructions from which collections and other user-defined data can be built.
   uniqueness, multiplicity, or indexing.
 - Iteration uses common entry views and vocabulary while retaining each
   collection's ordering and combination laws.
+- Bulk operations expose their addressed positions, members, counts, or keys and
+  retain the relationships established by construction.
 - Storage layout and performance strategies remain compiler choices unless a
   program explicitly requests representation constraints.
 - Specialized structures are composed from core collections and algorithms
