@@ -47,6 +47,10 @@ If an exact operation produces a result outside a refinement, the result still
 exists as `Int` or `Nat`; assigning it back to the refined type requires proof
 or explicit validation. Constraints never silently truncate, saturate, or wrap.
 
+Ranges are specialized convex predicates rather than numeric containers. Their
+general construction, open and unbounded bounds, and relationship to collection
+selection are described in [the range model](ranges.md).
+
 ## Modular integers
 
 Wrapping changes the meaning of arithmetic and therefore belongs to a modular
