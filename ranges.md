@@ -94,6 +94,25 @@ It accepts every value in that domain. A singleton accepts one value, while
 contradictory bounds describe the empty range; neither requires a special
 failure case.
 
+Extended numeric values can also supply unbounded endpoints. Range construction
+normalizes infinities rather than treating them as members that must be visited:
+
+```topal
+0 .. +Infinity  # equivalent to range ( >= 0 )
+-Infinity .. 10 # equivalent to range ( <= 10 )
+```
+
+This applies when an endpoint is calculated at run time as well as when it is
+written directly. A function may return `ExtendedInt`, `ExtendedRational`, or
+another ordered extended numeric type; a finite result supplies a finite bound,
+while the appropriate infinity supplies no bound on that side. An indeterminate
+or arithmetic-error result cannot construct a range endpoint.
+
+Internally, the normalized bound remains finite or unbounded. Consequently,
+whether an infinity was written or calculated does not make it a member of a
+range over the corresponding finite type, and endpoint inclusivity has no
+separate meaning at infinity.
+
 ## Constructing ranges from predicates
 
 Every range is usable as a predicate. The reverse conversion is available only
