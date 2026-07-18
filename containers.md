@@ -125,6 +125,178 @@ Ordering is independent of key association. An ordered map preserves a declared
 key or insertion order by satisfying both associative and ordered traversal
 capabilities; an ordinary map does not acquire an arbitrary observable order.
 
+## Iteration
+
+Iteration is expressed as algorithms over collection entries rather than as a
+separate mutable iterator object. The common vocabulary is:
+
+```topal
+source fold initial-state step
+source reduce reduction
+source map transformation
+source select predicate
+source each action
+source entries
+source collect Target
+```
+
+These algorithms share names only where they share laws. Differences in order,
+uniqueness, multiplicity, keys, and retained size evidence remain visible.
+
+### Fold and reduce
+
+`fold` is the fundamental collection elimination. It consumes entries into an
+accumulated result:
+
+```topal
+values fold 0
+  fn sum value -> sum + value
+```
+
+An ordered fold requires a sequence or an explicitly selected order. Folding an
+ordinary set, bag, or map from left to right would otherwise invent an observable
+order that the source does not have:
+
+```topal
+values fold-right initial-state step
+members fold-by ascending initial-state step
+```
+
+`reduce` instead combines entries using an operation whose laws make evaluation
+order unobservable. An unordered or parallel reduction requires an associative
+and commutative operation; a freely partitionable reduction also requires an
+identity value. The compiler may then choose grouping, traversal, and parallel
+execution without changing the result:
+
+```topal
+members reduce Sum
+```
+
+### Map and select
+
+`map` transforms entries while preserving as much of the source structure as its
+laws permit:
+
+```text
+List A     map ( A -> B ) = List B
+Array N A  map ( A -> B ) = Array N B
+Set A      map ( A -> B ) = Set B
+```
+
+A set transformation may merge equal results, so it does not necessarily
+preserve entry count. Mapping map values preserves keys and count:
+
+```topal
+mapping map-values format
+```
+
+Mapping keys can merge associations and therefore requires an explicit collision
+policy:
+
+```topal
+mapping map-keys normalize-key resolving keep-first
+```
+
+An unconstrained transformation of whole map entries produces a general
+collection unless its result is proven to satisfy map key uniqueness.
+
+`select` retains entries satisfying a predicate and preserves the source's
+semantic kind:
+
+```topal
+values select positive?
+members select available?
+mapping select-entry active?
+```
+
+Selecting an `Array N T` produces an array with some result size `M` and evidence
+that `M <= N`; it does not retain the original size when entries were removed.
+The result may expose the existential size or weaken to a general sequence when
+that evidence is not needed.
+
+### Expansion and collection
+
+One-to-many transformation is most generally expressed by transforming values
+and explicitly collecting the results:
+
+```topal
+source map expansion then collect List
+source map expansion then collect Set
+```
+
+This separates expansion from the laws used to combine its results. Sequence
+collection concatenates in order, set collection removes duplicates, bag
+collection adds multiplicities, and map collection requires a key-collision
+policy. `flat-map` can be an ordinary shorthand where the source and target kind
+make those laws unambiguous.
+
+### Entry views
+
+Every homogeneous collection exposes entries, allowing the same algorithms to
+operate on values and on structural information:
+
+```text
+List T     entry: IndexedEntry T
+Array N T  entry: IndexedEntry T
+Set T      entry: T
+Map K V    entry: Entry K V
+Bag T      entry: CountedEntry T
+```
+
+Conceptually, the structured entries are ordinary products with descriptive
+field names:
+
+```topal
+IndexedEntry T
+  index
+  value
+
+Entry K V
+  key
+  value
+
+CountedEntry T
+  value
+  count
+```
+
+Value-oriented algorithms are the convenient default. Entry-oriented forms
+make indexes, keys, or counts explicit:
+
+```topal
+values map-entry
+  fn entry -> entry index, transform entry value
+
+mapping select-entry
+  fn entry -> entry key starts-with "user:"
+```
+
+Names such as `map-values`, `select-index`, and `select-key` are algorithms or
+aliases built from these views, not independent iteration mechanisms. Maps also
+offer `keys`, `values`, and `entries` projections, after which the same iteration
+vocabulary applies.
+
+A bag's canonical entry view visits each distinct value once with its count.
+Explicit `occurrences` expands the bag when an algorithm must visit each
+occurrence separately.
+
+### Products and sums
+
+Heterogeneous tuples and variants do not participate in homogeneous collection
+iteration. A tuple is eliminated by destructuring its product, and a variant by
+matching its active sum alternative. Recursive values and homogeneous
+collections are eliminated by folding:
+
+```text
+Product or tuple    destructure
+Sum or variant      match
+Recursive value     fold
+Collection          fold entries
+```
+
+A homogeneous tuple may additionally satisfy sequence capabilities. This is a
+derived property rather than a reason to treat every product as a collection.
+
 ## Derived structures
 
 Many familiar structures are compositions or interfaces, not additional core
@@ -152,6 +324,8 @@ constructions from which collections and other user-defined data can be built.
   which they are constructed.
 - Capabilities share algorithms without erasing semantic differences in order,
   uniqueness, multiplicity, or indexing.
+- Iteration uses common entry views and vocabulary while retaining each
+  collection's ordering and combination laws.
 - Storage layout and performance strategies remain compiler choices unless a
   program explicitly requests representation constraints.
 - Specialized structures are composed from core collections and algorithms
