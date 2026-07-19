@@ -35,7 +35,8 @@ when these preserve the program's meaning.
 ## Algorithms and effects
 
 - Algorithms are total by default and return errors explicitly as `Result`
-  values; there are no exceptions.
+  values; there are no exceptions. Results use a common, contextual
+  [error model](errors.md) across modules.
 - Effects complement regular types by describing observable interactions and
   the resources they touch. They make ordering and parallelization constraints
   visible without hiding failure control flow.
