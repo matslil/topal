@@ -191,8 +191,21 @@ minimum is fn ( left : Integer , right : Integer ) -> Integer
     otherwise right
 ```
 
-Errors are ordinary result values rather than exceptions. Effects complement
-the input and result types, but their surface syntax has not yet been selected.
+The input and output types are mandatory parts of an algorithm declaration.
+They are not inferred from the body. In particular, an output of `Integer`
+promises an infallible algorithm, while a fallible algorithm declares
+`Result Integer` explicitly:
+
+```topal
+parse-count is fn ( text : String ) -> Result Integer
+  body
+```
+
+Errors are ordinary result values rather than exceptions. A successful value
+may be projected from a `Result` inside an explicitly fallible algorithm, as
+described by [the error model](errors.md#success-projection-and-propagation).
+Effects complement the input and result types, but their surface syntax has not
+yet been selected.
 
 ## Predicates and partial application
 
