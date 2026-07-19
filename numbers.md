@@ -442,6 +442,66 @@ As with strings, representation becomes observable only at an explicit storage,
 encoding, hardware, or foreign-language boundary. The compiler otherwise has
 freedom to choose and change representations.
 
+## Fundamental operations
+
+Numeric types expose operations according to their algebraic capabilities. The
+fundamental numeric vocabulary is:
+
+```topal
+left = right
+left compare right
+zero NumberType
+one NumberType
+negate value
+left + right
+left - right
+left * right
+left / right
+value convert NumberType
+```
+
+Subtraction is fundamental independently of negation. `Nat` supports subtraction
+even though it is not closed under negation. The operation derives the strongest
+result constraint justified by its operands and available ordering evidence:
+
+```text
+Nat - Nat where right <= left -> Nat
+Nat - Nat                       -> Int
+```
+
+Consequently, subtraction of statically known literals retains a natural result
+when possible:
+
+```topal
+5 - 2  # Nat 3
+2 - 5  # Int -3
+```
+
+Where a domain is closed under negation, subtraction additionally has the
+derived algebraic law:
+
+```topal
+a - b = a + ( negate b )
+```
+
+This is one subtraction operation with evidence-sensitive result typing, not a
+saturating natural subtraction. Saturation remains an explicit arithmetic
+policy. Ordering predicates derive from `compare`. Discrete numeric domains
+additionally provide quotient and remainder with explicitly documented rounding
+semantics:
+
+```topal
+left quotient right
+left remainder right
+```
+
+Not every numeric type supports every operation, and an operation need not
+return its operand type. `Nat`, for example, is not closed under negation, and
+exact division of two integers may produce a rational result. Rounding,
+approximation, saturation, wrapping, powers, roots, transcendental functions,
+and bit operations are standard or capability-specific algorithms rather than
+universal numeric fundamentals.
+
 ## Provisional hierarchy
 
 ```topal
