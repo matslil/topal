@@ -216,10 +216,10 @@ overlap.
 
 Ordinary `String` selection uses character positions and cannot split a
 user-perceived character. Code-point and encoded-byte positions belong to
-specialized exact-Unicode and encoded-data interfaces rather than alternative
-views of `String`. The selection result is still an ordinary normalized
-`String`; retained boundary and source evidence permits safe reuse and
-optimization.
+specialized Unicode and encoded-data interfaces rather than ordinary character
+views of `String`. The selection result is still `String`; retained boundary,
+source, and normalization evidence permits safe reuse and optimization when the
+corresponding constraints remain true.
 
 ## Observable meaning and optimization
 
