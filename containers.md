@@ -15,7 +15,7 @@ possible values:
 Tuple ( A, B, C )   = A * B * C
 Variant ( A, B, C ) = A + B + C
 Option T            = Unit + T
-Result T E          = T + E
+Result T            = T + Error
 ```
 
 Records are labeled products and tagged unions are labeled sums. They do not
@@ -24,6 +24,10 @@ require separate composition mechanisms. A list additionally uses recursion:
 ```text
 List T = Empty | Entry ( T, List T )
 ```
+
+Unlike a general two-alternative variant, `Result` uses the common
+[error representation](errors.md). Modules extend its domains and codes rather
+than selecting unrelated error types.
 
 This is a semantic construction, not a required storage representation. The
 compiler may represent a list as a tree, flat buffer, shared slice, or another

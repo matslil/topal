@@ -12,6 +12,21 @@ standard rather than chosen independently by every algorithm. This lets generic
 algorithms forward failures and lets callers inspect errors consistently across
 module boundaries.
 
+Fallibility is part of an algorithm's explicit interface. Input and output types
+are mandatory in an algorithm declaration and are not inferred from its body:
+
+```topal
+increment is fn ( value : Integer ) -> Integer
+  value + 1
+
+read-count is fn ( path : Path ) -> Result Integer
+  body
+```
+
+`increment` cannot return or propagate an error. `read-count` may return either
+an `Integer` or the standard `Error`. `Result` is never added implicitly to a
+declared output type.
+
 The exact type and construction syntax remains provisional. Conceptually:
 
 ```topal
@@ -26,6 +41,49 @@ Error
 ```
 
 `detail`, `cause`, and `source` are absent when they do not add information.
+
+## Success projection and propagation
+
+When an expression has type `Result Value` but its immediate context explicitly
+requires `Value`, Topal projects the successful value and returns an error from
+the current algorithm unchanged. The enclosing algorithm must explicitly
+declare a compatible `Result` output:
+
+```topal
+load-configuration is fn ( path : Path ) -> Result Configuration
+  text : String is read-file path
+  parse-configuration text
+```
+
+If `read-file path` succeeds, its `String` is bound to `text`. If it fails, the
+error is returned immediately from `load-configuration`. This is success
+projection with error propagation, not a general implicit conversion from
+`Result String` to `String`.
+
+Merely binding, passing, or returning a `Result` does not project it:
+
+```topal
+attempt is read-file path
+```
+
+Here `attempt` retains type `Result String`. Projection is requested only by a
+context that explicitly requires the success type, such as the `String`
+classification above. An algorithm with an infallible output cannot use this
+projection because it has nowhere to return the error:
+
+```topal
+load-length is fn ( path : Path ) -> Integer
+  text : String is read-file path  # error: load-length is infallible
+  text length
+```
+
+Explicit matching remains available when the caller needs to recover from,
+translate, or otherwise inspect an error rather than propagate it.
+
+Propagation normally preserves the error unchanged. Intermediate algorithms do
+not add frames merely because they project a success value. When an error leaves
+a public top-level operation, that operation still adds the mandatory contextual
+frame described below.
 
 ## Domains and codes
 

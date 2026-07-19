@@ -116,8 +116,10 @@ ByteCounter value
 and conceptually returns:
 
 ```topal
-Result ByteCounter OutOfRange
+Result ByteCounter
 ```
+
+Failure uses the numeric construction domain's out-of-range error code.
 
 Explicit modular construction always reduces into the range:
 
