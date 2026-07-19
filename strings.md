@@ -100,8 +100,10 @@ lower text
 case-fold text
 ```
 
-The locale-independent operations use Topal's fixed Unicode version.
-Locale-sensitive casing names its policy explicitly:
+The unqualified operations use Unicode's locale-independent default casing from
+Topal's fixed Unicode version. This is the deterministic default when the text's
+language is unknown; it never depends on the operating system, process, or
+user's ambient locale. Locale-sensitive casing names its policy explicitly:
 
 ```topal
 text upper Turkish
@@ -120,6 +122,16 @@ after its unit, while encoded size names an encoding:
 ```topal
 character-count text
 text byte-count Utf8
+```
+
+The second operation asks how many bytes `text` would occupy if encoded as
+UTF-8. A `String` has no encoding even when a program intends to encode it at a
+later boundary. Once encoding has produced an `Encoded Utf8` value, its encoded
+byte sequence has an unambiguous byte count:
+
+```topal
+encoded is text encode Utf8
+size is byte-count encoded
 ```
 
 Displayed glyphs and terminal columns depend on fonts, locale, and rendering

@@ -454,20 +454,41 @@ zero NumberType
 one NumberType
 negate value
 left + right
+left - right
 left * right
 left / right
 value convert NumberType
 ```
 
-Subtraction derives from addition and negation where the operand domain supports
-both operations:
+Subtraction is fundamental independently of negation. `Nat` supports subtraction
+even though it is not closed under negation. The operation derives the strongest
+result constraint justified by its operands and available ordering evidence:
 
-```topal
-a + ( negate b )
+```text
+Nat - Nat where right <= left -> Nat
+Nat - Nat                       -> Int
 ```
 
-Ordering predicates derive from `compare`. Discrete numeric domains additionally
-provide quotient and remainder with explicitly documented rounding semantics:
+Consequently, subtraction of statically known literals retains a natural result
+when possible:
+
+```topal
+5 - 2  # Nat 3
+2 - 5  # Int -3
+```
+
+Where a domain is closed under negation, subtraction additionally has the
+derived algebraic law:
+
+```topal
+a - b = a + ( negate b )
+```
+
+This is one subtraction operation with evidence-sensitive result typing, not a
+saturating natural subtraction. Saturation remains an explicit arithmetic
+policy. Ordering predicates derive from `compare`. Discrete numeric domains
+additionally provide quotient and remainder with explicitly documented rounding
+semantics:
 
 ```topal
 left quotient right
