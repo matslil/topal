@@ -2,13 +2,15 @@
 
 This document records the provisional text model for Topal. It keeps ordinary
 text as easy to handle as ASCII while the compiler and standard library account
-for Unicode normalization, segmentation, casing, and encoding.
+for Unicode segmentation, casing, normalization algorithms, and encoding.
 
 ## Semantic types
 
-`String` is immutable normalized Unicode text. Its observable units are
-user-perceived characters; programs do not need to account for code points,
-combining marks, or encoding units during ordinary text processing.
+`String` is immutable Unicode text which preserves the Unicode sequence supplied
+to it. Its ordinary observable units are user-perceived characters; programs do
+not need code-point indexing or encoding units during normal text processing.
+Exact equality and encoding nevertheless preserve the distinction between
+canonically equivalent sequences unless normalization is explicitly selected.
 
 The core text-related types are:
 
@@ -40,26 +42,81 @@ ordinary string operations do not expose that representation. Exact code-point
 inspection belongs to specialized Unicode tooling rather than the fundamental
 `String` interface.
 
-## Source text and normalization
+## Source text
 
-Topal source files use UTF-8 and invalid UTF-8 is a source error. Textual source
-tokens must be in Unicode Normalization Form C (NFC). The compiler rejects
-non-normalized tokens instead of silently creating spellings that differ from
-the source file.
+Topal source files use UTF-8 and invalid UTF-8 is a source error. Outside string
+literal contents and comments, textual source tokens must be in Unicode
+Normalization Form C (NFC). The compiler rejects non-normalized tokens instead
+of silently creating spellings that differ from the source file.
 
-String literals are normalized to NFC, as are strings decoded or converted from
-external text. Canonically equivalent input therefore produces equal `String`
-values. Comments preserve their source text. Keywords remain ASCII. Unicode
-identifiers are allowed, with diagnostics for mixed scripts and visually
-confusable names.
+String literal contents and comments preserve their Unicode sequences. Decoding
+external text likewise preserves the decoded sequence rather than silently
+normalizing it. Keywords remain ASCII. Unicode identifiers are allowed, with
+diagnostics for mixed scripts and visually confusable names.
 
 The Unicode version used for normalization, character segmentation, properties,
 and case operations is fixed by the language or compiler version and is
 available as build metadata for reproducibility.
 
-Protocols, signatures, tests, and lossless round trips that distinguish
-canonically equivalent code-point sequences operate on encoded data or a
-specialized exact Unicode sequence rather than ordinary `String`.
+Protocols, signatures, tests, and lossless byte-for-byte round trips retain the
+original `Encoded` value. A decoded `String` preserves its Unicode sequence, but
+decoding and re-encoding need not preserve invalid, redundant, or otherwise
+encoding-specific byte representations.
+
+## Normalization constraints
+
+Normalization is a constraint on `String`, not an invariant of every string:
+
+```topal
+Normalized NFC String
+Normalized NFD String
+```
+
+Applying a normalized type to dynamic input validates the existing sequence and
+fails when it is not already in the requested form. It does not silently change
+the value. Explicit normalization transforms the sequence and establishes the
+corresponding evidence:
+
+```topal
+normalized is text normalize NFC
+normalized : Normalized NFC String
+```
+
+This separates two boundary policies. Validation rejects noncanonical input
+when a protocol requires it, while normalization safely accepts canonically
+equivalent text when the application does not care which sequence arrived.
+
+Normalization forms are not generally closed under exact concatenation. Even
+two individually normalized strings can require composition or canonical
+reordering where they meet. Standard concatenation maintains a shared
+normalization constraint by repairing the join:
+
+```text
+Normalized F String concatenate Normalized F String
+  -> Normalized F String
+```
+
+For example:
+
+```topal
+left : Normalized NFC String
+right : Normalized NFC String
+combined is left concatenate right
+combined : Normalized NFC String
+```
+
+The repair may compose or reorder Unicode code points, but it preserves the
+characters visible through the ordinary string interface. This transformation
+is part of maintaining the explicitly selected normalization constraint.
+
+If either operand lacks matching normalization evidence, concatenation preserves
+the operands' exact sequences and returns plain `String`. The compiler may still
+retain a normalization constraint when it can prove the particular join needs
+no repair. A plain result can always be normalized explicitly afterward:
+
+```topal
+combined is ( left concatenate right ) normalize NFC
+```
 
 ## Fundamental operations
 
@@ -73,9 +130,9 @@ left concatenate right
 characters text
 ```
 
-Concatenation produces another normalized `String`. The implementation
-re-evaluates the join because characters on either side can combine; this does
-not leak into the source interface.
+Plain concatenation preserves both supplied Unicode sequences. When both
+operands carry the same normalization constraint, the constraint-aware behavior
+described above repairs their join and retains that evidence.
 
 Counting, selection, equality, and comparison remain standard vocabulary
 because their laws are useful and implementations can provide them more
@@ -89,10 +146,10 @@ left = right
 left compare ( right , collation )
 ```
 
-Unicode normalization and segmentation are guaranteed by the `String` type
-rather than exposed as routine operations. Casing is also standard vocabulary
-because correct implementations require the language's Unicode data and may
-inspect or transform the complete string:
+Character segmentation is provided by the `String` interface rather than
+exposed as code-point manipulation. Normalization and casing are standard
+vocabulary because correct implementations require the language's Unicode data
+and may inspect or transform the complete string:
 
 ```topal
 upper text
@@ -112,7 +169,10 @@ text lower Lithuanian
 
 Casing returns `String`, not `Character`, because a mapping can depend on
 context or change the number of characters. `case-fold` is the ordinary basis
-for caseless matching rather than lowercasing.
+for caseless matching rather than lowercasing. When their input carries a
+normalization constraint, these standard transformations normalize their result
+to the same form and retain the evidence. With plain `String` input they return
+plain `String` and do not add normalization implicitly.
 
 ## Counting
 
@@ -180,14 +240,14 @@ index : CharacterIndex text
 
 Such an index proves that it belongs to `text`, is on a character boundary, and
 is in range. String selection likewise uses character boundaries and cannot
-split a character accidentally. The result remains an ordinary normalized
-`String`; selection provenance may be retained as constraints for checking and
-optimization as described in [the range model](ranges.md).
+split a character accidentally. The result remains `String`; selection and
+normalization evidence may be retained when their constraints remain true, as
+described in [the range model](ranges.md).
 
 ## Equality and human-language comparison
 
-Plain equality compares normalized text, so canonically equivalent input is
-already equal:
+Plain equality compares the preserved Unicode sequences. Canonically equivalent
+but differently expressed strings are therefore not necessarily equal:
 
 ```topal
 left = right
@@ -198,6 +258,7 @@ policy explicitly:
 
 ```topal
 case-fold text
+left canonically-equals right
 left compare ( right , collation )
 ```
 
@@ -237,8 +298,9 @@ AsciiText is AsciiCharacters String
 Encoded Ascii
 ```
 
-The first is normalized text constrained to the ASCII repertoire. The second is
-a specific byte representation.
+The first is text constrained to the ASCII repertoire. The second is a specific
+byte representation. ASCII text is already in every Unicode normalization form,
+so that evidence may be derived without transforming it.
 
 ## Storage size and representation freedom
 
@@ -286,6 +348,6 @@ encoded is text encode Utf16LE
 ```
 
 The exact call signatures may evolve with the rest of the syntax. The stable
-design intent is that ordinary text exposes characters rather than Unicode
-internals, Unicode behavior is natural, and storage formats remain boundary
-concerns rather than leaking into semantic algorithms.
+design intent is that ordinary text exposes characters rather than code-point
+machinery, exact Unicode sequences remain available when wanted, normalization
+is explicit and compositional, and storage formats remain boundary concerns.
