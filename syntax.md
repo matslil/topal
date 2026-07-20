@@ -207,6 +207,33 @@ described by [the error model](errors.md#success-projection-and-propagation).
 Effects complement the input and result types, but their surface syntax has not
 yet been selected.
 
+### Overloading and type association
+
+Multiple algorithms may share a name. An overload is unique by its input
+parameter types and its staticness; parameter names and the output type do not
+distinguish overloads. Consequently, ordinary and static algorithms with the
+same name and input types may coexist:
+
+```topal
+size is fn ( value : Data ) -> Integer
+  runtime-size value
+
+size is fn static ( value : Data ) -> Integer
+  encoded-size value
+```
+
+A context which requires static evaluation considers only static overloads. If
+the remaining input types and required staticness do not identify one overload,
+the call is ambiguous rather than being selected by its expected output type.
+The exact surface syntax for explicitly selecting between otherwise applicable
+static and ordinary overloads remains provisional.
+
+Types do not introduce algorithm scopes. An algorithm declaration instead
+shows whether and how the algorithm is related to a type through its input
+parameters. This keeps operations independently composable while overloading
+provides the shared vocabulary that type-local function names would otherwise
+supply.
+
 ### Static algorithms
 
 Static evaluation is an optional part of an algorithm's type contract. The
