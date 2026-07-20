@@ -29,8 +29,9 @@ when these preserve the program's meaning.
 - Dependent and existential types retain relationships involving runtime-known
   sizes, identities, versions, and states. Checked values are the fallback when
   such evidence cannot be represented statically.
-- Bounds, resource lifetimes, and programmer-defined invariants are checked by
-  construction. Undefined behavior is not part of the safe language.
+- Bounds, [resource lifetimes](resources.md), and programmer-defined invariants
+  are checked by construction. Undefined behavior is not part of the safe
+  language.
 
 ## Algorithms and effects
 

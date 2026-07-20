@@ -207,6 +207,29 @@ described by [the error model](errors.md#success-projection-and-propagation).
 Effects complement the input and result types, but their surface syntax has not
 yet been selected.
 
+## Destructors
+
+Every type has a destructor. Types which represent external resources may
+declare cleanup in addition to the default destruction of owned components and
+storage. The provisional declaration uses an algorithm-shaped body:
+
+```topal
+File is type
+  descriptor : FileDescriptor
+
+  destroy is fn ( file : File ) -> Result Unit
+    operating-system close file.descriptor
+```
+
+A destructor may return only `Unit` or `Result Unit`; it cannot produce a
+replacement value. It is invoked by the language when the final reference
+disappears and is not an ordinary explicitly callable algorithm. An algorithm
+accepting a value with a fallible destructor must itself permit a `Result`,
+because its reference may be the final one. Ownership transfers, borrowing,
+sharing, and reference-count elimination are compiler decisions rather than
+surface syntax. See [resource lifetime and destruction](resources.md) for the
+semantic rules.
+
 ## Predicates and partial application
 
 A binary relation can be fully applied:
