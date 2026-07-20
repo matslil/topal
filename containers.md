@@ -43,15 +43,15 @@ A sequence preserves entry order and multiplicity. Lists and arrays share
 sequence operations such as traversal, selection, and indexed access where the
 required index evidence is available.
 
-A fixed-size array has the conceptual form:
+A fixed-size array is one-dimensional and has the conceptual form:
 
 ```text
-Array N T = Index N -> T
+Array N T = ( < N ) Nat -> T
 ```
 
-`Index N` contains evidence that an index is within the array's bounds, making
-access total. An array can also be understood as a sequence constrained to have
-`N` entries:
+The constrained natural number contains evidence that it is within the array's
+bounds, making access total. An array can also be understood as a sequence
+constrained to have `N` entries:
 
 ```text
 Array N T = Sequence T where entry-count = N
@@ -62,6 +62,54 @@ emphasizes reuse of sequence algorithms. Neither requires contiguous storage or
 constant-time access as an observable language guarantee. Hardware layouts and
 encoded arrays can add explicit representation constraints when those properties
 matter at a boundary.
+
+### Array-bound index types
+
+A named type derived from an array may provide a nominal index domain. Its index
+type is a refinement of `Nat` associated with that concrete array type:
+
+```topal
+Row is Array RowCount T
+row-index : Index Row
+```
+
+`Index Row` proves both that its value is within the bounds of `Row` and that
+the programmer intended it for that array domain. It is a subtype of `Nat`, not
+of a general `Index Array`. Forgetting the evidence is safe and implicit;
+constructing `Index Row` from a `Nat` requires a bounds check.
+
+An unrefined `Array` does not determine one nominal domain or even one extent,
+so there is no index type that can safely index every array. Access through the
+general array interface accepts a `Nat` and exposes possible failure. Generic
+code can instead preserve the concrete array type and its index relationship:
+
+```text
+get : forall A where A is Array. A -> Index A -> Element A
+```
+
+Deriving an array type from `Array` permits implicit conversion back to the
+underlying array representation, but this does not make `Index A` a subtype of
+`Index Array`. Erasing the concrete array type also erases the nominal indexing
+guarantee.
+
+Arrays remain one-dimensional. Higher-dimensional structures use ordinary
+composition, and programmers can name each layer when confusing dimensions
+would be harmful:
+
+```topal
+MatrixColumns is Array ColumnCount T
+MatrixRows is Array RowCount MatrixColumns
+
+matrix : MatrixRows
+row : Index MatrixRows
+column : Index MatrixColumns
+
+matrix get row get column
+```
+
+The two index types remain distinct even when `RowCount` and `ColumnCount` are
+equal. For arrays where this semantic distinction is unnecessary, bounds-only
+indexes or checked `Nat` access avoid introducing nominal domains.
 
 ## Sets, maps, and bags
 
@@ -332,12 +380,11 @@ collection entry-count
 collection empty?
 ```
 
-An array whose size is part of its type is constructed over its finite index
-domain:
+An array whose size is part of its type is constructed over its finite bounds:
 
 ```topal
 Array N
-  fn ( index : Index N ) -> T
+  fn ( index : ( < N ) Nat ) -> T
     value-at index
 ```
 

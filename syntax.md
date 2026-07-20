@@ -207,6 +207,47 @@ described by [the error model](errors.md#success-projection-and-propagation).
 Effects complement the input and result types, but their surface syntax has not
 yet been selected.
 
+### Static algorithms
+
+Static evaluation is an optional part of an algorithm's type contract. The
+`static` modifier follows `fn` so the guarantee is preserved in higher-order
+types as well as definitions:
+
+```topal
+increment is fn static ( input : Integer ) -> Integer
+  input + 1
+```
+
+A static algorithm may call only other static algorithms, may not depend on
+runtime-only state or observable effects, and must have provably bounded
+execution. Bounded execution means that the compiler can prove termination for
+every permitted input; the bound may depend on the input and need not be
+constant. Finite traversal and recursion with a provably decreasing measure can
+therefore be static.
+
+When all arguments are statically known, a static call can be evaluated during
+compilation and may be used where a static construct is required, including in
+the construction of a new type. Whether an individual expression or binding is
+statically known is inferred; variables do not require a separate `static`
+modifier.
+
+Staticness remains visible when algorithms are passed as values:
+
+```topal
+apply-statically is fn static (
+  transformation : fn static ( Integer ) -> Integer,
+  input : Integer
+) -> Integer
+  transformation input
+```
+
+A static algorithm can be used where an ordinary algorithm of the same input
+and output types is expected because forgetting the guarantee is safe. An
+ordinary algorithm cannot be used where a static one is required. The compiler
+checks the declaration at the first violated static dependency, keeping errors
+local instead of reporting only when a distant caller attempts to construct a
+type.
+
 ## Destructors
 
 Every type has a destructor. Types which represent external resources may
@@ -360,7 +401,7 @@ grouped           = "(" expression ")" ;
 product           = "(" expression "," expression
                     { "," expression } ")" ;
 
-function          = "fn" input-pattern "->" type-expression block ;
+function          = "fn" [ "static" ] input-pattern "->" type-expression block ;
 decision          = expression decision-block ;
 decision-block    = indent rule { rule } dedent ;
 rule              = matcher "then" expression [ block ] newline
@@ -370,8 +411,10 @@ predicate         = predicate-term { ( "and" | "or" ) predicate-term } ;
 ```
 
 Identifiers such as `fn`, `is`, `then`, `when`, and `otherwise` are structural
-in the shown positions. Algorithm arity and object kinds are checked after the
-source has been grouped; they must not change that grouping.
+in the shown positions. `static` is structural directly after `fn` and otherwise
+participates in ordinary expression parsing. Algorithm arity and object kinds
+are checked after the source has been grouped; they must not change that
+grouping.
 
 ## Grammar diagram
 
