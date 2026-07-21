@@ -13,7 +13,7 @@ when these preserve the program's meaning.
   algorithms transform objects; the two cannot be mixed even though algorithms
   may construct statically deterministic types, constraints, or other algorithms.
 - Definitions share one recursive construction model rather than separate
-  macro, template, class, and module systems.
+  macro, template, class, and [module systems](modules.md).
 - Composition is the fundamental operation. Syntax is easy for humans and tools
   to parse, evaluates left to right, and has no special precedence hierarchy.
 - Category theory and concatenative programming are sources of semantic and
