@@ -480,3 +480,205 @@ unification must be additive: enabling another feature may add interface
 members but cannot remove or alter the base interface. Requests for such
 features can be combined by union. A future non-additive feature mechanism
 would instead have to treat different selections as distinct artifact variants.
+
+## Licenses and copyright
+
+License and copyright information is static source metadata. Every function has
+an effective license and effective copyright information in each artifact
+context in which it is compiled. The compiler retains that provenance through
+specialization, inlining, code generation, and linking so that the package
+builder can check the obligations of the resulting source and binary artifacts.
+
+Topal recognizes only licenses and exceptions identified by the supported SPDX
+License List. A license value uses the canonical SPDX identifier, including its
+version distinction:
+
+```topal
+license is Apache-2.0
+```
+
+SPDX license expressions represent a choice of terms, simultaneous terms, or a
+standard exception:
+
+```topal
+license is MIT or Apache-2.0
+license is MIT and BSD-3-Clause
+license is GPL-2.0-or-later with Classpath-exception-2.0
+```
+
+The selected language revision defines the Topal surface syntax, while the
+identifiers and the meanings of `or`, `and`, and `with` follow the supported
+SPDX data. An unknown identifier, custom `LicenseRef`, or unrecognized
+exception is an error. Restricting declarations to this finite vocabulary lets
+the toolchain attach reviewed compatibility and obligation rules to every
+accepted license.
+
+Copyright metadata identifies one or more holders and the years attributed to
+their work:
+
+```topal
+copyright is (
+  holder "Example AB"
+  years 2024 through 2026
+)
+```
+
+Several notices remain distinct when several holders contributed:
+
+```topal
+copyrights are (
+  copyright holder "Example AB" years 2024 through 2026
+  copyright holder "Alice Smith" years 2025
+)
+```
+
+The compiler checks and propagates these declarations but does not establish
+that a declared party owns the copyright or has authority to select a license.
+Those are assertions made by the package publisher.
+
+### Mandatory package defaults
+
+The source root's `package.t` provides the final license and copyright defaults
+for the complete package:
+
+```topal
+use lang topal-r3
+
+package is se.example.calculator
+version is 5.3.1
+license is Apache-2.0
+
+copyright is (
+  holder "Example AB"
+  years 2024 through 2026
+)
+```
+
+Both defaults are mandatory. A package without either one is invalid. This
+makes metadata resolution total without requiring every source file to repeat
+package-wide information.
+
+### Metadata inheritance
+
+A function may declare license or copyright metadata directly. Otherwise it
+inherits each missing item independently from the nearest applicable source
+context:
+
+1. The function declaration.
+2. Its ordinary source file.
+3. The containing directory's applicable `application.t`, `library.t`, or
+   `module.t` declaration.
+4. Successive parent directories, from nearest to farthest.
+5. The mandatory declaration in the source root's `package.t`.
+
+A declaration may provide a license while inheriting copyright, or provide
+copyright while inheriting a license. The two searches are independent.
+
+An ordinary source file can establish defaults for its functions:
+
+```topal
+use lang topal-r3
+
+license is MIT
+copyright is (
+  holder "Alice Smith"
+  years 2025
+)
+
+parse is fn ...
+tokenize is fn ...
+```
+
+Both functions inherit the file declarations unless they provide more specific
+metadata. Function-specific metadata supports a file containing code with
+different provenance, for example an algorithm adapted from another project.
+The precise modifier syntax remains part of the language revision, but the
+metadata belongs to the function declaration rather than becoming an input or
+runtime value.
+
+At each directory, `module.t` describes defaults intrinsic to the shared
+implementation:
+
+```topal
+# parser/module.t
+use lang topal-r3
+
+license is BSD-3-Clause
+copyright is (
+  holder "Parser contributors"
+  years 2022 through 2026
+)
+```
+
+These defaults also apply to descendants that have no more specific
+declaration.
+
+### Artifact contexts
+
+`library.t` and `application.t` may establish different contextual defaults for
+the same directory. A declaration in `library.t` applies while constructing
+that library interface and implementation; a declaration in `application.t`
+applies while constructing that application:
+
+```topal
+# library.t
+use lang topal-r3
+
+version is 2.1.0
+license is LGPL-3.0-only
+pub calculate
+```
+
+```topal
+# application.t
+use lang topal-r3
+
+version is 4.3.2
+license is GPL-3.0-only
+pub run
+```
+
+At the same directory, the facade matching the artifact being constructed is
+more specific than `module.t`. The contextual declaration affects only
+functions that reach it without function- or file-specific metadata. It does
+not erase explicit provenance attached to incorporated or imported code.
+
+Consequently, one shared function can have different effective licenses in the
+library and application contexts when its nearest applicable declarations
+offer it under those different terms. A function with an explicit license
+retains that license in both artifacts. The compiler rejects an artifact whose
+selected terms cannot satisfy the effective licenses of all included
+functions.
+
+Copyright normally describes provenance rather than an artifact choice. Shared
+functions therefore retain the same holders in the library and application
+unless more specific source declarations state otherwise. Copyright declared
+in an artifact facade supplies a default for code belonging to that context; it
+does not reassign explicitly attributed shared code.
+
+### Composition and obligations
+
+When functions are combined, copyright notices accumulate rather than replace
+one another. License expressions are combined according to their SPDX choices
+and the toolchain's compatibility rules. The result need not be a single new
+license: components retain their provenance even when one license determines
+the permitted terms of a combined artifact.
+
+The package builder derives presentation obligations from the licenses and the
+kind of output being produced. It can require and generate, as appropriate:
+
+- Copyright and attribution notices in distributed source.
+- License texts and notice files in source or binary distributions.
+- Acknowledgements in generated documentation.
+- License and attribution information exposed by an application at runtime.
+
+The compiler verifies that every included function has resolved metadata and
+that transformations preserve it. The package builder verifies that every
+derived obligation has a declared output location. Missing notices,
+incompatible terms, or an absent documentation or runtime presentation surface
+are build errors.
+
+Copyright years are source metadata, not build timestamps. Rebuilding an
+artifact in a later year does not modify its notices. A tool may compare years
+with version-control history and warn about a possible stale declaration, but
+such evidence does not prove ownership or the legally correct year.
