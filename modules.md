@@ -373,9 +373,6 @@ use lang topal-r3
 
 calculate is fn ( expression : String ) -> Result Number
   implementation
-
-run is fn ( arguments : Arguments ) -> Exit
-  implementation
 ```
 
 The two artifact files select different external views and may assign them
@@ -394,14 +391,17 @@ pub calculate
 use lang topal-r3
 
 version is 4.3.2
-pub run
+
+start is fn ( arguments : CommandArguments ) -> Result Completed
+  selected is arguments expression
+  print calculate selected
+  Completed
 ```
 
 Both artifact files can resolve private names in the shared directory scope.
 Publishing `calculate` from `library.t` does not make it part of the application
-interface, and publishing `run` from `application.t` does not make it linkable
-through the library. The application implementation may nevertheless call
-`calculate` directly because both are compiled from the same source module.
+interface. The root task in `application.t` may nevertheless call `calculate`
+directly because both are compiled from the same source module.
 
 Each artifact file has a local facade scope layered over the directory scope.
 Facade-local metadata and aliases do not merge into the implementation or the
@@ -410,8 +410,15 @@ In an artifact facade, `pub` crosses the artifact boundary:
 
 - In `library.t`, it adds a name to the linkable library interface.
 - In `application.t`, it adds a name to the application interface, such as an
-  entry point, command, configuration value, required capability, or service
-  endpoint.
+  externally available command, configuration value, required capability, or
+  service endpoint. The root task and its platform lifecycle handlers are
+  established by `application.t` itself and do not require publication.
+
+`application.t` is the implicit [root task](tasks.md) of the executable. Its
+selected language variant defines the available lifecycle and platform-event
+handlers. Topal constructs this task and supplies platform startup values, such
+as command arguments, directly to its `start` handler; no separate application
+type or `main` algorithm is required.
 
 In ordinary source files and `module.t`, publication retains its normal
 one-module-boundary meaning. `package.t` supplies package metadata rather than
@@ -635,7 +642,10 @@ use lang topal-r3
 
 version is 4.3.2
 license is GPL-3.0-only
-pub run
+
+start is fn ( arguments : CommandArguments ) -> Result Completed
+  launch arguments
+  Completed
 ```
 
 At the same directory, the facade matching the artifact being constructed is
