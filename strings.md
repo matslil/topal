@@ -218,8 +218,10 @@ text count ( Bytes Utf8 )
 Character traversal produces a finite generator of `Character`:
 
 ```topal
-characters text
-  character then process character
+character-generator is characters text
+
+character-generator foreach character
+  process character
 ```
 
 Normal text processing should prefer traversal to repeated numeric indexing.

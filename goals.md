@@ -44,7 +44,7 @@ when these preserve the program's meaning.
 - Typed [environments](environments.md) provide fixed diagnostic operations,
   execution context, and service capabilities without process-global variables
   or shared mutable application state.
-- Infinite algorithms exist only as productive generators: every request either
+- Infinite algorithms exist only as productive [generators](generators.md): every request either
   yields, ends, fails, cancels, or suspends for an external event in finite
   computation. Consumers determine whether the enclosing computation terminates.
 - Logging and tracing can be attached without modifying the observed algorithm.
