@@ -205,7 +205,9 @@ Errors are ordinary result values rather than exceptions. A successful value
 may be projected from a `Result` inside an explicitly fallible algorithm, as
 described by [the error model](errors.md#success-projection-and-propagation).
 Effects complement the input and result types, but their surface syntax has not
-yet been selected.
+yet been selected. Typed [environments](environments.md) separately provide
+stable declarations selected with `@`; environment access is tracked by the
+compiler without adding ordinary inputs to every algorithm declaration.
 
 ### Static algorithms
 
