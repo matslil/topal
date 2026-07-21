@@ -184,6 +184,46 @@ The exact preferred ordering for composite constraints remains provisional. The
 essential rule is that the complete expression to the right of `:` must have
 kind `Type`, not merely `Constraint`.
 
+### Constraints on type fields
+
+A field's classification may use a refined type. Later fields may refer to
+earlier fields in the same declaration, making relationships between components
+part of the declared type:
+
+```topal
+pub Interval is type
+  pub start : Integer
+  pub end : ( > start ) Integer
+```
+
+Here `end` is an `Integer` constrained to be greater than the particular
+`start` in the same `Interval`; the declaration describes a dependent product,
+not two independently classified integers. The constraint evidence remains
+attached to the value when its fields are projected or matched.
+
+Dependencies follow declaration order. A field may refer only to fields
+declared before it, so forward references and cyclic field constraints are
+invalid. Constraints involving several fields can consequently be placed on a
+later field once every value they need has been declared.
+
+Constructing a value must establish every field constraint. Statically known
+components are checked during compilation, and a violated constraint is a
+compile-time error. When the components are dynamic and the relationship is not
+already proven, construction performs validation and produces `Result Interval`
+on success:
+
+```topal
+pub interval is fn (
+  start : Integer,
+  end : Integer
+) -> Result Interval
+  Interval ( start, end )
+```
+
+This field syntax states an invariant of every value of the declared type. A
+separately applied constraint such as `Ordered Interval`, by contrast, creates
+a refined type and does not make the constraint true of every plain `Interval`.
+
 ## Algorithm definitions
 
 `fn` is a prefix constructor for an algorithm object. A definition binds that
