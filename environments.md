@@ -191,6 +191,11 @@ protocol. Sends, replies, cancellation, ordering, and backpressure occur in
 well-defined task scopes, allowing the compiler to derive communication
 dependencies without assuming shared mutable state.
 
+Language-defined [tasks](tasks.md) produce the same kind of restricted
+capability. Their handler declarations derive the protocol interaction kind;
+the environment may supply a stable task endpoint without containing the
+task's private state or its message queue.
+
 Application code should normally import a protocol-specific endpoint rather
 than a universal broker:
 

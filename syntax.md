@@ -290,6 +290,43 @@ checks the declaration at the first violated static dependency, keeping errors
 local instead of reporting only when a distant caller attempts to construct a
 type.
 
+## Tasks
+
+A task owns private state and derives a typed messaging protocol from algorithms
+declared in its context:
+
+```topal
+Counter is task
+  count : Nat
+
+  start is fn ( initial : Nat ) -> Completed
+    count is initial
+    Completed
+
+  increment is fn ( amount : Nat ) -> Unit
+    count is count + amount
+
+  current is fn ( Unit ) -> Nat
+    count
+```
+
+Applying `Counter` constructs a task by supplying the parameters of `start`:
+
+```topal
+counter is Counter 0
+counter increment 2
+value is counter current Unit
+```
+
+A handler returning `Unit` is an event for which the caller does not await
+completion. `Completed` requests completion confirmation, and `Result
+Completed` requests either confirmation or failure. Other returned values are
+request replies, while a generator handler establishes a stream. `Result Unit`
+is not a valid task-handler result.
+
+See [tasks and intrinsic messaging](tasks.md) for isolation, startup waiting,
+and the implicit root task defined by `application.t`.
+
 ## Destructors
 
 Every type has a destructor. Types which represent external resources may

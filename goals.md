@@ -60,7 +60,7 @@ when these preserve the program's meaning.
   algebraic laws.
 - Data races and deadlocks are compile errors. Safe code has no direct mutex or
   equivalent primitive; the compiler introduces synchronization when required.
-- Structured task scopes, resource-aware effects, linear capabilities, and
+- Structured [task scopes](tasks.md), resource-aware effects, linear capabilities, and
   first-class protocols describe ownership, ordering, message passing, and
   request/reply dependencies. The compiler derives and explains the resulting
   dependency graph.
