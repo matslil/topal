@@ -2,14 +2,15 @@
 
 Topal environments provide the convenient availability of global declarations
 without process-global identity or shared mutable state. An environment is a
-separate context associated with a call tree. Its typed declarations are made
-available explicitly with `use` and selected with the `@` prefix.
+separate context whose bindings are fixed when an execution is composed. Its
+typed declarations are made available explicitly with `use` and selected with
+the `@` prefix.
 
-Environment bindings propagate from a call to its descendants. A descendant
-may add a previously absent binding, but it cannot replace or remove an existing
-one, and additions disappear when that descendant call finishes. Environment
-lookup is total and stable: selecting the same declaration in the same
-environment always produces the same value.
+Calls cannot add, replace, or remove environment bindings. Environment lookup
+is total and stable: selecting the same declaration in the same environment
+always produces the same value. The compiler uses the call tree to find direct
+and transitive environment dependencies, not to construct new environments at
+runtime.
 
 This model is intended primarily for contained diagnostics such as logging and
 tracing, immutable execution context, and stable capabilities such as messaging
@@ -52,47 +53,35 @@ The normal algorithm syntax remains in force. In particular, the output type of
 an environment algorithm is explicit even when its environment classification
 restricts that output to `Unit`.
 
-## Call-tree propagation
+## Composition and call-tree dependencies
 
 An environment is an immutable mapping from declaration identities to typed
-values. Extending one constructs a child mapping rather than modifying the
-parent:
+values. Application composition supplies one value for every reachable
+environment declaration before execution begins:
 
 ```text
-request environment
-  application.logging.log-error -> request logger
+application environment
+  application.logging.log-error -> contained logger
   services.user-service         -> user endpoint
-
-plugin environment
-  parent                         -> request environment
   services.plugin-events        -> plugin endpoint
 ```
 
-The plugin environment contains all bindings from the request environment plus
-the new `plugin-events` binding. It cannot replace `user-service` or remove
-`log-error`. Sibling calls receive independent descendants and cannot observe
-one another's additions.
-
-For environments `E1` and `E2`, where `E2` descends from `E1`, the extension is
-monotonic:
-
-```text
-bindings(E1) is a subset of bindings(E2)
-
-lookup(E2, declaration) = lookup(E1, declaration)
-  for every declaration already present in E1
-```
-
-Attempting to add a second value for an existing declaration is a composition
-error. Deployments and tests select different implementations by constructing
-different root environments, not by replacing bindings in a running call tree.
+This mapping remains fixed for the execution. Calls and task scopes neither
+derive child environments nor modify the application environment. Deployments
+and tests select different implementations by composing different executions.
 Two simultaneous roles using the same value type require two distinct
 environment declarations.
 
-Closures capture only the environment declarations they use. Structured child
-tasks inherit the bindings in their parent task scope. A task whose lifetime may
-escape that scope must explicitly retain each permitted environment value; it
-cannot retain the environment as an unrestricted map.
+The call tree determines dependency reachability. If `C` selects an environment
+declaration, while `A` calls `B` and `B` calls `C`, then the compiled contracts
+for `A` and `B` record the transitive requirement even though neither algorithm
+selects the declaration directly. This permits composition checking without
+adding an environment parameter to their source declarations.
+
+Closures retain only the fixed environment declarations they use. Structured
+child tasks use the same bindings as their parent execution. A task cannot
+capture the environment as an unrestricted map or create a modified environment
+for its descendants.
 
 ## Isolated environment algorithms
 
@@ -191,7 +180,7 @@ communicates UserService
 requires environment services.users.user-service
 ```
 
-Changing the root environment can select an in-process test service or a remote
+Composing another execution can select an in-process test service or a remote
 production service. It does not change the algorithm's communication
 declaration. Retrieving `@ user-service` remains infallible; the `GetUser`
 request may fail or suspend because its protocol explicitly permits that.
@@ -211,21 +200,21 @@ than a universal broker:
 
 This is preferred to an endpoint which accepts arbitrary service names and
 messages. Composition code may use a broker to construct protocol endpoints,
-but descendants receive only the resulting restricted capabilities.
+but application code receives only the resulting restricted capabilities.
 
 ## Dependency checking and erasure
 
 Environment declarations do not appear among an algorithm's ordinary inputs,
 but the compiler records direct and transitive uses in its compiled type. A
 public algorithm can therefore be checked and documented without exposing
-environment plumbing in source parameter lists. An application root must
+environment plumbing in source parameter lists. Application composition must
 provide every declaration reachable from its call tree.
 
 An algorithm which neither selects an environment declaration nor calls an
 algorithm that does is isolated from the environment. The compiler need not
 pass an environment context to it. Stable lookup also permits the compiler to
-resolve a value once, specialize a call for a statically known root environment,
-or pass an endpoint directly to only the calls which use it.
+resolve a value once, specialize a call for a statically known application
+environment, or pass an endpoint directly to only the calls which use it.
 
 Static algorithms cannot access runtime environment declarations. Environment
 availability and concrete service selection are runtime properties and cannot
@@ -250,5 +239,5 @@ use-declaration       = "use" qualified-identifier ;
 
 `environment-selection` is a prefix expression and otherwise follows the normal
 application and left-to-right grouping rules. The complete syntax for defining
-modules, constructing root environments, and supplying their stable values
+modules, composing executions, and supplying their stable environment values
 remains provisional.
