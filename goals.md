@@ -41,6 +41,9 @@ when these preserve the program's meaning.
 - Effects complement regular types by describing observable interactions and
   the resources they touch. They make ordering and parallelization constraints
   visible without hiding failure control flow.
+- Typed [environments](environments.md) provide fixed diagnostic operations,
+  execution context, and service capabilities without process-global variables
+  or shared mutable application state.
 - Infinite algorithms exist only as productive generators: every request either
   yields, ends, fails, cancels, or suspends for an external event in finite
   computation. Consumers determine whether the enclosing computation terminates.
