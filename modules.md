@@ -107,10 +107,11 @@ set-logger is fn pub ( logger : Logger ) -> Logger
   implementation
 ```
 
-For other classified values, it prefixes the type:
+For other classified values, it prefixes the declaration while the ordinary
+classification continues to describe the binding's type:
 
 ```topal
-destination : pub String
+pub destination : String
 ```
 
 The precise ordering when modifiers are combined remains part of the
