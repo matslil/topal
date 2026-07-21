@@ -353,6 +353,37 @@ sharing, and reference-count elimination are compiler decisions rather than
 surface syntax. See [resource lifetime and destruction](resources.md) for the
 semantic rules.
 
+## Generators
+
+Resumable algorithms use an explicit `generator` declaration. They may yield a
+value, receive a value on resumption, and eventually return a distinct final
+value:
+
+```topal
+conversation is generator ( initial : Request )
+  yields OutgoingRequest
+  resumes IncomingResponse
+  -> Result Conversation
+
+  response is yield make-request initial
+  finish-conversation response
+```
+
+Applying the generator supplies its initial input and starts it; there is no
+separate `start` operation. A suspended `yield` expression evaluates to the
+value supplied when its continuation is resumed. Generators resumed with
+`Unit` support direct traversal:
+
+```topal
+generator-value is values first
+
+generator-value foreach value
+  print value
+```
+
+See [generators](generators.md) for continuation behavior, return values, and
+the separation between generators and message-passing infrastructure.
+
 ## Predicates and partial application
 
 A binary relation can be fully applied:

@@ -562,9 +562,9 @@ multiplicity. Bags therefore expose the more descriptive operation:
 bag scale-counts factor
 ```
 
-Unbounded repetition produces a productive generator rather than a finite
-container value. It remains a computation even if it shares the `repeat`
-vocabulary.
+Unbounded repetition produces a productive [generator](generators.md) rather
+than a finite container value. It remains a computation even if it shares the
+`repeat` vocabulary.
 
 ### Set, map, and bag algebra
 
@@ -658,8 +658,8 @@ container kinds:
 - Trees are ordinary recursive products and variants.
 - Strings remain semantic text values rather than arrays of bytes or characters.
 - Ranges remain convex predicates and constraints rather than containers.
-- Streams and generators are productive computations rather than immutable
-  container values.
+- Streams and [generators](generators.md) are productive computations rather
+  than immutable container values.
 
 The core named collection families are therefore `List`, `Array`, `Set`, `Map`,
 and `Bag`. `Tuple` and `Variant` are the more fundamental product and sum
