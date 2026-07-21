@@ -147,7 +147,7 @@ to users of `logger`.
 The `logger` module can choose whether and how to expose it:
 
 ```topal
-// logger/module.t
+# logger/module.t
 
 error is emit-logs err
 pub error
@@ -172,7 +172,7 @@ containing directory and does not add `module` to the scope path. Definitions
 in `logger/module.t` therefore belong directly to `logger`:
 
 ```topal
-// logger/module.t
+# logger/module.t
 
 set-logger is fn pub ( logger : Logger ) -> Logger
   implementation
@@ -223,3 +223,65 @@ The module model follows these rules:
 
 These rules make module dependencies concise while retaining explicit
 encapsulation at every level of the source tree.
+
+## The language module
+
+`lang` is a compiler-provided special module. Unlike an application or library
+module, it can provide grammar, constructs, typing rules, compiler guarantees,
+scopes, and values. Its contents are introduced directly into the source file's
+main scope rather than remaining qualified by `lang`.
+
+Every source file selects an immutable language revision explicitly:
+
+```topal
+use lang topal-r3
+```
+
+The compiler parses and checks the rest of the file according to revision 3.
+This prevents a later revision from changing the meaning of existing source,
+including by treating one of its identifiers as a newly introduced structural
+word.
+
+A language revision may contain variants represented by nested scopes:
+
+```topal
+use lang topal-r3 realtime
+```
+
+The `realtime` variant may add constructs that require the compiler to prove
+execution-time guarantees for selected algorithms. Other variants may restrict
+the language for smaller processors or execution environments. A variant
+refines a particular revision; it does not silently track newer revisions.
+
+Language selection has stricter rules than an ordinary `use`:
+
+1. Every source file, including `module.t`, selects a language.
+2. Selection is the first non-comment declaration in the file.
+3. A file contains exactly one language selection.
+4. An omitted selection is an error rather than an implicit request for the
+   latest revision.
+5. The revision and variant are recorded as part of the compiled module.
+
+Files in one package may select different language revisions or variants. The
+compiler checks that their published interfaces agree on representations and
+semantics needed for interoperability.
+
+### Bootstrap syntax
+
+The compiler must recognize language selection before it knows which language
+grammar to apply. A small, stable bootstrap syntax therefore recognizes line
+boundaries, `# ` comments, and the `use lang` declaration with its revision and
+optional variant path. After that declaration, the selected language defines
+the remainder of the file.
+
+For example:
+
+```topal
+# Compiled using the realtime variant of revision 3.
+use lang topal-r3 realtime
+
+use logger
+```
+
+The bootstrap syntax is fixed across language revisions so that every compiler
+can determine which revision is being requested.

@@ -32,6 +32,19 @@ arbitrary runs of punctuation.
 Tabs are forbidden in indentation. Blank and comment-only lines do not affect
 indentation. An unindent closes the current block.
 
+`#` followed by a space begins a comment. The comment continues through the
+remainder of the line and ends at the newline:
+
+```topal
+# A whole-line comment.
+value is Integer 10 # An end-of-line comment.
+```
+
+The separating space is required: `#comment` does not begin a comment. The
+`# ` form is part of the stable bootstrap syntax used to read a source file's
+[language selection](modules.md#the-language-module) before applying its
+selected grammar.
+
 ## Expressions and application
 
 An algorithm with one input uses prefix notation:
