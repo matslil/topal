@@ -13,7 +13,9 @@ module to expose an interface that does not mirror its implementation layout.
 
 Except for the special files `module.t`, `package.t`, `library.t`, and
 `application.t`, each source filename contributes one component to the scope
-path. The `.t` suffix is not part of the component. Given:
+path. Each special file describes its containing directory or a view of that
+directory and contributes no component of its own. The `.t` suffix is not part
+of an ordinary file's component. Given:
 
 ```text
 application/
@@ -214,7 +216,8 @@ The module model follows these rules:
 1. The source-package root is the top-level scope.
 2. A directory introduces a nested scope.
 3. An ordinary `.t` file introduces a scope named after the file.
-4. `module.t` defines its containing directory scope and contributes no name.
+4. The special files `module.t`, `package.t`, `library.t`, and `application.t`
+   contribute no scope-path component.
 5. Scope names prefix child scopes or terminal values.
 6. `use` makes a published path available; a scope path includes its published
    subtree without flattening it.
@@ -225,6 +228,12 @@ The module model follows these rules:
 
 These rules make module dependencies concise while retaining explicit
 encapsulation at every level of the source tree.
+
+The four exact filenames are reserved by the language. They remain visible in
+ordinary directory listings because they describe important build and interface
+boundaries. Other filenames are not reserved merely because they begin with a
+period; filesystem conventions such as hidden files are kept separate from
+Topal's language-level source conventions.
 
 ## The language module
 
