@@ -96,6 +96,46 @@ The first expression applies `Ascii`; it does not give the literal an encoding.
 Source files are UTF-8, but a literal constructs an unencoded `String` unless a
 constraint or conversion explicitly gives it another property.
 
+## String formatting
+
+Formatting is an operation on an ordinary string template, not a literal
+encoding or a distinct fundamental string type. Braced names in a template are
+resolved from an explicit map supplied as the other operand of `format`:
+
+```topal
+player is "Nanne"
+score is Nat 233
+high-score is Nat 344
+
+message is "Player: {player}, Score: {score}, High score: {high-score}" format (
+  player is player,
+  score is score,
+  high-score is high-score
+)
+
+print message
+```
+
+Placeholders are names rather than general expressions. The explicit map keeps
+the formatted expression's dependencies visible and permits template names to
+differ from bindings at the call site:
+
+```topal
+score-line is "Player: {name}, Score: {current}, High score: {highest}"
+
+message is score-line format (
+  name is player,
+  current is score,
+  highest is high-score
+)
+```
+
+The result is `String`. Values accepted by the map provide the formatting
+capability; formatting does not assign an encoding to the template or result.
+When the template is statically known, the compiler checks that every named
+placeholder has a supplied value. Format specifications and a spelling for
+literal placeholder delimiters remain provisional.
+
 ## Expressions and application
 
 An algorithm with one input uses prefix notation:

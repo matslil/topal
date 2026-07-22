@@ -180,6 +180,45 @@ normalization constraint, these standard transformations normalize their result
 to the same form and retain the evidence. With plain `String` input they return
 plain `String` and do not add normalization implicitly.
 
+## Strings as character sequences
+
+`String` provides the read-only `Sequence Character` capabilities. Generic
+folding, traversal, mapping, predicate selection, and indexed selection
+therefore operate on user-perceived characters rather than code points or
+encoded bytes. The generic entry count agrees with the string-specific name:
+
+```text
+entry-count text = character-count text
+```
+
+Transformations of the generated traversal may remain a traversal until their
+result is collected. Naming `String` as the collector accepts both `Character`
+entries and `String` fragments because `Character` is constrained text:
+
+```topal
+result is characters text
+  select is-letter
+  map lower
+  collect String
+```
+
+`lower` and other transformations may produce `String` rather than `Character`
+because Unicode mappings can expand one character. Collecting either entry type
+concatenates its preserved Unicode sequence:
+
+```text
+Sequence Character collect String -> String
+Sequence String collect String    -> String
+```
+
+The result is segmented as an ordinary string. Adjacent inputs can consequently
+merge into one character at their boundary, as when a base character is joined
+to a combining mark. Character count is not generally additive across string
+concatenation, and generic sequence laws must not promise that collection
+preserves the input entry boundaries. Traversing an existing string in order
+and collecting those unchanged characters nevertheless reconstructs its exact
+Unicode sequence.
+
 ## Counting
 
 `String` has no unqualified `length`. Its ordinary semantic count is named
@@ -219,6 +258,9 @@ text count Characters
 text count ( Bytes Utf8 )
 ```
 
+The sequence spelling `entry-count text` is also available to generic code and
+counts the same `Character` entries as `character-count text`.
+
 ## Traversal, indexing, and selection
 
 Character traversal produces a finite generator of `Character`:
@@ -229,6 +271,10 @@ character-generator is characters text
 character-generator foreach { character }
   process character
 ```
+
+Ordinary sequence algorithms may consume `text` directly. `characters` remains
+useful when code wants to name or emphasize the generated traversal, especially
+before transformations that finish with `collect String`.
 
 Normal text processing should prefer traversal to repeated numeric indexing.
 Character indexing returns `Optional Character` when given an unchecked numeric
@@ -251,6 +297,19 @@ is in range. String selection likewise uses character boundaries and cannot
 split a character accidentally. The result remains `String`; selection and
 normalization evidence may be retained when their constraints remain true, as
 described in [the range model](ranges.md).
+
+## Formatting
+
+Formatting transforms a `String` template and an explicit map of formattable
+values into another `String`:
+
+```text
+template format values -> String
+```
+
+It is not an encoding and does not capture bindings implicitly. The surface
+syntax, placeholder rules, and examples are described in
+[the syntax sketch](syntax.md#string-formatting).
 
 ## Equality and human-language comparison
 
