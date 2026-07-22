@@ -220,7 +220,7 @@ Character traversal produces a finite generator of `Character`:
 ```topal
 character-generator is characters text
 
-character-generator foreach character
+character-generator foreach { character }
   process character
 ```
 

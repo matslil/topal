@@ -262,6 +262,52 @@ yet been selected. Typed [environments](environments.md) separately provide
 stable declarations selected with `@`; environment access is tracked by the
 compiler without adding ordinary inputs to every algorithm declaration.
 
+### Inferred anonymous algorithms
+
+Small algorithms passed directly to another algorithm may omit `fn` and their
+types when the surrounding application determines one algorithm type. A
+braced parameter pattern is an inferred anonymous-algorithm header; the
+following expression or indented block is its body:
+
+```topal
+values map { value }
+  value * 2
+
+values fold 0 { sum, value }
+  sum + value
+
+mapping entries foreach { ( key, value ) }
+  print key value
+```
+
+For example:
+
+```topal
+{ value }
+  value * 2
+```
+
+in a context expecting `fn ( Int ) -> Int` is shorthand for:
+
+```topal
+fn ( value : Int ) -> Int
+  value * 2
+```
+
+The braces delimit parameter patterns, not the body. A short body may remain
+on the same line:
+
+```topal
+values select { value } value > 0
+```
+
+Destructuring and multiple inputs use the ordinary pattern model. Both the
+input and output types come from context; they are not inferred solely from an
+unconstrained body. If overload selection or a stored binding does not provide
+one expected algorithm type, the full `fn` form is required. The full form is
+also required to declare `static`, explicit effects, or any other guarantee
+that forms part of the algorithm type.
+
 ### Overloading and type association
 
 Multiple algorithms may share a name. An overload is unique by its input
@@ -414,7 +460,7 @@ value supplied when its continuation is resumed. Generators resumed with
 ```topal
 generator-value is values first
 
-generator-value foreach value
+generator-value foreach { value }
   print value
 ```
 
