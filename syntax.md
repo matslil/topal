@@ -65,6 +65,31 @@ text contains "error"
 collection map transformation
 ```
 
+An algorithm has zero, one, or two syntactic operands. A zero-operand call uses
+the empty argument list so that invoking an algorithm remains distinct from
+referring to it as a value:
+
+```topal
+current-time ()
+```
+
+Values beyond the two-operand limit must be packaged into one or both operands
+explicitly. Parentheses make the extra structure visible: a comma-separated
+positional argument list has no labels, while a map associates names with
+values using `is`:
+
+```topal
+( left-source, left-fallback ) combine ( right-source, right-fallback )
+( left-source is left, left-fallback is 0 ) combine (
+  right-source is right,
+  right-fallback is 0
+)
+```
+
+The second form does not add four operands to `combine`; it supplies two map
+operands, each containing two associations. Chaining another application
+applies the result of the first application rather than adding a third operand.
+
 Binary application associates from left to right and has no operator-specific
 precedence:
 
@@ -121,8 +146,8 @@ or matcher context. Its tokenization and grouping do not change.
 
 ## Bindings and classification
 
-`is` introduces an immutable binding. It always binds the name on its left to
-the object produced on its right:
+`is` introduces an immutable binding. Outside a map construction it binds the
+name on its left to the object produced on its right:
 
 ```topal
 limit is Integer 10
@@ -136,6 +161,27 @@ text is String
 ```
 
 binds `text` to the type object `String`. It does not declare a string value.
+
+Inside a map construction, `is` associates the key on its left with the value
+on its right. It remains a value association rather than a classification:
+
+```topal
+counts is Map ( String, Nat ) (
+  "apple" is 2,
+  "pear" is 3
+)
+```
+
+An empty value is constructed by applying the fully specified map type to the
+empty argument list. When a binding already provides the expected type, only
+the value construction is needed:
+
+```topal
+empty-counts is Map ( String, Nat ) ()
+
+other-counts : Map ( String, Nat )
+other-counts is ()
+```
 
 `:` classifies a value, binding, or pattern with the type expression on its
 right:
@@ -235,14 +281,60 @@ strlen is fn ( text : String ) -> Integer
 ```
 
 The input is a pattern, `->` separates it from the output type, and the indented
-block is the body. Multiple inputs are represented as a product pattern:
+block is the body. `()` declares zero operands, a single pattern declares one,
+and two components declare the left and right operands of an infix algorithm:
 
 ```topal
+current-time is fn () -> Instant
+  body
+
+strlen is fn ( text : String ) -> Integer
+  body
+
 minimum is fn ( left : Integer , right : Integer ) -> Integer
   left
     < right then left
     otherwise right
 ```
+
+A component may itself be a parenthesized positional argument list or a map.
+Map entries are declared with `:` because the declaration classifies each name;
+calls supply them with `is` because they associate names with values. An entry
+may use `default` followed by its default value:
+
+```topal
+zip-longest-default-zero is fn (
+  (
+    left-list : List Nat,
+    left-fallback : Nat default 0
+  ),
+  (
+    right-list : List Nat,
+    right-fallback : Nat default 0
+  )
+) -> List ( Nat, Nat )
+  body
+```
+
+Every parameter name must be unique across the entire function, including names
+packaged into different operands. A call may omit the defaulted associations or
+override them:
+
+```topal
+( left-list is left ) zip-longest-default-zero ( right-list is right )
+
+(
+  left-list is left,
+  left-fallback is 10
+) zip-longest-default-zero (
+  right-list is right,
+  right-fallback is 20
+)
+```
+
+Defaults fill omitted map associations; they do not remove an entire syntactic
+operand or turn a binary function into a unary one. Unknown and duplicate
+association names are errors.
 
 The input and output types are mandatory parts of an algorithm declaration.
 They are not inferred from the body. In particular, an output of `Integer`
