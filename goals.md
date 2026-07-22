@@ -32,6 +32,8 @@ when these preserve the program's meaning.
 - Bounds, [resource lifetimes](resources.md), and programmer-defined invariants
   are checked by construction. Undefined behavior is not part of the safe
   language.
+- [Measured quantities](units.md) carry statically checked dimensions and
+  scales; programmer-defined units compose using language-defined prefixes.
 
 ## Algorithms and effects
 

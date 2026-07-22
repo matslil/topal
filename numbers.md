@@ -4,6 +4,8 @@ This document records the provisional number model for Topal. Numeric types
 describe mathematical or algebraic behavior, constraints restrict values, and
 encodings describe storage. The compiler may select efficient machine
 representations whenever it proves that observable semantics are preserved.
+Numbers may be combined with dimensioned units to form values described by the
+[quantity and unit model](units.md).
 
 ## Exact integers
 
@@ -13,6 +15,10 @@ minimum, maximum, overflow, or storage width:
 ```topal
 Int
 ```
+
+Integer literal radix prefixes, optional digit grouping, and the
+whitespace-sensitive spelling of negative literals are defined in
+[the numeric literal syntax](syntax.md#numeric-literals).
 
 `Nat` is its nonnegative refinement:
 
@@ -251,6 +257,10 @@ by default:
 12.50
 1.25e3
 ```
+
+Their decimal point, exponent, and digit-grouping rules are defined in
+[the numeric literal syntax](syntax.md#numeric-literals). Base-prefixed
+literals are integers rather than alternate spellings of `Decimal` values.
 
 Finite decimal addition and multiplication can remain exact. Division may
 produce a `Rational`, require an explicit approximation, or report that no

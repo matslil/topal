@@ -29,6 +29,78 @@ The canonical spelling is provisionally `Point ( 10 , 20 )`. Multi-character
 symbols such as `->` must be declared by the language rather than formed from
 arbitrary runs of punctuation.
 
+## Numeric literals
+
+An integer literal uses decimal notation by default. The prefixes `0b`, `0o`,
+and `0x` select binary, octal, and hexadecimal notation respectively:
+
+```topal
+42
+0b1010
+0o755
+0xCAFE
+```
+
+Underscores may optionally group digits. When they are used, decimal digits are
+grouped from the right in groups of three, while digits in a base-prefixed
+literal are grouped from the right in groups of four. Every boundary must then
+be marked; underscores are not used when the literal contains only one group:
+
+```topal
+1_000
+12_345_678
+0b1010_1100_0011
+0o1234_5670
+0xCAFE_BABE
+```
+
+The ungrouped spellings `1000`, `12345678`, and `0xCAFEBABE` are equally valid.
+However, `1000_000`, `0b10_10`, `0xCA_FEBABE`, leading or trailing underscores,
+and repeated underscores are invalid. Grouping counts digits after the radix
+prefix; the prefix is not part of a group. Hexadecimal digits may use either
+case.
+
+A decimal literal may have a fractional part and a base-ten exponent:
+
+```topal
+0.1
+12.50
+1_000.000_125
+1.25e3
+6.022e-24
+```
+
+The integer part is grouped rightward from the decimal point. Fractional digits
+are grouped leftward from the decimal point in groups of three; the final group
+may be shorter. Exponent digits follow the decimal integer grouping rule,
+excluding their optional sign. A decimal point requires digits on both sides.
+Base-prefixed literals do not have fractional or exponent forms initially.
+
+A bracketed unit following a numeric literal constructs a measured quantity as
+described by the [quantity and unit model](units.md):
+
+```topal
+9.81[N]
+250[g]
+5[kg]
+```
+
+The brackets are not part of the numeric literal. Whitespace is permitted, but
+the formatter uses the compact spelling shown above.
+
+A minus sign belongs to a numeric literal only when it immediately precedes the
+first digit, with no intervening space:
+
+```topal
+-42
+-0xCAFE
+-1.25e3
+```
+
+With whitespace after it, `-` is an operator instead: `- 42`. Binary
+subtraction uses spaces on both sides, as in `left - right`. The formatter must
+preserve this semantic distinction.
+
 Tabs are forbidden in indentation. Blank and comment-only lines do not affect
 indentation. An unindent closes the current block.
 
