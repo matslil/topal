@@ -266,13 +266,35 @@ left compare ( right , collation )
 
 ## Encodings and storage formats
 
-UTF-8, UTF-16, ASCII, and legacy encodings describe stored or transmitted bytes,
-not different semantic string types. They are analogous to endianness and
-integer width: properties of an external or requested representation.
+String encodings describe stored or transmitted bytes, not different semantic
+string types. They are analogous to endianness and integer width: properties of
+an external or requested representation. An encoding may additionally promise
+a Unicode normalization form at that boundary. The initial vocabulary is:
+
+```text
+Utf8       Utf8Nfc       Utf8Nfd
+Utf16      Utf16Nfc      Utf16Nfd
+Utf32      Utf32Nfc      Utf32Nfd
+Ascii
+```
+
+The hyphenated descriptive names are UTF8, UTF8-NFC, UTF8-NFD, UTF16,
+UTF16-NFC, UTF16-NFD, UTF32, UTF32-NFC, UTF32-NFD, and ASCII. The identifiers
+above follow Topal's ordinary identifier spelling.
+
+Encoding with an NFC or NFD variant transforms the string to that form before
+emitting bytes. Decoding validates both the character encoding and the declared
+normalization form, producing corresponding normalization evidence on success.
+The unqualified UTF variants preserve the semantic string's existing Unicode
+sequence and add no normalization promise.
+
+UTF-16 and UTF-32 layouts additionally specify endianness as an independent
+layout attribute rather than multiplying the encoding vocabulary with `LE` and
+`BE` variants.
 
 ```topal
 text encode Utf8
-text encode Utf16LE
+text encode Utf16
 decode encoded
 ```
 
