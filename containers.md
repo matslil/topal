@@ -33,6 +33,171 @@ This is a semantic construction, not a required storage representation. The
 compiler may represent a list as a tree, flat buffer, shared slice, or another
 equivalent form when no source-level observation changes.
 
+The user-facing algebraic vocabulary follows two independent distinctions:
+
+|                 | Positional | Labeled  |
+|-----------------|------------|----------|
+| Product         | `Tuple`    | `Record` |
+| Sum             | `Variant`  | `Union`  |
+
+`Union` is the source name for a tagged union. Because every declared union
+alternative has a label, an additional `tagged` qualifier would not distinguish
+another source construct. `Variant` remains the positional sum constructor,
+primarily for generic and generated code.
+
+### Tuples and records
+
+A tuple type and value describe components by position:
+
+```topal
+Coordinate is Tuple ( Float, Float )
+position is Coordinate ( 12.5, 7.0 )
+```
+
+When the expected type is known, the constructor may be omitted:
+
+```topal
+position : Coordinate
+position is ( 12.5, 7.0 )
+```
+
+A record instead fixes a set of labeled fields and the type belonging to each
+label:
+
+```topal
+Person is Record
+  name : String
+  age : Nat
+
+ada is Person (
+  name is "Ada",
+  age is 36
+)
+```
+
+Record construction is labeled. Field order is therefore not significant at a
+construction site, although declaration order remains significant when a later
+field's type depends on an earlier field. Selecting a declared field is total
+and retains its precise type:
+
+```topal
+name : String
+name is ada name
+```
+
+An anonymous record declares and initializes its fields together:
+
+```topal
+point is (
+  x : Float is 12.5,
+  y : Float is 7.0
+)
+```
+
+The field labels and classifications are part of the inferred record type.
+Consequently, both of these values are records even though the second happens
+to have a homogeneous field type:
+
+```topal
+mixed is ( a : Int is 5, b : String is "Hello" )
+uniform is ( a : Int is 5, b : Int is 6 )
+```
+
+A homogeneous record can be converted explicitly to a map whose string keys
+are the canonical field-label spellings:
+
+```topal
+mapping is uniform collect Map ( String, Int )
+```
+
+The conversion forgets the statically fixed shape. In particular, `uniform a`
+is total, while looking up `"a"` in the resulting map has the ordinary partial
+map-lookup type. Heterogeneous records cannot be converted to an ordinary map
+unless their field values are first converted to one common value type.
+
+Records and maps are therefore related labeled constructions, but a record is
+not merely a map whose entries happen to be statically known. More precisely, a
+record is a finite dependent product over static labels: each label may select
+a different type, and later field types may depend on earlier field values. A
+map is a dynamic finite association whose entries share one value type.
+
+### Variants and unions
+
+A variant describes alternatives by position:
+
+```topal
+Scalar is Variant ( String, Nat, Boolean )
+text is Scalar at 0 "hello"
+count is Scalar at 1 42
+```
+
+`at` selects the zero-based alternative using the same finite-index convention
+as other positional containers. Construction must state the position even when
+the alternative types differ; this keeps construction valid and unsurprising
+when two alternatives have the same type. Matching uses the same shape:
+
+```topal
+scalar
+  Scalar at 0 text then print text
+  Scalar at 1 count then print count
+  Scalar at 2 enabled then print enabled
+```
+
+Because numeric alternatives communicate little domain meaning and are
+sensitive to reordering, application data normally uses a union instead:
+
+```topal
+State is Union
+  Idle
+  Running : Progress
+  Paused : Progress
+  Failed : Error
+```
+
+Each union alternative introduces a constructor associated with the union. An
+alternative without a classification carries `Unit`; `Idle` above is shorthand
+for `Idle : Unit`. An alternative with a payload is an ordinary unary
+constructor:
+
+```topal
+initial : State
+initial is Idle
+
+active : State
+active is Running progress
+```
+
+Construction and matching have the same structural spelling:
+
+```topal
+state
+  Idle then start ()
+  Running progress then display progress
+  Paused progress then display-paused progress
+  Failed problem then report problem
+```
+
+An alternative has zero or one payload. Several values are packaged using the
+ordinary product constructions rather than adding a second union-specific
+field mechanism:
+
+```topal
+Message is Union
+  Move : Tuple ( Float, Float )
+  Stop
+
+message is Move ( 10.0, 20.0 )
+
+message
+  Move ( x, y ) then move-to x y
+  Stop then stop ()
+```
+
+When a union constructor name is unambiguous from its scope or expected union
+type, the short name is sufficient. Otherwise it must be selected through the
+union's ordinary declaration scope; unions do not introduce a separate global
+constructor namespace.
+
 A tuple is fundamentally a product rather than a homogeneous collection. A
 homogeneous tuple may support sequence algorithms, but a heterogeneous tuple
 cannot generally be mapped, folded, or selected using one entry type.
@@ -830,8 +995,9 @@ container kinds:
   than immutable container values.
 
 The core named collection families are therefore `List`, `Array`, `Set`, `Map`,
-and `Bag`. `Tuple` and `Variant` are the more fundamental product and sum
-constructions from which collections and other user-defined data can be built.
+and `Bag`. `Tuple` and `Variant` are the fundamental positional product and sum
+constructions. `Record` and `Union` add static labels to those respective
+constructions; together they build collections and other user-defined data.
 
 ## Design principles
 
