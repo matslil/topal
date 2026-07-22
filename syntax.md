@@ -45,6 +45,57 @@ The separating space is required: `#comment` does not begin a comment. The
 [language selection](modules.md#the-language-module) before applying its
 selected grammar.
 
+## String literals
+
+A string literal preserves the Unicode sequence between its delimiters. It does
+not interpret escape sequences or normalize its contents:
+
+```topal
+message is "Hej världen"
+```
+
+When the contents include quotes, a literal may name an exact delimiter tag.
+The tag immediately precedes the opening quote and immediately follows the
+closing quote:
+
+```topal
+message is text"He said "hello"."text
+punctuation is ---"Quotes such as " and "" remain literal."---
+```
+
+The two occurrences of the tag must have exactly the same Unicode sequence.
+There is no escape processing inside a tagged literal. A different tag handles
+the otherwise conflicting sequence:
+
+```topal
+example is outer"This contains "text delimiters"text."outer
+```
+
+The ordinary quoted form is the empty-tag case. A run of three or more quotes
+is a quote-only tagged delimiter, so triple quotes follow the same model rather
+than introducing a separate kind of string:
+
+```topal
+ordinary is "Literal string"
+empty is ""
+quoted is """A "quoted" literal"""
+```
+
+Literal tags are lexical delimiters, not identifier references. A tag may use
+any NFC source character except whitespace and the structural delimiters `()`,
+`{}`, and `[]`; a tag made only of quotes supplies the quote-only form above.
+The enclosed contents may contain any valid Unicode sequence. Whitespace
+separates ordinary tokens, so these remain distinct constructs:
+
+```topal
+ascii is Ascii "ASCII text"       # Apply Ascii to an ordinary literal.
+raw is ascii"Unescaped "text""ascii # Use ascii as a literal tag.
+```
+
+The first expression applies `Ascii`; it does not give the literal an encoding.
+Source files are UTF-8, but a literal constructs an unencoded `String` unless a
+constraint or conversion explicitly gives it another property.
+
 ## Expressions and application
 
 An algorithm with one input uses prefix notation:

@@ -54,6 +54,12 @@ external text likewise preserves the decoded sequence rather than silently
 normalizing it. Keywords remain ASCII. Unicode identifiers are allowed, with
 diagnostics for mixed scripts and visually confusable names.
 
+String-literal delimiters are described in [the syntax sketch](syntax.md#string-literals).
+Ordinary and tagged raw literals have the same `String` semantics: their source
+contents are preserved without escape processing or normalization. Literal tags
+are NFC source syntax and must match exactly; they are not part of the resulting
+string.
+
 The Unicode version used for normalization, character segmentation, properties,
 and case operations is fixed by the language or compiler version and is
 available as build metadata for reproducibility.
