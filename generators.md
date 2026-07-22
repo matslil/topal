@@ -117,13 +117,14 @@ yields the source prefix ending before its first rejected value:
 ```
 
 This is the compositional equivalent of a conventional loop with an initial
-state, continuation condition, state update, and body. `collect List` may
-materialize a finite generated traversal when a list value is actually needed:
+state, continuation condition, state update, and body. Unary `collect` may
+materialize a finite generated traversal as a list when that value is actually
+needed:
 
 ```topal
-digits is 0 iterate { value } value + 1
-  take-while { value } value < 10
-  collect List
+digits is collect
+  0 iterate { value } value + 1
+    take-while { value } value < 10
 ```
 
 The more general `unfold` accepts a seed and an algorithm returning either no

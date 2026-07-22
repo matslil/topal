@@ -189,7 +189,7 @@ source map transformation
 source select predicate
 source foreach action
 source entries
-source collect Target
+collect source
 ```
 
 These algorithms share names only where they share laws. Differences in order,
@@ -288,18 +288,23 @@ that evidence is not needed.
 ### Expansion and collection
 
 One-to-many transformation is most generally expressed by transforming values
-and explicitly collecting the results:
+and explicitly collecting the resulting traversal. Unary `collect` constructs
+a list, so its source follows it according to the ordinary prefix rule:
 
 ```topal
-source map expansion collect List
-source map expansion collect Set
+collect
+  source map expansion
+
+collect-set
+  source map expansion
 ```
 
-This separates expansion from the laws used to combine its results. Sequence
-collection concatenates in order, set collection removes duplicates, bag
-collection adds multiplicities, and map collection requires a key-collision
-policy. `flat-map` can be an ordinary shorthand where the source and target kind
-make those laws unambiguous.
+This separates expansion from the laws used to combine its results. `collect`
+concatenates in order to construct a `List`; `collect-set` removes duplicates,
+`collect-bag` adds multiplicities, and `collect-map` requires a key-collision
+policy. These are distinct operations rather than overloads selected by their
+output types. `flat-map` can be an ordinary shorthand where the source and
+target kind make those laws unambiguous.
 
 ### Entry views
 
@@ -510,7 +515,7 @@ to reverse. Sorting likewise requires an ordering algorithm and produces a
 sequence rather than pretending to preserve an unordered source kind:
 
 ```topal
-collection order-by comparison collect List
+collect ( collection order-by comparison )
 ```
 
 Pairwise traversal must state what happens when sizes differ:
@@ -664,15 +669,16 @@ directly or use repeated doubling. Repetition also establishes size evidence:
 (sequence repeat N) entry-count = sequence entry-count * N
 ```
 
-The desired result kind may be inferred or collected explicitly:
+Finite repetition is a traversal and may be collected into a list explicitly:
 
 ```topal
-value repeat count collect Array
-value repeat count collect List
+collect ( value repeat count )
+collect ( sequence repeat count )
 ```
 
-A static count can produce `Array N T`. A runtime-known count produces an
-existentially sized array or another requested sequence kind.
+A static count can instead construct `Array N T` directly. A runtime-known
+count produces an existentially sized array when that result kind is requested
+through its explicit construction operation.
 
 Repetition is primarily meaningful for values and sequences. Repeating a set or
 map is idempotent for positive counts, while bag repetition multiplies
