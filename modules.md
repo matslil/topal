@@ -460,7 +460,7 @@ patch versions preserve the interface. A compiled dependency on library
 version `3.7.4` is compatible with an available library exactly when:
 
 ```text
-available.major == 3
+available.major = 3
 available.minor >= 7
 available.patch is unrestricted
 ```
