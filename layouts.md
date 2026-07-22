@@ -11,27 +11,35 @@ The examples show attribute maps as parenthesized lists of named entries. The
 exact map-literal syntax remains undecided. Curly braces are not used because
 they already introduce short function bodies.
 
-## Attribute-first construction
+## Construction and reusable subtypes
 
-Attributes are supplied before the ordinary value or semantic type. Applying
-an attribute map constructs a reusable subtype; applying that subtype to its
-ordinary input constructs a fully specified value or type:
+Full construction places the attribute map first, followed by the constructor
+and its ordinary value or semantic type. Reusable subtype construction instead
+applies the constructor to the attribute map as its single parameter. The
+resulting subtype then accepts the ordinary value or type:
 
 ```text
-attributes AddressRange              -> address-range subtype
-address-range-subtype ( Nat .. Nat ) -> address-range value
+attributes AddressRange ( Nat .. Nat ) -> address-range value
+AddressRange attributes                -> address-range subtype
+address-range-subtype ( Nat .. Nat )   -> address-range value
 
-attributes AddressOffset             -> address-offset subtype
-address-offset-subtype Nat            -> address-offset value
+attributes AddressOffset Nat          -> address-offset value
+AddressOffset attributes              -> address-offset subtype
+address-offset-subtype Nat             -> address-offset value
 
-attributes Layout T                  -> layout subtype of Layout and T
+attributes Layout T                   -> layout subtype of Layout and T
+Layout attributes                     -> reusable layout subtype
+layout-subtype T                       -> layout subtype of Layout and T
 
-Location layout                      -> location subtype
-location-subtype AddressOffset        -> location value
+Location layout                       -> location subtype
+location-subtype AddressOffset         -> location value
 ```
 
-This keeps policy reusable without making ranges and offsets special syntactic
-literals.
+For example, `( caching Uncached ) AddressRange ( 0 .. 255 )` constructs a
+complete range directly. `AddressRange ( caching Uncached )` instead constructs
+a subtype which can be reused to construct several ranges. This asymmetry keeps
+the complete expression attribute-first while leaving subtype construction as
+an ordinary one-parameter application.
 
 ## Address ranges
 
@@ -46,10 +54,10 @@ minimum-access-size size in bits or bytes
 For example:
 
 ```topal
-DeviceAddresses is (
+DeviceAddresses is AddressRange (
   caching Uncached ,
   minimum-access-size bits 32
-) AddressRange
+)
 
 device is DeviceAddresses (
   0x4000_0000 .. 0x4000_FFFF
@@ -83,10 +91,10 @@ alignment   byte count
 For example:
 
 ```topal
-DeviceOffset is (
+DeviceOffset is AddressOffset (
   range device ,
   alignment 4
-) AddressOffset
+)
 
 control-offset is DeviceOffset 0x20
 ```
