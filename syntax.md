@@ -79,10 +79,10 @@ positional argument list has no labels, while a map associates names with
 values using `is`:
 
 ```topal
-( source, fallback ) combine ( other, other-fallback )
-( source is left, fallback is 0 ) combine (
-  source is right,
-  fallback is 0
+( left-source, left-fallback ) combine ( right-source, right-fallback )
+( left-source is left, left-fallback is 0 ) combine (
+  right-source is right,
+  right-fallback is 0
 )
 ```
 
@@ -305,29 +305,30 @@ may use `default` followed by its default value:
 ```topal
 zip-longest-default-zero is fn (
   (
-    list : List Nat,
-    fallback : Nat default 0
+    left-list : List Nat,
+    left-fallback : Nat default 0
   ),
   (
-    list : List Nat,
-    fallback : Nat default 0
+    right-list : List Nat,
+    right-fallback : Nat default 0
   )
 ) -> List ( Nat, Nat )
   body
 ```
 
-The two map operands have separate scopes, so corresponding entries may use the
-same names. A call may omit the defaulted associations or override them:
+Every parameter name must be unique across the entire function, including names
+packaged into different operands. A call may omit the defaulted associations or
+override them:
 
 ```topal
-( list is left ) zip-longest-default-zero ( list is right )
+( left-list is left ) zip-longest-default-zero ( right-list is right )
 
 (
-  list is left,
-  fallback is 10
+  left-list is left,
+  left-fallback is 10
 ) zip-longest-default-zero (
-  list is right,
-  fallback is 20
+  right-list is right,
+  right-fallback is 20
 )
 ```
 
