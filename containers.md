@@ -193,10 +193,12 @@ Associative Key Value
   entries
 ```
 
-Lists and arrays are sequences. Sets provide uniqueness, bags provide
-multiplicity without order, and maps provide key association with unique keys.
-All finite collections can support folding and explicit entry counting where
-their entry type is uniform.
+Lists and arrays are sequences. `String` provides the read-only sequence
+capabilities with `Character` as its entry type; this does not expose code
+points, encoded bytes, mutable entries, or a constant-time indexing guarantee.
+Sets provide uniqueness, bags provide multiplicity without order, and maps
+provide key association with unique keys. All finite collections can support
+folding and explicit entry counting where their entry type is uniform.
 
 Ordering is independent of key association. An ordered map preserves a declared
 key or insertion order by satisfying both associative and ordered traversal
@@ -215,6 +217,7 @@ source select predicate
 source foreach action
 source entries
 collect source
+source collect Target
 ```
 
 These algorithms share names only where they share laws. Differences in order,
@@ -237,6 +240,20 @@ an entry is copied, borrowed, or consumed.
 The same spelling drives a `Unit`-resumed generator, where it additionally
 returns the generator's final value. This is one traversal vocabulary over two
 different sources, not a conversion of a generator into a collection.
+
+Unary `collect` uses the traversal's ordinary materialized collection. The
+binary form names the requested collector when more than one result kind is
+meaningful. In particular, a finite sequence of `Character` or `String` entries
+can be collected as text:
+
+```topal
+text is fragments collect String
+```
+
+This concatenates the entries' Unicode sequences in order. Character boundaries
+are observed again in the resulting `String`, so boundaries from separate
+entries can merge at a join. The operation preserves content rather than entry
+boundaries.
 
 ### Fold and reduce
 
