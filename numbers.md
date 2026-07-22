@@ -137,33 +137,83 @@ For an eight-bit `ModNat`:
 
 Static literals that fit can be checked during compilation.
 
-## Bit operations
+## Fixed-width bits
 
-Arbitrary modular arithmetic does not always have a natural bitwise model.
-`ModNat ( 0 .. 9 )` has ten values even though four bits have sixteen patterns.
-
-Bitwise and rotation operations are available when the compiler has evidence
-that the modulus is a power of two and the type has a corresponding semantic bit
-width:
+`Bits width` is a fixed-width sequence of bits. The width is a positive `Nat`
+known statically as part of the type:
 
 ```topal
-bit-and
-bit-or
-bit-xor
-bit-not
-shift-left
-shift-right
-rotate-left
-rotate-right
+Bits 1
+Bits 8
+Bits 32
 ```
 
-This makes machine words expressible as power-of-two `ModNat` or conventional
-`ModInt` ranges without claiming that every modular number is a bit vector.
+Unlike `Int`, `Nat`, `ModInt`, and `ModNat`, `Bits` has no intrinsic numeric
+interpretation. A value of `Bits 32` is the same sequence whether an external
+layout later interprets it as an unsigned integer, a two's-complement signed
+integer, an IEEE floating-point number, or four encoded characters. Numeric
+conversion or interpretation is consequently explicit.
 
-Signed and nonnegative forms have identical modular addition, subtraction,
-multiplication, and bit patterns when they share a power-of-two modulus. Their
-interpretations differ for comparison, division, remainder, arithmetic shift,
-display, and conversion to exact integers.
+The fundamental pairwise bit operations require equal widths and preserve that
+width:
+
+```text
+bit-and : ( Bits width , Bits width ) -> Bits width
+bit-or  : ( Bits width , Bits width ) -> Bits width
+bit-xor : ( Bits width , Bits width ) -> Bits width
+bit-not : Bits width -> Bits width
+```
+
+Their provisional application syntax is:
+
+```topal
+left bit-and right
+left bit-or right
+left bit-xor right
+bit-not value
+```
+
+The `bit-` prefix distinguishes these operations from logical predicates and
+other uses of `and` and `or`. `bit-xor` follows the same naming scheme even
+where an unprefixed `xor` would not otherwise be ambiguous.
+
+Logical shifts retain the width, discard bits shifted out of the value, and
+insert zero bits. A shift by the width or more produces all zero bits:
+
+```text
+shift-left  : ( Bits width , Nat ) -> Bits width
+shift-right : ( Bits width , Nat ) -> Bits width
+```
+
+```topal
+value shift-left count
+value shift-right count
+```
+
+`Bits` does not provide an arithmetic right shift because it has no sign. An
+encoded signed number must be decoded to an appropriate numeric type, or use an
+explicit operation which supplies the signed interpretation.
+
+Rotations also retain the width, but wrap bits around instead of discarding
+them. Rotation counts are reduced modulo the width:
+
+```text
+rotate-left  : ( Bits width , Nat ) -> Bits width
+rotate-right : ( Bits width , Nat ) -> Bits width
+```
+
+```topal
+value rotate-left count
+value rotate-right count
+```
+
+The fixed width makes every result well-defined. In contrast, applying
+`bit-not`, a shift, or a rotation directly to arbitrary-precision `Int` or
+`Nat` would require an otherwise unobservable choice of width. Arbitrary
+modular arithmetic also does not imply a bit representation: a
+`ModNat ( 0 .. 9 )` has ten values while four bits have sixteen patterns. Code
+which needs both numeric and bit operations converts explicitly between the
+numeric value and a `Bits` value using a chosen representation.
 
 ## Ordering modular values
 
@@ -515,6 +565,7 @@ Approx specification
 
 ModInt range
 ModNat range
+Bits width
 
 Range ( minimum , maximum )
 ```
@@ -526,6 +577,7 @@ The stable design principles are:
 - Constraints restrict values without changing operations.
 - `ModInt` and `ModNat` use ranges to define modular arithmetic and canonical
   representatives.
+- `Bits` is fixed-width and has no intrinsic numeric interpretation.
 - Approximation, rounding, saturation, and wrapping are never implicit.
 - Algebraic laws determine whether the compiler may reorder operations.
 - Encodings and storage layouts remain boundary concerns.
