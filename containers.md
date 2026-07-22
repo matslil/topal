@@ -519,13 +519,15 @@ Pairwise traversal must state what happens when sizes differ:
 left zip-exact right
 left zip-shortest right
 ( left, left-default ) zip-longest ( right, right-default )
+unzip pairs
 ```
 
 `zip-exact` requires equal-size evidence or returns a `Result` after checking.
 `zip-shortest` makes truncation explicit. `zip-longest` pairs each sequence with
 the value used when that sequence has no entry at a position; the symmetric
 products make the association of each default unambiguous. `unzip` separates a
-sequence of products and preserves its entry count.
+sequence of products into a product of sequences and preserves its entry count
+in both results.
 
 ### Removal
 
