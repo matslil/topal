@@ -34,10 +34,10 @@ combine their unit expressions along with their numeric values.
 
 ## Dimensions and derived units
 
-Every unit has a dimension and a scale relative to a canonical unit for that
-dimension. Fundamental units establish the dimensions from which derived units
-are composed. A derived unit declaration establishes an equality rather than
-merely giving the compiler an optimization hint.
+Every unit has a dimension and a scale relative to the unit which establishes
+that dimension. Fundamental units establish the dimensions from which derived
+units are composed. A derived unit declaration establishes an equality rather
+than merely giving the compiler an optimization hint.
 
 For example, newton is the unit of force and is definitionally equivalent to
 kilogram metre per second squared. Provisional declaration syntax is:
@@ -45,9 +45,8 @@ kilogram metre per second squared. Provisional declaration syntax is:
 ```topal
 Newton is unit (
   symbol N ,
-  dimension Mass * Length / ( Time ^ 2 ) ,
-  scale 1[kg * m / ( s ^ 2 )] ,
-  prefixes allowed
+  prefixes SI ,
+  scale 1[kg * m / ( s ^ 2 )]
 )
 ```
 
@@ -107,6 +106,52 @@ Programs may declare new fundamental or derived units, give them symbols, and
 choose whether language-defined prefixes are accepted. Declarations must state
 enough dimension and scale information for the checker to normalize quantities
 without relying on their textual unit spellings.
+
+A fully defined unit has a `symbol`, a `prefixes` policy, and exactly one of
+`dimension` or `scale`. Naming a dimension directly establishes the unit whose
+scale is one for that dimension:
+
+```topal
+DataAmount is dimension
+
+Byte is unit (
+  symbol B ,
+  prefixes ( SI , Binary ) ,
+  dimension DataAmount
+)
+```
+
+A dimension may be declared before its unit, allowing an interface to describe
+dimension relationships abstractly. Concrete quantities in that dimension
+cannot be constructed until exactly one unit establishes it by naming the
+dimension directly.
+
+A derived unit supplies `scale` instead. Its dimension and scale are inferred
+from that quantity, so it must not also supply `dimension`:
+
+```topal
+Block is unit (
+  symbol block ,
+  prefixes none ,
+  scale 512[B]
+)
+
+Smoot is unit (
+  symbol smoot ,
+  prefixes none ,
+  scale 1.7018[m]
+)
+```
+
+The supported prefix policies are `none`, one language-defined family such as
+`SI` or `Binary`, or a product of families such as `( SI , Binary )`. A policy
+is always explicit. Programs cannot define new prefix families or change their
+factors.
+
+The checker requires `symbol` and `prefixes` exactly once and requires exactly
+one of `dimension` and `scale`. A scale must be nonzero, finite, and dimensioned;
+derived-unit definitions must not form cycles. Symbols and the prefixed forms
+they enable must be unambiguous in their scope.
 
 Simple multiplicative scaling does not describe every measurement system.
 Affine units such as degrees Celsius additionally require an offset, and units
