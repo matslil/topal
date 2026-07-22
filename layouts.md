@@ -118,7 +118,7 @@ Its attribute map initially supports:
 storage-size   size in bits or bytes
 encoding       encoding accepted by the semantic type
 endian         Little | Big, when applicable
-access         ReadWrite | ReadOnly | WriteOnly | Reserved stored-value
+access         ReadWrite | ReadOnly | WriteOnly | Reserved
 alignment      byte count, for container layouts
 ```
 
@@ -152,9 +152,20 @@ retains layout evidence for direct access, lazy endian conversion, and safe
 in-place optimization. Casting a layout value `as T` forgets the layout
 evidence without changing the semantic value.
 
-Access controls which location operations are available. `Reserved` storage is
-not exposed as a field to ordinary code and records the value that encoding a
-containing layout must write. Reading may discard or validate its stored bits.
+Access controls which location operations are available. `Reserved` is only for
+padding within a container layout. Its bits are not exposed as a semantic field
+and ordinary code cannot inspect or change them. Reading a container preserves
+the bits as hidden layout evidence; writing that layout value back emits the
+same bits. Functional updates to accessible fields preserve them as well.
+
+`Reserved` does not declare an expected read value or a value to manufacture on
+write. A newly constructed semantic container consequently lacks the hidden
+bits needed to construct that complete layout value. It can only be written
+after combining it with an existing layout value whose padding can be
+preserved. An in-place update may simply leave those bits untouched. If a
+format requires validation, clearing, setting, or any behavior other than
+preservation, the programmer exposes an accessible field and implements that
+policy explicitly.
 
 Container layouts contain layouts rather than plain semantic field types. The
 attribute map still precedes the contained layout:
@@ -213,12 +224,14 @@ Conceptually:
 
 ```text
 read  : Location L -> Result L where L is a readable Layout T
-write : ( Location L, T ) -> Result Unit where L is a writable Layout T
+write : ( Location L, L ) -> Result Unit where L is a writable Layout T
 ```
 
 Because `L` is a subtype of `T`, a caller which only needs the semantic value
 may instead classify the read result as `T`. Retaining `L` also retains the
-specific storage-size, encoding, endian, and access evidence.
+specific storage-size, encoding, endian, access, and any opaque padding
+evidence. A semantic `T` can be encoded or validated to produce `L` when the
+layout has no unavailable reserved bits.
 
 Both operations are fallible because the hardware transaction may fail
 independently of static bounds and representation checks. A read additionally
