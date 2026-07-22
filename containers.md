@@ -117,7 +117,31 @@ A set is a finite unordered collection whose members are unique. A map is a set
 of key/value products constrained so that a key occurs at most once:
 
 ```text
-Map K V = Set ( K, V ) where each K occurs at most once
+Map ( K, V ) = Set ( K, V ) where each K occurs at most once
+```
+
+The key and value types form one positional type argument. `Map ( K, V )` is a
+fully specified type; `Map K` is not an intermediate map type awaiting its value
+type. Partial type construction remains useful where an intermediate type has
+independent meaning, but a key-only map type does not.
+
+Map values use `is` for key/value association:
+
+```topal
+scores is Map ( String, Nat ) (
+  "Ada" is 10,
+  "Lin" is 8
+)
+
+no-scores is Map ( String, Nat ) ()
+```
+
+The final `()` constructs the empty value after `Map ( String, Nat )` has
+constructed the complete type. An expected type can supply that context:
+
+```topal
+no-scores : Map ( String, Nat )
+no-scores is ()
 ```
 
 Consequently, map entries use the ordinary product model, and generic set
@@ -128,16 +152,17 @@ A bag, or multiset, retains multiplicity without introducing order. It can be
 constructed from a map of values to positive occurrence counts:
 
 ```text
-Bag T = Map T PositiveNat
+Bag T = Map ( T, PositiveNat )
 ```
 
 Removing an entry decrements its count and removes the association when the
 count would reach zero. This keeps one canonical representation for an absent
 entry.
 
-`Set T` can alternatively be viewed as `Map T Unit`, but this is an equivalence
-rather than a second foundational definition. The primary construction remains
-a map as a constrained set of associations, avoiding circular definitions.
+`Set T` can alternatively be viewed as `Map ( T, Unit )`, but this is an
+equivalence rather than a second foundational definition. The primary
+construction remains a map as a constrained set of associations, avoiding
+circular definitions.
 
 ## Collection capabilities
 
@@ -315,7 +340,7 @@ operate on values and on structural information:
 List T     entry: IndexedEntry T
 Array N T  entry: IndexedEntry T
 Set T      entry: T
-Map K V    entry: Entry K V
+Map ( K, V ) entry: Entry K V
 Bag T      entry: CountedEntry T
 ```
 
