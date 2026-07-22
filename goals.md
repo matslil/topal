@@ -72,8 +72,10 @@ when these preserve the program's meaning.
 
 - Foreign-language, application, and network boundaries are described with
   typed protocols and explicit validation rather than unchecked conventions.
-- Hardware representations include encoding, endianness, width, and alignment.
-  Access capabilities specify legal read/write sizes and resource identity.
+- Hardware [layouts and addressed storage](layouts.md) separate immutable
+  semantic values from their encoding, access rights, address ranges, offsets,
+  and locations. Access capabilities specify legal read/write sizes and
+  resource identity.
 - Hardware access is an ordered effect: reads and writes cannot be duplicated,
   removed, cached, or reordered unless their declarations allow it.
 - Typestate protocols and linear capabilities describe device state changes and
