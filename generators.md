@@ -76,13 +76,14 @@ between yielded values. Such a generator supports `foreach` directly:
 ```topal
 generator-value is values first
 
-result is generator-value foreach value
+result is generator-value foreach { value }
   print value
 ```
 
-`foreach` runs its body once for each yielded value, resumes the generator with
-`Unit`, and stops when the generator returns. The `foreach` expression produces
-the generator's final return value, which may be ignored when it is `Unit`.
+`foreach` applies its inferred anonymous algorithm once for each yielded value,
+resumes the generator with `Unit`, and stops when the generator returns. The
+`foreach` expression produces the generator's final return value, which may be
+ignored when it is `Unit`.
 
 Conceptually, its classification is:
 
@@ -94,6 +95,47 @@ If evaluating the body can fail, traversal stops without resuming the
 continuation again and the enclosing result accounts for that failure. More
 general loop forms and bidirectional generator-driving conveniences remain
 open; `foreach` specifies only the common `Unit`-resumed case.
+
+## Generated traversal
+
+`iterate` constructs a `Unit`-resumed generator from an initial value and an
+algorithm producing the next value. It yields the initial value first and is
+unbounded by itself:
+
+```topal
+numbers is 0 iterate { value }
+  value + 1
+```
+
+Consumers bound or terminate that computation. For example, `take-while`
+yields the source prefix ending before its first rejected value:
+
+```topal
+0 iterate { value } value + 1
+  take-while { value } value < 10
+  foreach { value } print value
+```
+
+This is the compositional equivalent of a conventional loop with an initial
+state, continuation condition, state update, and body. `collect List` may
+materialize a finite generated traversal when a list value is actually needed:
+
+```topal
+digits is 0 iterate { value } value + 1
+  take-while { value } value < 10
+  collect List
+```
+
+The more general `unfold` accepts a seed and an algorithm returning either no
+next step or a yielded value paired with the next seed:
+
+```text
+unfold : S, ( S -> Option ( T, S ) ) -> Generator T Unit Unit
+```
+
+Unlike `iterate`, `unfold` can finish from its own step result and may keep its
+internal state distinct from its yielded type. Neither operation constructs an
+intermediate collection.
 
 ## Independence from message passing
 

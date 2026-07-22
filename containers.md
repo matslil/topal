@@ -187,13 +187,31 @@ source fold initial-state step
 source reduce reduction
 source map transformation
 source select predicate
-source each action
+source foreach action
 source entries
 source collect Target
 ```
 
 These algorithms share names only where they share laws. Differences in order,
 uniqueness, multiplicity, keys, and retained size evidence remain visible.
+
+`foreach` applies an action to every entry and returns `Unit` for a finite
+collection:
+
+```topal
+values foreach { value }
+  print value
+```
+
+Sequence traversal observes sequence order. Traversing an unordered collection
+does not create an observable member order; an action requiring ordering must
+first select one explicitly. Each call receives an entry according to the
+ordinary ownership and lifetime rules. `foreach` does not itself promise that
+an entry is copied, borrowed, or consumed.
+
+The same spelling drives a `Unit`-resumed generator, where it additionally
+returns the generator's final value. This is one traversal vocabulary over two
+different sources, not a conversion of a generator into a collection.
 
 ### Fold and reduce
 
@@ -368,6 +386,48 @@ operations below remain part of the standard vocabulary because their laws
 carry useful meaning and permit implementations more efficient than a generic
 fold.
 
+### List decomposition
+
+The constructors completely define a list:
+
+```topal
+Empty
+Entry ( value, remaining-list )
+```
+
+Pattern matching is therefore the fundamental total way to inspect its front:
+
+```topal
+values
+  Empty then empty-result
+  Entry ( first, rest ) then use first rest
+```
+
+The standard `uncons` algorithm packages the same decision for composition:
+
+```text
+uncons : List T -> Option ( T, List T )
+```
+
+It returns no product for `Empty` and otherwise returns the first value and
+remaining list. `first` and `rest` are projections from successful `uncons` and
+therefore return `Option T` and `Option (List T)` unless non-emptiness evidence
+is already available. There is no partial operation that silently fails on an
+empty list.
+
+Front insertion is the constructor expressed as an operation, while ordered
+combination uses the general sequence vocabulary:
+
+```topal
+list prepend value
+list append value
+list concatenate other-list
+```
+
+Their defining results are `Entry ( value, list )`, the source followed by a
+singleton, and the source followed by `other-list`, respectively. These names
+do not promise a particular asymptotic cost or storage representation.
+
 ### Construction and counting
 
 Finite homogeneous collections support empty and singleton construction where
@@ -426,6 +486,44 @@ map merge other-map resolving collision-policy
 Set union is idempotent, bag sum adds multiplicities, and map merge must account
 for duplicate keys. They may reuse insertion machinery without hiding these
 differences behind one universal bulk operation.
+
+### Sequence regions and order
+
+A sequence is divided at a boundary rather than at an entry index:
+
+```topal
+sequence split-at boundary
+sequence take count
+sequence drop count
+sequence reverse
+```
+
+`split-at` returns the prefix and suffix meeting at the supplied boundary and
+retains their size relationship with the source. A statically or evidentially
+valid boundary makes it infallible; an unchecked runtime `Nat` produces a
+`Result`. `take` and `drop` are the two projections of the same split and use
+the same validity rule rather than silently clamping an excessive count.
+
+`reverse` preserves entry count and multiplicity while reversing sequence
+order. It is unavailable for an unordered collection because no order exists
+to reverse. Sorting likewise requires an ordering algorithm and produces a
+sequence rather than pretending to preserve an unordered source kind:
+
+```topal
+collection order-by comparison collect List
+```
+
+Pairwise traversal must state what happens when sizes differ:
+
+```topal
+left zip-exact right
+left zip-shortest right
+left zip-longest right filling left-default right-default
+```
+
+`zip-exact` requires equal-size evidence or returns a `Result` after checking.
+The other names make truncation or padding explicit. `unzip` separates a
+sequence of products and preserves its entry count.
 
 ### Removal
 
@@ -518,6 +616,24 @@ container:
 lists contains-entry other-list
 lists contains-sequence other-lists
 ```
+
+### Search and quantification
+
+Common short-circuiting eliminations are part of the standard vocabulary even
+though folds can define them:
+
+```topal
+sequence find predicate
+collection any predicate
+collection all predicate
+collection none predicate
+```
+
+`find` returns the first matching sequence value as an `Option`; unordered
+collections instead use `find-any` when an arbitrary matching member is
+acceptable. `any`, `all`, and `none` return `Boolean` and may stop once their
+result is determined. Their result does not expose traversal order, so they are
+also meaningful for sets and bags.
 
 ### Repetition
 
