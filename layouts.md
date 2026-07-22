@@ -49,6 +49,7 @@ attribute map initially supports:
 ```text
 caching             Cached | Uncached
 minimum-access-size size in bits or bytes
+medium              Memory | MMIO
 ```
 
 For example:
@@ -56,7 +57,8 @@ For example:
 ```topal
 DeviceAddresses is AddressRange (
   caching Uncached ,
-  minimum-access-size bits 32
+  minimum-access-size bits 32 ,
+  medium MMIO
 )
 
 device is DeviceAddresses (
@@ -64,8 +66,14 @@ device is DeviceAddresses (
 )
 ```
 
-`caching` describes the platform or hardware cache policy. It never permits the
-compiler to reuse, omit, or combine explicit location reads or writes.
+`caching` describes the platform or hardware cache policy. It does not by itself
+decide whether the compiler may reuse, omit, or combine storage access; that
+follows from the range's medium and the semantics of the operation.
+
+`medium` distinguishes stable memory, such as a protocol-packet buffer, from
+memory-mapped I/O. A `Memory` range supports immutable layout-backed values and
+the usual representation-preserving optimizations. An `MMIO` range exposes
+fallible hardware reads and writes as observable effects.
 
 `minimum-access-size` describes the smallest physical transaction supported by
 the range. A layout may be smaller, but accessing it then requires a containing
@@ -73,10 +81,12 @@ transaction whose layout determines every accessed bit. The compiler must not
 invent a read-modify-write operation when doing so could introduce an illegal
 or observable read.
 
-All location reads and writes within one address range occur in source effect
-order. They cannot be duplicated, removed, combined, or reordered. The initial
-model may conservatively preserve ordering between different ranges as well;
-more precise cross-range ordering remains future work.
+All location reads and writes within one `MMIO` address range occur in source
+effect order. They cannot be duplicated, removed, combined, or reordered. The
+initial model may conservatively preserve ordering between different MMIO
+ranges as well; more precise cross-range ordering remains future work. Access
+to a `Memory` range instead follows ordinary immutable value semantics, under
+which the compiler may optimize storage access when the result is unchanged.
 
 ## Address offsets
 
@@ -172,7 +182,6 @@ attribute map still precedes the contained layout:
 
 ```topal
 HeaderLayout is (
-  storage-size bytes 8 ,
   alignment 4 ,
   access ReadWrite
 ) Layout (
@@ -183,9 +192,12 @@ HeaderLayout is (
 ```
 
 The semantic product is derived from the semantic types provided by its field
-layouts. Container alignment and packing attributes determine field placement.
-The precise field-map and packing syntax remains to be designed; ordinary
-parentheses remain available wherever explicit grouping is required.
+layouts. `storage-size` is optional for a container layout: when absent, its
+size is inferred from its field sizes, placement, padding, and alignment. When
+present, the declared size is checked against the derived layout. Container
+alignment and packing attributes determine field placement. The precise
+field-map and packing syntax remains to be designed; ordinary parentheses
+remain available wherever explicit grouping is required.
 
 ## Locations
 
