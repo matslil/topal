@@ -280,9 +280,10 @@ ExtendedApprox
 ```
 
 `ExtendedNat` adds `+Infinity`. The signed extended types add both `-Infinity`
-and `+Infinity`. Here `Approx` denotes a policy without infinite values; a named
-IEEE type may already select the corresponding extended policy. Every finite
-value embeds losslessly in its extended type:
+and `+Infinity`. Here `Approx` denotes a policy without infinite values. IEEE
+formats remain available as encodings for storage and interoperability, but
+their NaN bit patterns do not become semantic numeric values. Every finite value
+embeds losslessly in its extended type:
 
 ```text
 Nat      <: ExtendedNat
@@ -333,6 +334,8 @@ then produce an extended result:
 ```text
 positive / zero FromAbove -> +Infinity
 positive / zero FromBelow -> -Infinity
+negative / zero FromAbove -> -Infinity
+negative / zero FromBelow -> +Infinity
 positive / zero Exact     -> DivisionByZero
 zero Exact / zero Exact   -> Indeterminate
 ```
@@ -383,6 +386,13 @@ explicit:
 
 The exact spelling remains provisional.
 
+NaN is not a value of `Approx` or `ExtendedApprox`. An operation which would
+produce NaN under IEEE arithmetic instead reports an `indeterminate` arithmetic
+error at that operation. An IEEE encoding may contain a NaN bit pattern so it
+can be preserved at an external boundary, but decoding that pattern as a
+semantic approximate number fails validation. Raw encoding inspection may
+still expose its classification and payload when interoperability requires it.
+
 Finite-precision arithmetic may round a tiny negative value to zero. Its
 negative polarity maps to the same `FromBelow` evidence used by exact and
 symbolic calculations, rather than changing meaning according to physical
@@ -401,8 +411,8 @@ c + b + a
 ```
 
 Increasing precision reduces error but cannot remove this property for all
-inputs. IEEE special values such as NaN, infinities, and negative zero add
-further algebraic distinctions.
+inputs. Infinities and directional zero evidence add further algebraic
+distinctions when the selected approximate domain includes them.
 
 Topal therefore associates algebraic law evidence with operations and operand
 types:
@@ -511,16 +521,89 @@ fundamental numeric vocabulary is:
 
 ```topal
 left = right
-left compare right
+left != right
+left <=> right
+left < right
+left <= right
+left > right
+left >= right
 zero NumberType
 one NumberType
 negate value
+absolute value
 left + right
 left - right
 left * right
 left / right
+left % right
+left /% right
+left ^ right
 value convert NumberType
 ```
+
+`=` is the fundamental equality operation and returns `Boolean`; `!=` is its
+derived negation. Equality does not require ordering. Totally ordered numeric
+domains additionally provide three-way comparison:
+
+```topal
+left <=> right -> Comparison
+
+Comparison
+  Less
+  Equal
+  Greater
+```
+
+The familiar Boolean ordering operators are derived from `<=>`: `<` selects
+`Less`, `>` selects `Greater`, and the inclusive forms additionally select
+`Equal`. They remain standard operators because they state the intended
+predicate directly. Comparison chains have no special evaluation rule: write
+`a < b and b < c`, rather than `a < b < c`, consistently with ordinary
+left-to-right application. A domain with only a partial order must expose a
+separate partial-comparison operation whose result can include `Unordered`; it
+does not provide `<=>` as a total comparison.
+
+`/` is exact division. For example, dividing two integers may produce a
+`Rational`; it does not silently round to another integer. `%` and `/%` are the
+compact Euclidean operations for discrete numeric domains. `%` produces the
+modulo, while `/%` produces the quotient and modulo together:
+
+```topal
+17 % 5    # 2
+17 /% 5   # ( 3 , 2 )
+-17 /% 5  # ( -4 , 3 )
+```
+
+For `a /% b = ( q , r )`, where `b` is nonzero, the result is uniquely defined
+by:
+
+```text
+a = b * q + r
+0 <= r < absolute b
+```
+
+Consequently, `%` always produces the canonical nonnegative modulo, including
+when either operand is negative. `^` is exponentiation where the operand domain
+supports the requested exponent; its detailed result typing is
+capability-specific.
+
+For a domain whose result does not include infinity, a zero divisor has no
+numeric result. The same is always true for the discrete `%` and `/%`
+operations. These operations report the numeric domain's `division-by-zero`
+arithmetic error as soon as an invalid operation is evaluated. A statically
+evident invalid zero divisor is rejected during compilation. If the divisor is
+proven nonzero, the operation has its ordinary result type; otherwise its type
+is `Result` of that result type, and the caller must handle or propagate the
+error according to the standard error model.
+
+An extended domain, including `ExtendedApprox`, can instead divide a nonzero
+value by directional zero to produce the corresponding infinity, as described
+under zero directionality. Directionless zero still reports
+`division-by-zero`, and indeterminate forms such as `0 / 0` report
+`indeterminate` rather than producing NaN.
+
+`absolute` produces a value's nonnegative magnitude. Prefix `-` is the compact
+syntax for `negate`; binary `-` remains subtraction.
 
 Subtraction is fundamental independently of negation. `Nat` supports subtraction
 even though it is not closed under negation. The operation derives the strongest
@@ -548,21 +631,18 @@ a - b = a + ( negate b )
 
 This is one subtraction operation with evidence-sensitive result typing, not a
 saturating natural subtraction. Saturation remains an explicit arithmetic
-policy. Ordering predicates derive from `compare`. Discrete numeric domains
-additionally provide quotient and remainder with explicitly documented rounding
-semantics:
-
-```topal
-left quotient right
-left remainder right
-```
+policy. Ordering predicates derive from `<=>`. The Euclidean `%` and `/%`
+operations provide discrete numeric domains' modulo and combined integer
+division. Truncating quotient and signed-remainder operations are not part of
+the initial model.
 
 Not every numeric type supports every operation, and an operation need not
 return its operand type. `Nat`, for example, is not closed under negation, and
 exact division of two integers may produce a rational result. Rounding,
-approximation, saturation, wrapping, powers, roots, transcendental functions,
-and bit operations are standard or capability-specific algorithms rather than
-universal numeric fundamentals.
+approximation, saturation, wrapping, roots, transcendental functions, and bit
+operations are standard or capability-specific algorithms rather than
+universal numeric fundamentals. Exponentiation has the common `^` spelling but
+remains capability-specific rather than being supported by every numeric type.
 
 ## Provisional hierarchy
 

@@ -11,7 +11,7 @@ A predicate decides whether a value belongs to a set. A range is a predicate
 whose accepted values form one convex interval in a chosen total order:
 
 ```text
-a <= b <= c
+a <= b and b <= c
 range accepts a
 range accepts c
 ----------------
