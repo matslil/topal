@@ -47,6 +47,9 @@ bytes is serializer person
 
 No type names, field descriptors, source locations, or other introspection data
 are retained at runtime merely because static introspection is available.
+The language-provided [serialization](serialization.md) operation is a
+standardized instance of such derivation. Its qualified `lang serialize`
+operation does not make runtime reflection implicit for ordinary values.
 
 ## Typed views
 
@@ -348,7 +351,8 @@ reconstructed because its hidden structure was deliberately not exposed.
 
 ## Language context
 
-The selected language revision and variants are statically introspectable:
+The language version and features active at the current source location are
+statically introspectable:
 
 ```topal
 context is lang context
@@ -358,11 +362,15 @@ Conceptually:
 
 ```topal
 lang LanguageContext is Record
-  revision : lang LanguageRevision
-  variants : Set (lang LanguageVariant)
+  language : lang LanguageIdentity
+  version : Version
+  features : Set (lang FeatureIdentity)
 ```
 
-This reports the exact `use lang` selection of the current source file. It does
+`lang version` directly returns the `version` field. The context changes after
+a later `use lang topal` or `use lang feature` declaration; declarations which
+were already completed retain their earlier context. This reports the exact
+selections at the inspection location. It does
 not report the compiler implementation version, claim compatibility with a
 range of language revisions, or permit a build target to change the source
 program's semantics.
@@ -396,7 +404,7 @@ The first introspection revision should provide:
 - deterministic enumeration of visible scope members;
 - declaration metadata already visible at the inspection site;
 - typed static names, labels, paths, and identities;
-- exact selected language revision and variant inspection;
+- exact language version and active feature inspection;
 - explicit layout inspection separate from semantic type inspection; and
 - typed construction sufficient to derive algorithms from inspected types.
 
