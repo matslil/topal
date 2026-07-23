@@ -238,8 +238,8 @@ current-time ()
 
 Values beyond the two-operand limit must be packaged into one or both operands
 explicitly. Parentheses make the extra structure visible: a comma-separated
-positional argument list has no labels, while a map associates names with
-values using `is`:
+positional argument list has no labels, while a labeled product associates
+names with values using `is`:
 
 ```topal
 ( left-source, left-fallback ) combine ( right-source, right-fallback )
@@ -249,9 +249,11 @@ values using `is`:
 )
 ```
 
-The second form does not add four operands to `combine`; it supplies two map
-operands, each containing two associations. Chaining another application
-applies the result of the first application rather than adding a third operand.
+The second form does not add four operands to `combine`; it supplies two
+labeled-product operands, each containing two associations. An expected record
+or map type determines whether those associations are static fields or dynamic
+entries. Chaining another application applies the result of the first
+application rather than adding a third operand.
 
 Binary application associates from left to right and has no operator-specific
 precedence:
@@ -342,6 +344,19 @@ ada is Person (
   age is 36
 )
 ```
+
+Record field selection places the static field label after the record value:
+
+```topal
+name : String
+name is ada name
+```
+
+Unlike map lookup, selection of a declared record field is total and produces
+that field's precise declared type. It is a structural record operation rather
+than a unary algorithm application. Selection groups with its record before
+ordinary application, so `operating-system close file descriptor` applies
+`close` to `file descriptor`.
 
 An anonymous record combines field classification and initialization:
 
@@ -536,7 +551,10 @@ pub interval is fn (
   start : Integer,
   end : Integer
 ) -> Result Interval
-  Interval ( start, end )
+  Interval (
+    start is start,
+    end is end
+  )
 ```
 
 This field syntax states an invariant of every value of the declared type. A
@@ -789,7 +807,7 @@ File is type
   descriptor : FileDescriptor
 
   destroy is fn ( file : File ) -> Result Unit
-    operating-system close file.descriptor
+    operating-system close file descriptor
 ```
 
 A destructor may return only `Unit` or `Result Unit`; it cannot produce a
@@ -934,7 +952,10 @@ the pattern are available:
 
 ```topal
 person
-  Person ( name , age ) when age >= 18 then greet name
+  Person (
+    name is name,
+    age is age
+  ) when age >= 18 then greet name
   otherwise return error Ineligible
 ```
 

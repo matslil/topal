@@ -18,7 +18,7 @@ File is type
   descriptor : FileDescriptor
 
   destroy is fn ( file : File ) -> Result Unit
-    operating-system close file.descriptor
+    operating-system close file descriptor
 ```
 
 The destructor belongs to `File`, not to a particular constructor. Every

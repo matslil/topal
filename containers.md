@@ -78,7 +78,8 @@ ada is Person (
 Record construction is labeled. Field order is therefore not significant at a
 construction site, although declaration order remains significant when a later
 field's type depends on an earlier field. Selecting a declared field is total
-and retains its precise type:
+and retains its precise type. Field selection places the static field label
+after the record value:
 
 ```topal
 name : String
@@ -189,7 +190,7 @@ Message is Union
 message is Move ( 10.0, 20.0 )
 
 message
-  Move ( x, y ) then move-to x y
+  Move ( x, y ) then move-to ( x, y )
   Stop then stop ()
 ```
 
