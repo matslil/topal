@@ -238,8 +238,8 @@ current-time ()
 
 Values beyond the two-operand limit must be packaged into one or both operands
 explicitly. Parentheses make the extra structure visible: a comma-separated
-positional argument list has no labels, while a map associates names with
-values using `is`:
+positional argument list has no labels, while a labeled product associates
+names with values using `is`:
 
 ```topal
 ( left-source, left-fallback ) combine ( right-source, right-fallback )
@@ -249,9 +249,11 @@ values using `is`:
 )
 ```
 
-The second form does not add four operands to `combine`; it supplies two map
-operands, each containing two associations. Chaining another application
-applies the result of the first application rather than adding a third operand.
+The second form does not add four operands to `combine`; it supplies two
+labeled-product operands, each containing two associations. An expected record
+or map type determines whether those associations are static fields or dynamic
+entries. Chaining another application applies the result of the first
+application rather than adding a third operand.
 
 Binary application associates from left to right and has no operator-specific
 precedence:
@@ -307,6 +309,125 @@ point
 Whether `Point ( x , y )` constructs or matches is determined by its expression
 or matcher context. Its tokenization and grouping do not change.
 
+## Algebraic data declarations
+
+Topal names the positional product `Tuple`, the labeled product `Record`, the
+positional sum `Variant`, and the labeled sum `Union`. A union is what is also
+commonly called a tagged union; all Topal union alternatives are tagged, so the
+shorter source name is sufficient.
+
+Tuple types use a positional type list, and tuple values use the corresponding
+product expression:
+
+```topal
+Coordinate is Tuple ( Float, Float )
+
+position : Coordinate
+position is ( 12.5, 7.0 )
+```
+
+A record declaration classifies each static field label:
+
+```topal
+Person is Record
+  name : String
+  age : Nat
+```
+
+Record construction associates those labels with values. The constructor
+provides the context which distinguishes these fixed field associations from
+dynamic map entries:
+
+```topal
+ada is Person (
+  name is "Ada",
+  age is 36
+)
+```
+
+Record field selection places the static field label after the record value:
+
+```topal
+name : String
+name is ada name
+```
+
+Unlike map lookup, selection of a declared record field is total and produces
+that field's precise declared type. It is a structural record operation rather
+than a unary algorithm application. Selection groups with its record before
+ordinary application, so `operating-system close file descriptor` applies
+`close` to `file descriptor`.
+
+An anonymous record combines field classification and initialization:
+
+```topal
+pair is (
+  a : Int is 5,
+  b : String is "Hello"
+)
+```
+
+This is distinct from both a positional product and a map. In particular,
+`( a : Int is 5, b : Int is 6 )` remains a record despite its homogeneous field
+types. It may be converted explicitly to `Map ( String, Int )`, but conversion
+forgets statically guaranteed field presence and changes field selection into
+ordinary partial map lookup.
+
+A positional variant selects an alternative with `at` and a zero-based finite
+index:
+
+```topal
+Scalar is Variant ( String, Nat, Boolean )
+
+text is Scalar at 0 "hello"
+count is Scalar at 1 42
+```
+
+The selected position is part of both construction and matching:
+
+```topal
+scalar
+  Scalar at 0 text then print text
+  Scalar at 1 count then print count
+  Scalar at 2 enabled then print enabled
+```
+
+A union labels its alternatives:
+
+```topal
+State is Union
+  Idle
+  Running : Progress
+  Failed : Error
+```
+
+An unclassified alternative carries `Unit`. Classified alternatives accept one
+payload, using ordinary application for construction and the same form for
+matching:
+
+```topal
+state is Running progress
+
+state
+  Idle then start ()
+  Running progress then display progress
+  Failed problem then report problem
+```
+
+Several payload components are packaged in a tuple or record. Union syntax does
+not introduce a separate inline product mechanism:
+
+```topal
+Message is Union
+  Move : Tuple ( Float, Float )
+  Stop
+
+message is Move ( 10.0, 20.0 )
+```
+
+See [containers and algebraic data](containers.md#algebraic-foundation) for the
+semantic relationships among tuples, records, variants, unions, and maps.
+
 ## Bindings and classification
 
 `is` introduces an immutable binding. Outside a map construction it binds the
@@ -345,6 +466,10 @@ empty-counts is Map ( String, Nat ) ()
 other-counts : Map ( String, Nat )
 other-counts is ()
 ```
+
+The explicit map type or an expected map type distinguishes these dynamic,
+homogeneous associations from record fields. Equal field types do not by
+themselves make an anonymous record a map.
 
 `:` classifies a value, binding, or pattern with the type expression on its
 right:
@@ -400,7 +525,7 @@ earlier fields in the same declaration, making relationships between components
 part of the declared type:
 
 ```topal
-pub Interval is type
+pub Interval is Record
   pub start : Integer
   pub end : ( > start ) Integer
 ```
@@ -426,7 +551,10 @@ pub interval is fn (
   start : Integer,
   end : Integer
 ) -> Result Interval
-  Interval ( start, end )
+  Interval (
+    start is start,
+    end is end
+  )
 ```
 
 This field syntax states an invariant of every value of the declared type. A
@@ -679,7 +807,7 @@ File is type
   descriptor : FileDescriptor
 
   destroy is fn ( file : File ) -> Result Unit
-    operating-system close file.descriptor
+    operating-system close file descriptor
 ```
 
 A destructor may return only `Unit` or `Result Unit`; it cannot produce a
@@ -824,7 +952,10 @@ the pattern are available:
 
 ```topal
 person
-  Person ( name , age ) when age >= 18 then greet name
+  Person (
+    name is name,
+    age is age
+  ) when age >= 18 then greet name
   otherwise return error Ineligible
 ```
 
@@ -847,10 +978,13 @@ classification    = bindable ":" type-expression ;
 binary-chain      = prefix-expression
                     { binary-operator prefix-expression } ;
 prefix-expression = { prefix-operator } primary ;
-primary           = identifier | literal | product | grouped ;
+primary           = identifier | literal | product | anonymous-record | grouped ;
 grouped           = "(" expression ")" ;
 product           = "(" expression "," expression
                     { "," expression } ")" ;
+anonymous-record  = "(" record-field "," record-field
+                    { "," record-field } ")" ;
+record-field      = identifier ":" type-expression "is" expression ;
 
 function          = "fn" [ "static" ] input-pattern "->" type-expression block ;
 decision          = expression decision-block ;
