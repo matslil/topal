@@ -5,22 +5,23 @@ inputs, mocked dependency results, and expected results. The compiler checks
 each row and verifies that the complete table covers every feasible structural
 path through the function under test.
 
-Testing facilities belong to the compiler-provided `test` scope. The language
-does not reserve unqualified words such as `table`, `mock`, `coverage`, or
-`unused` for testing. A source file which uses these facilities makes the scope
-available explicitly:
+Testing facilities are a language feature. A source file activates them at the
+point where its test declarations begin:
 
 ```topal
-use test
+use lang feature testing
 ```
 
-This document uses `test path-coverage`, `test coverage`, and other qualified
-names even after that declaration to emphasize which constructs are
-testing-specific.
+Activation introduces the testing vocabulary into the root scope from that
+declaration to the next language selection or the end of the file. Names such
+as `path-coverage`, `coverage`, `mock`, and `unused` are not reserved before
+activation. A collision with a declaration already visible in the root scope
+is reported at the feature declaration rather than silently shadowing either
+meaning.
 
 ## Compact tables
 
-A coverage table applies the function under test to `test path-coverage`. Each
+A coverage table applies the function under test to `path-coverage`. Each
 indented row has three parts:
 
 ```text
@@ -39,7 +40,7 @@ For example:
 ```topal
 test-db is ( user-a, user-b )
 
-eligible (test path-coverage)
+eligible path-coverage
   ( test-db, user-a ), (
     test-db find user-a -> found,
     has-permission user-a -> true
@@ -65,13 +66,13 @@ an ordinary call.
 The notation adds no general-purpose symbols. Parentheses and commas retain
 their ordinary product meaning, while `->` already separates an input from an
 output in algorithm syntax. Only `path-coverage` is introduced for this
-facility, and it is a member of the compiler-provided `test` scope.
+facility, and it is introduced by the `testing` language feature.
 
 The formatter keeps a short row on one line and expands only its interaction
 product when necessary:
 
 ```topal
-double (test path-coverage)
+double path-coverage
   0, () -> 0
   1, () -> 2
   -1, () -> -2
@@ -95,7 +96,8 @@ exercise the same structural path. Boundary values, regressions, and important
 domain examples remain useful even when they add no formal coverage. The
 compiler does not warn merely because removing a row would preserve coverage.
 
-The expected result is an ordinary expression evaluated in the test scope. It
+The expected result is an ordinary expression evaluated in the testing
+declaration's scope. It
 may refer to bindings already available there, but it may not call the function
 under test. This prevents a test from proving itself by using its implementation
 as the expected result.
@@ -106,7 +108,7 @@ Interactions are matched from left to right. A later call may refer directly to
 the concrete value carried by an earlier supplied result:
 
 ```topal
-load-current (test path-coverage)
+load-current path-coverage
   absent-id, (
     accounts find absent-id -> Ok None
   ) -> Ok default-configuration
@@ -122,7 +124,8 @@ load-current (test path-coverage)
   ) -> Error unavailable
 ```
 
-Here `account-a` is an ordinary value already available in the test scope. The
+Here `account-a` is an ordinary value already available in the declaration
+scope. The
 first interaction supplies `Ok (Some account-a)`, and the following expected
 call uses that same value. The interaction syntax does not give `is` any new
 meaning or implicitly bind a name from a mocked result.
@@ -130,7 +133,7 @@ meaning or implicitly bind a name from a mocked result.
 Two calls to the same dependency occur twice in the interaction product:
 
 ```topal
-compare-current (test path-coverage)
+compare-current path-coverage
   sample-a, (
     samples read sample-a -> Ok 10,
     samples read sample-a -> Ok 12
@@ -159,7 +162,7 @@ entries take precedence over reuse. Calls from different branches within the
 loop are never coalesced, even when they call the same dependency:
 
 ```topal
-inspect-all (test path-coverage)
+inspect-all path-coverage
   ( item-a, item-b, item-c ), (
     classify item-a -> ordinary
   ) -> Ok Completed
@@ -213,7 +216,7 @@ has three collapsed structural paths:
 A complete table is:
 
 ```topal
-contains (test path-coverage)
+contains path-coverage
   ( (), 3 ), () -> false
   ( ( 1, 3, 5 ), 3 ), () -> true
   ( ( 1, 5, 7 ), 3 ), () -> false
@@ -247,7 +250,7 @@ double is fn ( value : Integer ) -> Integer
 coverage, although a useful table will often contain several values:
 
 ```topal
-double (test path-coverage)
+double path-coverage
   0, () -> 0
   1, () -> 2
   -1, () -> -2
@@ -300,10 +303,10 @@ Example obligation:
 
 ## Coverage reports
 
-`test coverage` exposes the compiler's static report to test tooling:
+`coverage` exposes the compiler's static report to test tooling:
 
 ```topal
-report is test coverage eligible
+report is coverage eligible
 ```
 
 Conceptually, the report contains the function identity, covered paths,
@@ -325,7 +328,7 @@ not characterize those rows as redundant.
 
 ## Scope and initial restrictions
 
-Applying `test path-coverage` may inspect the implementation of a function only
+Applying `path-coverage` may inspect the implementation of a function only
 where ordinary visibility permits that implementation to be tested. It does
 not reveal private control flow through a published interface to an unrelated
 package.
