@@ -4,6 +4,11 @@ This document records the provisional surface syntax for Topal. The syntax is
 intended to make composition and dependencies visible while remaining easy to
 parse. It describes design direction, not yet a stable language specification.
 
+Testing-specific table syntax is described separately in
+[unit testing and structural path coverage](testing.md). Its additional
+constructs remain under the compiler-provided `test` scope and do not add
+unqualified testing keywords to ordinary Topal source.
+
 ## Lexical structure
 
 Source is encoded as text and divided into identifiers, literals, symbols,

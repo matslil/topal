@@ -51,6 +51,10 @@ when these preserve the program's meaning.
   computation. Consumers determine whether the enclosing computation terminates.
 - Logging and tracing can be attached without modifying the observed algorithm.
   Diagnostic effects may be unordered when their ordering is not semantic.
+- Compact [unit-test tables](testing.md) supply concrete inputs, mocked
+  dependency results, and expected results. The compiler verifies each row and
+  certifies coverage of every feasible structural path, collapsing loops and
+  structural recursion to zero versus one-or-more repetitions.
 
 ## Parallelism and communication
 
