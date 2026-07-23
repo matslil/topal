@@ -242,6 +242,13 @@ module, it can provide grammar, constructs, typing rules, compiler guarantees,
 scopes, and values. Its contents are introduced directly into the source file's
 main scope rather than remaining qualified by `lang`.
 
+Static [introspection](introspection.md) is the deliberate exception to that
+last rule. Introspection-specific operations and descriptor types remain
+available through the qualified `lang` scope, as in `lang view Person` and
+`lang TypeView`. This keeps inspection of language objects visibly distinct
+from ordinary application and data selection. Selecting a language revision
+still introduces that revision's ordinary source vocabulary directly.
+
 Every source file selects an immutable language revision explicitly:
 
 ```topal

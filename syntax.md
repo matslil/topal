@@ -9,6 +9,11 @@ Testing-specific table syntax is described separately in
 constructs remain under the compiler-provided `test` scope and do not add
 unqualified testing keywords to ordinary Topal source.
 
+Introspection-specific operations are described in
+[static introspection](introspection.md). They remain visibly qualified through
+the compiler-provided `lang` scope, as in `lang view Person`, rather than adding
+unqualified reflection keywords to ordinary Topal source.
+
 ## Lexical structure
 
 Source is encoded as text and divided into identifiers, literals, symbols,

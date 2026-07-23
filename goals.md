@@ -16,6 +16,10 @@ when these preserve the program's meaning.
   macro, template, class, and [module systems](modules.md).
 - Composition is the fundamental operation. Syntax is easy for humans and tools
   to parse, evaluates left to right, and has no special precedence hierarchy.
+- Typed [static introspection](introspection.md) exposes visible semantic
+  structure through qualified `lang` operations. Static algorithms can inspect
+  and construct language objects without a separate macro language or implicit
+  runtime reflection metadata.
 - Category theory and concatenative programming are sources of semantic and
   syntactic inspiration, not terminology that users must learn.
 
