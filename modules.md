@@ -445,7 +445,10 @@ use lang topal v1.5
 
 version is v4.3.2
 
-start is fn ( arguments : CommandArguments ) -> Result Completed
+start is fn (
+  arguments : CommandArguments,
+  environment : Map ( String, String )
+) -> Result Completed
   selected is arguments expression
   print calculate selected
   Completed
@@ -470,8 +473,8 @@ In an artifact facade, `pub` crosses the artifact boundary:
 `application.t` is the implicit [root task](tasks.md) of the executable. Its
 selected language features define the available lifecycle and platform-event
 handlers. Topal constructs this task and supplies platform startup values, such
-as command arguments, directly to its `start` handler; no separate application
-type or `main` algorithm is required.
+as command arguments and environment variables, directly to its `start`
+handler; no separate application type or `main` algorithm is required.
 
 In ordinary source files and `module.t`, publication retains its normal
 one-module-boundary meaning. `package.t` supplies package metadata rather than
@@ -696,8 +699,11 @@ use lang topal v1.5
 version is v4.3.2
 license is GPL-3.0-only
 
-start is fn ( arguments : CommandArguments ) -> Result Completed
-  launch arguments
+start is fn (
+  arguments : CommandArguments,
+  environment : Map ( String, String )
+) -> Result Completed
+  launch ( arguments, environment )
   Completed
 ```
 

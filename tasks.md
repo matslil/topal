@@ -136,7 +136,7 @@ creator has no startup-result channel.
 `application.t` is itself the application's root task context. It does not
 declare a redundant named application type or publish a conventional `main`
 algorithm. Topal creates the root task and invokes its `start` handler with the
-application arguments:
+application arguments and environment variables:
 
 ```topal
 # application.t
@@ -146,10 +146,11 @@ configuration : Configuration
 server : Server
 
 start is fn (
-  arguments : CommandArguments
+  arguments : CommandArguments,
+  environment : Map ( String, String )
 ) -> Result Completed
 
-  configuration is load-configuration arguments
+  configuration is load-configuration ( arguments, environment )
   server is Server configuration
   Completed
 
@@ -166,8 +167,9 @@ the application. The application continues receiving platform and task
 messages until its root scope terminates according to the selected lifecycle.
 
 The selected Topal language features define the application protocol. A Unix
-feature may provide command arguments, signals, and orderly shutdown, while an
-Android feature may provide its platform lifecycle and application events.
+feature may provide command arguments, environment variables, signals, and
+orderly shutdown, while an Android feature may provide its platform lifecycle
+and application events.
 The feature specifies recognized handler names, their types, ordering, and
 delivery guarantees. Other algorithms in `application.t` remain private helper
 algorithms executed by the root task.
@@ -176,6 +178,17 @@ Operating-system and framework adapters hold restricted capabilities for this
 application protocol; they do not gain access to arbitrary application
 algorithms or state. Events arriving during startup are queued until `start`
 finishes, so platform handlers cannot observe partially initialized state.
+
+Environment variables are supplied as a map at the same time as command
+arguments. The map contains the environment provided by the platform for this
+application execution; it is an ordinary immutable value rather than access to
+process-global state.
+
+Starting a child process always requires an explicit environment-variable map.
+There is no operation which implicitly inherits the parent process environment.
+An application which wants inheritance passes the environment received by
+`start`, with any intended changes represented in the map supplied to the
+child. An empty map starts the child with no environment variables.
 
 ## Runtime scope
 
