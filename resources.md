@@ -130,3 +130,44 @@ operations at the point where the program can respond to them. A fallible
 destructor remains available for resources, such as files, whose underlying
 system can report a new failure only during final cleanup. The enclosing scope
 then handles or forwards that failure through its declared `Result`.
+
+## Explicit resource scopes
+
+Automatic destruction remains the fallback, but code may establish an explicit
+resource scope when the cleanup point is semantically important:
+
+```topal
+result is with-resource open-file path { file }
+  process file
+```
+
+`with-resource` acquires the resource, invokes the body exactly once, and
+destroys the body's retained resource reference before returning. The resource
+cannot escape unless the result explicitly transfers it into another resource
+scope. The exact surface spelling remains provisional.
+
+The result accounts for acquisition, body, and destruction failure. A body
+failure remains primary and destruction failures become contextual causes.
+This gives close, rollback, or final flush failure a predictable handling point
+without making an unrelated observer the accidental final-reference boundary.
+
+Scoped acquisition is an ordinary higher-order algorithm governed by resource,
+effect, and fallibility capabilities. Libraries can define specialized forms
+for transactions, temporary files, task scopes, and device sessions without
+adding new cleanup semantics.
+
+## Resource cycles
+
+Automatic sharing must not make destruction depend on collecting an
+unobservable strong-reference cycle. A type whose destructor owns an external
+resource cannot participate in a possible cycle of owning references unless
+the compiler proves that the cycle is broken before its scope exits.
+
+Long-lived back references use a non-owning capability whose access returns an
+optional retained value while the owner remains alive. It cannot keep the
+resource alive by itself. The source model does not expose reference counts or
+garbage-collector timing.
+
+Pure immutable values may use cyclic representations internally when their
+observable semantics remain finite. Recursive source values are nevertheless
+constructed algebraically rather than through mutable cyclic references.

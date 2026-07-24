@@ -370,6 +370,11 @@ Ordering is independent of key association. An ordered map preserves a declared
 key or insertion order by satisfying both associative and ordered traversal
 capabilities; an ordinary map does not acquire an arbitrary observable order.
 
+Capability declaration, associated objects such as `Element A` and `Index A`,
+coherent satisfaction, equality, ordering, and collection key strategies follow
+the [generic abstraction model](abstractions.md). Ordinary maps and sets do not
+expose hashing as part of their semantic interface.
+
 ## Iteration
 
 Iteration is expressed as algorithms over collection entries rather than as a

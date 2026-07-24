@@ -197,3 +197,76 @@ algorithm calls inherit the caller's task, child tasks belong to structured
 task scopes, and foreign callbacks enter Topal by delivering a typed task
 interaction. Static evaluation constructs compile-time objects and is not
 runtime execution, so it does not require a runtime task.
+
+## Structured child scopes
+
+Creating a child task requires a current task scope. The child belongs to that
+scope even when its restricted messaging capability is passed elsewhere. A
+scope does not complete until all children have completed, their results have
+been accounted for, and their resources have been destroyed.
+
+Leaving a successful scope requests orderly completion of unfinished children.
+Leaving because of failure or explicit cancellation cancels the remaining
+children before cleanup finishes. The scope waits for cancellation handlers
+and destructors; it does not detach computation which can access scoped
+resources.
+
+If a child fails before its result is awaited, the scope retains that failure.
+The first failure in deterministic dependency order is primary, cancels
+dependent siblings, and records later failures as contextual causes.
+Independent children may finish concurrently, but scheduler timing does not
+select an observably different primary error.
+
+The semantic operations are:
+
+```text
+task-scope body
+start-child Task input
+await child
+cancel child reason
+```
+
+Their exact surface spelling remains provisional. `await` consumes a one-time
+completion obligation; it does not expose a general mutable future object.
+
+## Cancellation
+
+Cancellation is a typed interaction from a task scope, not an asynchronous
+exception injected at an arbitrary instruction. A task observes it at a
+suspension, protocol operation, generator boundary, or explicit cancellation
+check. Between such points, termination or productivity still requires finite
+computation.
+
+Cancellation begins cleanup for the cancelled branch. Destructors, protocol
+termination, and cancellation handlers run in dependency order. Cleanup failure
+is retained in the enclosing scope's error chain.
+
+Dropping an uncompleted request, stream, or linear generator continuation
+requests cancellation unless its protocol declares fire-and-forget delivery.
+A protocol states whether cancellation is guaranteed, best effort, or
+unsupported; a caller cannot assume stronger behavior.
+
+## Waiting for alternatives
+
+A scope may wait for the first acceptable result among several interactions.
+The operation consumes a finite labeled product of pending interactions and
+returns a union identifying the selected alternative. When several alternatives
+are already available at the same logical point, declaration order is the
+deterministic tie breaker.
+
+Non-selected interactions remain owned by the scope. The caller retains or
+explicitly cancels them; selection never silently detaches an interaction.
+Timeouts are alternatives supplied by a clock or timer protocol, so they add
+that protocol's effects and dependencies rather than reading ambient time.
+
+## Backpressure and queue bounds
+
+Every event or request protocol declares its admission behavior: bounded wait,
+bounded rejection with `Result`, or contained loss for an isolated diagnostic
+event. An ordinary `Unit` event may not silently discard a message unless its
+protocol explicitly has isolated diagnostic semantics.
+
+Queue capacity is an implementation choice only within the declared admission
+behavior. A sender which may suspend or fail because of backpressure exposes
+that interaction in its protocol and effect contract, allowing queue
+dependencies to participate in deadlock checking.

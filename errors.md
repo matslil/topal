@@ -42,6 +42,36 @@ Error
 
 `detail`, `cause`, and `source` are absent when they do not add information.
 
+## Declared error vocabularies
+
+`Result Value` always uses the common runtime `Error` representation, but an
+algorithm contract may constrain which public error domains and codes it
+returns. Conceptually:
+
+```text
+read-configuration : Path -> Result Configuration
+  errors ConfigurationError
+```
+
+The constraint is a finite set of visible error-domain/code capabilities.
+Private algorithms may infer it. A public declaration records an explicit upper
+bound, so adding a newly observable error category is an interface change. The
+final placement of this bound in source syntax remains provisional.
+
+Success projection adds the expression's error set to the current algorithm.
+Explicit matching may handle members and remove them from the outgoing set.
+Wrapping at an abstraction boundary replaces the publicly handled category
+with the wrapper's declared category while retaining the original as a
+diagnostic cause.
+
+An unconstrained `Result Value` accepts any `Error` and remains available at
+dynamic integration boundaries. Ordinary library interfaces should prefer a
+declared vocabulary. Generic forwarding can quantify over an error set in the
+same way higher-order algorithms quantify over effects.
+
+Error constraints do not change the serialized `Error` shape or expose private
+cause domains as part of a caller's handling contract.
+
 ## Success projection and propagation
 
 When an expression has type `Result Value` but its immediate context explicitly

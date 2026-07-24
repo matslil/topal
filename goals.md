@@ -14,6 +14,10 @@ when these preserve the program's meaning.
   may construct statically deterministic types, constraints, or other algorithms.
 - Definitions share one recursive construction model rather than separate
   macro, template, class, and [module systems](modules.md).
+- [Generic abstraction](abstractions.md) classifies static parameters and uses
+  capabilities as constraints with explicit evidence. Associated types,
+  algebraic laws, equality, ordering, and conversion remain part of that one
+  object model rather than introducing classes or textual templates.
 - Composition is the fundamental operation. Syntax is easy for humans and tools
   to parse, evaluates left to right, and has no special precedence hierarchy.
 - Typed [static introspection](introspection.md) exposes visible semantic
@@ -44,12 +48,13 @@ when these preserve the program's meaning.
 
 ## Algorithms and effects
 
-- Algorithms are total by default and return errors explicitly as `Result`
+- Algorithms follow explicit [execution and totality](execution.md) rules.
+  They are total by default and return errors explicitly as `Result`
   values; there are no exceptions. Results use a common, contextual
   [error model](errors.md) across modules.
-- Effects complement regular types by describing observable interactions and
-  the resources they touch. They make ordering and parallelization constraints
-  visible without hiding failure control flow.
+- [Effects](effects.md) complement regular types by describing observable
+  interactions and the resources they touch. They make ordering and
+  parallelization constraints visible without hiding failure control flow.
 - Typed [environments](environments.md) provide fixed diagnostic operations,
   execution context, and service capabilities without process-global variables
   or shared mutable application state.
@@ -113,3 +118,7 @@ when these preserve the program's meaning.
 - [Programming in ATS](https://ats-lang.sourceforge.net/DOCUMENT/INT2PROGINATS/HTML/INT2PROGINATS-BOOK-onechunk.html) — theorem-assisted resource and bounds safety.
 - [The Koka language](https://koka-lang.github.io/koka/doc/book.html) — inferred effect types and functional semantics.
 - [Futhark uniqueness types](https://futhark-lang.org/blog/2022-06-13-uniqueness-types.html) — safe in-place updates in a parallel functional language.
+
+The semantic foundations intentionally leave a smaller set of grammar, proof,
+and boundary questions listed in [remaining fundamental design
+decisions](decisions.md).

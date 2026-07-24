@@ -259,3 +259,34 @@ compiler access fields without materializing a complete decoded container. A
 functional update may overwrite the encoded storage in place when uniqueness,
 lifetime, and alias analysis prove that the previous immutable value is no
 longer observable.
+
+## Foreign boundary declarations
+
+A foreign declaration associates an external symbol or callback entry with a
+Topal algorithm type. It explicitly declares:
+
+- the ABI and external symbol identity;
+- a layout for every externally represented input and output;
+- ownership, retention, and destruction behavior;
+- effects and resource identities;
+- fallibility and error translation;
+- whether the call may suspend or invoke callbacks; and
+- the task protocol through which each callback enters Topal.
+
+Calling foreign code is not inherently unchecked. Layout decoding, constrained
+integer construction, text decoding, and protocol validation occur at the
+boundary and return `Result` when external data may be invalid.
+
+Properties which Topal cannot verify are trusted claims. Trust is attached to
+the individual declaration in source and compiled metadata; it does not open a
+general unsafe block. The adapter must ensure that foreign code does not retain
+a borrowed value, access beyond a declared range, resume a continuation twice,
+or invoke an undeclared callback.
+
+Foreign callbacks deliver a declared interaction to a typed task capability.
+They do not enter as arbitrary calls on an external thread. Ordinary task
+isolation, cancellation, and effect ordering then apply.
+
+The exact grammar for foreign symbols and ABIs remains provisional. ABI
+families belong to selected language features rather than the portable
+bootstrap grammar.
