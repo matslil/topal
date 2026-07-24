@@ -6,12 +6,39 @@ Several choices deliberately remain open because they affect grammar,
 ergonomics, or the trusted implementation boundary rather than following
 uniquely from Topal's existing principles.
 
+## Recently settled foundations
+
+The following questions from the initial audit are no longer open:
+
+- [Constraints and capabilities](abstractions.md) are distinct kinds.
+  Constraints retain a base type and limit its values through a predicate;
+  capabilities make static interface and law promises.
+- Constraint construction is object-first, as in
+  `Integer constraint { value } ...`. The inferred anonymous algorithm is the
+  predicate.
+- Chained classification proceeds from left to right. An algorithm header such
+  as `values : C : Sortable` first classifies `values` as `C` and then requires
+  `C` to satisfy `Sortable`.
+- Algorithm headers perform static type matching. Construction syntax can bind
+  components such as `X` and `Y` from `Tuple ( X, Y )`, and the algorithm body
+  is the implicit successful branch of the header match.
+- Returning a captured complete type such as `C` preserves the precise
+  relationship between the input and result, including nominal identity,
+  constraints, static sizes, and other parameters.
+- The [initial capability vocabulary](capabilities.md) now defines comparison,
+  collection observation and construction, keyed association, combination, and
+  algorithm-law capabilities.
+- Possible compiler-generated tests, symbolic proof tables, capability-law
+  verification, and task/protocol proofs are recorded as
+  [future work](FUTURE.md), not current language guarantees.
+
 ## Surface grammar
 
 The grammar must select compatible spellings for:
 
 - capability declarations, implementations, and explicitly selected evidence;
-- type-construction patterns beyond homogeneous `Container Value`;
+- type-construction patterns beyond homogeneous `Container Value`, including
+  constructions such as `Map ( Key, Value )`;
 - existential package opening;
 - explicit effect bounds and effect-row parameters;
 - mutually recursive declaration groups and decreasing measures;
@@ -25,6 +52,26 @@ These should be designed together so that indentation, recursive
 classification, prefix application, and the zero-to-two operand rule remain
 unambiguous. Algorithm headers already bind generic type components through
 static matching rather than through a separate generic-parameter list.
+
+## Type-pattern applicability
+
+Construction matching and chained classification establish the core generic
+model, but overload applicability still needs precise rules for:
+
+- choosing between an exact concrete type and a more general construction
+  pattern;
+- ordering two capability patterns when one makes stronger promises;
+- repeated names which require definitionally equal matched objects;
+- partial type constructions such as matching `Array N Value` as
+  `Container Value`;
+- opaque or nominal types which publish capabilities without publishing their
+  construction;
+- open record patterns which retain additional fields; and
+- diagnostics when several matches are equally applicable.
+
+The result type must not select between otherwise ambiguous overloads. Matching
+should remain static and must not introduce runtime reflection or dispatch
+unless an interface explicitly requests it.
 
 ## Capability organization
 
@@ -46,18 +93,28 @@ comparison, collection, and algorithm-law names. Formatting, parsing, checked
 construction, and other library-specific capabilities still need vocabularies
 in their respective designs.
 
-## Proof checking
+The multi-component matcher for `Keyed Container Key Value` and similar
+capabilities also needs a final spelling. It must bind `Key` and `Value` from
+the actual container construction rather than equating unrelated constructions
+such as `Map ( Key, Value )` and `Tuple ( Key, Value )`.
 
-Topal must define which user claims require machine-checkable proof and which
-may enter as trusted evidence. Termination measures and structural derivations
-are intended to be checked. General algebraic laws such as associativity are
-not decidable for arbitrary algorithms.
+## Law evidence before automated proof
 
-Choices include restricting implicit law evidence to compiler-derived
-operations, accepting proof terms in a selected logic, or allowing visibly
-trusted user assertions. Whichever rule is chosen must preserve the distinction
-between verified evidence and a trusted boundary claim in introspection and
-compiled metadata.
+The [future verification design](FUTURE.md) describes symbolic proof tables,
+finite exhaustive verification, induction, and independently checked proof
+certificates. Before that system exists, the language still needs a conservative
+rule for algorithm-law evidence used by optimizations.
+
+The main choices are:
+
+- initially allow law evidence only for compiler-defined operations;
+- permit explicitly trusted user or foreign claims; or
+- accept user proof terms in a smaller initial proof language.
+
+Passing sampled tests cannot establish `Associative`, `Commutative`, `Identity`,
+or `Idempotent`, because those capabilities may authorize reordering and
+parallel execution. Any trusted alternative must remain visible in source,
+static introspection, compiled metadata, and diagnostics.
 
 ## Effect annotations and handlers
 
