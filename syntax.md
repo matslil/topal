@@ -650,8 +650,9 @@ parse-count is fn ( text : String ) -> Result Integer
 Errors are ordinary result values rather than exceptions. A successful value
 may be projected from a `Result` inside an explicitly fallible algorithm, as
 described by [the error model](errors.md#success-projection-and-propagation).
-Effects complement the input and result types, but their surface syntax has not
-yet been selected. Typed [environments](environments.md) separately provide
+Effects complement the input and result types according to the
+[effect model](effects.md), but their final surface syntax has not yet been
+selected. Typed [environments](environments.md) separately provide
 stable declarations selected with `@`; environment access is tracked by the
 compiler without adding ordinary inputs to every algorithm declaration.
 
@@ -660,6 +661,12 @@ A binding may be marked with the compiler-checked
 borrowed, and contained information. An application-boundary algorithm uses
 `sensitive parameter : Type` to declare exactly which parameters accept
 sensitive arguments; local algorithms need no such qualifier.
+
+Generic parameters, capability evidence, associated objects, type identity, and
+conversion are described by [generic abstraction and semantic
+capabilities](abstractions.md). Their final declaration punctuation remains
+provisional; they do not introduce type-owned method scopes or a separate
+template language.
 
 ### Inferred anonymous algorithms
 
@@ -901,6 +908,9 @@ precedence assumptions:
 ```topal
 ( > 2 and < 5 ) or = 10
 ```
+
+Ordinary block value, immutable shadowing, `return`, recursion, termination, and
+generator productivity follow the [execution and totality](execution.md) rules.
 
 ## Decision tables
 
