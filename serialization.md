@@ -225,24 +225,28 @@ When an object cannot be reconstructed safely, deserialization produces an
 type and data:
 
 ```topal
-ObjectDescription is Map ( Label, Object )
+ObjectDescription is Map ( String, Object )
 ```
 
 Map entries may contain scalars, lists, maps, type identities, and other
 ordinary objects as appropriate. For example:
 
 ```topal
-(
-  kind -> RecordType ,
-  identity -> "example.Person" ,
-  fields -> [
-    ( label -> "name", type -> String ),
-    ( label -> "age", type -> Nat )
-  ] ,
-  value -> (
-    name -> "Ada" ,
-    age -> 37
-  )
+field-descriptions is Map ( String, Object ) (
+  "name" is String,
+  "age" is Nat
+)
+
+value-description is Map ( String, Object ) (
+  "name" is "Ada",
+  "age" is 37
+)
+
+description is ObjectDescription (
+  "kind" is "RecordType",
+  "identity" is "example.Person",
+  "fields" is field-descriptions,
+  "value" is value-description
 )
 ```
 
