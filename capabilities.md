@@ -229,22 +229,29 @@ Identity Operation Value
 Idempotent Operation
 ```
 
-Their promises are:
+`Associative` promises:
 
-```text
-Associative:
-  operation ( operation a b ) c
-    = operation a ( operation b c )
+```topal
+( a operation b ) operation c = a operation ( b operation c )
+```
 
-Commutative:
-  operation a b = operation b a
+`Commutative` promises:
 
-Identity:
-  operation identity value = value
-  operation value identity = value
+```topal
+a operation b = b operation a
+```
 
-Idempotent:
-  operation value value = value
+`Identity` promises:
+
+```topal
+identity operation value = value
+value operation identity = value
+```
+
+`Idempotent` promises:
+
+```topal
+value operation value = value
 ```
 
 These laws permit parallel reduction and other transformations whose evaluation
