@@ -496,8 +496,8 @@ chain:
 values : C : Sortable
 ```
 
-The chain is read from right to left: `C` is a type satisfying `Sortable`, and
-`values` is a value of `C`. The complete input type `C` can then appear in an
+The chain is read from left to right: `values` is a value of `C`, and `C` is a
+type satisfying `Sortable`. The complete input type `C` can then appear in an
 algorithm's output type.
 
 ## Constraints and refined types
@@ -1012,7 +1012,8 @@ block             = indent { line } dedent ;
 
 expression        = binding | classification | binary-chain ;
 binding           = identifier "is" expression ;
-classification    = bindable ":" ( classification | classifier-expression ) ;
+classification    = bindable ":" classifier-expression
+                    { ":" classifier-expression } ;
 classifier-expression = binary-chain ;
 
 binary-chain      = prefix-expression

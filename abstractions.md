@@ -110,7 +110,7 @@ values passed to the operation which uses them.
 ## Type patterns in algorithm headers
 
 An algorithm header is a static matcher as well as an ordinary value pattern.
-Chained classification is read from right to left:
+Chained classification is read from left to right:
 
 ```topal
 sort is fn ( values : C : Sortable ) -> C
