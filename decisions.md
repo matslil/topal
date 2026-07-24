@@ -41,10 +41,10 @@ The third is the most compositional, while the first gives the strongest
 protection against distant conflicts. This decision also determines how
 libraries publish derived equality, ordering, parsing, and collection evidence.
 
-The initial standard capability names and their minimal operations remain to be
-selected. In particular, `Sequence`, `Foldable`, `Equality`, `PartialOrder`,
-`TotalOrder`, key strategies, formatting, parsing, and collection builders need
-one consistent vocabulary.
+The [initial capability vocabulary](capabilities.md) selects the fundamental
+comparison, collection, and algorithm-law names. Formatting, parsing, checked
+construction, and other library-specific capabilities still need vocabularies
+in their respective designs.
 
 ## Proof checking
 

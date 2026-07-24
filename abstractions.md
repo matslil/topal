@@ -306,6 +306,9 @@ observable properties of `Map` or `Set`. A specialized representation may
 require `Hash T` or `TotalOrder T`, but converting it to the ordinary semantic
 collection forgets that representation evidence.
 
+The initial comparison, collection, and algorithm-law interfaces are collected
+in the [standard capability vocabulary](capabilities.md).
+
 ## Law evidence
 
 Parallel reduction and other transformations whose legality depends on

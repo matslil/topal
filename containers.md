@@ -336,31 +336,40 @@ circular definitions.
 
 ## Collection capabilities
 
-Shared behavior is expressed through small capabilities rather than nominal
-inheritance from a single `Container` type. The exact capability names remain
-provisional, but the useful distinctions are:
+Shared behavior is expressed through the
+[initial capability vocabulary](capabilities.md) rather than nominal
+inheritance from a single `Container` type. The principal collection
+distinctions are:
 
 ```text
-Foldable Entry
-  fold
+Counted Container
   entry-count
   empty?
 
-Sequence Entry
-  get Index
-  select-index
+Foldable Container Value
+  fold
+
+Sequence Container Value
   preserves order and multiplicity
 
-Unique Member
-  contains
-  insert
-  remove
+Indexed Container Value
+  Index : Type
+  get
 
-Associative Key Value
-  get Key
+Membership Container Value
+  contains
+
+Keyed Container Key Value
+  get
   keys
   values
   entries
+
+Collectible Container Value
+  collect
+
+Replaceable Container Value
+  replace
 ```
 
 Lists and arrays are sequences. `String` provides the read-only sequence
@@ -973,30 +982,33 @@ As with iteration, small capabilities share operations without creating a
 universal container interface:
 
 ```text
-Empty
+Empty Container
   empty
 
-Counted
+Counted Container
   entry-count
 
-Lookup Address Value
+Indexed Container Value
   get
 
-Replaceable Address Value
+Keyed Container Key Value
+  get
+
+Replaceable Container Value
   replace
 
-Membership Member
+Membership Container Value
   contains-entry
 
-Concatenable
+Concatenable Container
   concatenate
 
-SetAlgebra
+SetAlgebra Container Value
   union
   intersect
   difference
 
-Merge Key Value
+Mergeable Container Key Value
   merge resolving ...
 ```
 
