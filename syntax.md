@@ -481,52 +481,63 @@ The explicit map type or an expected map type distinguishes these dynamic,
 homogeneous associations from record fields. Equal field types do not by
 themselves make an anonymous record a map.
 
-`:` classifies a value, binding, or pattern with the type expression on its
-right:
+`:` classifies a value, binding, or pattern with the classifier on its right:
 
 ```topal
 text : String
 index : Integer
 ```
 
-The right operand of `:` is always a type. A constraint is applied first to
-construct a refined type, after which `:` performs ordinary classification.
+The classifier may be a type, a constraint which retains its base type, or a
+capability applicable to a static object. Classifications may consequently
+chain:
+
+```topal
+values : C : Sortable
+```
+
+The chain is read from right to left: `C` is a type satisfying `Sortable`, and
+`values` is a value of `C`. The complete input type `C` can then appear in an
+algorithm's output type.
 
 ## Constraints and refined types
 
-A constraint is a first-class object applicable to a particular type. Applying
-it directly to its base type constructs a refined type; no `constrained-by`
-keyword is needed:
+A constraint is a first-class object which limits values of one base type. The
+base type is the left operand of `constraint`, and the right operand is an
+inferred anonymous predicate:
 
 ```topal
-CamelCase is constraint String
-  verification-body
+CamelCase is String constraint { value }
+  verification-body value
 
-name : CamelCase String
+name : CamelCase
 ```
 
 The kinds are conceptually:
 
 ```topal
-String             : Type
-CamelCase          : Constraint String
-CamelCase String   : Type
+String    : Type
+CamelCase : Constraint String
 ```
 
-Constraint application follows the same prefix syntax as every other unary
-construction. The kind checker verifies that the constraint accepts the supplied
-base type. Static values are checked during compilation; dynamic values require
-validation and produce evidence on success.
+The constraint already retains its base type, so classification does not repeat
+`String`. Static values are checked during compilation; dynamic values require
+validation and produce evidence on success. The successfully classified value
+is still a `String`, refined by the retained evidence. A constraint can occupy
+a classified component of a type construction, as in `List CamelCase`; the
+component uses the constraint's base type and retains its evidence.
 
-Constraints compose into predicates and refined types:
+Constraints compose as matchers:
 
 ```topal
-index : ( >= 0 and < length ) Integer
+InteriorIndex is Nat constraint { index }
+  index >= 0 and index < length
+
+index : InteriorIndex
 ```
 
-The exact preferred ordering for composite constraints remains provisional. The
-essential rule is that the complete expression to the right of `:` must have
-kind `Type`, not merely `Constraint`.
+`and` retains both pieces of evidence, while `or` records which compatible
+alternative succeeded.
 
 ### Constraints on type fields
 
@@ -537,7 +548,7 @@ part of the declared type:
 ```topal
 pub Interval is Record
   pub start : Integer
-  pub end : ( > start ) Integer
+  pub end : Integer constraint { end } end > start
 ```
 
 Here `end` is an `Integer` constrained to be greater than the particular
@@ -568,8 +579,9 @@ pub interval is fn (
 ```
 
 This field syntax states an invariant of every value of the declared type. A
-separately applied constraint such as `Ordered Interval`, by contrast, creates
-a refined type and does not make the constraint true of every plain `Interval`.
+separate constraint whose base is `Interval`, by contrast, refines only values
+successfully classified by that constraint and does not make it true of every
+plain `Interval`.
 
 ## Algorithm definitions
 
@@ -664,9 +676,10 @@ sensitive arguments; local algorithms need no such qualifier.
 
 Generic parameters, capability evidence, associated objects, type identity, and
 conversion are described by [generic abstraction and semantic
-capabilities](abstractions.md). Their final declaration punctuation remains
-provisional; they do not introduce type-owned method scopes or a separate
-template language.
+capabilities](abstractions.md). Algorithm headers use classification and static
+type matching rather than separate generic-parameter or capability-bound
+syntax. Capabilities do not introduce type-owned method scopes or a template
+language.
 
 ### Inferred anonymous algorithms
 
@@ -999,7 +1012,8 @@ block             = indent { line } dedent ;
 
 expression        = binding | classification | binary-chain ;
 binding           = identifier "is" expression ;
-classification    = bindable ":" type-expression ;
+classification    = bindable ":" ( classification | classifier-expression ) ;
+classifier-expression = binary-chain ;
 
 binary-chain      = prefix-expression
                     { binary-operator prefix-expression } ;
@@ -1010,7 +1024,7 @@ product           = "(" expression "," expression
                     { "," expression } ")" ;
 anonymous-record  = "(" record-field "," record-field
                     { "," record-field } ")" ;
-record-field      = identifier ":" type-expression "is" expression ;
+record-field      = identifier ":" classifier-expression "is" expression ;
 
 function          = "fn" [ "static" ] input-pattern "->" type-expression block ;
 decision          = expression decision-block ;
@@ -1037,7 +1051,7 @@ flowchart LR
     start((start)) --> expression
 
     expression{{expression}} --> binding["name is expression"]
-    expression --> classification["binding : type"]
+    expression --> classification["binding : classifier"]
     expression --> chain["prefix-expression"]
 
     chain --> more{"binary operator?"}

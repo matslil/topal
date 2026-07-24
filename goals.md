@@ -14,10 +14,11 @@ when these preserve the program's meaning.
   may construct statically deterministic types, constraints, or other algorithms.
 - Definitions share one recursive construction model rather than separate
   macro, template, class, and [module systems](modules.md).
-- [Generic abstraction](abstractions.md) classifies static parameters and uses
-  capabilities as constraints with explicit evidence. Associated types,
-  algebraic laws, equality, ordering, and conversion remain part of that one
-  object model rather than introducing classes or textual templates.
+- [Generic abstraction](abstractions.md) uses static type matching and
+  capability evidence. Constraints limit values, while capabilities promise
+  interfaces and laws. Associated types, equality, ordering, and conversion
+  remain part of that one object model rather than introducing classes or
+  textual templates.
 - Composition is the fundamental operation. Syntax is easy for humans and tools
   to parse, evaluates left to right, and has no special precedence hierarchy.
 - Typed [static introspection](introspection.md) exposes visible semantic

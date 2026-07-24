@@ -116,7 +116,7 @@ Record fields may depend on earlier fields:
 ```topal
 Interval is Record
   start : Integer
-  end : ( > start ) Integer
+  end : Integer constraint { end } end > start
 ```
 
 Consequently, `lang FieldStructure` is an ordered dependent structure rather
