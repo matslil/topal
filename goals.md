@@ -53,6 +53,10 @@ when these preserve the program's meaning.
 - Typed [environments](environments.md) provide fixed diagnostic operations,
   execution context, and service capabilities without process-global variables
   or shared mutable application state.
+- [Sensitive values](sensitive.md) retain their qualifier through copying,
+  moving, borrowing, and containment. The compiler rejects their release
+  through an application boundary whose corresponding parameter has not
+  explicitly declared that it accepts sensitive information.
 - Compiled applications and libraries include dormant [tracing](tracing.md)
   support by default. Authorized external tools select events and collect
   native serialization streams without making trace state observable to

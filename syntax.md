@@ -655,6 +655,12 @@ yet been selected. Typed [environments](environments.md) separately provide
 stable declarations selected with `@`; environment access is tracked by the
 compiler without adding ordinary inputs to every algorithm declaration.
 
+A binding may be marked with the compiler-checked
+[`sensitive`](sensitive.md) qualifier. Sensitivity follows copied, moved,
+borrowed, and contained information. An application-boundary algorithm uses
+`sensitive parameter : Type` to declare exactly which parameters accept
+sensitive arguments; local algorithms need no such qualifier.
+
 ### Inferred anonymous algorithms
 
 Small algorithms passed directly to another algorithm may omit `fn` and their

@@ -193,4 +193,7 @@ and retain the full chain and source locations for logs or diagnostics.
 Diagnostic presentation must account for sensitive details. Retaining a cause
 does not require exposing every private frame or value to every user; an
 application or boundary may redact presentation while preserving the error for
-authorized diagnostics.
+authorized diagnostics. A value explicitly marked
+[sensitive](sensitive.md) must be omitted or redacted unless the diagnostic
+boundary's corresponding parameter declares that it accepts sensitive
+information.
