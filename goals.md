@@ -53,6 +53,10 @@ when these preserve the program's meaning.
 - Typed [environments](environments.md) provide fixed diagnostic operations,
   execution context, and service capabilities without process-global variables
   or shared mutable application state.
+- Compiled applications and libraries include dormant [tracing](tracing.md)
+  support by default. Authorized external tools select events and collect
+  native serialization streams without making trace state observable to
+  application code.
 - Infinite algorithms exist only as productive [generators](generators.md): every request either
   yields, ends, fails, cancels, or suspends for an external event in finite
   computation. Consumers determine whether the enclosing computation terminates.

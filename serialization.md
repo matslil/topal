@@ -307,6 +307,10 @@ These encodings are intended for storage, transport, or their existing tooling.
 They are not accepted by `lang deserialize` and need not preserve every Topal
 object well enough for reconstruction.
 
+The built-in [tracing](tracing.md) runtime supplies native serialization streams
+to an authorized external tool. The tool selects the external encoding and owns
+trace-file creation; traced application code does neither.
+
 The conceptual separation does not require an intermediate native byte stream.
 For example, a CTF encoder can consume the serialization schema, emit valid CTF
 metadata, and write event payloads directly in native byte order. The compiler

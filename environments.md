@@ -16,6 +16,11 @@ This model is intended primarily for contained diagnostics such as logging and
 tracing, immutable execution context, and stable capabilities such as messaging
 service endpoints. It is not a second store for application state.
 
+Compiler-provided [tracing](tracing.md) uses the same containment guarantees
+but is controlled through an authenticated runtime channel rather than an
+environment declaration. Application code cannot inspect or change its trace
+configuration.
+
 ## Environment declarations
 
 An environment is a declaration context. A declaration exported from that
