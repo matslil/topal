@@ -10,8 +10,8 @@ uniquely from Topal's existing principles.
 
 The grammar must select compatible spellings for:
 
-- explicit generic parameters and capability bounds;
-- capability declarations, implementations, and named evidence;
+- capability declarations, implementations, and explicitly selected evidence;
+- type-construction patterns beyond homogeneous `Container Value`;
 - existential package opening;
 - explicit effect bounds and effect-row parameters;
 - mutually recursive declaration groups and decreasing measures;
@@ -21,9 +21,10 @@ The grammar must select compatible spellings for:
 - public error vocabulary bounds; and
 - foreign symbols, ABIs, and trusted declarations.
 
-These should be designed together so that indentation, prefix application, and
-the zero-to-two operand rule remain unambiguous. The semantic documents include
-conceptual notation but do not reserve it as final source syntax.
+These should be designed together so that indentation, recursive
+classification, prefix application, and the zero-to-two operand rule remain
+unambiguous. Algorithm headers already bind generic type components through
+static matching rather than through a separate generic-parameter list.
 
 ## Capability organization
 

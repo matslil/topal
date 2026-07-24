@@ -247,10 +247,14 @@ constructing `Index Row` from a `Nat` requires a bounds check.
 An unrefined `Array` does not determine one nominal domain or even one extent,
 so there is no index type that can safely index every array. Access through the
 general array interface accepts a `Nat` and exposes possible failure. Generic
-code can instead preserve the concrete array type and its index relationship:
+code can instead match and preserve the concrete array type and its index
+relationship:
 
 ```text
-get : forall A where A is Array. A -> Index A -> Element A
+get is fn (
+  array : A : Array N Element,
+  index : Index A
+) -> Element
 ```
 
 Deriving an array type from `Array` permits implicit conversion back to the
@@ -374,6 +378,21 @@ Capability declaration, associated objects such as `Element A` and `Index A`,
 coherent satisfaction, equality, ordering, and collection key strategies follow
 the [generic abstraction model](abstractions.md). Ordinary maps and sets do not
 expose hashing as part of their semantic interface.
+
+A capability matcher can follow the same homogeneous container construction
+used by the types themselves:
+
+```topal
+Sortable is ( Indexed and Replaceable ) Container ( TotalOrder Value )
+
+sort is fn ( values : C : Sortable ) -> C
+  sorting-implementation values
+```
+
+Matching `Sortable` decomposes `C` as `Container Value`, requires the container
+operations from `Indexed` and `Replaceable`, and requires `TotalOrder` for that
+entry `Value`. Returning the complete matched `C` preserves every other static
+parameter and constraint.
 
 ## Iteration
 
@@ -662,7 +681,9 @@ An array whose size is part of its type is constructed over its finite bounds:
 
 ```topal
 Array N
-  fn ( index : ( < N ) Nat ) -> T
+  fn (
+    index : Nat constraint { index } index < N
+  ) -> T
     value-at index
 ```
 
@@ -961,7 +982,7 @@ Counted
 Lookup Address Value
   get
 
-Replace Address Value
+Replaceable Address Value
   replace
 
 Membership Member

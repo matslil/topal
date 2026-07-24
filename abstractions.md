@@ -1,57 +1,76 @@
 # Generic abstraction and semantic capabilities
 
-Topal generic code uses the same first-class objects, constraints, and evidence
-as ordinary code. It does not introduce a separate template language, class
-hierarchy, or method-lookup system. A generic declaration classifies the objects
-it abstracts over and states the evidence required to use them.
+Topal generic code uses classification and matching rather than a separate
+generic-parameter language. An algorithm input pattern can bind the complete
+type of its value, match the construction of that type, and require capabilities
+of the matched objects. The algorithm body is the implicit successful branch of
+that match.
 
-This document defines the semantic model. The exact surface spelling for
-explicit generic parameters and capability declarations remains provisional.
+Constraints and capabilities both produce evidence, compose with matchers, and
+participate in static introspection. They remain different kinds of object:
 
-## Generic parameters
+- a constraint limits the permitted values of one base type; and
+- a capability promises an interface and laws provided by a type, algorithm, or
+  other static object.
 
-A generic parameter is a statically available input to a declaration. Its
-classification states its kind:
+## Constraints limit values
 
-```text
-T : Type
-N : Nat
-C : Constraint T
-comparison : TotalOrder T
+A constraint combines a base type with a predicate over values of that type.
+The base type is the left operand and the inferred anonymous algorithm is the
+right operand:
+
+```topal
+Positive is Integer constraint { value }
+  value > 0
 ```
 
-Types, static values, constraints, layouts, effects, protocols, and algorithms
-can consequently all be generic parameters. A parameter may depend on an
-earlier parameter, but not on a later one. This is the same ordered dependency
-rule used by record fields.
-
-The conceptual signature:
+Conceptually:
 
 ```text
-get : forall A where A satisfies Sequence.
-      A, Index A -> Element A
+Positive : Constraint Integer
 ```
 
-has three relevant static objects: the particular type `A`, evidence that `A`
-satisfies `Sequence`, and the associated objects `Index A` and `Element A`
-selected through that evidence. They do not become runtime operands merely
-because they are explicit parts of the declaration.
+A constraint already retains its base type, so classification does not repeat
+it:
 
-Generic arguments are inferred when classifications of ordinary operands or an
-expected result determine one answer. Code supplies them explicitly when they
-cannot be inferred or when several valid objects remain. Inference never uses a
-runtime value, an algorithm body, or the required output type to choose between
-otherwise applicable overloads.
+```topal
+count : Positive
+```
 
-A generic declaration is checked once against its declared parameters and
-evidence. Instantiation may specialize representation and execution, but it
-does not defer ordinary type checking in the manner of textual templates.
+Static values are checked during compilation. A dynamic value is validated at
+the classification and produces `Result` plus evidence on success. Successful
+classification denotes the base value refined by that evidence; forgetting the
+evidence recovers the unchanged base value.
 
-## Capabilities are constraints with evidence
+A constraint can occupy a classified component of another type construction.
+The construction uses its base type and retains the constraint evidence:
 
-A capability states that objects of a particular kind support a semantic
-operation or law. Satisfying a capability produces evidence which contains its
-associated objects and algorithms:
+```topal
+positive-values : List Positive
+```
+
+This is a list whose entries are integers carrying `Positive` evidence; it does
+not make `Positive` a type or erase the distinction between their kinds.
+
+Constraints compose as matchers:
+
+```topal
+InteriorIndex is Nat constraint { index }
+  index >= 0 and index < length
+
+NonBoundaryIndex is InteriorIndex and != 0
+```
+
+`and` retains both pieces of evidence. `or` retains evidence identifying the
+successful alternative. Constraints may depend on earlier values in the same
+record or pattern, which makes relationships such as `end > start` part of the
+classified value.
+
+## Capabilities promise interfaces
+
+A capability does not remove values from a type. It states that an object of a
+particular kind provides semantic operations or laws. Satisfying a capability
+produces static evidence containing those operations and any related objects:
 
 ```text
 Sequence A
@@ -75,7 +94,7 @@ Evidence can arise in three ways:
 - the language derives it from a fundamental construction and the evidence of
   its components;
 - a declaration explicitly supplies the required objects and algorithms; or
-- a constraint check produces evidence for a particular value or refined type.
+- a static matcher establishes it from already available evidence.
 
 Merely having algorithms with suitable names is insufficient. Accidental
 structural similarity must not silently assert laws such as associativity,
@@ -87,6 +106,133 @@ There must be at most one implicit capability implementation for the same
 capability and type in one compiled context. Alternative comparisons,
 serializations, layouts, or reduction laws are ordinary explicit evidence
 values passed to the operation which uses them.
+
+## Type patterns in algorithm headers
+
+An algorithm header is a static matcher as well as an ordinary value pattern.
+Chained classification is read from left to right:
+
+```topal
+sort is fn ( values : C : Sortable ) -> C
+  sorting-implementation values
+```
+
+This establishes:
+
+```text
+C : Sortable
+values : C
+```
+
+`C` binds the complete input type. Reusing it as the output type promises that
+the algorithm returns exactly the same type, retaining its nominal identity,
+static sizes, constraints, and other parameters.
+
+There is no `then` in an algorithm header. If the static type and capability
+match succeeds, the algorithm body is its implicit action. If it fails, that
+overload is not applicable. A decision table instead uses `then` because it
+chooses a runtime action among matchers.
+
+Type constructors use the same syntax for matching as for construction. A
+header may therefore decompose a positional type and use its components in the
+result:
+
+```topal
+swap is fn (
+  pair : Tuple ( X, Y )
+) -> Tuple ( Y, X )
+
+  pair
+    ( x, y ) then ( y, x )
+```
+
+The header statically binds `X` and `Y`; the decision table separately
+decomposes the runtime pair. For labeled products, labels belong to the scope of
+their respective record types and field selection remains total:
+
+```topal
+swap-record is fn (
+  record : Record (
+    left : X,
+    right : Y
+  )
+) -> Record (
+  left : Y,
+  right : X
+)
+
+  Record (
+    left is record right,
+    right is record left
+  )
+```
+
+The repeated labels do not shadow one another. The input `left` and `right`
+belong to the input record type, while the output labels belong to the newly
+constructed result type.
+
+Header matches happen during type checking. They do not require runtime
+reflection or dynamic dispatch. Repeated names must match the same object,
+opaque types expose only published construction and capability evidence, and
+several equally applicable matches produce an overload ambiguity.
+
+## Container construction patterns
+
+A homogeneous container construction has the conceptual pattern:
+
+```text
+Container Value
+```
+
+Matching `List Integer` binds `Container` to `List` and `Value` to `Integer`.
+Matching `Array N Integer` can bind `Container` to the partially constructed
+`Array N`, retaining `N` in the complete matched type. `Map ( K, V )` does not
+match this unary construction pattern: its type constructor accepts the
+key/value product as one explicit argument rather than exposing an independently
+matched `Value`.
+
+Capabilities can describe the container construction and its entry type in one
+matcher. For example:
+
+```topal
+Sortable is ( Indexed and Replaceable ) Container ( TotalOrder Value )
+```
+
+This promises indexed access and immutable replacement for the matched
+container, and total ordering for the `Value` obtained from that container
+construction. It does not independently guess an unrelated `Value` type.
+
+The generic sorting signature is consequently:
+
+```topal
+sort is fn ( values : C : Sortable ) -> C
+  sorting-implementation values
+```
+
+The complete `C` provides the exact input/output relationship, while matching
+`Sortable` exposes `Container`, `Value`, and the promised operations inside the
+body. A sort which builds a new collection can substitute an appropriate
+construction capability for `Replaceable`.
+
+Another algorithm can match the map construction directly and use its captured
+components in a different result type:
+
+```topal
+map-entries is fn (
+  mapping : Map ( K, V )
+) -> Set ( Tuple ( K, V ) )
+
+  mapping entries
+```
+
+The header binds `K` and `V` from the input `Map` type. The result then
+constructs the map's entry-product type explicitly. `Map ( K, V )` and
+`Tuple ( K, V )` are different constructions; no structural match equates
+them.
+
+An ordinary unordered map also does not satisfy the `Sortable` pattern above.
+Code can obtain its entries and order that separate collection by an explicit
+key, value, or product comparison.
 
 ## Associated objects
 
@@ -246,10 +392,12 @@ and source attribution.
 
 The semantic model does not decide:
 
-- the punctuation introducing explicit generic parameter lists;
 - the declaration spelling for capabilities and their implementations;
-- the spelling for opening an existential package; or
-- whether common capability bounds have a compact `where` form.
+- the spelling for opening an existential package;
+- how a type-construction matcher exposes several independently classified
+  components beyond the homogeneous `Container Value` case; or
+- whether capability implementations with no implicit default need a compact
+  explicit-selection form.
 
 Those choices should be made together with the final grammar. They must not
 change the classifications, evidence, coherence, or conversion rules above.

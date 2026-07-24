@@ -31,10 +31,11 @@ Encoded Encoding
 - `Encoded Encoding` is a byte representation governed by an encoding.
 
 `Character` is therefore reusable constrained text rather than an unrelated
-primitive:
+primitive. The constraint retains `String` as its base:
 
 ```topal
-Character is SingleCharacter String
+Character is String constraint { value }
+  value character-count = 1
 ```
 
 A character may require several Unicode code points or encoded bytes, but
@@ -74,18 +75,19 @@ encoding-specific byte representations.
 Normalization is a constraint on `String`, not an invariant of every string:
 
 ```topal
-Normalized NFC String
-Normalized NFD String
+Normalized NFC
+Normalized NFD
 ```
 
-Applying a normalized type to dynamic input validates the existing sequence and
-fails when it is not already in the requested form. It does not silently change
-the value. Explicit normalization transforms the sequence and establishes the
+`Normalized Form` is a family of constraints whose members retain `String` as
+their base. Classifying dynamic input validates the existing sequence and fails
+when it is not already in the requested form. It does not silently change the
+value. Explicit normalization transforms the sequence and establishes the
 corresponding evidence:
 
 ```topal
 normalized is text normalize NFC
-normalized : Normalized NFC String
+normalized : Normalized NFC
 ```
 
 This separates two boundary policies. Validation rejects noncanonical input
@@ -98,17 +100,17 @@ reordering where they meet. Standard concatenation maintains a shared
 normalization constraint by repairing the join:
 
 ```text
-Normalized F String concatenate Normalized F String
-  -> Normalized F String
+Normalized F concatenate Normalized F
+  -> Normalized F
 ```
 
 For example:
 
 ```topal
-left : Normalized NFC String
-right : Normalized NFC String
+left : Normalized NFC
+right : Normalized NFC
 combined is left concatenate right
-combined : Normalized NFC String
+combined : Normalized NFC
 ```
 
 The repair may compose or reorder Unicode code points, but it preserves the
@@ -383,7 +385,7 @@ text encode Ascii
 ASCII text and ASCII-encoded storage remain separate concepts:
 
 ```topal
-AsciiText is AsciiCharacters String
+AsciiText is AsciiCharacters
 Encoded Ascii
 ```
 
@@ -429,7 +431,7 @@ shout is upper greeting
 ```
 
 ```topal
-identifier : CamelCase String
+identifier : CamelCase
 ```
 
 ```topal
