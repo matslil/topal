@@ -19,6 +19,9 @@ when these preserve the program's meaning.
   interfaces and laws. Associated types, equality, ordering, and conversion
   remain part of that one object model rather than introducing classes or
   textual templates.
+- A small [initial capability vocabulary](capabilities.md) covers comparison,
+  collection observation and construction, keyed association, and algebraic
+  laws without exposing hashing, ownership representation, or mutation.
 - Composition is the fundamental operation. Syntax is easy for humans and tools
   to parse, evaluates left to right, and has no special precedence hierarchy.
 - Typed [static introspection](introspection.md) exposes visible semantic
