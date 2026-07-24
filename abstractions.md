@@ -186,12 +186,10 @@ Container Value
 
 Matching `List Integer` binds `Container` to `List` and `Value` to `Integer`.
 Matching `Array N Integer` can bind `Container` to the partially constructed
-`Array N`, retaining `N` in the complete matched type. A map's homogeneous
-entry value is its key/value product:
-
-```text
-Map ( K, V ) entry type = Tuple ( K, V )
-```
+`Array N`, retaining `N` in the complete matched type. `Map ( K, V )` does not
+match this unary construction pattern: its type constructor accepts the
+key/value product as one explicit argument rather than exposing an independently
+matched `Value`.
 
 Capabilities can describe the container construction and its entry type in one
 matcher. For example:
@@ -216,12 +214,25 @@ The complete `C` provides the exact input/output relationship, while matching
 body. A sort which builds a new collection can substitute an appropriate
 construction capability for `Replaceable`.
 
-An ordinary unordered `Map` does not satisfy positional `Indexed` and
-`Replaceable`, so this `sort` does not accidentally give it an observable
-order. An ordered map may satisfy them when reordering preserves its declared
-semantics. Its entry product has a derived lexicographic total order only when
-both its key and value types provide `TotalOrder`; callers can instead select an
-explicit key or value comparison with an `order-by` algorithm.
+Another algorithm can match the map construction directly and use its captured
+components in a different result type:
+
+```topal
+map-entries is fn (
+  mapping : Map ( K, V )
+) -> Set ( Tuple ( K, V ) )
+
+  mapping entries
+```
+
+The header binds `K` and `V` from the input `Map` type. The result then
+constructs the map's entry-product type explicitly. `Map ( K, V )` and
+`Tuple ( K, V )` are different constructions; no structural match equates
+them.
+
+An ordinary unordered map also does not satisfy the `Sortable` pattern above.
+Code can obtain its entries and order that separate collection by an explicit
+key, value, or product comparison.
 
 ## Associated objects
 
