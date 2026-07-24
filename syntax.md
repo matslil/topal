@@ -5,9 +5,9 @@ intended to make composition and dependencies visible while remaining easy to
 parse. It describes design direction, not yet a stable language specification.
 
 Testing-specific table syntax is described separately in
-[unit testing and structural path coverage](testing.md). Its additional
-constructs remain under the compiler-provided `test` scope and do not add
-unqualified testing keywords to ordinary Topal source.
+[unit testing and structural path coverage](testing.md). Its root vocabulary
+becomes available only after `use lang feature testing` and remains unavailable
+to ordinary Topal source which does not activate that feature.
 
 Introspection-specific operations are described in
 [static introspection](introspection.md). They remain visibly qualified through

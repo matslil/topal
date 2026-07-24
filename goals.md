@@ -20,6 +20,9 @@ when these preserve the program's meaning.
   structure through qualified `lang` operations. Static algorithms can inspect
   and construct language objects without a separate macro language or implicit
   runtime reflection metadata.
+- Native [serialization](serialization.md) derives versioned type definitions
+  and streaming binary representations from that semantic structure. External
+  trace and interchange encodings remain a separate, composable step.
 - Category theory and concatenative programming are sources of semantic and
   syntactic inspiration, not terminology that users must learn.
 

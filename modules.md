@@ -249,60 +249,106 @@ available through the qualified `lang` scope, as in `lang view Person` and
 from ordinary application and data selection. Selecting a language revision
 still introduces that revision's ordinary source vocabulary directly.
 
-Every source file selects an immutable language revision explicitly:
+Every source file begins by selecting an immutable language version explicitly:
 
 ```topal
-use lang topal-r3
+use lang topal v1.5
 ```
 
-The compiler parses and checks the rest of the file according to revision 3.
-This prevents a later revision from changing the meaning of existing source,
-including by treating one of its identifiers as a newly introduced structural
-word.
+The `v` prefix constructs a `Version` value. `v1.5` is the abbreviated spelling
+of `v1.5.0-0`; the complete form contains natural-number major, minor, patch,
+and build components. Versions are ordered lexicographically by those four
+components.
 
-A language revision may contain variants represented by nested scopes:
+The selection establishes a language context from its occurrence forward.
+Another top-level selection may begin a region using another version:
 
 ```topal
-use lang topal-r3 realtime
+use lang topal v1.5
+
+current-algorithm is ...
+
+use lang topal v1.4
+
+compatible-algorithm is ...
 ```
 
-The `realtime` variant may add constructs that require the compiler to prove
-execution-time guarantees for selected algorithms. Other variants may restrict
-the language for smaller processors or execution environments. A variant
-refines a particular revision; it does not silently track newer revisions.
+Every complete top-level declaration is parsed and checked under the exact
+context active at its declaration. A selection cannot occur inside a
+declaration, and mutually recursive declaration groups cannot cross a language
+boundary. References across regions are checked like published objects
+exchanged by files selecting different language versions.
 
-Language selection has stricter rules than an ordinary `use`:
+A selected version may provide optional features:
+
+```topal
+use lang feature realtime
+```
+
+A feature adds its grammar, structural words, and compiler-provided objects
+from the declaration forward. Features normally introduce their vocabulary
+directly into the root scope. Static introspection remains deliberately
+qualified under `lang`, and a feature may specify the same exceptional policy
+when qualification communicates an important semantic boundary.
+
+Feature identities are unique. Their meaning and availability are fixed by
+the active immutable language version; feature selection therefore needs no
+separate feature version. Selecting another language version clears the active
+feature set. A feature can be selected again if the new version provides it.
+Activation reports a conflict with an already visible root binding rather than
+silently shadowing either meaning.
+
+For example, a file can visibly separate production declarations from tests:
+
+```topal
+use lang topal v1.5
+
+eligible is fn ( user : User ) -> Bool
+  ...
+
+use lang feature testing
+
+eligible path-coverage
+  user-a, () -> true
+```
+
+Language selection has stricter rules than an ordinary module `use`:
 
 1. Every source file, including `module.t`, selects a language.
-2. Selection is the first non-comment declaration in the file.
-3. A file contains exactly one language selection.
-4. An omitted selection is an error rather than an implicit request for the
+2. The initial selection is the first non-comment declaration in the file.
+3. Later language and feature selections occur only between complete top-level
+   declarations.
+4. Each selection affects only the source which follows it.
+5. An omitted initial selection is an error rather than an implicit request for the
    latest revision.
-5. The revision and variant are recorded as part of the compiled module.
+6. Every compiled declaration records its exact language version and active
+   features.
 
-Files in one package may select different language revisions or variants. The
+Files in one package may select different language versions and features. The
 compiler checks that their published interfaces agree on representations and
 semantics needed for interoperability.
 
 ### Bootstrap syntax
 
-The compiler must recognize language selection before it knows which language
-grammar to apply. A small, stable bootstrap syntax therefore recognizes line
-boundaries, `# ` comments, and the `use lang` declaration with its revision and
-optional variant path. After that declaration, the selected language defines
-the remainder of the file.
+The compiler must recognize the initial language selection before it knows
+which language grammar to apply. A small, stable bootstrap syntax therefore
+recognizes line boundaries, `# ` comments, `use lang topal`, and a `Version`
+literal. After that declaration, the selected language defines how later
+language and feature selections and all ordinary source are parsed.
 
 For example:
 
 ```topal
-# Compiled using the realtime variant of revision 3.
-use lang topal-r3 realtime
+# Begin with Topal 1.5, then activate its realtime feature.
+use lang topal v1.5
+use lang feature realtime
 
 use logger
 ```
 
-The bootstrap syntax is fixed across language revisions so that every compiler
-can determine which revision is being requested.
+The initial bootstrap syntax is fixed across language versions so that every
+compiler can determine which version is being requested. A compiler which does
+not implement that version rejects the file at this boundary.
 
 ## Source packages
 
@@ -311,19 +357,19 @@ contains a `package.t` file. Like every Topal source file, `package.t` begins by
 selecting a language revision:
 
 ```topal
-use lang topal-r3
+use lang topal v1.5
 
-use package se.example.numerics version 2.4
-use package org.example.rendering version 7.2 features (
+use package se.example.numerics version v2.4
+use package org.example.rendering version v7.2 features (
   gpu
   png
 )
 
 package is se.example.calculator
-version is 5.3.1
+version is v5.3.1
 ```
 
-Only `use lang` is part of the bootstrap syntax. Once it has selected an
+Only the initial `use lang topal` form is part of the bootstrap syntax. Once it has selected an
 immutable language revision, that revision defines the grammar and meaning of
 `use package`, version values, feature lists, and every other declaration in
 `package.t`. Package syntax may consequently evolve between language revisions
@@ -376,7 +422,7 @@ The shared implementation belongs in `module.t`:
 
 ```topal
 # module.t
-use lang topal-r3
+use lang topal v1.5
 
 calculate is fn ( expression : String ) -> Result Number
   implementation
@@ -387,17 +433,17 @@ independent versions:
 
 ```topal
 # library.t
-use lang topal-r3
+use lang topal v1.5
 
-version is 2.1.0
+version is v2.1.0
 pub calculate
 ```
 
 ```topal
 # application.t
-use lang topal-r3
+use lang topal v1.5
 
-version is 4.3.2
+version is v4.3.2
 
 start is fn ( arguments : CommandArguments ) -> Result Completed
   selected is arguments expression
@@ -422,7 +468,7 @@ In an artifact facade, `pub` crosses the artifact boundary:
   established by `application.t` itself and do not require publication.
 
 `application.t` is the implicit [root task](tasks.md) of the executable. Its
-selected language variant defines the available lifecycle and platform-event
+selected language features define the available lifecycle and platform-event
 handlers. Topal constructs this task and supplies platform startup values, such
 as command arguments, directly to its `start` handler; no separate application
 type or `main` algorithm is required.
@@ -464,7 +510,7 @@ package.
 
 Within a stable major version, minor versions accumulate functionality and
 patch versions preserve the interface. A compiled dependency on library
-version `3.7.4` is compatible with an available library exactly when:
+version `v3.7.4` is compatible with an available library exactly when:
 
 ```text
 available.major = 3
@@ -556,10 +602,10 @@ The source root's `package.t` provides the final license and copyright defaults
 for the complete package:
 
 ```topal
-use lang topal-r3
+use lang topal v1.5
 
 package is se.example.calculator
-version is 5.3.1
+version is v5.3.1
 license is Apache-2.0
 
 copyright is (
@@ -591,7 +637,7 @@ copyright while inheriting a license. The two searches are independent.
 An ordinary source file can establish defaults for its functions:
 
 ```topal
-use lang topal-r3
+use lang topal v1.5
 
 license is MIT
 copyright is (
@@ -615,7 +661,7 @@ implementation:
 
 ```topal
 # parser/module.t
-use lang topal-r3
+use lang topal v1.5
 
 license is BSD-3-Clause
 copyright is (
@@ -636,18 +682,18 @@ applies while constructing that application:
 
 ```topal
 # library.t
-use lang topal-r3
+use lang topal v1.5
 
-version is 2.1.0
+version is v2.1.0
 license is LGPL-3.0-only
 pub calculate
 ```
 
 ```topal
 # application.t
-use lang topal-r3
+use lang topal v1.5
 
-version is 4.3.2
+version is v4.3.2
 license is GPL-3.0-only
 
 start is fn ( arguments : CommandArguments ) -> Result Completed

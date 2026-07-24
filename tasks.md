@@ -165,10 +165,10 @@ Returning from `start` completes root-task initialization; it does not terminate
 the application. The application continues receiving platform and task
 messages until its root scope terminates according to the selected lifecycle.
 
-The selected Topal language variant defines the application protocol. A Unix
-variant may provide command arguments, signals, and orderly shutdown, while an
-Android variant may provide its platform lifecycle and application events.
-The variant specifies recognized handler names, their types, ordering, and
+The selected Topal language features define the application protocol. A Unix
+feature may provide command arguments, signals, and orderly shutdown, while an
+Android feature may provide its platform lifecycle and application events.
+The feature specifies recognized handler names, their types, ordering, and
 delivery guarantees. Other algorithms in `application.t` remain private helper
 algorithms executed by the root task.
 
