@@ -383,7 +383,7 @@ A capability matcher can follow the same homogeneous container construction
 used by the types themselves:
 
 ```topal
-Sortable is ( Indexed and Replaceable ) Container TotalOrder Value
+Sortable is ( Indexed and Replaceable ) Container ( TotalOrder Value )
 
 sort is fn ( values : C : Sortable ) -> C
   sorting-implementation values

@@ -195,7 +195,7 @@ Capabilities can describe the container construction and its entry type in one
 matcher. For example:
 
 ```topal
-Sortable is ( Indexed and Replaceable ) Container TotalOrder Value
+Sortable is ( Indexed and Replaceable ) Container ( TotalOrder Value )
 ```
 
 This promises indexed access and immutable replacement for the matched
