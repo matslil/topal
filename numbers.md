@@ -125,7 +125,7 @@ and conceptually returns:
 Result ByteCounter
 ```
 
-Failure uses the numeric construction domain's out-of-range error code.
+Failure uses the numeric construction domain's `out-of-range` error code.
 
 Explicit modular construction always reduces into the range:
 

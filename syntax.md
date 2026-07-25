@@ -662,6 +662,11 @@ parse-count is fn ( text : String ) -> Result Integer
   body
 ```
 
+Every fallible function must have an `ErrorCode` enum available when its
+contract is declared. It may use a definition from any namespace, including a
+definition shared with other functions, as described by
+[the error model](errors.md).
+
 Errors are ordinary result values rather than exceptions. A successful value
 may be projected from a `Result` inside an explicitly fallible algorithm, as
 described by [the error model](errors.md#success-projection-and-propagation).

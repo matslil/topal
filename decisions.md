@@ -128,20 +128,6 @@ construct should be added only if concrete use cases cannot be expressed
 cleanly through those boundaries. If added, its treatment of continuation
 linearity, task state, and effect resource identities needs a separate design.
 
-## Error vocabulary precision
-
-A public result can constrain its errors. The remaining choice is whether the
-normal unit of constraint is:
-
-- an entire error domain;
-- selected codes within a domain; or
-- named sets which may combine domains and codes.
-
-Named sets are the most flexible but add interface objects and versioning rules.
-Domain-only contracts are simpler but may be too broad for recovery-oriented
-APIs. This should be tested against several file, parsing, network, and
-application-boundary designs before selecting syntax.
-
 ## Cancellation and external time
 
 Cancellation is cooperative and scoped. Protocols still need precise defaults

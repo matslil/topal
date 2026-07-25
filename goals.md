@@ -54,8 +54,8 @@ when these preserve the program's meaning.
 
 - Algorithms follow explicit [execution and totality](execution.md) rules.
   They are total by default and return errors explicitly as `Result`
-  values; there are no exceptions. Results use a common, contextual
-  [error model](errors.md) across modules.
+  values; there are no exceptions. Results use a common structured
+  [error model](errors.md), with namespace-defined code vocabularies.
 - [Effects](effects.md) complement regular types by describing observable
   interactions and the resources they touch. They make ordering and
   parallelization constraints visible without hiding failure control flow.

@@ -1,19 +1,19 @@
 # Results and errors
 
-This document records the provisional error model for Topal. Algorithms report
-failure explicitly with `Result`; exceptions are not part of the language.
-The model standardizes the shape of errors so that results from different
-modules compose without erasing the context needed to diagnose a failure.
+Topal reports failure explicitly with `Result`; exceptions are not part of the
+language. Errors have a common structured representation, while each fallible
+function declares the error-code vocabulary it may return.
 
 ## Result
 
-`Result` represents either a successful value or an `Error`. Its error shape is
-standard rather than chosen independently by every algorithm. This lets generic
-algorithms forward failures and lets callers inspect errors consistently across
-module boundaries.
+`Result Value` represents either a successful `Value` or an `Error`:
 
-Fallibility is part of an algorithm's explicit interface. Input and output types
-are mandatory in an algorithm declaration and are not inferred from its body:
+```text
+Result Value = Value + Error
+```
+
+Fallibility is part of a function's explicit interface. Input and output types
+are mandatory and are not inferred from its body:
 
 ```topal
 increment is fn ( value : Integer ) -> Integer
@@ -24,14 +24,14 @@ read-count is fn ( path : Path ) -> Result Integer
 ```
 
 `increment` cannot return or propagate an error. `read-count` may return either
-an `Integer` or the standard `Error`. `Result` is never added implicitly to a
-declared output type.
+an `Integer` or an `Error`. `Result` is never added implicitly to a declared
+output type.
 
-The exact type and construction syntax remains provisional. Conceptually:
+## Error representation
+
+Every `Result` uses the common structured `Error` value. Conceptually:
 
 ```topal
-Result Value
-
 Error
   domain : ErrorDomain
   code : ErrorCode
@@ -41,43 +41,104 @@ Error
 ```
 
 `detail`, `cause`, and `source` are absent when they do not add information.
+`ErrorCode` is the common classification of error codes. Namespace-defined
+enums are its subtypes, and the precise subtype varies between fallible
+functions; the rest of the error representation remains common. The structured
+representation can therefore retain causes carrying codes from other
+vocabularies.
 
-## Declared error vocabularies
+Putting a value of a concrete `ErrorCode` subtype in the `code` field does not
+make the containing `Error` a subtype. Every error retains the same `Error`
+type and representation. For example, a file code remains an `ErrorCode` when
+stored in `Error.code`, and the containing value remains simply `Error`.
 
-`Result Value` always uses the common runtime `Error` representation, but an
-algorithm contract may constrain which public error domains and codes it
-returns. Conceptually:
+The compiler tracks a function's permitted code subtype separately as part of
+its `Result` contract. It does not parameterize `Error`, derive an
+`Error FileErrorCode` type, or require callers to inspect the type of an error.
 
-```text
-read-configuration : Path -> Result Configuration
-  errors ConfigurationError
+## Error-code vocabularies
+
+Each concrete `ErrorCode` subtype is a finite enum of identifiers. For example,
+a file error vocabulary might contain:
+
+```topal
+not-found
+permission-denied
+invalid--path
 ```
 
-The constraint is a finite set of visible error-domain/code capabilities.
-Private algorithms may infer it. A public declaration records an explicit upper
-bound, so adding a newly observable error category is an interface change. The
-final placement of this bound in source syntax remains provisional.
+The definition may live in any namespace and may be shared by unrelated
+functions. A fallible function must have an `ErrorCode` type available when its
+`Result` contract is declared. The compiler records the exact resolved type as
+part of that function's interface.
 
-Success projection adds the expression's error set to the current algorithm.
-Explicit matching may handle members and remove them from the outgoing set.
-Wrapping at an abstraction boundary replaces the publicly handled category
-with the wrapper's declared category while retaining the original as a
-diagnostic cause.
+Different functions in the same source file may use different `ErrorCode`
+types. The connection is between a function and the type resolved for its
+contract; it does not move the type into the function's namespace or create a
+new subtype there.
 
-An unconstrained `Result Value` accepts any `Error` and remains available at
-dynamic integration boundaries. Ordinary library interfaces should prefer a
-declared vocabulary. Generic forwarding can quantify over an error set in the
-same way higher-order algorithms quantify over effects.
+A scope may bind an imported definition to the required local name:
 
-Error constraints do not change the serialized `Error` shape or expose private
-cause domains as part of a caller's handling contract.
+```topal
+use shared-error
+ErrorCode is shared-error ErrorCode
+```
+
+This is an alias, not a copy or conversion. Both names denote the same enum and
+its values retain the same identity.
+
+The code vocabulary is part of a fallible function's public type. When the
+function is exported, its `ErrorCode` definition must also be exported through
+some reachable namespace. It need not be exported under the function's
+namespace, but a consumer must be able to resolve the exact type in order to
+use the function. The compiler rejects a public fallible function whose
+`ErrorCode` remains private.
+
+## Error-code descriptions
+
+The compiler knows that every `ErrorCode` value can be converted to `String`.
+Conversion starts with the source identifier and scans hyphens from left to
+right:
+
+- a single `-` becomes a space;
+- a pair `--` becomes one literal `-`.
+
+For example:
+
+```text
+not-found         -> "not found"
+permission-denied -> "permission denied"
+invalid--path     -> "invalid-path"
+```
+
+The identifier is programmatic identity; its converted string is the default
+human-readable description. Programs match the identifier rather than parsing
+the string.
+
+## Matching error codes
+
+Patterns inspect the `code` field using ordinary nominal enum matching.
+Different lines may name values belonging to different `ErrorCode` subtypes:
+
+```topal
+attempt
+  Error ( code is file-error not-found ) then recover ()
+  Error ( code is parser-error invalid-syntax ) then reject ()
+  Error problem then report problem
+```
+
+The qualified code value identifies its namespace-defined enum. This is a
+value-pattern test on `Error.code`, not type introspection on `Error`. The
+compiler checks each pattern against the code vocabularies in the function's
+statically recorded result contract. When that contract describes a closed
+set, it can also check the match for exhaustiveness; an unconstrained dynamic
+`Error` requires a fallback branch.
 
 ## Success projection and propagation
 
 When an expression has type `Result Value` but its immediate context explicitly
 requires `Value`, Topal projects the successful value and returns an error from
-the current algorithm unchanged. The enclosing algorithm must explicitly
-declare a compatible `Result` output:
+the current function unchanged:
 
 ```topal
 load-configuration is fn ( path : Path ) -> Result Configuration
@@ -86,9 +147,10 @@ load-configuration is fn ( path : Path ) -> Result Configuration
 ```
 
 If `read-file path` succeeds, its `String` is bound to `text`. If it fails, the
-error is returned immediately from `load-configuration`. This is success
-projection with error propagation, not a general implicit conversion from
-`Result String` to `String`.
+error is returned immediately from `load-configuration`. The enclosing
+function must declare a compatible `Result` and `ErrorCode` contract. It may
+use the same shared code type or explicitly translate or wrap the error into
+its own code vocabulary.
 
 Merely binding, passing, or returning a `Result` does not project it:
 
@@ -97,9 +159,8 @@ attempt is read-file path
 ```
 
 Here `attempt` retains type `Result String`. Projection is requested only by a
-context that explicitly requires the success type, such as the `String`
-classification above. An algorithm with an infallible output cannot use this
-projection because it has nowhere to return the error:
+context that explicitly requires the success type. An infallible function
+cannot project a result because it has nowhere to return the error:
 
 ```topal
 load-length is fn ( path : Path ) -> Integer
@@ -108,65 +169,25 @@ load-length is fn ( path : Path ) -> Integer
 ```
 
 Explicit matching remains available when the caller needs to recover from,
-translate, or otherwise inspect an error rather than propagate it.
+translate, or inspect an error rather than propagate it.
 
-Propagation normally preserves the error unchanged. Intermediate algorithms do
-not add frames merely because they project a success value. When an error leaves
-a public top-level operation, that operation still adds the mandatory contextual
-frame described below.
+Propagation normally preserves the complete error unchanged. Wrapping creates
+a new outer error and retains the original as its cause.
 
-## Domains and codes
+## Domains, details, and causes
 
-An error domain identifies a stable vocabulary of errors. Domains and codes are
-objects with stable identity, not arbitrary strings, so programs can compare
-them reliably. Both provide printable descriptions for diagnostics.
+An error domain identifies the stable vocabulary which owns an `ErrorCode`.
+Domains are generated from qualified module or namespace scope by default. A
+module may explicitly use another domain when several modules intentionally
+share a vocabulary.
 
-Domains are generated from qualified module or namespace scope by default:
-
-```topal
-example.configuration
-example.network.http
-```
-
-A domain is not generated for every file or algorithm. File paths and algorithm
-names describe implementation locations and change during refactoring; they do
-not define independently useful error vocabularies. A module may explicitly use
-another domain when several modules intentionally share a vocabulary.
-
-A code identifies a semantic category within its domain:
-
-```topal
-example.configuration.could-not-apply
-example.configuration.invalid-value
-```
-
-Normal control flow matches the domain and code of the outermost error. Codes
-from causes remain available for deliberate inspection and diagnostics, but do
-not form a composite code.
-
-## Details and descriptions
-
-The domain and code supply a default human-readable description. An optional
-detail distinguishes a particular occurrence without requiring a new code:
-
-```text
-configuration: could not apply: configuration "production"
-```
-
-Details supplement the code description rather than repeat it. They may include
-information such as a configuration name, input position, or rejected value.
+An optional detail distinguishes a particular occurrence without requiring a
+new code. Details supplement the code description rather than repeat it.
 Programs must not parse descriptions or details to determine behavior.
-
-Details are intended for people and may be localized. Values which need
-independent inspection, filtering, localization, or redaction may eventually
-require structured diagnostic context; the initial error model does not make a
-free-form string part of the programmatic error identity.
-
-## Causes and contextual frames
 
 An algorithm may wrap an error by returning a new error whose `cause` is the
 original. Each frame retains its own domain, code, and optional detail. Walking
-the causes produces a semantic trace of the operations that failed:
+the causes produces a semantic trace across abstraction boundaries:
 
 ```text
 configuration: could not apply: configuration "production"
@@ -174,56 +195,17 @@ caused by configuration reader: could not read: "production.conf"
 caused by file: not found: "production.conf"
 ```
 
-This trace records abstraction boundaries and attempted operations rather than
-every function call. An intermediate layer that merely forwards a failure does
-not add a frame. It adds one only when it contributes meaningful operational or
-semantic context.
+An intermediate function which merely forwards a failure does not add a frame.
+It adds one only when it contributes meaningful operational or semantic
+context.
 
-The public, top-level operation is the exception to that forwarding rule. It
-always adds a frame when returning a failure, even if it can only describe the
-operation that was attempted. Without that frame, a receiver might know that a
-file was missing but not whether the application was loading configuration,
-opening a document, or applying an update.
-
-## Abstraction boundaries
-
-The outermost domain and code are the error contract of the current API. A
-public layer wraps a lower-level failure when its own operation fails, rather
-than changing the identity of the underlying error. The original error remains
-as the cause.
-
-Consequently, a private implementation domain can remain in the diagnostic
-chain without requiring callers to depend on it. Callers normally handle the
-public frame:
-
-```text
-example.configuration: could not apply
-caused by example.internal.parser: invalid value
-```
-
-Replacing the private parser can change the inner diagnostic frame without
-changing the public error contract. APIs that intentionally expose a lower-level
-abstraction may instead forward its error unchanged below their mandatory
-top-level operation frame.
-
-## Source locations
+## Source locations and presentation
 
 Source locations answer where an error was constructed, while domains answer
-which semantic vocabulary owns it. The compiler may attach a file, algorithm,
-and line as diagnostic metadata, potentially only in diagnostic builds. Source
-locations do not participate in error equality or the stable API contract.
-
-## Presentation
+which semantic vocabulary owns it. Source locations do not participate in
+error equality or the stable API contract.
 
 A standard formatter presents the outer operation first and then follows its
-causes. It combines the printable domain, code description, and optional detail
-for each frame. Applications may choose a concise presentation for end users
-and retain the full chain and source locations for logs or diagnostics.
-
-Diagnostic presentation must account for sensitive details. Retaining a cause
-does not require exposing every private frame or value to every user; an
-application or boundary may redact presentation while preserving the error for
-authorized diagnostics. A value explicitly marked
-[sensitive](sensitive.md) must be omitted or redacted unless the diagnostic
-boundary's corresponding parameter declares that it accepts sensitive
-information.
+causes. It combines the printable domain, converted code description, and
+optional detail for each frame. Diagnostic presentation must account for
+sensitive details and may redact them without changing error identity.

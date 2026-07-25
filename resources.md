@@ -56,7 +56,7 @@ remaining components or releasing their memory.
 
 When a body operation and one or more destructors fail, Topal preserves the
 body failure as the primary error and records destruction failures in its
-[contextual error chain](errors.md#causes-and-contextual-frames). Destruction
+[contextual error chain](errors.md#domains-details-and-causes). Destruction
 continues in deterministic reverse construction order so that one failure
 cannot prevent the remaining cleanup.
 
