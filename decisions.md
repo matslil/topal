@@ -14,20 +14,20 @@ The following questions from the initial audit are no longer open:
   Constraints retain a base type and limit its values through a predicate;
   capabilities make static interface and law promises.
 - Constraint construction is object-first, as in
-  `Integer constraint { value } ...`. The inferred anonymous algorithm is the
+  `Integer constraint { value } ...`. The inferred anonymous function is the
   predicate.
-- Chained classification proceeds from left to right. An algorithm header such
+- Chained classification proceeds from left to right. A function header such
   as `values : C : Sortable` first classifies `values` as `C` and then requires
   `C` to satisfy `Sortable`.
-- Algorithm headers perform static type matching. Construction syntax can bind
-  components such as `X` and `Y` from `Tuple ( X, Y )`, and the algorithm body
+- Function headers perform static type matching. Construction syntax can bind
+  components such as `X` and `Y` from `Tuple ( X, Y )`, and the function body
   is the implicit successful branch of the header match.
 - Returning a captured complete type such as `C` preserves the precise
   relationship between the input and result, including nominal identity,
   constraints, static sizes, and other parameters.
 - The [initial capability vocabulary](capabilities.md) now defines comparison,
   collection observation and construction, keyed association, combination, and
-  algorithm-law capabilities.
+  function-law capabilities.
 - Possible compiler-generated tests, symbolic proof tables, capability-law
   verification, and task/protocol proofs are recorded as
   [future work](FUTURE.md), not current language guarantees.
@@ -50,7 +50,7 @@ The grammar must select compatible spellings for:
 
 These should be designed together so that indentation, recursive
 classification, prefix application, and the zero-to-two operand rule remain
-unambiguous. Algorithm headers already bind generic type components through
+unambiguous. Function headers already bind generic type components through
 static matching rather than through a separate generic-parameter list.
 
 ## Type-pattern applicability
@@ -89,7 +89,7 @@ protection against distant conflicts. This decision also determines how
 libraries publish derived equality, ordering, parsing, and collection evidence.
 
 The [initial capability vocabulary](capabilities.md) selects the fundamental
-comparison, collection, and algorithm-law names. Formatting, parsing, checked
+comparison, collection, and function-law names. Formatting, parsing, checked
 construction, and other library-specific capabilities still need vocabularies
 in their respective designs.
 
@@ -103,7 +103,7 @@ such as `Map ( Key, Value )` and `Tuple ( Key, Value )`.
 The [future verification design](FUTURE.md) describes symbolic proof tables,
 finite exhaustive verification, induction, and independently checked proof
 certificates. Before that system exists, the language still needs a conservative
-rule for algorithm-law evidence used by optimizations.
+rule for function-law evidence used by optimizations.
 
 The main choices are:
 

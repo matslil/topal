@@ -1,7 +1,7 @@
 # Serialization
 
 Topal provides a native binary serialization protocol for every object which
-an algorithm may return. The protocol is designed for inexpensive tracing:
+a function may return. The protocol is designed for inexpensive tracing:
 type structure and representation properties are written once in a stream
 header, while events contain only a compact type identity and their value.
 
@@ -186,12 +186,12 @@ version.
 
 ## Objects and descriptions
 
-Serialization applies to every object which can be returned by an algorithm.
+Serialization applies to every object which can be returned by a function.
 This includes values and statically constructed objects such as `Type`. It also
 includes returnable resources and capabilities, although their representations
 do not grant the receiver equivalent authority.
 
-An `Environment` is a composition context rather than an ordinary algorithm
+An `Environment` is a composition context rather than an ordinary function
 result and consequently is not serialized as a returned object. A value
 selected from a constructed context, such as an endpoint, may be returned and is
 serialized according to its own type.

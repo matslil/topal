@@ -25,7 +25,7 @@ execution as proof:
 Only `proven` and `exhaustively verified` produce verified law evidence.
 `Disproved` produces a diagnostic witness when possible. `Tested` records useful
 confidence and coverage but cannot authorize a semantics-changing optimization.
-`Unresolved` prevents certification while leaving an otherwise valid algorithm
+`Unresolved` prevents certification while leaving an otherwise valid function
 available without the requested verified capability.
 
 An explicitly trusted claim remains possible at a narrow foreign or proof
@@ -35,7 +35,7 @@ metadata, and diagnostics.
 ## Compiler-generated structural test tables
 
 Topal's [unit-test tables and structural path
-coverage](testing.md) could generate table rows automatically from an algorithm:
+coverage](testing.md) could generate table rows automatically from a function:
 
 - one row for every feasible decision path;
 - zero and one-or-more cases for structural repetition;
@@ -78,7 +78,7 @@ transformations.
 
 ## Capability-law verification
 
-Algorithm-law capabilities such as `Associative`, `Commutative`, `Identity`,
+Function-law capabilities such as `Associative`, `Commutative`, `Identity`,
 and `Idempotent` define relational proof templates. For example,
 `Associative operation` generates:
 
@@ -123,7 +123,7 @@ Symbolic reasoning, equivalence partitions, and symmetry may reduce the work,
 but a representative value stands for a partition only when the compiler proves
 that the property is invariant throughout that partition.
 
-## Pure algorithm verification
+## Pure function verification
 
 Topal's effect-free, total fragment is a good target for automated proof. An
 ordinary value-law proof should initially require:
@@ -136,8 +136,8 @@ ordinary value-law proof should initially require:
 - no cleanup behavior which introduces an observable effect at the proof
   boundary.
 
-Static algorithms already satisfy stronger versions of these requirements, but
-ordinary runtime algorithms can also be proved by treating their inputs as
+Static functions already satisfy stronger versions of these requirements, but
+ordinary runtime functions can also be proved by treating their inputs as
 universally quantified values.
 
 The strongest initial domain includes:
@@ -334,7 +334,7 @@ external assumption.
 ## Possible staged implementation
 
 1. Generate concrete structural test rows and minimal counterexamples.
-2. Add symbolic rows for pure, nonrecursive exact-value algorithms.
+2. Add symbolic rows for pure, nonrecursive exact-value functions.
 3. Verify fundamental capability laws and finite enumerated domains.
 4. Add structural induction and fold invariants.
 5. Emit and independently check proof certificates.

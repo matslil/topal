@@ -3,7 +3,7 @@
 Topal's container model is built from the same small set of recursively
 composable concepts as the rest of the language. Products, sums, recursion,
 constraints, and finite indexes provide the semantic foundation. Collection
-capabilities provide shared algorithms without forcing every value into one
+capabilities provide shared functions without forcing every value into one
 universal container hierarchy.
 
 ## Algebraic foundation
@@ -44,6 +44,12 @@ The user-facing algebraic vocabulary follows two independent distinctions:
 alternative has a label, an additional `tagged` qualifier would not distinguish
 another source construct. `Variant` remains the positional sum constructor,
 primarily for generic and generated code.
+
+An `Enum` is the payload-free nominal case of `Union`: every alternative has a
+label and no associated value. It retains enum intent for matching,
+introspection, display, and serialization without introducing another sum
+mechanism. The shared object taxonomy and conceptual expansion to unit-valued
+union alternatives are described in [object and type taxonomy](types.md#products-sums-and-enums).
 
 ### Tuples and records
 
@@ -200,7 +206,7 @@ union's ordinary declaration scope; unions do not introduce a separate global
 constructor namespace.
 
 A tuple is fundamentally a product rather than a homogeneous collection. A
-homogeneous tuple may support sequence algorithms, but a heterogeneous tuple
+homogeneous tuple may support sequence functions, but a heterogeneous tuple
 cannot generally be mapped, folded, or selected using one entry type.
 
 ## Sequences and arrays
@@ -224,7 +230,7 @@ Array N T = Sequence T where entry-count = N
 ```
 
 These views are compatible: the first emphasizes total indexing and the second
-emphasizes reuse of sequence algorithms. Neither requires contiguous storage or
+emphasizes reuse of sequence functions. Neither requires contiguous storage or
 constant-time access as an observable language guarantee. Hardware layouts and
 encoded arrays can add explicit representation constraints when those properties
 matter at a boundary.
@@ -316,7 +322,7 @@ no-scores is ()
 
 Consequently, map entries use the ordinary product model, and generic set
 operations can be reused when their laws remain meaningful. Lookup and other
-key-oriented algorithms are derived from the uniqueness constraint.
+key-oriented functions are derived from the uniqueness constraint.
 
 A bag, or multiset, retains multiplicity without introducing order. It can be
 constructed from a map of values to positive occurrence counts:
@@ -405,7 +411,7 @@ parameter and constraint.
 
 ## Iteration
 
-Iteration is expressed as algorithms over collection entries rather than as a
+Iteration is expressed as functions over collection entries rather than as a
 separate mutable iterator object. The common vocabulary is:
 
 ```topal
@@ -419,7 +425,7 @@ collect source
 source collect Target
 ```
 
-These algorithms share names only where they share laws. Differences in order,
+These functions share names only where they share laws. Differences in order,
 uniqueness, multiplicity, keys, and retained size evidence remain visible.
 
 `foreach` applies an action to every entry and returns `Unit` for a finite
@@ -549,7 +555,7 @@ target kind make those laws unambiguous.
 
 ### Entry views
 
-Every homogeneous collection exposes entries, allowing the same algorithms to
+Every homogeneous collection exposes entries, allowing the same functions to
 operate on values and on structural information:
 
 ```text
@@ -577,7 +583,7 @@ CountedEntry T
   count
 ```
 
-Value-oriented algorithms are the convenient default. Entry-oriented forms
+Value-oriented functions are the convenient default. Entry-oriented forms
 make indexes, keys, or counts explicit:
 
 ```topal
@@ -590,13 +596,13 @@ mapping select-entry
     entry key starts-with "user:"
 ```
 
-Names such as `map-values`, `select-index`, and `select-key` are algorithms or
+Names such as `map-values`, `select-index`, and `select-key` are functions or
 aliases built from these views, not independent iteration mechanisms. Maps also
 offer `keys`, `values`, and `entries` projections, after which the same iteration
 vocabulary applies.
 
 A bag's canonical entry view visits each distinct value once with its count.
-Explicit `occurrences` expands the bag when an algorithm must visit each
+Explicit `occurrences` expands the bag when a function must visit each
 occurrence separately.
 
 ### Products and sums
@@ -649,7 +655,7 @@ values
   Entry ( first, rest ) then use first rest
 ```
 
-The standard `uncons` algorithm packages the same decision for composition:
+The standard `uncons` function packages the same decision for composition:
 
 ```text
 uncons : List T -> Option ( T, List T )
@@ -754,7 +760,7 @@ the same validity rule rather than silently clamping an excessive count.
 
 `reverse` preserves entry count and multiplicity while reversing sequence
 order. It is unavailable for an unordered collection because no order exists
-to reverse. Sorting likewise requires an ordering algorithm and produces a
+to reverse. Sorting likewise requires an ordering function and produces a
 sequence rather than pretending to preserve an unordered source kind:
 
 ```topal
@@ -1024,7 +1030,7 @@ container kinds:
 
 - Stacks, queues, and deques are sequence operation disciplines.
 - Priority queues are collections paired with an ordering and priority-removal
-  algorithms.
+  functions.
 - Matrices are arrays indexed by products of finite indexes.
 - Graphs can be maps from vertices to sets of vertices or edges.
 - Trees are ordinary recursive products and variants.
@@ -1043,7 +1049,7 @@ constructions; together they build collections and other user-defined data.
 - Products, sums, recursion, constraints, and finite indexes define structure.
 - More specific collections retain the laws of the simpler structures from
   which they are constructed.
-- Capabilities share algorithms without erasing semantic differences in order,
+- Capabilities share functions without erasing semantic differences in order,
   uniqueness, multiplicity, or indexing.
 - Iteration uses common entry views and vocabulary while retaining each
   collection's ordering and combination laws.
@@ -1051,5 +1057,5 @@ constructions; together they build collections and other user-defined data.
   retain the relationships established by construction.
 - Storage layout and performance strategies remain compiler choices unless a
   program explicitly requests representation constraints.
-- Specialized structures are composed from core collections and algorithms
+- Specialized structures are composed from core collections and functions
   instead of multiplying primitive container kinds.

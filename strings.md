@@ -2,7 +2,7 @@
 
 This document records the provisional text model for Topal. It keeps ordinary
 text as easy to handle as ASCII while the compiler and standard library account
-for Unicode segmentation, casing, normalization algorithms, and encoding.
+for Unicode segmentation, casing, normalization functions, and encoding.
 
 ## Semantic types
 
@@ -274,7 +274,7 @@ character-generator foreach { character }
   process character
 ```
 
-Ordinary sequence algorithms may consume `text` directly. `characters` remains
+Ordinary sequence functions may consume `text` directly. `characters` remains
 useful when code wants to name or emphasize the generated traversal, especially
 before transformations that finish with `collect String`.
 

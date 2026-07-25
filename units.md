@@ -155,7 +155,7 @@ they enable must be unambiguous in their scope.
 
 Simple multiplicative scaling does not describe every measurement system.
 Affine units such as degrees Celsius additionally require an offset, and units
-with context-dependent conversions require explicit conversion algorithms.
+with context-dependent conversions require explicit conversion functions.
 Their declaration syntax and arithmetic rules remain undecided.
 
 Mass and force remain distinct dimensions. Grams and kilograms measure mass;

@@ -2,7 +2,7 @@
 
 This document defines ordinary block evaluation, immutable bindings, return,
 recursion, and termination. These rules complete the execution model used by
-algorithm bodies, decision actions, generators, destructors, and task handlers.
+function bodies, decision actions, generators, destructors, and task handlers.
 
 ## Blocks and sequencing
 
@@ -54,14 +54,14 @@ mutable view survives the replacement or a handler suspension.
 
 ## Return and propagation
 
-`return expression` completes the nearest enclosing ordinary algorithm with the
+`return expression` completes the nearest enclosing ordinary function with the
 expression's value. The expression must satisfy the declared output type,
 including its `Result` classification. Cleanup for every exited lexical scope
 runs in deterministic reverse construction order before the call completes.
 
-`return` is not permitted in a static initializer outside an algorithm, nor
-does it return from an enclosing algorithm through an anonymous algorithm.
-Each anonymous algorithm, generator, destructor, and task handler establishes
+`return` is not permitted in a static initializer outside a function, nor
+does it return from an enclosing function through an anonymous function.
+Each anonymous function, generator, destructor, and task handler establishes
 its own return boundary.
 
 Success projection from `Result` performs an early error return from the same
@@ -70,7 +70,7 @@ establish separate return boundaries.
 
 ## Recursion
 
-An algorithm may refer to itself after its complete input and output type has
+A function may refer to itself after its complete input and output type has
 been established. A group of declarations may explicitly form a mutually
 recursive group; arbitrary forward references do not silently create one.
 Every member of the group is checked against the declared types of the others.
@@ -80,18 +80,18 @@ Ordinary recursion must be proven terminating. The compiler first recognizes:
 - structural recursion on a component of a matched finite recursive value;
 - recursion on a constrained integer which moves strictly toward a bound;
 - recursion through a finite collection traversal; and
-- calls to an already proven terminating algorithm.
+- calls to an already proven terminating function.
 
 When no standard rule succeeds, a declaration may supply a static decreasing
 measure into a well-founded order. Every recursive cycle, including a mutual
 cycle, must decrease that measure before returning to the same point in the
 cycle. The measure is proof information and need not exist at runtime.
 
-Termination checking follows algorithm values. Passing a recursive call through
-a higher-order algorithm is accepted only when that algorithm's contract
+Termination checking follows function values. Passing a recursive call through
+a higher-order function is accepted only when that function's contract
 preserves the required decrease or performs a proven finite number of calls.
 
-There is no unchecked partial ordinary algorithm in safe Topal. A computation
+There is no unchecked partial ordinary function in safe Topal. A computation
 which waits for external interaction may suspend through a declared protocol or
 effect. A computation which can produce indefinitely is a generator and must
 meet the productivity rule below.
@@ -117,13 +117,13 @@ generator as a finite container is rejected unless a bound is established.
 
 ## Static evaluation
 
-Static algorithms obey the ordinary termination rules and additionally have no
+Static functions obey the ordinary termination rules and additionally have no
 runtime effects or runtime-only dependencies. Their bound may depend on static
 inputs; “static” does not mean constant-time.
 
 The compiler may impose an implementation resource limit on evaluation. Hitting
 that limit is a compilation diagnostic, not a possible result of the static
-algorithm. It does not weaken a proven termination contract.
+function. It does not weaken a proven termination contract.
 
 ## Traversal control
 

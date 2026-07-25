@@ -58,7 +58,8 @@ its `Result` contract. It does not parameterize `Error`, derive an
 
 ## Error-code vocabularies
 
-Each concrete `ErrorCode` subtype is a finite enum of identifiers. For example,
+Each concrete `ErrorCode` subtype is a finite
+[enum](types.md#products-sums-and-enums) of identifiers. For example,
 a file error vocabulary might contain:
 
 ```topal
@@ -185,7 +186,7 @@ An optional detail distinguishes a particular occurrence without requiring a
 new code. Details supplement the code description rather than repeat it.
 Programs must not parse descriptions or details to determine behavior.
 
-An algorithm may wrap an error by returning a new error whose `cause` is the
+A function may wrap an error by returning a new error whose `cause` is the
 original. Each frame retains its own domain, code, and optional detail. Walking
 the causes produces a semantic trace across abstraction boundaries:
 

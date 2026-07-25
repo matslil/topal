@@ -22,7 +22,7 @@ their directory.
 ## Constructor declarations
 
 Constructor declarations classify their arguments rather than defining an
-ordinary algorithm:
+ordinary function:
 
 ```topal
 # logger/module.t
@@ -89,7 +89,7 @@ local context error rather than the start of automatic namespace traversal.
 Ordinary unqualified resolution within a function is limited to its parameters
 and nested lexical scopes. Other namespaces require an explicit qualified path.
 
-The defining context remains part of an algorithm value when that value is
+The defining context remains part of a function value when that value is
 passed or stored. Closures retain only the contextual arguments they use.
 Structured child tasks use the same immutable context instance as their parent.
 
@@ -190,7 +190,7 @@ arguments.
 
 An argument used to determine dependencies, types, declarations, visibility, or
 other namespace structure must be statically known. An argument used only by
-runtime algorithm bodies may be an immutable runtime value:
+runtime function bodies may be an immutable runtime value:
 
 ```topal
 Module (
@@ -274,18 +274,18 @@ Selecting the endpoint is pure, total, and stable. The protocol call retains
 its declared communication effects and fallibility. Constructor selection is
 not a mechanism for hiding effects.
 
-Contained diagnostic algorithms may likewise be supplied as capabilities.
+Contained diagnostic functions may likewise be supplied as capabilities.
 Their inability to affect application state or control flow is a property of
 their capability and effect contracts, not of `@`. Foreign implementations
 which claim containment require a trusted adapter.
 
-The compiler records the direct contextual selections of an algorithm and
+The compiler records the direct contextual selections of a function and
 their transitive use through calls. Constructor-backed selections support
 composition checking, documentation, specialization, and erasure of unused
-context plumbing without adding ordinary source parameters to every algorithm
+context plumbing without adding ordinary source parameters to every function
 declaration.
 
-Static algorithms may select only statically known constructor arguments.
+Static functions may select only statically known constructor arguments.
 
 ## Provisional grammar
 

@@ -220,7 +220,7 @@ address range + byte offset + layout
 
 The absolute address remains derivable rather than separately stored. The range
 start and numeric offset can be recovered through their declared `as` views and
-added when an algorithm needs the concrete address.
+added when a function needs the concrete address.
 
 ## Reading and writing
 
@@ -263,7 +263,7 @@ longer observable.
 ## Foreign boundary declarations
 
 A foreign declaration associates an external symbol or callback entry with a
-Topal algorithm type. It explicitly declares:
+Topal function type. It explicitly declares:
 
 - the ABI and external symbol identity;
 - a layout for every externally represented input and output;

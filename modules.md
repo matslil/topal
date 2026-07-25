@@ -35,14 +35,14 @@ logger emit-logs err
 ```
 
 A scope name acts as a prefix for either another scope or a terminal value,
-including an algorithm. Name resolution walks through scope components until
+including a function. Name resolution walks through scope components until
 it reaches a value. Any remaining expressions are applied to that value:
 
 ```topal
 logger emit-logs err Message
 ```
 
-Here `logger` and `emit-logs` resolve scopes, `err` resolves an algorithm, and
+Here `logger` and `emit-logs` resolve scopes, `err` resolves a function, and
 `Message` is its input.
 
 ## Making scopes available
@@ -92,7 +92,7 @@ logging err Message
 ```
 
 The resolver consumes `logging` as a scope prefix, resolves `err` within that
-scope, and then applies the resulting algorithm to `Message`. Bindings can
+scope, and then applies the resulting function to `Message`. Bindings can
 shorten a path or give it a name appropriate to the current module:
 
 ```topal
@@ -126,7 +126,7 @@ defined in [constructed package and module contexts](contexts.md).
 
 Every declaration in a source file is private by default. `pub` makes a name
 visible across its nearest enclosing constructed-context boundary. For
-algorithms, `pub` occupies the modifier position used by `static`:
+functions, `pub` occupies the modifier position used by `static`:
 
 ```topal
 set-logger is fn pub ( logger : Logger ) -> Logger
@@ -322,13 +322,13 @@ use lang topal (
   version is v1.5
 )
 
-current-algorithm is ...
+current-function is ...
 
 use lang topal (
   version is v1.4
 )
 
-compatible-algorithm is ...
+compatible-function is ...
 ```
 
 Every complete top-level declaration is parsed and checked under the exact
@@ -728,7 +728,7 @@ In an artifact facade, `pub` crosses the artifact boundary:
 constructed language context defines the available lifecycle and platform-event
 handlers. Topal constructs this task and supplies platform startup values, such
 as command arguments and environment variables, directly to its `start`
-handler; no separate application type or `main` algorithm is required.
+handler; no separate application type or `main` function is required.
 
 In ordinary source files, `module.t`, and `package.t`, publication retains its
 normal one-context-boundary meaning. Package publication and package metadata
@@ -939,7 +939,7 @@ tokenize is fn ...
 
 Both functions inherit the file declarations unless they provide more specific
 metadata. Function-specific metadata supports a file containing code with
-different provenance, for example an algorithm adapted from another project.
+different provenance, for example a function adapted from another project.
 The precise modifier syntax remains part of the language revision, but the
 metadata belongs to the function declaration rather than becoming an input or
 runtime value.

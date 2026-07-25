@@ -1,7 +1,7 @@
 # Static introspection
 
 Topal provides static introspection over first-class language objects. Static
-algorithms may inspect the semantic structure of types, algorithms, scopes,
+functions may inspect the semantic structure of types, functions, scopes,
 constraints, effects, protocols, and declarations without retaining reflection
 metadata in the executable.
 
@@ -38,7 +38,7 @@ describe is fn static ( subject : Type ) -> String
 
 `lang view subject` does not inspect an arbitrary runtime value to discover its
 type. Runtime code instead uses its statically known type to obtain or derive
-an ordinary algorithm:
+an ordinary function:
 
 ```topal
 serializer is serializer-for Person
@@ -58,7 +58,7 @@ its input rather than returning one universal reflection value:
 
 ```topal
 lang view : fn static ( Type ) -> lang TypeView
-lang view : fn static ( Algorithm ) -> lang AlgorithmView
+lang view : fn static ( Function ) -> lang FunctionView
 lang view : fn static ( Scope ) -> lang ScopeView
 lang view : fn static ( Constraint T ) -> lang ConstraintView T
 lang view : fn static ( Effect ) -> lang EffectView
@@ -66,10 +66,10 @@ lang view : fn static ( Protocol ) -> lang ProtocolView
 ```
 
 A value of one kind cannot be inspected through another kind's view. A type
-view cannot accidentally be treated as an algorithm view, and neither is an
+view cannot accidentally be treated as a function view, and neither is an
 untyped map of strings to arbitrary values.
 
-Views are ordinary algebraic static values. Static algorithms inspect them
+Views are ordinary algebraic static values. Static functions inspect them
 with normal pattern matching and transform them with normal composition. Topal
 does not introduce a separate macro language or textual source substitution.
 
@@ -85,14 +85,14 @@ lang TypeView is Union
   lang VariantType : lang ComponentStructure
   lang UnionType : lang AlternativeStructure
   lang RefinedType : lang RefinementDescriptor
-  lang AlgorithmType : lang AlgorithmSignature
+  lang FunctionType : lang FunctionSignature
   lang OpaqueType : lang Identity Type
 ```
 
 These alternatives describe semantic construction and matching, not the syntax
 which originally declared the type. A future surface construct which lowers to
 a record presents as `lang RecordType`; it does not require every introspection
-algorithm to recognize another source-level spelling.
+function to recognize another source-level spelling.
 
 A field or alternative descriptor retains typed objects:
 
@@ -141,13 +141,13 @@ without end. When a component refers to an enclosing or previously visited
 type, its descriptor carries that type's `lang Identity Type`. Static folds
 over views must handle such references explicitly.
 
-## Algorithm views
+## Function views
 
-An algorithm view exposes its declared semantic contract:
+A function view exposes its declared semantic contract:
 
 ```topal
-lang AlgorithmView is Record
-  identity : lang Identity Algorithm
+lang FunctionView is Record
+  identity : lang Identity Function
   input : lang PatternType
   output : Type
   staticness : lang Staticness
@@ -159,11 +159,11 @@ It does not expose compiler-generated machine instructions, optimization
 choices, closure layout, or mutable implementation state. The body is not a
 general source abstract syntax tree.
 
-Algorithm inspection supports static derivation and verification:
+Function inspection supports static derivation and verification:
 
 ```topal
-accepts-errors is fn static ( algorithm : Algorithm ) -> Boolean
-  signature is lang view algorithm
+accepts-errors is fn static ( function : Function ) -> Boolean
+  signature is lang view function
   signature output compatible-with Result
 ```
 
@@ -321,7 +321,7 @@ lang union-type :
   fn static ( lang AlternativeStructure ) -> Type
 ```
 
-Static algorithms can fold a view to derive ordinary algorithms:
+Static functions can fold a view to derive ordinary functions:
 
 ```topal
 serializer-for is fn static ( subject : Type ) ->
@@ -335,7 +335,7 @@ serializer-for is fn static ( subject : Type ) ->
     otherwise unsupported-serializer subject
 ```
 
-The returned algorithm is kind-checked in the usual way. It is not generated
+The returned function is kind-checked in the usual way. It is not generated
 source text, does not capture names textually, and cannot construct an invalid
 field access.
 
@@ -396,17 +396,17 @@ its own selected revision.
 
 The first introspection revision should provide:
 
-- type views for primitive, tuple, record, variant, union, refined, algorithm,
+- type views for primitive, tuple, record, variant, union, refined, function,
   and opaque types;
 - lossless dependent and recursive field structures;
-- algorithm signatures including staticness, effects, and constructed-context
+- function signatures including staticness, effects, and constructed-context
   requirements;
 - deterministic enumeration of visible scope members;
 - declaration metadata already visible at the inspection site;
 - typed static names, labels, paths, and identities;
 - exact language version and active feature inspection;
 - explicit layout inspection separate from semantic type inspection; and
-- typed construction sufficient to derive algorithms from inspected types.
+- typed construction sufficient to derive functions from inspected types.
 
 It should not initially provide:
 

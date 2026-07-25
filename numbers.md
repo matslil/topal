@@ -433,7 +433,7 @@ Order-independent approximate results require semantics stronger than ordinary
 finite-precision addition. Topal can support explicit alternatives:
 
 - Accumulate exact intermediate values and round once at the requested boundary.
-- Use a specified reproducible superaccumulator or binned summation algorithm.
+- Use a specified reproducible superaccumulator or binned summation function.
 - Preserve one canonical logical order even when execution is parallel.
 - Return an interval or error-bearing approximation when enclosure matters more
   than identical representation.
@@ -454,7 +454,7 @@ order-independent sum, subject to its resource requirements.
 ## Arithmetic policies
 
 When an isolated operation needs a policy different from its operand type,
-algorithms make that policy explicit:
+functions make that policy explicit:
 
 ```topal
 left checked-add right
@@ -640,7 +640,7 @@ Not every numeric type supports every operation, and an operation need not
 return its operand type. `Nat`, for example, is not closed under negation, and
 exact division of two integers may produce a rational result. Rounding,
 approximation, saturation, wrapping, roots, transcendental functions, and bit
-operations are standard or capability-specific algorithms rather than
+operations are standard or capability-specific functions rather than
 universal numeric fundamentals. Exponentiation has the common `^` spelling but
 remains capability-specific rather than being supported by every numeric type.
 

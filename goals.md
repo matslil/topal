@@ -8,10 +8,13 @@ when these preserve the program's meaning.
 ## Core model
 
 - Everything exposed by the language is a first-class object, including values,
-  types, algorithms, modules, patterns, constraints, effects, and protocols.
+  types, functions, modules, patterns, constraints, effects, and protocols.
 - Every object has a distinct kind. In particular, types describe data and
-  algorithms transform objects; the two cannot be mixed even though algorithms
-  may construct statically deterministic types, constraints, or other algorithms.
+  functions transform objects; the two cannot be mixed even though functions
+  may construct statically deterministic types, constraints, or other functions.
+- The common meanings of `Object`, `Value`, `Type`, `Function`, `Predicate`,
+  `Constraint`, `Capability`, `Number`, `Container`, `Sequence`, and `Index`
+  follow one explicit [object and type taxonomy](types.md).
 - Definitions share one recursive construction model rather than separate
   macro, template, class, and [module systems](modules.md).
 - [Generic abstraction](abstractions.md) uses static type matching and
@@ -25,7 +28,7 @@ when these preserve the program's meaning.
 - Composition is the fundamental operation. Syntax is easy for humans and tools
   to parse, evaluates left to right, and has no special precedence hierarchy.
 - Typed [static introspection](introspection.md) exposes visible semantic
-  structure through qualified `lang` operations. Static algorithms can inspect
+  structure through qualified `lang` operations. Static functions can inspect
   and construct language objects without a separate macro language or implicit
   runtime reflection metadata.
 - Native [serialization](serialization.md) derives versioned type definitions
@@ -50,9 +53,9 @@ when these preserve the program's meaning.
 - [Measured quantities](units.md) carry statically checked dimensions and
   scales; programmer-defined units compose using language-defined prefixes.
 
-## Algorithms and effects
+## Functions and effects
 
-- Algorithms follow explicit [execution and totality](execution.md) rules.
+- Functions follow explicit [execution and totality](execution.md) rules.
   They are total by default and return errors explicitly as `Result`
   values; there are no exceptions. Results use a common structured
   [error model](errors.md), with namespace-defined code vocabularies.
@@ -70,10 +73,10 @@ when these preserve the program's meaning.
   support by default. Authorized external tools select events and collect
   native serialization streams without making trace state observable to
   application code.
-- Infinite algorithms exist only as productive [generators](generators.md): every request either
+- Infinite functions exist only as productive [generators](generators.md): every request either
   yields, ends, fails, cancels, or suspends for an external event in finite
   computation. Consumers determine whether the enclosing computation terminates.
-- Logging and tracing can be attached without modifying the observed algorithm.
+- Logging and tracing can be attached without modifying the observed function.
   Diagnostic effects may be unordered when their ordering is not semantic.
 - Compact [unit-test tables](testing.md) supply concrete inputs, mocked
   dependency results, and expected results. The compiler verifies each row and

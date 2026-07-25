@@ -1,7 +1,7 @@
 # Initial capability vocabulary
 
 Capabilities promise semantic operations and laws provided by types,
-algorithms, or other static objects. They do not constrain the permitted values
+functions, or other static objects. They do not constrain the permitted values
 of a type and do not expose an implementation representation.
 
 This document defines the initial standard vocabulary. Capability matching and
@@ -21,7 +21,7 @@ Equality Value
 `!=`. The language derives it for tuples, records, variants, unions, and finite
 recursive values when every observed component provides `Equality`.
 
-Algorithms, continuations, task capabilities, context-provided endpoints, external
+Functions, continuations, task capabilities, context-provided endpoints, external
 resources, and opaque values do not receive equality automatically. A type may
 separately expose a stable identity when identity comparison belongs to its
 public semantics.
@@ -217,9 +217,9 @@ Concatenable Container
 sequences. Unordered sets and maps use their own algebra and collision policies
 rather than pretending concatenation has one meaning.
 
-## Algorithm laws
+## Function laws
 
-Law capabilities apply to algorithm objects rather than to every value of an
+Law capabilities apply to function objects rather than to every value of an
 operand type:
 
 ```text
@@ -256,7 +256,7 @@ value operation value = value
 
 These laws permit parallel reduction and other transformations whose evaluation
 order would otherwise be observable. They are never inferred from an
-algorithm's name.
+function's name.
 
 ## Standard composites
 
