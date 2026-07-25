@@ -318,7 +318,9 @@ point
 ```
 
 Whether `Point ( x , y )` constructs or matches is determined by its expression
-or matcher context. Its tokenization and grouping do not change.
+or matcher context. Its tokenization and grouping do not change. Matcher context
+is established structurally by an algorithm header or by the left side of
+`then` in a decision-table rule; a separate `match` introducer is not needed.
 
 ## Algebraic data declarations
 
@@ -973,6 +975,13 @@ result
   Ok value then return value
   Error problem then report problem
 ```
+
+A rule's terminating `then` places the preceding `Ok value` or `Error problem`
+in matcher context. Consequently these forms cannot be parsed as constructor
+applications in this position, even though construction and matching
+deliberately have the same spelling. The subject and indented rules already
+provide the complete decision-table structure; no additional keyword occurs
+between the subject and its patterns.
 
 A successful pattern may introduce bindings and evidence. These are available
 only in its action. Patterns and predicates share a general matcher abstraction,
