@@ -5,11 +5,14 @@ inputs, mocked dependency results, and expected results. The compiler checks
 each row and verifies that the complete table covers every feasible structural
 path through the function under test.
 
-Testing facilities are a language feature. A source file activates them at the
-point where its test declarations begin:
+Testing facilities are conventionally selected through the language
+constructor's `features` argument. A source file constructs that language
+context at the point where its test declarations begin:
 
 ```topal
-use lang feature testing
+use lang topal v1.5 (
+  features is ( testing )
+)
 ```
 
 Activation introduces the testing vocabulary into the root scope from that

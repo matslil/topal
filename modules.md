@@ -1,10 +1,11 @@
 # Modules, scopes, and visibility
 
-Topal source layout defines a hierarchy of scopes. A source package contains
-one root scope and may expose that scope, or scopes nested within it, as
-libraries and applications. Directories form nested scopes, and ordinary
-source files form scopes within their containing directory. Functions and other
-values are the terminal names in this hierarchy.
+Topal source layout defines a hierarchy of scopes. A source package constructs
+its root scope, and each child module constructs a nested scope. A package may
+expose its root scope, or scopes nested within it, as libraries and
+applications. Ordinary source files form scopes within their containing
+constructed context. Functions and other values are the terminal names in this
+hierarchy.
 
 This model keeps the source tree and canonical names aligned while allowing a
 module to expose an interface that does not mirror its implementation layout.
@@ -19,6 +20,7 @@ of an ordinary file's component. Given:
 
 ```text
 application/
+├── package.t
 ├── main.t
 └── logger/
     ├── module.t
@@ -100,11 +102,31 @@ diagnostics warning Message
 
 Aliasing a scope neither copies its contents nor changes their visibility.
 
+## Function name resolution
+
+An ordinary function does not automatically traverse from its lexical body
+into its source-file or directory namespace. Unqualified names resolve only
+parameters and bindings in the function's nested lexical scopes. Namespace
+members use an explicit qualified path.
+
+The `@` prefix provides the separate, deliberately narrow access to a member of
+the function's current constructed `Package` or `Module`:
+
+```topal
+calculate is fn ( input : Number ) -> Number
+  input * @ scale
+```
+
+The member may be a constructor argument or a declaration introduced directly
+by `package.t` or `module.t`. It does not select an arbitrary ordinary-file
+binding or search a parent or calling namespace. Context construction is
+defined in [constructed package and module contexts](contexts.md).
+
 ## Private by default
 
 Every declaration in a source file is private by default. `pub` makes a name
-visible across its nearest enclosing module boundary. For algorithms, `pub`
-occupies the modifier position used by `static`:
+visible across its nearest enclosing constructed-context boundary. For
+algorithms, `pub` occupies the modifier position used by `static`:
 
 ```topal
 set-logger is fn pub ( logger : Logger ) -> Logger
@@ -169,10 +191,17 @@ This explicit propagation prevents a deeply nested declaration from becoming
 part of an application's or library's interface merely because the leaf file
 marked it public.
 
-## The directory module
+## Constructed directory contexts
 
-`module.t` is an exception to the ordinary filename rule. It represents its
-containing directory and does not add `module` to the scope path. Definitions
+Every directory has exactly one constructed context. At the source root,
+`package.t` declares `Package`. In every constructed child directory,
+`module.t` declares `Module`. `Package` is a superset of `Module`: it performs
+the same implementation-scope construction and additionally declares package
+identity, version, dependencies, and other package-manager metadata.
+
+Consequently, `package.t` and `module.t` are mutually exclusive within a
+directory, and a source-root `module.t` is invalid. Both special files represent
+their containing directory and add no component to its scope path. Definitions
 in `logger/module.t` therefore belong directly to `logger`:
 
 ```topal
@@ -203,18 +232,19 @@ use logger set-logger
 logger set-logger configured-logger
 ```
 
-Consequently, `module.t` is both the implementation of the directory scope and
-the place where that directory assembles its public interface. It may declare
-members directly, publish selected members from child files, rename them, or
-publish selected child scopes. The physical contents of a directory do not by
-themselves determine its external interface.
+Consequently, `module.t` is both the constructor of a child directory scope and
+the place where that directory assembles its public interface. At the root,
+`package.t` has the same responsibilities in addition to its package-specific
+ones. Either may declare members directly, publish selected members from child
+files, rename them, or publish selected child scopes. The physical contents of
+a directory do not by themselves determine its external interface.
 
 ## Resolution and visibility rules
 
 The module model follows these rules:
 
-1. The source-package root is the top-level scope.
-2. A directory introduces a nested scope.
+1. `Package` constructs the source-package root scope.
+2. `Module` constructs each child directory scope.
 3. An ordinary `.t` file introduces a scope named after the file.
 4. The special files `module.t`, `package.t`, `library.t`, and `application.t`
    contribute no scope-path component.
@@ -223,8 +253,12 @@ The module model follows these rules:
    subtree without flattening it.
 7. `is` may bind either a scope or a value to a local name.
 8. Declarations are private unless published with `pub`.
-9. Publication crosses exactly one module boundary.
+9. Publication crosses exactly one constructed-context boundary.
 10. Publishing a scope preserves the visibility of everything inside it.
+11. A directory contains either `package.t` at the source root or `module.t`
+    below it, never both.
+12. Functions access members of their constructed context explicitly with `@`;
+    they do not traverse automatically into file or parent directory scopes.
 
 These rules make module dependencies concise while retaining explicit
 encapsulation at every level of the source tree.
@@ -279,24 +313,29 @@ declaration, and mutually recursive declaration groups cannot cross a language
 boundary. References across regions are checked like published objects
 exchanged by files selecting different language versions.
 
-A selected version may provide optional features:
+A selected version may accept optional features as an ordinary static
+constructor argument:
 
 ```topal
-use lang feature realtime
+use lang topal v1.5 (
+  features is ( realtime )
+)
 ```
 
-A feature adds its grammar, structural words, and compiler-provided objects
-from the declaration forward. Features normally introduce their vocabulary
-directly into the root scope. Static introspection remains deliberately
-qualified under `lang`, and a feature may specify the same exceptional policy
-when qualification communicates an important semantic boundary.
+`features` has no privileged language meaning; it is the conventional argument
+through which the selected language implementation enables grammar, structural
+words, compiler guarantees, and compiler-provided objects. Feature identities
+and their effects are defined by that immutable language version. Enabled
+vocabulary normally enters the root scope. Static introspection remains
+deliberately qualified under `lang`, and an implementation may apply the same
+exceptional policy when qualification communicates an important semantic
+boundary.
 
-Feature identities are unique. Their meaning and availability are fixed by
-the active immutable language version; feature selection therefore needs no
-separate feature version. Selecting another language version clears the active
-feature set. A feature can be selected again if the new version provides it.
-Activation reports a conflict with an already visible root binding rather than
-silently shadowing either meaning.
+Every language `use` supplies a complete constructor argument set. A later
+selection starts a new context from its occurrence forward rather than
+incrementally adding to the earlier feature set. Activation reports a conflict
+with an already visible root binding rather than silently shadowing either
+meaning.
 
 For example, a file can visibly separate production declarations from tests:
 
@@ -306,7 +345,9 @@ use lang topal v1.5
 eligible is fn ( user : User ) -> Bool
   ...
 
-use lang feature testing
+use lang topal v1.5 (
+  features is ( testing )
+)
 
 eligible path-coverage
   user-a, () -> true
@@ -316,32 +357,35 @@ Language selection has stricter rules than an ordinary module `use`:
 
 1. Every source file, including `module.t`, selects a language.
 2. The initial selection is the first non-comment declaration in the file.
-3. Later language and feature selections occur only between complete top-level
+3. Later language selections occur only between complete top-level
    declarations.
 4. Each selection affects only the source which follows it.
 5. An omitted initial selection is an error rather than an implicit request for the
    latest revision.
-6. Every compiled declaration records its exact language version and active
-   features.
+6. Every compiled declaration records its exact constructed language context.
 
-Files in one package may select different language versions and features. The
+Files in one package may construct different language contexts. The
 compiler checks that their published interfaces agree on representations and
 semantics needed for interoperability.
 
 ### Bootstrap syntax
 
-The compiler must recognize the initial language selection before it knows
+The compiler must recognize the initial language construction before it knows
 which language grammar to apply. A small, stable bootstrap syntax therefore
-recognizes line boundaries, `# ` comments, `use lang topal`, and a `Version`
-literal. After that declaration, the selected language defines how later
-language and feature selections and all ordinary source are parsed.
+recognizes line boundaries, `# ` comments, `use lang topal`, a `Version`
+literal, and an optional constructor argument map made from identifiers,
+associations, and basic static product literals. The bootstrap parser only
+delimits those arguments; the selected language version defines their names,
+types, and meaning. After that declaration, the selected language defines how
+later language constructions and all ordinary source are parsed.
 
 For example:
 
 ```topal
-# Begin with Topal 1.5, then activate its realtime feature.
-use lang topal v1.5
-use lang feature realtime
+# Begin with Topal 1.5 and its realtime feature.
+use lang topal v1.5 (
+  features is ( realtime )
+)
 
 use logger
 ```
@@ -359,28 +403,34 @@ selecting a language revision:
 ```topal
 use lang topal v1.5
 
+Package (
+  features : Set CalculatorFeature default ()
+)
+
 use package se.example.numerics version v2.4
-use package org.example.rendering version v7.2 features (
-  gpu
-  png
+use package org.example.rendering version v7.2 (
+  features is ( gpu, png )
 )
 
 package is se.example.calculator
 version is v5.3.1
 ```
 
-Only the initial `use lang topal` form is part of the bootstrap syntax. Once it has selected an
-immutable language revision, that revision defines the grammar and meaning of
-`use package`, version values, feature lists, and every other declaration in
+Only the initial `use lang topal` form and its restricted argument-map grammar
+are part of the bootstrap syntax. Once it has selected an immutable language
+revision, that revision defines the grammar and meaning of `Package`, `use
+package`, version values, constructor arguments, and every other declaration in
 `package.t`. Package syntax may consequently evolve between language revisions
 without enlarging the fixed bootstrap grammar.
 
-`package.t` is an ordinary Topal program subject to an additional static
-requirement: every declaration and expression in it must be evaluable at
-compile and package-resolution time. Evaluation is deterministic and cannot
-perform effects or depend on code from a package being selected. In particular,
-dependency discovery cannot require first fetching or compiling that
-dependency.
+`package.t` constructs the root implementation scope and is a semantic superset
+of `module.t`. Its top-level declarations and expressions are subject to an
+additional static requirement: they must be evaluable at compile and
+package-resolution time. A constructor argument used by that evaluation must
+therefore be static; a runtime argument may be selected only from inside a
+runtime body. Static evaluation is deterministic and cannot perform effects or
+depend on code from a package being selected. In particular, dependency
+discovery cannot require first fetching or compiling that dependency.
 
 The file defines classified values with meanings known to the package manager,
 including at least the package identity and package version. A reverse-DNS name
@@ -388,24 +438,28 @@ such as `se.example.calculator` provides the canonical package identity. The
 package manager treats it as a structured identifier; authentication of its
 publisher is a separate registry concern.
 
-`use package` selects an external source package. Its `version` states a
-compatible requirement, while a package lock records the exact resolved release
-for reproducible builds. Features are static selections recorded as part of the
-resolution. The selected language revision may define additional package
-metadata and richer static computations, provided dependency discovery remains
-possible before external package code is available.
+`use package` selects and constructs an external source package. Its `version`
+states a compatible requirement, while its argument map supplies the selected
+package's `Package` constructor. A package lock records the exact resolved
+release and all interface- or dependency-shaping constructor arguments for
+reproducible builds. `features` is merely a conventional argument name; package
+code may use its statically known value to select dependencies, declarations,
+or published members. The selected language revision may define additional
+package metadata and richer static computations, provided dependency discovery
+remains possible before external package code is available.
 
 ## Libraries and applications
 
 A source package is a distribution and need not correspond one-to-one with a
-library or application. A directory may contain any of `module.t`, `library.t`,
-and `application.t` in parallel. The files have distinct roles:
+library or application. The source root may contain `package.t`, `library.t`,
+and `application.t` in parallel. A child directory may contain `module.t`,
+`library.t`, and `application.t` in parallel. The files have distinct roles:
 
-- `module.t` constructs the shared implementation scope of its directory.
+- `package.t` constructs the shared root implementation scope and defines the
+  distribution and its external package dependencies.
+- `module.t` constructs the shared implementation scope of a child directory.
 - `library.t` defines a versioned, linkable view of that scope.
 - `application.t` defines a versioned, executable view of that scope.
-- `package.t`, at the source root, describes the distribution and its external
-  package dependencies.
 
 For example, a small calculator may be distributed as both a library and an
 application without dividing its implementation into artificial directories:
@@ -413,16 +467,17 @@ application without dividing its implementation into artificial directories:
 ```text
 calculator/
 ├── package.t
-├── module.t
 ├── library.t
 └── application.t
 ```
 
-The shared implementation belongs in `module.t`:
+The shared root implementation belongs in `package.t`:
 
 ```topal
-# module.t
+# package.t
 use lang topal v1.5
+
+Package ()
 
 calculate is fn ( expression : String ) -> Result Number
   implementation
@@ -436,6 +491,7 @@ independent versions:
 use lang topal v1.5
 
 version is v2.1.0
+calculate is @ calculate
 pub calculate
 ```
 
@@ -450,14 +506,15 @@ start is fn (
   environment : Map ( String, String )
 ) -> Result Completed
   selected is arguments expression
-  print calculate selected
+  print @ calculate selected
   Completed
 ```
 
-Both artifact files can resolve private names in the shared directory scope.
+Both artifact files can explicitly select private names in the shared
+constructed context with `@`.
 Publishing `calculate` from `library.t` does not make it part of the application
 interface. The root task in `application.t` may nevertheless call `calculate`
-directly because both are compiled from the same source module.
+as `@ calculate` because both are compiled in the same source context.
 
 Each artifact file has a local facade scope layered over the directory scope.
 Facade-local metadata and aliases do not merge into the implementation or the
@@ -471,14 +528,14 @@ In an artifact facade, `pub` crosses the artifact boundary:
   established by `application.t` itself and do not require publication.
 
 `application.t` is the implicit [root task](tasks.md) of the executable. Its
-selected language features define the available lifecycle and platform-event
+constructed language context defines the available lifecycle and platform-event
 handlers. Topal constructs this task and supplies platform startup values, such
 as command arguments and environment variables, directly to its `start`
 handler; no separate application type or `main` algorithm is required.
 
-In ordinary source files and `module.t`, publication retains its normal
-one-module-boundary meaning. `package.t` supplies package metadata rather than
-an artifact interface.
+In ordinary source files, `module.t`, and `package.t`, publication retains its
+normal one-context-boundary meaning. Package publication and package metadata
+remain distinct from an artifact interface.
 
 A source package may contain multiple artifacts. When it does, directories
 provide their names and boundaries naturally:
@@ -538,11 +595,11 @@ published interface. Tests in the producing package, supplemented by tests in
 dependent packages, establish the behavioral confidence that version checking
 cannot provide.
 
-Features form part of an artifact selection. Features intended for dependency
-unification must be additive: enabling another feature may add interface
-members but cannot remove or alter the base interface. Requests for such
-features can be combined by union. A future non-additive feature mechanism
-would instead have to treat different selections as distinct artifact variants.
+Constructor arguments form part of an artifact selection when they affect its
+interface. Different argument maps construct distinct variants; Topal does not
+implicitly union an argument named `features` or require it to be additive.
+Code which wants an additive feature convention declares and implements that
+policy explicitly.
 
 ## Licenses and copyright
 

@@ -21,7 +21,7 @@ Equality Value
 `!=`. The language derives it for tuples, records, variants, unions, and finite
 recursive values when every observed component provides `Equality`.
 
-Algorithms, continuations, task capabilities, environment endpoints, external
+Algorithms, continuations, task capabilities, context-provided endpoints, external
 resources, and opaque values do not receive equality automatically. A type may
 separately expose a stable identity when identity comparison belongs to its
 public semantics.

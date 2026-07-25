@@ -59,7 +59,7 @@ when these preserve the program's meaning.
 - [Effects](effects.md) complement regular types by describing observable
   interactions and the resources they touch. They make ordering and
   parallelization constraints visible without hiding failure control flow.
-- Typed [environments](environments.md) provide fixed diagnostic operations,
+- [Constructed contexts](contexts.md) provide fixed diagnostic operations,
   execution context, and service capabilities without process-global variables
   or shared mutable application state.
 - [Sensitive values](sensitive.md) retain their qualifier through copying,
