@@ -447,8 +447,10 @@ use package org.example.rendering (
   features is ( gpu, png )
 )
 
-package identity is se.example.calculator
+package identity is "se.example.calculator"
 package version is v5.3.1
+package status is maintained
+package description is "Exact numerical calculations"
 ```
 
 The initial `use lang topal` uses the same construction-record syntax as every
@@ -474,16 +476,106 @@ package properties from constructor arguments and ordinary bindings. Only
 immutable:
 
 ```topal
-package identity is se.example.calculator
+package identity is "se.example.calculator"
 package version is v5.3.1
 ```
 
-A reverse-DNS identity such as `se.example.calculator` provides the canonical
-package identity. The package manager treats it as a structured identifier;
-authentication of its publisher is a separate registry concern. The selected
-language revision defines the metadata schema and rejects unknown or duplicate
-fields. `package` is a structural metadata namespace, not a newly constructed
-ordinary variable and not part of the package's published value interface.
+A string containing a canonical reverse-DNS name such as
+`"se.example.calculator"` provides the package identity. Authentication of its
+publisher is a separate registry concern. The selected language revision
+defines the metadata schema and rejects unknown or duplicate fields. `package`
+is a structural metadata namespace, not a newly constructed ordinary variable
+and not part of the package's published value interface.
+
+### Package metadata
+
+Package metadata has the following fields:
+
+```text
+identity       String
+version        Version
+status         PackageStatus
+description    String
+license        String
+copyrights     List Copyright
+
+repository     URI
+homepage       URI
+documentation  URI
+issues         URI
+readme         URI
+maintainers    List ( String, Optional URI )
+keywords       List String
+categories     List String
+funding        List URI
+```
+
+`PackageStatus` is one of `development`, `maintained`, and `archived`.
+`description` is free text. `license` contains either `private` or an SPDX
+license expression which the compiler validates. Each maintainer tuple contains
+a name and an optional contact URI, such as a `mailto` URI or homepage.
+Keywords and categories remain separate strings rather than being encoded into
+one delimiter-dependent string.
+
+The mandatory fields depend on the package status:
+
+| Field | `development` | `maintained` | `archived` |
+| --- | --- | --- | --- |
+| `identity` | required | required | required |
+| `version` | required | required | required |
+| `status` | required | required | required |
+| `description` | required | required | required |
+| `license` | required | required | required |
+| `copyrights` | required | required | required |
+| `maintainers` | required | required | optional |
+| `repository` | required | required | required |
+| `issues` | optional | required | optional |
+| `documentation` | optional | required | optional |
+| `homepage` | optional | optional | optional |
+| `readme` | optional | optional | optional |
+| `keywords` | optional | optional | optional |
+| `categories` | optional | optional | optional |
+| `funding` | optional | optional | optional |
+
+A required list must be nonempty. A `development` package identifies who is
+responsible and where development occurs, but need not yet have complete
+documentation or an issue tracker. A `maintained` package additionally provides
+both. An `archived` package retains a durable source location, but does not
+promise a responsive maintainer or issue tracker.
+
+Package tools discover a conventional README, such as `README.md`, in the
+package source without requiring metadata. The optional `readme` field selects
+a nonstandard package-relative or external URI instead. Accordingly, `URI`
+accepts both absolute URIs and relative URI references in package metadata.
+
+Status records the publisher's assertion when a particular package release is
+created. A registry may separately retain mutable current-project status,
+initially copied from the newest release, so archiving a project does not
+require publishing an otherwise artificial release.
+
+For example:
+
+```topal
+package identity is "se.example.calculator"
+package version is v5.3.1
+package status is maintained
+package description is "Exact numerical calculations"
+package license is "Apache-2.0"
+package copyrights is (
+  (
+    holder is "Example AB",
+    years is ( 2024 .. 2026 )
+  )
+)
+package repository is URI "https://github.com/example/calculator"
+package documentation is URI "https://docs.example.com/calculator"
+package issues is URI "https://github.com/example/calculator/issues"
+package maintainers is (
+  ( "Alice Smith", URI "mailto:alice@example.com" )
+)
+package keywords is ( "calculator", "exact-arithmetic" )
+package categories is ( "mathematics" )
+```
 
 At the top level of `package.t`, an unqualified `version` resolves the
 constructor argument while `package version` resolves authoritative metadata.
@@ -696,48 +788,63 @@ context in which it is compiled. The compiler retains that provenance through
 specialization, inlining, code generation, and linking so that the package
 builder can check the obligations of the resulting source and binary artifacts.
 
-Topal recognizes only licenses and exceptions identified by the supported SPDX
-License List. A license value uses the canonical SPDX identifier, including its
-version distinction:
+Except for the special package value `private`, Topal recognizes only licenses
+and exceptions identified by the supported SPDX License List. A license value
+is a string containing the canonical SPDX identifier, including its version
+distinction:
 
 ```topal
-license is Apache-2.0
+license is "Apache-2.0"
 ```
 
 SPDX license expressions represent a choice of terms, simultaneous terms, or a
 standard exception:
 
 ```topal
-license is MIT or Apache-2.0
-license is MIT and BSD-3-Clause
-license is GPL-2.0-or-later with Classpath-exception-2.0
+license is "MIT OR Apache-2.0"
+license is "MIT AND BSD-3-Clause"
+license is "GPL-2.0-or-later WITH Classpath-exception-2.0"
 ```
 
-The selected language revision defines the Topal surface syntax, while the
-identifiers and the meanings of `or`, `and`, and `with` follow the supported
-SPDX data. An unknown identifier, custom `LicenseRef`, or unrecognized
-exception is an error. Restricting declarations to this finite vocabulary lets
-the toolchain attach reviewed compatibility and obligation rules to every
-accepted license.
+The compiler parses and validates the string according to the supported SPDX
+data. An unknown identifier, custom `LicenseRef`, or unrecognized exception is
+an error. Restricting declarations to this finite vocabulary lets the toolchain
+attach reviewed compatibility and obligation rules to every accepted license.
+`"private"` states that no distribution license is granted; an artifact which
+requires such permission cannot be distributed.
 
 Copyright metadata identifies one or more holders and the years attributed to
 their work:
 
 ```topal
-copyright is (
-  holder "Example AB"
-  years 2024 through 2026
+copyrights is (
+  (
+    holder is "Example AB",
+    years is ( 2024 .. 2026 )
+  )
 )
 ```
 
 Several notices remain distinct when several holders contributed:
 
 ```topal
-copyrights are (
-  copyright holder "Example AB" years 2024 through 2026
-  copyright holder "Alice Smith" years 2025
+copyrights is (
+  (
+    holder is "Example AB",
+    years is ( 2024 .. 2026 )
+  ),
+  (
+    holder is "Alice Smith",
+    years is ( 2025 )
+  )
 )
 ```
+
+`Copyright` has a `holder : String` field and a
+`years : List (Range Year)` field. A singleton year is accepted where a
+singleton range is expected. Keeping years as a list permits gaps without
+claiming one continuous range, and `..` is Topal's ordinary inclusive range
+syntax.
 
 The compiler checks and propagates these declarations but does not establish
 that a declared party owns the copyright or has authority to select a license.
@@ -753,23 +860,33 @@ use lang topal (
   version is v1.5
 )
 
-package identity is se.example.calculator
+package identity is "se.example.calculator"
 package version is v5.3.1
-package license is Apache-2.0
-
-package copyright is (
-  holder "Example AB"
-  years 2024 through 2026
+package status is maintained
+package description is "Exact numerical calculations"
+package license is "Apache-2.0"
+package copyrights is (
+  (
+    holder is "Example AB",
+    years is ( 2024 .. 2026 )
+  )
+)
+package repository is URI "https://github.com/example/calculator"
+package documentation is URI "https://docs.example.com/calculator"
+package issues is URI "https://github.com/example/calculator/issues"
+package maintainers is (
+  ( "Alice Smith", URI "mailto:alice@example.com" )
 )
 ```
 
-Both defaults are mandatory. A package without either one is invalid. This
-makes metadata resolution total without requiring every source file to repeat
-package-wide information.
+The applicable status-dependent package fields are mandatory. In particular,
+`license` and the nonempty `copyrights` list provide final defaults for source
+provenance. This makes metadata resolution total without requiring every source
+file to repeat package-wide information.
 
 ### Metadata inheritance
 
-A function may declare license or copyright metadata directly. Otherwise it
+A function may declare license or copyrights metadata directly. Otherwise it
 inherits each missing item independently from the nearest applicable source
 context:
 
@@ -780,8 +897,8 @@ context:
 4. Successive parent directories, from nearest to farthest.
 5. The mandatory declaration in the source root's `package.t`.
 
-A declaration may provide a license while inheriting copyright, or provide
-copyright while inheriting a license. The two searches are independent.
+A declaration may provide a license while inheriting copyrights, or provide
+copyrights while inheriting a license. The two searches are independent.
 
 An ordinary source file can establish defaults for its functions:
 
@@ -790,10 +907,12 @@ use lang topal (
   version is v1.5
 )
 
-license is MIT
-copyright is (
-  holder "Alice Smith"
-  years 2025
+license is "MIT"
+copyrights is (
+  (
+    holder is "Alice Smith",
+    years is ( 2025 )
+  )
 )
 
 parse is fn ...
@@ -816,10 +935,12 @@ use lang topal (
   version is v1.5
 )
 
-license is BSD-3-Clause
-copyright is (
-  holder "Parser contributors"
-  years 2022 through 2026
+license is "BSD-3-Clause"
+copyrights is (
+  (
+    holder is "Parser contributors",
+    years is ( 2022 .. 2026 )
+  )
 )
 ```
 
@@ -840,7 +961,7 @@ use lang topal (
 )
 
 library version is v2.1.0
-library license is LGPL-3.0-only
+library license is "LGPL-3.0-only"
 pub calculate
 ```
 
@@ -851,7 +972,7 @@ use lang topal (
 )
 
 application version is v4.3.2
-application license is GPL-3.0-only
+application license is "GPL-3.0-only"
 
 start is fn (
   arguments : CommandArguments,
@@ -875,9 +996,9 @@ functions.
 
 Copyright normally describes provenance rather than an artifact choice. Shared
 functions therefore retain the same holders in the library and application
-unless more specific source declarations state otherwise. Copyright declared
-in an artifact facade supplies a default for code belonging to that context; it
-does not reassign explicitly attributed shared code.
+unless more specific source declarations state otherwise. Copyrights declared
+in an artifact facade supply a default for code belonging to that context; they
+do not reassign explicitly attributed shared code.
 
 ### Composition and obligations
 
