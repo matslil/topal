@@ -435,7 +435,7 @@ use lang topal (
 )
 
 Package (
-  version : Version
+  version : Version,
   features : Set CalculatorFeature default ()
 )
 

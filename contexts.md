@@ -28,7 +28,7 @@ ordinary algorithm:
 # logger/module.t
 
 Module (
-  destination : LogDestination
+  destination : LogDestination,
   minimum-level : LogLevel default Info
 )
 
@@ -44,7 +44,7 @@ At the source root the corresponding declaration is `Package`:
 
 Package (
   version : Version,
-  features : Set PackageFeature default ()
+  features : Set PackageFeature default (),
   diagnostics : Diagnostics
 )
 
@@ -194,7 +194,7 @@ runtime algorithm bodies may be an immutable runtime value:
 
 ```topal
 Module (
-  format : LogFormat
+  format : LogFormat,
   destination : LogDestination
 )
 
