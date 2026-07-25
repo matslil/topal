@@ -559,9 +559,26 @@ The familiar Boolean ordering operators are derived from `<=>`: `<` selects
 `Equal`. They remain standard operators because they state the intended
 predicate directly. Comparison chains have no special evaluation rule: write
 `a < b and b < c`, rather than `a < b < c`, consistently with ordinary
-left-to-right application. A domain with only a partial order must expose a
-separate partial-comparison operation whose result can include `Unordered`; it
-does not provide `<=>` as a total comparison.
+left-to-right application.
+
+A domain with only a partial order exposes `compare` returning
+`PartialComparison`:
+
+```topal
+left compare right -> PartialComparison
+
+PartialComparison
+  Less
+  Equal
+  Greater
+  Incomparable
+```
+
+It does not provide `<=>` as a total comparison. `Comparison` converts
+losslessly to `PartialComparison`, while converting `Incomparable` to
+`Comparison` fails validation. The result types and their relationship to
+`PartialOrder` and `TotalOrder` are defined in the
+[capability vocabulary](capabilities.md#value-comparison).
 
 `/` is exact division. For example, dividing two integers may produce a
 `Rational`; it does not silently round to another integer. `%` and `/%` are the
