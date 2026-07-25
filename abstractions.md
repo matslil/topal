@@ -66,6 +66,20 @@ successful alternative. Constraints may depend on earlier values in the same
 record or pattern, which makes relationships such as `end > start` part of the
 classified value.
 
+A predicate is a pure, total `T -> Boolean` function classification rather than
+a separate fundamental object kind. Ordinary higher-order functions may accept
+and compose `Predicate T` values when they need a runtime decision.
+
+A constraint is normally passed as a static input when a function uses its
+identity in a parameter or result classification. Applying it successfully
+produces evidence for that particular constraint. If a constraint is selected
+dynamically, successful validation instead returns an existential package
+containing the selected constraint identity, the unchanged base value, and its
+evidence. Accepting only `Predicate T` is preferable when the caller needs a
+Boolean decision rather than reusable classification evidence. The complete
+distinction is defined under
+[passing predicates and constraints](types.md#passing-predicates-and-constraints).
+
 ## Capabilities promise interfaces
 
 A capability does not remove values from a type. It states that an object of a

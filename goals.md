@@ -12,9 +12,10 @@ when these preserve the program's meaning.
 - Every object has a distinct kind. In particular, types describe data and
   functions transform objects; the two cannot be mixed even though functions
   may construct statically deterministic types, constraints, or other functions.
-- The common meanings of `Object`, `Value`, `Type`, `Function`, `Predicate`,
-  `Constraint`, `Capability`, `Number`, `Container`, `Sequence`, and `Index`
-  follow one explicit [object and type taxonomy](types.md).
+- The common meanings of `Object`, `Value`, `Type`, `Function`, the
+  `Predicate` function classification, `Constraint`, `Capability`, `Number`,
+  `Container`, `Sequence`, and `Index` follow one explicit
+  [object and type taxonomy](types.md).
 - Definitions share one recursive construction model rather than separate
   macro, template, class, and [module systems](modules.md).
 - [Generic abstraction](abstractions.md) uses static type matching and
