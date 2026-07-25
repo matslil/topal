@@ -22,7 +22,7 @@ File is type
 ```
 
 The destructor belongs to `File`, not to a particular constructor. Every
-algorithm that constructs a `File` therefore produces a value with the same
+function that constructs a `File` therefore produces a value with the same
 lifetime behavior:
 
 ```topal
@@ -31,7 +31,7 @@ open-file is fn ( path : Path ) -> Result File
 ```
 
 `destroy` is a declaration recognized by the language rather than an ordinary
-algorithm that programs may call. The compiler invokes it when the final
+function that programs may call. The compiler invokes it when the final
 reference to a value disappears. After the declared cleanup has run, the
 compiler still destroys owned components and releases storage; user cleanup
 does not replace those operations.
@@ -46,7 +46,7 @@ destroy is fn ( value : T ) -> Result Unit
 ```
 
 It cannot produce a replacement value. Operations such as `flush`, `commit`,
-and `finish` are ordinary algorithms which may inspect or change the resource's
+and `finish` are ordinary functions which may inspect or change the resource's
 state without destroying its handle.
 
 An infallible destructor makes leaving the final reference's scope infallible.
@@ -62,11 +62,11 @@ cannot prevent the remaining cleanup.
 
 ## Passing and retaining resources
 
-An algorithm which receives a value cannot assume that another reference will
+A function which receives a value cannot assume that another reference will
 remain after its call. Its local reference may be the final reference and may
-therefore invoke the destructor when the algorithm returns. Accepting a type
+therefore invoke the destructor when the function returns. Accepting a type
 with a fallible destructor consequently requires a fallible result, even when
-the algorithm only observes the value:
+the function only observes the value:
 
 ```topal
 metadata is fn ( file : File ) -> Result FileMetadata
@@ -101,7 +101,7 @@ lifetime rules, the compiler may:
 - implement sharing with reference counts or another safe representation; and
 - remove retains, releases, and destructor checks it proves unnecessary.
 
-Programs neither request these choices nor overload algorithms on them. In
+Programs neither request these choices nor overload functions on them. In
 particular, a public type is not exposed as a `Shared File` or an `Owned File`.
 The compiler must conservatively retain the possibility that releasing any
 reference is the release of the final one. Optimization may prove otherwise,
@@ -117,7 +117,7 @@ across a function boundary.
 Resource state is handled like other object state. An operation may check at
 runtime that a file is writable or that a transaction is active. When the
 compiler can prove the same fact, it may perform the check statically and omit
-the runtime work. The source syntax and algorithm contract do not depend on
+the runtime work. The source syntax and function contract do not depend on
 which kind of proof is available.
 
 This separates state transitions from lifetime termination. Committing a
@@ -151,7 +151,7 @@ failure remains primary and destruction failures become contextual causes.
 This gives close, rollback, or final flush failure a predictable handling point
 without making an unrelated observer the accidental final-reference boundary.
 
-Scoped acquisition is an ordinary higher-order algorithm governed by resource,
+Scoped acquisition is an ordinary higher-order function governed by resource,
 effect, and fallibility capabilities. Libraries can define specialized forms
 for transactions, temporary files, task scopes, and device sessions without
 adding new cleanup semantics.

@@ -221,15 +221,15 @@ literal placeholder delimiters remain provisional.
 
 ## Expressions and application
 
-An algorithm with one input uses prefix notation:
+A function with one input uses prefix notation:
 
 ```topal
 print "Hello"
 Integer 10
-static algorithm
+static function
 ```
 
-An algorithm with two inputs uses infix notation. The left input is normally
+A function with two inputs uses infix notation. The left input is normally
 the primary object being operated on, while the right input supplies the other
 argument:
 
@@ -239,8 +239,8 @@ text contains "error"
 collection map transformation
 ```
 
-An algorithm has zero, one, or two syntactic operands. A zero-operand call uses
-the empty argument list so that invoking an algorithm remains distinct from
+A function has zero, one, or two syntactic operands. A zero-operand call uses
+the empty argument list so that invoking a function remains distinct from
 referring to it as a value:
 
 ```topal
@@ -319,7 +319,7 @@ point
 
 Whether `Point ( x , y )` constructs or matches is determined by its expression
 or matcher context. Its tokenization and grouping do not change. Matcher context
-is established structurally by an algorithm header or by the left side of
+is established structurally by a function header or by the left side of
 `then` in a decision-table rule; a separate `match` introducer is not needed.
 
 ## Algebraic data declarations
@@ -367,7 +367,7 @@ name is ada name
 
 Unlike map lookup, selection of a declared record field is total and produces
 that field's precise declared type. It is a structural record operation rather
-than a unary algorithm application. Selection groups with its record before
+than a unary function application. Selection groups with its record before
 ordinary application, so `operating-system close file descriptor` applies
 `close` to `file descriptor`.
 
@@ -501,7 +501,7 @@ values : C : Sortable
 
 The chain is read from left to right: `values` is a value of `C`, and `C` is a
 type satisfying `Sortable`. The complete input type `C` can then appear in an
-algorithm's output type.
+function's output type.
 
 ## Constraints and refined types
 
@@ -586,9 +586,9 @@ separate constraint whose base is `Interval`, by contrast, refines only values
 successfully classified by that constraint and does not make it true of every
 plain `Interval`.
 
-## Algorithm definitions
+## Function definitions
 
-`fn` is a prefix constructor for an algorithm object. A definition binds that
+`fn` is a prefix constructor for a function object. A definition binds that
 object using `is`:
 
 ```topal
@@ -598,7 +598,7 @@ strlen is fn ( text : String ) -> Integer
 
 The input is a pattern, `->` separates it from the output type, and the indented
 block is the body. `()` declares zero operands, a single pattern declares one,
-and two components declare the left and right operands of an infix algorithm:
+and two components declare the left and right operands of an infix function:
 
 ```topal
 current-time is fn () -> Instant
@@ -652,9 +652,9 @@ Defaults fill omitted map associations; they do not remove an entire syntactic
 operand or turn a binary function into a unary one. Unknown and duplicate
 association names are errors.
 
-The input and output types are mandatory parts of an algorithm declaration.
+The input and output types are mandatory parts of a function declaration.
 They are not inferred from the body. In particular, an output of `Integer`
-promises an infallible algorithm, while a fallible algorithm declares
+promises an infallible function, while a fallible function declares
 `Result Integer` explicitly:
 
 ```topal
@@ -668,33 +668,33 @@ definition shared with other functions, as described by
 [the error model](errors.md).
 
 Errors are ordinary result values rather than exceptions. A successful value
-may be projected from a `Result` inside an explicitly fallible algorithm, as
+may be projected from a `Result` inside an explicitly fallible function, as
 described by [the error model](errors.md#success-projection-and-propagation).
 Effects complement the input and result types according to the
 [effect model](effects.md), but their final surface syntax has not yet been
 selected. [Constructed package and module contexts](contexts.md) provide
 immutable namespace members selected with `@`; constructor-backed access is
-tracked by the compiler without adding ordinary inputs to every algorithm
+tracked by the compiler without adding ordinary inputs to every function
 declaration.
 
 A binding may be marked with the compiler-checked
 [`sensitive`](sensitive.md) qualifier. Sensitivity follows copied, moved,
-borrowed, and contained information. An application-boundary algorithm uses
+borrowed, and contained information. An application-boundary function uses
 `sensitive parameter : Type` to declare exactly which parameters accept
-sensitive arguments; local algorithms need no such qualifier.
+sensitive arguments; local functions need no such qualifier.
 
 Generic parameters, capability evidence, associated objects, type identity, and
 conversion are described by [generic abstraction and semantic
-capabilities](abstractions.md). Algorithm headers use classification and static
+capabilities](abstractions.md). Function headers use classification and static
 type matching rather than separate generic-parameter or capability-bound
 syntax. Capabilities do not introduce type-owned method scopes or a template
 language.
 
-### Inferred anonymous algorithms
+### Inferred anonymous functions
 
-Small algorithms passed directly to another algorithm may omit `fn` and their
-types when the surrounding application determines one algorithm type. A
-braced parameter pattern is an inferred anonymous-algorithm header; the
+Small functions passed directly to another function may omit `fn` and their
+types when the surrounding application determines one function type. A
+braced parameter pattern is an inferred anonymous-function header; the
 following expression or indented block is its body:
 
 ```topal
@@ -732,15 +732,15 @@ values select { value } value > 0
 Destructuring and multiple inputs use the ordinary pattern model. Both the
 input and output types come from context; they are not inferred solely from an
 unconstrained body. If overload selection or a stored binding does not provide
-one expected algorithm type, the full `fn` form is required. The full form is
+one expected function type, the full `fn` form is required. The full form is
 also required to declare `static`, explicit effects, or any other guarantee
-that forms part of the algorithm type.
+that forms part of the function type.
 
 ### Overloading and type association
 
-Multiple algorithms may share a name. An overload is unique by its input
+Multiple functions may share a name. An overload is unique by its input
 parameter types and its staticness; parameter names and the output type do not
-distinguish overloads. Consequently, ordinary and static algorithms with the
+distinguish overloads. Consequently, ordinary and static functions with the
 same name and input types may coexist:
 
 ```topal
@@ -757,15 +757,15 @@ the call is ambiguous rather than being selected by its expected output type.
 The exact surface syntax for explicitly selecting between otherwise applicable
 static and ordinary overloads remains provisional.
 
-Types do not introduce algorithm scopes. An algorithm declaration instead
-shows whether and how the algorithm is related to a type through its input
+Types do not introduce function scopes. A function declaration instead
+shows whether and how the function is related to a type through its input
 parameters. This keeps operations independently composable while overloading
 provides the shared vocabulary that type-local function names would otherwise
 supply.
 
-### Static algorithms
+### Static functions
 
-Static evaluation is an optional part of an algorithm's type contract. The
+Static evaluation is an optional part of a function's type contract. The
 `static` modifier follows `fn` so the guarantee is preserved in higher-order
 types as well as definitions:
 
@@ -774,7 +774,7 @@ increment is fn static ( input : Integer ) -> Integer
   input + 1
 ```
 
-A static algorithm may call only other static algorithms, may not depend on
+A static function may call only other static functions, may not depend on
 runtime-only state or observable effects, and must have provably bounded
 execution. Bounded execution means that the compiler can prove termination for
 every permitted input; the bound may depend on the input and need not be
@@ -787,7 +787,7 @@ the construction of a new type. Whether an individual expression or binding is
 statically known is inferred; variables do not require a separate `static`
 modifier.
 
-Staticness remains visible when algorithms are passed as values:
+Staticness remains visible when functions are passed as values:
 
 ```topal
 apply-statically is fn static (
@@ -797,16 +797,16 @@ apply-statically is fn static (
   transformation input
 ```
 
-A static algorithm can be used where an ordinary algorithm of the same input
+A static function can be used where an ordinary function of the same input
 and output types is expected because forgetting the guarantee is safe. An
-ordinary algorithm cannot be used where a static one is required. The compiler
+ordinary function cannot be used where a static one is required. The compiler
 checks the declaration at the first violated static dependency, keeping errors
 local instead of reporting only when a distant caller attempts to construct a
 type.
 
 ## Tasks
 
-A task owns private state and derives a typed messaging protocol from algorithms
+A task owns private state and derives a typed messaging protocol from functions
 declared in its context:
 
 ```topal
@@ -845,7 +845,7 @@ and the implicit root task defined by `application.t`.
 
 Every type has a destructor. Types which represent external resources may
 declare cleanup in addition to the default destruction of owned components and
-storage. The provisional declaration uses an algorithm-shaped body:
+storage. The provisional declaration uses a function-shaped body:
 
 ```topal
 File is type
@@ -857,7 +857,7 @@ File is type
 
 A destructor may return only `Unit` or `Result Unit`; it cannot produce a
 replacement value. It is invoked by the language when the final reference
-disappears and is not an ordinary explicitly callable algorithm. An algorithm
+disappears and is not an ordinary explicitly callable function. A function
 accepting a value with a fallible destructor must itself permit a `Result`,
 because its reference may be the final one. Ownership transfers, borrowing,
 sharing, and reference-count elimination are compiler decisions rather than
@@ -866,7 +866,7 @@ semantic rules.
 
 ## Generators
 
-Resumable algorithms use an explicit `generator` declaration. They may yield a
+Resumable functions use an explicit `generator` declaration. They may yield a
 value, receive a value on resumption, and eventually return a distinct final
 value:
 
@@ -909,7 +909,7 @@ Omitting its left operand constructs a predicate section:
 < 5
 ```
 
-This is equivalent to an algorithm awaiting a subject:
+This is equivalent to a function awaiting a subject:
 
 ```topal
 value -> value < 5
@@ -1014,7 +1014,7 @@ person
   otherwise return error Ineligible
 ```
 
-Total algorithms require exhaustive patterns. A non-exhaustive decision used as
+Total functions require exhaustive patterns. A non-exhaustive decision used as
 an expression instead receives the optional result type described above.
 
 ## Provisional grammar
@@ -1054,7 +1054,7 @@ predicate         = predicate-term { ( "and" | "or" ) predicate-term } ;
 
 Identifiers such as `fn`, `is`, `then`, `when`, and `otherwise` are structural
 in the shown positions. `static` is structural directly after `fn` and otherwise
-participates in ordinary expression parsing. Algorithm arity and object kinds
+participates in ordinary expression parsing. Function arity and object kinds
 are checked after the source has been grouped; they must not change that
 grouping.
 
@@ -1091,7 +1091,7 @@ flowchart LR
     next -- no --> optional["result becomes Optional"] --> finish
 ```
 
-Algorithm construction is a specialized prefix expression with an attached
+Function construction is a specialized prefix expression with an attached
 body:
 
 ```mermaid
@@ -1103,5 +1103,5 @@ flowchart LR
     output --> indent["indent"]
     indent --> body["body expressions"]
     body --> dedent["dedent"]
-    dedent --> finish((algorithm object))
+    dedent --> finish((function object))
 ```

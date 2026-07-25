@@ -2,7 +2,7 @@
 
 Compiled Topal applications and libraries contain trace support by default.
 The compiler emits dormant trace sites, stable event identities, type
-definitions, and native serialization algorithms. An external tracing tool
+definitions, and native serialization functions. An external tracing tool
 selects events, controls collection, receives the resulting
 [`SerializationStream`](serialization.md), and chooses how to encode or store
 it.
@@ -20,7 +20,7 @@ Every compiled artifact normally contains:
 - type definitions needed to describe those payloads;
 - dormant instrumentation at language-defined and explicitly declared trace
   sites;
-- specialized native serialization algorithms for statically known payload
+- specialized native serialization functions for statically known payload
   types; and
 - the runtime adapter for an optional control and data channel.
 
@@ -55,7 +55,7 @@ Collect
 ```
 
 Catalog mode lets tooling present the available trace surface without enabling
-any trace site. Selection may use human-facing provider, module, algorithm, and
+any trace site. Selection may use human-facing provider, module, function, and
 event names, but the runtime receives resolved stable identities rather than
 matching text on every event.
 
@@ -149,7 +149,7 @@ Tracing follows the containment guarantees required of
 - trace state cannot modify application-owned values;
 - application execution never waits indefinitely for a collector;
 - buffering and retry work have declared finite bounds; and
-- failures do not alter an algorithm's semantic result.
+- failures do not alter a function's semantic result.
 
 Ordinary collection uses bounded, nonblocking event publication. Buffer
 exhaustion drops events and records a lost-event count in later stream or packet

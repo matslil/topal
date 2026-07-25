@@ -230,7 +230,7 @@ remove repeated bounds checks using retained evidence.
 
 These choices cannot affect equality, collection contents, ordering, or any
 other source-level observation. Programmers may explicitly request provenance
-evidence for specialized algorithms, but ordinary selection does not require
+evidence for specialized functions, but ordinary selection does not require
 them to name or manage it.
 
 The stable design principles are:

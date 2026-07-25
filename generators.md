@@ -1,6 +1,6 @@
 # Generators
 
-Generators are resumable algorithms. They can yield values to a caller, receive
+Generators are resumable functions. They can yield values to a caller, receive
 values when execution resumes, and eventually return a final value. This makes
 the direction of every value explicit without associating generators with a
 particular scheduler, message system, or collection representation.
@@ -80,7 +80,7 @@ result is generator-value foreach { value }
   print value
 ```
 
-`foreach` applies its inferred anonymous algorithm once for each yielded value,
+`foreach` applies its inferred anonymous function once for each yielded value,
 resumes the generator with `Unit`, and stops when the generator returns. The
 `foreach` expression produces the generator's final return value, which may be
 ignored when it is `Unit`.
@@ -99,7 +99,7 @@ open; `foreach` specifies only the common `Unit`-resumed case.
 ## Generated traversal
 
 `iterate` constructs a `Unit`-resumed generator from an initial value and an
-algorithm producing the next value. It yields the initial value first and is
+function producing the next value. It yields the initial value first and is
 unbounded by itself:
 
 ```topal
@@ -127,7 +127,7 @@ digits is collect
     take-while { value } value < 10
 ```
 
-The more general `unfold` accepts a seed and an algorithm returning either no
+The more general `unfold` accepts a seed and a function returning either no
 next step or a yielded value paired with the next seed:
 
 ```text

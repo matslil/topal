@@ -1,22 +1,22 @@
 # Generic abstraction and semantic capabilities
 
 Topal generic code uses classification and matching rather than a separate
-generic-parameter language. An algorithm input pattern can bind the complete
+generic-parameter language. A function input pattern can bind the complete
 type of its value, match the construction of that type, and require capabilities
-of the matched objects. The algorithm body is the implicit successful branch of
+of the matched objects. The function body is the implicit successful branch of
 that match.
 
 Constraints and capabilities both produce evidence, compose with matchers, and
 participate in static introspection. They remain different kinds of object:
 
 - a constraint limits the permitted values of one base type; and
-- a capability promises an interface and laws provided by a type, algorithm, or
+- a capability promises an interface and laws provided by a type, function, or
   other static object.
 
 ## Constraints limit values
 
 A constraint combines a base type with a predicate over values of that type.
-The base type is the left operand and the inferred anonymous algorithm is the
+The base type is the left operand and the inferred anonymous function is the
 right operand:
 
 ```topal
@@ -66,6 +66,20 @@ successful alternative. Constraints may depend on earlier values in the same
 record or pattern, which makes relationships such as `end > start` part of the
 classified value.
 
+A predicate is a pure, total `T -> Boolean` function classification rather than
+a separate fundamental object kind. Ordinary higher-order functions may accept
+and compose `Predicate T` values when they need a runtime decision.
+
+A constraint is normally passed as a static input when a function uses its
+identity in a parameter or result classification. Applying it successfully
+produces evidence for that particular constraint. If a constraint is selected
+dynamically, successful validation instead returns an existential package
+containing the selected constraint identity, the unchanged base value, and its
+evidence. Accepting only `Predicate T` is preferable when the caller needs a
+Boolean decision rather than reusable classification evidence. The complete
+distinction is defined under
+[passing predicates and constraints](types.md#passing-predicates-and-constraints).
+
 ## Capabilities promise interfaces
 
 A capability does not remove values from a type. It states that an object of a
@@ -82,7 +96,7 @@ Sequence A
 
 The capability is not a namespace owned by `A`. `get` remains an ordinary
 overload whose applicability is established by the evidence. This preserves
-Topal's independent algorithm composition and avoids introducing methods.
+Topal's independent function composition and avoids introducing methods.
 
 Capabilities may require other capabilities and may refine their associated
 objects. For example, `TotalOrder T` requires `Equality T`, while a writable
@@ -93,10 +107,10 @@ Evidence can arise in three ways:
 
 - the language derives it from a fundamental construction and the evidence of
   its components;
-- a declaration explicitly supplies the required objects and algorithms; or
+- a declaration explicitly supplies the required objects and functions; or
 - a static matcher establishes it from already available evidence.
 
-Merely having algorithms with suitable names is insufficient. Accidental
+Merely having functions with suitable names is insufficient. Accidental
 structural similarity must not silently assert laws such as associativity,
 ordering, uniqueness, or losslessness. The compiler may derive structural
 operations for products, sums, and finite recursion when every component
@@ -107,9 +121,9 @@ capability and type in one compiled context. Alternative comparisons,
 serializations, layouts, or reduction laws are ordinary explicit evidence
 values passed to the operation which uses them.
 
-## Type patterns in algorithm headers
+## Type patterns in function headers
 
-An algorithm header is a static matcher as well as an ordinary value pattern.
+A function header is a static matcher as well as an ordinary value pattern.
 Chained classification is read from left to right:
 
 ```topal
@@ -125,11 +139,11 @@ values : C
 ```
 
 `C` binds the complete input type. Reusing it as the output type promises that
-the algorithm returns exactly the same type, retaining its nominal identity,
+the function returns exactly the same type, retaining its nominal identity,
 static sizes, constraints, and other parameters.
 
-There is no `then` in an algorithm header. If the static type and capability
-match succeeds, the algorithm body is its implicit action. If it fails, that
+There is no `then` in a function header. If the static type and capability
+match succeeds, the function body is its implicit action. If it fails, that
 overload is not applicable. A decision table instead uses `then` because it
 chooses a runtime action among matchers.
 
@@ -214,7 +228,7 @@ The complete `C` provides the exact input/output relationship, while matching
 body. A sort which builds a new collection can substitute an appropriate
 construction capability for `Replaceable`.
 
-Another algorithm can match the map construction directly and use its captured
+Another function can match the map construction directly and use its captured
 components in a different result type:
 
 ```topal
@@ -242,8 +256,8 @@ type namespace. It may have any static kind:
 ```text
 Element A : Type
 Index A : Type
-effects algorithm : Set Effect
-identity operation : lang Identity Algorithm
+effects function : Set Effect
+identity operation : lang Identity Function
 ```
 
 Selecting an associated object requires evidence identifying the capability
@@ -288,7 +302,7 @@ with the observable value semantics of `T`. `=` and `!=` use this capability.
 The language derives equality for tuples, records, variants, unions, and finite
 recursive values when every observed component has equality.
 
-Algorithms, continuations, task capabilities, context-provided endpoints, external
+Functions, continuations, task capabilities, context-provided endpoints, external
 resources, and opaque values do not receive value equality automatically.
 A type may expose an explicit stable identity with equality when identity is
 part of its public semantics. Possessing two capabilities for the same task,
@@ -306,7 +320,7 @@ observable properties of `Map` or `Set`. A specialized representation may
 require `Hash T` or `TotalOrder T`, but converting it to the ordinary semantic
 collection forgets that representation evidence.
 
-The initial comparison, collection, and algorithm-law interfaces are collected
+The initial comparison, collection, and function-law interfaces are collected
 in the [standard capability vocabulary](capabilities.md).
 
 ## Law evidence
@@ -325,7 +339,7 @@ other fundamental operations. User declarations may provide evidence, and the
 compiler verifies it when a decidable proof is available. An unverified foreign
 claim is trusted boundary code and is identified as such in compiled metadata.
 
-Law evidence is not inferred from an algorithm's name. An overload called
+Law evidence is not inferred from a function's name. An overload called
 `sum`, for example, is not assumed associative for an approximate numeric type.
 
 ## Type identity and transparency
@@ -354,7 +368,7 @@ that identity when traversing recursive structure.
 ## Conversion relations
 
 Topal does not organize all objects or value types into one inheritance tree.
-`Type`, `Constraint`, `Predicate`, `Algorithm`, and `Capability` are different
+`Type`, `Constraint`, `Predicate`, `Function`, and `Capability` are different
 object kinds, not supertypes of the values they describe or classify. Likewise,
 satisfying `Sequence`, `Equality`, or another capability supplies evidence that
 an object provides an interface and its laws; it does not convert that object
@@ -418,7 +432,7 @@ output type cannot rescue an otherwise ambiguous call. Generic matching retains
 the complete input type whenever possible, so requiring a capability does not
 prematurely erase refinements, identities, sizes, or other static parameters.
 
-Algorithm inputs are contravariant and outputs covariant only where the
+Function inputs are contravariant and outputs covariant only where the
 conversion involved is implicit and effect, fallibility, and static guarantees
 are preserved. Mutable external locations, resumable generator inputs, and
 message protocol directions are invariant unless their defining capability

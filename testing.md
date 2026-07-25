@@ -69,7 +69,7 @@ an ordinary call.
 
 The notation adds no general-purpose symbols. Parentheses and commas retain
 their ordinary product meaning, while `->` already separates an input from an
-output in algorithm syntax. Only `path-coverage` is introduced for this
+output in function syntax. Only `path-coverage` is introduced for this
 facility, and it is introduced by the `testing` language feature.
 
 The formatter keeps a short row on one line and expands only its interaction
@@ -148,7 +148,7 @@ compare-current path-coverage
   ) -> Error unavailable
 ```
 
-The interactions describe ordered call occurrences, not a map from algorithm
+The interactions describe ordered call occurrences, not a map from function
 names to results. Except for collapsed loop repetitions described below, a row
 fails if calls occur in another order, with other arguments, too often, or too
 few times. A dependency which is not reached is simply absent from the
@@ -262,7 +262,7 @@ double path-coverage
 ```
 
 Coverage certification says that all structural paths are represented. It does
-not prove that an algorithm is extensionally correct for every possible input.
+not prove that a function is extensionally correct for every possible input.
 Each row remains a concrete test, and additional examples guard calculations,
 boundaries, and regressions which control-flow coverage alone cannot establish.
 

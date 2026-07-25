@@ -1,14 +1,14 @@
 # Effects and observable interaction
 
-An effect describes an observable interaction performed by an algorithm. It is
-part of the algorithm's compiled type alongside its inputs, output, staticness,
+An effect describes an observable interaction performed by a function. It is
+part of the function's compiled type alongside its inputs, output, staticness,
 constructed-context requirements, and protocol communication. Effects constrain
 ordering and parallel execution without replacing explicit `Result` control
 flow.
 
 The compiler infers effects through ordinary calls. Public interfaces record
 the inferred set or an explicitly declared upper bound, so changing a public
-algorithm to perform a new effect is an interface change.
+function to perform a new effect is an interface change.
 
 ## Effect identities
 
@@ -28,31 +28,31 @@ identities and parameters are equal. A resource parameter lets the compiler
 distinguish independent interactions, such as writes to separate devices,
 without assuming that all operations of one broad category interfere.
 
-An algorithm's effect row is a finite set of effect requirements plus, for an
-effect-polymorphic algorithm, named row parameters. Duplicate requirements
+A function's effect row is a finite set of effect requirements plus, for an
+effect-polymorphic function, named row parameters. Duplicate requirements
 collapse by identity. Effect rows have no source ordering; ordering constraints
 are properties of the effects and of dependencies between calls.
 
 ## Inference and declarations
 
-Calling an algorithm adds its effects to the caller. Constructing or passing an
-algorithm value does not perform its effects. A higher-order call adds the
+Calling a function adds its effects to the caller. Constructing or passing an
+function value does not perform its effects. A higher-order call adds the
 effects of a callback only along paths on which that callback is invoked.
 
-Private algorithms normally rely on inference. A declaration may state an
+Private functions normally rely on inference. A declaration may state an
 effect upper bound to document and restrict its implementation. The compiler
 rejects an implementation whose inferred effects exceed that bound.
 
-Public algorithms always expose a stable compiled effect contract. Source may
+Public functions always expose a stable compiled effect contract. Source may
 require explicit effect declarations for public interfaces even when the
 compiler could infer them; the final surface rule remains to be selected.
 
-Static algorithms have an empty runtime effect row. Constraint predicates,
+Static functions have an empty runtime effect row. Constraint predicates,
 match guards, equality, ordering, and law proofs are also pure and total.
 
 ## Effect polymorphism
 
-Higher-order algorithms quantify over the effects of their algorithm inputs.
+Higher-order functions quantify over the effects of their function inputs.
 Conceptually:
 
 ```text
@@ -87,7 +87,7 @@ Every effect declaration specifies its ordering law:
   execute concurrently.
 
 Data dependency still establishes order even when two effects would otherwise
-commute. An algorithm result used by a later call orders the calls.
+commute. A function result used by a later call orders the calls.
 
 The compiler may parallelize calls only when value ownership, effect evidence,
 and protocol dependencies jointly prove independence. Absence of a shared
@@ -113,7 +113,7 @@ effect. Application composition verifies that every reachable requirement is
 ultimately handled.
 
 There is initially no unrestricted dynamic effect-handler construct. Ordinary
-algorithms, tasks, protocols, constructed contexts, and application composition provide
+functions, tasks, protocols, constructed contexts, and application composition provide
 the handling boundaries while retaining analyzable control and communication
 dependencies.
 
@@ -124,7 +124,7 @@ selected from a context performs the communication effects declared by its
 protocol.
 
 An isolated diagnostic capability supplied through a context carries a
-contained diagnostic effect. Application algorithms record that dependency,
+contained diagnostic effect. Application functions record that dependency,
 but the effect cannot return information, publish a capability, change
 application state, or alter application control flow. Its implementation may
 have private effects which remain inside the containment boundary.
@@ -163,7 +163,7 @@ task merely because its ABI can represent an address.
 
 The semantic model leaves these grammar choices open:
 
-- how an explicit effect upper bound follows an algorithm type;
+- how an explicit effect upper bound follows a function type;
 - how effect-row parameters are named in higher-order declarations;
 - how a source declaration names a trusted foreign adapter; and
 - whether private inferred effects have an optional display abbreviation.

@@ -30,7 +30,7 @@ authenticate-locally copy
 
 Both `password` and `copy` are sensitive. The same rule applies when a
 sensitive value is stored in a field or collection, returned unchanged from an
-algorithm, destructured, or selected through another view. A containing value
+function, destructured, or selected through another view. A containing value
 retains which of its reachable information is sensitive, so passing the whole
 container to a boundary cannot hide a sensitive component.
 
@@ -42,18 +42,18 @@ sensitive password is read-password
 accepted is verify-password password
 ```
 
-`accepted` is not sensitive unless the programmer marks it. An algorithm which
+`accepted` is not sensitive unless the programmer marks it. A function which
 copies, moves, borrows, or returns sensitive input without constructing new
 information cannot remove the qualifier by changing bindings or hiding the
 operation behind a call. If a newly constructed result is itself secret, its
-binding or the algorithm's result contract must mark it explicitly.
+binding or the function's result contract must mark it explicitly.
 
 There is no implicit declassification operation. Removing a `sensitive`
 qualifier from information which still carries it is a compile error.
 
 ## Local use
 
-An ordinary algorithm which acts only within the application may freely accept,
+An ordinary function which acts only within the application may freely accept,
 inspect, compare, store, and otherwise use sensitive values. It does not need a
 sensitivity annotation:
 
@@ -111,7 +111,7 @@ boundary check. A transformation which constructs a new result does not
 automatically propagate sensitivity; the programmer is responsible for marking
 that result when it too contains secret information.
 
-A sensitive parameter is part of the algorithm contract and is preserved
+A sensitive parameter is part of the function contract and is preserved
 through aliases, higher-order parameters, protocols, and foreign declarations.
 A local implementation does not mark a parameter merely because it receives a
 sensitive value. The parameter qualifier is required when an
@@ -128,6 +128,6 @@ through an external operation whose corresponding parameter explicitly accepts
 sensitive information.
 
 Sensitivity is intended to prevent accidental disclosure. It does not defend
-against a deliberately malicious algorithm which derives new unmarked
+against a deliberately malicious function which derives new unmarked
 information from a secret, nor does it replace platform memory protection,
 secret storage, cryptography, or review of explicitly sensitive boundaries.

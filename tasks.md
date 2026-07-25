@@ -1,7 +1,7 @@
 # Tasks and intrinsic messaging
 
 Every runtime computation in Topal executes in a task. A task owns private
-state and receives interactions through algorithms declared directly in its
+state and receives interactions through functions declared directly in its
 task context. Task interaction is intrinsic to the language: programs do not
 expose queues, mutexes, global variables, or other synchronization mechanisms.
 
@@ -38,9 +38,9 @@ or queue. It permits only the interactions declared by `Counter`. Task identity
 and messaging authority remain distinct; possessing a task identifier does not
 grant permission to send it arbitrary messages.
 
-Algorithms called by a handler normally execute in the same task. Only a call
-through another task capability crosses a task boundary. Library algorithms
-therefore remain ordinary reusable algorithms and do not need to be declared as
+Functions called by a handler normally execute in the same task. Only a call
+through another task capability crosses a task boundary. Library functions
+therefore remain ordinary reusable functions and do not need to be declared as
 tasks.
 
 ## Interaction inference
@@ -135,7 +135,7 @@ creator has no startup-result channel.
 
 `application.t` is itself the application's root task context. It does not
 declare a redundant named application type or publish a conventional `main`
-algorithm. Topal creates the root task and invokes its `start` handler with the
+function. Topal creates the root task and invokes its `start` handler with the
 application arguments and environment variables:
 
 ```topal
@@ -171,12 +171,12 @@ feature may provide command arguments, environment variables, signals, and
 orderly shutdown, while an Android feature may provide its platform lifecycle
 and application events.
 The feature specifies recognized handler names, their types, ordering, and
-delivery guarantees. Other algorithms in `application.t` remain private helper
-algorithms executed by the root task.
+delivery guarantees. Other functions in `application.t` remain private helper
+functions executed by the root task.
 
 Operating-system and framework adapters hold restricted capabilities for this
 application protocol; they do not gain access to arbitrary application
-algorithms or state. Events arriving during startup are queued until `start`
+functions or state. Events arriving during startup are queued until `start`
 finishes, so platform handlers cannot observe partially initialized state.
 
 Environment variables are supplied as a map at the same time as command
@@ -193,7 +193,7 @@ child. An empty map starts the child with no environment variables.
 ## Runtime scope
 
 All runtime Topal code has a current task identity and task scope. Ordinary
-algorithm calls inherit the caller's task, child tasks belong to structured
+function calls inherit the caller's task, child tasks belong to structured
 task scopes, and foreign callbacks enter Topal by delivering a typed task
 interaction. Static evaluation constructs compile-time objects and is not
 runtime execution, so it does not require a runtime task.
