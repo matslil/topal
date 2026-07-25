@@ -144,6 +144,12 @@ The initial numeric vocabulary uses `Approx` and `ExtendedApprox`.
 `Approximate` and `ExtendedApproximate` are descriptive English, not additional
 type names.
 
+`Comparison` and `PartialComparison` are enum result types for total and partial
+ordering. `Comparison` contains `Less`, `Equal`, and `Greater`;
+`PartialComparison` additionally contains `Incomparable`. Their precise use by
+`TotalOrder` and `PartialOrder` is defined in the
+[capability vocabulary](capabilities.md#value-comparison).
+
 ## Products, sums, and enums
 
 `Tuple` and `Record` construct positional and labeled products. `Variant` and

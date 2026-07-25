@@ -10,6 +10,29 @@ its distinction from value constraints are described in
 
 ## Value comparison
 
+Comparison results are ordinary enum values:
+
+```topal
+Comparison is Enum (
+  Less,
+  Equal,
+  Greater
+)
+
+PartialComparison is Enum (
+  Less,
+  Equal,
+  Greater,
+  Incomparable
+)
+```
+
+`Comparison` records the result of a total-order comparison.
+`PartialComparison` additionally records that neither operand precedes the
+other. There is one canonical lossless conversion from `Comparison` to
+`PartialComparison`; the reverse conversion is checked because
+`Incomparable` has no total-order result.
+
 ### Equality
 
 ```text
@@ -31,20 +54,23 @@ public semantics.
 ```text
 PartialOrder Value
   Equality Value
-  compare : Value, Value -> PartialOrdering
+  compare : Value, Value -> PartialComparison
 ```
 
-`PartialOrdering` has the alternatives `Less`, `Equal`, `Greater`, and
-`Incomparable`. The equality result of `compare` agrees with `Equality`.
+The `Equal` result of `compare` agrees with `Equality`. `Incomparable` means
+that neither value precedes the other; it is distinct from inequality.
 
 ### TotalOrder
 
 ```text
 TotalOrder Value
   PartialOrder Value
-  compare never produces Incomparable
+  compare : Value, Value -> Comparison
 ```
 
+`TotalOrder` refines the comparison result type, making the absence of
+`Incomparable` statically visible. Its `Comparison` result converts losslessly
+to `PartialComparison` wherever only `PartialOrder` evidence is required.
 `TotalOrder` supports ranges, sorting, ordered collections, minimum, and
 maximum. Tuple ordering is derived lexicographically when every component
 provides `TotalOrder`. Records require an explicit ordering because field
