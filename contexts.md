@@ -28,7 +28,7 @@ ordinary algorithm:
 # logger/module.t
 
 Module (
-  destination : LogDestination
+  destination : LogDestination,
   minimum-level : LogLevel default Info
 )
 
@@ -43,12 +43,13 @@ At the source root the corresponding declaration is `Package`:
 # package.t
 
 Package (
-  features : Set PackageFeature default ()
+  version : Version,
+  features : Set PackageFeature default (),
   diagnostics : Diagnostics
 )
 
-package is se.example.calculator
-version is v5.3.1
+package identity is se.example.calculator
+package version is v5.3.1
 ```
 
 The capitalized structural words distinguish context construction from `fn`
@@ -62,8 +63,8 @@ capabilities.
 
 ## Context selection
 
-`@` selects a member of the `Package` or `Module` context in which the function
-is lexically defined:
+`@` selects a path in the `Package` or `Module` context in which the function is
+lexically defined:
 
 ```topal
 process-request is fn ( request : Request ) -> Result Response
@@ -71,13 +72,22 @@ process-request is fn ( request : Request ) -> Result Response
   handle-request request
 ```
 
-The selected member may be a constructor argument or another declaration
-introduced directly into that constructed context. `@` never searches ordinary
-file scopes, a parent directory, a caller's context, or a library or application
-facade. An unknown `@` name is therefore a local context error rather than the
-start of automatic namespace traversal. Ordinary unqualified resolution within
-a function is limited to its parameters and nested lexical scopes. Other
-namespaces require an explicit qualified path.
+The selected path may begin with a constructor argument, another declaration
+introduced directly into that constructed context, or an artifact metadata
+namespace available in the defining facade:
+
+```topal
+actual-version is fn () -> Version
+  @ package version
+```
+
+The `package` namespace is not implicitly present in the function's lexical
+scope, even when the function is declared in `package.t`; `package version`
+without `@` is an error there. `@` never searches ordinary file scopes, a
+parent directory, or a caller's context. An unknown `@` path is therefore a
+local context error rather than the start of automatic namespace traversal.
+Ordinary unqualified resolution within a function is limited to its parameters
+and nested lexical scopes. Other namespaces require an explicit qualified path.
 
 The defining context remains part of an algorithm value when that value is
 passed or stored. Closures retain only the contextual arguments they use.
@@ -108,6 +118,25 @@ constructor refines that general shape to its declared parameter names and
 classifications. Whitespace alone never separates construction arguments;
 unknown, duplicate, and missing associations are errors.
 
+Selection values such as a language or package version use the same
+construction record as every other argument:
+
+```topal
+use lang topal (
+  version is v1.5,
+  features is ( testing )
+)
+
+use package org.example.rendering (
+  version is v2.4,
+  features is ( gpu, png )
+)
+```
+
+There is no second positional `version` syntax. For language bootstrap, the
+stable parser recognizes this same record notation before the selected language
+assigns the fields their types and full meaning.
+
 An instance may be given a local name when more than one configuration is
 needed:
 
@@ -128,6 +157,21 @@ once and the resulting scope is bound or published explicitly.
 Construction is checked before an instance is used. Every required argument
 must be supplied exactly once unless it has a default, and the construction
 dependency graph must be acyclic.
+
+A language context may be constructed and named after the mandatory initial
+bootstrap selection:
+
+```topal
+legacy is use lang topal (
+  version is v1.0,
+  features is ()
+)
+```
+
+This construction is inert: it does not change how following source is parsed.
+A later top-level `use legacy` activates the complete named language context
+from that declaration forward. Construction and activation are static, and
+activation is permitted only between complete top-level declarations.
 
 The owner of an instance supplies its arguments:
 
@@ -150,7 +194,7 @@ runtime algorithm bodies may be an immutable runtime value:
 
 ```topal
 Module (
-  format : LogFormat
+  format : LogFormat,
   destination : LogDestination
 )
 
@@ -179,7 +223,8 @@ constructor argument interpreted by statically evaluated package, module, or
 language code:
 
 ```topal
-use package org.example.rendering version v7.2 (
+use package org.example.rendering (
+  version is v7.2,
   features is ( gpu, png )
 )
 ```
@@ -193,13 +238,15 @@ complete constructor arguments for one instance. In particular, a later
 language selection constructs a new language context:
 
 ```topal
-use lang topal v1.5 (
+use lang topal (
+  version is v1.5,
   features is ( realtime )
 )
 
 production-declarations
 
-use lang topal v1.5 (
+use lang topal (
+  version is v1.5,
   features is ( testing )
 )
 
@@ -252,21 +299,24 @@ canonical formatting includes a space:
 Conceptually:
 
 ```ebnf
-context-selection   = "@" identifier ;
+context-selection   = "@" qualified-identifier ;
 package-constructor = "Package" constructor-pattern ;
 module-constructor  = "Module" constructor-pattern ;
 use-construction    = "use" qualified-identifier
-                      [ "version" version ]
                       [ construction-record ] ;
 construction-record = "("
                       [ construction-association
                         { "," construction-association } ]
                       ")" ;
 construction-association = identifier "is" object ;
+metadata-declaration = metadata-namespace qualified-identifier "is" object ;
+metadata-namespace = "package" | "library" | "application" ;
 ```
 
 `context-selection` is a prefix expression and otherwise follows the normal
 application and left-to-right grouping rules. The initial language construction
-retains a small stable bootstrap grammar for its version and optional basic
-static construction record; the selected language assigns those arguments their
-meaning.
+uses this same record syntax. Its stable bootstrap parser recognizes basic
+static construction objects; the selected language assigns the fields their
+meaning. Metadata declarations are permitted only at the top level of their
+matching special file; use from a function requires `@` followed by the
+qualified metadata path.

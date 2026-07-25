@@ -286,7 +286,9 @@ still introduces that revision's ordinary source vocabulary directly.
 Every source file begins by selecting an immutable language version explicitly:
 
 ```topal
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 ```
 
 The `v` prefix constructs a `Version` value. `v1.5` is the abbreviated spelling
@@ -298,11 +300,15 @@ The selection establishes a language context from its occurrence forward.
 Another top-level selection may begin a region using another version:
 
 ```topal
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
 current-algorithm is ...
 
-use lang topal v1.4
+use lang topal (
+  version is v1.4
+)
 
 compatible-algorithm is ...
 ```
@@ -313,11 +319,28 @@ declaration, and mutually recursive declaration groups cannot cross a language
 boundary. References across regions are checked like published objects
 exchanged by files selecting different language versions.
 
+After the mandatory initial selection, a source file may construct and name an
+inactive language context:
+
+```topal
+legacy is use lang topal (
+  version is v1.0,
+  features is ()
+)
+```
+
+Binding the context does not change how following source is parsed. A later
+top-level `use legacy` activates that complete context from its occurrence
+forward. Both construction and activation are static, activation occurs only
+between complete top-level declarations, and an activation replaces rather
+than merges with the previous language context.
+
 A selected version may accept optional features as an ordinary static
 constructor argument:
 
 ```topal
-use lang topal v1.5 (
+use lang topal (
+  version is v1.5,
   features is ( realtime )
 )
 ```
@@ -340,12 +363,15 @@ meaning.
 For example, a file can visibly separate production declarations from tests:
 
 ```topal
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
 eligible is fn ( user : User ) -> Bool
   ...
 
-use lang topal v1.5 (
+use lang topal (
+  version is v1.5,
   features is ( testing )
 )
 
@@ -372,19 +398,21 @@ semantics needed for interoperability.
 
 The compiler must recognize the initial language construction before it knows
 which language grammar to apply. A small, stable bootstrap syntax therefore
-recognizes line boundaries, `# ` comments, `use lang topal`, a `Version`
-literal, and an optional comma-separated constructor record made from
-identifier associations and basic static object literals. Its general
-contextual type is `Record ( Identifier, Object )`. The bootstrap parser only
-delimits those arguments; the selected language version defines their names,
-types, and meaning. After that declaration, the selected language defines how
-later language constructions and all ordinary source are parsed.
+recognizes line boundaries, `# ` comments, `use lang topal`, and its
+comma-separated constructor record made from identifier associations and basic
+static object literals. Its general contextual type is `Record ( Identifier,
+Object )`. The bootstrap parser delimits the record and uses its `version`
+association to locate the language implementation; that implementation defines
+the record's complete names, types, and meaning. After that declaration, the
+selected language defines how later language constructions and all ordinary
+source are parsed.
 
 For example:
 
 ```topal
 # Begin with Topal 1.5 and its realtime feature.
-use lang topal v1.5 (
+use lang topal (
+  version is v1.5,
   features is ( realtime )
 )
 
@@ -402,27 +430,34 @@ contains a `package.t` file. Like every Topal source file, `package.t` begins by
 selecting a language revision:
 
 ```topal
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
 Package (
+  version : Version,
   features : Set CalculatorFeature default ()
 )
 
-use package se.example.numerics version v2.4
-use package org.example.rendering version v7.2 (
+use package se.example.numerics (
+  version is v2.4
+)
+use package org.example.rendering (
+  version is v7.2,
   features is ( gpu, png )
 )
 
-package is se.example.calculator
-version is v5.3.1
+package identity is se.example.calculator
+package version is v5.3.1
 ```
 
-Only the initial `use lang topal` form and its restricted construction-record
-grammar are part of the bootstrap syntax. Once it has selected an immutable
-language revision, that revision defines the grammar and meaning of `Package`,
-`use package`, version values, constructor arguments, and every other
-declaration in `package.t`. Package syntax may consequently evolve between
-language revisions without enlarging the fixed bootstrap grammar.
+The initial `use lang topal` uses the same construction-record syntax as every
+later construction. Its restricted record grammar is part of the bootstrap
+syntax. Once it has selected an immutable language revision, that revision
+defines the grammar and meaning of `Package`, `use package`, version values,
+constructor arguments, and every other declaration in `package.t`. Package
+syntax may consequently evolve between language revisions without otherwise
+enlarging the fixed bootstrap grammar.
 
 `package.t` constructs the root implementation scope and is a semantic superset
 of `module.t`. Its top-level declarations and expressions are subject to an
@@ -433,21 +468,46 @@ runtime body. Static evaluation is deterministic and cannot perform effects or
 depend on code from a package being selected. In particular, dependency
 discovery cannot require first fetching or compiling that dependency.
 
-The file defines classified values with meanings known to the package manager,
-including at least the package identity and package version. A reverse-DNS name
-such as `se.example.calculator` provides the canonical package identity. The
-package manager treats it as a structured identifier; authentication of its
-publisher is a separate registry concern.
+The compiler-provided `package` metadata namespace distinguishes authoritative
+package properties from constructor arguments and ordinary bindings. Only
+`package.t` may declare its fields, and every declaration is static and
+immutable:
+
+```topal
+package identity is se.example.calculator
+package version is v5.3.1
+```
+
+A reverse-DNS identity such as `se.example.calculator` provides the canonical
+package identity. The package manager treats it as a structured identifier;
+authentication of its publisher is a separate registry concern. The selected
+language revision defines the metadata schema and rejects unknown or duplicate
+fields. `package` is a structural metadata namespace, not a newly constructed
+ordinary variable and not part of the package's published value interface.
+
+At the top level of `package.t`, an unqualified `version` resolves the
+constructor argument while `package version` resolves authoritative metadata.
+A function has neither name implicitly and selects them through its constructed
+context:
+
+```topal
+requested-version is fn () -> Version
+  @ version
+
+actual-version is fn () -> Version
+  @ package version
+```
 
 `use package` selects and constructs an external source package. Its `version`
-states a compatible requirement, while its argument record supplies the selected
-package's `Package` constructor. A package lock records the exact resolved
-release and all interface- or dependency-shaping constructor arguments for
-reproducible builds. `features` is merely a conventional argument name; package
-code may use its statically known value to select dependencies, declarations,
-or published members. The selected language revision may define additional
-package metadata and richer static computations, provided dependency discovery
-remains possible before external package code is available.
+constructor argument states a compatible requirement, while `package version`
+is the authoritative version declared by the selected release. A package lock
+records the exact resolved release and all interface- or dependency-shaping
+constructor arguments for reproducible builds. `features` is merely a
+conventional argument name; package code may use its statically known value to
+select dependencies, declarations, or published members. The selected language
+revision may define additional package metadata and richer static computations,
+provided dependency discovery remains possible before external package code is
+available.
 
 ## Libraries and applications
 
@@ -476,9 +536,13 @@ The shared root implementation belongs in `package.t`:
 
 ```topal
 # package.t
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
-Package ()
+Package (
+  version : Version
+)
 
 calculate is fn ( expression : String ) -> Result Number
   implementation
@@ -489,18 +553,22 @@ independent versions:
 
 ```topal
 # library.t
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
-version is v2.1.0
+library version is v2.1.0
 calculate is @ calculate
 pub calculate
 ```
 
 ```topal
 # application.t
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
-version is v4.3.2
+application version is v4.3.2
 
 start is fn (
   arguments : CommandArguments,
@@ -518,8 +586,26 @@ interface. The root task in `application.t` may nevertheless call `calculate`
 as `@ calculate` because both are compiled in the same source context.
 
 Each artifact file has a local facade scope layered over the directory scope.
+The compiler provides a `library` or `application` metadata namespace in the
+matching facade. Only its owning artifact file may declare its fields, which
+are static, immutable, and defined by the selected language revision.
 Facade-local metadata and aliases do not merge into the implementation or the
-other facade. The two `version` declarations above therefore do not conflict.
+other facade. `package version`, `library version`, and `application version`
+therefore remain distinct.
+
+At a facade's top level its metadata namespace is directly available. A
+function has no implicit access to that outer scope and must select the complete
+qualified path through `@`:
+
+```topal
+reported-version is fn () -> Version
+  @ application version
+```
+
+The same rule applies in `package.t`: a function reads `@ package version`, not
+`package version`. A shared function defined outside a facade cannot select
+facade metadata which is absent from its defining context.
+
 In an artifact facade, `pub` crosses the artifact boundary:
 
 - In `library.t`, it adds a name to the linkable library interface.
@@ -663,13 +749,15 @@ The source root's `package.t` provides the final license and copyright defaults
 for the complete package:
 
 ```topal
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
-package is se.example.calculator
-version is v5.3.1
-license is Apache-2.0
+package identity is se.example.calculator
+package version is v5.3.1
+package license is Apache-2.0
 
-copyright is (
+package copyright is (
   holder "Example AB"
   years 2024 through 2026
 )
@@ -698,7 +786,9 @@ copyright while inheriting a license. The two searches are independent.
 An ordinary source file can establish defaults for its functions:
 
 ```topal
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
 license is MIT
 copyright is (
@@ -722,7 +812,9 @@ implementation:
 
 ```topal
 # parser/module.t
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
 license is BSD-3-Clause
 copyright is (
@@ -743,19 +835,23 @@ applies while constructing that application:
 
 ```topal
 # library.t
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
-version is v2.1.0
-license is LGPL-3.0-only
+library version is v2.1.0
+library license is LGPL-3.0-only
 pub calculate
 ```
 
 ```topal
 # application.t
-use lang topal v1.5
+use lang topal (
+  version is v1.5
+)
 
-version is v4.3.2
-license is GPL-3.0-only
+application version is v4.3.2
+application license is GPL-3.0-only
 
 start is fn (
   arguments : CommandArguments,
