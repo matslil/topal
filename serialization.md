@@ -193,7 +193,7 @@ do not grant the receiver equivalent authority.
 
 An `Environment` is a composition context rather than an ordinary algorithm
 result and consequently is not serialized as a returned object. A value
-selected from an environment, such as an endpoint, may be returned and is
+selected from a constructed context, such as an endpoint, may be returned and is
 serialized according to its own type.
 
 The serializer records the representation defined by the target language. It

@@ -6,8 +6,9 @@ parse. It describes design direction, not yet a stable language specification.
 
 Testing-specific table syntax is described separately in
 [unit testing and structural path coverage](testing.md). Its root vocabulary
-becomes available only after `use lang feature testing` and remains unavailable
-to ordinary Topal source which does not activate that feature.
+becomes available only in a language context constructed with the conventional
+`testing` feature argument and remains unavailable to ordinary Topal source
+which does not request it.
 
 Introspection-specific operations are described in
 [static introspection](introspection.md). They remain visibly qualified through
@@ -664,9 +665,10 @@ may be projected from a `Result` inside an explicitly fallible algorithm, as
 described by [the error model](errors.md#success-projection-and-propagation).
 Effects complement the input and result types according to the
 [effect model](effects.md), but their final surface syntax has not yet been
-selected. Typed [environments](environments.md) separately provide
-stable declarations selected with `@`; environment access is tracked by the
-compiler without adding ordinary inputs to every algorithm declaration.
+selected. [Constructed package and module contexts](contexts.md) provide
+immutable namespace members selected with `@`; constructor-backed access is
+tracked by the compiler without adding ordinary inputs to every algorithm
+declaration.
 
 A binding may be marked with the compiler-checked
 [`sensitive`](sensitive.md) qualifier. Sensitivity follows copied, moved,

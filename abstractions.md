@@ -288,7 +288,7 @@ with the observable value semantics of `T`. `=` and `!=` use this capability.
 The language derives equality for tuples, records, variants, unions, and finite
 recursive values when every observed component has equality.
 
-Algorithms, continuations, task capabilities, environment endpoints, external
+Algorithms, continuations, task capabilities, context-provided endpoints, external
 resources, and opaque values do not receive value equality automatically.
 A type may expose an explicit stable identity with equality when identity is
 part of its public semantics. Possessing two capabilities for the same task,

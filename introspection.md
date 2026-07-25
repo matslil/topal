@@ -152,7 +152,7 @@ lang AlgorithmView is Record
   output : Type
   staticness : lang Staticness
   effects : lang EffectSet
-  environments : lang EnvironmentRequirementSet
+  context : lang ContextRequirementSet
 ```
 
 It does not expose compiler-generated machine instructions, optimization
@@ -368,9 +368,9 @@ lang LanguageContext is Record
 ```
 
 `lang version` directly returns the `version` field. The context changes after
-a later `use lang topal` or `use lang feature` declaration; declarations which
-were already completed retain their earlier context. This reports the exact
-selections at the inspection location. It does
+a later `use lang topal` construction; declarations which were already
+completed retain their earlier context. This reports the exact constructor
+arguments at the inspection location. It does
 not report the compiler implementation version, claim compatibility with a
 range of language revisions, or permit a build target to change the source
 program's semantics.
@@ -399,7 +399,7 @@ The first introspection revision should provide:
 - type views for primitive, tuple, record, variant, union, refined, algorithm,
   and opaque types;
 - lossless dependent and recursive field structures;
-- algorithm signatures including staticness, effects, and environment
+- algorithm signatures including staticness, effects, and constructed-context
   requirements;
 - deterministic enumeration of visible scope members;
 - declaration metadata already visible at the inspection site;

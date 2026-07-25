@@ -123,7 +123,7 @@ remains to decide whether public source declarations must spell their complete
 effect upper bound or may rely on an interface-generation step.
 
 The initial design handles effects through application composition, tasks,
-protocols, environments, and foreign adapters. A future general handler
+protocols, constructed contexts, and foreign adapters. A future general handler
 construct should be added only if concrete use cases cannot be expressed
 cleanly through those boundaries. If added, its treatment of continuation
 linearity, task state, and effect resource identities needs a separate design.

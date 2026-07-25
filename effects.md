@@ -2,7 +2,7 @@
 
 An effect describes an observable interaction performed by an algorithm. It is
 part of the algorithm's compiled type alongside its inputs, output, staticness,
-environment requirements, and protocol communication. Effects constrain
+constructed-context requirements, and protocol communication. Effects constrain
 ordering and parallel execution without replacing explicit `Result` control
 flow.
 
@@ -104,7 +104,7 @@ implementation capability:
 
 - application composition supplies operating-system and service capabilities;
 - a task handles the interactions in its declared protocol;
-- an environment supplies a fixed contained diagnostic implementation; or
+- a constructed context supplies a fixed contained diagnostic capability; or
 - a trusted foreign adapter implements a declared boundary effect.
 
 Handling an effect may translate it into other effects. The handler's contract
@@ -113,25 +113,25 @@ effect. Application composition verifies that every reachable requirement is
 ultimately handled.
 
 There is initially no unrestricted dynamic effect-handler construct. Ordinary
-algorithms, tasks, protocols, environments, and application composition provide
+algorithms, tasks, protocols, constructed contexts, and application composition provide
 the handling boundaries while retaining analyzable control and communication
 dependencies.
 
-## Effects and environments
+## Effects and constructed contexts
 
-Selecting a stable immutable environment value is pure. Invoking an endpoint
-selected from the environment performs the communication effects declared by
-its protocol.
+Selecting a stable immutable context member is pure. Invoking an endpoint
+selected from a context performs the communication effects declared by its
+protocol.
 
-An isolated diagnostic environment operation carries a contained diagnostic
-effect. Application algorithms record that dependency, but the effect cannot
-return information, publish a capability, change application state, or alter
-application control flow. Its implementation may have private effects which
-remain inside the containment boundary.
+An isolated diagnostic capability supplied through a context carries a
+contained diagnostic effect. Application algorithms record that dependency,
+but the effect cannot return information, publish a capability, change
+application state, or alter application control flow. Its implementation may
+have private effects which remain inside the containment boundary.
 
-Environment selection is therefore not a general mechanism for hiding effects.
+Context selection is therefore not a general mechanism for hiding effects.
 Semantically observable service operations use protocols and ordinary effect
-contracts even when their endpoint is obtained from an environment.
+contracts even when their endpoint is obtained from a constructed context.
 
 ## Effects and generators
 

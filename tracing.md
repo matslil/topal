@@ -95,7 +95,7 @@ TOPAL_TRACE_CHANNEL=<platform-specific channel description>
 
 The name above describes the conventional role; exact spelling and contents
 belong to the target runtime. The variable is consumed by runtime bootstrap and
-is not imported as a Topal [environment](environments.md) declaration or made
+is not supplied as a Topal [context constructor](contexts.md) argument or made
 visible to application code.
 
 When no channel is configured, the runtime creates no attach endpoint and later
@@ -141,8 +141,8 @@ outside application semantics.
 
 ## Containment and loss
 
-Tracing follows the containment guarantees of diagnostic
-[environment algorithms](environments.md#isolated-environment-algorithms):
+Tracing follows the containment guarantees required of
+[diagnostic capabilities](contexts.md#capabilities-endpoints-and-containment):
 
 - delivery failure cannot escape into application code;
 - the trace channel cannot invoke an application callback;
@@ -311,7 +311,7 @@ The initial tracing facility should define:
 It should not initially define:
 
 - application-visible trace status or control;
-- tracing configured from Topal environment declarations;
+- tracing configured from Topal context constructor arguments;
 - a default network tracing endpoint;
 - one universal transport for every operating system;
 - unbounded lossless collection;
