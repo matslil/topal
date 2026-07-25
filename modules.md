@@ -373,8 +373,9 @@ semantics needed for interoperability.
 The compiler must recognize the initial language construction before it knows
 which language grammar to apply. A small, stable bootstrap syntax therefore
 recognizes line boundaries, `# ` comments, `use lang topal`, a `Version`
-literal, and an optional constructor argument map made from identifiers,
-associations, and basic static product literals. The bootstrap parser only
+literal, and an optional comma-separated constructor record made from
+identifier associations and basic static object literals. Its general
+contextual type is `Record ( Identifier, Object )`. The bootstrap parser only
 delimits those arguments; the selected language version defines their names,
 types, and meaning. After that declaration, the selected language defines how
 later language constructions and all ordinary source are parsed.
@@ -416,12 +417,12 @@ package is se.example.calculator
 version is v5.3.1
 ```
 
-Only the initial `use lang topal` form and its restricted argument-map grammar
-are part of the bootstrap syntax. Once it has selected an immutable language
-revision, that revision defines the grammar and meaning of `Package`, `use
-package`, version values, constructor arguments, and every other declaration in
-`package.t`. Package syntax may consequently evolve between language revisions
-without enlarging the fixed bootstrap grammar.
+Only the initial `use lang topal` form and its restricted construction-record
+grammar are part of the bootstrap syntax. Once it has selected an immutable
+language revision, that revision defines the grammar and meaning of `Package`,
+`use package`, version values, constructor arguments, and every other
+declaration in `package.t`. Package syntax may consequently evolve between
+language revisions without enlarging the fixed bootstrap grammar.
 
 `package.t` constructs the root implementation scope and is a semantic superset
 of `module.t`. Its top-level declarations and expressions are subject to an
@@ -439,7 +440,7 @@ package manager treats it as a structured identifier; authentication of its
 publisher is a separate registry concern.
 
 `use package` selects and constructs an external source package. Its `version`
-states a compatible requirement, while its argument map supplies the selected
+states a compatible requirement, while its argument record supplies the selected
 package's `Package` constructor. A package lock records the exact resolved
 release and all interface- or dependency-shaping constructor arguments for
 reproducible builds. `features` is merely a conventional argument name; package
@@ -596,7 +597,7 @@ dependent packages, establish the behavioral confidence that version checking
 cannot provide.
 
 Constructor arguments form part of an artifact selection when they affect its
-interface. Different argument maps construct distinct variants; Topal does not
+interface. Different argument records construct distinct variants; Topal does not
 implicitly union an argument named `features` or require it to be additive.
 Code which wants an additive feature convention declares and implements that
 policy explicitly.

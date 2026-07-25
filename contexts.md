@@ -90,10 +90,23 @@ available:
 
 ```topal
 use logger (
-  destination is stderr
+  destination is stderr,
   minimum-level is Warning
 )
 ```
+
+The parenthesized construction value uses the ordinary comma notation for a
+record. Its general contextual type is:
+
+```topal
+Record ( Identifier, Object )
+```
+
+Each label is an `Identifier` naming a constructor parameter and each
+associated value is an `Object`. The selected `Package`, `Module`, or language
+constructor refines that general shape to its declared parameter names and
+classifications. Whitespace alone never separates construction arguments;
+unknown, duplicate, and missing associations are errors.
 
 An instance may be given a local name when more than one configuration is
 needed:
@@ -244,11 +257,16 @@ package-constructor = "Package" constructor-pattern ;
 module-constructor  = "Module" constructor-pattern ;
 use-construction    = "use" qualified-identifier
                       [ "version" version ]
-                      [ argument-map ] ;
+                      [ construction-record ] ;
+construction-record = "("
+                      [ construction-association
+                        { "," construction-association } ]
+                      ")" ;
+construction-association = identifier "is" object ;
 ```
 
 `context-selection` is a prefix expression and otherwise follows the normal
 application and left-to-right grouping rules. The initial language construction
 retains a small stable bootstrap grammar for its version and optional basic
-static argument map; the selected language assigns those arguments their
+static construction record; the selected language assigns those arguments their
 meaning.
