@@ -163,6 +163,24 @@ pub error
 the bound scope itself available under the published name, preserving that
 scope's interface.
 
+A published declaration must not expose a private type through its interface.
+In particular, a fallible function's exact `ErrorCode` enum is part of its
+`Result` contract. Publishing the function therefore requires that enum to be
+published through a namespace reachable by consumers. The enum may be defined
+and published independently of the function and need not share its namespace:
+
+```topal
+use shared-error
+ErrorCode is shared-error ErrorCode
+
+read-count is fn pub ( path : Path ) -> Result Integer
+  body
+```
+
+Here `read-count` remains usable only while `shared-error ErrorCode` is part of
+the published dependency interface. The function's publication does not
+implicitly relocate or republish that type.
+
 ## Visibility propagates one boundary at a time
 
 Publication reaches only the nearest parent. A declaration must be published

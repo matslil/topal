@@ -25,9 +25,9 @@ require separate composition mechanisms. A list additionally uses recursion:
 List T = Empty | Entry ( T, List T )
 ```
 
-Unlike a general two-alternative variant, `Result` uses the common
-[error representation](errors.md). Modules extend its domains and codes rather
-than selecting unrelated error types.
+Unlike a general two-alternative variant, `Result` uses the common structured
+[error representation](errors.md). Each fallible function connects that
+representation to a specific, possibly shared `ErrorCode` enum.
 
 This is a semantic construction, not a required storage representation. The
 compiler may represent a list as a tree, flat buffer, shared slice, or another
