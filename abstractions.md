@@ -353,7 +353,15 @@ that identity when traversing recursive structure.
 
 ## Conversion relations
 
-Topal distinguishes conversions by the guarantee they provide:
+Topal does not organize all objects or value types into one inheritance tree.
+`Type`, `Constraint`, `Predicate`, `Algorithm`, and `Capability` are different
+object kinds, not supertypes of the values they describe or classify. Likewise,
+satisfying `Sequence`, `Equality`, or another capability supplies evidence that
+an object provides an interface and its laws; it does not convert that object
+to a capability value or to a common nominal supertype.
+
+Compatibility between values is instead described by directed conversion
+relations. Topal distinguishes them by the guarantee they provide:
 
 - **Evidence forgetting** removes a refinement, static guarantee, or capability
   view without changing the value. It is implicit.
@@ -367,10 +375,48 @@ Topal distinguishes conversions by the guarantee they provide:
 - **Representation interpretation** reads or writes an external layout and is
   an effectful boundary operation, never an ordinary conversion.
 
+These relations must not be inferred merely because two types have similar
+operations or representations. In particular:
+
+- A constrained value can be used as its base value by forgetting evidence.
+  For example, `Nat` is the nonnegative refinement of `Int`, and `Index A`
+  forgets its bound and domain evidence to become `Nat`.
+- A capability requirement is satisfied by passing the original object together
+  with static evidence. A `List T`, `Array N T`, or `String` can therefore meet
+  a `Sequence` requirement without first converting to a `Sequence` value or a
+  nominal `Container` type.
+- A type construction is not a subtype relation. `List T`, `Set T`, and
+  `Map ( K, V )` are distinct constructions even when they share capabilities.
+  `Tuple`, `Record`, `Variant`, and `Union` similarly describe product and sum
+  structure rather than positions in a container hierarchy.
+- A canonical embedding between distinct numeric domains is a lossless
+  conversion, not automatically a refinement. The finite-to-extended relations
+  such as `Int` to `ExtendedInt` are lossless, while the reverse direction is
+  checked because an infinity cannot become an `Int`. Approximation, rounding,
+  saturation, wrapping, and interpretation from bits remain explicit.
+
+Evidence forgetting is transitive: a value may forget several refinements on
+its way to a visible base type. Lossless conversions may be composed implicitly
+only when the complete path is canonical, preserves every intermediate
+guarantee required by the destination, and does not change overload selection.
+The compiler does not search an open-ended graph for a convenient coercion. A
+declared direct conversion wins over a longer composed path; two otherwise
+equivalent canonical paths make the conversion ambiguous and require an
+explicit choice.
+
 Implicit conversions are considered only after exact type matches during
-overload resolution. A call is ambiguous when two candidates require equally
-strong conversions; the output type does not break the tie. The compiler must
-report the candidate conversions rather than silently selecting one.
+overload resolution. Evidence forgetting is preferred to a lossless semantic
+conversion. A call is ambiguous when two candidates require equally strong
+conversions; the output type does not break the tie, and capability satisfaction
+does not serve as a hidden tie-breaker. The compiler must report the candidate
+conversion paths and required capability evidence rather than silently
+selecting one.
+
+Checked and lossy conversions never participate in overload resolution. An
+expected input type may select a unique implicit conversion, but an expected
+output type cannot rescue an otherwise ambiguous call. Generic matching retains
+the complete input type whenever possible, so requiring a capability does not
+prematurely erase refinements, identities, sizes, or other static parameters.
 
 Algorithm inputs are contravariant and outputs covariant only where the
 conversion involved is implicit and effect, fallibility, and static guarantees
