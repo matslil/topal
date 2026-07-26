@@ -165,7 +165,13 @@ generator                     stream
 For example, a task can apply `Lexer` around the relevant handler declarations:
 
 ```topal
-LexerService is task
+LexerTask is Task (
+  queue-size is 32,
+  identity is lexer,
+  tags is ( parsing, service )
+)
+
+LexerService is LexerTask
   grammar : Grammar
 
   Lexer

@@ -864,10 +864,17 @@ implementation evidence, and message adaptation.
 ## Tasks
 
 A task owns private state and derives a typed messaging protocol from functions
-declared in its context:
+declared in its context. `Task` first accepts an option record to construct a
+specialized task type; a definition is then a value of that type:
 
 ```topal
-Counter is task
+Counter is Task (
+  queue-size is 10,
+  identity is counter,
+  tags is ( state, counted )
+)
+
+counter-service is Counter
   count : Nat
 
   start is fn ( initial : Nat ) -> Completed
@@ -881,13 +888,29 @@ Counter is task
     count
 ```
 
-Applying `Counter` constructs a task by supplying the parameters of `start`:
+Applying the definition constructs a task by supplying the parameters of
+`start`:
 
 ```topal
-counter is Counter 0
+counter is counter-service 0
 counter increment 2
 value is counter current Unit
 ```
+
+The option record configures the task and specializes its type; it does not
+list implemented interfaces. Interface conformance is established by the
+definition's actual handlers. The compiler registers each definition's
+structured namespace identity, endpoint, and implemented interfaces with the
+service broker described in
+[tasks and intrinsic messaging](tasks.md#service-discovery).
+
+Every task definition has a mandatory, non-callable `start` lifecycle handler.
+An ordinary task may define a non-callable
+`terminate : TerminationReason -> Unit`; omission supplies a no-op before
+normal resource cleanup. The application root is the exception: its
+`terminate` result follows the selected platform contract and becomes the
+application return value. These lifecycle declarations do not require or
+construct a `TaskInterface`.
 
 A handler returning `Unit` is an event for which the caller does not await
 completion. `Completed` requests completion confirmation, and `Result
@@ -895,8 +918,9 @@ Completed` requests either confirmation or failure. Other returned values are
 request replies, while a generator handler establishes a stream. `Result Unit`
 is not a valid task-handler result.
 
-See [tasks and intrinsic messaging](tasks.md) for isolation, startup waiting,
-and the implicit root task defined by `application.t`.
+See [tasks and intrinsic messaging](tasks.md) for identity namespaces, service
+discovery, isolation, startup and termination, and the implicit root task
+defined by `application.t`.
 
 ## Destructors
 

@@ -5,12 +5,19 @@ state and receives interactions through functions declared directly in its
 task context. Task interaction is intrinsic to the language: programs do not
 expose queues, mutexes, global variables, or other synchronization mechanisms.
 
-## Task declarations
+## Task specialization and definitions
 
-A task groups its state and message handlers:
+`Task` accepts an option record and constructs a specialized task type. The
+implementation is a value of that type:
 
 ```topal
-Counter is task
+Counter is Task (
+  queue-size is 10,
+  identity is counter,
+  tags is ( state, counted )
+)
+
+counter-service is Counter
   count : Nat
 
   start is fn ( initial : Nat ) -> Completed
@@ -24,11 +31,16 @@ Counter is task
     count
 ```
 
-Applying the task supplies the parameters of `start` and constructs a task
-instance:
+The option record contains task-wide configuration rather than its implemented
+interfaces. A task definition establishes its interfaces from the functions
+and generators it actually implements, so separate definitions of the same
+specialized task type may implement different interfaces.
+
+Applying a task definition supplies the parameters of `start` and constructs a
+task instance:
 
 ```topal
-counter is Counter 0
+counter is counter-service 0
 counter increment 2
 value is counter current Unit
 ```
@@ -42,6 +54,29 @@ Functions called by a handler normally execute in the same task. Only a call
 through another task capability crosses a task boundary. Library functions
 therefore remain ordinary reusable functions and do not need to be declared as
 tasks.
+
+## Task identity and namespaces
+
+The `identity` option introduces the stable identity component of the
+specialized task type in the ordinary Topal namespace where that type is
+declared. Each definition of the specialized type adds its own declaration
+identity. Multiple runtime instances of one definition remain distinct even
+though they share that stable definition identity.
+
+Task identity is structured namespace identity, not a filesystem path or a
+string assembled with punctuation. Ordinary namespace selection retains
+Topal's space-separated form. When tasks span networked nodes, a dynamically
+constructed node namespace occupies the first stage and the remaining stages
+are ordinary Topal namespacing:
+
+```topal
+node services search indexer
+```
+
+The representation remains opaque, but equality, namespace narrowing, and
+diagnostic formatting operate on the structured identity. Identity is
+descriptive and usable for discovery; it does not itself grant messaging
+authority.
 
 ## Shared function interfaces
 
@@ -61,6 +96,53 @@ Every task has an implicit concrete interface consisting of its published
 message handlers. Explicit interfaces provide restricted endpoint views. An
 endpoint grants authority only for the operations in its view; task identity or
 descriptive names do not grant arbitrary message authority.
+
+## Service discovery
+
+When the compiler detects a task definition, it records the definition's
+identity, endpoint construction, and every explicitly implemented
+[`Interface`](interfaces.md). It emits the corresponding registration with a
+compiler-created service broker. Static compilation records definitions;
+runtime registration supplies the endpoint for each live task instance.
+Registration becomes discoverable according to the task's startup contract and
+is withdrawn when termination begins.
+
+Every task handler can select `service-broker`, a compiler-provided endpoint
+implementing `ServiceBrokerInterface`. The interface is public so an
+application or execution environment may supply an alternative broker task
+without changing clients:
+
+```topal
+ServiceBrokerInterface is Interface
+  find-task is fn (
+    identity : TaskIdentity
+  ) -> Result Endpoint
+
+  find-interface is generator (
+    interface : Interface,
+    within : Namespace
+  )
+    yields Endpoint
+    resumes Unit
+    -> Result Unit
+```
+
+The `within` namespace narrows where interface discovery starts. Omitting that
+narrowing searches the namespaces accessible through the selected broker; the
+exact optional-operand spelling remains provisional. Namespace search respects
+ordinary visibility and does not traverse inaccessible declarations.
+
+`find-task` selects an exact identity. `find-interface` may produce any number
+of live endpoints whose definitions explicitly implement the requested
+interface. The broker returns endpoints with the corresponding implementation
+evidence, allowing the requested interface to construct a restricted callable
+view. A general endpoint or task identity never grants calls outside such a
+view.
+
+The broker database records implementations and live instances, not specialized
+`Task` declarations. Those remain ordinary type declarations in their defining
+namespaces. Interface conformance likewise belongs to each task definition
+rather than to the specialized task type.
 
 ## Interaction inference
 
@@ -116,13 +198,14 @@ It may implement an interaction as a direct call, queue operation, state
 machine, or other mechanism when the choice preserves the declared event,
 completion, failure, ordering, and isolation behavior.
 
-## Task construction and `start`
+## Task construction and lifecycle
 
 `start` is the task's lifecycle constructor. It is not callable through the
 task capability and does not appear in its message protocol. The compiler and
 runtime allocate the hidden task identity, messaging infrastructure, and task
 scope before invoking it. Its parameters are consequently the parameters used
-to construct the task.
+to construct the task. Every task definition must provide `start`; lifecycle
+handlers do not form a mandatory `TaskInterface`.
 
 The result of `start` determines whether construction waits for initialization:
 
@@ -156,6 +239,29 @@ through `start` must establish all task state. A non-waiting `start -> Unit`
 must handle any internal failure and still establish valid state because its
 creator has no startup-result channel.
 
+An ordinary task may also define the platform-independent `terminate`
+lifecycle handler:
+
+```topal
+terminate is fn (
+  reason : TerminationReason
+) -> Unit
+  finish-pending-work reason
+```
+
+`terminate` is not callable through an endpoint. If omitted, it behaves as a
+no-op returning `Unit`; normal child-scope and resource cleanup still occurs.
+All non-root tasks use `Unit`, keeping termination independent of the concrete
+task type when an endpoint was discovered by interface.
+
+Termination may instead be observed as the unsuccessful completion of a
+pending request, the yield or final return of a stream whose protocol reports
+it, the result of awaiting an owned child, or an explicit broker monitor/join
+operation. Such observation uses universal identity, reason, and failure
+information rather than a task-specific termination value. The exact surface
+operation for non-owning monitoring remains provisional, and must atomically
+install the monitor so termination cannot race with lookup.
+
 ## The application root task
 
 `application.t` is itself the application's root task context. It does not
@@ -182,14 +288,17 @@ start is fn (
 signal is fn ( signal : UnixSignal ) -> Unit
   handle-signal signal
 
-stop is fn ( reason : StopReason ) -> Completed
+terminate is fn ( reason : TerminationReason ) -> ExitStatus
   server stop reason
-  Completed
+  success
 ```
 
 Returning from `start` completes root-task initialization; it does not terminate
 the application. The application continues receiving platform and task
 messages until its root scope terminates according to the selected lifecycle.
+Unlike ordinary tasks, the root task's `terminate` result is determined by the
+selected platform and becomes the application's return value. A platform may
+require `Unit`, an exit status, or another platform-defined result.
 
 The selected Topal language features define the application protocol. A Unix
 feature may provide command arguments, environment variables, signals, and
