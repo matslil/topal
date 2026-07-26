@@ -13,8 +13,7 @@ implementation is a value of that type:
 ```topal
 Counter is Task (
   queue-size is 10,
-  identity is counter,
-  tags is ( state, counted )
+  identity is counter
 )
 
 counter-service is Counter
