@@ -34,6 +34,15 @@ The following questions from the initial audit are no longer open:
   call selects its namespace before searching that namespace's declarations;
   scope aliases preserve the same order. Explicit cross-namespace overload-set
   composition has no current surface syntax.
+- Capability implementations are coherent and owner-scoped. Each canonical
+  object-capability pair has at most one implementation, declared in the
+  definition context of either the capability or satisfying object. Unrelated
+  packages integrate them through an owned specialization rather than an orphan
+  implementation.
+- An explicit owner implementation suppresses derivation. Without one, exactly
+  one derivation path may apply; competing derivations are an error which the
+  capability or object owner resolves explicitly. Import and discovery order
+  never choose capability evidence.
 - The [initial capability vocabulary](capabilities.md) now defines comparison,
   collection observation and construction, keyed association, combination, and
   function-law capabilities.
@@ -45,7 +54,7 @@ The following questions from the initial audit are no longer open:
 
 The grammar must select compatible spellings for:
 
-- capability declarations, implementations, and explicitly selected evidence;
+- capability declarations and implementations;
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
 - existential package opening;
@@ -83,22 +92,10 @@ explicitly requests it. The compiler may optionally diagnose overlapping,
 conversion-preempted, or provably shadowed declarations, but declaration order
 remains authoritative.
 
-## Capability organization
+## Capability vocabulary and matching
 
-Capability satisfaction is coherent within a compiled context, but the module
-rules still need to choose where an implementation may be declared. The main
-alternatives are:
-
-- only beside the capability or the satisfying type;
-- in any module, with explicit import and conflict rejection; or
-- as an ordinary named evidence value, with only one explicitly selected as
-  the implicit default.
-
-The third is the most compositional, while the first gives the strongest
-protection against distant conflicts. This decision also determines how
-libraries publish derived equality, ordering, parsing, and collection evidence.
-
-The [initial capability vocabulary](capabilities.md) selects the fundamental
+Capability implementation ownership and coherence are settled. The
+[initial capability vocabulary](capabilities.md) selects the fundamental
 comparison, collection, and function-law names. Formatting, parsing, checked
 construction, and other library-specific capabilities still need vocabularies
 in their respective designs.
