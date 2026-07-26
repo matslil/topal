@@ -47,6 +47,14 @@ The following questions from the initial audit are no longer open:
   `String` provides `CaseInsensitive` using Topal's fixed Unicode version;
   `Language T` separately supplies a static language identity. Language-specific
   case operations require both without changing canonical string equality.
+- Programmers may declare law evidence. Soundly proved or exhaustively checked
+  claims are verified; unresolved claims become `trusted-unverified` evidence
+  and emit `unverified-law` by default; refuted claims are errors. Sampling can
+  refute but cannot verify a universal law.
+- `lang disable-warning W` suppresses `W` for the next complete statement.
+  `lang push-disable-warning W` and the matching
+  `lang pop-disable-warning W` delimit a lexical suppression region. Suppression
+  changes diagnostics but never the evidence's recorded trust status.
 - The [initial capability vocabulary](capabilities.md) now defines comparison,
   collection observation and construction, keyed association, combination, and
   function-law capabilities.
@@ -109,23 +117,12 @@ capabilities also needs a final spelling. It must bind `Key` and `Value` from
 the actual container construction rather than equating unrelated constructions
 such as `Map ( Key, Value )` and `Tuple ( Key, Value )`.
 
-## Law evidence before automated proof
+## Automated law proof
 
-The [future verification design](FUTURE.md) describes symbolic proof tables,
-finite exhaustive verification, induction, and independently checked proof
-certificates. Before that system exists, the language still needs a conservative
-rule for function-law evidence used by optimizations.
-
-The main choices are:
-
-- initially allow law evidence only for compiler-defined operations;
-- permit explicitly trusted user or foreign claims; or
-- accept user proof terms in a smaller initial proof language.
-
-Passing sampled tests cannot establish `Associative`, `Commutative`, `Identity`,
-or `Idempotent`, because those capabilities may authorize reordering and
-parallel execution. Any trusted alternative must remain visible in source,
-static introspection, compiled metadata, and diagnostics.
+Programmer-authored law evidence and its trusted-unverified fallback are
+settled. The [future verification design](FUTURE.md) still describes symbolic
+proof tables, finite exhaustive verification, induction, and independently
+checked proof certificates which can upgrade more claims to verified evidence.
 
 ## Effect annotations and handlers
 

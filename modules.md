@@ -304,8 +304,11 @@ Static [introspection](introspection.md) is the deliberate exception to that
 last rule. Introspection-specific operations and descriptor types remain
 available through the qualified `lang` scope, as in `lang view Person` and
 `lang TypeView`. This keeps inspection of language objects visibly distinct
-from ordinary application and data selection. Selecting a language revision
-still introduces that revision's ordinary source vocabulary directly.
+from ordinary application and data selection. Compiler diagnostic controls are
+also deliberately qualified, as in `lang disable-warning unverified-law`;
+their lexical effect does not make them runtime module state. Selecting a
+language revision still introduces that revision's ordinary source vocabulary
+directly.
 
 Every source file begins by selecting an immutable language version explicitly:
 

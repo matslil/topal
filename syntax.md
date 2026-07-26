@@ -57,6 +57,46 @@ occur more than once because its occurrences do not name the same value. `_`
 has no wildcard or other pattern-matching meaning; wildcard syntax remains
 undecided.
 
+## Diagnostic control
+
+Compiler warning identities are static objects supplied by `lang`, not strings.
+An unknown warning name is an error. Diagnostic control is visibly qualified
+and lexical:
+
+```topal
+lang disable-warning unverified-law
+
+Associative combine
+```
+
+`disable-warning` applies only to the next complete statement in the same
+lexical source context. Comments, documentation, and blank lines do not consume
+it. The compiler may optionally diagnose a suppression which the statement did
+not use.
+
+Longer regions use an explicitly matched warning stack:
+
+```topal
+lang push-disable-warning unverified-law
+
+Associative combine
+Commutative combine
+Identity combine empty
+
+lang pop-disable-warning unverified-law
+```
+
+The pop must name the warning on top of the stack. A mismatched or unmatched
+pop, or reaching the end of the source context with an unclosed push, is an
+error. A region cannot cross a source-file or lexical-context boundary.
+Suppressions affect diagnostic presentation only: they cannot suppress errors,
+change program semantics, or relabel trusted-unverified evidence as verified.
+
+The deliberately verbose compiler operations remain ordinary static
+constructions for binding and composition. Programs may use `is` to establish
+shorter local vocabulary without adding implicit warning state or changing the
+matching rules above.
+
 ## Numeric literals
 
 An integer literal uses decimal notation by default. The prefixes `0b`, `0o`,

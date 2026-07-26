@@ -25,12 +25,14 @@ execution as proof:
 Only `proven` and `exhaustively verified` produce verified law evidence.
 `Disproved` produces a diagnostic witness when possible. `Tested` records useful
 confidence and coverage but cannot authorize a semantics-changing optimization.
-`Unresolved` prevents certification while leaving an otherwise valid function
-available without the requested verified capability.
+`Unresolved` cannot produce verified evidence. A programmer may nevertheless
+publish the requested law as trusted-unverified evidence and assume
+responsibility for transformations which rely on it.
 
-An explicitly trusted claim remains possible at a narrow foreign or proof
-boundary. Trust must be visible in source, static introspection, compiled
-metadata, and diagnostics.
+Trusted claims are available to ordinary programmer declarations as well as
+foreign and proof boundaries. They emit `unverified-law` by default. Trust must
+remain visible in source, static introspection, compiled metadata, and
+diagnostics even when that warning is suppressed.
 
 ## Compiler-generated structural test tables
 
