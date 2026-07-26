@@ -380,9 +380,27 @@ Identity operation value
 ```
 
 The compiler derives law evidence for language-defined exact arithmetic and
-other fundamental operations. User declarations may provide evidence, and the
-compiler verifies it when a decidable proof is available. An unverified foreign
-claim is trusted boundary code and is identified as such in compiled metadata.
+other fundamental operations. Programmers may declare law evidence for any
+operation they own or can lawfully implement evidence for. The compiler
+attempts a sound verification when one is available and classifies the result:
+
+- **verified** evidence has a compiler proof or exhaustive verification over a
+  proven finite domain;
+- **trusted-unverified** evidence is a programmer claim which the compiler can
+  neither prove nor refute; and
+- a **refuted** claim is rejected, with a counterexample when one is available.
+
+Trusted-unverified evidence is accepted and may authorize the same
+transformations as verified evidence, because the programmer has explicitly
+assumed responsibility for the law. The compiler emits `unverified-law` at the
+claim by default. Suppressing that warning does not relabel the evidence.
+Sampled or generated tests may refute a law but successful samples do not
+verify it.
+
+Compiled evidence retains the exact operation identity, law, relevant static
+parameters, verification status, declaration provenance, and verification
+method. Consumers may reject trusted-unverified evidence by build policy, but
+otherwise rely on the published claim without warning at every use.
 
 Law evidence is not inferred from a function's name. An overload called
 `sum`, for example, is not assumed associative for an approximate numeric type.
