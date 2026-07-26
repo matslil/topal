@@ -25,6 +25,32 @@ An empty block has value `Unit`. Cleanup belonging to the scope runs after its
 result has been constructed and before that result is delivered to the
 enclosing scope.
 
+## Completion dependencies
+
+`Unit` means that a call produces no result and establishes no dependency on
+when its execution finishes. After initiating a function whose declared result
+is `Unit`, evaluation may continue when value ownership, effects, and the
+structured scope permit it. The compiler may execute the call inline, defer it,
+or run it concurrently when those choices are observably equivalent.
+
+`Completed` is the distinct zero-data evidence that execution finished.
+Applying a function which returns `Completed` orders a dependent continuation
+after that completion without requiring an operating-system thread to block.
+A fallible completion returns `Result Completed`. `Result Unit` is invalid
+because an interaction with no completion dependency has no result channel on
+which to report failure.
+
+Unobserved completion does not erase effects or detach computation. Effects of
+a `Unit` call remain outstanding and constrain later conflicting interactions
+until the work finishes. Its structured scope retains the work through cleanup,
+cancellation, and failure containment. A function which cannot report failure
+must handle it internally or route it through a separately declared effect.
+
+These rules apply equally when an [interface](interfaces.md) implementation is
+an ordinary function or a task event. The return type supplies the completion
+contract; implementation evidence supplies the calling convention and the
+compiler's scheduling information.
+
 ## Immutable bindings and shadowing
 
 `is` introduces an immutable binding in an ordinary lexical scope. A name

@@ -6,9 +6,13 @@ constructed-context requirements, and protocol communication. Effects constrain
 ordering and parallel execution without replacing explicit `Result` control
 flow.
 
-The compiler infers effects through ordinary calls. Public interfaces record
-the inferred set or an explicitly declared upper bound, so changing a public
-function to perform a new effect is an interface change.
+The compiler infers effects through ordinary calls and message interactions.
+A source `Interface` describes function and generator shapes without acquiring
+the effects of one implementation. Applying that interface to a concrete
+context, packaged implementation, task, or endpoint produces implementation
+evidence containing its inferred effect row. Published compiled functions and
+implementations retain that evidence, so their callers can check dependencies
+and optimize without requiring effects to be repeated in the source interface.
 
 ## Effect identities
 
@@ -39,13 +43,19 @@ Calling a function adds its effects to the caller. Constructing or passing an
 function value does not perform its effects. A higher-order call adds the
 effects of a callback only along paths on which that callback is invoked.
 
-Private functions normally rely on inference. A declaration may state an
-effect upper bound to document and restrict its implementation. The compiler
-rejects an implementation whose inferred effects exceed that bound.
+Functions normally rely on inference. A declaration may state an effect upper
+bound to document and restrict its implementation. The compiler rejects an
+implementation whose inferred effects exceed that bound.
 
-Public functions always expose a stable compiled effect contract. Source may
-require explicit effect declarations for public interfaces even when the
-compiler could infer them; the final surface rule remains to be selected.
+Public compiled implementations expose their inferred effect evidence alongside
+their callable interface. This evidence belongs to that implementation, not to
+the implementation-independent `Interface` type. Changing an implementation
+may therefore change which callers accept it and which optimizations are
+available without changing the source interface it implements.
+
+When the selected implementation is dynamically unknown, callers retain only
+an effect bound or evidence common to every possible implementation. Foreign
+code must declare its effects because the compiler cannot infer them.
 
 Static functions have an empty runtime effect row. Constraint predicates,
 match guards, equality, ordering, and law proofs are also pure and total.
@@ -120,8 +130,10 @@ dependencies.
 ## Effects and constructed contexts
 
 Selecting a stable immutable context member is pure. Invoking an endpoint
-selected from a context performs the communication effects declared by its
-protocol.
+selected from a context combines the inferred effects of its handlers with its
+endpoint and transport effects. The endpoint's compiled implementation evidence
+retains this composition even though its source interface also admits a direct
+function implementation.
 
 An isolated diagnostic capability supplied through a context carries a
 contained diagnostic effect. Application functions record that dependency,

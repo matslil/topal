@@ -369,7 +369,11 @@ that identity when traversing recursive structure.
 
 Topal does not organize all objects or value types into one inheritance tree.
 `Type`, `Constraint`, `Predicate`, `Function`, and `Capability` are different
-object kinds, not supertypes of the values they describe or classify. Likewise,
+object kinds, not supertypes of the values they describe or classify. An
+interface type is a `Type` construction which groups function and generator
+declarations. It may be implemented directly by a source context, packaged as a
+value, or implemented through task message passing. Its concrete implementation
+evidence retains inferred effects and optimization properties. Likewise,
 satisfying `Sequence`, `Equality`, or another capability supplies evidence that
 an object provides an interface and its laws; it does not convert that object
 to a capability value or to a common nominal supertype.

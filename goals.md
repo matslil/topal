@@ -8,7 +8,8 @@ when these preserve the program's meaning.
 ## Core model
 
 - Everything exposed by the language is a first-class object, including values,
-  types, functions, modules, patterns, constraints, effects, and protocols.
+  types, functions, interfaces, modules, patterns, constraints, effects, and
+  protocols.
 - Every object has a distinct kind. In particular, types describe data and
   functions transform objects; the two cannot be mixed even though functions
   may construct statically deterministic types, constraints, or other functions.
@@ -60,9 +61,17 @@ when these preserve the program's meaning.
   They are total by default and return errors explicitly as `Result`
   values; there are no exceptions. Results use a common structured
   [error model](errors.md), with namespace-defined code vocabularies.
+- `Unit` calls establish no completion dependency, while `Completed` proves
+  that execution finished. The same distinction permits direct functions and
+  message events to share an interface and scheduling model.
 - [Effects](effects.md) complement regular types by describing observable
   interactions and the resources they touch. They make ordering and
   parallelization constraints visible without hiding failure control flow.
+- [Interfaces](interfaces.md) describe function and generator interaction
+  shapes independently of implementation. Source contexts may implement them
+  directly, package them as values, or expose the same operations as task
+  events, requests, and streams while retaining implementation-specific effect
+  and optimization evidence.
 - [Constructed contexts](contexts.md) provide fixed diagnostic operations,
   execution context, and service capabilities without process-global variables
   or shared mutable application state.
