@@ -116,10 +116,52 @@ ordering, uniqueness, or losslessness. The compiler may derive structural
 operations for products, sums, and finite recursion when every component
 provides the required evidence.
 
-There must be at most one implicit capability implementation for the same
-capability and type in one compiled context. Alternative comparisons,
-serializations, layouts, or reduction laws are ordinary explicit evidence
-values passed to the operation which uses them.
+## Coherence and implementation ownership
+
+Each canonical object-capability pair has at most one implementation in a
+compiled context. For a type capability this means, for example, that
+`Equality Money` has one interpretation: there is no second explicit or
+implicit `Equality Money` value with different semantics. The rule applies
+equally when the classified object is a function, construction, or other static
+object.
+
+An implementation may be declared only in the canonical definition context of
+the capability or of the object which satisfies it. Ownership extends across
+the defining package's own module organization; it does not extend to an
+unrelated package merely because that package imports both definitions.
+Consequently, an adapter which owns neither an external type nor an external
+capability cannot attach the capability directly to that type.
+
+Third-party integration instead introduces an owned specialization or type
+construction and implements the capability for that new canonical type. The
+specialization can expose a canonical lossless conversion or evidence-forgetting
+relation to the general boundary type where their semantics permit it. For
+example, a database adapter can define `UuidParameter`, retain its underlying
+UUID value, implement the database parameter capability in the adapter's
+context, and allow it wherever the general parameter contract is accepted.
+Construction at the boundary makes the adaptation visible without changing
+the capabilities of the external UUID type.
+
+Different enduring semantics likewise use different canonical types,
+specializations, or capability parameters. A case-folded string type may
+provide `CaseInsensitive` and derive its canonical equality from that promise;
+ordinary `String` does not thereby acquire an alternative equality. A choice
+which belongs only to one operation, such as selecting a collation for one
+sort, is an explicit strategy input or named operation and does not establish
+another capability implementation for the original type.
+
+Derived evidence obeys the same coherence rule:
+
+1. An explicit owner implementation is canonical and suppresses derivation.
+2. Otherwise exactly one applicable derivation may construct the evidence.
+3. Several applicable derivations for the same pair are a compile-time error.
+4. The capability or object owner resolves that error by declaring the
+   canonical implementation explicitly.
+
+Derivation order, import order, and filesystem discovery never select among
+competing paths. Compiled interfaces retain the canonical implementation
+identity, its source attribution, required evidence, inferred effects, and any
+additional promises or optimization properties.
 
 ## Type patterns in function headers
 
@@ -250,8 +292,8 @@ key, value, or product comparison.
 
 ## Associated objects
 
-An associated object belongs to capability evidence rather than to a global
-type namespace. It may have any static kind:
+An associated object belongs to the canonical capability evidence rather than
+to a global type namespace. It may have any static kind:
 
 ```text
 Element A : Type
@@ -261,9 +303,10 @@ identity operation : lang Identity Function
 ```
 
 Selecting an associated object requires evidence identifying the capability
-instance. The short conceptual spelling `Element A` is valid when exactly one
-applicable instance is available. Otherwise the evidence must be named
-explicitly.
+implementation. Coherence makes the short conceptual spelling `Element A`
+unambiguous for a known `A`. When the identity of `A` or its implementation is
+existentially packaged, selection retains that packaged evidence rather than
+searching for an alternative implementation.
 
 Associated types may depend on static values and identities. `Index A`, for
 example, retains the identity and bound of a concrete array type rather than
