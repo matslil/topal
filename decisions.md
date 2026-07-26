@@ -43,6 +43,10 @@ The following questions from the initial audit are no longer open:
   one derivation path may apply; competing derivations are an error which the
   capability or object owner resolves explicitly. Import and discovery order
   never choose capability evidence.
+- Universal case behavior and natural language are independent capabilities.
+  `String` provides `CaseInsensitive` using Topal's fixed Unicode version;
+  `Language T` separately supplies a static language identity. Language-specific
+  case operations require both without changing canonical string equality.
 - The [initial capability vocabulary](capabilities.md) now defines comparison,
   collection observation and construction, keyed association, combination, and
   function-law capabilities.

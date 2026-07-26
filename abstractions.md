@@ -143,12 +143,14 @@ Construction at the boundary makes the adaptation visible without changing
 the capabilities of the external UUID type.
 
 Different enduring semantics likewise use different canonical types,
-specializations, or capability parameters. A case-folded string type may
-provide `CaseInsensitive` and derive its canonical equality from that promise;
-ordinary `String` does not thereby acquire an alternative equality. A choice
-which belongs only to one operation, such as selecting a collation for one
-sort, is an explicit strategy input or named operation and does not establish
-another capability implementation for the original type.
+specializations, or capability parameters. Independent promises compose: text
+may provide `CaseInsensitive`, `Language Swedish`, both, or neither.
+Language-sensitive case operations require both capabilities, while the
+universal case operations require only `CaseInsensitive`. Neither capability
+replaces the exact canonical equality of `String`. A choice which belongs only
+to one operation, such as selecting a collation for one sort, is an explicit
+strategy input or named operation and does not establish another capability
+implementation for the original type.
 
 Derived evidence obeys the same coherence rule:
 

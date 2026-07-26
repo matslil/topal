@@ -165,21 +165,65 @@ lower text
 case-fold text
 ```
 
-The unqualified operations use Unicode's locale-independent default casing from
-Topal's fixed Unicode version. This is the deterministic default when the text's
-language is unknown; it never depends on the operating system, process, or
-user's ambient locale. Locale-sensitive casing names its policy explicitly:
+Case behavior and natural language are separate, composable capabilities:
 
-```topal
-text upper Turkish
-text lower Lithuanian
+```text
+CaseInsensitive Value
+Language T Value
 ```
 
-Casing returns `String`, not `Character`, because a mapping can depend on
-context or change the number of characters. `case-fold` is the ordinary basis
-for caseless matching rather than lowercasing. When their input carries a
+`String` provides `CaseInsensitive` using Unicode's universal,
+locale-independent default casing from Topal's fixed Unicode version. This is
+the deterministic behavior when no language evidence is present; it never
+depends on the operating system, process, or user's ambient locale.
+`CaseInsensitive` supplies `upper`, `lower`, `case-fold`, and caseless
+comparison without replacing the exact canonical `Equality String`
+implementation.
+
+`Language T` separately promises that language-sensitive operations may
+interpret the classified text using the statically identified language `T`.
+It does not imply case insensitivity and it is not a claim that the compiler
+has linguistically verified every character. Language evidence can also support
+segmentation, hyphenation, pluralization, stemming, quotation, spelling, and
+other operations unrelated to case.
+
+A language-specific case implementation requires both capabilities. A Swedish
+case-insensitive string therefore provides:
+
+```text
+CaseInsensitive SwedishString
+Language Swedish SwedishString
+```
+
+Conceptually, ordered overloads place a language-specific implementation before
+the universal fallback:
+
+```topal
+lower is fn (
+  text : C : CaseInsensitive : Language Swedish
+) -> C
+  swedish-lower text
+
+lower is fn (
+  text : C : CaseInsensitive
+) -> C
+  unicode-default-lower text
+```
+
+`Language Swedish` and `Language Turkish` are different parameterized
+capabilities and therefore do not violate capability coherence. A type which
+has no language evidence uses only the universal `CaseInsensitive` operation.
+Ordinary `String` remains language-neutral; application types or classified
+text regions attach language evidence where it belongs. Mixed-language
+documents attach it to their individual regions rather than asserting one
+language for the complete string.
+
+Casing returns the complete string type `C`, not `Character`, because a mapping
+can depend on context or change the number of characters. This retains
+applicable case and language evidence. `case-fold` is the ordinary basis for
+caseless matching rather than lowercasing. When the input carries a
 normalization constraint, these standard transformations normalize their result
-to the same form and retain the evidence. With plain `String` input they return
+to the same form and retain that evidence. With plain `String` input they return
 plain `String` and do not add normalization implicitly.
 
 ## Strings as character sequences
