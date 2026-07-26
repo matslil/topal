@@ -23,6 +23,7 @@ The principal kinds discussed by the initial model are:
 Object
   Value
   Type
+    Interface
   Function
     Predicate T
   Constraint T
@@ -48,13 +49,22 @@ Object
   forgetting it recovers the unchanged base value. Constraints remain distinct
   static objects because they establish reusable classification evidence rather
   than merely returning `Boolean`.
+- An **interface type** is constructed with `Interface` and describes a related
+  set of function and generator declarations independently of their
+  implementation. A source context may implement those declarations directly,
+  or an implementation may be packaged as a value classified by that interface
+  type. The same interface can be implemented by task events, requests, and
+  streams. Concrete implementation evidence retains inferred effects and
+  optimization information without adding them to the interface itself.
 - A **capability** promises that an object of a particular kind provides named
   operations, associated objects, and laws. Capability satisfaction supplies
   static evidence; it is not a value conversion or a nominal supertype.
 
 Kinds remain distinct even though their objects are first-class. A `Type`
 cannot be passed where a runtime `Value` is required, and a `Capability` cannot
-be used as the type of every value satisfying it. Typed
+be used as the type of every value satisfying it. An interface implementation
+can be packaged as a value classified by its interface type, while the type
+itself remains a static object. Typed
 [static introspection](introspection.md) preserves these distinctions.
 
 ## Passing predicates and constraints

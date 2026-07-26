@@ -118,9 +118,17 @@ static introspection, compiled metadata, and diagnostics.
 
 ## Effect annotations and handlers
 
-Private effects are inferred and public compiled contracts are stable, but it
-remains to decide whether public source declarations must spell their complete
-effect upper bound or may rely on an interface-generation step.
+Effects are inferred for ordinary implementations. An `Interface` contains
+function and generator interaction shapes rather than the inferred effects of
+one implementation. Applying it to a concrete context, packaged value, task, or
+endpoint constructs implementation evidence whose compiled contract includes
+the inferred effects. Callers retain that evidence whenever the selected
+implementation is known.
+
+It remains to decide the surface spelling for optional effect upper bounds and
+for accepting a dynamically selected implementation under a common effect
+bound. Foreign implementations must declare effects which the compiler cannot
+infer.
 
 The initial design handles effects through application composition, tasks,
 protocols, constructed contexts, and foreign adapters. A future general handler

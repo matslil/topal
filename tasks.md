@@ -43,6 +43,25 @@ through another task capability crosses a task boundary. Library functions
 therefore remain ordinary reusable functions and do not need to be declared as
 tasks.
 
+## Shared function interfaces
+
+[`Interface`](interfaces.md) declarations group function and generator shapes
+without choosing an implementation mechanism. A source context may implement
+such an interface with ordinary functions and generators, while a task may
+implement the same interface with events, requests, and streams.
+
+The interface remains unchanged when an implementation moves across a task
+boundary. Applying it to a task or endpoint produces implementation evidence
+which records the selected handler, transport, effects, ordering, admission,
+and cancellation behavior. Calling code can consequently retain the same
+operation interface while the compiler selects direct calls or message passing
+and preserves the implementation's dependency and optimization information.
+
+Every task has an implicit concrete interface consisting of its published
+message handlers. Explicit interfaces provide restricted endpoint views. An
+endpoint grants authority only for the operations in its view; task identity or
+descriptive names do not grant arbitrary message authority.
+
 ## Interaction inference
 
 The declaration determines the message interaction without separate `event`,
@@ -67,6 +86,12 @@ establishes the corresponding ordering dependency.
 completion response exists, while `Result` would require that response to
 report success or failure. A fallible handler with no application response uses
 `Result Completed`.
+
+The same `Unit` and `Completed` distinction applies to a direct implementation
+of a shared interface. `Unit` establishes no completion dependency and permits
+concurrent execution when values, effects, and scope allow it. `Completed`
+establishes that execution finished before a dependent continuation proceeds;
+it does not require blocking an operating-system thread.
 
 A generator handler establishes a stream. Its yielded type is delivered from
 the serving task, its resume type is delivered back to that task, and its final

@@ -804,6 +804,63 @@ checks the declaration at the first violated static dependency, keeping errors
 local instead of reporting only when a distant caller attempts to construct a
 type.
 
+## Interfaces
+
+`Interface` constructs a type from function and generator declarations without
+choosing their implementations:
+
+```topal
+Lexer is Interface
+  warm-up is fn ( configuration : Configuration ) -> Unit
+  parse is fn ( command : String ) -> ParseResult
+
+  parse-tokens is generator ( source : String )
+    yields Token
+    resumes Unit
+    -> ParseResult
+```
+
+Applying the interface in a source context checks a complete implementation:
+
+```topal
+Lexer
+  warm-up is fn ( configuration : Configuration ) -> Unit
+    initialize configuration
+
+  parse is fn ( command : String ) -> ParseResult
+    parse-command command
+
+  parse-tokens is generator ( source : String )
+    yields Token
+    resumes Unit
+    -> ParseResult
+    implementation
+```
+
+These functions belong directly to the surrounding context and retain ordinary
+visibility. No intermediate namespace or value is introduced. Different
+packages, modules, libraries, applications, and source scopes may independently
+implement and publish `Lexer`.
+
+A construction can instead be named when a first-class implementation must be
+passed, returned, stored, selected, or composed:
+
+```topal
+local-lexer is Lexer
+  required declarations
+```
+
+The compiler verifies missing, duplicate, and incompatible declarations at the
+construction. It attaches inferred effects, implementation properties, and
+optimization evidence to the context or packaged implementation rather than to
+the implementation-independent interface type.
+
+Tasks may implement the same interface through message passing. Functions
+returning `Unit`, `Completed`, or another value become events, completion
+requests, or value requests respectively; generators become streams. See
+[function and message interfaces](interfaces.md) for construction, visibility,
+implementation evidence, and message adaptation.
+
 ## Tasks
 
 A task owns private state and derives a typed messaging protocol from functions
