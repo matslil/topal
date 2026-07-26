@@ -23,10 +23,16 @@ counter-service is Counter
     count is initial
     Completed
 
-  increment is fn ( amount : Nat ) -> Unit
+  increment is fn (
+    _ : MessageContext,
+    amount : Nat
+  ) -> Unit
     count is count + amount
 
-  current is fn ( Unit ) -> Nat
+  current is fn (
+    _ : MessageContext,
+    Unit
+  ) -> Nat
     count
 ```
 
@@ -95,6 +101,70 @@ Every task has an implicit concrete interface consisting of its published
 message handlers. Explicit interfaces provide restricted endpoint views. An
 endpoint grants authority only for the operations in its view; task identity or
 descriptive names do not grant arbitrary message authority.
+
+## Message context
+
+Every dispatched task handler receives the compiler-provided `MessageContext`
+as its first input:
+
+```topal
+MessageContext is Record
+  session-id : SessionId
+  sender : Endpoint
+```
+
+The session identifies the interaction through which the handler was invoked.
+The sender is the endpoint of the sending task associated with that
+interaction. Both are message-implementation information and consequently do
+not appear in an implementation-independent `Interface`.
+
+Bundling this information into one language-defined record leaves room for
+later language versions to add context fields without adding more distinguished
+handler inputs. A handler which discards the record or selects only existing
+fields retains the same source declaration; compiled representations carry the
+language-version information needed to diagnose or adapt incompatible binaries.
+
+When a handler implements an interface operation, the compiler checks
+conformance after removing the leading `MessageContext` from the handler shape.
+For example:
+
+```topal
+CommandProcessor is Interface
+  process-cmd is fn (
+    cmd : String
+  ) -> Result String
+
+command-service is CommandTask
+  CommandProcessor
+    process-cmd is fn (
+      message : MessageContext,
+      cmd : String
+    ) -> Result String
+      record-session message session-id
+      process cmd
+```
+
+This is a specific message-implementation adaptation, not general function
+subtyping. A direct implementation of `CommandProcessor` receives only `cmd`.
+A task handler, including one belonging only to a task's implicit interface,
+always declares the leading context. Generator handlers follow the same rule
+for their initial input. The distinguished context slot does not count against
+the interface operation's zero-to-two ordinary operands.
+
+When the handler does not use the context, `_` explicitly discards its name
+without discarding its type:
+
+```topal
+process-cmd is fn (
+  _ : MessageContext,
+  cmd : String
+) -> Result String
+  process cmd
+```
+
+`_` introduces no binding and may not be referenced. It is only the reserved
+spelling for an intentionally unnamed identifier; it is not a wildcard and has
+no independent pattern-matching meaning.
 
 ## Service discovery
 
@@ -253,6 +323,26 @@ no-op returning `Unit`; normal child-scope and resource cleanup still occurs.
 All non-root tasks use `Unit`, keeping termination independent of the concrete
 task type when an endpoint was discovered by interface.
 
+The task may invoke `terminate` itself. Its owning instantiated `Task` value may
+also invoke it, and the enclosing task scope invokes it when the instance
+leaves scope. A discovered `Endpoint` does not acquire this ownership authority.
+A self-call uses `terminate reason`; an owner uses `task terminate reason`.
+A task can therefore expose its own policy-controlled stop message:
+
+```topal
+stop is fn (
+  _ : MessageContext,
+  reason : StopReason
+) -> Unit
+  terminate reason
+```
+
+Self-termination requests the lifecycle transition rather than recursively
+calling the lifecycle handler. The current handler reaches its terminal
+boundary, admission of ordinary work stops, and `terminate` runs exactly once
+before normal cleanup. Concurrent requests join the transition already in
+progress rather than running the lifecycle handler again.
+
 Termination may instead be observed as the unsuccessful completion of a
 pending request, the yield or final return of a stream whose protocol reports
 it, the result of awaiting an owned child, or an explicit broker monitor/join
@@ -284,7 +374,10 @@ start is fn (
   server is Server configuration
   Completed
 
-signal is fn ( signal : UnixSignal ) -> Unit
+signal is fn (
+  _ : MessageContext,
+  signal : UnixSignal
+) -> Unit
   handle-signal signal
 
 terminate is fn ( reason : TerminationReason ) -> ExitStatus

@@ -175,16 +175,19 @@ LexerService is LexerTask
 
   Lexer
     warm-up is fn (
+      _ : MessageContext,
       configuration : Configuration
     ) -> Unit
       grammar is load-grammar configuration
 
     parse is fn (
+      _ : MessageContext,
       command : String
     ) -> ParseResult
       grammar parse command
 
     parse-tokens is generator (
+      _ : MessageContext,
       source : String
     )
       yields Token
@@ -197,6 +200,12 @@ The endpoint implements the interface even though a call crosses a task
 boundary. The call retains the same source operation shape; the selected
 implementation evidence tells the compiler whether to use an ordinary call,
 generator continuation, event, request, or stream.
+
+The leading `MessageContext` is mandatory for message handlers but is projected
+away when checking conformance with the implementation-independent interface.
+It supplies the session identity and sender endpoint without adding transport
+details to `Lexer`. `_` explicitly leaves that context unnamed when the handler
+does not use it; it is a discard identifier rather than a pattern wildcard.
 
 `Unit` deliberately provides no completion dependency in either model.
 `Completed` is the zero-data evidence that execution finished. It orders

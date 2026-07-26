@@ -40,6 +40,23 @@ The canonical spelling is provisionally `Point ( 10 , 20 )`. Multi-character
 symbols such as `->` must be declared by the language rather than formed from
 arbitrary runs of punctuation.
 
+`_` is a reserved discard identifier. It may occupy an identifier position for
+a value which is deliberately left unnamed:
+
+```topal
+consume is fn (
+  _ : Context,
+  value : Value
+) -> Result Value
+  process value
+```
+
+The value is still supplied and classified, but `_` introduces no binding,
+cannot be referenced, and does not produce an unused-binding diagnostic. It may
+occur more than once because its occurrences do not name the same value. `_`
+has no wildcard or other pattern-matching meaning; wildcard syntax remains
+undecided.
+
 ## Numeric literals
 
 An integer literal uses decimal notation by default. The prefixes `0b`, `0o`,
@@ -880,10 +897,16 @@ counter-service is Counter
     count is initial
     Completed
 
-  increment is fn ( amount : Nat ) -> Unit
+  increment is fn (
+    _ : MessageContext,
+    amount : Nat
+  ) -> Unit
     count is count + amount
 
-  current is fn ( Unit ) -> Nat
+  current is fn (
+    _ : MessageContext,
+    Unit
+  ) -> Nat
     count
 ```
 
@@ -904,12 +927,21 @@ service broker described in
 [tasks and intrinsic messaging](tasks.md#service-discovery).
 
 Every task definition has a mandatory, non-callable `start` lifecycle handler.
-An ordinary task may define a non-callable
-`terminate : TerminationReason -> Unit`; omission supplies a no-op before
-normal resource cleanup. The application root is the exception: its
-`terminate` result follows the selected platform contract and becomes the
-application return value. These lifecycle declarations do not require or
-construct a `TaskInterface`.
+An ordinary task may define
+`terminate : TerminationReason -> Unit`; the task itself, its owning
+instantiated `Task` value, or its enclosing scope may invoke it. It remains
+unavailable through a discovered endpoint. Omission supplies a no-op before
+normal resource cleanup. The application root is the exception: its `terminate`
+result follows the selected platform contract and becomes the application
+return value. These lifecycle declarations do not require or construct a
+`TaskInterface`.
+
+Every dispatched ordinary handler has a leading `MessageContext` containing
+the session identity and sender endpoint. The compiler projects this input away
+when checking the handler against an implementation-independent `Interface`;
+direct implementations do not receive it. `_ : MessageContext` visibly
+discards the context name when it is unused. The distinguished context slot
+does not count against the interface operation's zero-to-two ordinary operands.
 
 A handler returning `Unit` is an event for which the caller does not await
 completion. `Completed` requests completion confirmation, and `Result
@@ -1107,9 +1139,10 @@ line              = expression [ block ] newline ;
 block             = indent { line } dedent ;
 
 expression        = binding | classification | binary-chain ;
-binding           = identifier "is" expression ;
+binding           = bindable "is" expression ;
 classification    = bindable ":" classifier-expression
                     { ":" classifier-expression } ;
+bindable          = identifier | "_" ;
 classifier-expression = binary-chain ;
 
 binary-chain      = prefix-expression
@@ -1136,7 +1169,9 @@ Identifiers such as `fn`, `is`, `then`, `when`, and `otherwise` are structural
 in the shown positions. `static` is structural directly after `fn` and otherwise
 participates in ordinary expression parsing. Function arity and object kinds
 are checked after the source has been grouped; they must not change that
-grouping.
+grouping. Although `_` is accepted in a binding position, it introduces no
+binding and cannot act as a matcher; the surrounding classification or
+declaration still supplies every applicable type check.
 
 ## Grammar diagram
 
