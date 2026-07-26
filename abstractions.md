@@ -188,7 +188,7 @@ constructed result type.
 Header matches happen during type checking. They do not require runtime
 reflection or dynamic dispatch. Repeated names must match the same object,
 opaque types expose only published construction and capability evidence, and
-several equally applicable matches produce an overload ambiguity.
+overlapping overload headers are resolved by their source declaration order.
 
 ## Container construction patterns
 
@@ -384,8 +384,7 @@ relations. Topal distinguishes them by the guarantee they provide:
 - **Evidence forgetting** removes a refinement, static guarantee, or capability
   view without changing the value. It is implicit.
 - **Lossless conversion** changes the semantic type while preserving all
-  information. It may be implicit only when one canonical conversion exists and
-  overload selection remains unambiguous.
+  information. It may be implicit only when one canonical conversion exists.
 - **Checked conversion** validates a value and produces `Result` plus evidence
   on success.
 - **Lossy conversion** discards or rounds information and is always explicit,
@@ -416,24 +415,26 @@ operations or representations. In particular:
 Evidence forgetting is transitive: a value may forget several refinements on
 its way to a visible base type. Lossless conversions may be composed implicitly
 only when the complete path is canonical, preserves every intermediate
-guarantee required by the destination, and does not change overload selection.
-The compiler does not search an open-ended graph for a convenient coercion. A
+guarantee required by the destination, and has one unambiguous path. The
+compiler does not search an open-ended graph for a convenient coercion. A
 declared direct conversion wins over a longer composed path; two otherwise
 equivalent canonical paths make the conversion ambiguous and require an
 explicit choice.
 
-Implicit conversions are considered only after exact type matches during
-overload resolution. Evidence forgetting is preferred to a lossless semantic
-conversion. A call is ambiguous when two candidates require equally strong
-conversions; the output type does not break the tie, and capability satisfaction
-does not serve as a hidden tie-breaker. The compiler must report the candidate
-conversion paths and required capability evidence rather than silently
-selecting one.
+Overload declarations are tested in source order. For each declaration, header
+matching may use evidence forgetting and then a lossless semantic conversion.
+The first applicable declaration is selected, even when a later declaration
+would require a shorter conversion or match the input exactly. Declaration
+order is the explicit precedence; conversion quality, capability satisfaction,
+and the output type do not reorder candidates. The compiler may optionally
+diagnose when an earlier conversion preempts a later exact match and report the
+conversion path and capability evidence which made the earlier declaration
+applicable.
 
 Checked and lossy conversions never participate in overload resolution. An
 expected input type may select a unique implicit conversion, but an expected
-output type cannot rescue an otherwise ambiguous call. Generic matching retains
-the complete input type whenever possible, so requiring a capability does not
+output type cannot change the selected overload. Generic matching retains the
+complete input type whenever possible, so requiring a capability does not
 prematurely erase refinements, identities, sizes, or other static parameters.
 
 Function inputs are contravariant and outputs covariant only where the
