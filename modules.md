@@ -109,6 +109,12 @@ into its source-file or directory namespace. Unqualified names resolve only
 parameters and bindings in the function's nested lexical scopes. Namespace
 members use an explicit qualified path.
 
+When a qualified path resolves to an overloaded function name, declarations in
+that namespace are tested in source order and the first applicable input header
+is selected. `use` makes the path visible without flattening it, so overloads
+from separately used scopes never acquire a combined import order. Binding a
+scope to a local alias likewise preserves its namespace and overload order.
+
 The `@` prefix provides the separate, deliberately narrow access to a member of
 the function's current constructed `Package` or `Module`:
 

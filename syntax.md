@@ -769,10 +769,35 @@ size is fn static ( value : Data ) -> Integer
 ```
 
 A context which requires static evaluation considers only static overloads. If
-the remaining input types and required staticness do not identify one overload,
-the call is ambiguous rather than being selected by its expected output type.
-The exact surface syntax for explicitly selecting between otherwise applicable
-static and ordinary overloads remains provisional.
+several overloads have the required staticness, the compiler tests them in
+source declaration order and selects the first whose input header matches.
+This is the same ordered-choice rule used by pattern matching. It does not rank
+an exact concrete type above a construction or capability pattern, and the
+expected output type never changes the choice.
+
+Authors consequently place narrow or preferred cases before general fallbacks:
+
+```topal
+describe is fn ( value : Integer ) -> String
+  describe-integer value
+
+describe is fn ( value : T : Formattable ) -> String
+  format value
+```
+
+Reversing these declarations intentionally gives the `Formattable` case
+precedence for integers which satisfy it. The compiler may optionally diagnose
+overlapping, conversion-preempted, or provably shadowed overloads. Such
+diagnostics describe the consequence of the order and are not required for a
+valid program.
+
+Overload order is local to the namespace containing the declarations. `use`
+makes a published scope available under its qualified name; it does not merge
+that scope's functions into the using namespace. A qualified call selects its
+namespace before the declarations under that name are searched. A scope alias
+preserves the selected namespace and its declaration order. Cross-namespace
+composition of complete overload sets requires future explicit binding syntax;
+imports and their filesystem discovery order never merge overloads implicitly.
 
 Types do not introduce function scopes. A function declaration instead
 shows whether and how the function is related to a type through its input

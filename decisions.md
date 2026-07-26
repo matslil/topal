@@ -25,6 +25,15 @@ The following questions from the initial audit are no longer open:
 - Returning a captured complete type such as `C` preserves the precise
   relationship between the input and result, including nominal identity,
   constraints, static sizes, and other parameters.
+- Overload resolution is ordered like pattern matching. Declarations under one
+  name in one namespace are tested in source order and the first applicable
+  input header wins. Capability strength, conversion quality, and the expected
+  result type do not reorder them. Optional diagnostics may identify surprising
+  overlap or shadowing.
+- Imported scopes remain qualified and do not merge overload sets. A qualified
+  call selects its namespace before searching that namespace's declarations;
+  scope aliases preserve the same order. Explicit cross-namespace overload-set
+  composition has no current surface syntax.
 - The [initial capability vocabulary](capabilities.md) now defines comparison,
   collection observation and construction, keyed association, combination, and
   function-law capabilities.
@@ -56,22 +65,23 @@ static matching rather than through a separate generic-parameter list.
 ## Type-pattern applicability
 
 Construction matching and chained classification establish the core generic
-model, but overload applicability still needs precise rules for:
+model. Source order now selects the first applicable overload, so neither
+concrete types nor stronger capability patterns receive an implicit specificity
+rank. Matching an individual declaration still needs precise rules for:
 
-- choosing between an exact concrete type and a more general construction
-  pattern;
-- ordering two capability patterns when one makes stronger promises;
 - repeated names which require definitionally equal matched objects;
 - partial type constructions such as matching `Array N Value` as
   `Container Value`;
 - opaque or nominal types which publish capabilities without publishing their
   construction;
 - open record patterns which retain additional fields; and
-- diagnostics when several matches are equally applicable.
+- when evidence forgetting and lossless conversion make one header applicable.
 
-The result type must not select between otherwise ambiguous overloads. Matching
-should remain static and must not introduce runtime reflection or dispatch
-unless an interface explicitly requests it.
+The result type does not participate in header matching. Matching remains static
+and must not introduce runtime reflection or dispatch unless an interface
+explicitly requests it. The compiler may optionally diagnose overlapping,
+conversion-preempted, or provably shadowed declarations, but declaration order
+remains authoritative.
 
 ## Capability organization
 
