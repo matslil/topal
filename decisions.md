@@ -55,6 +55,14 @@ The following questions from the initial audit are no longer open:
   `lang push-disable-warning W` and the matching
   `lang pop-disable-warning W` delimit a lexical suppression region. Suppression
   changes diagnostics but never the evidence's recorded trust status.
+- Effect dependencies use relational capabilities. `DependsOn` is binary;
+  `Independent`, `Conflicts`, `Aliases`, and `MayAlias` each classify one
+  identity list. `Aliases` proves one underlying resource, while `MayAlias`
+  preserves uncertainty and is the safe default without independence evidence.
+- Finite useful dynamic alternatives retain a sum of exact implementation
+  evidence. Erasure keeps common capability guarantees and the union of possible
+  effects, conservatively ordering unknown relationships. Initial foreign code
+  executes through sandboxed, explicitly capability-restricted adapters.
 - The [initial capability vocabulary](capabilities.md) now defines comparison,
   collection observation and construction, keyed association, combination, and
   function-law capabilities.
@@ -133,10 +141,10 @@ endpoint constructs implementation evidence whose compiled contract includes
 the inferred effects. Callers retain that evidence whenever the selected
 implementation is known.
 
-It remains to decide the surface spelling for optional effect upper bounds and
-for accepting a dynamically selected implementation under a common effect
-bound. Foreign implementations must declare effects which the compiler cannot
-infer.
+Finite dynamic selection and conservative erasure are settled. It remains to
+decide the surface spelling for optional effect upper bounds, effect-row
+parameters, and otherwise uninferable generic relationships between callback
+effects and captured resource identities.
 
 The initial design handles effects through application composition, tasks,
 protocols, constructed contexts, and foreign adapters. A future general handler

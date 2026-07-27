@@ -284,6 +284,51 @@ These laws permit parallel reduction and other transformations whose evaluation
 order would otherwise be observable. They are never inferred from an
 function's name.
 
+## Effect relationships
+
+Effect and resource identities use capabilities to retain relationships which
+ordinary value flow does not make visible:
+
+```text
+DependsOn Dependent Prerequisite
+
+Independent Identities
+Conflicts Identities
+Aliases Identities
+MayAlias Identities
+```
+
+`DependsOn` is binary and directional. `DependsOn A B` means that the relevant
+execution of `A` requires the corresponding execution of `B` to complete first,
+forming the dependency edge `B -> A`. The compiler may derive transitive
+ordering without publishing a separate capability for every edge. A dependency
+cycle with no suspension or protocol boundary is an invalid execution graph.
+
+The other capabilities each take one static list of identities:
+
+- `Independent` promises pairwise independence;
+- `Conflicts` promises that every pair has potentially observable conflicting
+  interactions;
+- `Aliases` promises that every member denotes the same underlying resource;
+  and
+- `MayAlias` records that any pair may denote the same resource and therefore
+  must not be treated as independent without stronger evidence.
+
+List order and duplicate identities do not change these capabilities. Empty and
+single-entry lists satisfy their pairwise requirements vacuously. `Aliases` is
+positive identity evidence, whereas `MayAlias` preserves uncertainty. When the
+compiler can prove neither exact aliasing nor independence, `MayAlias` is the
+safe default. The compiler rejects relationship evidence whose laws are jointly
+inconsistent for the same identities and interactions.
+
+These capabilities may classify functions, callbacks, resources, effects, task
+interactions, and other static identities. The compiler derives them from data
+flow, shared resource parameters, effect declarations, and protocol order when
+possible. Programmer declarations follow the ordinary verified and
+trusted-unverified evidence rules. Adding an unnecessary `DependsOn` edge is
+conservative; incorrectly claiming `Independent` can change observable
+behavior.
+
 ## Standard composites
 
 Common conjunctions receive names when the combined meaning is independently
