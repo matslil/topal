@@ -262,30 +262,33 @@ longer observable.
 
 ## Foreign boundary declarations
 
-A foreign declaration associates an external symbol or callback entry with a
-Topal function type. It explicitly declares:
+An initial foreign declaration belongs to a sandbox adapter and associates an
+external symbol or callback entry inside that sandbox with a declared boundary
+protocol. It explicitly declares:
 
-- the ABI and external symbol identity;
+- the sandbox, ABI, and external symbol identity;
 - a layout for every externally represented input and output;
-- ownership, retention, and destruction behavior;
-- effects and resource identities;
+- copied or serialized ownership and destruction behavior;
+- explicitly granted resource capabilities;
 - fallibility and error translation;
-- whether the call may suspend or invoke callbacks; and
-- the task protocol through which each callback enters Topal.
+- whether the sandbox operation may suspend or send replies; and
+- the task protocol through which each sandbox message enters Topal.
 
-Calling foreign code is not inherently unchecked. Layout decoding, constrained
-integer construction, text decoding, and protocol validation occur at the
-boundary and return `Result` when external data may be invalid.
+Layout decoding, constrained integer construction, text decoding, and protocol
+validation occur at the sandbox boundary and return `Result` when external data
+may be invalid. Foreign code receives no borrowed Topal value, raw continuation,
+task internals, unrestricted callback, or ambient process resource.
 
-Properties which Topal cannot verify are trusted claims. Trust is attached to
-the individual declaration in source and compiled metadata; it does not open a
-general unsafe block. The adapter must ensure that foreign code does not retain
-a borrowed value, access beyond a declared range, resume a continuation twice,
-or invoke an undeclared callback.
+The adapter exposes only copied or serialized values and explicitly granted
+handles. Effects on a granted file, device, endpoint, or other resource retain
+that identity in Topal's dependency graph. Programmer claims can add semantic
+or optimization evidence but cannot bypass the sandbox or validation.
 
-Foreign callbacks deliver a declared interaction to a typed task capability.
-They do not enter as arbitrary calls on an external thread. Ordinary task
-isolation, cancellation, and effect ordering then apply.
+Foreign callbacks become declared sandbox messages delivered to a typed task
+capability. They do not enter as arbitrary calls on an external thread.
+Ordinary task isolation, cancellation, and effect ordering then apply. Future
+language-specific adapters may establish stronger direct-call promises from
+their own safety and interface systems.
 
 The exact grammar for foreign symbols and ABIs remains provisional. ABI
 families belong to selected language features rather than the portable

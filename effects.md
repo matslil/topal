@@ -37,6 +37,12 @@ effect-polymorphic function, named row parameters. Duplicate requirements
 collapse by identity. Effect rows have no source ordering; ordering constraints
 are properties of the effects and of dependencies between calls.
 
+Effects form dependency evidence rather than a permission system. Read, write,
+send, hardware, and other effect declarations specify which access modes
+conflict for the same or possibly aliasing resource. The compiler combines
+those laws with `DependsOn`, `Independent`, `Conflicts`, `Aliases`, and
+`MayAlias` capability evidence to build the execution dependency graph.
+
 ## Inference and declarations
 
 Calling a function adds its effects to the caller. Constructing or passing an
@@ -53,9 +59,18 @@ the implementation-independent `Interface` type. Changing an implementation
 may therefore change which callers accept it and which optimizations are
 available without changing the source interface it implements.
 
-When the selected implementation is dynamically unknown, callers retain only
-an effect bound or evidence common to every possible implementation. Foreign
-code must declare its effects because the compiler cannot infer them.
+Finite dynamic selection retains a tagged sum of implementation identities and
+their exact effects when specialization can usefully distinguish the
+alternatives. Otherwise the implementation identity is erased. Erasure retains
+the intersection of capability guarantees but the union of possible effects;
+unknown resource relationships become `MayAlias` and use the safest ordering.
+Matching a retained alternative may select scheduling, batching, allocation,
+transport, or other optimized code, but every path must preserve the
+interface-observable semantics.
+An explicit bound remains useful when an API intentionally restricts an open
+family of implementations, but dynamic selection does not by itself require
+early effect erasure. Foreign interactions are represented by their sandbox
+boundary because the compiler cannot infer their internals.
 
 Static functions have an empty runtime effect row. Constraint predicates,
 match guards, equality, ordering, and law proofs are also pure and total.
@@ -77,6 +92,14 @@ The higher-order implementation may add its own effects in addition to `E`.
 It may also constrain `E`; parallel traversal, for example, requires evidence
 that callback effects are independent between entries or otherwise safely
 ordered.
+
+The compiler normally infers effect-row and resource-identity parameters and
+retains their relationships in compiled generic evidence. Repeated captured
+identities express exact equality. An explicit `DependsOn`, `Independent`,
+`Conflicts`, `Aliases`, or `MayAlias` classification is needed only when a
+generic relationship cannot be recovered from value flow and effect
+declarations. When neither exact aliasing nor independence can be established,
+the generic contract preserves `MayAlias`.
 
 Fallibility remains in `Result`, not in an effect row. A callback returning
 `Result B` gives `map` a fallible value transformation, while a callback which
@@ -102,6 +125,10 @@ commute. A function result used by a later call orders the calls.
 The compiler may parallelize calls only when value ownership, effect evidence,
 and protocol dependencies jointly prove independence. Absence of a shared
 effect name is not by itself sufficient when resource identities may alias.
+Reusing the same captured identity proves the relationship directly. Distinct
+names do not prove distinct resources; without `Independent` or equivalent
+evidence the compiler retains `MayAlias` and orders potentially conflicting
+interactions conservatively.
 
 Hardware reads and writes are ordered effects unless their layout and device
 capabilities explicitly provide weaker laws. Ordinary file and network
@@ -115,7 +142,8 @@ implementation capability:
 - application composition supplies operating-system and service capabilities;
 - a task handles the interactions in its declared protocol;
 - a constructed context supplies a fixed contained diagnostic capability; or
-- a trusted foreign adapter implements a declared boundary effect.
+- a sandbox adapter implements a declared boundary protocol using only granted
+  resource capabilities.
 
 Handling an effect may translate it into other effects. The handler's contract
 records those implementation effects even when clients see only the abstract
@@ -155,21 +183,25 @@ Abandoning a linear continuation invokes its resource cleanup and cancellation
 behavior in the current structured task scope. Cleanup effects remain part of
 the enclosing scope's contract.
 
-## Foreign and trusted effects
+## Sandboxed foreign effects
 
-A foreign declaration must state its value types, layouts, effects, fallibility,
-resource ownership, suspension behavior, and callback protocol. The compiler
-does not infer these properties from foreign code.
+Initial foreign execution occurs through a sandboxed adapter. Values cross
+through validated layouts, copied or serialized representations, declared
+message protocols, and explicitly granted resource capabilities. Foreign code
+does not receive Topal references, borrowed storage, raw continuations,
+arbitrary callbacks, task internals, or unrestricted process memory.
 
-An adapter which claims containment, algebraic laws, or resource independence
-that Topal cannot verify is trusted. Trusted declarations are explicit in
-source and compiled metadata. Trust applies only to the stated declaration; it
-does not create a general unchecked region in surrounding Topal code.
+Topal records sends, receives, and granted-resource use at the sandbox boundary.
+Unknown internal behavior therefore cannot silently become an unknown effect on
+the entire application. If the sandbox can access a file, device, endpoint, or
+other external resource, the adapter must receive that capability explicitly
+and the corresponding effect participates in the normal dependency graph.
 
-Values crossing the boundary are validated through layouts, serialization, or
-declared conversions. Foreign code cannot retain a borrowed Topal value,
-resume a continuation twice, call an undeclared callback, or enter an arbitrary
-task merely because its ABI can represent an address.
+Programmer capability claims may describe additional semantic or optimization
+properties, but cannot remove sandbox, validation, ownership, or containment
+checks. Future language-specific adapters may provide stronger promises from
+their own interface and safety systems; those are not part of the initial
+foreign model.
 
 ## Surface syntax still to choose
 
@@ -177,7 +209,8 @@ The semantic model leaves these grammar choices open:
 
 - how an explicit effect upper bound follows a function type;
 - how effect-row parameters are named in higher-order declarations;
-- how a source declaration names a trusted foreign adapter; and
+- how a source declaration names a sandbox adapter and its granted resources;
+  and
 - whether private inferred effects have an optional display abbreviation.
 
 Compiler diagnostics and static introspection should display the full semantic

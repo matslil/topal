@@ -560,6 +560,25 @@ The chain is read from left to right: `values` is a value of `C`, and `C` is a
 type satisfying `Sortable`. The complete input type `C` can then appear in an
 function's output type.
 
+A partially applied relational capability receives the object established by
+the preceding classification as its first component:
+
+```topal
+consumer : C : DependsOn P
+operation : O : Independent ( OtherA, OtherB )
+```
+
+These establish the conceptual evidence:
+
+```text
+DependsOn C P
+Independent ( O, OtherA, OtherB )
+```
+
+The first form means that `C` is the dependent and `P` the prerequisite. The
+separate colons preserve ordinary left-to-right classification;
+`consumer : C DependsOn P` is not an alternative infix spelling.
+
 ## Constraints and refined types
 
 A constraint is a first-class object which limits values of one base type. The
