@@ -40,6 +40,10 @@ The canonical spelling is provisionally `Point ( 10 , 20 )`. Multi-character
 symbols such as `->` must be declared by the language rather than formed from
 arbitrary runs of punctuation.
 
+`...` is one such declared symbol. It is accepted only as the openness marker
+at the end of an open structural record pattern; it is not a general spread,
+rest, range, or wildcard operator.
+
 `_` is a reserved discard identifier. It may occupy an identifier position for
 a value which is deliberately left unnamed:
 
@@ -553,19 +557,62 @@ capability applicable to a static object. Classifications may consequently
 chain:
 
 ```topal
-values : C : Sortable
+values : ( C : Type : Sortable )
 ```
 
-The chain is read from left to right: `values` is a value of `C`, and `C` is a
-type satisfying `Sortable`. The complete input type `C` can then appear in an
-function's output type.
+The parenthesized classifier is read from left to right: the pattern introduces
+`C : Type`, requires `C : Sortable`, and classifies `values` by that complete
+`C`. The complete input type can then appear in a function's output type.
+
+A construction pattern explicitly classifies every newly introduced binding:
+
+```topal
+left : Tuple (
+  A : Type,
+  B : Type
+)
+
+right : Tuple ( A, B )
+```
+
+The later bare occurrences refer to the exact objects already bound. A bare
+unbound name is not introduced implicitly. `Subject : Object` captures any
+language object when the construction genuinely permits every kind; its actual
+kind remains available for later refinement.
+
+`_` discards one classified construction parameter:
+
+```topal
+array : Array (
+  _ : Nat,
+  Int
+)
+```
+
+The parameter must be present and satisfy `Nat`, but receives no local name.
+This does not give `_` general wildcard behavior. The actual size remains part
+of the complete array type. Naming it instead uses `array-size : Nat`.
+
+An open record pattern uses `...` only as an openness marker:
+
+```topal
+value : Record (
+  id : Identifier,
+  ...
+)
+```
+
+It matches anonymous structural records with at least the stated visible
+fields. `...` neither binds a record row nor grants reconstruction authority.
+Nominal records match only through an explicitly published structural view;
+private and opaque fields do not participate outside their visible context.
 
 A partially applied relational capability receives the object established by
 the preceding classification as its first component:
 
 ```topal
-consumer : C : DependsOn P
-operation : O : Independent ( OtherA, OtherB )
+consumer : ( C : Object : DependsOn P )
+operation : ( O : Object : Independent ( OtherA, OtherB ) )
 ```
 
 These establish the conceptual evidence:
@@ -840,7 +887,9 @@ Authors consequently place narrow or preferred cases before general fallbacks:
 describe is fn ( value : Integer ) -> String
   describe-integer value
 
-describe is fn ( value : T : Formattable ) -> String
+describe is fn (
+  value : ( T : Type : Formattable )
+) -> String
   format value
 ```
 

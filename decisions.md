@@ -17,11 +17,27 @@ The following questions from the initial audit are no longer open:
   `Integer constraint { value } ...`. The inferred anonymous function is the
   predicate.
 - Chained classification proceeds from left to right. A function header such
-  as `values : C : Sortable` first classifies `values` as `C` and then requires
-  `C` to satisfy `Sortable`.
+  as `values : ( C : Type : Sortable )` explicitly binds `C : Type`, requires
+  `C` to satisfy `Sortable`, and classifies `values` by the complete `C`.
 - Function headers perform static type matching. Construction syntax can bind
-  components such as `X` and `Y` from `Tuple ( X, Y )`, and the function body
-  is the implicit successful branch of the header match.
+  explicitly classified components such as `X : Type` and `Y : Type` from a
+  tuple, and the function body is the implicit successful branch of the header
+  match. Bare unbound names are not introduced.
+- `_ : Kind` discards one construction parameter without removing it from the
+  complete matched object. Matching and introspection see only declarations,
+  structural views, fields, and capability evidence visible in their lexical
+  scope.
+- Open record patterns accept anonymous structural records with at least their
+  stated visible fields. Nominal records participate only through an explicitly
+  published structural view; `...` neither captures a row nor grants
+  reconstruction authority.
+- Evidence forgetting can satisfy a concrete classifier without changing a
+  complete capture. A concrete header may use one canonical lossless conversion
+  and exposes its destination type to the body; conversion never unifies
+  repeated pattern bindings.
+- Multi-component capabilities group their associated objects into one component
+  product. A matcher such as `C : Type : Keyed (Key : Type, Value : Type)`
+  obtains them from the canonical evidence for that exact `C`.
 - Returning a captured complete type such as `C` preserves the precise
   relationship between the input and result, including nominal identity,
   constraints, static sizes, and other parameters.
@@ -91,27 +107,6 @@ classification, prefix application, and the zero-to-two operand rule remain
 unambiguous. Function headers already bind generic type components through
 static matching rather than through a separate generic-parameter list.
 
-## Type-pattern applicability
-
-Construction matching and chained classification establish the core generic
-model. Source order now selects the first applicable overload, so neither
-concrete types nor stronger capability patterns receive an implicit specificity
-rank. Matching an individual declaration still needs precise rules for:
-
-- repeated names which require definitionally equal matched objects;
-- partial type constructions such as matching `Array N Value` as
-  `Container Value`;
-- opaque or nominal types which publish capabilities without publishing their
-  construction;
-- open record patterns which retain additional fields; and
-- when evidence forgetting and lossless conversion make one header applicable.
-
-The result type does not participate in header matching. Matching remains static
-and must not introduce runtime reflection or dispatch unless an interface
-explicitly requests it. The compiler may optionally diagnose overlapping,
-conversion-preempted, or provably shadowed declarations, but declaration order
-remains authoritative.
-
 ## Capability vocabulary and matching
 
 Capability implementation ownership and coherence are settled. The
@@ -120,10 +115,8 @@ comparison, collection, and function-law names. Formatting, parsing, checked
 construction, and other library-specific capabilities still need vocabularies
 in their respective designs.
 
-The multi-component matcher for `Keyed Container Key Value` and similar
-capabilities also needs a final spelling. It must bind `Key` and `Value` from
-the actual container construction rather than equating unrelated constructions
-such as `Map ( Key, Value )` and `Tuple ( Key, Value )`.
+Multi-component capability matching is settled. Its final declaration spelling
+remains part of the shared capability surface grammar.
 
 ## Automated law proof
 

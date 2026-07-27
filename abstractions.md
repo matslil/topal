@@ -171,7 +171,9 @@ A function header is a static matcher as well as an ordinary value pattern.
 Chained classification is read from left to right:
 
 ```topal
-sort is fn ( values : C : Sortable ) -> C
+sort is fn (
+  values : ( C : Type : Sortable )
+) -> C
   sorting-implementation values
 ```
 
@@ -197,22 +199,26 @@ result:
 
 ```topal
 swap is fn (
-  pair : Tuple ( X, Y )
+  pair : Tuple (
+    X : Type,
+    Y : Type
+  )
 ) -> Tuple ( Y, X )
 
   pair
     ( x, y ) then ( y, x )
 ```
 
-The header statically binds `X` and `Y`; the decision table separately
-decomposes the runtime pair. For labeled products, labels belong to the scope of
-their respective record types and field selection remains total:
+The explicitly classified pattern statically binds `X` and `Y`; the decision
+table separately decomposes the runtime pair. For labeled products, labels
+belong to the scope of their respective record types and field selection
+remains total:
 
 ```topal
 swap-record is fn (
   record : Record (
-    left : X,
-    right : Y
+    left : ( X : Type ),
+    right : ( Y : Type )
   )
 ) -> Record (
   left : Y,
@@ -230,9 +236,92 @@ belong to the input record type, while the output labels belong to the newly
 constructed result type.
 
 Header matches happen during type checking. They do not require runtime
-reflection or dynamic dispatch. Repeated names must match the same object,
-opaque types expose only published construction and capability evidence, and
+reflection or dynamic dispatch. A new pattern binding states its classification
+explicitly; a later bare occurrence refers to the exact object already bound.
+For example:
+
+```topal
+same-shaped-pairs is fn (
+  left : Tuple (
+    A : Type,
+    B : Type
+  ),
+  right : Tuple ( A, B )
+) -> Boolean
+```
+
+`Object` is the top classification when a construction genuinely accepts any
+language object. It preserves the captured object's actual kind; kind-specific
+operations first refine it to `Type`, `Function`, `Capability`, or another
+appropriate classification. A bare unbound name is never introduced
+implicitly.
+
+Opaque types expose only published construction and capability evidence, and
 overlapping overload headers are resolved by their source declaration order.
+
+## Discarded and retained construction parameters
+
+`_` may occupy one construction-parameter binding and discard its local name:
+
+```topal
+array : Array (
+  _ : Nat,
+  Int
+)
+```
+
+This accepts every array size with the exact element type `Int`. `_` remains a
+discard identifier rather than a general wildcard: the parameter must exist
+and satisfy `Nat`, but its identity receives no source binding. To use the
+parameter, the pattern names it:
+
+```topal
+array : Array (
+  array-size : Nat,
+  Int
+)
+```
+
+Discarding or omitting a local name never removes the parameter from the
+complete matched type. An `Array (12, Int)` matched by the first pattern remains
+exactly `Array (12, Int)` in type identity, capability evidence, introspection,
+and compiled metadata. A result which needs to name the size must capture it or
+capture the complete input type.
+
+## Visibility and open records
+
+Matching uses only nominal identity, construction views, fields, and capability
+evidence visible in the lexical context. Code in a type's defining private
+scope may match its private construction. External code cannot match an opaque
+type through hidden representation, and `lang view` reports the same
+visibility-respecting semantic view rather than bypassing the boundary.
+
+An open record pattern accepts an anonymous structural record containing at
+least its declared visible fields:
+
+```topal
+identifier-of is fn (
+  value : Record (
+    id : Identifier,
+    ...
+  )
+) -> Identifier
+
+  value id
+```
+
+Additional fields remain part of the complete input type but are not locally
+named by `...`. The marker does not capture a record row or grant generic
+reconstruction authority. Field order outside the stated fields does not affect
+the match.
+
+A nominal record does not satisfy an open structural pattern merely because its
+visible fields happen to have matching names and types. Its owner must
+explicitly publish the corresponding structural view or a semantic capability.
+Private fields never participate outside their scope, and an opaque type never
+matches through hidden fields. Reconstructing a nominal record continues to
+require owner-published construction or replacement evidence so an open pattern
+cannot bypass invariants.
 
 ## Container construction patterns
 
@@ -263,7 +352,9 @@ construction. It does not independently guess an unrelated `Value` type.
 The generic sorting signature is consequently:
 
 ```topal
-sort is fn ( values : C : Sortable ) -> C
+sort is fn (
+  values : ( C : Type : Sortable )
+) -> C
   sorting-implementation values
 ```
 
@@ -277,7 +368,10 @@ components in a different result type:
 
 ```topal
 map-entries is fn (
-  mapping : Map ( K, V )
+  mapping : Map (
+    K : Type,
+    V : Type
+  )
 ) -> Set ( Tuple ( K, V ) )
 
   mapping entries
@@ -313,6 +407,62 @@ searching for an alternative implementation.
 Associated types may depend on static values and identities. `Index A`, for
 example, retains the identity and bound of a concrete array type rather than
 weakening to the index type of every array.
+
+### Multi-component capability matching
+
+A capability with several associated components groups them into one explicit
+component argument. Chained classification inserts the complete classified
+object as the capability's first argument:
+
+```topal
+lookup-value is fn (
+  mapping : (
+    C : Type : Keyed (
+      Key : Type,
+      Value : Type
+    )
+  ),
+  key : Key
+) -> Option Value
+
+  mapping lookup key
+```
+
+Conceptually, the canonical evidence is:
+
+```text
+Keyed C (
+  Key,
+  Value
+)
+```
+
+This respects the zero-to-two operand rule: `C` is the first operand and the
+key/value component product is the second. `Key` and `Value` come from the
+canonical `Keyed C` evidence for this exact `C`; the matcher does not search for
+unrelated types with suitable capabilities or infer them from a coincidentally
+similar construction.
+
+An opaque `UserDirectory` may therefore publish `Keyed` evidence associating
+`UserId` and `User` without exposing whether its representation is a map, tree,
+database, or remote service. Conversely, `Map (Key, Value)` and
+`Tuple (Key, Value)` remain unrelated constructions despite accepting similarly
+shaped parameter products.
+
+Components use ordinary explicit bindings and discards:
+
+```topal
+mapping : (
+  C : Type : Keyed (
+    _ : Type,
+    Value : Type
+  )
+)
+```
+
+Additional component promises chain normally, as in
+`Key : Type : TotalOrder`. Discarded components remain in the capability
+evidence and complete classified object.
 
 ## Existential results
 
@@ -494,6 +644,20 @@ diagnose when an earlier conversion preempts a later exact match and report the
 conversion path and capability evidence which made the earlier declaration
 applicable.
 
+Evidence forgetting may satisfy a concrete classifier but never changes an
+already captured complete object. Repeated pattern names require definitional
+equality before conversion and cannot be made equal by forgetting evidence. A
+generic header which captures `C` continues to operate on and return that
+original complete type.
+
+A concrete header which cannot match the original input may use one canonical
+lossless conversion. Its body receives the declared destination type; the
+caller's immutable source value and type remain unchanged. A header which needs
+to retain the source instead captures its complete type and separately requires
+lossless-conversion evidence. Conversion does not participate in structural
+unification or repeated-name equality. Several otherwise valid conversion paths
+make the match fail until the caller selects one explicitly.
+
 Checked and lossy conversions never participate in overload resolution. An
 expected input type may select a unique implicit conversion, but an expected
 output type cannot change the selected overload. Generic matching retains the
@@ -524,11 +688,7 @@ and source attribution.
 The semantic model does not decide:
 
 - the declaration spelling for capabilities and their implementations;
-- the spelling for opening an existential package;
-- how a type-construction matcher exposes several independently classified
-  components beyond the homogeneous `Container Value` case; or
-- whether capability implementations with no implicit default need a compact
-  explicit-selection form.
+- the spelling for opening an existential package.
 
 Those choices should be made together with the final grammar. They must not
 change the classifications, evidence, coherence, or conversion rules above.

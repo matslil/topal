@@ -400,7 +400,9 @@ used by the types themselves:
 ```topal
 Sortable is ( Indexed and Replaceable ) Container ( TotalOrder Value )
 
-sort is fn ( values : C : Sortable ) -> C
+sort is fn (
+  values : ( C : Type : Sortable )
+) -> C
   sorting-implementation values
 ```
 
