@@ -142,14 +142,39 @@ result is with-resource open-file path { file }
 ```
 
 `with-resource` acquires the resource, invokes the body exactly once, and
-destroys the body's retained resource reference before returning. The resource
-cannot escape unless the result explicitly transfers it into another resource
-scope. The exact surface spelling remains provisional.
+releases the body's retained resource reference before returning. When the body
+does not return the resource, that reference is destroyed at this boundary and
+may invoke the resource destructor.
 
-The result accounts for acquisition, body, and destruction failure. A body
-failure remains primary and destruction failures become contextual causes.
-This gives close, rollback, or final flush failure a predictable handling point
-without making an unrelated observer the accidental final-reference boundary.
+Returning the resource, or a value which contains it, is an ordinary explicit
+escape:
+
+```topal
+connection is with-resource connect address { connection }
+  authenticate connection
+  connection
+```
+
+The compiler applies its normal ownership analysis. When the old binding is no
+longer used, this is a move into the receiving scope; no separate transfer
+keyword, capability, or public ownership type is involved. The same rule
+applies when the resource is nested in a tuple, record, variant, or another
+resource-owning value. If other references remain, the compiler may use safe
+sharing while preserving the same observable lifetime.
+
+An escaped resource is not destroyed at the inner scope boundary.
+Responsibility for its eventual destruction, including any destructor failure,
+follows it to the scope containing its final reference. Acquisition and body
+failures remain results of `with-resource`; destruction failures from resources
+which do not escape are still reported there. A borrow or hidden alias cannot
+make a resource escape because borrowed values are not permitted to outlive
+their source. The exact `with-resource` surface spelling remains provisional.
+
+When destruction occurs at the resource-scope boundary, the result accounts for
+acquisition, body, and destruction failure. A body failure remains primary and
+destruction failures become contextual causes. This gives close, rollback, or
+final flush failure a predictable handling point without making an unrelated
+observer the accidental final-reference boundary.
 
 Scoped acquisition is an ordinary higher-order function governed by resource,
 effect, and fallibility capabilities. Libraries can define specialized forms
