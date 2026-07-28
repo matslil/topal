@@ -83,9 +83,10 @@ when these preserve the program's meaning.
   support by default. Authorized external tools select events and collect
   native serialization streams without making trace state observable to
   application code.
-- Infinite functions exist only as productive [generators](generators.md): every request either
-  yields, ends, fails, cancels, or suspends for an external event in finite
-  computation. Consumers determine whether the enclosing computation terminates.
+- Infinite functions exist only as productive [generators](generators.md):
+  every request either yields, ends, fails, closes, terminates, or suspends for
+  an external event in finite computation. Consumers determine whether the
+  enclosing computation terminates.
 - Logging and tracing can be attached without modifying the observed function.
   Diagnostic effects may be unordered when their ordering is not semantic.
 - Compact [unit-test tables](testing.md) supply concrete inputs, mocked

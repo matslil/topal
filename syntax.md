@@ -1071,6 +1071,15 @@ result follows the selected platform contract and becomes the application
 return value. These lifecycle declarations do not require or construct a
 `TaskInterface`.
 
+Hard `terminate` invalidates suspended handlers after the lifecycle handler
+returns and proceeds to automatic cleanup. A message handler which needs those
+handlers to finish may instead end with `terminate-cleanly reason`.
+`terminate-cleanly` stops admission, completes queued and new requests with
+`task-terminated`, waits for already-suspended handlers, runs the lifecycle
+handler, and cleans up. It is permitted only as the terminal expression of a
+handler returning `Unit` or `Result Completed`; the latter replies after
+termination finishes.
+
 Every dispatched ordinary handler has a leading `MessageContext` containing
 the session identity and sender endpoint. The compiler projects this input away
 when checking the handler against an implementation-independent `Interface`;

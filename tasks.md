@@ -95,9 +95,10 @@ boundary declares its final return through `Result`; the task boundary can
 fail even when a direct implementation cannot. Applying the interface to a
 task or endpoint produces implementation evidence
 which records the selected handler, transport, effects, ordering, admission,
-and cancellation behavior. Calling code can consequently retain the same
-operation interface while the compiler selects direct calls or message passing
-and preserves the implementation's dependency and optimization information.
+termination, and generator-closure behavior. Calling code can consequently
+retain the same operation interface while the compiler selects direct calls or
+message passing and preserves the implementation's dependency and optimization
+information.
 
 Every task has an implicit concrete interface consisting of its published
 message handlers. Explicit interfaces provide restricted endpoint views. An
@@ -360,7 +361,12 @@ The task may invoke `terminate` itself. Its owning instantiated `Task` value may
 also invoke it, and the enclosing task scope invokes it when the instance
 leaves scope. A discovered `Endpoint` does not acquire this ownership authority.
 A self-call uses `terminate reason`; an owner uses `task terminate reason`.
-A task can therefore expose its own policy-controlled stop message:
+A lifecycle termination is queued and selected in the task's ordinary message
+order. Messages ahead of it run first; messages which have not begun when it is
+selected receive `task-terminated`, or are discarded when they are `Unit`
+events.
+
+A task can expose its own policy-controlled hard-stop message:
 
 ```topal
 stop is fn (
@@ -371,10 +377,42 @@ stop is fn (
 ```
 
 Self-termination requests the lifecycle transition rather than recursively
-calling the lifecycle handler. The current handler reaches its terminal
-boundary, admission of ordinary work stops, and `terminate` runs exactly once
-before normal cleanup. Concurrent requests join the transition already in
-progress rather than running the lifecycle handler again.
+calling the lifecycle handler. The call is terminal in the current handler.
+Admission of ordinary work stops, the lifecycle `terminate` handler runs
+exactly once, and task-owned resources are automatically cleaned up when it
+returns. Suspended ordinary handlers are invalidated without executing more
+programmer code; their continuation-owned resources receive automatic cleanup.
+Every suspension point must therefore leave both task state and continuation
+state well-defined and cleanly destructible. Concurrent termination requests
+join the transition already in progress rather than running the lifecycle
+handler again.
+
+When suspended handlers should instead finish, an ordinary message handler may
+end with the language-defined terminal operation `terminate-cleanly reason`:
+
+```topal
+stop is fn (
+  _ : MessageContext,
+  reason : TerminationReason
+) -> Result Completed
+  terminate-cleanly reason
+```
+
+`terminate-cleanly` atomically stops admission. Queued and new requests receive
+`task-terminated`, and queued and new `Unit` events are discarded. Handler
+continuations which were already suspended may resume and finish normally, but
+no new ordinary handler begins. Once those continuations finish, the lifecycle
+`terminate` handler runs and automatic cleanup follows. The clean transition
+does not silently fall back to hard termination if a continuation fails to
+finish.
+
+No source code can execute after `terminate-cleanly`. The compiler permits it
+only as the terminal expression of a message handler returning `Unit` or
+`Result Completed`. With `Unit`, the sender does not observe completion. With
+`Result Completed`, the runtime retains the initiating interaction session and
+replies only after the lifecycle handler and cleanup finish. Termination or
+cleanup failure is returned instead of `Completed`. Other request handlers
+cannot use the operation.
 
 Termination may instead be observed as `task-terminated` in the existing
 `Result` of a pending request or the final return of a stream, the result of
@@ -474,13 +512,12 @@ scope does not complete until all children have completed, their results have
 been accounted for, and their resources have been destroyed.
 
 Leaving a successful scope requests orderly completion of unfinished children.
-Leaving because of failure or explicit cancellation cancels the remaining
-children before cleanup finishes. The scope waits for cancellation handlers
-and destructors; it does not detach computation which can access scoped
-resources.
+Leaving because of failure queues hard termination for the remaining children
+before cleanup finishes. The scope waits for lifecycle handlers and
+destructors; it does not detach computation which can access scoped resources.
 
 If a child fails before its result is awaited, the scope retains that failure.
-The first failure in deterministic dependency order is primary, cancels
+The first failure in deterministic dependency order is primary, terminates
 dependent siblings, and records later failures as contextual causes.
 Independent children may finish concurrently, but scheduler timing does not
 select an observably different primary error.
@@ -491,23 +528,17 @@ The semantic operations are:
 task-scope body
 start-child Task input
 await child
-cancel child reason
 ```
 
 Their exact surface spelling remains provisional. `await` consumes a one-time
 completion obligation; it does not expose a general mutable future object.
 
-## Cancellation
+## Termination and generator closure
 
-Cancellation is a typed interaction from a task scope, not an asynchronous
-exception injected at an arbitrary instruction. A task observes it at a
-suspension, protocol operation, generator boundary, or explicit cancellation
-check. Between such points, termination or productivity still requires finite
-computation.
-
-Cancellation begins cleanup for the cancelled branch. Destructors, protocol
-termination, and cancellation handlers run in dependency order. Cleanup failure
-is retained in the enclosing scope's error chain.
+Topal exposes no general cancellation operation or asynchronous exception.
+Ownership-driven hard termination uses the queued lifecycle transition above.
+Application-defined graceful shutdown uses an ordinary protocol handler ending
+in `terminate-cleanly`.
 
 Dropping a stream or linear generator continuation does not expose an explicit
 cancellation operation. It resumes the serving generator's suspended `yield`
@@ -516,8 +547,9 @@ then returns and enters automatic cleanup. It cannot yield again after
 observing the close signal. The owning scope waits for shutdown and cleanup and
 retains their failures.
 
-Dropping an uncompleted non-stream request remains a protocol question because
-there is no suspended `yield` through which to deliver generator closure.
+A successfully admitted non-stream request is a mandatory reply interaction.
+The requester remains suspended until the reply commits or the target returns
+`task-terminated`; there is no first-class pending request which can be dropped.
 
 ## Waiting for alternatives
 
@@ -527,8 +559,8 @@ returns a union identifying the selected alternative. When several alternatives
 are already available at the same logical point, declaration order is the
 deterministic tie breaker.
 
-Non-selected interactions remain owned by the scope. The caller retains or
-explicitly cancels them; selection never silently detaches an interaction.
+Non-selected interactions remain owned by the scope and must produce their
+replies; selection never silently detaches an interaction.
 Timeouts are alternatives supplied by a clock or timer protocol, so they add
 that protocol's effects and dependencies rather than reading ambient time.
 

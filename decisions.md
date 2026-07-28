@@ -97,7 +97,7 @@ The grammar must select compatible spellings for:
 - explicit effect bounds and effect-row parameters;
 - mutually recursive declaration groups and decreasing measures;
 - immutable record reconstruction and qualified task-field replacement;
-- task scopes, child construction, waiting, cancellation, and selection;
+- task scopes, child construction, waiting, termination, and selection;
 - explicit resource scopes and ownership transfer from them;
 - public error vocabulary bounds; and
 - foreign symbols, ABIs, and trusted declarations.
@@ -164,11 +164,21 @@ construct should be added only if concrete use cases cannot be expressed
 cleanly through those boundaries. If added, its treatment of continuation
 linearity, task state, and effect resource identities needs a separate design.
 
-## Cancellation and external time
+## Termination and external time
 
-Cancellation is cooperative and scoped. Protocols still need precise defaults
-for guaranteed, best-effort, and unsupported remote cancellation, including
-what completion evidence means after a cancellation race.
+Topal exposes no general cancellation operation. Hard termination is an
+ownership-authorized queued lifecycle transition. Once its handler returns,
+suspended handlers execute no more programmer code and their continuations and
+task state receive automatic cleanup. Every suspension point must consequently
+leave state cleanly destructible.
+
+`terminate-cleanly` is the cooperative alternative available as the terminal
+expression of a message handler returning `Unit` or `Result Completed`. It
+rejects queued and new requests with `task-terminated`, discards their `Unit`
+events, allows already-suspended handlers to finish, and then performs the
+ordinary lifecycle handler and cleanup. The `Result Completed` form retains
+the initiating session and replies after termination; the `Unit` form does not
+wait.
 
 Generator abandonment is settled independently of a general cancellation
 surface. `yield` has effective type `Result ResumeValue`; abandoning its linear

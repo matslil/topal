@@ -43,7 +43,7 @@ which to report failure.
 Unobserved completion does not erase effects or detach computation. Effects of
 a `Unit` call remain outstanding and constrain later conflicting interactions
 until the work finishes. Its structured scope retains the work through cleanup,
-cancellation, and failure containment. A function which cannot report failure
+termination, and failure containment. A function which cannot report failure
 must handle it internally or route it through a separately declared effect.
 
 These rules apply equally when an [interface](interfaces.md) implementation is
@@ -138,8 +138,9 @@ path contains `yield`.
 
 Consumers may deliberately traverse an unbounded productive generator. Their
 own termination then depends on a statically finite consumer, a stopping
-predicate, cancellation, or an external suspension. Materializing an unbounded
-generator as a finite container is rejected unless a bound is established.
+predicate, generator closure, or an external suspension. Materializing an
+unbounded generator as a finite container is rejected unless a bound is
+established.
 
 ## Static evaluation
 

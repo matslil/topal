@@ -240,7 +240,7 @@ selected declarations:
 - completion, suspension, ordering, and dependency behavior;
 - compiler-verified semantic properties;
 - optimization facts and non-semantic operational hints; and
-- for endpoints, admission, delivery, cancellation, transport, and handler
+- for endpoints, admission, delivery, termination, transport, and handler
   behavior, including the `task-terminated` error code.
 
 This evidence belongs to the interface implementation rather than changing the
