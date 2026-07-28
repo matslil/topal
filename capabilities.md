@@ -339,7 +339,9 @@ Sortable is
   ( Indexed and Replaceable )
   Container ( TotalOrder Value )
 
-sort is fn ( values : C : Sortable ) -> C
+sort is fn (
+  values : ( C : Type : Sortable )
+) -> C
   sorting-implementation values
 ```
 
@@ -363,7 +365,8 @@ SetLike =
 
 These names do not introduce new primitive operations. A map-oriented composite
 matches `Map ( Key, Value )` directly and combines `Keyed` and `Associable`;
-the final multi-component matcher syntax remains to be selected.
+its associated `Key` and `Value` components use the explicit grouped matcher
+defined in [generic abstraction](abstractions.md#multi-component-capability-matching).
 
 ## Standard-library extensions
 
