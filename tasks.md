@@ -32,7 +32,7 @@ counter-service is Counter
   current is fn (
     _ : MessageContext,
     Unit
-  ) -> Nat
+  ) -> Result Nat
     count
 ```
 
@@ -47,7 +47,7 @@ task instance:
 ```topal
 counter is counter-service 0
 counter increment 2
-value is counter current Unit
+value : Nat is counter current Unit
 ```
 
 The value `counter` is a typed capability, not a reference to the task's state
@@ -90,8 +90,10 @@ without choosing an implementation mechanism. A source context may implement
 such an interface with ordinary functions and generators, while a task may
 implement the same interface with events, requests, and streams.
 
-The interface remains unchanged when an implementation moves across a task
-boundary. Applying it to a task or endpoint produces implementation evidence
+An interface which permits a request or stream implementation across a task
+boundary declares its final return through `Result`; the task boundary can
+fail even when a direct implementation cannot. Applying the interface to a
+task or endpoint produces implementation evidence
 which records the selected handler, transport, effects, ordering, admission,
 and cancellation behavior. Calling code can consequently retain the same
 operation interface while the compiler selects direct calls or message passing
@@ -220,11 +222,9 @@ The declaration determines the message interaction without separate `event`,
 
 ```text
 fn (...) -> Unit               event without a completion reply
-fn (...) -> Completed          completion request
-fn (...) -> Result Completed   fallible completion request
-fn (...) -> Value              value request
-fn (...) -> Result Value       fallible value request
-generator                     stream
+fn (...) -> Result Completed   completion request
+fn (...) -> Result Value       value request
+generator ... -> Result Value  stream
 ```
 
 An event call may still account for declared queue placement, backpressure, or
@@ -233,10 +233,20 @@ task lifetime behavior, but it does not wait for the handler to finish. A
 a synchronization object. Receiving it proves that the handler finished and
 establishes the corresponding ordering dependency.
 
-`Result Unit` is not a valid task-handler result. `Unit` declares that no
-completion response exists, while `Result` would require that response to
-report success or failure. A fallible handler with no application response uses
+Every ordinary function handler which has a response channel returns `Result`.
+Consequently, plain `Completed` and plain value results are invalid handler
+shapes. `Result Unit` is also invalid: `Unit` declares an event with no
+completion response, while `Result` would require such a response to report
+success or failure. A handler which returns only completion evidence uses
 `Result Completed`.
+
+These restrictions apply to published message handlers, including handlers in
+a task's implicit interface. They do not constrain private helper functions or
+the language-defined lifecycle handlers. An explicit interface operation
+returning plain `Completed` or another plain value can have a direct
+implementation, but cannot be implemented by task message passing. To permit
+both direct and task implementations, the operation declares `Result
+Completed` or `Result Value`.
 
 The same `Unit` and `Completed` distinction applies to a direct implementation
 of a shared interface. `Unit` establishes no completion dependency and permits
@@ -246,8 +256,24 @@ it does not require blocking an operating-system thread.
 
 A generator handler establishes a stream. Its yielded type is delivered from
 the serving task, its resume type is delivered back to that task, and its final
-return terminates the stream. A generator resumed with `Unit` is a one-way
-server-to-caller stream.
+return terminates the stream. The final return of an ordinary task generator
+handler must be a `Result`, including `Result Unit` when the stream has no
+application summary. Individual yields are not wrapped. A generator resumed
+with `Unit` is a one-way server-to-caller stream.
+
+Task messaging adds a language-defined task-interaction error vocabulary to
+the declared application errors of each request or stream. This does not add
+another wrapper: `Result Value` remains the operation's result type, and its
+effective error-code set is the union of the declared codes and the
+task-interaction codes. Termination before a reply or final stream return is
+reported through that same `Result`. Ordinary error matching, projection, and
+propagation apply.
+
+The additional vocabulary belongs to the selected implementation evidence. A
+direct implementation retains only its declared error codes; selecting a task
+implementation exposes the wider effective set. If the implementation is
+erased or chosen dynamically, the compiler uses the union required by all
+remaining alternatives.
 
 ## Isolation and suspension
 
@@ -343,13 +369,13 @@ boundary, admission of ordinary work stops, and `terminate` runs exactly once
 before normal cleanup. Concurrent requests join the transition already in
 progress rather than running the lifecycle handler again.
 
-Termination may instead be observed as the unsuccessful completion of a
-pending request, the yield or final return of a stream whose protocol reports
-it, the result of awaiting an owned child, or an explicit broker monitor/join
-operation. Such observation uses universal identity, reason, and failure
-information rather than a task-specific termination value. The exact surface
-operation for non-owning monitoring remains provisional, and must atomically
-install the monitor so termination cannot race with lookup.
+Termination may instead be observed as an error in the existing `Result` of a
+pending request or the final return of a stream, the result of awaiting an
+owned child, or an explicit broker monitor/join operation. Its task-domain
+code and structured error information retain the identity, reason, and
+failure; it is not a task-specific alternative outside `Result`. The exact
+surface operation for non-owning monitoring remains provisional, and must
+atomically install the monitor so termination cannot race with lookup.
 
 ## The application root task
 

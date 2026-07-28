@@ -962,12 +962,12 @@ choosing their implementations:
 ```topal
 Lexer is Interface
   warm-up is fn ( configuration : Configuration ) -> Unit
-  parse is fn ( command : String ) -> ParseResult
+  parse is fn ( command : String ) -> Result ParseResult
 
   parse-tokens is generator ( source : String )
     yields Token
     resumes Unit
-    -> ParseResult
+    -> Result ParseResult
 ```
 
 Applying the interface in a source context checks a complete implementation:
@@ -977,13 +977,13 @@ Lexer
   warm-up is fn ( configuration : Configuration ) -> Unit
     initialize configuration
 
-  parse is fn ( command : String ) -> ParseResult
+  parse is fn ( command : String ) -> Result ParseResult
     parse-command command
 
   parse-tokens is generator ( source : String )
     yields Token
     resumes Unit
-    -> ParseResult
+    -> Result ParseResult
     implementation
 ```
 
@@ -1005,9 +1005,11 @@ construction. It attaches inferred effects, implementation properties, and
 optimization evidence to the context or packaged implementation rather than to
 the implementation-independent interface type.
 
-Tasks may implement the same interface through message passing. Functions
-returning `Unit`, `Completed`, or another value become events, completion
-requests, or value requests respectively; generators become streams. See
+Tasks may implement the same interface through message passing. A function
+returning `Unit` becomes an event. Completion and value requests must return
+`Result Completed` and `Result Value`; plain response types are not valid
+message handlers. A task generator's final return must also be `Result`;
+generators become streams. See
 [function and message interfaces](interfaces.md) for construction, visibility,
 implementation evidence, and message adaptation.
 
@@ -1039,7 +1041,7 @@ counter-service is Counter
   current is fn (
     _ : MessageContext,
     Unit
-  ) -> Nat
+  ) -> Result Nat
     count
 ```
 
@@ -1049,7 +1051,7 @@ Applying the definition constructs a task by supplying the parameters of
 ```topal
 counter is counter-service 0
 counter increment 2
-value is counter current Unit
+value : Nat is counter current Unit
 ```
 
 The option record configures the task and specializes its type; it does not
@@ -1077,10 +1079,12 @@ discards the context name when it is unused. The distinguished context slot
 does not count against the interface operation's zero-to-two ordinary operands.
 
 A handler returning `Unit` is an event for which the caller does not await
-completion. `Completed` requests completion confirmation, and `Result
-Completed` requests either confirmation or failure. Other returned values are
-request replies, while a generator handler establishes a stream. `Result Unit`
-is not a valid task-handler result.
+completion. Every ordinary handler with a response channel returns `Result`:
+`Result Completed` requests completion confirmation, and `Result Value`
+requests a value. Plain `Completed`, plain value, and function `Result Unit`
+results are invalid message-handler shapes. A generator handler establishes a
+stream and its final return must be `Result`; task interaction errors extend
+the effective error-code set without adding another wrapper.
 
 See [tasks and intrinsic messaging](tasks.md) for identity namespaces, service
 discovery, isolation, startup and termination, and the implicit root task

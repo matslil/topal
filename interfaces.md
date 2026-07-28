@@ -16,14 +16,14 @@ Lexer is Interface
 
   parse is fn (
     command : String
-  ) -> ParseResult
+  ) -> Result ParseResult
 
   parse-tokens is generator (
     source : String
   )
     yields Token
     resumes Unit
-    -> ParseResult
+    -> Result ParseResult
 ```
 
 The declarations specify interaction shapes, not implementation bodies,
@@ -45,7 +45,7 @@ Lexer
 
   parse is fn (
     command : String
-  ) -> ParseResult
+  ) -> Result ParseResult
     parse-command command
 
   parse-tokens is generator (
@@ -53,7 +53,7 @@ Lexer
   )
     yields Token
     resumes Unit
-    -> ParseResult
+    -> Result ParseResult
 
     tokenize source foreach { token }
       yield token
@@ -90,7 +90,7 @@ local-lexer is Lexer
 
   parse is fn (
     command : String
-  ) -> ParseResult
+  ) -> Result ParseResult
     parse-command command
 
   parse-tokens is generator (
@@ -98,7 +98,7 @@ local-lexer is Lexer
   )
     yields Token
     resumes Unit
-    -> ParseResult
+    -> Result ParseResult
     implementation
 ```
 
@@ -108,7 +108,7 @@ The value retains the selected declarations and their implementation evidence:
 parse-with is fn (
   lexer : Lexer,
   command : String
-) -> ParseResult
+) -> Result ParseResult
   lexer parse command
 ```
 
@@ -135,7 +135,7 @@ tracing-lexer is fn (
 
     parse is fn (
       command : String
-    ) -> ParseResult
+    ) -> Result ParseResult
       logger record command
       underlying parse command
 
@@ -144,7 +144,7 @@ tracing-lexer is fn (
     )
       yields Token
       resumes Unit
-      -> ParseResult
+      -> Result ParseResult
       implementation
 ```
 
@@ -155,11 +155,9 @@ function and generator shapes then determine the messaging interaction:
 
 ```text
 fn Input -> Unit               event without a completion reply
-fn Input -> Completed          completion request
-fn Input -> Result Completed   fallible completion request
-fn Input -> Value              value request
-fn Input -> Result Value       fallible value request
-generator                     stream
+fn Input -> Result Completed   completion request
+fn Input -> Result Value       value request
+generator ... -> Result Value  stream
 ```
 
 For example, a task can apply `Lexer` around the relevant handler declarations:
@@ -183,7 +181,7 @@ LexerService is LexerTask
     parse is fn (
       _ : MessageContext,
       command : String
-    ) -> ParseResult
+    ) -> Result ParseResult
       grammar parse command
 
     parse-tokens is generator (
@@ -192,7 +190,7 @@ LexerService is LexerTask
     )
       yields Token
       resumes Unit
-      -> ParseResult
+      -> Result ParseResult
       implementation
 ```
 
@@ -210,8 +208,19 @@ does not use it; it is a discard identifier rather than a pattern wildcard.
 `Unit` deliberately provides no completion dependency in either model.
 `Completed` is the zero-data evidence that execution finished. It orders
 dependent continuation without requiring an operating-system thread to block.
-`Result Unit` is invalid for an interaction with no completion channel; a
-fallible zero-data completion uses `Result Completed`.
+Every ordinary message handler with a response channel must return `Result`.
+Plain `Completed` and plain value results are therefore invalid message
+implementations. `Result Unit` is invalid for a function interaction with no
+completion channel; a zero-data completion uses `Result Completed`. A task
+generator's final return must likewise be a `Result`, although `Result Unit`
+is valid there because a stream has a final response channel.
+
+An interface operation returning plain `Completed` or another plain value may
+have a direct implementation, but cannot have a message implementation. An
+operation intended for either mechanism declares `Result Completed` or
+`Result Value`. A task implementation adds task-interaction error codes to the
+declared application codes in the effective `Result` contract; it does not
+change the success type or introduce another result wrapper.
 
 A task's complete set of published handlers forms its implicit concrete
 interface. Explicit `Interface` constructions let the task publish restricted
@@ -231,7 +240,7 @@ selected declarations:
 - compiler-verified semantic properties;
 - optimization facts and non-semantic operational hints; and
 - for endpoints, admission, delivery, cancellation, transport, and handler
-  behavior.
+  behavior, including task-interaction error codes.
 
 This evidence belongs to the interface implementation rather than changing the
 interface type. Two implementations of `Lexer` can therefore have different
