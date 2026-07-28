@@ -261,15 +261,22 @@ handler must be a `Result`, including `Result Unit` when the stream has no
 application summary. Individual yields are not wrapped. A generator resumed
 with `Unit` is a one-way server-to-caller stream.
 
-Task messaging adds a language-defined task-interaction error vocabulary to
-the declared application errors of each request or stream. This does not add
+Task messaging adds the language-defined `task-terminated` error code to the
+declared application errors of each request or stream. This does not add
 another wrapper: `Result Value` remains the operation's result type, and its
-effective error-code set is the union of the declared codes and the
-task-interaction codes. Termination before a reply or final stream return is
-reported through that same `Result`. Ordinary error matching, projection, and
-propagation apply.
+effective error-code set is the union of the declared codes and
+`task-terminated`. Ordinary error matching, projection, and propagation apply.
 
-The additional vocabulary belongs to the selected implementation evidence. A
+An endpoint denotes a task instance which existed in the application. Task
+messaging therefore does not add separate unavailable, admission, or transport
+codes. Queue limits and admission policy are interaction behavior rather than
+portable errors. All endpoints are local to the application; communication
+with an external or remote service is implemented by a local mirror task. The
+mirror reports failures through the application error codes declared by its
+interface, or terminates and consequently produces `task-terminated` for its
+pending interactions.
+
+The additional code belongs to the selected implementation evidence. A
 direct implementation retains only its declared error codes; selecting a task
 implementation exposes the wider effective set. If the implementation is
 erased or chosen dynamically, the compiler uses the union required by all
@@ -369,13 +376,22 @@ boundary, admission of ordinary work stops, and `terminate` runs exactly once
 before normal cleanup. Concurrent requests join the transition already in
 progress rather than running the lifecycle handler again.
 
-Termination may instead be observed as an error in the existing `Result` of a
-pending request or the final return of a stream, the result of awaiting an
-owned child, or an explicit broker monitor/join operation. Its task-domain
-code and structured error information retain the identity, reason, and
-failure; it is not a task-specific alternative outside `Result`. The exact
-surface operation for non-owning monitoring remains provisional, and must
-atomically install the monitor so termination cannot race with lookup.
+Termination may instead be observed as `task-terminated` in the existing
+`Result` of a pending request or the final return of a stream, the result of
+awaiting an owned child, or an explicit broker monitor/join operation. The
+error uses Topal's stable task error domain. Its structured error information
+retains the identity, reason, and underlying failure; these do not create more
+portable task error codes.
+
+A reply or final stream result becomes committed when the task runtime accepts
+it as the terminal result of that interaction. A committed result wins over
+concurrent termination even when the caller has not yet observed it. If
+termination commits first, the interaction returns `task-terminated`. Values
+already yielded by a stream remain observed, but termination before its final
+result commits makes that final result `task-terminated`.
+
+The exact surface operation for non-owning monitoring remains provisional, and
+must atomically install the monitor so termination cannot race with lookup.
 
 ## The application root task
 

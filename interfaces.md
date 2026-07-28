@@ -218,9 +218,10 @@ is valid there because a stream has a final response channel.
 An interface operation returning plain `Completed` or another plain value may
 have a direct implementation, but cannot have a message implementation. An
 operation intended for either mechanism declares `Result Completed` or
-`Result Value`. A task implementation adds task-interaction error codes to the
-declared application codes in the effective `Result` contract; it does not
-change the success type or introduce another result wrapper.
+`Result Value`. A task implementation adds the language-defined
+`task-terminated` code to the declared application codes in the effective
+`Result` contract; it does not change the success type or introduce another
+result wrapper.
 
 A task's complete set of published handlers forms its implicit concrete
 interface. Explicit `Interface` constructions let the task publish restricted
@@ -240,7 +241,7 @@ selected declarations:
 - compiler-verified semantic properties;
 - optimization facts and non-semantic operational hints; and
 - for endpoints, admission, delivery, cancellation, transport, and handler
-  behavior, including task-interaction error codes.
+  behavior, including the `task-terminated` error code.
 
 This evidence belongs to the interface implementation rather than changing the
 interface type. Two implementations of `Lexer` can therefore have different
