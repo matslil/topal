@@ -139,6 +139,16 @@ decide the surface spelling for optional effect upper bounds, effect-row
 parameters, and otherwise uninferable generic relationships between callback
 effects and captured resource identities.
 
+Task message result adaptation is settled. `Unit` handlers are events with no
+reply. Every ordinary function handler that replies must return `Result
+Completed` or `Result Value`; plain reply types and function `Result Unit` are
+invalid. A task generator's final return must also be `Result`. An explicit
+interface must therefore declare `Result` to permit a request or stream
+implementation through task messaging. Task interaction failures extend the
+existing result's effective error-code vocabulary through implementation
+evidence rather than adding a second wrapper or changing direct
+implementations.
+
 The initial design handles effects through application composition, tasks,
 protocols, constructed contexts, and foreign adapters. A future general handler
 construct should be added only if concrete use cases cannot be expressed

@@ -27,6 +27,11 @@ read-count is fn ( path : Path ) -> Result Integer
 an `Integer` or an `Error`. `Result` is never added implicitly to a declared
 output type.
 
+A task message implementation is permitted only where the operation already
+declares `Result`. Crossing the task boundary does not implicitly wrap a plain
+result; it extends the existing result's effective error-code vocabulary as
+described below.
+
 ## Error representation
 
 Every `Result` uses the common structured `Error` value. Conceptually:
@@ -72,6 +77,18 @@ The definition may live in any namespace and may be shared by unrelated
 functions. A fallible function must have an `ErrorCode` type available when its
 `Result` contract is declared. The compiler records the exact resolved type as
 part of that function's interface.
+
+An implementation boundary may contribute additional language-defined codes
+to that declared vocabulary. In particular, a task request or stream adds the
+task-interaction codes which can arise before its reply or final return. The
+operation still has one `Result Value`; its effective code set is the union of
+the application vocabulary and the task vocabulary.
+
+This widening is implementation evidence rather than a mutation of the source
+interface. A direct implementation exposes only the codes it declares. A task
+implementation exposes the union, and a dynamic choice among implementations
+exposes the union needed for every remaining alternative. The compiler uses
+that effective closed set for matching and propagation checks.
 
 Different functions in the same source file may use different `ErrorCode`
 types. The connection is between a function and the type resolved for its
