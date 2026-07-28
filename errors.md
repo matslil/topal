@@ -98,6 +98,14 @@ committing a reply or final stream result, the caller receives
 `task-terminated`; its structured reason or cause may retain the underlying
 failure.
 
+A `yield` expression similarly adds `generator-closed`, from Topal's stable
+generator error domain, to its declared resume value. This code is supplied
+only when the consumer abandons the linear continuation. Generator code may
+match it to perform deliberate shutdown work. If it reaches the generator
+boundary, the runtime consumes it as closure rather than exposing it as a final
+application error to a consumer which no longer exists. Other shutdown and
+cleanup errors retain their ordinary scope behavior.
+
 Different functions in the same source file may use different `ErrorCode`
 types. The connection is between a function and the type resolved for its
 contract; it does not move the type into the function's namespace or create a

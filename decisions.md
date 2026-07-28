@@ -170,6 +170,15 @@ Cancellation is cooperative and scoped. Protocols still need precise defaults
 for guaranteed, best-effort, and unsupported remote cancellation, including
 what completion evidence means after a cancellation race.
 
+Generator abandonment is settled independently of a general cancellation
+surface. `yield` has effective type `Result ResumeValue`; abandoning its linear
+continuation supplies the language-defined `generator-closed` code. The
+generator may perform explicit shutdown work but cannot yield again on that
+path. Returning or propagating the close signal ends the generator, after which
+automatic cleanup runs. The owning scope waits for shutdown and cleanup and
+retains their failures. Consumers have no explicit generator-cancellation
+operation.
+
 Clock-provided timeout alternatives avoid ambient time. The standard clock and
 timer protocols, representation of deadlines, and deterministic testing rules
 remain to be designed. They should reuse quantities and units rather than

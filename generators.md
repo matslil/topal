@@ -16,8 +16,8 @@ conversation is generator ( initial : Request )
   resumes IncomingResponse
   -> Result Conversation
 
-  first-response is yield make-first-request initial
-  second-response is yield make-second-request first-response
+  first-response : IncomingResponse is yield make-first-request initial
+  second-response : IncomingResponse is yield make-second-request first-response
   finish-conversation first-response second-response
 ```
 
@@ -45,12 +45,42 @@ state. Resuming it supplies the value produced by the suspended `yield`
 expression:
 
 ```topal
-response is yield outgoing-request
+response : IncomingResponse is yield outgoing-request
 ```
 
 At this point `outgoing-request` is available to the caller. When the caller
 resumes the computation with an `IncomingResponse`, the `yield` expression
-evaluates to that response and binds it to `response`.
+evaluates successfully to that response and binds it to `response`.
+
+Every `yield` has the effective type `Result Resume`, where `Resume` is the
+declared `resumes` type. Its language-defined generator error vocabulary
+contains `generator-closed`. A consumer which abandons the continuation resumes
+the suspended `yield` with that error:
+
+```topal
+resume-result is yield outgoing-request
+
+resume-result attempt
+  Error ( code is generator-error generator-closed ) then
+    finish-logical-operation ()
+    return error generator-closed
+
+  response : IncomingResponse then
+    continue-with response
+```
+
+The generator may use this branch to finish or roll back logical work which is
+not part of automatic resource cleanup. Success projection may instead
+propagate `generator-closed` to the generator boundary. At that boundary the
+runtime consumes it as the expected close signal because the consumer no
+longer exists; it is not delivered as the generator's final application error.
+Any other failure produced while handling closure follows the generator's
+ordinary final result and structured-scope rules.
+
+After a path observes `generator-closed`, it may return or propagate the close
+signal but may not yield again. This is checked flow-sensitively. Once the
+generator exits, destructors and other automatic cleanup run in dependency
+order.
 
 Conceptually, observing one generator step produces one of:
 
@@ -59,10 +89,13 @@ Yielded ( yielded-value, continuation )
 Returned return-value
 ```
 
-The continuation accepts a value of the declared `resumes` type. It is linear:
-resuming the same continuation more than once would duplicate a single logical
-computation and is invalid. The compiler may implement continuations as mutable
-state machines when doing so does not change their observable behavior.
+The continuation accepts either a value of the declared `resumes` type or the
+intrinsic `generator-closed` signal. It is linear: resuming the same
+continuation more than once would duplicate a single logical computation and
+is invalid. Only abandonment supplies `generator-closed`; ordinary source code
+does not gain an explicit close or cancellation operation. The compiler may
+implement continuations as mutable state machines when doing so does not change
+their observable behavior.
 
 A generator is permitted to return before its first `yield`. Code driving a
 generator must therefore account for both `Yielded` and `Returned`; generator
@@ -95,6 +128,12 @@ If evaluating the body can fail, traversal stops without resuming the
 continuation again and the enclosing result accounts for that failure. More
 general loop forms and bidirectional generator-driving conveniences remain
 open; `foreach` specifies only the common `Unit`-resumed case.
+
+Leaving `foreach` before the source returns abandons its continuation. The
+suspended `yield` receives `generator-closed`, the generator performs any
+explicit close handling, and automatic cleanup follows. The enclosing scope
+waits for the close path and retains failures from its shutdown work or
+cleanup.
 
 ## Generated traversal
 

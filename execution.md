@@ -129,7 +129,7 @@ Every cycle in a generator must, in finite computation:
 - yield a value;
 - return or fail;
 - suspend on a declared external interaction; or
-- observe cancellation from its structured task scope.
+- observe `generator-closed` from an abandoned continuation.
 
 A recursive generator call which can occur before any of these boundaries must
 decrease a well-founded measure like ordinary recursion. The compiler checks

@@ -1126,9 +1126,17 @@ conversation is generator ( initial : Request )
   resumes IncomingResponse
   -> Result Conversation
 
-  response is yield make-request initial
+  response : IncomingResponse is yield make-request initial
   finish-conversation response
 ```
+
+`yield value` has effective type `Result ResumeValue`. Normal resumption
+produces the declared resume value; abandonment produces the language-defined
+`generator-closed` error. The generator may handle that result to perform
+deliberate shutdown work, or allow the close signal to reach the generator
+boundary. It may not yield again after observing closure. Automatic cleanup
+runs after it exits, and no explicit generator-cancellation operation is
+available to the consumer.
 
 Applying the generator supplies its initial input and starts it; there is no
 separate `start` operation. A suspended `yield` expression evaluates to the

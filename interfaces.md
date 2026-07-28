@@ -56,7 +56,7 @@ Lexer
     -> Result ParseResult
 
     tokenize source foreach { token }
-      yield token
+      Unit is yield token
     parse-command source
 ```
 
