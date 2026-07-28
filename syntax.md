@@ -1083,8 +1083,9 @@ completion. Every ordinary handler with a response channel returns `Result`:
 `Result Completed` requests completion confirmation, and `Result Value`
 requests a value. Plain `Completed`, plain value, and function `Result Unit`
 results are invalid message-handler shapes. A generator handler establishes a
-stream and its final return must be `Result`; task interaction errors extend
-the effective error-code set without adding another wrapper.
+stream and its final return must be `Result`; the language-defined
+`task-terminated` code extends the effective error-code set without adding
+another wrapper.
 
 See [tasks and intrinsic messaging](tasks.md) for identity namespaces, service
 discovery, isolation, startup and termination, and the implicit root task

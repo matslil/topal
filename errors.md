@@ -78,17 +78,25 @@ functions. A fallible function must have an `ErrorCode` type available when its
 `Result` contract is declared. The compiler records the exact resolved type as
 part of that function's interface.
 
-An implementation boundary may contribute additional language-defined codes
-to that declared vocabulary. In particular, a task request or stream adds the
-task-interaction codes which can arise before its reply or final return. The
-operation still has one `Result Value`; its effective code set is the union of
-the application vocabulary and the task vocabulary.
+An implementation boundary may contribute an additional language-defined code
+to that declared vocabulary. In particular, a task request or stream adds
+`task-terminated`, from Topal's stable task error domain. The operation still
+has one `Result Value`; its effective code set is the union of the application
+vocabulary and this task code.
 
 This widening is implementation evidence rather than a mutation of the source
 interface. A direct implementation exposes only the codes it declares. A task
 implementation exposes the union, and a dynamic choice among implementations
 exposes the union needed for every remaining alternative. The compiler uses
 that effective closed set for matching and propagation checks.
+
+Task messaging adds no general unavailable, admission, or transport error.
+Every endpoint denotes an application-local task instance which existed.
+External communication belongs to a local mirror task, whose interface
+declares its application-level failures. If the mirror itself terminates before
+committing a reply or final stream result, the caller receives
+`task-terminated`; its structured reason or cause may retain the underlying
+failure.
 
 Different functions in the same source file may use different `ErrorCode`
 types. The connection is between a function and the type resolved for its

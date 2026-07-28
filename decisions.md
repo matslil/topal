@@ -149,6 +149,15 @@ existing result's effective error-code vocabulary through implementation
 evidence rather than adding a second wrapper or changing direct
 implementations.
 
+The only portable task-interaction code is `task-terminated`, in Topal's stable
+task error domain. An endpoint always denotes an application-local task
+instance which existed, so task messaging adds no separate unavailable,
+admission, or transport errors. Remote services are represented by local
+mirror tasks, which either report their interface's application errors or
+terminate. A reply or final stream result accepted by the task runtime wins
+over concurrent termination; if termination commits first, the interaction
+returns `task-terminated`.
+
 The initial design handles effects through application composition, tasks,
 protocols, constructed contexts, and foreign adapters. A future general handler
 construct should be added only if concrete use cases cannot be expressed
