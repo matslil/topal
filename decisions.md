@@ -203,9 +203,14 @@ uses safe sharing when other references remain. Destructor responsibility and
 possible failure follow the final reference. No transfer keyword, linear
 capability, scoped-owner wrapper, or public ownership type is added.
 
-The public operations for non-owning back references also need names and a
-precise interaction with task and endpoint capabilities. Their semantics must
-not expose reference counts or collection timing.
+Non-owning resource back references use the language-defined `Weak`
+capability-backed construction. A `Weak T` does not keep `T` alive. Access
+atomically returns `Result T` with `weak-unavailable` when the target cannot be
+retained. Applying a weak value to a block retains one ordinary `T` for the
+complete block; that value may escape through the ordinary move rules. Weak
+references expose no counts or collection timing. Task endpoints remain
+distinct messaging authorities and report `task-terminated` rather than using
+weak promotion.
 
 ## Foreign ABI catalog
 

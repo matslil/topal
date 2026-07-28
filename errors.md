@@ -112,6 +112,12 @@ boundary, the runtime consumes it as closure rather than exposing it as a final
 application error to a consumer which no longer exists. Other shutdown and
 cleanup errors retain their ordinary scope behavior.
 
+Accessing a `Weak T` adds `weak-unavailable`, from Topal's stable weak-reference
+error domain, to the resulting `Result T`. The access atomically either retains
+an ordinary `T` or reports that the target is no longer retainable. A successful
+retained value remains valid for its lexical lifetime; `weak-unavailable`
+cannot subsequently replace it.
+
 Different functions in the same source file may use different `ErrorCode`
 types. The connection is between a function and the type resolved for its
 contract; it does not move the type into the function's namespace or create a

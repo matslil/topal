@@ -1125,6 +1125,33 @@ resource scope is the ordinary source-level indication that its lifetime moves
 to the receiving scope. See
 [resource lifetime and destruction](resources.md) for the semantic rules.
 
+Non-owning resource back references use the language-defined `Weak`
+capability-backed construction:
+
+```topal
+Control is type
+  window : Weak Window
+```
+
+Access has effective type `Result Window` and returns `weak-unavailable` when
+the target can no longer be retained:
+
+```topal
+window : Window is control window
+```
+
+Applying the weak value to a block retains it once for that complete region:
+
+```topal
+control window { window }
+  update-title window
+  redraw window
+```
+
+The block does not run when retention fails. Its inner binding is an ordinary
+retained `Window`; returning that value moves its lifetime to the receiving
+scope under the normal ownership rules.
+
 ## Generators
 
 Resumable functions use an explicit `generator` declaration. They may yield a
