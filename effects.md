@@ -179,9 +179,12 @@ Starting or resuming a generator performs effects until its next yield,
 suspension, failure, or return. Merely retaining its continuation performs no
 effect. The generator type records the effects which any segment may perform.
 
-Abandoning a linear continuation invokes its resource cleanup and cancellation
-behavior in the current structured task scope. Cleanup effects remain part of
-the enclosing scope's contract.
+Abandoning a linear continuation resumes its suspended `yield` with the
+language-defined `generator-closed` error. The generator may perform explicit
+shutdown work before returning; it cannot yield again on that path. Resource
+cleanup then runs in the current structured task scope. Shutdown and cleanup
+effects remain part of the enclosing scope's contract, which waits for them
+and retains their failures.
 
 ## Sandboxed foreign effects
 

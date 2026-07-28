@@ -509,10 +509,15 @@ Cancellation begins cleanup for the cancelled branch. Destructors, protocol
 termination, and cancellation handlers run in dependency order. Cleanup failure
 is retained in the enclosing scope's error chain.
 
-Dropping an uncompleted request, stream, or linear generator continuation
-requests cancellation unless its protocol declares fire-and-forget delivery.
-A protocol states whether cancellation is guaranteed, best effort, or
-unsupported; a caller cannot assume stronger behavior.
+Dropping a stream or linear generator continuation does not expose an explicit
+cancellation operation. It resumes the serving generator's suspended `yield`
+with `generator-closed`. The generator may perform deliberate shutdown work,
+then returns and enters automatic cleanup. It cannot yield again after
+observing the close signal. The owning scope waits for shutdown and cleanup and
+retains their failures.
+
+Dropping an uncompleted non-stream request remains a protocol question because
+there is no suspended `yield` through which to deliver generator closure.
 
 ## Waiting for alternatives
 
