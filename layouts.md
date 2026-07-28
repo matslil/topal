@@ -286,7 +286,7 @@ or optimization evidence but cannot bypass the sandbox or validation.
 
 Foreign callbacks become declared sandbox messages delivered to a typed task
 capability. They do not enter as arbitrary calls on an external thread.
-Ordinary task isolation, cancellation, and effect ordering then apply. Future
+Ordinary task isolation, termination, and effect ordering then apply. Future
 language-specific adapters may establish stronger direct-call promises from
 their own safety and interface systems.
 

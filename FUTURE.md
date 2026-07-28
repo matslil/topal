@@ -212,9 +212,9 @@ visibly rebind them after every transition.
 
 Within a closed structured task scope, verification can establish that:
 
-- every request receives one reply or declared cancellation outcome;
+- every request receives one reply or `task-terminated`;
 - every completion obligation is consumed;
-- every stream continuation is resumed, returned, or cancelled;
+- every stream continuation is resumed, returned, or closed;
 - no reply escapes its request scope;
 - no child task survives its owning scope; and
 - endpoints terminate in allowed protocol states.
@@ -233,13 +233,13 @@ The compiler can turn these rules into a formal race-freedom guarantee.
 ### Internal deadlock freedom
 
 The compiler can derive wait edges from value requests, completion waits,
-bounded backpressure, generator resumes, joins, and cancellation cleanup.
+bounded backpressure, generator resumes, joins, and termination cleanup.
 It then symbolically explores reachable combinations of handler and protocol
 states.
 
 A reachable closed state is a deadlock when it has unfinished internal
 obligations but no runnable transition, deliverable message, completion,
-cancellation transition, or declared external wait.
+termination transition, or declared external wait.
 
 The analysis must be path-sensitive. A graph cycle is not itself a proof of
 deadlock when its edges cannot be active together. Conversely, blocking queue
@@ -273,13 +273,13 @@ An invariant which must survive suspension needs explicit version, transaction,
 or protocol evidence because the task may process another message before the
 handler resumes.
 
-### Cancellation safety
+### Termination and closure safety
 
-Verification can check that cancellation follows a declared protocol path,
-cannot skip resource cleanup, cannot leave a child using scope-owned
-capabilities, and converges with normal completion on compatible terminal
-states. Reply-versus-cancellation races must be explicit alternatives rather
-than scheduler-dependent hidden behavior.
+Verification can check that hard or clean termination follows its declared
+lifecycle path, cannot skip resource cleanup, and cannot leave a child using
+scope-owned capabilities. It can likewise check that generator closure reaches
+compatible terminal states. Reply-versus-termination races must be explicit
+alternatives rather than scheduler-dependent hidden behavior.
 
 ## External boundaries and assumptions
 
@@ -343,7 +343,8 @@ external assumption.
 6. Formalize endpoint protocol state and linear communication obligations.
 7. Prove task-scope race freedom and communication completeness.
 8. Add path-sensitive internal deadlock analysis.
-9. Add cancellation, fairness-conditional liveness, and protocol summaries.
+9. Add termination, closure, fairness-conditional liveness, and protocol
+   summaries.
 10. Explore coinductive generator and effect-trace verification.
 
 Each stage should preserve the distinction between proof, exhaustive checking,

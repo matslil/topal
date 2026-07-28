@@ -98,6 +98,12 @@ committing a reply or final stream result, the caller receives
 `task-terminated`; its structured reason or cause may retain the underlying
 failure.
 
+The initiating `Result Completed` session of `terminate-cleanly` is the one
+termination exception. The runtime retains it while other queued and new
+requests receive `task-terminated`, then returns `Completed` only after the
+lifecycle handler and cleanup finish. A termination or cleanup failure uses
+that retained result instead.
+
 A `yield` expression similarly adds `generator-closed`, from Topal's stable
 generator error domain, to its declared resume value. This code is supplied
 only when the consumer abandons the linear continuation. Generator code may

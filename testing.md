@@ -195,7 +195,7 @@ iteration and every distinct exit:
 - normal loop completion;
 - early return;
 - error propagation;
-- cancellation or another declared control exit.
+- termination, generator closure, or another declared control exit.
 
 It does not distinguish one iteration from two or a thousand iterations merely
 because their counts differ. For structural recursion, the corresponding
