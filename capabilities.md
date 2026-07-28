@@ -8,6 +8,26 @@ This document defines the initial standard vocabulary. Capability matching and
 its distinction from value constraints are described in
 [generic abstraction and semantic capabilities](abstractions.md).
 
+## Non-owning access
+
+### Weak
+
+```text
+Weak Value
+  access : Weak Value -> Result Value
+```
+
+`Weak Value` constructs a non-owning reference associated with `Value`.
+Creating, copying, retaining, or destroying the weak reference does not extend
+the target's lifetime. Access atomically attempts to retain an ordinary
+`Value`; failure returns the language-defined `weak-unavailable` error.
+
+Applying a weak value to a block retains the target once, binds the ordinary
+value for the complete block, and releases it afterward. The retained value may
+escape through an ordinary move, but the compiler continues to reject possible
+owning cycles involving external resources. Task endpoints have their own
+lifetime and `task-terminated` semantics and do not use `Weak`.
+
 ## Value comparison
 
 Comparison results are ordinary enum values:

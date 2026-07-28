@@ -188,10 +188,65 @@ unobservable strong-reference cycle. A type whose destructor owns an external
 resource cannot participate in a possible cycle of owning references unless
 the compiler proves that the cycle is broken before its scope exits.
 
-Long-lived back references use a non-owning capability whose access returns an
-optional retained value while the owner remains alive. It cannot keep the
-resource alive by itself. The source model does not expose reference counts or
-garbage-collector timing.
+Long-lived back references use the language-defined `Weak` capability-backed
+construction:
+
+```topal
+Window is type
+  controls : List Control
+
+Control is type
+  window : Weak Window
+```
+
+Constructing `Weak Window` from an accessible `Window` records a non-owning
+reference. It does not keep the window alive and does not participate in an
+owning resource cycle. Destroying or copying the weak value has no effect on
+the target's lifetime. The source model does not expose reference counts,
+addresses, or garbage-collector timing.
+
+Access to a `Weak T` atomically attempts to retain an ordinary `T` and has
+effective type `Result T`. If the target is no longer retainable, it returns
+the language-defined `weak-unavailable` code from Topal's stable weak-reference
+error domain:
+
+```topal
+window : Window is control window
+```
+
+The successful `Window` remains alive for its ordinary lexical lifetime.
+Returning or storing it may extend that lifetime according to the normal move
+and safe-sharing rules. If doing so would establish a possible owning resource
+cycle, the existing cycle check rejects it.
+
+A block form retains the target once for a complete region:
+
+```topal
+control window { window }
+  update-title window
+  redraw window
+```
+
+When the weak value is already locally named, the same form is:
+
+```topal
+window { window }
+  update-title window
+  redraw window
+```
+
+The binding inside the block is an ordinary retained `Window`, not another
+weak value. Failure to retain prevents the block from running and returns
+`weak-unavailable`. On every successful path the reference remains valid for
+the whole block, avoiding races between separate weak accesses. Leaving the
+block releases it and accounts for a possible final-reference destructor
+failure. Returning the retained value from the block instead moves its lifetime
+into the receiving scope.
+
+`Weak T` is distinct from a task `Endpoint`. Both avoid owning the target
+lifetime, but an endpoint retains messaging authority and reports
+`task-terminated` when its task has ended; it is not promoted through weak
+access.
 
 Pure immutable values may use cyclic representations internally when their
 observable semantics remain finite. Recursive source values are nevertheless
