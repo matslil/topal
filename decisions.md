@@ -98,7 +98,7 @@ The grammar must select compatible spellings for:
 - mutually recursive declaration groups and decreasing measures;
 - immutable record reconstruction and qualified task-field replacement;
 - task scopes, child construction, waiting, termination, and selection;
-- explicit resource scopes and ownership transfer from them;
+- explicit resource scopes;
 - public error vocabulary bounds; and
 - foreign symbols, ABIs, and trusted declarations.
 
@@ -194,12 +194,14 @@ timer protocols, representation of deadlines, and deterministic testing rules
 remain to be designed. They should reuse quantities and units rather than
 introduce untyped duration numbers.
 
-## Resource transfer and non-owning capabilities
+## Resource moves and non-owning capabilities
 
-Explicit resource scopes establish deterministic cleanup. The type-level form
-of a permitted ownership transfer from one scope to another remains open.
-Possible designs include a linear transfer capability, returning a new scoped
-owner object, or a specialized acquire/commit operation.
+Returning a resource from an explicit resource scope, directly or inside
+another value, is an ordinary explicit escape. Existing ownership analysis
+moves it into the receiving scope when the old binding is no longer used, or
+uses safe sharing when other references remain. Destructor responsibility and
+possible failure follow the final reference. No transfer keyword, linear
+capability, scoped-owner wrapper, or public ownership type is added.
 
 The public operations for non-owning back references also need names and a
 precise interaction with task and endpoint capabilities. Their semantics must

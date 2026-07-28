@@ -1120,8 +1120,10 @@ disappears and is not an ordinary explicitly callable function. A function
 accepting a value with a fallible destructor must itself permit a `Result`,
 because its reference may be the final one. Ownership transfers, borrowing,
 sharing, and reference-count elimination are compiler decisions rather than
-surface syntax. See [resource lifetime and destruction](resources.md) for the
-semantic rules.
+surface syntax. Returning a resource—or a containing value—from an explicit
+resource scope is the ordinary source-level indication that its lifetime moves
+to the receiving scope. See
+[resource lifetime and destruction](resources.md) for the semantic rules.
 
 ## Generators
 
