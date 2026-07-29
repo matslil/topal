@@ -14,7 +14,7 @@ convention is visible at its declaration:
 conversation is generator ( initial : Request )
   yields OutgoingRequest
   resumes IncomingResponse
-  -> Result Conversation
+  -> Result ( Conversation, ConversationErrorCode )
 
   first-response : IncomingResponse is yield make-first-request initial
   second-response : IncomingResponse is yield make-second-request first-response
@@ -52,10 +52,11 @@ At this point `outgoing-request` is available to the caller. When the caller
 resumes the computation with an `IncomingResponse`, the `yield` expression
 evaluates successfully to that response and binds it to `response`.
 
-Every `yield` has the effective type `Result Resume`, where `Resume` is the
-declared `resumes` type. Its language-defined generator error vocabulary
-contains `generator-closed`. A consumer which abandons the continuation resumes
-the suspended `yield` with that error:
+Every `yield` has the effective type
+`Result ( Resume, GeneratorErrorCode )`, where `Resume` is the declared
+`resumes` type. Its language-defined generator error vocabulary contains
+`generator-closed`. A consumer which abandons the continuation resumes the
+suspended `yield` with that error:
 
 ```topal
 resume-result is yield outgoing-request

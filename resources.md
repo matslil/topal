@@ -17,7 +17,7 @@ cleanup for a resource it represents. Provisional syntax is:
 File is type
   descriptor : FileDescriptor
 
-  destroy is fn ( file : File ) -> Result Unit
+  destroy is fn ( file : File ) -> Result ( Unit, ResourceErrorCode )
     operating-system close file descriptor
 ```
 
@@ -26,7 +26,7 @@ function that constructs a `File` therefore produces a value with the same
 lifetime behavior:
 
 ```topal
-open-file is fn ( path : Path ) -> Result File
+open-file is fn ( path : Path ) -> Result ( File, ResourceErrorCode )
   operating-system open path
 ```
 
@@ -42,7 +42,7 @@ A destructor has exactly one of these result types:
 
 ```topal
 destroy is fn ( value : T ) -> Unit
-destroy is fn ( value : T ) -> Result Unit
+destroy is fn ( value : T ) -> Result ( Unit, ResourceErrorCode )
 ```
 
 It cannot produce a replacement value. Operations such as `flush`, `commit`,
@@ -69,7 +69,7 @@ with a fallible destructor consequently requires a fallible result, even when
 the function only observes the value:
 
 ```topal
-metadata is fn ( file : File ) -> Result FileMetadata
+metadata is fn ( file : File ) -> Result ( FileMetadata, ResourceErrorCode )
   inspect file
 ```
 
@@ -206,9 +206,9 @@ the target's lifetime. The source model does not expose reference counts,
 addresses, or garbage-collector timing.
 
 Access to a `Weak T` atomically attempts to retain an ordinary `T` and has
-effective type `Result T`. If the target is no longer retainable, it returns
-the language-defined `weak-unavailable` code from Topal's stable weak-reference
-error domain:
+effective type `Result ( T, WeakErrorCode )`. If the target is no longer
+retainable, it returns the language-defined `weak-unavailable` code from Topal's
+stable weak-reference error domain:
 
 ```topal
 window : Window is control window

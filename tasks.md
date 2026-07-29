@@ -32,7 +32,7 @@ counter-service is Counter
   current is fn (
     _ : MessageContext,
     Unit
-  ) -> Result Nat
+  ) -> Result ( Nat, () )
     count
 ```
 
@@ -135,14 +135,14 @@ For example:
 CommandProcessor is Interface
   process-cmd is fn (
     cmd : String
-  ) -> Result String
+  ) -> Result ( String, CommandErrorCode )
 
 command-service is CommandTask
   CommandProcessor
     process-cmd is fn (
       message : MessageContext,
       cmd : String
-    ) -> Result String
+    ) -> Result ( String, CommandErrorCode )
       record-session message session-id
       process cmd
 ```
@@ -161,7 +161,7 @@ without discarding its type:
 process-cmd is fn (
   _ : MessageContext,
   cmd : String
-) -> Result String
+) -> Result ( String, CommandErrorCode )
   process cmd
 ```
 
@@ -188,7 +188,7 @@ without changing clients:
 ServiceBrokerInterface is Interface
   find-task is fn (
     identity : TaskIdentity
-  ) -> Result Endpoint
+  ) -> Result ( Endpoint, ServiceBrokerErrorCode )
 
   find-interface is generator (
     interface : Interface,
@@ -196,7 +196,7 @@ ServiceBrokerInterface is Interface
   )
     yields Endpoint
     resumes Unit
-    -> Result Unit
+    -> Result ( Unit, ServiceBrokerErrorCode )
 ```
 
 The `within` namespace narrows where interface discovery starts. Omitting that
@@ -223,9 +223,9 @@ The declaration determines the message interaction without separate `event`,
 
 ```text
 fn (...) -> Unit               event without a completion reply
-fn (...) -> Result Completed   completion request
-fn (...) -> Result Value       value request
-generator ... -> Result Value  stream
+fn (...) -> Result ( Completed, ApplicationErrors )   completion request
+fn (...) -> Result ( Value, ApplicationErrors )       value request
+generator ... -> Result ( Value, ApplicationErrors )  stream
 ```
 
 An event call may still account for declared queue placement, backpressure, or
@@ -236,18 +236,19 @@ establishes the corresponding ordering dependency.
 
 Every ordinary function handler which has a response channel returns `Result`.
 Consequently, plain `Completed` and plain value results are invalid handler
-shapes. `Result Unit` is also invalid: `Unit` declares an event with no
-completion response, while `Result` would require such a response to report
-success or failure. A handler which returns only completion evidence uses
-`Result Completed`.
+shapes. `Result ( Unit, ApplicationErrors )` is also invalid: `Unit` declares
+an event with no completion response, while `Result` would require such a
+response to report success or failure. A handler which returns only completion
+evidence uses `Result ( Completed, ApplicationErrors )`.
 
 These restrictions apply to published message handlers, including handlers in
 a task's implicit interface. They do not constrain private helper functions or
 the language-defined lifecycle handlers. An explicit interface operation
 returning plain `Completed` or another plain value can have a direct
 implementation, but cannot be implemented by task message passing. To permit
-both direct and task implementations, the operation declares `Result
-Completed` or `Result Value`.
+both direct and task implementations, the operation declares
+`Result ( Completed, ApplicationErrors )` or
+`Result ( Value, ApplicationErrors )`.
 
 The same `Unit` and `Completed` distinction applies to a direct implementation
 of a shared interface. `Unit` establishes no completion dependency and permits
@@ -258,15 +259,17 @@ it does not require blocking an operating-system thread.
 A generator handler establishes a stream. Its yielded type is delivered from
 the serving task, its resume type is delivered back to that task, and its final
 return terminates the stream. The final return of an ordinary task generator
-handler must be a `Result`, including `Result Unit` when the stream has no
-application summary. Individual yields are not wrapped. A generator resumed
-with `Unit` is a one-way server-to-caller stream.
+handler must be a `Result`, including
+`Result ( Unit, ApplicationErrors )` when the stream has no application
+summary. Individual yields are not wrapped. A generator resumed with `Unit` is
+a one-way server-to-caller stream.
 
 Task messaging adds the language-defined `task-terminated` error code to the
 declared application errors of each request or stream. This does not add
-another wrapper: `Result Value` remains the operation's result type, and its
-effective error-code set is the union of the declared codes and
-`task-terminated`. Ordinary error matching, projection, and propagation apply.
+another wrapper: `Result ( Value, ApplicationErrors )` remains the operation's
+declared result type, and its effective error-code set is the union of the
+declared codes and `TaskErrorCode`. Ordinary error matching, projection, and
+propagation apply.
 
 An endpoint denotes a task instance which existed in the application. Task
 messaging therefore does not add separate unavailable, admission, or transport
@@ -327,14 +330,14 @@ Task Input -> Task
 The task capability is returned only after `start` finishes.
 
 ```text
-start : Input -> Result Completed
-Task Input -> Result Task
+start : Input -> Result ( Completed, StartupErrors )
+Task Input -> Result ( Task, StartupErrors )
 ```
 
 Construction waits and returns either the initialized task or its startup
-error. `start -> Result Unit` is invalid for the same reason as it is for an
-ordinary task handler: a non-waiting interaction has no response channel on
-which to report the error.
+error. `start -> Result ( Unit, StartupErrors )` is invalid for the same reason
+as it is for an ordinary task handler: a non-waiting interaction has no
+response channel on which to report the error.
 
 Messages sent to a task during non-waiting startup may enter its queue, but
 ordinary handlers do not run until `start` finishes. Every successful path
@@ -394,7 +397,7 @@ end with the language-defined terminal operation `terminate-cleanly reason`:
 stop is fn (
   _ : MessageContext,
   reason : TerminationReason
-) -> Result Completed
+) -> Result ( Completed, TerminationErrorCode )
   terminate-cleanly reason
 ```
 
@@ -408,11 +411,12 @@ finish.
 
 No source code can execute after `terminate-cleanly`. The compiler permits it
 only as the terminal expression of a message handler returning `Unit` or
-`Result Completed`. With `Unit`, the sender does not observe completion. With
-`Result Completed`, the runtime retains the initiating interaction session and
-replies only after the lifecycle handler and cleanup finish. Termination or
-cleanup failure is returned instead of `Completed`. Other request handlers
-cannot use the operation.
+`Result ( Completed, TerminationErrorCode )`. With `Unit`, the sender does not
+observe completion. With `Result ( Completed, TerminationErrorCode )`, the
+runtime retains the initiating interaction session and replies only after the
+lifecycle handler and cleanup finish. Termination or cleanup failure is
+returned instead of `Completed`. Other request handlers cannot use the
+operation.
 
 Termination may instead be observed as `task-terminated` in the existing
 `Result` of a pending request or the final return of a stream, the result of
@@ -448,7 +452,7 @@ server : Server
 start is fn (
   arguments : CommandArguments,
   environment : Map ( String, String )
-) -> Result Completed
+) -> Result ( Completed, ApplicationErrorCodes )
 
   configuration is load-configuration ( arguments, environment )
   server is Server configuration

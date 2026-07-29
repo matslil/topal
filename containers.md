@@ -15,7 +15,7 @@ possible values:
 Tuple ( A, B, C )   = A * B * C
 Variant ( A, B, C ) = A + B + C
 Option T            = Unit + T
-Result T            = T + Error
+Result ( T, Errors )            = T + Error
 ```
 
 Records are labeled products and tagged unions are labeled sums. They do not
@@ -26,8 +26,9 @@ List T = Empty | Entry ( T, List T )
 ```
 
 Unlike a general two-alternative variant, `Result` uses the common structured
-[error representation](errors.md). Each fallible function connects that
-representation to a specific, possibly shared `ErrorCode` enum.
+[error representation](errors.md). Each fallible function supplies an explicit
+error-vocabulary component containing one or more, possibly shared,
+`ErrorCode` enums.
 
 This is a semantic construction, not a required storage representation. The
 compiler may represent a list as a tree, flat buffer, shared slice, or another

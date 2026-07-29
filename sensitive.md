@@ -86,7 +86,7 @@ sensitive information:
 send-credential is fn (
   connection : Connection,
   sensitive credential : String
-) -> Result Completed
+) -> Result ( Completed, BoundaryErrorCode )
   protocol-send ( connection, credential )
 ```
 

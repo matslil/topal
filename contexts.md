@@ -67,7 +67,7 @@ capabilities.
 lexically defined:
 
 ```topal
-process-request is fn ( request : Request ) -> Result Response
+process-request is fn ( request : Request ) -> Result ( Response, ContextErrorCode )
   (@ diagnostics) log "Processing request"
   handle-request request
 ```
@@ -266,7 +266,7 @@ Module (
   user-service : Endpoint UserService
 )
 
-load-user is fn ( id : UserId ) -> Result User
+load-user is fn ( id : UserId ) -> Result ( User, ContextErrorCode )
   @ user-service request GetUser id
 ```
 

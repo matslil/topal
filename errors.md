@@ -6,11 +6,40 @@ function declares the error-code vocabulary it may return.
 
 ## Result
 
-`Result Value` represents either a successful `Value` or an `Error`:
+`Result` takes the success type and one explicit error-vocabulary component:
 
 ```text
-Result Value = Value + Error
+Result ( Value, Errors ) = Value + Error
 ```
+
+`Errors` is either one concrete `ErrorCode` subtype, a product of several such
+types, or the empty product `()`. For example:
+
+```topal
+Result ( Document, FileErrorCode )
+
+Result (
+  Document,
+  ( FileErrorCode, ParserErrorCode )
+)
+```
+
+The compiler flattens nested error-vocabulary products, removes duplicate
+nominal types, and treats their order as irrelevant. The first component is
+always the successful value type; every member of the second component must be
+an `ErrorCode` type. `Result Value` is invalid and no error vocabulary is
+resolved implicitly from the surrounding scope.
+
+The empty vocabulary is valid:
+
+```topal
+Result ( Completed, () )
+```
+
+It promises that the source operation declares no application error. The
+wrapper may still be required by an implementation boundary, such as task
+messaging, which contributes a documented language-defined vocabulary to the
+effective compiled contract.
 
 Fallibility is part of a function's explicit interface. Input and output types
 are mandatory and are not inferred from its body:
@@ -19,7 +48,7 @@ are mandatory and are not inferred from its body:
 increment is fn ( value : Integer ) -> Integer
   value + 1
 
-read-count is fn ( path : Path ) -> Result Integer
+read-count is fn ( path : Path ) -> Result ( Integer, FileErrorCode )
   body
 ```
 
@@ -57,9 +86,10 @@ make the containing `Error` a subtype. Every error retains the same `Error`
 type and representation. For example, a file code remains an `ErrorCode` when
 stored in `Error.code`, and the containing value remains simply `Error`.
 
-The compiler tracks a function's permitted code subtype separately as part of
-its `Result` contract. It does not parameterize `Error`, derive an
-`Error FileErrorCode` type, or require callers to inspect the type of an error.
+The compiler obtains a function's permitted code subtypes from the explicit
+second component of its `Result` contract. It does not parameterize `Error`,
+derive an `Error FileErrorCode` type, or require callers to inspect the type of
+an error.
 
 ## Error-code vocabularies
 
@@ -74,15 +104,42 @@ invalid--path
 ```
 
 The definition may live in any namespace and may be shared by unrelated
-functions. A fallible function must have an `ErrorCode` type available when its
-`Result` contract is declared. The compiler records the exact resolved type as
-part of that function's interface.
+functions. A fallible function names every permitted vocabulary explicitly in
+the second component of its `Result`. No specially named `ErrorCode` binding is
+searched for in the function's scope.
+
+Visible generic code may capture that complete second component symbolically:
+
+```text
+retry :
+  ( () -> Result ( T, Errors ) )
+  -> Result ( T, Errors )
+```
+
+If the generic body introduces another vocabulary, its result combines the
+components:
+
+```topal
+Result ( T, ( Errors, RetryErrorCode ) )
+```
+
+Typed generic intermediate code retains `Errors` until final application
+specialization. Explicit vocabulary parameters or bounds are needed only for
+opaque implementations, foreign boundaries, abstraction requirements, or
+otherwise uninferable relationships.
 
 An implementation boundary may contribute an additional language-defined code
 to that declared vocabulary. In particular, a task request or stream adds
-`task-terminated`, from Topal's stable task error domain. The operation still
-has one `Result Value`; its effective code set is the union of the application
-vocabulary and this task code.
+`task-terminated`, from Topal's stable task error domain. An operation declared
+as `Result ( Value, ApplicationErrors )` therefore has the effective task
+contract:
+
+```topal
+Result (
+  Value,
+  ( ApplicationErrors, TaskErrorCode )
+)
+```
 
 This widening is implementation evidence rather than a mutation of the source
 interface. A direct implementation exposes only the codes it declares. A task
@@ -98,11 +155,11 @@ committing a reply or final stream result, the caller receives
 `task-terminated`; its structured reason or cause may retain the underlying
 failure.
 
-The initiating `Result Completed` session of `terminate-cleanly` is the one
-termination exception. The runtime retains it while other queued and new
-requests receive `task-terminated`, then returns `Completed` only after the
-lifecycle handler and cleanup finish. A termination or cleanup failure uses
-that retained result instead.
+The initiating `Result ( Completed, TerminationErrorCode )` session of
+`terminate-cleanly` is the one termination exception. The runtime retains it
+while other queued and new requests receive `task-terminated`, then returns
+`Completed` only after the lifecycle handler and cleanup finish. A termination
+or cleanup failure uses that retained result instead.
 
 A `yield` expression similarly adds `generator-closed`, from Topal's stable
 generator error domain, to its declared resume value. This code is supplied
@@ -113,32 +170,29 @@ application error to a consumer which no longer exists. Other shutdown and
 cleanup errors retain their ordinary scope behavior.
 
 Accessing a `Weak T` adds `weak-unavailable`, from Topal's stable weak-reference
-error domain, to the resulting `Result T`. The access atomically either retains
-an ordinary `T` or reports that the target is no longer retainable. A successful
-retained value remains valid for its lexical lifetime; `weak-unavailable`
-cannot subsequently replace it.
+error domain, to the resulting `Result ( T, WeakErrorCode )`. The access
+atomically either retains an ordinary `T` or reports that the target is no
+longer retainable. A successful retained value remains valid for its lexical
+lifetime; `weak-unavailable` cannot subsequently replace it.
 
-Different functions in the same source file may use different `ErrorCode`
-types. The connection is between a function and the type resolved for its
-contract; it does not move the type into the function's namespace or create a
-new subtype there.
-
-A scope may bind an imported definition to the required local name:
+Different functions in the same source file may name different error
+vocabularies directly. Naming a type in `Result` does not move it into the
+function's namespace or create a new subtype there. Ordinary aliases remain
+available for long or repeated vocabulary products:
 
 ```topal
-use shared-error
-ErrorCode is shared-error ErrorCode
+DocumentErrors is ( FileErrorCode, ParserErrorCode )
+
+load-document is fn (
+  path : Path
+) -> Result ( Document, DocumentErrors )
+  body
 ```
 
-This is an alias, not a copy or conversion. Both names denote the same enum and
-its values retain the same identity.
-
-The code vocabulary is part of a fallible function's public type. When the
-function is exported, its `ErrorCode` definition must also be exported through
-some reachable namespace. It need not be exported under the function's
-namespace, but a consumer must be able to resolve the exact type in order to
-use the function. The compiler rejects a public fallible function whose
-`ErrorCode` remains private.
+The complete vocabulary product is part of a fallible function's public type.
+When the function is exported, every vocabulary it names must also be exported
+through a reachable namespace. The compiler rejects a public fallible function
+whose result names a private vocabulary.
 
 ## Error-code descriptions
 
@@ -182,21 +236,26 @@ set, it can also check the match for exhaustiveness; an unconstrained dynamic
 
 ## Success projection and propagation
 
-When an expression has type `Result Value` but its immediate context explicitly
-requires `Value`, Topal projects the successful value and returns an error from
-the current function unchanged:
+When an expression has type `Result ( Value, SourceErrors )` but its immediate
+context explicitly requires `Value`, Topal projects the successful value and
+returns an error from the current function unchanged:
 
 ```topal
-load-configuration is fn ( path : Path ) -> Result Configuration
+load-configuration is fn (
+  path : Path
+) -> Result (
+  Configuration,
+  ( FileErrorCode, ParserErrorCode )
+)
   text : String is read-file path
   parse-configuration text
 ```
 
 If `read-file path` succeeds, its `String` is bound to `text`. If it fails, the
 error is returned immediately from `load-configuration`. The enclosing
-function must declare a compatible `Result` and `ErrorCode` contract. It may
-use the same shared code type or explicitly translate or wrap the error into
-its own code vocabulary.
+function must declare a `Result` whose explicit vocabulary contains every
+propagated source vocabulary. It may instead translate or wrap the error into
+one of its own declared vocabularies.
 
 Merely binding, passing, or returning a `Result` does not project it:
 
@@ -204,9 +263,10 @@ Merely binding, passing, or returning a `Result` does not project it:
 attempt is read-file path
 ```
 
-Here `attempt` retains type `Result String`. Projection is requested only by a
-context that explicitly requires the success type. An infallible function
-cannot project a result because it has nowhere to return the error:
+Here `attempt` retains the complete result type of `read-file`, including its
+explicit error-vocabulary component. Projection is requested only by a context
+that explicitly requires the success type. An infallible function cannot
+project a result because it has nowhere to return the error:
 
 ```topal
 load-length is fn ( path : Path ) -> Integer

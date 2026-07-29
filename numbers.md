@@ -122,7 +122,7 @@ ByteCounter value
 and conceptually returns:
 
 ```topal
-Result ByteCounter
+Result ( ByteCounter, ArithmeticErrorCode )
 ```
 
 Failure uses the numeric construction domain's `out-of-range` error code.

@@ -14,7 +14,7 @@ its distinction from value constraints are described in
 
 ```text
 Weak Value
-  access : Weak Value -> Result Value
+  access : Weak Value -> Result ( Value, WeakErrorCode )
 ```
 
 `Weak Value` constructs a non-owning reference associated with `Value`.

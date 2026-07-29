@@ -85,6 +85,12 @@ The following questions from the initial audit are no longer open:
 - Possible compiler-generated tests, symbolic proof tables, capability-law
   verification, and task/protocol proofs are recorded as
   [future work](FUTURE.md), not current language guarantees.
+- `Result` has two explicit components:
+  `Result ( Value, ErrorVocabularies )`. The second is one `ErrorCode` type, a
+  product of them, or `()`. Products are flattened, deduplicated by nominal
+  identity, and order-independent. No specially named error type is resolved
+  from the surrounding scope. Visible generic bodies retain the complete
+  vocabulary component symbolically in typed intermediate code.
 
 ## Surface grammar
 
@@ -94,12 +100,12 @@ The grammar must select compatible spellings for:
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
 - existential package opening;
-- explicit effect bounds and effect-row parameters;
+- explicit effect bounds and otherwise uninferable effect-row parameters;
 - mutually recursive declaration groups and decreasing measures;
 - immutable record reconstruction and qualified task-field replacement;
 - task scopes, child construction, waiting, termination, and selection;
 - explicit resource scopes;
-- public error vocabulary bounds; and
+- otherwise uninferable public error-vocabulary parameters and bounds; and
 - foreign symbols, ABIs, and trusted declarations.
 
 These should be designed together so that indentation, recursive
@@ -149,14 +155,15 @@ abstraction requirements, programmer restrictions, and relationships which
 cannot be inferred from the body. Their surface spelling remains open.
 
 Task message result adaptation is settled. `Unit` handlers are events with no
-reply. Every ordinary function handler that replies must return `Result
-Completed` or `Result Value`; plain reply types and function `Result Unit` are
-invalid. A task generator's final return must also be `Result`. An explicit
-interface must therefore declare `Result` to permit a request or stream
-implementation through task messaging. Task interaction failures extend the
-existing result's effective error-code vocabulary through implementation
-evidence rather than adding a second wrapper or changing direct
-implementations.
+reply. Every ordinary function handler that replies must return
+`Result ( Completed, ApplicationErrors )` or
+`Result ( Value, ApplicationErrors )`; plain reply types and function
+`Result ( Unit, ApplicationErrors )` are invalid. A task generator's final
+return must also be `Result`. An explicit interface must therefore declare
+`Result` to permit a request or stream implementation through task messaging.
+Task interaction failures extend the existing result's effective error-code
+vocabulary through implementation evidence rather than adding a second wrapper
+or changing direct implementations.
 
 The only portable task-interaction code is `task-terminated`, in Topal's stable
 task error domain. An endpoint always denotes an application-local task
@@ -182,20 +189,22 @@ task state receive automatic cleanup. Every suspension point must consequently
 leave state cleanly destructible.
 
 `terminate-cleanly` is the cooperative alternative available as the terminal
-expression of a message handler returning `Unit` or `Result Completed`. It
-rejects queued and new requests with `task-terminated`, discards their `Unit`
-events, allows already-suspended handlers to finish, and then performs the
-ordinary lifecycle handler and cleanup. The `Result Completed` form retains
-the initiating session and replies after termination; the `Unit` form does not
-wait.
+expression of a message handler returning `Unit` or
+`Result ( Completed, TerminationErrorCode )`. It rejects queued and new
+requests with `task-terminated`, discards their `Unit` events, allows
+already-suspended handlers to finish, and then performs the ordinary lifecycle
+handler and cleanup. The `Result ( Completed, TerminationErrorCode )` form
+retains the initiating session and replies after termination; the `Unit` form
+does not wait.
 
 Generator abandonment is settled independently of a general cancellation
-surface. `yield` has effective type `Result ResumeValue`; abandoning its linear
+surface. `yield` has effective type
+`Result ( ResumeValue, GeneratorErrorCode )`; abandoning its linear
 continuation supplies the language-defined `generator-closed` code. The
 generator may perform explicit shutdown work but cannot yield again on that
-path. Returning or propagating the close signal ends the generator, after which
-automatic cleanup runs. The owning scope waits for shutdown and cleanup and
-retains their failures. Consumers have no explicit generator-cancellation
+path. Returning or propagating the close signal ends the generator, after
+which automatic cleanup runs. The owning scope waits for shutdown and cleanup
+and retains their failures. Consumers have no explicit generator-cancellation
 operation.
 
 Clock-provided timeout alternatives avoid ambient time. The standard clock and
@@ -214,12 +223,12 @@ capability, scoped-owner wrapper, or public ownership type is added.
 
 Non-owning resource back references use the language-defined `Weak`
 capability-backed construction. A `Weak T` does not keep `T` alive. Access
-atomically returns `Result T` with `weak-unavailable` when the target cannot be
-retained. Applying a weak value to a block retains one ordinary `T` for the
-complete block; that value may escape through the ordinary move rules. Weak
-references expose no counts or collection timing. Task endpoints remain
-distinct messaging authorities and report `task-terminated` rather than using
-weak promotion.
+atomically returns `Result ( T, WeakErrorCode )` with `weak-unavailable` when
+the target cannot be retained. Applying a weak value to a block retains one
+ordinary `T` for the complete block; that value may escape through the ordinary
+move rules. Weak references expose no counts or collection timing. Task
+endpoints remain distinct messaging authorities and report `task-terminated`
+rather than using weak promotion.
 
 ## Foreign ABI catalog
 

@@ -263,7 +263,7 @@ available for generated documentation and diagnostics. Constructing a name
 from text requires validation:
 
 ```topal
-label : Result (lang Label)
+label : Result ( lang Label, IntrospectionErrorCode )
 label is lang label "age"
 ```
 
@@ -325,7 +325,7 @@ Static functions can fold a view to derive ordinary functions:
 
 ```topal
 serializer-for is fn static ( subject : Type ) ->
-  fn ( subject ) -> Result Bytes
+  fn ( subject ) -> Result ( Bytes, IntrospectionErrorCode )
 
   lang view subject
     lang RecordType fields then record-serializer fields
