@@ -64,9 +64,11 @@ The following questions from the initial audit are no longer open:
   `Language T` separately supplies a static language identity. Language-specific
   case operations require both without changing canonical string equality.
 - Programmers may declare law evidence. Soundly proved or exhaustively checked
-  claims are verified; unresolved claims become `trusted-unverified` evidence
-  and emit `unverified-law` by default; refuted claims are errors. Sampling can
-  refute but cannot verify a universal law.
+  claims are verified; unresolved claims ordinarily become
+  `trusted-unverified` evidence and emit `unverified-law` by default; refuted
+  claims are errors. Sampling can refute but cannot verify a universal law.
+  Evidence required for compiler safety or totality, including `Decreases`,
+  must instead be verified.
 - `lang disable-warning W` suppresses `W` for the next complete statement.
   `lang push-disable-warning W` and the matching
   `lang pop-disable-warning W` delimit a lexical suppression region. Suppression
@@ -91,6 +93,13 @@ The following questions from the initial audit are no longer open:
   identity, and order-independent. No specially named error type is resolved
   from the surrounding scope. Visible generic bodies retain the complete
   vocabulary component symbolically in typed intermediate code.
+- Declaration scopes behave as two semantic stages: complete declaration
+  headers are collected before their definitions are checked. The compiler
+  infers mutually recursive groups from the resulting call graph; initializer
+  values still obey their construction dependencies. An optional function
+  capability `Decreases ( Measures )` supplies pure well-founded measure
+  expressions when termination inference needs guidance or an opaque,
+  interface, or higher-order contract must publish the relationship.
 
 ## Surface grammar
 
@@ -101,7 +110,6 @@ The grammar must select compatible spellings for:
   constructions such as `Map ( Key, Value )`;
 - existential package opening;
 - explicit effect bounds and otherwise uninferable effect-row parameters;
-- mutually recursive declaration groups and decreasing measures;
 - immutable record reconstruction and qualified task-field replacement;
 - task scopes, child construction, waiting, termination, and selection;
 - explicit resource scopes;

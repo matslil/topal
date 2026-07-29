@@ -296,6 +296,11 @@ interface therefore proves that its declarations are implemented; it does not
 by itself assert algebraic laws such as equality, ordering, associativity, or
 losslessness.
 
+When a function declaration in an interface explicitly includes
+`Decreases ( Measures )` after its return type, that capability is part of the
+function contract. Each implementation must prove the declared measure even
+when it could prove termination by a different internal argument.
+
 Capabilities remain appropriate when generic code requires those laws.
 Interfaces remain appropriate when code needs one implementation of a related
 call surface which may be local, packaged, wrapped, or reached through message

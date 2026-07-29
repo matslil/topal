@@ -1233,6 +1233,26 @@ precedence assumptions:
 
 Ordinary block value, immutable shadowing, `return`, recursion, termination, and
 generator productivity follow the [execution and totality](execution.md) rules.
+Within each declaration scope, complete declaration headers are visible while
+definitions are checked, regardless of their source position. This permits the
+compiler to infer mutually recursive function groups without a grouping
+construct. Evaluated initializer values remain subject to their ordinary
+construction dependencies.
+
+When termination is not otherwise inferable, `Decreases` classifies the
+complete function after its return type:
+
+```topal
+search is fn (
+  active : List Node,
+  deferred : List Node
+) -> Optional Node : Decreases ( active size + deferred size )
+```
+
+The arguments are pure measure expressions over the function inputs. Multiple
+arguments form a lexicographic measure. The compiler may infer the same evidence
+without source syntax, but an explicit capability is required when an opaque,
+interface, or higher-order declaration needs to publish the relationship.
 
 ## Decision tables
 
