@@ -103,6 +103,13 @@ The following questions from the initial audit are no longer open:
   with `and`, `or`, or static functions returning such combinations. Operations
   remain ordinary functions, and concrete overloads precede generic
   capability-constrained fallbacks when specialized behavior is desired.
+- Effect expressions reuse capability-style classification and composition
+  syntax while retaining effect semantics. A post-return classifier is an upper
+  bound; function inputs may be classified for ordered specialization; `and`
+  permits both effect sets; `or` retains distinguished implementation
+  alternatives; and `Effects ()` is empty. Effect classifiers imply
+  `Function`. Every resource parameter resolves to an existing visible identity
+  rather than ambient authority.
 - Declaration scopes behave as two semantic stages: complete declaration
   headers are collected before their definitions are checked. The compiler
   infers mutually recursive groups from the resulting call graph; initializer
@@ -118,7 +125,6 @@ The grammar must select compatible spellings for:
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
 - existential package opening;
-- explicit effect bounds and otherwise uninferable effect-row parameters;
 - immutable record reconstruction and qualified task-field replacement;
 - task scopes, child construction, waiting, termination, and selection;
 - explicit resource scopes;
@@ -169,10 +175,10 @@ conservative shared implementation. The intermediate format is
 compiler-versioned rather than a permanent machine ABI.
 
 Consequently, visible generic bodies do not require source-level effect-row
-parameters merely to defer compilation. Explicit effect upper bounds and named
-rows remain relevant for opaque implementations, foreign boundaries,
-abstraction requirements, programmer restrictions, and relationships which
-cannot be inferred from the body. Their surface spelling remains open.
+parameters merely to defer compilation. Explicit effect upper bounds follow the
+completed function type and otherwise-uninferable restrictions classify a
+complete function input directly. Both use the same syntax as capability
+classification; the classifier kind supplies their different meaning.
 
 Task message result adaptation is settled. `Unit` handlers are events with no
 reply. Every ordinary function handler that replies must return

@@ -47,15 +47,77 @@ conflict for the same or possibly aliasing resource. The compiler combines
 those laws with `DependsOn`, `Independent`, `Conflicts`, `Aliases`, and
 `MayAlias` capability evidence to build the execution dependency graph.
 
-## Inference and declarations
+Every resource parameter in an effect expression resolves to an existing
+identity visible at the function declaration. It may come from a function
+input, captured resource, constructed-context member, endpoint, sandbox grant,
+or static declaration. An effect name never invents ambient authority:
 
-Calling a function adds its effects to the caller. Constructing or passing an
+```topal
+load-configuration is fn (
+  file : File
+) -> Result ( Configuration, ConfigurationErrorCode )
+  : Read file
+```
+
+Here `file` is the exact resource identity being read. A possible future
+standard-library file-system object would be an ordinary visible object; it is
+not part of the initial effect model.
+
+## Inference and classification
+
+Calling a function adds its effects to the caller. Constructing or passing a
 function value does not perform its effects. A higher-order call adds the
 effects of a callback only along paths on which that callback is invoked.
 
 Functions normally rely on inference. A declaration may state an effect upper
-bound to document and restrict its implementation. The compiler rejects an
-implementation whose inferred effects exceed that bound.
+bound to document and restrict its implementation. Effect expressions use the
+same classification syntax as capabilities but retain their distinct effect
+semantics. A bound follows the completed function type:
+
+```topal
+copy-file is fn (
+  source : File,
+  destination : File
+) -> Result ( Completed, FileErrorCode )
+  : Read source and Write destination
+```
+
+The compiler rejects an implementation whose inferred effects exceed that
+bound. The bound does not require every listed interaction to occur. A function
+with `Effects ()` or only `Read source` satisfies this example; one which also
+writes another resource does not. Compiled implementation evidence retains the
+smaller exact inferred row.
+
+Effect expressions combine with the same surface operators as capability
+expressions:
+
+- `A and B` permits interactions from both effect sets;
+- `A or B` retains a statically distinguished alternative effect set;
+- nested combinations flatten and duplicate effects collapse by identity; and
+- `Effects ()` is the empty runtime effect set.
+
+When an `or` alternative is erased, its safe effect contract is the `and`
+combination of every possible alternative. A single implementation whose
+runtime branches may perform `A` or `B` likewise has the inferred upper bound
+`A and B`; `or` is reserved for retained alternative implementation evidence.
+
+Named and parameterized combinations are ordinary static bindings and
+functions:
+
+```topal
+FileUpdate is fn static (
+  file : File
+) -> Effects
+  Read file and Write file
+
+CopyEffects is fn static (
+  source : File,
+  destination : File
+) -> Effects
+  Read source and Write destination
+```
+
+These construct effect expressions; they do not perform the interactions.
 
 Public compiled implementations expose their inferred effect evidence alongside
 their callable interface. This evidence belongs to that implementation, not to
@@ -82,7 +144,9 @@ match guards, equality, ordering, and law proofs are also pure and total.
 ## Effect polymorphism
 
 Higher-order functions quantify over the effects of their function inputs.
-Conceptually:
+Capturing the complete function object also captures its exact symbolic effect
+evidence. Explicit source-level row variables are therefore unnecessary for
+visible generic code. Conceptually:
 
 ```text
 map : forall effects E.
@@ -96,6 +160,47 @@ The higher-order implementation may add its own effects in addition to `E`.
 It may also constrain `E`; parallel traversal, for example, requires evidence
 that callback effects are independent between entries or otherwise safely
 ordered.
+
+When a higher-order declaration needs an explicit restriction, it classifies
+the function input directly:
+
+```topal
+read-with is fn (
+  file : File,
+  reader : ( F : Read file )
+) -> Result ( Bytes, FileErrorCode )
+  reader file
+```
+
+Because effect expressions classify function objects, `F : Read file` also
+establishes `F : Function`; spelling `F : Function : Read file` is valid but
+redundant.
+
+Ordered overloads may specialize on those effect classifiers:
+
+```topal
+process is fn (
+  resource : Resource,
+  operation : ( F : Effects () )
+) -> Completed
+  process-without-interaction operation
+
+process is fn (
+  resource : Resource,
+  operation : ( F : Read resource )
+) -> Completed
+  process-read-operation ( resource, operation )
+
+process is fn (
+  resource : Resource,
+  operation : Function
+) -> Completed
+  process-conservatively ( resource, operation )
+```
+
+Declarations are tested in source order. An effect-free function also satisfies
+the `Read resource` upper bound, so the narrower empty-effect case appears
+first. The final `Function` overload is the conservative fallback.
 
 The compiler normally infers effect-row and resource-identity parameters and
 retains their relationships in typed generic intermediate code distributed
@@ -221,20 +326,14 @@ checks. Future language-specific adapters may provide stronger promises from
 their own interface and safety systems; those are not part of the initial
 foreign model.
 
-## Surface syntax still to choose
+## Remaining surface details
 
-The semantic model leaves these grammar choices open:
+Effect classification, combination, kind implication, and specialization reuse
+the settled capability-style syntax. Ordinary visible generic bodies do not
+require explicit row-variable declarations.
 
-- how an explicit effect upper bound follows a function type;
-- how otherwise uninferable effect-row parameters are named in higher-order
-  declarations;
-- how a source declaration names a sandbox adapter and its granted resources;
-  and
-- whether private inferred effects have an optional display abbreviation.
-
-Ordinary visible generic bodies do not require explicit effect-row syntax.
-Bounds and named rows remain useful for opaque implementations, foreign
-boundaries, abstraction requirements, or a programmer-imposed restriction.
-
-Compiler diagnostics and static introspection should display the full semantic
-row regardless of the chosen source shorthand.
+The exact source declaration for a sandbox adapter and its granted resources
+remains part of the foreign-boundary grammar. Private inferred effects may
+eventually receive an optional display abbreviation. Compiler diagnostics and
+static introspection should display the full semantic row regardless of any
+shorthand.
