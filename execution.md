@@ -96,10 +96,33 @@ establish separate return boundaries.
 
 ## Recursion
 
-A function may refer to itself after its complete input and output type has
-been established. A group of declarations may explicitly form a mutually
-recursive group; arbitrary forward references do not silently create one.
-Every member of the group is checked against the declared types of the others.
+Declaration scopes behave as if they are processed in two stages. The compiler
+first collects every declaration whose complete classification is explicit,
+then checks its definition with all such declarations in the scope visible.
+An implementation may optimize or combine these stages provided observable
+name resolution is identical.
+
+Function input and output types are explicit, so later function declarations
+may be referenced from earlier definitions. The compiler constructs the call
+graph and treats each strongly connected component as one mutually recursive
+group. No source-level recursive-group declaration is required. Overload
+priority remains source order even though every complete header is visible.
+
+```topal
+even is fn ( value : Nat ) -> Boolean
+  value = 0 then true
+  otherwise odd ( value - 1 )
+
+odd is fn ( value : Nat ) -> Boolean
+  value = 0 then false
+  otherwise even ( value - 1 )
+```
+
+This visibility does not make initializer values available before construction.
+Ordinary evaluated bindings retain their dependency and sequencing rules, and
+a cycle which requires an initializer's value before that initializer completes
+is invalid. Declaration visibility also does not cross lexical or namespace
+boundaries.
 
 Ordinary recursion must be proven terminating. The compiler first recognizes:
 
@@ -108,10 +131,19 @@ Ordinary recursion must be proven terminating. The compiler first recognizes:
 - recursion through a finite collection traversal; and
 - calls to an already proven terminating function.
 
-When no standard rule succeeds, a declaration may supply a static decreasing
-measure into a well-founded order. Every recursive cycle, including a mutual
-cycle, must decrease that measure before returning to the same point in the
-cycle. The measure is proof information and need not exist at runtime.
+When no standard rule succeeds, the complete function may provide
+`Decreases ( Measures )` capability evidence after its return type. Each measure
+is a pure expression over the inputs into a well-founded order; multiple
+expressions form a lexicographic product. Arithmetic, projections, collection
+sizes, and statically analyzable pure calls may construct a measure. Every
+recursive cycle, including a mutual cycle, must decrease the compatible
+measures at each call edge before returning to the same point in the cycle.
+The measures are proof information and need not exist at runtime.
+
+The compiler infers `Decreases` evidence when its analysis finds a measure.
+An explicit capability guides analysis or publishes the relationship for an
+opaque, interface, or higher-order contract. It is never accepted as
+trusted-unverified evidence: failure to prove it is a compilation error.
 
 Termination checking follows function values. Passing a recursive call through
 a higher-order function is accepted only when that function's contract
@@ -175,8 +207,6 @@ may be added without introducing a second generator state model.
 
 The semantic rules leave open:
 
-- the declaration spelling for a mutually recursive group;
-- the spelling for a user-provided decreasing measure;
 - the qualified spelling for task-field replacement; and
 - whether `with` is the final record-reconstruction keyword.
 

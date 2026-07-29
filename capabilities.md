@@ -273,6 +273,7 @@ Associative Operation
 Commutative Operation
 Identity Operation Value
 Idempotent Operation
+Decreases Function Measures
 ```
 
 `Associative` promises:
@@ -300,9 +301,39 @@ value operation identity = value
 value operation value = value
 ```
 
-These laws permit parallel reduction and other transformations whose evaluation
-order would otherwise be observable. They are never inferred from an
-function's name.
+`Decreases` is termination evidence for a complete function. Its associated
+`Measures` are one or more pure expressions over the function inputs:
+
+```topal
+search is fn (
+  active : List Node,
+  deferred : List Node
+) -> Optional Node : Decreases ( active size + deferred size )
+```
+
+The compiler proves that every recursive call strictly reduces the complete
+measure. Multiple expressions form a lexicographic product: a later component
+is considered only when every earlier component remains equal. Each component
+must inhabit a compiler-known well-founded order. Measures may use arithmetic,
+field projections, collection sizes, and pure functions which the termination
+checker can reason about.
+
+`Decreases` classifies the complete function rather than any individual
+parameter because it relates the inputs of one invocation to those of the next
+recursive invocation. It follows the completed return type in a declaration.
+The compiler infers equivalent termination evidence whenever its standard
+analysis succeeds. Source-level evidence is needed only to guide a proof or to
+state an opaque, interface, or higher-order contract whose implementation is
+not available.
+
+Unlike an optimization law, `Decreases` cannot fall back to
+`trusted-unverified`: unresolved evidence would undermine Topal's totality
+guarantee. A definition supplying or implementing the capability must prove
+every recursive edge decreases its declared measure.
+
+The algebraic laws above permit parallel reduction and other transformations
+whose evaluation order would otherwise be observable. They are never inferred
+from a function's name.
 
 ## Effect relationships
 

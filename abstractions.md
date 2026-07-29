@@ -547,6 +547,10 @@ claim by default. Suppressing that warning does not relabel the evidence.
 Sampled or generated tests may refute a law but successful samples do not
 verify it.
 
+Capabilities required for the compiler's own safety or totality guarantees are
+an exception. In particular, `Decreases` evidence must be verified and cannot
+be introduced as trusted-unverified evidence.
+
 Compiled evidence retains the exact operation identity, law, relevant static
 parameters, verification status, declaration provenance, and verification
 method. Consumers may reject trusted-unverified evidence by build policy, but
