@@ -134,10 +134,19 @@ endpoint constructs implementation evidence whose compiled contract includes
 the inferred effects. Callers retain that evidence whenever the selected
 implementation is known.
 
-Finite dynamic selection and conservative erasure are settled. It remains to
-decide the surface spelling for optional effect upper bounds, effect-row
-parameters, and otherwise uninferable generic relationships between callback
-effects and captured resource identities.
+Finite dynamic selection and conservative erasure are settled. Compiled Topal
+artifacts normally retain typed generic intermediate code with symbolic types,
+callback identities, effects, resource relationships, capabilities, layouts,
+and implementation evidence. Final application compilation substitutes
+concrete evidence and specializes useful alternatives; erased uses receive a
+conservative shared implementation. The intermediate format is
+compiler-versioned rather than a permanent machine ABI.
+
+Consequently, visible generic bodies do not require source-level effect-row
+parameters merely to defer compilation. Explicit effect upper bounds and named
+rows remain relevant for opaque implementations, foreign boundaries,
+abstraction requirements, programmer restrictions, and relationships which
+cannot be inferred from the body. Their surface spelling remains open.
 
 Task message result adaptation is settled. `Unit` handlers are events with no
 reply. Every ordinary function handler that replies must return `Result

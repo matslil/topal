@@ -268,6 +268,19 @@ compiled and message-based implementations preserve the same analysis model as
 direct functions; crossing a task boundary adds communication behavior without
 replacing the underlying interface.
 
+An exported generic implementation normally publishes typed generic
+intermediate code together with symbolic implementation evidence. A consuming
+application can substitute its concrete types, callbacks, resource identities,
+effects, and capabilities before producing machine code. Statically known uses
+therefore retain precise evidence across a compiled-library boundary rather
+than collapsing immediately to a conservative shared implementation.
+
+A library may deliberately publish an opaque shared implementation instead.
+It must then provide a sufficient compiled contract for correctness, and its
+callers retain only that contract rather than body-derived specialization
+evidence. Foreign exports likewise require a concrete ABI and cannot leave
+their externally visible representation unresolved.
+
 Foreign or independently deployed implementations must provide trusted,
 authenticated, or runtime-enforced metadata before the compiler may use a
 property for correctness. Unverified metadata may influence performance only
