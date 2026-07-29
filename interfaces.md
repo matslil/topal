@@ -290,11 +290,12 @@ when ignoring it preserves behavior.
 
 ## Relationship to capabilities
 
-An interface specifies callable function and generator shapes. A capability may
-add associated objects and semantic laws to such operations. Satisfying an
-interface therefore proves that its declarations are implemented; it does not
-by itself assert algebraic laws such as equality, ordering, associativity, or
-losslessness.
+An interface specifies callable function and generator shapes. Capabilities
+make semantic promises about existing objects and ordinary operations;
+capability expressions combine promises but never contain implementations.
+Satisfying an interface therefore proves that its declarations are implemented;
+it does not by itself assert algebraic laws such as equality, ordering,
+associativity, or losslessness.
 
 When a function declaration in an interface explicitly includes
 `Decreases ( Measures )` after its return type, that capability is part of the

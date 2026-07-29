@@ -436,6 +436,11 @@ the record's complete names, types, and meaning. After that declaration, the
 selected language defines how later language constructions and all ordinary
 source are parsed.
 
+The bootstrap syntax knows no capability vocabulary or capability-combination
+rules. Atomic capabilities, their classified object kinds, their promises, and
+the semantics of capability expressions belong entirely to the selected Topal
+version.
+
 For example:
 
 ```topal

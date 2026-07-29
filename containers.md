@@ -390,9 +390,9 @@ Ordering is independent of key association. An ordered map preserves a declared
 key or insertion order by satisfying both associative and ordered traversal
 capabilities; an ordinary map does not acquire an arbitrary observable order.
 
-Capability declaration, associated objects such as `Element A` and `Index A`,
-coherent satisfaction, equality, ordering, and collection key strategies follow
-the [generic abstraction model](abstractions.md). Ordinary maps and sets do not
+Capability composition, component objects such as `Element A` and `Index A`,
+coherent claims, equality, ordering, and collection key strategies follow the
+[generic abstraction model](abstractions.md). Ordinary maps and sets do not
 expose hashing as part of their semantic interface.
 
 A capability matcher can follow the same homogeneous container construction
@@ -402,7 +402,7 @@ used by the types themselves:
 Sortable is ( Indexed and Replaceable ) Container ( TotalOrder Value )
 
 sort is fn (
-  values : ( C : Type : Sortable )
+  values : ( C : Sortable )
 ) -> C
   sorting-implementation values
 ```

@@ -56,9 +56,12 @@ Object
   type. The same interface can be implemented by task events, requests, and
   streams. Concrete implementation evidence retains inferred effects and
   optimization information without adding them to the interface itself.
-- A **capability** promises that an object of a particular kind provides named
-  operations, associated objects, and laws. Capability satisfaction supplies
-  static evidence; it is not a value conversion or a nominal supertype.
+- A **capability** is a static promise about an existing object. It may promise
+  laws or the availability of ordinary operations defined by the selected
+  language version. Source code constructs new capability expressions only by
+  combining existing capabilities; it does not place implementations inside
+  capabilities. Capability satisfaction supplies static evidence and is not a
+  value conversion or nominal supertype.
 
 Kinds remain distinct even though their objects are first-class. A `Type`
 cannot be passed where a runtime `Value` is required, and a `Capability` cannot
@@ -222,9 +225,9 @@ defined in [containers](containers.md) and
 
 ## Index types
 
-`Index A` is an associated type selected from indexing evidence for a concrete
-type `A`. For a finite array-derived type it is a refinement of `Nat` which
-retains both bounds evidence and the identity of the indexed domain:
+`Index A` is a type-valued component selected from indexing evidence for a
+concrete type `A`. For a finite array-derived type it is a refinement of `Nat`
+which retains both bounds evidence and the identity of the indexed domain:
 
 ```topal
 Row is Array RowCount T

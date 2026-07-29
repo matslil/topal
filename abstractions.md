@@ -10,7 +10,7 @@ Constraints and capabilities both produce evidence, compose with matchers, and
 participate in static introspection. They remain different kinds of object:
 
 - a constraint limits the permitted values of one base type; and
-- a capability promises an interface and laws provided by a type, function, or
+- a capability makes semantic promises about an existing type, function, or
   other static object.
 
 ## Constraints limit values
@@ -80,11 +80,12 @@ Boolean decision rather than reusable classification evidence. The complete
 distinction is defined under
 [passing predicates and constraints](types.md#passing-predicates-and-constraints).
 
-## Capabilities promise interfaces
+## Capabilities compose promises
 
 A capability does not remove values from a type. It states that an object of a
-particular kind provides semantic operations or laws. Satisfying a capability
-produces static evidence containing those operations and any related objects:
+particular kind satisfies semantic promises. The selected Topal version
+supplies the initial atomic capabilities and defines what existing ordinary
+operations and laws each promises. Conceptual vocabulary such as:
 
 ```text
 Sequence A
@@ -94,51 +95,91 @@ Sequence A
   entries : A -> Traversal Element
 ```
 
-The capability is not a namespace owned by `A`. `get` remains an ordinary
-overload whose applicability is established by the evidence. This preserves
-Topal's independent function composition and avoids introducing methods.
+means that `Sequence A` promises the availability and relationships of those
+already-existing ordinary functions and static objects. It does not define
+them, contain their implementations, or introduce a namespace owned by `A`.
+`get` remains an ordinary overload whose applicability is established by the
+evidence.
 
-Capabilities may require other capabilities and may refine their associated
-objects. For example, `TotalOrder T` requires `Equality T`, while a writable
-layout requires the operations and access evidence of a readable addressed
-layout plus permission to write.
+Source code cannot declare a new atomic semantic promise. It may bind
+conjunctions and alternatives of existing capabilities:
+
+```topal
+Searchable is Foldable and Membership
+Serializable is JsonSerializable or BinarySerializable
+```
+
+`and` forms evidence containing every promise. `or` retains evidence for the
+available alternative or alternatives rather than selecting one by import or
+discovery order. Nested expressions flatten, duplicate capabilities collapse
+by canonical identity, and conjunction order is irrelevant.
+
+Ordinary static functions may construct parameterized capability expressions,
+but their results must still be combinations of existing capabilities:
+
+```topal
+Searchable is fn static (
+  Container : Type,
+  Value : Type
+) -> Capability
+  Foldable ( Container, Value )
+    and Membership ( Container, Value )
+```
+
+A capability supplies the kinds of the objects it classifies. Consequently,
+`Value : TotalOrder` already establishes `Value : Type`; spelling
+`Value : Type : TotalOrder` is valid but redundant. A bare unclassified name
+still introduces nothing.
 
 Evidence can arise in three ways:
 
 - the language derives it from a fundamental construction and the evidence of
   its components;
-- a declaration explicitly supplies the required objects and functions; or
+- a declaration makes a claim using an existing capability; or
 - a static matcher establishes it from already available evidence.
 
-Merely having functions with suitable names is insufficient. Accidental
-structural similarity must not silently assert laws such as associativity,
-ordering, uniqueness, or losslessness. The compiler may derive structural
-operations for products, sums, and finite recursion when every component
-provides the required evidence.
+Claims never supply an implementation. Every operation involved is an ordinary
+function declared independently. Merely having functions with suitable names
+is insufficient: accidental structural similarity must not silently assert
+laws such as associativity, ordering, uniqueness, or losslessness.
 
-## Coherence and implementation ownership
+A claim applies an existing promise directly to its subject:
 
-Each canonical object-capability pair has at most one implementation in a
+```topal
+Associative addition
+TotalOrder Customer
+```
+
+The first makes a promise about the already-declared `addition` function. The
+second makes `Customer` eligible for generic `TotalOrder` code and refers to the
+ordinary comparison vocabulary fixed by that atomic capability. Neither
+declaration contains executable code. A concrete `compare (Customer, Customer)`
+overload may exist without the second claim when only that specialized function
+needs to compare customers.
+
+## Coherence and claim ownership
+
+Each canonical object-capability pair has at most one interpretation in a
 compiled context. For a type capability this means, for example, that
 `Equality Money` has one interpretation: there is no second explicit or
 implicit `Equality Money` value with different semantics. The rule applies
 equally when the classified object is a function, construction, or other static
 object.
 
-An implementation may be declared only in the canonical definition context of
-the capability or of the object which satisfies it. Ownership extends across
-the defining package's own module organization; it does not extend to an
-unrelated package merely because that package imports both definitions.
-Consequently, an adapter which owns neither an external type nor an external
-capability cannot attach the capability directly to that type.
+A claim may be declared only in the canonical definition context of the
+capability or of the object which satisfies it. Ownership extends across the
+defining package's own module organization; it does not extend to an unrelated
+package merely because that package imports both definitions. Consequently, an
+adapter which owns neither an external type nor an external capability cannot
+attach the capability directly to that type.
 
 Third-party integration instead introduces an owned specialization or type
-construction and implements the capability for that new canonical type. The
+construction and claims the capability for that new canonical type. The
 specialization can expose a canonical lossless conversion or evidence-forgetting
 relation to the general boundary type where their semantics permit it. For
 example, a database adapter can define `UuidParameter`, retain its underlying
-UUID value, implement the database parameter capability in the adapter's
-context, and allow it wherever the general parameter contract is accepted.
+UUID value, claim the database parameter capability in the adapter's context,
+and allow it wherever the general parameter contract is accepted.
 Construction at the boundary makes the adaptation visible without changing
 the capabilities of the external UUID type.
 
@@ -150,20 +191,20 @@ universal case operations require only `CaseInsensitive`. Neither capability
 replaces the exact canonical equality of `String`. A choice which belongs only
 to one operation, such as selecting a collation for one sort, is an explicit
 strategy input or named operation and does not establish another capability
-implementation for the original type.
+interpretation for the original type.
 
 Derived evidence obeys the same coherence rule:
 
-1. An explicit owner implementation is canonical and suppresses derivation.
+1. An explicit owner claim is canonical and suppresses derivation.
 2. Otherwise exactly one applicable derivation may construct the evidence.
 3. Several applicable derivations for the same pair are a compile-time error.
 4. The capability or object owner resolves that error by declaring the
-   canonical implementation explicitly.
+   canonical claim explicitly.
 
 Derivation order, import order, and filesystem discovery never select among
-competing paths. Compiled interfaces retain the canonical implementation
-identity, its source attribution, required evidence, inferred effects, and any
-additional promises or optimization properties.
+competing paths. Compiled interfaces retain the canonical evidence identity,
+its source attribution, required evidence, inferred effects, and any additional
+promises or optimization properties.
 
 ## Type patterns in function headers
 
@@ -172,7 +213,7 @@ Chained classification is read from left to right:
 
 ```topal
 sort is fn (
-  values : ( C : Type : Sortable )
+  values : ( C : Sortable )
 ) -> C
   sorting-implementation values
 ```
@@ -353,7 +394,7 @@ The generic sorting signature is consequently:
 
 ```topal
 sort is fn (
-  values : ( C : Type : Sortable )
+  values : ( C : Sortable )
 ) -> C
   sorting-implementation values
 ```
@@ -386,10 +427,11 @@ An ordinary unordered map also does not satisfy the `Sortable` pattern above.
 Code can obtain its entries and order that separate collection by an explicit
 key, value, or product comparison.
 
-## Associated objects
+## Capability components
 
-An associated object belongs to the canonical capability evidence rather than
-to a global type namespace. It may have any static kind:
+An atomic capability supplied by the selected language version may relate
+several existing objects. Those component objects belong to its canonical
+evidence rather than to a global type namespace and may have any static kind:
 
 ```text
 Element A : Type
@@ -398,26 +440,26 @@ effects function : Set Effect
 identity operation : lang Identity Function
 ```
 
-Selecting an associated object requires evidence identifying the capability
-implementation. Coherence makes the short conceptual spelling `Element A`
-unambiguous for a known `A`. When the identity of `A` or its implementation is
+Selecting a component requires evidence identifying the capability
+interpretation. Coherence makes the short conceptual spelling `Element A`
+unambiguous for a known `A`. When the identity of `A` or its evidence is
 existentially packaged, selection retains that packaged evidence rather than
-searching for an alternative implementation.
+searching for an alternative interpretation.
 
-Associated types may depend on static values and identities. `Index A`, for
-example, retains the identity and bound of a concrete array type rather than
-weakening to the index type of every array.
+Type-valued components may depend on static values and identities. `Index A`,
+for example, retains the identity and bound of a concrete array type rather
+than weakening to the index type of every array.
 
 ### Multi-component capability matching
 
-A capability with several associated components groups them into one explicit
+A capability with several component objects groups them into one explicit
 component argument. Chained classification inserts the complete classified
 object as the capability's first argument:
 
 ```topal
 lookup-value is fn (
   mapping : (
-    C : Type : Keyed (
+    C : Keyed (
       Key : Type,
       Value : Type
     )
@@ -453,16 +495,16 @@ Components use ordinary explicit bindings and discards:
 
 ```topal
 mapping : (
-  C : Type : Keyed (
+  C : Keyed (
     _ : Type,
     Value : Type
   )
 )
 ```
 
-Additional component promises chain normally, as in
-`Key : Type : TotalOrder`. Discarded components remain in the capability
-evidence and complete classified object.
+Additional component promises chain normally, as in `Key : TotalOrder`.
+Discarded components retain the kinds supplied by `Keyed` and remain in the
+capability evidence and complete classified object.
 
 ## Existential results
 
@@ -689,10 +731,8 @@ and source attribution.
 
 ## Surface syntax still to choose
 
-The semantic model does not decide:
-
-- the declaration spelling for capabilities and their implementations;
-- the spelling for opening an existential package.
+The semantic model does not decide the spelling for opening an existential
+package.
 
 Those choices should be made together with the final grammar. They must not
 change the classifications, evidence, coherence, or conversion rules above.

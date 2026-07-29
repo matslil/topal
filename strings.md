@@ -201,14 +201,14 @@ the universal fallback:
 ```topal
 lower is fn (
   text : (
-    C : Type : CaseInsensitive : Language Swedish
+    C : CaseInsensitive : Language Swedish
   )
 ) -> C
   swedish-lower text
 
 lower is fn (
   text : (
-    C : Type : CaseInsensitive
+    C : CaseInsensitive
   )
 ) -> C
   unicode-default-lower text

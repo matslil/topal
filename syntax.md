@@ -557,12 +557,15 @@ capability applicable to a static object. Classifications may consequently
 chain:
 
 ```topal
-values : ( C : Type : Sortable )
+values : ( C : Sortable )
 ```
 
-The parenthesized classifier is read from left to right: the pattern introduces
-`C : Type`, requires `C : Sortable`, and classifies `values` by that complete
-`C`. The complete input type can then appear in a function's output type.
+The parenthesized classifier binds `C` with the subject kind supplied by
+`Sortable` and classifies `values` by that complete `C`. Because `Sortable`
+classifies types, this also establishes `C : Type`; spelling
+`C : Type : Sortable` is valid but redundant. The complete input type can then
+appear in a function's output type. A bare `C` would remain invalid because no
+classifier would introduce it.
 
 A construction pattern explicitly classifies every newly introduced binding:
 
@@ -807,7 +810,7 @@ borrowed, and contained information. An application-boundary function uses
 `sensitive parameter : Type` to declare exactly which parameters accept
 sensitive arguments; local functions need no such qualifier.
 
-Generic parameters, capability evidence, associated objects, type identity, and
+Generic parameters, capability evidence, component objects, type identity, and
 conversion are described by [generic abstraction and semantic
 capabilities](abstractions.md). Function headers use classification and static
 type matching rather than separate generic-parameter or capability-bound
@@ -889,16 +892,16 @@ describe is fn ( value : Integer ) -> String
   describe-integer value
 
 describe is fn (
-  value : ( T : Type : Formattable )
+  value : ( T : Formattable )
 ) -> String
   format value
 ```
 
 Reversing these declarations intentionally gives the `Formattable` case
-precedence for integers which satisfy it. The compiler may optionally diagnose
-overlapping, conversion-preempted, or provably shadowed overloads. Such
-diagnostics describe the consequence of the order and are not required for a
-valid program.
+precedence for integers which satisfy it. `Formattable` already establishes
+`T : Type`. The compiler may optionally diagnose overlapping,
+conversion-preempted, or provably shadowed overloads. Such diagnostics describe
+the consequence of the order and are not required for a valid program.
 
 Overload order is local to the namespace containing the declarations. `use`
 makes a published scope available under its qualified name; it does not merge

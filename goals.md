@@ -21,9 +21,9 @@ when these preserve the program's meaning.
   macro, template, class, and [module systems](modules.md).
 - [Generic abstraction](abstractions.md) uses static type matching and
   capability evidence. Constraints limit values, while capabilities promise
-  interfaces and laws. Associated types, equality, ordering, and conversion
-  remain part of that one object model rather than introducing classes or
-  textual templates.
+  semantic properties of existing objects and operations. Capability components,
+  equality, ordering, and conversion remain part of that one object model rather
+  than introducing classes or textual templates.
 - A small [initial capability vocabulary](capabilities.md) covers comparison,
   collection observation and construction, keyed association, and algebraic
   laws without exposing hashing, ownership representation, or mutation.
