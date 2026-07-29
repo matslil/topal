@@ -1,12 +1,23 @@
 # Initial capability vocabulary
 
-Capabilities promise semantic operations and laws provided by types,
-functions, or other static objects. They do not constrain the permitted values
-of a type and do not expose an implementation representation.
+Capabilities are promises about existing types, functions, or other static
+objects. They do not constrain the permitted values of a type, contain
+implementations, or expose an implementation representation.
 
 This document defines the initial standard vocabulary. Capability matching and
 its distinction from value constraints are described in
 [generic abstraction and semantic capabilities](abstractions.md).
+
+The bootstrap parser knows none of this vocabulary. It only reads the initial
+language construction far enough to select a Topal version. That selected
+version supplies the atomic capabilities below, their classified object kinds,
+the ordinary operation vocabulary they refer to, and their verification rules.
+
+Indented operation names in the conceptual signatures below describe existing
+ordinary functions promised by an atomic capability. They are neither methods
+nor function implementations contained in the capability. Source code creates
+new capability expressions only by combining existing capabilities with `and`,
+`or`, or static functions returning such combinations.
 
 ## Non-owning access
 
@@ -95,6 +106,31 @@ to `PartialComparison` wherever only `PartialOrder` evidence is required.
 maximum. Tuple ordering is derived lexicographically when every component
 provides `TotalOrder`. Records require an explicit ordering because field
 declaration order need not have domain meaning.
+
+Concrete overloads may provide specialized behavior before a generic
+capability-constrained fallback:
+
+```topal
+compare is fn (
+  left : Customer,
+  right : Customer
+) -> Comparison
+  compare (
+    left identifier,
+    right identifier
+  )
+
+compare is fn (
+  left : ( Value : TotalOrder ),
+  right : Value
+) -> Comparison
+  left <=> right
+```
+
+The first applicable declaration wins in source order. The specialized
+`Customer` overload does not require `Customer : TotalOrder`; only the
+identifier comparison used by its body must be applicable. The generic overload
+gets both `Value : Type` and its ordering promise from `Value : TotalOrder`.
 
 ## Collection observation
 
@@ -328,8 +364,8 @@ not available.
 
 Unlike an optimization law, `Decreases` cannot fall back to
 `trusted-unverified`: unresolved evidence would undermine Topal's totality
-guarantee. A definition supplying or implementing the capability must prove
-every recursive edge decreases its declared measure.
+guarantee. A function claiming the capability must prove every recursive edge
+decreases its declared measure.
 
 The algebraic laws above permit parallel reduction and other transformations
 whose evaluation order would otherwise be observable. They are never inferred
@@ -391,7 +427,7 @@ Sortable is
   Container ( TotalOrder Value )
 
 sort is fn (
-  values : ( C : Type : Sortable )
+  values : ( C : Sortable )
 ) -> C
   sorting-implementation values
 ```
@@ -419,10 +455,10 @@ matches `Map ( Key, Value )` directly and combines `Keyed` and `Associable`;
 its associated `Key` and `Value` components use the explicit grouped matcher
 defined in [generic abstraction](abstractions.md#multi-component-capability-matching).
 
-## Standard-library extensions
+## Possible language-version extensions
 
-The following capabilities are useful but do not need to be part of the initial
-language vocabulary:
+The following atomic promises may be useful in a future selected language
+version but are not part of the initial vocabulary:
 
 - `Insertable` and `Removable`, whose operations may change size or violate a
   constraint;
@@ -430,11 +466,13 @@ language vocabulary:
   difference;
 - `Mergeable`, whose map operation requires collision-policy or disjointness
   evidence; and
-- formatting, parsing, and specialized construction capabilities introduced by
-  their respective libraries.
+- formatting, parsing, and specialized construction promises.
 
-They should be composed from the same capability and evidence model rather than
-given separate dispatch mechanisms.
+An ordinary library cannot introduce these as new atomic capabilities. It may
+publish ordinary functions and interfaces, or name any useful capability
+combination expressible from the vocabulary supplied by its selected language
+version. Adding a genuinely new atomic promise requires a language-version
+extension so its meaning and verification rules are fixed.
 
 ## Deliberate omissions
 

@@ -17,8 +17,9 @@ The following questions from the initial audit are no longer open:
   `Integer constraint { value } ...`. The inferred anonymous function is the
   predicate.
 - Chained classification proceeds from left to right. A function header such
-  as `values : ( C : Type : Sortable )` explicitly binds `C : Type`, requires
-  `C` to satisfy `Sortable`, and classifies `values` by the complete `C`.
+  as `values : ( C : Sortable )` binds `C` with the subject kind supplied by
+  `Sortable` and classifies `values` by the complete `C`. The longer
+  `C : Type : Sortable` is valid but redundant.
 - Function headers perform static type matching. Construction syntax can bind
   explicitly classified components such as `X : Type` and `Y : Type` from a
   tuple, and the function body is the implicit successful branch of the header
@@ -35,9 +36,11 @@ The following questions from the initial audit are no longer open:
   complete capture. A concrete header may use one canonical lossless conversion
   and exposes its destination type to the body; conversion never unifies
   repeated pattern bindings.
-- Multi-component capabilities group their associated objects into one component
-  product. A matcher such as `C : Type : Keyed (Key : Type, Value : Type)`
-  obtains them from the canonical evidence for that exact `C`.
+- Multi-component capabilities group their component objects into one component
+  product. A matcher such as
+  `C : Keyed (Key : Type, Value : Type)` obtains their identities from the
+  canonical evidence for that exact `C`. The component classifiers remain
+  explicit because bare unbound names are not introduced.
 - Returning a captured complete type such as `C` preserves the precise
   relationship between the input and result, including nominal identity,
   constraints, static sizes, and other parameters.
@@ -50,15 +53,15 @@ The following questions from the initial audit are no longer open:
   call selects its namespace before searching that namespace's declarations;
   scope aliases preserve the same order. Explicit cross-namespace overload-set
   composition has no current surface syntax.
-- Capability implementations are coherent and owner-scoped. Each canonical
-  object-capability pair has at most one implementation, declared in the
+- Capability evidence is coherent and claims are owner-scoped. Each canonical
+  object-capability pair has at most one interpretation, claimed in the
   definition context of either the capability or satisfying object. Unrelated
   packages integrate them through an owned specialization rather than an orphan
-  implementation.
-- An explicit owner implementation suppresses derivation. Without one, exactly
+  claim.
+- An explicit owner claim suppresses derivation. Without one, exactly
   one derivation path may apply; competing derivations are an error which the
-  capability or object owner resolves explicitly. Import and discovery order
-  never choose capability evidence.
+  capability or object owner resolves with an explicit claim. Import and
+  discovery order never choose capability evidence.
 - Universal case behavior and natural language are independent capabilities.
   `String` provides `CaseInsensitive` using Topal's fixed Unicode version;
   `Language T` separately supplies a static language identity. Language-specific
@@ -93,6 +96,13 @@ The following questions from the initial audit are no longer open:
   identity, and order-independent. No specially named error type is resolved
   from the surrounding scope. Visible generic bodies retain the complete
   vocabulary component symbolically in typed intermediate code.
+- Capabilities are promises, never implementation containers. The bootstrap
+  parser knows none of them; the selected Topal version supplies the atomic
+  vocabulary, classified object kinds, and verification rules. Source code
+  constructs new capability expressions only by combining existing capabilities
+  with `and`, `or`, or static functions returning such combinations. Operations
+  remain ordinary functions, and concrete overloads precede generic
+  capability-constrained fallbacks when specialized behavior is desired.
 - Declaration scopes behave as two semantic stages: complete declaration
   headers are collected before their definitions are checked. The compiler
   infers mutually recursive groups from the resulting call graph; initializer
@@ -105,7 +115,6 @@ The following questions from the initial audit are no longer open:
 
 The grammar must select compatible spellings for:
 
-- capability declarations and implementations;
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
 - existential package opening;
@@ -123,14 +132,17 @@ static matching rather than through a separate generic-parameter list.
 
 ## Capability vocabulary and matching
 
-Capability implementation ownership and coherence are settled. The
+Capability claim ownership and coherence are settled. The
 [initial capability vocabulary](capabilities.md) selects the fundamental
-comparison, collection, and function-law names. Formatting, parsing, checked
-construction, and other library-specific capabilities still need vocabularies
-in their respective designs.
+comparison, collection, and function-law names. Libraries express formatting,
+parsing, checked construction, and similar behavior with ordinary functions,
+interfaces, and combinations of capabilities already supplied by the selected
+language version. A genuinely new atomic promise requires a language-version
+extension.
 
-Multi-component capability matching is settled. Its final declaration spelling
-remains part of the shared capability surface grammar.
+Multi-component capability matching and capability-combination syntax are
+settled. New names bind combinations of existing promises; they do not declare
+atomic capabilities or implementation bodies.
 
 ## Automated law proof
 
