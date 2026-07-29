@@ -798,11 +798,36 @@ Errors are ordinary result values rather than exceptions. A successful value
 may be projected from a `Result` inside an explicitly fallible function, as
 described by [the error model](errors.md#success-projection-and-propagation).
 Effects complement the input and result types according to the
-[effect model](effects.md), but their final surface syntax has not yet been
-selected. [Constructed package and module contexts](contexts.md) provide
-immutable namespace members selected with `@`; constructor-backed access is
-tracked by the compiler without adding ordinary inputs to every function
-declaration.
+[effect model](effects.md). They reuse capability-style classification syntax
+but describe possible interactions rather than promises. An explicit upper
+bound follows the completed function type:
+
+```topal
+read-document is fn (
+  file : File
+) -> Result ( Document, DocumentErrorCode )
+  : Read file
+```
+
+The resource parameter must resolve to an existing identity visible at the
+declaration. A higher-order input is classified directly:
+
+```topal
+read-with is fn (
+  file : File,
+  reader : ( F : Read file )
+) -> Result ( Bytes, FileErrorCode )
+  reader file
+```
+
+`F : Read file` implies `F : Function`. Effect expressions use `and`, `or`, and
+static combination functions like capability expressions; `Effects ()` is the
+empty set. The explicit expression is an upper bound, while compiled
+implementation evidence retains the exact inferred effects.
+
+[Constructed package and module contexts](contexts.md) provide immutable
+namespace members selected with `@`; constructor-backed access is tracked by
+the compiler without adding ordinary inputs to every function declaration.
 
 A binding may be marked with the compiler-checked
 [`sensitive`](sensitive.md) qualifier. Sensitivity follows copied, moved,
