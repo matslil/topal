@@ -51,7 +51,7 @@ a value which is deliberately left unnamed:
 consume is fn (
   _ : Context,
   value : Value
-) -> Result Value
+) -> Result ( Value, ContextErrorCode )
   process value
 ```
 
@@ -690,14 +690,14 @@ later field once every value they need has been declared.
 Constructing a value must establish every field constraint. Statically known
 components are checked during compilation, and a violated constraint is a
 compile-time error. When the components are dynamic and the relationship is not
-already proven, construction performs validation and produces `Result Interval`
-on success:
+already proven, construction performs validation and produces
+`Result ( Interval, ConstraintErrorCode )` on success:
 
 ```topal
 pub interval is fn (
   start : Integer,
   end : Integer
-) -> Result Interval
+) -> Result ( Interval, ConstraintErrorCode )
   Interval (
     start is start,
     end is end
@@ -778,17 +778,18 @@ association names are errors.
 The input and output types are mandatory parts of a function declaration.
 They are not inferred from the body. In particular, an output of `Integer`
 promises an infallible function, while a fallible function declares
-`Result Integer` explicitly:
+`Result ( Integer, ParseErrorCode )` explicitly:
 
 ```topal
-parse-count is fn ( text : String ) -> Result Integer
+parse-count is fn ( text : String ) -> Result ( Integer, ParseErrorCode )
   body
 ```
 
-Every fallible function must have an `ErrorCode` enum available when its
-contract is declared. It may use a definition from any namespace, including a
-definition shared with other functions, as described by
-[the error model](errors.md).
+Every fallible function explicitly names its complete error-vocabulary
+component. It may name types from any reachable namespace, including
+vocabularies shared with other functions, as described by
+[the error model](errors.md). No specially named local error type is resolved
+implicitly.
 
 Errors are ordinary result values rather than exceptions. A successful value
 may be projected from a `Result` inside an explicitly fallible function, as
@@ -962,12 +963,12 @@ choosing their implementations:
 ```topal
 Lexer is Interface
   warm-up is fn ( configuration : Configuration ) -> Unit
-  parse is fn ( command : String ) -> Result ParseResult
+  parse is fn ( command : String ) -> Result ( ParseResult, LexerErrorCode )
 
   parse-tokens is generator ( source : String )
     yields Token
     resumes Unit
-    -> Result ParseResult
+    -> Result ( ParseResult, LexerErrorCode )
 ```
 
 Applying the interface in a source context checks a complete implementation:
@@ -977,13 +978,13 @@ Lexer
   warm-up is fn ( configuration : Configuration ) -> Unit
     initialize configuration
 
-  parse is fn ( command : String ) -> Result ParseResult
+  parse is fn ( command : String ) -> Result ( ParseResult, LexerErrorCode )
     parse-command command
 
   parse-tokens is generator ( source : String )
     yields Token
     resumes Unit
-    -> Result ParseResult
+    -> Result ( ParseResult, LexerErrorCode )
     implementation
 ```
 
@@ -1007,7 +1008,8 @@ the implementation-independent interface type.
 
 Tasks may implement the same interface through message passing. A function
 returning `Unit` becomes an event. Completion and value requests must return
-`Result Completed` and `Result Value`; plain response types are not valid
+`Result ( Completed, ApplicationErrors )` and
+`Result ( Value, ApplicationErrors )`; plain response types are not valid
 message handlers. A task generator's final return must also be `Result`;
 generators become streams. See
 [function and message interfaces](interfaces.md) for construction, visibility,
@@ -1041,7 +1043,7 @@ counter-service is Counter
   current is fn (
     _ : MessageContext,
     Unit
-  ) -> Result Nat
+  ) -> Result ( Nat, () )
     count
 ```
 
@@ -1077,8 +1079,8 @@ handlers to finish may instead end with `terminate-cleanly reason`.
 `terminate-cleanly` stops admission, completes queued and new requests with
 `task-terminated`, waits for already-suspended handlers, runs the lifecycle
 handler, and cleans up. It is permitted only as the terminal expression of a
-handler returning `Unit` or `Result Completed`; the latter replies after
-termination finishes.
+handler returning `Unit` or `Result ( Completed, TerminationErrorCode )`; the
+latter replies after termination finishes.
 
 Every dispatched ordinary handler has a leading `MessageContext` containing
 the session identity and sender endpoint. The compiler projects this input away
@@ -1089,12 +1091,12 @@ does not count against the interface operation's zero-to-two ordinary operands.
 
 A handler returning `Unit` is an event for which the caller does not await
 completion. Every ordinary handler with a response channel returns `Result`:
-`Result Completed` requests completion confirmation, and `Result Value`
-requests a value. Plain `Completed`, plain value, and function `Result Unit`
-results are invalid message-handler shapes. A generator handler establishes a
-stream and its final return must be `Result`; the language-defined
-`task-terminated` code extends the effective error-code set without adding
-another wrapper.
+`Result ( Completed, ApplicationErrors )` requests completion confirmation,
+and `Result ( Value, ApplicationErrors )` requests a value. Plain `Completed`,
+plain value, and function `Result ( Unit, ApplicationErrors )` results are
+invalid message-handler shapes. A generator handler establishes a stream and
+its final return must be `Result`; the language-defined `task-terminated` code
+extends the effective error-code set without adding another wrapper.
 
 See [tasks and intrinsic messaging](tasks.md) for identity namespaces, service
 discovery, isolation, startup and termination, and the implicit root task
@@ -1110,13 +1112,14 @@ storage. The provisional declaration uses a function-shaped body:
 File is type
   descriptor : FileDescriptor
 
-  destroy is fn ( file : File ) -> Result Unit
+  destroy is fn ( file : File ) -> Result ( Unit, ResourceErrorCode )
     operating-system close file descriptor
 ```
 
-A destructor may return only `Unit` or `Result Unit`; it cannot produce a
-replacement value. It is invoked by the language when the final reference
-disappears and is not an ordinary explicitly callable function. A function
+A destructor may return only `Unit` or
+`Result ( Unit, ResourceErrorCode )`; it cannot produce a replacement value.
+It is invoked by the language when the final reference disappears and is not
+an ordinary explicitly callable function. A function
 accepting a value with a fallible destructor must itself permit a `Result`,
 because its reference may be the final one. Ownership transfers, borrowing,
 sharing, and reference-count elimination are compiler decisions rather than
@@ -1133,8 +1136,8 @@ Control is type
   window : Weak Window
 ```
 
-Access has effective type `Result Window` and returns `weak-unavailable` when
-the target can no longer be retained:
+Access has effective type `Result ( Window, WeakErrorCode )` and returns
+`weak-unavailable` when the target can no longer be retained:
 
 ```topal
 window : Window is control window
@@ -1162,14 +1165,15 @@ value:
 conversation is generator ( initial : Request )
   yields OutgoingRequest
   resumes IncomingResponse
-  -> Result Conversation
+  -> Result ( Conversation, ConversationErrorCode )
 
   response : IncomingResponse is yield make-request initial
   finish-conversation response
 ```
 
-`yield value` has effective type `Result ResumeValue`. Normal resumption
-produces the declared resume value; abandonment produces the language-defined
+`yield value` has effective type
+`Result ( ResumeValue, GeneratorErrorCode )`. Normal resumption produces the
+declared resume value; abandonment produces the language-defined
 `generator-closed` error. The generator may handle that result to perform
 deliberate shutdown work, or allow the close signal to reach the generator
 boundary. It may not yield again after observing closure. Automatic cleanup

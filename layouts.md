@@ -235,8 +235,8 @@ control write value
 Conceptually:
 
 ```text
-read  : Location L -> Result L where L is a readable Layout T
-write : ( Location L, L ) -> Result Unit where L is a writable Layout T
+read  : Location L -> Result ( L, LayoutErrorCode ) where L is a readable Layout T
+write : ( Location L, L ) -> Result ( Unit, LayoutErrorCode ) where L is a writable Layout T
 ```
 
 Because `L` is a subtype of `T`, a caller which only needs the semantic value

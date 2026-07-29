@@ -33,9 +33,13 @@ distinguish independent interactions, such as writes to separate devices,
 without assuming that all operations of one broad category interfere.
 
 A function's effect row is a finite set of effect requirements plus, for an
-effect-polymorphic function, named row parameters. Duplicate requirements
-collapse by identity. Effect rows have no source ordering; ordering constraints
-are properties of the effects and of dependencies between calls.
+effect-polymorphic function, symbolic row parameters. Compiler-inferred
+parameters retained in generic intermediate code need no source-level names.
+Explicit parameters are named when an opaque contract, foreign boundary,
+abstraction requirement, programmer restriction, or otherwise uninferable
+relationship needs to state them. Duplicate requirements collapse by identity.
+Effect rows have no source ordering; ordering constraints are properties of the
+effects and of dependencies between calls.
 
 Effects form dependency evidence rather than a permission system. Read, write,
 send, hardware, and other effect declarations specify which access modes
@@ -113,9 +117,9 @@ from value flow and effect declarations. When neither exact aliasing nor
 independence can be established, the generic contract preserves `MayAlias`.
 
 Fallibility remains in `Result`, not in an effect row. A callback returning
-`Result B` gives `map` a fallible value transformation, while a callback which
-performs I/O but cannot report failure has an effect without a `Result`.
-Neither property silently implies the other.
+`Result ( B, Errors )` gives `map` a fallible value transformation, while a
+callback which performs I/O but cannot report failure has an effect without a
+`Result`. Neither property silently implies the other.
 
 ## Ordering and independence
 

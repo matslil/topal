@@ -36,9 +36,9 @@ or run it concurrently when those choices are observably equivalent.
 `Completed` is the distinct zero-data evidence that execution finished.
 Applying a function which returns `Completed` orders a dependent continuation
 after that completion without requiring an operating-system thread to block.
-A fallible completion returns `Result Completed`. `Result Unit` is invalid
-because an interaction with no completion dependency has no result channel on
-which to report failure.
+A fallible completion returns `Result ( Completed, Errors )`.
+`Result ( Unit, Errors )` is invalid because an interaction with no completion
+dependency has no result channel on which to report failure.
 
 Unobserved completion does not erase effects or detach computation. Effects of
 a `Unit` call remain outstanding and constrain later conflicting interactions

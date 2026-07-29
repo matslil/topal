@@ -170,22 +170,24 @@ the bound scope itself available under the published name, preserving that
 scope's interface.
 
 A published declaration must not expose a private type through its interface.
-In particular, a fallible function's exact `ErrorCode` enum is part of its
-`Result` contract. Publishing the function therefore requires that enum to be
-published through a namespace reachable by consumers. The enum may be defined
-and published independently of the function and need not share its namespace:
+In particular, every error vocabulary explicitly named by a function's
+`Result` is part of its contract. Publishing the function therefore requires
+each vocabulary to be published through a namespace reachable by consumers.
+The vocabularies may be defined and published independently of the function
+and need not share its namespace:
 
 ```topal
 use shared-error
-ErrorCode is shared-error ErrorCode
 
-read-count is fn pub ( path : Path ) -> Result Integer
+read-count is fn pub (
+  path : Path
+) -> Result ( Integer, shared-error FileErrorCode )
   body
 ```
 
-Here `read-count` remains usable only while `shared-error ErrorCode` is part of
-the published dependency interface. The function's publication does not
-implicitly relocate or republish that type.
+Here `read-count` remains usable only while `shared-error FileErrorCode` is
+part of the published dependency interface. The function's publication does
+not implicitly relocate or republish that type.
 
 ## Visibility propagates one boundary at a time
 
@@ -663,7 +665,7 @@ Package (
   version : Version
 )
 
-calculate is fn ( expression : String ) -> Result Number
+calculate is fn ( expression : String ) -> Result ( Number, ModuleErrorCode )
   implementation
 ```
 
@@ -692,7 +694,7 @@ application version is v4.3.2
 start is fn (
   arguments : CommandArguments,
   environment : Map ( String, String )
-) -> Result Completed
+) -> Result ( Completed, ModuleErrorCode )
   selected is arguments expression
   print @ calculate selected
   Completed
@@ -816,15 +818,16 @@ machine code immediately. Exported generic implementations normally retain:
 - their typed intermediate body;
 - symbolic type and construction parameters;
 - capability and implementation evidence;
+- result error-vocabulary parameters and bounds;
 - effect rows and resource-identity relationships;
 - layout and static-value dependencies; and
 - provenance required for diagnostics, licensing, and reproducibility.
 
 Final application compilation substitutes the selected concrete types,
-callbacks, identities, layouts, and evidence. It then specializes the generic
-body, emits machine code, and deduplicates definitionally identical
-specializations. Incremental caches may retain generated specializations, but
-cache contents do not change program semantics.
+callbacks, error vocabularies, identities, layouts, and evidence. It then
+specializes the generic body, emits machine code, and deduplicates
+definitionally identical specializations. Incremental caches may retain
+generated specializations, but cache contents do not change program semantics.
 
 Finite dynamic implementation alternatives may each receive a useful
 specialization. When identity is deliberately erased or specialization would
@@ -1041,7 +1044,7 @@ application license is "GPL-3.0-only"
 start is fn (
   arguments : CommandArguments,
   environment : Map ( String, String )
-) -> Result Completed
+) -> Result ( Completed, ModuleErrorCode )
   launch ( arguments, environment )
   Completed
 ```

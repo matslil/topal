@@ -116,7 +116,10 @@ existentially:
 
 ```text
 validate : T, dynamic Constraint T
-        -> Result (exists C : Constraint T. T with evidence C)
+        -> Result (
+             exists C : Constraint T. T with evidence C,
+             ConstraintErrorCode
+           )
 ```
 
 Code which needs only runtime acceptance can instead accept `Predicate T` and

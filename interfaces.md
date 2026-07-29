@@ -16,14 +16,14 @@ Lexer is Interface
 
   parse is fn (
     command : String
-  ) -> Result ParseResult
+  ) -> Result ( ParseResult, LexerErrorCode )
 
   parse-tokens is generator (
     source : String
   )
     yields Token
     resumes Unit
-    -> Result ParseResult
+    -> Result ( ParseResult, LexerErrorCode )
 ```
 
 The declarations specify interaction shapes, not implementation bodies,
@@ -45,7 +45,7 @@ Lexer
 
   parse is fn (
     command : String
-  ) -> Result ParseResult
+  ) -> Result ( ParseResult, LexerErrorCode )
     parse-command command
 
   parse-tokens is generator (
@@ -53,7 +53,7 @@ Lexer
   )
     yields Token
     resumes Unit
-    -> Result ParseResult
+    -> Result ( ParseResult, LexerErrorCode )
 
     tokenize source foreach { token }
       Unit is yield token
@@ -90,7 +90,7 @@ local-lexer is Lexer
 
   parse is fn (
     command : String
-  ) -> Result ParseResult
+  ) -> Result ( ParseResult, LexerErrorCode )
     parse-command command
 
   parse-tokens is generator (
@@ -98,7 +98,7 @@ local-lexer is Lexer
   )
     yields Token
     resumes Unit
-    -> Result ParseResult
+    -> Result ( ParseResult, LexerErrorCode )
     implementation
 ```
 
@@ -108,7 +108,7 @@ The value retains the selected declarations and their implementation evidence:
 parse-with is fn (
   lexer : Lexer,
   command : String
-) -> Result ParseResult
+) -> Result ( ParseResult, LexerErrorCode )
   lexer parse command
 ```
 
@@ -135,7 +135,7 @@ tracing-lexer is fn (
 
     parse is fn (
       command : String
-    ) -> Result ParseResult
+    ) -> Result ( ParseResult, LexerErrorCode )
       logger record command
       underlying parse command
 
@@ -144,7 +144,7 @@ tracing-lexer is fn (
     )
       yields Token
       resumes Unit
-      -> Result ParseResult
+      -> Result ( ParseResult, LexerErrorCode )
       implementation
 ```
 
@@ -155,9 +155,9 @@ function and generator shapes then determine the messaging interaction:
 
 ```text
 fn Input -> Unit               event without a completion reply
-fn Input -> Result Completed   completion request
-fn Input -> Result Value       value request
-generator ... -> Result Value  stream
+fn Input -> Result ( Completed, ApplicationErrors )   completion request
+fn Input -> Result ( Value, ApplicationErrors )       value request
+generator ... -> Result ( Value, ApplicationErrors )  stream
 ```
 
 For example, a task can apply `Lexer` around the relevant handler declarations:
@@ -181,7 +181,7 @@ LexerService is LexerTask
     parse is fn (
       _ : MessageContext,
       command : String
-    ) -> Result ParseResult
+    ) -> Result ( ParseResult, LexerErrorCode )
       grammar parse command
 
     parse-tokens is generator (
@@ -190,7 +190,7 @@ LexerService is LexerTask
     )
       yields Token
       resumes Unit
-      -> Result ParseResult
+      -> Result ( ParseResult, LexerErrorCode )
       implementation
 ```
 
@@ -210,18 +210,20 @@ does not use it; it is a discard identifier rather than a pattern wildcard.
 dependent continuation without requiring an operating-system thread to block.
 Every ordinary message handler with a response channel must return `Result`.
 Plain `Completed` and plain value results are therefore invalid message
-implementations. `Result Unit` is invalid for a function interaction with no
-completion channel; a zero-data completion uses `Result Completed`. A task
-generator's final return must likewise be a `Result`, although `Result Unit`
-is valid there because a stream has a final response channel.
+implementations. `Result ( Unit, ApplicationErrors )` is invalid for a
+function interaction with no completion channel; a zero-data completion uses
+`Result ( Completed, ApplicationErrors )`. A task generator's final return
+must likewise be a `Result`, although `Result ( Unit, ApplicationErrors )` is
+valid there because a stream has a final response channel.
 
 An interface operation returning plain `Completed` or another plain value may
 have a direct implementation, but cannot have a message implementation. An
-operation intended for either mechanism declares `Result Completed` or
-`Result Value`. A task implementation adds the language-defined
-`task-terminated` code to the declared application codes in the effective
-`Result` contract; it does not change the success type or introduce another
-result wrapper.
+operation intended for either mechanism declares
+`Result ( Completed, ApplicationErrors )` or
+`Result ( Value, ApplicationErrors )`. A task implementation adds the
+language-defined `task-terminated` code to the declared application codes in
+the effective `Result` contract; it does not change the success type or
+introduce another result wrapper.
 
 A task's complete set of published handlers forms its implicit concrete
 interface. Explicit `Interface` constructions let the task publish restricted
