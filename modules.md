@@ -807,6 +807,43 @@ implicitly union an argument named `features` or require it to be additive.
 Code which wants an additive feature convention declares and implements that
 policy explicitly.
 
+## Generic intermediate code
+
+A compiled Topal library artifact may contain both final machine code and typed
+generic intermediate code. Concrete exported implementations can be emitted as
+machine code immediately. Exported generic implementations normally retain:
+
+- their typed intermediate body;
+- symbolic type and construction parameters;
+- capability and implementation evidence;
+- effect rows and resource-identity relationships;
+- layout and static-value dependencies; and
+- provenance required for diagnostics, licensing, and reproducibility.
+
+Final application compilation substitutes the selected concrete types,
+callbacks, identities, layouts, and evidence. It then specializes the generic
+body, emits machine code, and deduplicates definitionally identical
+specializations. Incremental caches may retain generated specializations, but
+cache contents do not change program semantics.
+
+Finite dynamic implementation alternatives may each receive a useful
+specialization. When identity is deliberately erased or specialization would
+not distinguish the remaining alternatives, the compiler emits a shared
+fallback using the conservative union of effects and other evidence required
+by every possible value.
+
+Generic intermediate code is compiler-versioned implementation material, not a
+permanent public machine ABI. A compiler which cannot consume its version
+rebuilds it from a compatible source artifact or reports that the compiled
+dependency must be rebuilt. Published Topal types, interfaces, capabilities,
+and semantic contracts remain the compatibility boundary.
+
+A producer may intentionally conceal an implementation by publishing concrete
+shared code and a sufficient opaque contract instead of its generic body. This
+forgoes body-derived specialization and may require conservative effects,
+layouts, or resource relationships. Foreign exports always require a concrete
+ABI; unresolved Topal generic intermediate code cannot cross that boundary.
+
 ## Licenses and copyright
 
 License and copyright information is static source metadata. Every function has

@@ -94,12 +94,23 @@ that callback effects are independent between entries or otherwise safely
 ordered.
 
 The compiler normally infers effect-row and resource-identity parameters and
-retains their relationships in compiled generic evidence. Repeated captured
-identities express exact equality. An explicit `DependsOn`, `Independent`,
-`Conflicts`, `Aliases`, or `MayAlias` classification is needed only when a
-generic relationship cannot be recovered from value flow and effect
-declarations. When neither exact aliasing nor independence can be established,
-the generic contract preserves `MayAlias`.
+retains their relationships in typed generic intermediate code distributed
+with the compiled artifact. Repeated captured identities express exact
+equality. At final application compilation, concrete types, callback
+implementations, resource identities, capability evidence, and effect evidence
+are substituted into that code. The resulting specialization receives the
+precise effects derivable for that use.
+
+For example, a generic implementation which invokes `operation resource`
+retains the symbolic relationship that its effects include the effects of that
+invocation on the selected `resource`. It does not need to invent and expose a
+source-level effect-row parameter merely because the callback is not concrete
+when the library is first compiled.
+
+An explicit `DependsOn`, `Independent`, `Conflicts`, `Aliases`, or `MayAlias`
+classification is needed only when a generic relationship cannot be recovered
+from value flow and effect declarations. When neither exact aliasing nor
+independence can be established, the generic contract preserves `MayAlias`.
 
 Fallibility remains in `Result`, not in an effect row. A callback returning
 `Result B` gives `map` a fallible value transformation, while a callback which
@@ -211,10 +222,15 @@ foreign model.
 The semantic model leaves these grammar choices open:
 
 - how an explicit effect upper bound follows a function type;
-- how effect-row parameters are named in higher-order declarations;
+- how otherwise uninferable effect-row parameters are named in higher-order
+  declarations;
 - how a source declaration names a sandbox adapter and its granted resources;
   and
 - whether private inferred effects have an optional display abbreviation.
+
+Ordinary visible generic bodies do not require explicit effect-row syntax.
+Bounds and named rows remain useful for opaque implementations, foreign
+boundaries, abstraction requirements, or a programmer-imposed restriction.
 
 Compiler diagnostics and static introspection should display the full semantic
 row regardless of the chosen source shorthand.
