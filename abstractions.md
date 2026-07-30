@@ -6,12 +6,20 @@ type of its value, match the construction of that type, and require capabilities
 of the matched objects. The function body is the implicit successful branch of
 that match.
 
-Constraints and capabilities both produce evidence, compose with matchers, and
-participate in static introspection. They remain different kinds of object:
+Constraints, capabilities, and resource complexity guarantees produce evidence,
+compose with matchers, and participate in static introspection. They remain
+different kinds of object:
 
 - a constraint limits the permitted values of one base type; and
 - a capability makes semantic promises about an existing type, function, or
-  other static object.
+  other static object; while
+- a resource complexity guarantee bounds how an implementation's execution work
+  or allocation grows with measures of its inputs or represented values.
+
+The third kind is defined in
+[resource complexity guarantees](performance.md). It may be combined with a
+capability, but forgetting it loses only a performance specialization and does
+not forget the capability's semantic promise.
 
 ## Constraints limit values
 
@@ -680,15 +688,23 @@ declared direct conversion wins over a longer composed path; two otherwise
 equivalent canonical paths make the conversion ambiguous and require an
 explicit choice.
 
-Overload declarations are tested in source order. For each declaration, header
-matching may use evidence forgetting and then a lossless semantic conversion.
-The first applicable declaration is selected, even when a later declaration
-would require a shorter conversion or match the input exactly. Declaration
-order is the explicit precedence; conversion quality, capability satisfaction,
-and the output type do not reorder candidates. The compiler may optionally
-diagnose when an earlier conversion preempts a later exact match and report the
-conversion path and capability evidence which made the earlier declaration
-applicable.
+Overload declarations are ordinarily tested in source order. For each
+declaration, header matching may use evidence forgetting and then a lossless
+semantic conversion. The first applicable declaration is selected, even when a
+later declaration would require a shorter conversion or match the input
+exactly. Declaration order is the explicit precedence; conversion quality,
+capability satisfaction, and the output type do not reorder candidates.
+
+An explicit call-site resource `Prefer` construction may rank already
+applicable implementations by their retained complexity evidence before this
+source-order step. It changes neither header applicability nor conversions and
+falls back to source order for unsupported, equivalent, or incomparable
+preferences. The complete model is defined in
+[resource complexity guarantees](performance.md).
+
+The compiler may optionally diagnose when an earlier conversion preempts a
+later exact match and report the conversion path and capability evidence which
+made the earlier declaration applicable.
 
 Evidence forgetting may satisfy a concrete classifier but never changes an
 already captured complete object. Repeated pattern names require definitional

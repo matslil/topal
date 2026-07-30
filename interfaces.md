@@ -288,6 +288,13 @@ authenticated, or runtime-enforced metadata before the compiler may use a
 property for correctness. Unverified metadata may influence performance only
 when ignoring it preserves behavior.
 
+Typed implementation evidence may also retain
+[resource complexity guarantees](performance.md). These are independent of an
+interface's semantic call shapes and may distinguish several implementations
+of the same interface. Erasing them preserves correctness but can remove a
+performance specialization; explicitly requiring one still restricts which
+implementation evidence is applicable.
+
 ## Relationship to capabilities
 
 An interface specifies callable function and generator shapes. Capabilities

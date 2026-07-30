@@ -48,7 +48,9 @@ The following questions from the initial audit are no longer open:
   name in one namespace are tested in source order and the first applicable
   input header wins. Capability strength, conversion quality, and the expected
   result type do not reorder them. Optional diagnostics may identify surprising
-  overlap or shadowing.
+  overlap or shadowing. An explicit call-site resource `Prefer` construction is
+  the sole current ranking layer before source order; it never changes semantic
+  applicability or invents missing evidence.
 - Imported scopes remain qualified and do not merge overload sets. A qualified
   call selects its namespace before searching that namespace's declarations;
   scope aliases preserve the same order. Explicit cross-namespace overload-set
@@ -121,6 +123,14 @@ The following questions from the initial audit are no longer open:
   capability `Decreases ( Measures )` supplies pure well-founded measure
   expressions when termination inference needs guidance or an opaque,
   interface, or higher-order contract must publish the relationship.
+- [Resource complexity guarantees](performance.md) are distinct from semantic
+  capabilities but compose with them as classifiers. `OExec ( E )` and
+  `OAlloc ( E )` express argument-dependent asymptotic upper bounds on abstract
+  work and total dynamic allocation. `NoAlloc` separately promises exactly no
+  allocation for any input. Direct call-site classification is a hard
+  requirement. `Prefer ( Guarantees... )` supplies soft lexicographic selection
+  goals before source order, while missing performance evidence still permits a
+  semantically applicable fallback.
 
 ## Surface grammar
 
@@ -291,13 +301,14 @@ primitive ABI layouts, callback adapters, error conventions, and platform
 linkage metadata. Those catalogs are platform specifications rather than part
 of the bootstrap language.
 
-## Performance contracts
+## Resource complexity
 
-Core collections deliberately avoid promising a representation. It remains to
-decide whether generic capabilities may state checked complexity or storage
-guarantees, such as random access, contiguous storage, bounded allocation, or
-real-time execution.
+The initial resource complexity model is settled in
+[resource complexity guarantees](performance.md). Core collection names still
+do not imply a representation or complexity class. Semantic capabilities such
+as `Indexed` may be combined with applicable performance evidence to name
+stronger classifiers such as `RandomAccess`, while callers may forget that
+evidence and retain the semantic capability.
 
-These guarantees are useful for systems programming but require a vocabulary
-whose evidence survives optimization and foreign boundaries. They should not be
-inferred merely from names such as `Array`, `Map`, or `List`.
+Elapsed-time guarantees, peak live-memory bounds, operation-association surface
+syntax, and platform-specific resource dimensions remain future refinements.

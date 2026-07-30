@@ -106,7 +106,9 @@ Function input and output types are explicit, so later function declarations
 may be referenced from earlier definitions. The compiler constructs the call
 graph and treats each strongly connected component as one mutually recursive
 group. No source-level recursive-group declaration is required. Overload
-priority remains source order even though every complete header is visible.
+priority remains source order even though every complete header is visible,
+except when an explicit call-site resource `Prefer` construction ranks
+applicable implementations before that final tie-breaker.
 
 ```topal
 even is fn ( value : Nat ) -> Boolean
