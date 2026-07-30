@@ -198,3 +198,12 @@ task state available only to the currently executing handler segment and for
 restoring current state when a continuation resumes. A continuation may retain
 ordinary local values, endpoint capabilities, and protocol identifiers, but
 not hidden access to another task's mutable implementation state.
+
+A reply-bearing message stream may be wrapped with `with-timeout`. Its relative
+duration applies separately while waiting for the first yield or final return
+and, after every consumer resume, while waiting for the next yield or final
+return. No timer runs while the consumer handles a yielded value or retains the
+continuation. A timeout becomes the stream's final `Result`, leaves earlier
+yields observed, and abandons the continuation through the ordinary
+`generator-closed` path. See [tasks and intrinsic messaging](tasks.md) for the
+timeout server and race semantics.

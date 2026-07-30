@@ -96,6 +96,10 @@ The following questions from the initial audit are no longer open:
   identity, and order-independent. No specially named error type is resolved
   from the surrounding scope. Visible generic bodies retain the complete
   vocabulary component symbolically in typed intermediate code.
+- `Error.domain` identifies the stable reporting operation, subsystem, or
+  abstraction, while the independently scoped `ErrorCode` value says what
+  occurred. Several domains may use one code vocabulary. Code patterns qualify
+  values through their defining scope; identifiers are not global.
 - Capabilities are promises, never implementation containers. The bootstrap
   parser knows none of them; the selected Topal version supplies the atomic
   vocabulary, classified object kinds, and verification rules. Source code
@@ -233,10 +237,33 @@ which automatic cleanup runs. The owning scope waits for shutdown and cleanup
 and retains their failures. Consumers have no explicit generator-cancellation
 operation.
 
-Clock-provided timeout alternatives avoid ambient time. The standard clock and
-timer protocols, representation of deadlines, and deterministic testing rules
-remain to be designed. They should reuse quantities and units rather than
-introduce untyped duration numbers.
+Short standard-library delays may pause the current task for bounded hardware
+waiting. Ordinary message timeouts use
+`5[s] with-timeout ( message-interface call )`. The relative monotonic quantity
+is converted to a hidden absolute deadline and registered with a
+compiler-created application-local timeout server. A hidden timeout ID prevents
+sequential and cancellation races. When the awaited result wins, local
+cancellation guarantees that the handler cannot observe that timeout. A
+request timeout retains and discards the eventual reply without cancelling the
+underlying operation; stream behavior is defined below.
+
+`with-timeout` accepts reply-bearing request and stream message calls. A request
+has one timed wait. A stream starts a fresh timed interval while awaiting its
+first yield or final return and after each consumer resume while awaiting the
+next yield or final return. No timer runs while the consumer handles a yielded
+value or retains its continuation.
+
+The construction merges `TimeoutErrorCode` into the request result or the
+stream's final result without wrapping individual yields. A stream timeout
+abandons its continuation through the existing `generator-closed` path; values
+already yielded remain observed. The direct `timeout-error timeout-occurred`
+failure uses the `lang with-timeout` domain, so the same code returned under the
+handler's domain remains distinguishable.
+
+The `testing` feature supplies a qualified `testing advance-time` function and
+a virtual monotonic clock. Advancement processes intermediate deadlines and
+their dependency-ready work deterministically, making timeout and short-delay
+tests independent of real elapsed time. Civil time remains separate.
 
 ## Resource moves and non-owning capabilities
 

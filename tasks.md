@@ -554,6 +554,9 @@ retains their failures.
 A successfully admitted non-stream request is a mandatory reply interaction.
 The requester remains suspended until the reply commits or the target returns
 `task-terminated`; there is no first-class pending request which can be dropped.
+`with-timeout` is the deliberate exception described below: it lets one handler
+stop observing the reply while the runtime retains and eventually discards that
+reply through the hidden session.
 
 ## Waiting for alternatives
 
@@ -564,9 +567,138 @@ are already available at the same logical point, declaration order is the
 deterministic tie breaker.
 
 Non-selected interactions remain owned by the scope and must produce their
-replies; selection never silently detaches an interaction.
-Timeouts are alternatives supplied by a clock or timer protocol, so they add
-that protocol's effects and dependencies rather than reading ambient time.
+replies; selection never silently detaches an interaction. The runtime may
+retain a reply on behalf of a handler which has explicitly stopped observing it
+through `with-timeout`.
+
+## Short delays and message timeouts
+
+A standard-library short-delay operation may pause the currently running task,
+which is useful for bounded waits between hardware readiness checks. It uses a
+relative monotonic time quantity and records the clock or hardware timing
+effect. Other handlers of that task do not run during the pause. The exact
+library function name and target-specific useful duration limits belong to the
+standard-library and platform design.
+
+Ordinary message timeouts use message passing instead:
+
+```topal
+5[s] with-timeout ( network request packet )
+```
+
+The left operand is a nonnegative relative monotonic time quantity. The
+parenthesized right operand must be one reply-bearing request or stream message
+interface call. A `Unit` event has no reply to wait for and is invalid here.
+
+For a request, evaluation initiates the message call and registers one timeout
+with a compiler-created application-local timeout server. For a stream, the
+same duration applies independently whenever its consumer waits for the first
+yield or final return and whenever it resumes the stream to await the next yield
+or final return.
+
+At the beginning of each wait interval, the runtime converts the relative
+quantity to a hidden absolute monotonic deadline before sending the
+registration. Queueing and delivery latency therefore do not extend that
+interval. The source language exposes neither the absolute value nor the clock
+representation.
+
+The expression combines the message call's effects with its timeout-server and
+monotonic-clock interactions. Those compiler-provided identities are recorded
+in implementation evidence without exposing ambient file, clock, or service
+authority to ordinary functions.
+
+Each timeout registration carries the requesting handler's mandatory
+`SessionId`, the absolute deadline, and a fresh compiler-generated timeout ID.
+The calling handler suspends awaiting either the corresponding message result
+or a timeout event sent back by the server. The timeout ID distinguishes
+sequential or concurrent registrations belonging to the same handler and is
+never a source-level value.
+
+When a request reply, stream yield, or stream final return wins its interval,
+the runtime atomically marks that timeout ID cancelled and sends a cancellation
+event to the timeout server. Once this local cancellation completes, no event
+for that timeout can be observed by the handler. A timeout event already queued
+or in transit is discarded by the runtime. When the timeout wins, duplicate
+timeout events cannot resume the handler again.
+
+A stream has no active timer while its yielded value is being handled or while
+its continuation is retained without being resumed. Resuming it begins a new
+interval with a new absolute deadline and timeout ID. Consumer processing time
+therefore cannot cause a provider-side timeout.
+
+For a request, the timeout does not cancel the executed message operation. Its
+eventual reply is accepted and discarded through the retained hidden request
+session. For a stream, timeout ends the consumer's stream with an error and
+abandons its continuation; the serving generator follows the existing
+`generator-closed` path. Values already yielded remain observed. Neither form
+hard-terminates the serving task. A protocol which can stop the underlying
+network, hardware, or service operation defines that separately.
+
+If the message call has effective type:
+
+```topal
+Result (
+  Response,
+  (
+    NetworkErrorCode,
+    TaskErrorCode
+  )
+)
+```
+
+the complete timeout expression has:
+
+```topal
+Result (
+  Response,
+  (
+    NetworkErrorCode,
+    TaskErrorCode,
+    TimeoutErrorCode
+  )
+)
+```
+
+The caller-side failure has qualified code
+`timeout-error timeout-occurred` and domain `lang with-timeout`. A handler may
+return the same qualified code under its own domain; domain matching
+distinguishes the reporting boundary. If the handler already declares
+`TimeoutErrorCode`, the duplicate vocabulary collapses without collapsing
+domains.
+
+For a stream declaration:
+
+```topal
+receive-packets is generator (
+  request : PacketRequest
+)
+  yields Packet
+  resumes Unit
+  -> Result ( TransferSummary, NetworkErrorCode )
+```
+
+`with-timeout` preserves `yields Packet` and `resumes Unit`, while its final
+message result becomes:
+
+```topal
+Result (
+  TransferSummary,
+  (
+    NetworkErrorCode,
+    TaskErrorCode,
+    TimeoutErrorCode
+  )
+)
+```
+
+Individual yields are not wrapped. If an interval times out, the stream ends
+with the caller-side timeout error as its final result.
+
+A request reply, stream yield, or stream final return committed before its
+absolute interval deadline wins. Once the deadline is reached without a
+committed result for that interval, the timeout may win. Hidden sessions and
+timeout IDs ensure that a result, timeout, cancellation, or duplicate arriving
+after selection cannot resume the handler a second time.
 
 ## Backpressure and queue bounds
 

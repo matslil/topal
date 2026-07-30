@@ -23,6 +23,9 @@ activation. A collision with a declaration already visible in the root scope
 is reported at the feature declaration rather than silently shadowing either
 meaning.
 
+Clock control is the deliberate qualification exception. It remains under the
+`testing` namespace so environmental manipulation is visible in source.
+
 ## Compact tables
 
 A coverage table applies the function under test to `path-coverage`. Each
@@ -329,6 +332,43 @@ The normal compilation diagnostic is condensed:
 
 Detailed reporting may show that several rows exercise the same path, but does
 not characterize those rows as redundant.
+
+## Virtual monotonic time
+
+Activating the `testing` feature replaces the application-standard monotonic
+clock used by compiler timeout machinery and standard short delays with a
+virtual clock. Tests advance it explicitly:
+
+```topal
+testing advance-time 250[ms]
+testing advance-time 5[s]
+```
+
+The input must be a nonnegative quantity with the time dimension. A bare number,
+a quantity of another dimension, or an attempt to move monotonic time backward
+is invalid. `advance-time` returns `Completed`.
+
+Advancement processes intermediate deadlines rather than jumping directly to
+the final instant. The test runtime repeatedly:
+
+1. moves to the earliest registered deadline at or before the target;
+2. queues timeout events for that instant in deterministic registration order;
+3. permits dependency-ready work caused by those events to reach the normal
+   deterministic scheduling boundary; and
+4. includes any newly registered deadlines still at or before the target.
+
+It then moves the virtual clock to the exact requested target. This ensures that
+a handler which fires at `3[s]` and registers another timeout for `2[s]` causes
+the second deadline at `5[s]`, not relative to the final jump target.
+
+Returning `Completed` means the target time has been reached, every deadline up
+to it has been processed, and its timeout events have been admitted. It does
+not promise that unrelated background tasks have terminated. Cancelled timeout
+IDs remain suppressed when virtual time passes their deadlines.
+
+The controller advancing time must be distinct from a subject task currently
+paused on that clock. Tests never wait for real elapsed time, and virtual
+advancement does not modify civil time.
 
 ## Scope and initial restrictions
 

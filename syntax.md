@@ -8,7 +8,8 @@ Testing-specific table syntax is described separately in
 [unit testing and structural path coverage](testing.md). Its root vocabulary
 becomes available only in a language context constructed with the conventional
 `testing` feature argument and remains unavailable to ordinary Topal source
-which does not request it.
+which does not request it. Virtual clock control is the deliberate qualified
+exception, as in `testing advance-time 5[s]`.
 
 Introspection-specific operations are described in
 [static introspection](introspection.md). They remain visibly qualified through
@@ -1125,6 +1126,26 @@ plain value, and function `Result ( Unit, ApplicationErrors )` results are
 invalid message-handler shapes. A generator handler establishes a stream and
 its final return must be `Result`; the language-defined `task-terminated` code
 extends the effective error-code set without adding another wrapper.
+
+A reply-bearing message call may be given a relative monotonic timeout:
+
+```topal
+response is 5[s] with-timeout ( network request packet )
+```
+
+The parentheses make the complete message application the right operand.
+`with-timeout` is invalid for a `Unit` event. For a request it times the one
+reply wait. For a stream it applies the duration independently to the first
+yield or final return and, after each resume, to the next yield or final return.
+There is no active timer while the consumer handles a yielded value.
+
+The construction adds `TimeoutErrorCode` to the request's effective `Result`
+vocabulary or to the stream's final `Result`; it does not wrap stream yields.
+It returns `timeout-error timeout-occurred` under the `lang with-timeout` domain
+when an interval expires. A stream timeout abandons the continuation and uses
+the ordinary `generator-closed` path. The compiler hides the absolute monotonic
+deadlines, timeout IDs, server messages, cancellation, and late-result
+handling.
 
 See [tasks and intrinsic messaging](tasks.md) for identity namespaces, service
 discovery, isolation, startup and termination, and the implicit root task

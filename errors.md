@@ -175,6 +175,33 @@ atomically either retains an ordinary `T` or reports that the target is no
 longer retainable. A successful retained value remains valid for its lexical
 lifetime; `weak-unavailable` cannot subsequently replace it.
 
+Applying `with-timeout` to a reply-bearing message call adds
+`timeout-occurred` from `TimeoutErrorCode`. It merges the vocabulary into the
+existing message result rather than adding another wrapper:
+
+```topal
+5[s] with-timeout ( network request packet )
+
+Result (
+  Response,
+  (
+    NetworkErrorCode,
+    TaskErrorCode,
+    TimeoutErrorCode
+  )
+)
+```
+
+For a message stream, the vocabulary is added only to the stream's final
+`Result`. Individual yields keep their declared type. If waiting for a yield or
+final return times out, the stream ends with this timeout error; values already
+yielded remain observed.
+
+The timeout introduced by this caller uses the stable `lang with-timeout`
+domain. A handler may return the same `TimeoutErrorCode` value under its own
+domain. Duplicate code vocabularies collapse in the `Result` component while
+the runtime domains remain distinct.
+
 Different functions in the same source file may name different error
 vocabularies directly. Naming a type in `Result` does not move it into the
 function's namespace or create a new subtype there. Ordinary aliases remain
@@ -234,6 +261,27 @@ statically recorded result contract. When that contract describes a closed
 set, it can also check the match for exhaustiveness; an unconstrained dynamic
 `Error` requires a fallback branch.
 
+Code identifiers are never global. A timeout pattern, for example, names the
+scope which publishes `TimeoutErrorCode`:
+
+```topal
+attempt
+  Error (
+    domain is lang with-timeout,
+    code is timeout-error timeout-occurred
+  ) then handle-caller-timeout ()
+
+  Error (
+    domain is network request,
+    code is timeout-error timeout-occurred
+  ) then handle-handler-timeout ()
+```
+
+Matching only the qualified code accepts that condition from every domain.
+Matching the domain distinguishes which operation or abstraction reported it.
+Two identically spelled values from different `ErrorCode` scopes remain
+different enum values.
+
 ## Success projection and propagation
 
 When an expression has type `Result ( Value, SourceErrors )` but its immediate
@@ -282,10 +330,12 @@ a new outer error and retains the original as its cause.
 
 ## Domains, details, and causes
 
-An error domain identifies the stable vocabulary which owns an `ErrorCode`.
-Domains are generated from qualified module or namespace scope by default. A
-module may explicitly use another domain when several modules intentionally
-share a vocabulary.
+An error domain identifies the stable operation, subsystem, or abstraction
+which reported an error. An `ErrorCode` independently identifies what occurred.
+The same code vocabulary may be used by several domains, and one domain may
+report codes from several vocabularies declared by its public `Result`
+contracts. Domains are generated from qualified declaration scope by default;
+an API may explicitly select a stable domain shared by several declarations.
 
 An optional detail distinguishes a particular occurrence without requiring a
 new code. Details supplement the code description rather than repeat it.
@@ -308,8 +358,8 @@ context.
 ## Source locations and presentation
 
 Source locations answer where an error was constructed, while domains answer
-which semantic vocabulary owns it. Source locations do not participate in
-error equality or the stable API contract.
+which operation, subsystem, or abstraction reported it. Source locations do not
+participate in error equality or the stable API contract.
 
 A standard formatter presents the outer operation first and then follows its
 causes. It combines the printable domain, converted code description, and
