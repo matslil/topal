@@ -591,13 +591,73 @@ select : Array N T, ( T -> Boolean )
 ```
 
 The result packages the hidden parameter, its value, and the evidence relating
-it to the visible parameters. Pattern matching may introduce the hidden name
-and evidence in a nested scope. Code which does not need them can forget the
-package to a weaker visible capability such as `Sequence T`.
+it to the visible parameters. A decision-table pattern opens the package:
+
+```topal
+filtered
+  (
+    M : Nat,
+    result : Array M T,
+    size-proof : M <= N
+  ) then
+    use result
+```
+
+The subject's existential declaration establishes that the first component is
+static even though `M : Nat` has the same spelling as an ordinary classified
+value pattern. `M`, `result`, and `size-proof` exist only in the selected
+action. A single rule matching the one declared package shape is exhaustive and
+does not produce `Optional`.
+
+Ordinary discards avoid naming an unused component while leaving its evidence
+available to check later dependent components:
+
+```topal
+filtered
+  (
+    M : Nat,
+    result : Array M T,
+    _ : M <= N
+  ) then
+    process result
+```
+
+Code which needs none of the hidden precision may classify the complete package
+to a weaker visible object without explicitly opening it:
+
+```topal
+result : Sequence T is filtered
+```
+
+This is ordinary evidence forgetting. It succeeds only when every possible
+hidden witness supports the requested visible classifier.
+
+If an action result still refers to a fresh hidden identity, the decision
+expression automatically closes over that identity and packages the evidence
+needed by the outward result:
+
+```topal
+trimmed is filtered
+  (
+    M : Nat,
+    result : Array M T,
+    _ : M <= N
+  ) then
+    result
+```
+
+`trimmed` has `exists M. Array M T`. Returning both `result` and
+`size-proof` retains the bounded relationship in the inferred existential
+package. There is no separate source-level `pack` expression merely to move a
+dependent result out of the action.
 
 Existential packaging is never an unchecked cast. Opening a package creates a
 fresh identity which cannot be equated with another hidden parameter without
-evidence.
+evidence. Opening two packages with the same source spelling for `M` creates
+two distinct identities. A fresh identity cannot escape bare; it must be
+automatically closed into the decision result, explicitly retained by an
+existential function result type, or forgotten through a valid weaker
+classification.
 
 ## Equality, ordering, and keys
 

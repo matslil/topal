@@ -280,13 +280,13 @@ than collapsing immediately to a conservative shared implementation.
 A library may deliberately publish an opaque shared implementation instead.
 It must then provide a sufficient compiled contract for correctness, and its
 callers retain only that contract rather than body-derived specialization
-evidence. Foreign exports likewise require a concrete ABI and cannot leave
-their externally visible representation unresolved.
+evidence. Any future foreign export likewise requires a concrete ABI and cannot
+leave its externally visible representation unresolved.
 
-Foreign or independently deployed implementations must provide trusted,
-authenticated, or runtime-enforced metadata before the compiler may use a
-property for correctness. Unverified metadata may influence performance only
-when ignoring it preserves behavior.
+Independently deployed implementations, and any future foreign
+implementations, must provide trusted, authenticated, or runtime-enforced
+metadata before the compiler may use a property for correctness. Unverified
+metadata may influence performance only when ignoring it preserves behavior.
 
 Typed implementation evidence may also retain
 [resource complexity guarantees](performance.md). These are independent of an

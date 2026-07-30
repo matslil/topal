@@ -125,6 +125,24 @@ validate : T, dynamic Constraint T
            )
 ```
 
+After matching the `Result`, an ordinary decision-table pattern opens the
+successful existential package:
+
+```topal
+validation
+  Ok (
+    C : Constraint T,
+    accepted : T : C
+  ) then use-refined accepted
+
+  Error problem then handle problem
+```
+
+`C` is a fresh static constraint identity scoped to the successful action.
+Returning `accepted` with its precise `C` evidence automatically existentially
+closes the action result; classifying it as plain `T` deliberately forgets that
+evidence.
+
 Code which needs only runtime acceptance can instead accept `Predicate T` and
 receive `Boolean`. Code which needs a reusable refined classification accepts a
 static `Constraint T`. This phase distinction keeps dynamic validation

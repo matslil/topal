@@ -8,6 +8,19 @@ or uncertainty would be reported.
 The first topic is a unified verification system built from structural test
 tables, symbolic proof obligations, capability laws, and typed task protocols.
 
+## Foreign-language integration
+
+Foreign-language integration is deliberately postponed. A future design may
+define language-feature-specific ABI catalogs, primitive ABI mappings, symbol
+and linkage metadata, ownership transfer, error conventions, and callback
+adapters.
+
+It must preserve the already selected boundary principles: foreign execution
+is sandboxed; values are copied or serialized through validated layouts;
+resource access requires explicit capabilities; callbacks enter as typed task
+messages; and foreign code receives no borrowed Topal values, raw
+continuations, task internals, or ambient process authority.
+
 ## Verification outcomes
 
 Tests and proofs should use a common set of outcomes without presenting sampled

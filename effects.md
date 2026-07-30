@@ -262,8 +262,8 @@ implementation capability:
 - application composition supplies operating-system and service capabilities;
 - a task handles the interactions in its declared protocol;
 - a constructed context supplies a fixed contained diagnostic capability; or
-- a sandbox adapter implements a declared boundary protocol using only granted
-  resource capabilities.
+- a future sandbox adapter may implement a declared boundary protocol using only
+  granted resource capabilities.
 
 Handling an effect may translate it into other effects. The handler's contract
 records those implementation effects even when clients see only the abstract
@@ -306,9 +306,9 @@ cleanup then runs in the current structured task scope. Shutdown and cleanup
 effects remain part of the enclosing scope's contract, which waits for them
 and retains their failures.
 
-## Sandboxed foreign effects
+## Future sandboxed foreign effects
 
-Initial foreign execution occurs through a sandboxed adapter. Values cross
+Any future foreign execution occurs through a sandboxed adapter. Values cross
 through validated layouts, copied or serialized representations, declared
 message protocols, and explicitly granted resource capabilities. Foreign code
 does not receive Topal references, borrowed storage, raw continuations,
@@ -332,8 +332,7 @@ Effect classification, combination, kind implication, and specialization reuse
 the settled capability-style syntax. Ordinary visible generic bodies do not
 require explicit row-variable declarations.
 
-The exact source declaration for a sandbox adapter and its granted resources
-remains part of the foreign-boundary grammar. Private inferred effects may
-eventually receive an optional display abbreviation. Compiler diagnostics and
-static introspection should display the full semantic row regardless of any
-shorthand.
+Foreign-boundary grammar is postponed with foreign-language integration.
+Private inferred effects may eventually receive an optional display
+abbreviation. Compiler diagnostics and static introspection should display the
+full semantic row regardless of any shorthand.

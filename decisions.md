@@ -90,8 +90,10 @@ The following questions from the initial audit are no longer open:
   preserves uncertainty and is the safe default without independence evidence.
 - Finite useful dynamic alternatives retain a sum of exact implementation
   evidence. Erasure keeps common capability guarantees and the union of possible
-  effects, conservatively ordering unknown relationships. Initial foreign code
-  executes through sandboxed, explicitly capability-restricted adapters.
+  effects, conservatively ordering unknown relationships.
+- Foreign-language integration is postponed. Its retained boundary principles
+  require sandboxed, validated, explicitly capability-restricted adapters, but
+  the current language defines no foreign declaration syntax or ABI catalog.
 - The [initial capability vocabulary](capabilities.md) now defines comparison,
   collection observation and construction, keyed association, combination, and
   function-law capabilities.
@@ -137,6 +139,12 @@ The following questions from the initial audit are no longer open:
   requirement. `Prefer ( Guarantees... )` supplies soft lexicographic selection
   goals before source order, while missing performance evidence still permits a
   semantically applicable fallback.
+- Existential packages open through ordinary decision-table patterns. Hidden
+  static components and their evidence are scoped to the selected action;
+  discards retain unnamed evidence for dependent matching. An action result
+  which still depends on a fresh identity is automatically existentially
+  closed, while ordinary classification may forget the package to a weaker
+  visible object.
 
 ## Surface grammar
 
@@ -144,12 +152,10 @@ The grammar must select compatible spellings for:
 
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
-- existential package opening;
 - immutable record reconstruction and qualified task-field replacement;
 - task scopes, child construction, waiting, termination, and selection;
 - explicit resource scopes;
-- otherwise uninferable public error-vocabulary parameters and bounds; and
-- foreign symbols, ABIs, and trusted declarations.
+- otherwise uninferable public error-vocabulary parameters and bounds.
 
 These should be designed together so that indentation, recursive
 classification, prefix application, and the zero-to-two operand rule remain
@@ -221,10 +227,10 @@ over concurrent termination; if termination commits first, the interaction
 returns `task-terminated`.
 
 The initial design handles effects through application composition, tasks,
-protocols, constructed contexts, and foreign adapters. A future general handler
-construct should be added only if concrete use cases cannot be expressed
-cleanly through those boundaries. If added, its treatment of continuation
-linearity, task state, and effect resource identities needs a separate design.
+protocols, and constructed contexts. A future general handler construct should
+be added only if concrete use cases cannot be expressed cleanly through those
+boundaries. If added, its treatment of continuation linearity, task state, and
+effect resource identities needs a separate design.
 
 ## Termination and external time
 
@@ -299,13 +305,13 @@ move rules. Weak references expose no counts or collection timing. Task
 endpoints remain distinct messaging authorities and report `task-terminated`
 rather than using weak promotion.
 
-## Foreign ABI catalog
+## Deferred foreign integration
 
-The portable model states what every foreign declaration must describe.
-Individual language features still need to define supported ABI families,
-primitive ABI layouts, callback adapters, error conventions, and platform
-linkage metadata. Those catalogs are platform specifications rather than part
-of the bootstrap language.
+Foreign-language integration is future work rather than a remaining initial
+language decision. The portable safety principles remain documented so a later
+design does not introduce ambient authority, unchecked values, or raw Topal
+references. ABI families, primitive ABI mappings, callbacks, error conventions,
+linkage metadata, and all related surface syntax are deliberately unspecified.
 
 ## Resource complexity
 
