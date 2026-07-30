@@ -688,15 +688,23 @@ declared direct conversion wins over a longer composed path; two otherwise
 equivalent canonical paths make the conversion ambiguous and require an
 explicit choice.
 
-Overload declarations are tested in source order. For each declaration, header
-matching may use evidence forgetting and then a lossless semantic conversion.
-The first applicable declaration is selected, even when a later declaration
-would require a shorter conversion or match the input exactly. Declaration
-order is the explicit precedence; conversion quality, capability satisfaction,
-and the output type do not reorder candidates. The compiler may optionally
-diagnose when an earlier conversion preempts a later exact match and report the
-conversion path and capability evidence which made the earlier declaration
-applicable.
+Overload declarations are ordinarily tested in source order. For each
+declaration, header matching may use evidence forgetting and then a lossless
+semantic conversion. The first applicable declaration is selected, even when a
+later declaration would require a shorter conversion or match the input
+exactly. Declaration order is the explicit precedence; conversion quality,
+capability satisfaction, and the output type do not reorder candidates.
+
+An explicit call-site resource `Prefer` construction may rank already
+applicable implementations by their retained complexity evidence before this
+source-order step. It changes neither header applicability nor conversions and
+falls back to source order for unsupported, equivalent, or incomparable
+preferences. The complete model is defined in
+[resource complexity guarantees](performance.md).
+
+The compiler may optionally diagnose when an earlier conversion preempts a
+later exact match and report the conversion path and capability evidence which
+made the earlier declaration applicable.
 
 Evidence forgetting may satisfy a concrete classifier but never changes an
 already captured complete object. Repeated pattern names require definitional

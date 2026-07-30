@@ -48,7 +48,9 @@ The following questions from the initial audit are no longer open:
   name in one namespace are tested in source order and the first applicable
   input header wins. Capability strength, conversion quality, and the expected
   result type do not reorder them. Optional diagnostics may identify surprising
-  overlap or shadowing.
+  overlap or shadowing. An explicit call-site resource `Prefer` construction is
+  the sole current ranking layer before source order; it never changes semantic
+  applicability or invents missing evidence.
 - Imported scopes remain qualified and do not merge overload sets. A qualified
   call selects its namespace before searching that namespace's declarations;
   scope aliases preserve the same order. Explicit cross-namespace overload-set
@@ -125,9 +127,10 @@ The following questions from the initial audit are no longer open:
   capabilities but compose with them as classifiers. `OExec ( E )` and
   `OAlloc ( E )` express argument-dependent asymptotic upper bounds on abstract
   work and total dynamic allocation. `NoAlloc` separately promises exactly no
-  allocation for any input. Missing performance evidence may select a general
-  ordered fallback; when explicitly required, it remains a checked guarantee
-  rather than an ignorable hint.
+  allocation for any input. Direct call-site classification is a hard
+  requirement. `Prefer ( Guarantees... )` supplies soft lexicographic selection
+  goals before source order, while missing performance evidence still permits a
+  semantically applicable fallback.
 
 ## Surface grammar
 

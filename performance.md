@@ -141,6 +141,73 @@ semantically sufficient `Indexed` implementation remains applicable. If no
 fallback is declared, the complexity guarantee is a mandatory part of that
 call's contract rather than a hint which the compiler may silently ignore.
 
+## Call-site requirements and preferences
+
+A call may classify the function selected from an overload set with a resource
+guarantee. The classification is a hard requirement:
+
+```topal
+found is mycontainer
+  ( search : OExec ( size mycontainer ) )
+  my-key
+```
+
+The `search` implementation must be applicable to the two ordinary operands and
+must carry execution evidence no worse than the stated class. If none does,
+the call is invalid. When several implementations satisfy the requirement,
+ordinary source order still decides unless the call also supplies a preference.
+
+`Prefer` turns one or more resource guarantees into soft, ordered selection
+goals:
+
+```topal
+found is mycontainer
+  (
+    search
+      : Prefer (
+          OAlloc ( size mycontainer ),
+          OExec ( (size mycontainer) ^ 2 )
+        )
+  )
+  my-key
+```
+
+The product passed to `Prefer` is lexicographic. Selection first prefers
+applicable implementations whose allocation evidence satisfies the first
+goal. Among implementations in the best allocation class, it then considers
+the execution goal. A strictly tighter proven Ordo class wins within one goal;
+equivalent or incomparable classes do not reorder declarations. Source order
+is the final tie-breaker.
+
+Unlike direct classification, failing a preferred bound never makes an
+implementation inapplicable. If no candidate proves a preference, that
+preference imposes no ordering and selection continues with the next goal or
+source order. Missing evidence is not fabricated and does not satisfy a
+preferred class.
+
+Hard and soft classifications may be combined:
+
+```topal
+found is mycontainer
+  (
+    search
+      : NoAlloc
+        and Prefer ( OExec ( size mycontainer ) )
+  )
+  my-key
+```
+
+Every allocating implementation is rejected. Among the remaining
+implementations, the best applicable execution class satisfying the preference
+is selected before source order. `Prefer ( NoAlloc )` would instead make exact
+zero allocation desirable while retaining allocating fallbacks.
+
+`Prefer` is a selection construction, not evidence and not a weakened
+guarantee. It is meaningful only while resolving an implementation-bearing
+static object. Ordinary `and` remains order-independent; only the product
+inside `Prefer` records priority order. Without an explicit `Prefer`, resource
+complexity never silently reorders overload declarations.
+
 Optimization based on unverified foreign or opaque metadata must remain
 semantics-preserving when that metadata is false. Such evidence may choose a
 faster equivalent implementation, but cannot authorize memory-safety,
