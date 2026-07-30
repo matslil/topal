@@ -242,15 +242,23 @@ waiting. Ordinary message timeouts use
 `5[s] with-timeout ( message-interface call )`. The relative monotonic quantity
 is converted to a hidden absolute deadline and registered with a
 compiler-created application-local timeout server. A hidden timeout ID prevents
-sequential and cancellation races. When the reply wins, local cancellation
-guarantees that the handler cannot observe that timeout; when the timeout wins,
-the runtime accepts and discards the eventual reply without cancelling the
-underlying operation.
+sequential and cancellation races. When the awaited result wins, local
+cancellation guarantees that the handler cannot observe that timeout. A
+request timeout retains and discards the eventual reply without cancelling the
+underlying operation; stream behavior is defined below.
 
-`with-timeout` accepts only reply-bearing non-stream message calls and merges
-`TimeoutErrorCode` into their existing result vocabulary. Its direct
-`timeout-error timeout-occurred` failure uses the `lang with-timeout` domain, so
-the same code returned under the handler's domain remains distinguishable.
+`with-timeout` accepts reply-bearing request and stream message calls. A request
+has one timed wait. A stream starts a fresh timed interval while awaiting its
+first yield or final return and after each consumer resume while awaiting the
+next yield or final return. No timer runs while the consumer handles a yielded
+value or retains its continuation.
+
+The construction merges `TimeoutErrorCode` into the request result or the
+stream's final result without wrapping individual yields. A stream timeout
+abandons its continuation through the existing `generator-closed` path; values
+already yielded remain observed. The direct `timeout-error timeout-occurred`
+failure uses the `lang with-timeout` domain, so the same code returned under the
+handler's domain remains distinguishable.
 
 The `testing` feature supplies a qualified `testing advance-time` function and
 a virtual monotonic clock. Advancement processes intermediate deadlines and

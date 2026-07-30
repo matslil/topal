@@ -1134,11 +1134,18 @@ response is 5[s] with-timeout ( network request packet )
 ```
 
 The parentheses make the complete message application the right operand.
-`with-timeout` is invalid for a `Unit` event or stream. It adds
-`TimeoutErrorCode` to the message call's effective `Result` vocabulary and
-returns `timeout-error timeout-occurred` under the `lang with-timeout` domain
-when the caller's deadline expires. The compiler hides the absolute monotonic
-deadline, timeout ID, server messages, cancellation, and late-reply handling.
+`with-timeout` is invalid for a `Unit` event. For a request it times the one
+reply wait. For a stream it applies the duration independently to the first
+yield or final return and, after each resume, to the next yield or final return.
+There is no active timer while the consumer handles a yielded value.
+
+The construction adds `TimeoutErrorCode` to the request's effective `Result`
+vocabulary or to the stream's final `Result`; it does not wrap stream yields.
+It returns `timeout-error timeout-occurred` under the `lang with-timeout` domain
+when an interval expires. A stream timeout abandons the continuation and uses
+the ordinary `generator-closed` path. The compiler hides the absolute monotonic
+deadlines, timeout IDs, server messages, cancellation, and late-result
+handling.
 
 See [tasks and intrinsic messaging](tasks.md) for identity namespaces, service
 discovery, isolation, startup and termination, and the implicit root task

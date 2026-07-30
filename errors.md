@@ -192,6 +192,11 @@ Result (
 )
 ```
 
+For a message stream, the vocabulary is added only to the stream's final
+`Result`. Individual yields keep their declared type. If waiting for a yield or
+final return times out, the stream ends with this timeout error; values already
+yielded remain observed.
+
 The timeout introduced by this caller uses the stable `lang with-timeout`
 domain. A handler may return the same `TimeoutErrorCode` value under its own
 domain. Duplicate code vocabularies collapse in the `Result` component while
