@@ -1059,6 +1059,7 @@ constructions; together they build collections and other user-defined data.
 - Bulk operations expose their addressed positions, members, counts, or keys and
   retain the relationships established by construction.
 - Storage layout and performance strategies remain compiler choices unless a
-  program explicitly requests representation constraints.
+  program explicitly requests representation constraints or
+  [resource complexity guarantees](performance.md).
 - Specialized structures are composed from core collections and functions
   instead of multiplying primitive container kinds.

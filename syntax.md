@@ -826,6 +826,23 @@ static combination functions like capability expressions; `Effects ()` is the
 empty set. The explicit expression is an upper bound, while compiled
 implementation evidence retains the exact inferred effects.
 
+Argument-dependent [resource complexity guarantees](performance.md) use the
+same post-return classification position:
+
+```topal
+sort is fn (
+  values : C : Sortable
+) -> C
+  : OExec ( (values size) ^ 2 )
+    and OAlloc ( values size )
+```
+
+`OExec` and `OAlloc` directly accept Ordo expressions over visible static
+measures; an extra `Ordo` construction is not written. `NoAlloc` is the
+separate exact promise that no valid application dynamically allocates.
+Complexity classifiers may combine with capabilities, but missing complexity
+evidence never supplies missing semantic capability evidence.
+
 [Constructed package and module contexts](contexts.md) provide immutable
 namespace members selected with `@`; constructor-backed access is tracked by
 the compiler without adding ordinary inputs to every function declaration.

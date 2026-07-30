@@ -185,9 +185,11 @@ Indexed Container Value
 Unchecked numeric access remains a separate operation returning `Option` or
 `Result`.
 
-The initial vocabulary deliberately uses `Indexed` rather than `RandomAccess`.
-The latter normally promises complexity, while `Indexed` makes only a semantic
-access guarantee.
+The initial semantic vocabulary deliberately uses `Indexed` rather than
+`RandomAccess`. `Indexed` makes only the access guarantee. A selected language
+version or library may name a `RandomAccess` classifier by combining `Indexed`
+with applicable [constant execution evidence](performance.md) for its access
+operation. Forgetting that evidence retains `Indexed`.
 
 ### Membership
 
@@ -485,6 +487,7 @@ The initial vocabulary does not include:
 - `Mutable`, `Send`, or `Sync`, because Topal uses immutable values, effects,
   and task isolation;
 - universal formatting, string conversion, or object identity;
-- `RandomAccess`, until complexity guarantees have a formal evidence model; or
+- `RandomAccess` as an atomic semantic capability, because it is instead a
+  combination of `Indexed` and resource complexity evidence; or
 - one broad `Numeric` capability, because individual operations and their laws
   compose more accurately.

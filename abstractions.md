@@ -6,12 +6,20 @@ type of its value, match the construction of that type, and require capabilities
 of the matched objects. The function body is the implicit successful branch of
 that match.
 
-Constraints and capabilities both produce evidence, compose with matchers, and
-participate in static introspection. They remain different kinds of object:
+Constraints, capabilities, and resource complexity guarantees produce evidence,
+compose with matchers, and participate in static introspection. They remain
+different kinds of object:
 
 - a constraint limits the permitted values of one base type; and
 - a capability makes semantic promises about an existing type, function, or
-  other static object.
+  other static object; while
+- a resource complexity guarantee bounds how an implementation's execution work
+  or allocation grows with measures of its inputs or represented values.
+
+The third kind is defined in
+[resource complexity guarantees](performance.md). It may be combined with a
+capability, but forgetting it loses only a performance specialization and does
+not forget the capability's semantic promise.
 
 ## Constraints limit values
 
