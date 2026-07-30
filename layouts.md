@@ -260,11 +260,11 @@ functional update may overwrite the encoded storage in place when uniqueness,
 lifetime, and alias analysis prove that the previous immutable value is no
 longer observable.
 
-## Foreign boundary declarations
+## Future foreign boundary declarations
 
-An initial foreign declaration belongs to a sandbox adapter and associates an
-external symbol or callback entry inside that sandbox with a declared boundary
-protocol. It explicitly declares:
+A future foreign declaration would belong to a sandbox adapter and associate
+an external symbol or callback entry inside that sandbox with a declared
+boundary protocol. It would explicitly declare:
 
 - the sandbox, ABI, and external symbol identity;
 - a layout for every externally represented input and output;
@@ -290,6 +290,6 @@ Ordinary task isolation, termination, and effect ordering then apply. Future
 language-specific adapters may establish stronger direct-call promises from
 their own safety and interface systems.
 
-The exact grammar for foreign symbols and ABIs remains provisional. ABI
-families belong to selected language features rather than the portable
-bootstrap grammar.
+Foreign integration, its declaration grammar, and its ABI catalogs are not part
+of the current language commitment. ABI families may later belong to selected
+language features rather than the portable bootstrap grammar.

@@ -851,8 +851,9 @@ and semantic contracts remain the compatibility boundary.
 A producer may intentionally conceal an implementation by publishing concrete
 shared code and a sufficient opaque contract instead of its generic body. This
 forgoes body-derived specialization and may require conservative effects,
-layouts, or resource relationships. Foreign exports always require a concrete
-ABI; unresolved Topal generic intermediate code cannot cross that boundary.
+layouts, or resource relationships. Any future foreign export requires a
+concrete ABI; unresolved Topal generic intermediate code cannot cross that
+boundary.
 
 ## Licenses and copyright
 

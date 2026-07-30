@@ -1435,6 +1435,42 @@ only in its action. Patterns and predicates share a general matcher abstraction,
 so `and` and `or` have one meaning: combine compatible matchers over the same
 subject.
 
+The same decision-table form opens an existential package:
+
+```topal
+filtered
+  (
+    M : Nat,
+    result : Array M T,
+    size-proof : M <= N
+  ) then
+    use result
+```
+
+The existential declaration of `filtered` marks `M` as a fresh static
+component. All three bindings are scoped to the action. Because an existential
+package has its one declared product shape, this single rule is exhaustive.
+`_ : M <= N` may discard the proof name while retaining the evidence needed to
+check the pattern.
+
+When the action result depends on `M`, the complete decision expression
+automatically existentially closes over it:
+
+```topal
+trimmed is filtered
+  (
+    M : Nat,
+    result : Array M T,
+    _ : M <= N
+  ) then
+    result
+```
+
+Here `trimmed` has `exists M. Array M T`. An action cannot leak a fresh static
+identity without this closure. Ordinary classification may instead forget the
+package to a weaker visible classifier when every possible witness supports
+that classifier.
+
 Both alternatives of `or` must expose compatible bindings:
 
 ```topal
