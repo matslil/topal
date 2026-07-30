@@ -41,6 +41,12 @@ The following questions from the initial audit are no longer open:
   `C : Keyed (Key : Type, Value : Type)` obtains their identities from the
   canonical evidence for that exact `C`. The component classifiers remain
   explicit because bare unbound names are not introduced.
+- Canonical capability evidence records exact ordinary operation identities.
+  `( container : Indexed ) get index` invokes the certified `get` role instead
+  of restarting unrestricted overload resolution. `Indexed get` statically
+  names that role for the surrounding classified subject, allowing combinations
+  such as `Indexed and ( Indexed get : OExec ( 1 ) )` without turning
+  capabilities into namespaces or implementation containers.
 - Returning a captured complete type such as `C` preserves the precise
   relationship between the input and result, including nominal identity,
   constraints, static sizes, and other parameters.
@@ -310,5 +316,5 @@ as `Indexed` may be combined with applicable performance evidence to name
 stronger classifiers such as `RandomAccess`, while callers may forget that
 evidence and retain the semantic capability.
 
-Elapsed-time guarantees, peak live-memory bounds, operation-association surface
-syntax, and platform-specific resource dimensions remain future refinements.
+Elapsed-time guarantees, peak live-memory bounds, and platform-specific
+resource dimensions remain future refinements.

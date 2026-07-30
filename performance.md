@@ -87,19 +87,18 @@ value nor supply an implementation.
 They compose with semantic capabilities using ordinary classifier conjunction.
 A mixed conjunction retains both kinds of evidence:
 
-```text
-RandomAccess =
-  Indexed
-  and constant execution evidence for Indexed's access operation
+```topal
+RandomAccess is Indexed and
+  ( Indexed get : OExec ( 1 ) )
 ```
 
-The exact operation-association surface syntax remains part of the general
-classification grammar design. Its semantics are fixed: `Indexed` promises
-that positional access exists and behaves correctly, while the associated
-`OExec ( 1 )` evidence promises constant asymptotic execution for that existing
-operation. Projecting only `Indexed` forgets the performance evidence without
-losing semantic correctness. Requiring the complete `RandomAccess` combination
-requires both.
+`Indexed get` statically projects the exact ordinary operation identity assigned
+to the `get` role by canonical `Indexed` evidence for the same classified
+subject. `Indexed` promises that positional access exists and behaves correctly,
+while `OExec ( 1 )` promises constant asymptotic execution for that existing
+implementation. Projecting only `Indexed` forgets the performance evidence
+without losing semantic correctness. Requiring the complete `RandomAccess`
+combination requires both.
 
 Parameterized static functions may give descriptive names to useful bounds:
 
