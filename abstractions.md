@@ -106,8 +106,68 @@ Sequence A
 means that `Sequence A` promises the availability and relationships of those
 already-existing ordinary functions and static objects. It does not define
 them, contain their implementations, or introduce a namespace owned by `A`.
-`get` remains an ordinary overload whose applicability is established by the
-evidence.
+`get` remains an ordinary overload. Canonical capability evidence records the
+exact ordinary operation identity satisfying each named role.
+
+## Capability operation roles
+
+An explicitly classified operand invokes the operation role certified by that
+capability:
+
+```topal
+value is ( container : Indexed ) get index
+```
+
+The compiler obtains the canonical `Indexed` evidence for `container`, projects
+the identity assigned to its `get` role, and invokes that exact ordinary
+function. It does not restart unrestricted overload resolution at `get`.
+Consequently, an earlier unrelated overload with the same name cannot replace
+the operation whose behavior `Indexed` promises.
+
+Without the explicit classification:
+
+```topal
+value is container get index
+```
+
+ordinary ordered overload resolution remains in effect. This shorter form is
+sufficient when its selected overload is already unambiguous and the caller
+does not need to insist upon one capability interpretation.
+
+A capability name followed by one of its operation role names forms a static
+operation-role reference:
+
+```topal
+Indexed get
+```
+
+This does not make `Indexed` a namespace or store a method implementation in
+the capability. The reference projects the ordinary operation identity from
+canonical capability evidence for the classified subject in its surrounding
+static expression. It is useful when attaching further evidence to that
+operation:
+
+```topal
+RandomAccess is Indexed and
+  ( Indexed get : OExec ( 1 ) )
+```
+
+Here both terms classify the same implicit subject. `Indexed` supplies the
+semantic access promise, while the second term requires constant asymptotic
+execution for the exact `get` implementation recorded by that evidence.
+Using `Indexed get` where no surrounding subject supplies canonical `Indexed`
+evidence is a static error.
+
+Explicit operand classification also disambiguates roles from
+multi-component capabilities:
+
+```topal
+value is ( mapping : Keyed ) lookup key
+```
+
+The `Keyed` evidence retains the associated key and value identities as well as
+the `lookup` operation identity. No evidence value, method table, or implicit
+capability-owned namespace is exposed at runtime.
 
 Source code cannot declare a new atomic semantic promise. It may bind
 conjunctions and alternatives of existing capabilities:
@@ -164,6 +224,12 @@ ordinary comparison vocabulary fixed by that atomic capability. Neither
 declaration contains executable code. A concrete `compare (Customer, Customer)`
 overload may exist without the second claim when only that specialized function
 needs to compare customers.
+
+When a claim is established, every operation role is resolved once from its
+required signature and ordinary declarations visible in the claim's definition
+context. The selected identity is stored in the canonical evidence. A missing
+or statically ambiguous role makes the claim invalid. Later imports and
+overloads in a consuming scope cannot change a stored role identity.
 
 ## Coherence and claim ownership
 

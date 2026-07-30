@@ -189,7 +189,16 @@ The initial semantic vocabulary deliberately uses `Indexed` rather than
 `RandomAccess`. `Indexed` makes only the access guarantee. A selected language
 version or library may name a `RandomAccess` classifier by combining `Indexed`
 with applicable [constant execution evidence](performance.md) for its access
-operation. Forgetting that evidence retains `Indexed`.
+operation:
+
+```topal
+RandomAccess is Indexed and
+  ( Indexed get : OExec ( 1 ) )
+```
+
+`Indexed get` projects the exact ordinary operation identity from canonical
+`Indexed` evidence; it does not perform a name-only overload search. Forgetting
+the performance evidence retains `Indexed`.
 
 ### Membership
 

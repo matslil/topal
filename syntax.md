@@ -843,6 +843,32 @@ separate exact promise that no valid application dynamically allocates.
 Complexity classifiers may combine with capabilities, but missing complexity
 evidence never supplies missing semantic capability evidence.
 
+Canonical capability evidence retains the exact ordinary function identity
+assigned to each operation role. Explicitly classifying an operand selects that
+certified role:
+
+```topal
+value is ( container : Indexed ) get index
+```
+
+The compiler uses the `get` identity from `container`'s canonical `Indexed`
+evidence rather than restarting ordinary overload resolution. Without the
+classification, `container get index` retains normal source-ordered overload
+selection.
+
+`Capability operation` forms a static role reference when no concrete operand
+is present:
+
+```topal
+RandomAccess is Indexed and
+  ( Indexed get : OExec ( 1 ) )
+```
+
+Both terms classify the same surrounding subject. `Indexed get` projects an
+ordinary operation identity; it neither invokes the function nor introduces an
+`Indexed` namespace. Multi-component capability evidence retains its associated
+component identities in the same projection.
+
 A call may classify the selected function with a hard resource requirement:
 
 ```topal
