@@ -20,21 +20,26 @@ counter-service is Counter
   count : Nat
 
   start is fn ( initial : Nat ) -> Completed
-    count is initial
+    @ count is initial
     Completed
 
   increment is fn (
     _ : MessageContext,
     amount : Nat
   ) -> Unit
-    count is count + amount
+    @ count is @ count + amount
 
   current is fn (
     _ : MessageContext,
     Unit
   ) -> Result ( Nat, () )
-    count
+    @ count
 ```
+
+Task fields are always accessed through the current-context `@` qualifier inside
+handlers. A left side such as `@ count is value` replaces persistent task state
+after validating the complete new value. An unqualified `count is value`
+instead declares an immutable local binding and never updates task state.
 
 The option record contains task-wide configuration rather than its implemented
 interfaces. A task definition establishes its interfaces from the functions

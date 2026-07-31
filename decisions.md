@@ -145,6 +145,11 @@ The following questions from the initial audit are no longer open:
   which still depends on a fresh identity is automatically existentially
   closed, while ordinary classification may forget the package to a weaker
   visible object.
+- `with` is the immutable record-reconstruction keyword. It retains unspecified
+  fields, revalidates invariants, and never mutates aliases of the original
+  value. Persistent task-field replacement always uses a qualified left side,
+  as in `@ count is @ count + amount`; an unqualified `is` always introduces a
+  lexical binding.
 
 ## Surface grammar
 
@@ -152,7 +157,6 @@ The grammar must select compatible spellings for:
 
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
-- immutable record reconstruction and qualified task-field replacement;
 - task scopes, child construction, waiting, termination, and selection;
 - explicit resource scopes;
 - otherwise uninferable public error-vocabulary parameters and bounds.

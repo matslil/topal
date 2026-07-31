@@ -521,6 +521,24 @@ text is String
 
 binds `text` to the type object `String`. It does not declare a string value.
 
+The sole non-binding left side is an explicitly qualified current task field:
+`@ field is expression` performs the task-state replacement defined under
+[tasks](#tasks). A bare identifier before `is` always introduces a binding.
+
+`with` is the immutable record-reconstruction operator:
+
+```topal
+updated-person is person with (
+  age is person age + 1
+)
+```
+
+The right-side field associations replace those fields while every unspecified
+field is retained from `person`. The result has the same complete record type.
+Construction rechecks field invariants and requires any dependent field whose
+evidence is invalidated to be replaced or re-established. No alias of `person`
+is mutated.
+
 Inside a map construction, `is` associates the key on its left with the value
 on its right. It remains a value association rather than a classification:
 
@@ -1133,21 +1151,33 @@ counter-service is Counter
   count : Nat
 
   start is fn ( initial : Nat ) -> Completed
-    count is initial
+    @ count is initial
     Completed
 
   increment is fn (
     _ : MessageContext,
     amount : Nat
   ) -> Unit
-    count is count + amount
+    @ count is @ count + amount
 
   current is fn (
     _ : MessageContext,
     Unit
   ) -> Result ( Nat, () )
-    count
+    @ count
 ```
+
+`@ field` reads a field of the current task context. Task-field replacement
+always keeps that qualification on the left side:
+
+```topal
+@ count is @ count + amount
+```
+
+The new immutable value is constructed and validated before installation.
+`count is @ count + amount` instead creates an ordinary local binding and never
+updates task state. Non-task context members remain immutable and cannot appear
+on the left of qualified replacement.
 
 Applying the definition constructs a task by supplying the parameters of
 `start`:
@@ -1505,7 +1535,9 @@ line              = expression [ block ] newline ;
 block             = indent { line } dedent ;
 
 expression        = binding | classification | binary-chain ;
-binding           = bindable "is" expression ;
+binding           = binding-target "is" expression ;
+binding-target    = bindable | task-field-target ;
+task-field-target = "@" identifier ;
 classification    = bindable ":" classifier-expression
                     { ":" classifier-expression } ;
 bindable          = identifier | "_" ;
