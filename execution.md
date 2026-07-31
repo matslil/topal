@@ -69,14 +69,38 @@ updated-person is person with (
 `with` reconstructs the same product type, replacing the named fields and
 retaining the others. Every field invariant is checked again, and dependent
 fields whose evidence is invalidated must also be supplied or re-established.
-It is not mutation and does not change aliases of the original value.
+It is the final record-reconstruction keyword. The construction is not mutation
+and does not change aliases of the original value.
 
-Task fields are different bindings owned by the task context. A handler
-statement whose left side resolves to a task field replaces the task's current
-field value after constructing and validating the new immutable value. Local
-bindings always take precedence, and task-field replacement can be qualified
-when a local name would make the target unclear. No reference to an earlier
-mutable view survives the replacement or a handler suspension.
+Task fields are different bindings owned by the task context. Every replacement
+uses an explicitly qualified left side:
+
+```topal
+@ count is @ count + amount
+```
+
+The right side is fully evaluated and validated before replacing the task's
+current field value. `@ count` reads that task field; the left-side
+`@ count is` is a state transition rather than a lexical binding. An
+unqualified statement always introduces an ordinary immutable local:
+
+```topal
+count is @ count + amount
+```
+
+Adding or removing a local binding therefore cannot change whether another
+statement updates persistent task state. A qualified replacement is valid only
+for a field of the current task context; immutable package, module, and
+constructed-context members cannot appear on its left side.
+
+No reference to an earlier mutable view survives the replacement or a handler
+suspension. Replacing a record-valued task field uses ordinary reconstruction:
+
+```topal
+@ configuration is @ configuration with (
+  retries is @ configuration retries + 1
+)
+```
 
 ## Return and propagation
 
@@ -204,13 +228,3 @@ result leaves the traversal call.
 Bidirectional generator drivers explicitly match `Yielded` and `Returned` and
 resume the linear continuation with its declared input. Convenience operations
 may be added without introducing a second generator state model.
-
-## Decisions still tied to surface syntax
-
-The semantic rules leave open:
-
-- the qualified spelling for task-field replacement; and
-- whether `with` is the final record-reconstruction keyword.
-
-These are grammar and ergonomics decisions rather than open execution
-semantics.
