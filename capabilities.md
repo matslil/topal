@@ -36,8 +36,11 @@ the target's lifetime. Access atomically attempts to retain an ordinary
 Applying a weak value to a block retains the target once, binds the ordinary
 value for the complete block, and releases it afterward. The retained value may
 escape through an ordinary move, but the compiler continues to reject possible
-owning cycles involving external resources. Task endpoints have their own
-lifetime and `task-terminated` semantics and do not use `Weak`.
+owning cycles involving external resources. `Weak TaskType` provides the same
+non-owning access to an owning task instance and may be used for monitoring;
+promotion does not acquire or consume its final join result. Task endpoints
+remain distinct restricted messaging authorities with their own lifetime and
+`task-terminated` semantics, and endpoints themselves do not use `Weak`.
 
 ## Value comparison
 

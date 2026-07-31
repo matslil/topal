@@ -243,10 +243,17 @@ block releases it and accounts for a possible final-reference destructor
 failure. Returning the retained value from the block instead moves its lifetime
 into the receiving scope.
 
-`Weak T` is distinct from a task `Endpoint`. Both avoid owning the target
-lifetime, but an endpoint retains messaging authority and reports
-`task-terminated` when its task has ended; it is not promoted through weak
-access.
+`Weak T` may also refer to an owning task instance when code needs optional
+non-owning monitoring access. Successful promotion retains the ordinary task
+value for the access region; a request may nevertheless return
+`task-terminated` if task termination has already committed. The task's final
+result remains owned by its original implicit join obligation.
+
+`Weak TaskType` is distinct from a task `Endpoint`. Weak access begins with
+`weak-unavailable` or an ordinary retained task value. An endpoint instead
+retains a restricted messaging authority directly and reports
+`task-terminated` when its task has ended; it is not itself promoted through
+weak access.
 
 Pure immutable values may use cyclic representations internally when their
 observable semantics remain finite. Recursive source values are nevertheless
