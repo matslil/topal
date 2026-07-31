@@ -366,6 +366,10 @@ to it has been processed, and its timeout events have been admitted. It does
 not promise that unrelated background tasks have terminated. Cancelled timeout
 IDs remain suppressed when virtual time passes their deadlines.
 
+Group deadlines around `match-first` or `match-all` and individual `match-all` field
+deadlines use the same virtual clock. Advancing across several deadlines applies
+normal response priority at each logical instant before proceeding to the next.
+
 The controller advancing time must be distinct from a subject task currently
 paused on that clock. Tests never wait for real elapsed time, and virtual
 advancement does not modify civil time.

@@ -150,6 +150,17 @@ The following questions from the initial audit are no longer open:
   value. Persistent task-field replacement always uses a qualified left side,
   as in `@ count is @ count + amount`; an unqualified `is` always introduces a
   lexical binding.
+- `match-first` is an ordered interaction decision table which initiates
+  speculation-safe requests together and selects the first committed response;
+  source order breaks logical ties. `match-all` waits for a labeled product of all
+  responses and admits effectful requests under ordinary dependency analysis.
+  Neither exposes pending-request or cancellation objects.
+- `with-timeout` composes with a request, stream, `match-first`, or `match-all`.
+  `match-first` permits only one surrounding group timeout; `match-all` may also time
+  individual fields. Timeout is an observation failure, not proof that request
+  effects did not occur, so outstanding effects remain in the dependency graph.
+  Inline operands use parentheses and multiline operands use indentation, never
+  both.
 
 ## Surface grammar
 
@@ -157,7 +168,7 @@ The grammar must select compatible spellings for:
 
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
-- task scopes, child construction, waiting, termination, and selection;
+- task scopes, child construction, awaiting, and termination;
 - explicit resource scopes;
 - otherwise uninferable public error-vocabulary parameters and bounds.
 
@@ -264,27 +275,29 @@ and retains their failures. Consumers have no explicit generator-cancellation
 operation.
 
 Short standard-library delays may pause the current task for bounded hardware
-waiting. Ordinary message timeouts use
-`5[s] with-timeout ( message-interface call )`. The relative monotonic quantity
-is converted to a hidden absolute deadline and registered with a
-compiler-created application-local timeout server. A hidden timeout ID prevents
-sequential and cancellation races. When the awaited result wins, local
-cancellation guarantees that the handler cannot observe that timeout. A
-request timeout retains and discards the eventual reply without cancelling the
-underlying operation; stream behavior is defined below.
+waiting. Ordinary interaction timeouts use
+`5[s] with-timeout ( message-interface call )` inline or an unparenthesized
+indented right operand. The relative monotonic quantity is converted to a
+hidden absolute deadline and registered with a compiler-created
+application-local timeout server. A hidden timeout ID prevents sequential and
+cancellation races.
 
-`with-timeout` accepts reply-bearing request and stream message calls. A request
-has one timed wait. A stream starts a fresh timed interval while awaiting its
-first yield or final return and after each consumer resume while awaiting the
-next yield or final return. No timer runs while the consumer handles a yielded
-value or retains its continuation.
+`with-timeout` accepts a reply-bearing request, stream message call,
+`match-first`, or `match-all`. A request or structured group has one timed wait. A
+stream starts a fresh interval while awaiting its first yield or final return
+and after each consumer resume while awaiting the next yield or final return.
+No timer runs while the consumer handles a yielded value. Individual
+`match-first` alternatives cannot be timed; `match-all` may time individual fields.
 
-The construction merges `TimeoutErrorCode` into the request result or the
-stream's final result without wrapping individual yields. A stream timeout
-abandons its continuation through the existing `generator-closed` path; values
-already yielded remain observed. The direct `timeout-error timeout-occurred`
-failure uses the `lang with-timeout` domain, so the same code returned under the
-handler's domain remains distinguishable.
+The construction merges `TimeoutErrorCode` into an existing result or wraps a
+non-`Result` wait value in `Result`. It never cancels underlying requests. A
+timeout discards their later response values but preserves their outstanding
+effects and therefore cannot be interpreted as proof that an operation failed
+or did not commit. A stream timeout abandons its continuation through the
+existing `generator-closed` path; values already yielded remain observed. The
+direct `timeout-error timeout-occurred` failure uses the `lang with-timeout`
+domain, so the same code returned under the handler's domain remains
+distinguishable.
 
 The `testing` feature supplies a qualified `testing advance-time` function and
 a virtual monotonic clock. Advancement processes intermediate deadlines and

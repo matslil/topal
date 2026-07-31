@@ -1230,25 +1230,69 @@ invalid message-handler shapes. A generator handler establishes a stream and
 its final return must be `Result`; the language-defined `task-terminated` code
 extends the effective error-code set without adding another wrapper.
 
-A reply-bearing message call may be given a relative monotonic timeout:
+`match-first` initiates reply-bearing requests together and uses ordered
+interaction rules:
+
+```topal
+result is match-first
+  response is primary request payload then Primary response
+  response is fallback request payload then Fallback response
+```
+
+The first committed response selects its action. Source order breaks a tie at
+the same logical point. Every alternative must have implementation evidence
+proving that speculative execution has no externally observable side effects;
+later replies are accepted and discarded without cancelling their requests.
+
+`match-all` waits for every labeled response and returns their product:
+
+```topal
+responses is match-all
+  primary is primary request payload
+  fallback is fallback request payload
+```
+
+It observes every complete `Result`, does not short-circuit on failure, and may
+use effectful requests. Their dependency evidence determines which may run in
+parallel and rejects unordered conflicts.
+
+A reply-waiting expression may be given a relative monotonic timeout:
 
 ```topal
 response is 5[s] with-timeout ( network request packet )
 ```
 
-The parentheses make the complete message application the right operand.
-`with-timeout` is invalid for a `Unit` event. For a request it times the one
-reply wait. For a stream it applies the duration independently to the first
+Parentheses group a right operand kept on the same line. Indentation replaces
+them for a multiline operand:
+
+```topal
+response is 5[s] with-timeout
+  network request packet
+```
+
+The formatter never retains both grouping forms. `with-timeout` is invalid for
+a `Unit` event. For a request, `match-first`, or `match-all`, it times the immediate
+complete wait. For a stream it applies the duration independently to the first
 yield or final return and, after each resume, to the next yield or final return.
 There is no active timer while the consumer handles a yielded value.
 
-The construction adds `TimeoutErrorCode` to the request's effective `Result`
-vocabulary or to the stream's final `Result`; it does not wrap stream yields.
-It returns `timeout-error timeout-occurred` under the `lang with-timeout` domain
-when an interval expires. A stream timeout abandons the continuation and uses
-the ordinary `generator-closed` path. The compiler hides the absolute monotonic
-deadlines, timeout IDs, server messages, cancellation, and late-result
-handling.
+A group timeout surrounds `match-first`; its individual alternatives cannot be
+timed. `match-all` permits a group timeout, separate timeouts on its request fields,
+or both. An individual timeout becomes that field's response and `match-all` still
+waits for every other field.
+
+The construction adds `TimeoutErrorCode` to an existing effective `Result`. If
+the immediate wait instead produces a non-`Result` `T`, including a `match-all`
+product, it produces `Result ( T, TimeoutErrorCode )`. It does not wrap stream
+yields. It returns `timeout-error timeout-occurred` under the
+`lang with-timeout` domain when an interval expires. A stream timeout abandons
+the continuation and uses the ordinary `generator-closed` path. The compiler
+hides the absolute monotonic deadlines, timeout IDs, server messages,
+cancellation, and late-result handling.
+
+Timeout never proves that a request's effects did not occur. Outstanding effects
+remain in the dependency graph, and a conflicting retry requires protocol
+evidence such as idempotency, deduplication, status lookup, or transactions.
 
 See [tasks and intrinsic messaging](tasks.md) for identity namespaces, service
 discovery, isolation, startup and termination, and the implicit root task

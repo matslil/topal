@@ -69,6 +69,13 @@ Calling a function adds its effects to the caller. Constructing or passing a
 function value does not perform its effects. A higher-order call adds the
 effects of a callback only along paths on which that callback is invoked.
 
+Timing out while awaiting a request does not remove that request's effects or
+prove that they did not occur. The hidden interaction remains outstanding in
+the dependency graph. Independent work may continue, while a conflicting
+operation must wait or provide protocol evidence such as idempotency,
+deduplication, status reconciliation, or transaction semantics. A timeout code
+describes observation, not rollback.
+
 Functions normally rely on inference. A declaration may state an effect upper
 bound to document and restrict its implementation. Effect expressions use the
 same classification syntax as capabilities but retain their distinct effect
