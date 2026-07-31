@@ -106,6 +106,12 @@ The following questions from the initial audit are no longer open:
   identity, and order-independent. No specially named error type is resolved
   from the surrounding scope. Visible generic bodies retain the complete
   vocabulary component symbolically in typed intermediate code.
+- Composing several `Result` values always merges their error vocabularies. An
+  anonymous composition permits at most one value-producing success; `Unit`
+  and completion-only successes contribute no payload. When every
+  value-producing input is bound, the binding names form the fields of an
+  anonymous success record containing every value. Partially bound and
+  multiply value-producing anonymous compositions are invalid.
 - `Error.domain` identifies the stable reporting operation, subsystem, or
   abstraction, while the independently scoped `ErrorCode` value says what
   occurred. Several domains may use one code vocabulary. Code patterns qualify
@@ -168,7 +174,7 @@ The grammar must select compatible spellings for:
 
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
-- task scopes, child construction, awaiting, and termination;
+- explicit non-owning task monitoring;
 - explicit resource scopes;
 - otherwise uninferable public error-vocabulary parameters and bounds.
 

@@ -55,10 +55,16 @@ counter increment 2
 value : Nat is counter current Unit
 ```
 
-The value `counter` is a typed capability, not a reference to the task's state
-or queue. It permits only the interactions declared by `Counter`. Task identity
-and messaging authority remain distinct; possessing a task identifier does not
-grant permission to send it arbitrary messages.
+The value `counter` is a typed owning task capability, not a reference to the
+task's state or queue. It permits only the interactions declared by `Counter`.
+Task identity and messaging authority remain distinct; possessing a task
+identifier does not grant permission to send it arbitrary messages.
+
+Construction also starts the task and places its owning instance in the current
+task scope. The binding carries responsibility for the task's eventual result,
+lifecycle, and cleanup. Moving the instance to an enclosing scope moves that
+responsibility according to the ordinary ownership rules; a restricted endpoint
+does not carry it.
 
 Functions called by a handler normally execute in the same task. Only a call
 through another task capability crosses a task boundary. Library functions
@@ -424,8 +430,8 @@ returned instead of `Completed`. Other request handlers cannot use the
 operation.
 
 Termination may instead be observed as `task-terminated` in the existing
-`Result` of a pending request or the final return of a stream, the result of
-awaiting an owned child, or an explicit broker monitor/join operation. The
+`Result` of a pending request or the final return of a stream, the implicit
+join of an owned child, or an explicit broker monitor operation. The
 error uses Topal's stable task error domain. Its structured error information
 retains the identity, reason, and underlying failure; these do not create more
 portable task error codes.
@@ -520,27 +526,45 @@ scope even when its restricted messaging capability is passed elsewhere. A
 scope does not complete until all children have completed, their results have
 been accounted for, and their resources have been destroyed.
 
+Applying a task definition is the child-start operation; Topal adds no separate
+`start-child` construction or mutable future. When the owning task-instance
+binding reaches its final scope boundary, the scope implicitly joins it. If the
+task is still running, scope completion suspends until its result and cleanup
+have completed. An explicit lifecycle termination may cause that point to be
+reached sooner, but letting the owner leave scope never detaches the task.
+
 Leaving a successful scope requests orderly completion of unfinished children.
 Leaving because of failure queues hard termination for the remaining children
 before cleanup finishes. The scope waits for lifecycle handlers and
 destructors; it does not detach computation which can access scoped resources.
 
-If a child fails before its result is awaited, the scope retains that failure.
+If a child fails before its implicit join completes, the scope retains that failure.
 The first failure in deterministic dependency order is primary, terminates
 dependent siblings, and records later failures as contextual causes.
 Independent children may finish concurrently, but scheduler timing does not
 select an observably different primary error.
 
-The semantic operations are:
+Implicit joins use the general [`Result` composition](errors.md#composing-results)
+rules. Error vocabularies merge for every joined task. If at most one anonymous
+task result carries a success value, that value becomes the composed success
+value. Several anonymous value-producing task results are invalid because the
+scope could not distinguish them.
 
-```text
-task-scope body
-start-child Task input
-await child
+When every value-producing task instance has a binding, those binding names
+instead become fields of an anonymous success record. For example, tasks bound
+as `first` and `second`, returning `FirstType` and `SecondType`, contribute:
+
+```topal
+(
+  first : FirstType,
+  second : SecondType
+)
 ```
 
-Their exact surface spelling remains provisional. `await` consumes a one-time
-completion obligation; it does not expose a general mutable future object.
+to the success side of the enclosing `Result`. `Unit` and completion-only task
+results contribute no field, but their failures still contribute to the merged
+error vocabulary. A successful record is available only after every joined
+task succeeds.
 
 ## Termination and generator closure
 
