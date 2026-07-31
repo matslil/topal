@@ -1324,9 +1324,18 @@ an ordinary explicitly callable function. A function
 accepting a value with a fallible destructor must itself permit a `Result`,
 because its reference may be the final one. Ownership transfers, borrowing,
 sharing, and reference-count elimination are compiler decisions rather than
-surface syntax. Returning a resource—or a containing value—from an explicit
-resource scope is the ordinary source-level indication that its lifetime moves
-to the receiving scope. See
+surface syntax. A successful resource acquisition may bind an ordinary
+continuation directly:
+
+```topal
+result is file-system open-file path { file }
+  process file
+```
+
+The binding supplies the lexical lifetime; Topal has no generic
+`with-resource` construct. Returning a resource—or a containing value—from the
+continuation is the ordinary source-level indication that its lifetime moves to
+the receiving scope. See
 [resource lifetime and destruction](resources.md) for the semantic rules.
 
 Non-owning resource back references use the language-defined `Weak`

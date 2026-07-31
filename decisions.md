@@ -179,7 +179,6 @@ The grammar must select compatible spellings for:
 
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
-- explicit resource scopes;
 - otherwise uninferable public error-vocabulary parameters and bounds.
 
 These should be designed together so that indentation, recursive
@@ -316,12 +315,17 @@ tests independent of real elapsed time. Civil time remains separate.
 
 ## Resource moves and non-owning capabilities
 
-Returning a resource from an explicit resource scope, directly or inside
-another value, is an ordinary explicit escape. Existing ownership analysis
-moves it into the receiving scope when the old binding is no longer used, or
-uses safe sharing when other references remain. Destructor responsibility and
-possible failure follow the final reference. No transfer keyword, linear
-capability, scoped-owner wrapper, or public ownership type is added.
+Resource acquisition uses ordinary success-continuation binding, as in
+`file-system open-file path { file }`, and Topal defines no generic
+`with-resource` operation. Acquisition and cleanup contribute only completion
+and their error vocabularies to the enclosing anonymous `Result` composition;
+the continuation contributes its success value. Returning a resource from the
+continuation, directly or inside another value, is an ordinary explicit escape.
+Existing ownership analysis moves it into the receiving scope when the old
+binding is no longer used, or uses safe sharing when other references remain.
+Destructor responsibility and possible failure follow the final reference. No
+transfer keyword, linear capability, scoped-owner wrapper, or public ownership
+type is added. Policy-specific library helpers remain ordinary functions.
 
 Non-owning resource back references and task-instance monitors use the
 language-defined `Weak` capability-backed construction. A `Weak T` does not
