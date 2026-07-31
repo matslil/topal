@@ -816,6 +816,11 @@ implicitly.
 Errors are ordinary result values rather than exceptions. A successful value
 may be projected from a `Result` inside an explicitly fallible function, as
 described by [the error model](errors.md#success-projection-and-propagation).
+When a scope accounts for several results, anonymous composition permits at
+most one value-producing success component. If every value-producing result is
+bound, their binding names instead form the fields of an anonymous success
+record. In both forms the error vocabularies are flattened and deduplicated;
+see [result composition](errors.md#composing-results).
 Effects complement the input and result types according to the
 [effect model](effects.md). They reuse capability-style classification syntax
 but describe possible interactions rather than promises. An explicit upper

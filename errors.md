@@ -61,6 +61,57 @@ declares `Result`. Crossing the task boundary does not implicitly wrap a plain
 result; it extends the existing result's effective error-code vocabulary as
 described below.
 
+## Composing results
+
+When one scope must account for several `Result` values, their error-vocabulary
+components are always combined using the ordinary flattening and deduplication
+rules. Their success components have two distinct forms.
+
+An anonymous composition has no labels with which to retain several success
+values. It is valid only when at most one input contributes a value. `Unit` and
+completion-only success values contribute no payload, so, for example:
+
+```topal
+Result ( Unit, MyErrorCode )
+Result ( MyType, AnotherErrorCode )
+```
+
+compose as:
+
+```topal
+Result ( MyType, ( MyErrorCode, AnotherErrorCode ) )
+```
+
+Two anonymous value-producing results cannot be composed. The programmer must
+bind every value-producing input when more than one success value must survive.
+The bindings become fields of an anonymous record:
+
+```topal
+first is first-operation input
+second is second-operation input
+```
+
+If the operations respectively produce
+`Result ( FirstType, FirstErrorCode )` and
+`Result ( SecondType, SecondErrorCode )`, their composed type is:
+
+```topal
+Result (
+  (
+    first : FirstType,
+    second : SecondType
+  ),
+  ( FirstErrorCode, SecondErrorCode )
+)
+```
+
+The success component is a record, not a variant: both fields are present when
+the composition succeeds, their labels distinguish equal result types, and
+field order is irrelevant to its type. A mixture of bound and anonymous
+value-producing inputs is invalid. Every input must succeed before the success
+record exists; when several fail, deterministic dependency order selects the
+primary error and the remaining failures are retained as contextual causes.
+
 ## Error representation
 
 Every `Result` uses the common structured `Error` value. Conceptually:
