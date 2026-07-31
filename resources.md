@@ -131,26 +131,36 @@ destructor remains available for resources, such as files, whose underlying
 system can report a new failure only during final cleanup. The enclosing scope
 then handles or forwards that failure through its declared `Result`.
 
-## Explicit resource scopes
+## Lexical resource lifetime
 
-Automatic destruction remains the fallback, but code may establish an explicit
-resource scope when the cleanup point is semantically important:
+Acquisition is an ordinary fallible operation on the resource context. Its
+success continuation introduces the resource binding and therefore its lexical
+lifetime:
 
 ```topal
-result is with-resource open-file path { file }
+result is file-system open-file path { file }
   process file
 ```
 
-`with-resource` acquires the resource, invokes the body exactly once, and
-releases the body's retained resource reference before returning. When the body
-does not return the resource, that reference is destroyed at this boundary and
-may invoke the resource destructor.
+Here `file-system` selects the filesystem resource, `open-file path` returns a
+`Result` carrying `file` on success, and `{ file }` binds that successful value
+as the argument of the indented continuation. The body does not run when
+acquisition fails. When the body does not return the resource, its retained
+reference reaches the ordinary lexical boundary and may invoke the resource
+destructor.
+
+The acquisition success is consumed by the continuation binding rather than
+becoming a second outer success value. Consequently, acquisition and cleanup
+contribute completion plus their error vocabularies, while the body's success
+value becomes the enclosing result. This is the anonymous
+[`Result` composition](errors.md#composing-results) rule rather than special
+resource syntax.
 
 Returning the resource, or a value which contains it, is an ordinary explicit
 escape:
 
 ```topal
-connection is with-resource connect address { connection }
+connection is network connect address { connection }
   authenticate connection
   connection
 ```
@@ -165,21 +175,23 @@ sharing while preserving the same observable lifetime.
 An escaped resource is not destroyed at the inner scope boundary.
 Responsibility for its eventual destruction, including any destructor failure,
 follows it to the scope containing its final reference. Acquisition and body
-failures remain results of `with-resource`; destruction failures from resources
-which do not escape are still reported there. A borrow or hidden alias cannot
+failures compose into the enclosing result; destruction failures from resources
+which do not escape are reported there as well. A borrow or hidden alias cannot
 make a resource escape because borrowed values are not permitted to outlive
-their source. The exact `with-resource` surface spelling remains provisional.
+their source.
 
-When destruction occurs at the resource-scope boundary, the result accounts for
-acquisition, body, and destruction failure. A body failure remains primary and
-destruction failures become contextual causes. This gives close, rollback, or
-final flush failure a predictable handling point without making an unrelated
-observer the accidental final-reference boundary.
+When destruction occurs at the continuation's lexical boundary, the result
+accounts for acquisition, body, and destruction failure. A body failure remains
+primary and destruction failures become contextual causes. This gives close,
+rollback, or final flush failure a predictable handling point without making an
+unrelated observer the accidental final-reference boundary.
 
-Scoped acquisition is an ordinary higher-order function governed by resource,
-effect, and fallibility capabilities. Libraries can define specialized forms
-for transactions, temporary files, task scopes, and device sessions without
-adding new cleanup semantics.
+Topal defines no generic `with-resource` operation. Ordinary continuation
+binding, ownership, lexical scope, and destruction already provide its proposed
+behavior. Libraries may still define policy-specific higher-order functions
+such as `with-transaction`, `with-connection`, or `with-temporary-directory`
+when they add behavior such as commit and rollback, pooling, restoration, retry,
+or error translation rather than merely repeating lexical cleanup.
 
 ## Resource cycles
 
