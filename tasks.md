@@ -431,7 +431,7 @@ operation.
 
 Termination may instead be observed as `task-terminated` in the existing
 `Result` of a pending request or the final return of a stream, the implicit
-join of an owned child, or an explicit broker monitor operation. The
+join of an owned child, or an application-defined monitoring protocol. The
 error uses Topal's stable task error domain. Its structured error information
 retains the identity, reason, and underlying failure; these do not create more
 portable task error codes.
@@ -443,8 +443,19 @@ termination commits first, the interaction returns `task-terminated`. Values
 already yielded by a stream remain observed, but termination before its final
 result commits makes that final result `task-terminated`.
 
-The exact surface operation for non-owning monitoring remains provisional, and
-must atomically install the monitor so termination cannot race with lookup.
+Topal adds no separate non-owning task-monitor operation. Code which needs
+optional access without keeping an owning task instance alive stores
+`Weak TaskType`. Weak access atomically retains the task instance or returns
+`weak-unavailable`; once retained, ordinary task requests may still return
+`task-terminated` if lifecycle termination has committed. These observations
+are intentionally distinct: weak access reports whether the instance can be
+retained, while messaging reports whether the requested interaction can run.
+
+A restricted `Endpoint` remains the appropriate value when messaging authority
+should outlive discovery of the owning instance. Completion notification and
+status are ordinary application-defined task protocols. Neither weak access nor
+an endpoint consumes or duplicates the final result: that result remains with
+the owning instance's implicit join obligation.
 
 ## The application root task
 

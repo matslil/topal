@@ -167,6 +167,11 @@ The following questions from the initial audit are no longer open:
   effects did not occur, so outstanding effects remain in the dependency graph.
   Inline operands use parentheses and multiline operands use indentation, never
   both.
+- Non-owning task monitoring uses `Weak TaskType`; there is no separate monitor
+  operation. Weak promotion and task messaging observe different facts, so a
+  successful promotion may still be followed by `task-terminated`. Endpoints
+  remain restricted messaging authorities, while the final task result belongs
+  exclusively to the owning instance's implicit join obligation.
 
 ## Surface grammar
 
@@ -174,7 +179,6 @@ The grammar must select compatible spellings for:
 
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
-- explicit non-owning task monitoring;
 - explicit resource scopes;
 - otherwise uninferable public error-vocabulary parameters and bounds.
 
@@ -319,14 +323,16 @@ uses safe sharing when other references remain. Destructor responsibility and
 possible failure follow the final reference. No transfer keyword, linear
 capability, scoped-owner wrapper, or public ownership type is added.
 
-Non-owning resource back references use the language-defined `Weak`
-capability-backed construction. A `Weak T` does not keep `T` alive. Access
+Non-owning resource back references and task-instance monitors use the
+language-defined `Weak` capability-backed construction. A `Weak T` does not
+keep `T` alive. Access
 atomically returns `Result ( T, WeakErrorCode )` with `weak-unavailable` when
 the target cannot be retained. Applying a weak value to a block retains one
 ordinary `T` for the complete block; that value may escape through the ordinary
-move rules. Weak references expose no counts or collection timing. Task
-endpoints remain distinct messaging authorities and report `task-terminated`
-rather than using weak promotion.
+move rules. Weak references expose no counts or collection timing. Weak task
+promotion does not acquire the final join result, and messaging may still
+report `task-terminated`. Task endpoints remain distinct restricted messaging
+authorities rather than weak values.
 
 ## Deferred foreign integration
 

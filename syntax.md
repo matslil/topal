@@ -1356,6 +1356,21 @@ The block does not run when retention fails. Its inner binding is an ordinary
 retained `Window`; returning that value moves its lifetime to the receiving
 scope under the normal ownership rules.
 
+The same construction provides non-owning task monitoring:
+
+```topal
+worker-monitor is Weak worker
+
+worker-monitor { worker }
+  worker status Unit
+```
+
+Promotion returns `weak-unavailable` if the task instance can no longer be
+retained. A subsequent request may independently return `task-terminated` if
+termination has committed. The promoted value does not consume the owning
+scope's final join result. Restricted task endpoints remain ordinary messaging
+authorities rather than weak values.
+
 ## Generators
 
 Resumable functions use an explicit `generator` declaration. They may yield a
