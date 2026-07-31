@@ -150,13 +150,13 @@ The following questions from the initial audit are no longer open:
   value. Persistent task-field replacement always uses a qualified left side,
   as in `@ count is @ count + amount`; an unqualified `is` always introduces a
   lexical binding.
-- `first-of` is an ordered interaction decision table which initiates
+- `match-first` is an ordered interaction decision table which initiates
   speculation-safe requests together and selects the first committed response;
-  source order breaks logical ties. `all-of` waits for a labeled product of all
+  source order breaks logical ties. `match-all` waits for a labeled product of all
   responses and admits effectful requests under ordinary dependency analysis.
   Neither exposes pending-request or cancellation objects.
-- `with-timeout` composes with a request, stream, `first-of`, or `all-of`.
-  `first-of` permits only one surrounding group timeout; `all-of` may also time
+- `with-timeout` composes with a request, stream, `match-first`, or `match-all`.
+  `match-first` permits only one surrounding group timeout; `match-all` may also time
   individual fields. Timeout is an observation failure, not proof that request
   effects did not occur, so outstanding effects remain in the dependency graph.
   Inline operands use parentheses and multiline operands use indentation, never
@@ -283,11 +283,11 @@ application-local timeout server. A hidden timeout ID prevents sequential and
 cancellation races.
 
 `with-timeout` accepts a reply-bearing request, stream message call,
-`first-of`, or `all-of`. A request or structured group has one timed wait. A
+`match-first`, or `match-all`. A request or structured group has one timed wait. A
 stream starts a fresh interval while awaiting its first yield or final return
 and after each consumer resume while awaiting the next yield or final return.
 No timer runs while the consumer handles a yielded value. Individual
-`first-of` alternatives cannot be timed; `all-of` may time individual fields.
+`match-first` alternatives cannot be timed; `match-all` may time individual fields.
 
 The construction merges `TimeoutErrorCode` into an existing result or wraps a
 non-`Result` wait value in `Result`. It never cancels underlying requests. A

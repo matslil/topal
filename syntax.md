@@ -1230,11 +1230,11 @@ invalid message-handler shapes. A generator handler establishes a stream and
 its final return must be `Result`; the language-defined `task-terminated` code
 extends the effective error-code set without adding another wrapper.
 
-`first-of` initiates reply-bearing requests together and uses ordered
+`match-first` initiates reply-bearing requests together and uses ordered
 interaction rules:
 
 ```topal
-result is first-of
+result is match-first
   response is primary request payload then Primary response
   response is fallback request payload then Fallback response
 ```
@@ -1244,10 +1244,10 @@ the same logical point. Every alternative must have implementation evidence
 proving that speculative execution has no externally observable side effects;
 later replies are accepted and discarded without cancelling their requests.
 
-`all-of` waits for every labeled response and returns their product:
+`match-all` waits for every labeled response and returns their product:
 
 ```topal
-responses is all-of
+responses is match-all
   primary is primary request payload
   fallback is fallback request payload
 ```
@@ -1271,18 +1271,18 @@ response is 5[s] with-timeout
 ```
 
 The formatter never retains both grouping forms. `with-timeout` is invalid for
-a `Unit` event. For a request, `first-of`, or `all-of`, it times the immediate
+a `Unit` event. For a request, `match-first`, or `match-all`, it times the immediate
 complete wait. For a stream it applies the duration independently to the first
 yield or final return and, after each resume, to the next yield or final return.
 There is no active timer while the consumer handles a yielded value.
 
-A group timeout surrounds `first-of`; its individual alternatives cannot be
-timed. `all-of` permits a group timeout, separate timeouts on its request fields,
-or both. An individual timeout becomes that field's response and `all-of` still
+A group timeout surrounds `match-first`; its individual alternatives cannot be
+timed. `match-all` permits a group timeout, separate timeouts on its request fields,
+or both. An individual timeout becomes that field's response and `match-all` still
 waits for every other field.
 
 The construction adds `TimeoutErrorCode` to an existing effective `Result`. If
-the immediate wait instead produces a non-`Result` `T`, including an `all-of`
+the immediate wait instead produces a non-`Result` `T`, including a `match-all`
 product, it produces `Result ( T, TimeoutErrorCode )`. It does not wrap stream
 yields. It returns `timeout-error timeout-occurred` under the
 `lang with-timeout` domain when an interval expires. A stream timeout abandons

@@ -198,8 +198,8 @@ final return times out, the stream ends with this timeout error; values already
 yielded remain observed.
 
 When the immediate wait returns a non-`Result` value `T`, such as the labeled
-product from `all-of`, the timeout construction returns
-`Result ( T, TimeoutErrorCode )`. A group timeout around `first-of` or `all-of`
+product from `match-all`, the timeout construction returns
+`Result ( T, TimeoutErrorCode )`. A group timeout around `match-first` or `match-all`
 returns no partial response value.
 
 The timeout introduced by this caller uses the stable `lang with-timeout`

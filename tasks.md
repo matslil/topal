@@ -559,23 +559,23 @@ retains their failures.
 A successfully admitted non-stream request is a mandatory reply interaction.
 The requester remains suspended until the reply commits or the target returns
 `task-terminated`; there is no first-class pending request which can be dropped.
-`first-of`, `all-of`, and `with-timeout` are structured language operations
+`match-first`, `match-all`, and `with-timeout` are structured language operations
 rather than exposed pending-request objects. They initiate and retain their
 hidden sessions according to the rules below.
 
 ## Structured request coordination
 
-`first-of` initiates several reply-bearing, non-stream requests together and
+`match-first` initiates several reply-bearing, non-stream requests together and
 uses an ordered interaction decision table:
 
 ```topal
-result is first-of
+result is match-first
   response is primary request payload then Primary response
   response is fallback request payload then Fallback response
 ```
 
 Each left side is an interaction matcher rather than an eagerly evaluated
-binding. Entering `first-of` initiates every listed request and associates its
+binding. Entering `match-first` initiates every listed request and associates its
 hidden session with its rule. The first committed response selects its action
 and binds the complete response, including its `Result`, to that rule's local
 name. When several responses are selectable at the same logical point, source
@@ -590,18 +590,18 @@ persistent resource, send an effectful message, acquire a resource with
 observable or fallible cleanup, or carry an erased effect set which might do
 so. A protocol with transactions, exclusive commit, or idempotency may later
 define a stronger coordination operation; those properties are not inferred by
-`first-of`.
+`match-first`.
 
 After selection, the runtime retains hidden sessions for the non-selected
 requests, accepts and discards their eventual replies, and keeps their permitted
 effects owned by the enclosing structured scope. It does not cancel or expose a
 pending-request object.
 
-`all-of` initiates a finite labeled set of requests and waits for every complete
+`match-all` initiates a finite labeled set of requests and waits for every complete
 response:
 
 ```topal
-responses is all-of
+responses is match-all
   primary is primary request payload
   fallback is fallback request payload
 ```
@@ -611,7 +611,7 @@ Its result is a labeled product, so `responses primary` and
 or error is discarded, and one failure does not cancel or short-circuit the
 remaining requests. Effectful requests are permitted. The ordinary dependency
 graph runs independent interactions concurrently, imposes known ordering, and
-rejects unordered conflicts. `all-of` promises complete structured accounting,
+rejects unordered conflicts. `match-all` promises complete structured accounting,
 not that dependencies will permit every request to execute physically in
 parallel.
 
@@ -641,31 +641,31 @@ response is 5[s] with-timeout
 The formatter uses parentheses for an inline operand or indentation for a
 multiline operand, never both. The left operand is a nonnegative relative
 monotonic time quantity. The right operand may be one reply-bearing request, a
-stream message call, `first-of`, or `all-of`. A `Unit` event has no reply to
+stream message call, `match-first`, or `match-all`. A `Unit` event has no reply to
 wait for and is invalid here.
 
-For a request, `first-of`, or `all-of`, evaluation initiates the complete
+For a request, `match-first`, or `match-all`, evaluation initiates the complete
 immediate right operand and registers one group timeout with a compiler-created
 application-local timeout server. For a stream, the same duration applies
 independently whenever its consumer waits for the first yield or final return
 and whenever it resumes the stream to await the next yield or final return.
 
-A timed `first-of` places `with-timeout` around the complete selection:
+A timed `match-first` places `with-timeout` around the complete selection:
 
 ```topal
 result is 5[s] with-timeout
-  first-of
+  match-first
     response is primary request payload then Primary response
     response is fallback request payload then Fallback response
 ```
 
-Individually timed `first-of` alternatives are invalid: the shortest timer
+Individually timed `match-first` alternatives are invalid: the shortest timer
 would dominate every longer timer because any timeout is itself a completed
-response. `all-of` may instead time its complete group, individual requests, or
+response. `match-all` may instead time its complete group, individual requests, or
 both. Individual timeouts remain observable as separate fields:
 
 ```topal
-responses is all-of
+responses is match-all
   primary is 2[s] with-timeout
     primary request payload
 
@@ -691,7 +691,7 @@ timeout event sent back by the server. The timeout ID distinguishes
 sequential or concurrent registrations belonging to the same handler and is
 never a source-level value.
 
-When a request reply, selected `first-of` response, complete `all-of` product,
+When a request reply, selected `match-first` response, complete `match-all` product,
 stream yield, or stream final return wins its interval, the runtime atomically
 marks that timeout ID cancelled and sends a cancellation
 event to the timeout server. Once this local cancellation completes, no event
@@ -706,7 +706,7 @@ therefore cannot cause a provider-side timeout.
 
 For a request or structured request group, timeout does not cancel any executed
 message operation. Eventual replies are accepted and discarded through retained
-hidden sessions. A timed-out `all-of` returns no partial product. For a stream,
+hidden sessions. A timed-out `match-all` returns no partial product. For a stream,
 timeout ends the consumer's stream with an error and abandons its continuation;
 the serving generator follows the existing `generator-closed` path. Values
 already yielded remain observed. No form hard-terminates a serving task. A
@@ -753,7 +753,7 @@ distinguishes the reporting boundary. If the handler already declares
 domains.
 
 When the immediate right operand has a non-`Result` value type `T`, such as the
-labeled product returned by `all-of`, the timeout expression has
+labeled product returned by `match-all`, the timeout expression has
 `Result ( T, TimeoutErrorCode )`. When it already returns `Result`, the timeout
 vocabulary merges as shown above rather than introducing a nested wrapper.
 
@@ -785,7 +785,7 @@ Result (
 Individual yields are not wrapped. If an interval times out, the stream ends
 with the caller-side timeout error as its final result.
 
-A request reply, selected `first-of` response, complete `all-of` product, stream
+A request reply, selected `match-first` response, complete `match-all` product, stream
 yield, or stream final return committed before its absolute interval deadline
 wins. Once the deadline is reached without a committed result for that interval,
 the timeout may win. Hidden sessions and timeout IDs ensure that a result,
