@@ -175,9 +175,9 @@ atomically either retains an ordinary `T` or reports that the target is no
 longer retainable. A successful retained value remains valid for its lexical
 lifetime; `weak-unavailable` cannot subsequently replace it.
 
-Applying `with-timeout` to a reply-bearing message call adds
-`timeout-occurred` from `TimeoutErrorCode`. It merges the vocabulary into the
-existing message result rather than adding another wrapper:
+Applying `with-timeout` to a reply-waiting expression adds `timeout-occurred`
+from `TimeoutErrorCode`. It merges the vocabulary into an existing message
+result rather than adding another wrapper:
 
 ```topal
 5[s] with-timeout ( network request packet )
@@ -197,10 +197,20 @@ For a message stream, the vocabulary is added only to the stream's final
 final return times out, the stream ends with this timeout error; values already
 yielded remain observed.
 
+When the immediate wait returns a non-`Result` value `T`, such as the labeled
+product from `all-of`, the timeout construction returns
+`Result ( T, TimeoutErrorCode )`. A group timeout around `first-of` or `all-of`
+returns no partial response value.
+
 The timeout introduced by this caller uses the stable `lang with-timeout`
 domain. A handler may return the same `TimeoutErrorCode` value under its own
 domain. Duplicate code vocabularies collapse in the `Result` component while
 the runtime domains remain distinct.
+
+A timeout error reports only that the caller's observation deadline expired.
+It does not report whether the underlying operation committed or which of its
+declared effects occurred. That uncertainty remains in effect and protocol
+evidence rather than creating another portable timeout error code.
 
 Different functions in the same source file may name different error
 vocabularies directly. Naming a type in `Result` does not move it into the
