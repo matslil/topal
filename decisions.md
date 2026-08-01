@@ -172,6 +172,12 @@ The following questions from the initial audit are no longer open:
   successful promotion may still be followed by `task-terminated`. Endpoints
   remain restricted messaging authorities, while the final task result belongs
   exclusively to the owning instance's implicit join obligation.
+- `destructor` is a distinct non-callable language construction rather than a
+  `Function`. Its sole classified parameter identifies the complete owned type
+  and is a terminal, non-escaping borrow. Each complete owned type has at most
+  one explicit owner-scoped destructor. Its result is `Unit` or
+  `Result ( Unit, ErrorVocabulary )`; explicit cleanup is always followed by
+  reverse-order component destruction and storage release, even on failure.
 
 ## Surface grammar
 

@@ -1307,20 +1307,30 @@ defined by `application.t`.
 
 Every type has a destructor. Types which represent external resources may
 declare cleanup in addition to the default destruction of owned components and
-storage. The provisional declaration uses a function-shaped body:
+storage. `destructor` uses a function-shaped declaration while constructing a
+non-callable language object:
 
 ```topal
 File is type
   descriptor : FileDescriptor
 
-  destroy is fn ( file : File ) -> Result ( Unit, ResourceErrorCode )
+  destroy is destructor (
+    file : File
+  ) -> Result ( Unit, ResourceErrorCode )
     operating-system close file descriptor
 ```
 
-A destructor may return only `Unit` or
+A destructor's parameter identifies its complete owned type and is a terminal,
+non-escaping borrow. The value remains available for cleanup but cannot be
+moved, retained, returned, or otherwise resurrected. The binding name is
+ordinary; each complete owned type has at most one destructor in its definition
+context, regardless of that name.
+
+`destructor` does not imply `Function`, cannot be called or passed as a value,
+and does not participate in overload resolution. It may return only `Unit` or
 `Result ( Unit, ResourceErrorCode )`; it cannot produce a replacement value.
-It is invoked by the language when the final reference disappears and is not
-an ordinary explicitly callable function. A function
+After its body, Topal destroys owned components in reverse construction order
+and releases storage even when cleanup fails. A function
 accepting a value with a fallible destructor must itself permit a `Result`,
 because its reference may be the final one. Ownership transfers, borrowing,
 sharing, and reference-count elimination are compiler decisions rather than
