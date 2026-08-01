@@ -26,6 +26,7 @@ Object
     Interface
   Function
     Predicate T
+  Destructor T
   Constraint T
   Capability
 ```
@@ -44,6 +45,10 @@ Object
   is therefore a function classification, not another fundamental object kind.
   It accepts values of `T`; ranges are predicates with additional convexity
   evidence.
+- A **destructor** is constructed with `destructor` and is classified by the
+  complete owned type `T` identified by its terminal parameter. `Destructor T`
+  is a non-callable static object kind rather than a `Function`; the compiler
+  invokes its unique owner-scoped instance at the final reference.
 - A **constraint** combines a base type with a predicate and classifies values
   for which that predicate holds. Successful classification retains evidence;
   forgetting it recovers the unchanged base value. Constraints remain distinct

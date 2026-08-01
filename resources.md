@@ -11,43 +11,75 @@ preserving the lifetime behavior described here.
 
 Every type has a destructor. The default destructor destroys the value's owned
 components and releases its allocated storage. A type may define additional
-cleanup for a resource it represents. Provisional syntax is:
+cleanup for a resource it represents. The language-defined `destructor`
+construction has a function-shaped input, result, and body without constructing
+an ordinary callable function:
 
 ```topal
 File is type
   descriptor : FileDescriptor
 
-  destroy is fn ( file : File ) -> Result ( Unit, ResourceErrorCode )
+  destroy is destructor (
+    file : File
+  ) -> Result ( Unit, ResourceErrorCode )
     operating-system close file descriptor
 ```
 
-The destructor belongs to `File`, not to a particular constructor. Every
-function that constructs a `File` therefore produces a value with the same
-lifetime behavior:
+The classified parameter identifies the complete type whose destructor is
+declared; the binding name is not significant. The declaration belongs in that
+type's definition context and each complete owned type has at most one explicit
+destructor. It does not form an overload set. Every function that constructs a
+`File` therefore produces a value with the same lifetime behavior:
 
 ```topal
 open-file is fn ( path : Path ) -> Result ( File, ResourceErrorCode )
   operating-system open path
 ```
 
-`destroy` is a declaration recognized by the language rather than an ordinary
-function that programs may call. The compiler invokes it when the final
-reference to a value disappears. After the declared cleanup has run, the
-compiler still destroys owned components and releases storage; user cleanup
-does not replace those operations.
+The `destructor` construction is a distinct language object and does not imply
+`Function`. Programs cannot call it, pass it as a callback, or select it through
+ordinary function matching. The compiler invokes it when the final reference
+to a value disappears. After the declared cleanup has run, the compiler still
+destroys owned components and releases storage; user cleanup supplements rather
+than replaces those operations.
+
+## Terminal parameter
+
+The destructor parameter is a terminal, non-escaping borrow of the complete
+value whose destruction has begun. It permits inspection and cleanup without
+creating another owning reference. The complete value, an alias of it, and a
+borrow tied to it or one of its owned components cannot escape the destructor
+body. In particular, code cannot move the value, retain it in another object,
+return it, or otherwise resurrect it.
+
+The parameter may be passed to an ordinary operation only when the compiler can
+verify from that operation's contract or visible typed body that it does not
+retain the value or a tied borrow. An opaque operation without such evidence is
+rejected. Independent values copied from fields may still be used normally;
+the restriction follows references into the value rather than unrelated data.
+
+The explicit cleanup runs while the complete value and its fields remain
+available. Whether it succeeds or fails, Topal then destroys owned components
+in deterministic reverse construction order and finally releases the value's
+storage. No failure skips the remaining automatic cleanup.
 
 ## Destructor results
 
 A destructor has exactly one of these result types:
 
 ```topal
-destroy is fn ( value : T ) -> Unit
-destroy is fn ( value : T ) -> Result ( Unit, ResourceErrorCode )
+cleanup is destructor ( value : T ) -> Unit
+cleanup is destructor ( value : T ) -> Result ( Unit, ResourceErrorCode )
 ```
 
 It cannot produce a replacement value. Operations such as `flush`, `commit`,
 and `finish` are ordinary functions which may inspect or change the resource's
 state without destroying its handle.
+
+Constraints and capability combinations over `T` do not define a new owned
+type and cannot replace its destructor. A genuinely distinct specialized owned
+type may declare its own destructor in its definition context, subject to the
+same one-destructor rule.
 
 An infallible destructor makes leaving the final reference's scope infallible.
 A fallible destructor makes that scope potentially fallible. Failure reports
