@@ -114,12 +114,21 @@ scale is one for that dimension:
 ```topal
 DataAmount is dimension
 
-Byte is unit (
-  symbol B ,
+Bit is unit (
+  symbol b ,
   prefixes ( SI , Binary ) ,
   dimension DataAmount
 )
+
+Byte is unit (
+  symbol B ,
+  prefixes ( SI , Binary ) ,
+  scale 8[b]
+)
 ```
+
+Unit symbols are case-sensitive, so `b` means bits and `B` means bytes.
+Consequently, `1[B]` is definitionally equal to `8[b]`.
 
 A dimension may be declared before its unit, allowing an interface to describe
 dimension relationships abstractly. Concrete quantities in that dimension

@@ -75,10 +75,12 @@ when these preserve the program's meaning.
 - [Constructed contexts](contexts.md) provide fixed diagnostic operations,
   execution context, and service capabilities without process-global variables
   or shared mutable application state.
-- [Sensitive values](sensitive.md) retain their qualifier through copying,
-  moving, borrowing, and containment. The compiler rejects their release
-  through an application boundary whose corresponding parameter has not
-  explicitly declared that it accepts sensitive information.
+- [Sensitive values](sensitive.md) retain `Sensitive T` provenance through
+  copying, moving, borrowing, containment, and direct transformation. Separate
+  `Leakage ( source <= amount )` guarantees conservatively bound modeled direct
+  and indirect observations, including timing. The compiler rejects direct
+  release through an application boundary whose corresponding parameter does
+  not explicitly accept sensitive information.
 - Compiled applications and libraries include dormant [tracing](tracing.md)
   support by default. Authorized external tools select events and collect
   native serialization streams without making trace state observable to

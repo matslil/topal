@@ -926,11 +926,32 @@ selection may be combined, as in
 namespace members selected with `@`; constructor-backed access is tracked by
 the compiler without adding ordinary inputs to every function declaration.
 
-A binding may be marked with the compiler-checked
-[`sensitive`](sensitive.md) qualifier. Sensitivity follows copied, moved,
-borrowed, and contained information. An application-boundary function uses
-`sensitive parameter : Type` to declare exactly which parameters accept
-sensitive arguments; local functions need no such qualifier.
+A value may be classified with compiler-checked
+[`Sensitive T`](sensitive.md) provenance:
+
+```topal
+password : Sensitive String
+```
+
+Directly represented information retains the classification through copying,
+moving, borrowing, containment, and transformation. `Leakage` separately gives
+quantitative worst-case bounds for conclusions and indirect observable channels:
+
+```topal
+verify-password is fn (
+  supplied : Sensitive String,
+  expected : Sensitive String
+) -> Boolean
+  : Leakage (
+      supplied <= 1[b],
+      expected <= 1[b]
+    )
+  supplied == expected
+```
+
+The selected implementation must satisfy the complete modeled observation
+bound, including derivable timing behavior. Boundary parameters use
+`parameter : Sensitive Type` to accept direct sensitive information.
 
 Generic parameters, capability evidence, component objects, type identity, and
 conversion are described by [generic abstraction and semantic
