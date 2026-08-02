@@ -148,6 +148,11 @@ are grouped leftward from the decimal point in groups of three; the final group
 may be shorter. Exponent digits follow the decimal integer grouping rule,
 excluding their optional sign. A decimal point requires digits on both sides.
 Base-prefixed literals do not have fractional or exponent forms initially.
+Fractional and exponent forms construct exact `Rational` values by default;
+their base-ten spelling does not introduce a separate decimal numeric type.
+Trailing fractional zeroes do not change numeric identity. An expected
+`FixedPoint` type may accept such a literal implicitly when the compiler proves
+that it is an exact multiple of the declared quantum.
 
 A bracketed unit following a numeric literal constructs a measured quantity as
 described by the [quantity and unit model](units.md):
