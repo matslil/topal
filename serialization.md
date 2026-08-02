@@ -307,6 +307,12 @@ These encodings are intended for storage, transport, or their existing tooling.
 They are not accepted by `lang deserialize` and need not preserve every Topal
 object well enough for reconstruction.
 
+When a boundary is described directly as stored semantic values rather than as
+a native serialization stream, its type-directed representation uses
+[`Layout T`](layouts.md#layouts). Layout encodings have a closed field schema
+for each supported value family and intentionally exclude resources, authority,
+and executable or compiler-static objects.
+
 The built-in [tracing](tracing.md) runtime supplies native serialization streams
 to an authorized external tool. The tool selects the external encoding and owns
 trace-file creation; traced application code does neither.

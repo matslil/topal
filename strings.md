@@ -483,7 +483,7 @@ identifier : CamelCase
 ```
 
 ```topal
-encoded is text encode Utf16LE
+encoded is text encode Utf16
 ```
 
 The exact call signatures may evolve with the rest of the syntax. The stable

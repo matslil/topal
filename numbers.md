@@ -559,9 +559,13 @@ Arithmetic range, encoded width, and physical size remain distinct:
 
 ```text
 range or modulus   numeric behavior and canonical values
-encoding           external bit pattern, width, and byte order
+encoding           mapping between semantic values and external bit patterns
 storage-size       complete chosen representation including overhead
 ```
+
+Width and byte order are layout fields shared across encoding families. The
+complete type-directed field vocabulary is defined in
+[layouts and addressed storage](layouts.md#encoding-construction-and-validation).
 
 For example, `ModNat ( 0 .. 9 )` may be stored in a byte, packed into four bits,
 or encoded as an ASCII digit without changing its modulo-10 arithmetic. A
