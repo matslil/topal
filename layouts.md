@@ -122,15 +122,46 @@ attributes happen to match.
 ## Layouts
 
 A layout describes the stored representation of an immutable semantic value.
-Its attribute map initially supports:
+The fields accepted by `Layout T` are determined by `T`; its attribute map is
+not open. Every layout supports these common fields where meaningful:
 
 ```text
-storage-size   size in bits or bytes
-encoding       encoding accepted by the semantic type
-endian         Little | Big, when applicable
+storage-size   complete size in bits or bytes
+encoding       one encoding admitted by T
+endian         Little | Big
 access         ReadWrite | ReadOnly | WriteOnly | Reserved
-alignment      byte count, for container layouts
+alignment      required byte alignment
 ```
+
+`access` defaults to `ReadWrite`. `storage-size` is required when width cannot
+be derived and optional when the encoding or component layouts determine one
+exact size. `alignment` defaults to one byte. `endian` is required when several
+byte orders are possible and rejected for a one-byte or order-independent
+representation. `encoding` is required unless the other fields and `T` admit
+exactly one representation.
+
+The same field name always has the meaning specified here. An encoding which
+orders bits inside a storage unit uses `bit-order`; it does not give `endian` a
+second meaning. Missing, unknown, inapplicable, or inconsistent fields are
+compile errors.
+
+The complete initial field vocabulary is indexed here. A field is defined once
+in the referenced schema and reused by every listed type family:
+
+| Field | Defined by |
+| --- | --- |
+| `storage-size`, `encoding`, `endian`, `access`, `alignment` | every applicable `Layout T` |
+| `bit-order`, `unit-size`, `canonical`, `length` | shared encoding vocabulary |
+| `false-pattern`, `true-pattern` | `BooleanBits` |
+| `bias` | `BiasedBinary` |
+| `numerator-layout`, `denominator-layout` | `Ratio` |
+| `integer-layout`, `quantum` | `ScaledInteger` |
+| `exponent-bits`, `fraction-bits`, `exponent-bias`, `subnormal`, `infinity`, `signed-zero`, `nan` | `IeeeBinary`, `IeeeDecimal` |
+| `termination`, `padding` | text encodings |
+| `packing`, `field-order`, component `offset` | tuple and record layouts |
+| `tag-layout`, `tags`, `payload-placement` | `Tagged` sums and enums |
+| `element-layout`, `stride`, `entry-layout`, `ordering` | arrays and collections |
+| `measurement-unit` | measured numeric layouts |
 
 Attributes precede the semantic type:
 
@@ -195,9 +226,271 @@ The semantic product is derived from the semantic types provided by its field
 layouts. `storage-size` is optional for a container layout: when absent, its
 size is inferred from its field sizes, placement, padding, and alignment. When
 present, the declared size is checked against the derived layout. Container
-alignment and packing attributes determine field placement. The precise
-field-map and packing syntax remains to be designed; ordinary parentheses
-remain available wherever explicit grouping is required.
+alignment and packing attributes determine field placement as specified below.
+
+## Encoding construction and validation
+
+An encoding is a typed mapping between semantic values and stored bit patterns.
+The layout's right-hand type determines which encoding families are admitted;
+the selected family then determines its closed set of fields. Encoding fields
+do not repeat total size, byte order, alignment, or access.
+
+Reading validates both the bit pattern and the semantic type. Writing validates
+representability and emits the encoding's canonical pattern. Neither operation
+silently truncates, wraps, saturates, rounds, normalizes, or substitutes a value
+unless the selected encoding explicitly says so. A field uniquely derivable
+from the semantic type may be omitted; if supplied for clarity, it must agree.
+
+The shared encoding fields are:
+
+```text
+bit-order       MostSignificantFirst | LeastSignificantFirst
+unit-size       size of one encoded storage unit in bits
+canonical       family-specific choice when several patterns decode equally
+length          NoLength | Prefix ( Layout Nat ) | Fixed Nat | Remainder
+```
+
+`bit-order` orders bits inside each `unit-size`; layout `endian` orders multiple
+units. `canonical` is available only for a family with equivalent patterns.
+Reads may accept every valid pattern, while writes always use the canonical one.
+`length` always describes encoded entries or code units, never bytes.
+`NoLength` is available when another rule determines the boundary; `Prefix`
+stores the count first, `Fixed` declares it statically, and `Remainder` uses a
+containing fixed-size representation's complete remainder.
+
+## Fundamental scalar schemas
+
+`Layout Unit` has inferred `storage-size bits 0` and encoding `Empty`. It may be
+a zero-size component but cannot independently name an addressable location.
+
+`Layout Boolean` admits `BooleanBits` with these required fields:
+
+```text
+false-pattern   Bits width
+true-pattern    Bits width
+```
+
+The distinct patterns must match `storage-size`; every other pattern is
+invalid. Boolean storage is therefore not assumed to be numeric zero and one.
+
+`Layout ( Bits width )` admits `RawBits`; `storage-size` is exactly `width` and
+is inferred. `Byte` is the `Bits 8` storage unit. `Bytes` uses the sequence
+schema below. Endianness never reverses uninterpreted bits or bytes.
+
+### Integer encodings
+
+`Layout Nat`, `Layout Int`, constrained integers, `ModNat`, and `ModInt` admit
+the applicable families:
+
+```text
+UnsignedBinary
+TwosComplement
+OnesComplement ( canonical PositiveZero | NegativeZero )
+SignMagnitude ( canonical PositiveZero | NegativeZero )
+BiasedBinary ( bias Int )
+```
+
+`UnsignedBinary` requires nonnegative represented values. `BiasedBinary` stores
+`value + bias` as unsigned binary. The other named families have their ordinary
+signed meanings. Width comes from `storage-size`. A pattern outside a semantic
+constraint is invalid, and a value outside the encoded range cannot be written.
+Modular values use canonical representatives; layout conversion never performs
+modular reduction and unused bit patterns remain invalid.
+
+### Rational and fixed point encodings
+
+`Layout Rational` admits `Ratio`:
+
+```text
+numerator-layout     Layout Int
+denominator-layout   Layout Nat
+canonical            ReducedPositiveDenominator
+```
+
+Both component layouts are required. Zero denominators are invalid. The
+canonical policy requires a positive denominator and relatively prime parts;
+reads reject alternatives and writes emit that unique representation.
+
+A layout of a `FixedPoint` type admits `ScaledInteger`:
+
+```text
+integer-layout       Layout Int | Layout Nat
+quantum              positive Rational
+```
+
+The integer layout is required. `quantum` is inferred from the fixed-point type
+and, when written explicitly, must match it. Stored integer times quantum is the
+semantic value. No rounding is implied.
+
+### Approximate encodings
+
+An approximate type admits `IeeeBinary` or `IeeeDecimal` when compatible with
+its radix and arithmetic policy:
+
+```text
+exponent-bits       positive Nat
+fraction-bits       Nat
+exponent-bias       Nat
+subnormal           Gradual | Absent
+infinity            Signed | Absent
+signed-zero         Preserve | Discard
+nan                  Invalid
+```
+
+Widths and bias are required unless uniquely derived from the approximate type
+and total size. The policy fields must agree with that type. `nan` is currently
+fixed to `Invalid`: raw `Bits` can preserve a NaN pattern, but decoding it as a
+number fails. Infinity patterns require an infinity-capable semantic type.
+Signed zero becomes ordinary zero plus direction evidence when preserved.
+
+Layouts do not round exact values. Rounding happens during an explicit
+exact-to-approximate conversion; a layout only validates and stores an already
+constructed approximate value.
+
+For example, assuming `Binary64` names the corresponding semantic `Approx`
+policy, its little-endian IEEE layout is:
+
+```topal
+IeeeBinary64LE is (
+  storage-size bits 64 ,
+  encoding IeeeBinary (
+    exponent-bits 11 ,
+    fraction-bits 52 ,
+    exponent-bias 1023 ,
+    subnormal Gradual ,
+    infinity Signed ,
+    signed-zero Preserve ,
+    nan Invalid
+  ) ,
+  endian Little
+) Layout Binary64
+```
+
+## Text schemas
+
+`Layout String` and `Layout Character` admit `Utf8`, `Utf16`, `Utf32`, their
+normalization variants, and `Ascii`, as defined in
+[the string model](strings.md#encodings-and-storage-formats). `Character`
+additionally validates that decoding produces one semantic character.
+
+Text encodings accept:
+
+```text
+length              NoLength | Prefix ( Layout Nat ) | Fixed Nat | Remainder
+termination         NoTerminator | CodeUnit value
+padding             NoPadding | CodeUnit value
+```
+
+Length defaults to `NoLength`, and termination defaults to `NoTerminator`, but
+fixed storage size, a nonzero fixed length, a length prefix, a remainder, or a
+terminator must make the boundary knowable. Short content in fixed storage
+requires padding, which is not decoded as text. A terminator or padding value
+must be one representable code unit and cannot also occur as unescaped content.
+
+`Utf16` and `Utf32` require layout `endian`; `Utf8` and `Ascii` reject it.
+Normalization variants normalize on write and validate on read. Malformed,
+truncated, unterminated, incorrectly padded, or normalization-inconsistent text
+fails validation. Layouts of `Encoded E` and `Bytes` use sequence framing and
+do not decode their payload.
+
+## Product schemas
+
+Tuple and record layouts contain a layout for every component and accept:
+
+```text
+packing             Natural | Packed
+field-order         Declared | explicit list of all field identities
+```
+
+Natural packing is the default and inserts minimum alignment padding. `Packed`
+inserts none and is invalid when a component cannot safely be accessed at its
+resulting alignment. Declared field order is the default. Each component entry
+may additionally specify:
+
+```text
+offset              size in bits or bytes from the product start
+```
+
+An explicit offset overrides inferred placement. Components cannot overlap.
+Gaps are reserved padding with the preservation semantics described above. A
+product `storage-size`, when supplied, describes the complete representation
+and must contain every component.
+
+## Sum and enum schemas
+
+Variants, unions, and enums admit `Tagged`:
+
+```text
+tag-layout          Layout Nat | Layout Int | Layout Bits
+tags                complete alternative-identity to tag-value map
+payload-placement   AfterTag | Overlay
+```
+
+The first two fields are required. Tag values must be distinct and representable;
+unassigned patterns are invalid. Payload placement defaults to `AfterTag`.
+`Overlay` gives every alternative the same aligned payload position. Each
+alternative supplies its payload layout; a `Unit` alternative occupies no
+payload. Total size covers the tag and largest alternative.
+
+`Optional T` and `Result ( T, ErrorCodes )` use this same sum schema; they do
+not introduce private tag fields. Their alternatives and payload layouts are
+selected in the ordinary `tags` map.
+
+## Sequence and collection schemas
+
+`Array count T` may repeat one homogeneous layout:
+
+```text
+element-layout      Layout T
+stride              size in bits or bytes
+```
+
+Stride defaults to the aligned element size. It may reserve more space but may
+not overlap the following element or violate alignment.
+
+Variable-size `List`, `Bytes`, `Encoded E`, `Set`, `Bag`, and `Map` layouts use:
+
+```text
+length              NoLength | Prefix ( Layout Nat ) | Fixed Nat | Remainder
+element-layout      Layout T
+entry-layout        product layout
+ordering            Preserved | Canonical
+```
+
+`NoLength` is rejected for these variable-size collections. Homogeneous
+collections require `element-layout`; maps require an `entry-layout`
+containing key and value. Exactly one is present. `length` is required unless a
+containing fixed-size representation supplies an unambiguous remainder.
+Sequences infer `Preserved`. Unordered collections require `Canonical`, using
+the total encoded-bit order of complete entries so equal semantic values have
+one representation. Duplicate or noncanonical set/map entries and
+noncanonical bag order are invalid on read.
+
+## Constraints, quantities, and nominal types
+
+A constrained value uses a layout admitted by its base type and validates the
+constraint on read. A nominal type may reuse its base layout only when its
+declaration publishes that representation; layouts cannot bypass abstraction.
+
+A measured numeric quantity uses an applicable numeric layout plus:
+
+```text
+measurement-unit    compatible MeasurementUnit
+```
+
+The required field selects the stored unit. Conversion follows the semantic
+numeric type's explicit rules. Affine points apply the unit offset; a
+`Delta Dimension` uses its compiler-derived delta unit without that offset.
+
+## Types without layouts
+
+Functions, tasks, endpoints, resources, capabilities, environments, static
+identifiers, types themselves, and opaque objects without a published value
+representation do not admit `Layout T`. Native Topal serialization may still
+describe them, but a portable byte layout cannot reconstruct authority,
+behavior, compiler identity, or private state. This separates
+[native serialization](serialization.md) from programmer-selected external
+representation.
 
 ## Locations
 
