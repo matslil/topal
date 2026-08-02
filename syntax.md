@@ -406,6 +406,63 @@ Types and other constructors use ordinary prefix application:
 point is Point ( 10 , 20 )
 ```
 
+### Named construction fields
+
+A constructor with named parameters receives a parenthesized list of
+`name is value` associations:
+
+```topal
+CentAmount is FixedPoint (
+  radix is 10,
+  fractional-digits is 2
+)
+```
+
+The constructor or an expected constructed type supplies the closed field
+schema. Field order does not affect identity unless that constructor explicitly
+defines an order, and unknown, duplicate, missing required, or inapplicable
+fields are errors. A single named field needs no trailing comma:
+
+```topal
+Biased is BiasedBinary (
+  bias is 127
+)
+```
+
+This is structural syntax, not ordinary function application: `bias is 127` is
+one named association, whereas `bias 127` applies the object named `bias`.
+Parentheses containing `name is value` are consequently a named-argument list,
+not a grouped lexical binding. A lexical binding uses binding position outside
+an association list.
+
+Named arguments do not infer a new anonymous record type by themselves. They
+must be consumed by a constructor or expected record type which declares their
+fields. An anonymous record remains explicit about each inferred field type:
+
+```topal
+point is (
+  x : Float is 12.5,
+  y : Float is 7.0
+)
+```
+
+Map entries use the same `is` association token, but an expected `Map ( K, V )`
+permits arbitrary expressions of `K` on the left rather than static field
+labels. Parsing retains the association shape; the expected construction decides
+whether it is a named field or a map key and validates it accordingly.
+
+Layouts are the deliberate attribute-first application. The parser still
+groups their parenthesized associations before `Layout`, while semantic checking
+propagates the field schema from `Layout T` back to that argument:
+
+```topal
+UInt32LE is (
+  storage-size is 32[b],
+  encoding is UnsignedBinary,
+  endian is Little
+) Layout Nat
+```
+
 The same structural shape can be used as a pattern:
 
 ```topal
@@ -539,8 +596,9 @@ semantic relationships among tuples, records, variants, unions, and maps.
 
 ## Bindings and classification
 
-`is` introduces an immutable binding. Outside a map construction it binds the
-name on its left to the object produced on its right:
+`is` introduces an immutable binding in binding position. Inside a delimited
+named construction, record construction, reconstruction, or map construction,
+it instead associates the entry on its left with the value on its right:
 
 ```topal
 limit is Integer 10
@@ -555,9 +613,11 @@ text is String
 
 binds `text` to the type object `String`. It does not declare a string value.
 
-The sole non-binding left side is an explicitly qualified current task field:
+Outside those delimited association lists, the sole non-binding left side is an
+explicitly qualified current task field:
 `@ field is expression` performs the task-state replacement defined under
-[tasks](#tasks). A bare identifier before `is` always introduces a binding.
+[tasks](#tasks). Outside a delimited association list, a bare identifier before
+`is` always introduces a binding.
 
 `with` is the immutable record-reconstruction operator:
 
@@ -574,7 +634,8 @@ evidence is invalidated to be replaced or re-established. No alias of `person`
 is mutated.
 
 Inside a map construction, `is` associates the key on its left with the value
-on its right. It remains a value association rather than a classification:
+on its right. It remains a value association rather than a classification or
+lexical binding:
 
 ```topal
 counts is Map ( String, Nat ) (
@@ -1684,10 +1745,14 @@ classifier-expression = binary-chain ;
 binary-chain      = prefix-expression
                     { binary-operator prefix-expression } ;
 prefix-expression = { prefix-operator } primary ;
-primary           = identifier | literal | product | anonymous-record | grouped ;
+primary           = identifier | literal | product | association-list
+                  | anonymous-record | grouped ;
 grouped           = "(" expression ")" ;
 product           = "(" expression "," expression
                     { "," expression } ")" ;
+association-list  = "(" association { "," association } ")" ;
+association       = association-key "is" expression ;
+association-key   = identifier | literal | grouped | product ;
 anonymous-record  = "(" record-field "," record-field
                     { "," record-field } ")" ;
 record-field      = identifier ":" classifier-expression "is" expression ;
@@ -1705,9 +1770,14 @@ Identifiers such as `fn`, `is`, `then`, `when`, and `otherwise` are structural
 in the shown positions. `static` is structural directly after `fn` and otherwise
 participates in ordinary expression parsing. Function arity and object kinds
 are checked after the source has been grouped; they must not change that
-grouping. Although `_` is accepted in a binding position, it introduces no
-binding and cannot act as a matcher; the surrounding classification or
-declaration still supplies every applicable type check.
+grouping. At the top level inside parentheses, `name is value` selects an
+`association-list`; a comma-separated sequence of
+`name : classifier is value` fields selects an anonymous record. The `grouped`
+alternative therefore does not accept a top-level unclassified binding and
+cannot compete with the named-association form. Although `_` is accepted in a
+binding position, it introduces no binding and cannot act as a matcher; the
+surrounding classification or declaration still supplies every applicable type
+check.
 
 ## Grammar diagram
 
