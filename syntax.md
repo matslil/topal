@@ -180,6 +180,11 @@ Within one expression, all unit atoms use either symbols or complete names:
 Operators and parentheses are shared between the forms, but atoms cannot mix;
 `[kg * Metre]` is invalid. The compiler derives `Δ°C` by prefixing `Δ` to the
 declared `°C` symbol, so no separate delta-symbol declaration exists.
+Enabled measurement prefixes similarly derive one complete atom in each mode:
+`cm` and `Centimetre`, `ms` and `Millisecond`, or `KiB` and `Kibibyte`.
+Whitespace never separates the prefix from its named unit; `[Centi Metre]` is
+invalid. Derived spellings are reserved, and colliding explicit declarations
+are rejected rather than resolved by precedence or source order.
 
 The brackets are not part of the numeric literal. Whitespace is permitted, but
 the formatter uses the compact spelling shown above.

@@ -68,12 +68,17 @@ A derived linear unit supplies a dimensioned scale quantity. Its dimension is
 inferred, so it cannot also provide `dimension`:
 
 ```topal
-Centimetre is MeasurementUnit (
-  symbol is cm,
+Inch is MeasurementUnit (
+  symbol is in,
   prefixes is none,
-  scale is 0.01[m]
+  scale is 0.0254[m]
 )
 ```
+
+A unit enabled for a prefix family does not need explicit declarations for its
+prefixed forms. For example, SI-enabled `Metre` automatically supplies symbolic
+`cm` and named `Centimetre`; declaring either spelling again is a collision even
+if the explicit scale would be definitionally equal.
 
 A derived affine unit supplies a fundamental or derived affine reference, a
 dimensionless scale, and an offset expressed in the reference's delta unit:
@@ -209,10 +214,43 @@ parentheses, and whitespace are neutral. These are consequently invalid:
 ```
 
 Enabled language-defined prefixes derive both symbolic and complete named atoms
-without changing the mode. The selected language version supplies unambiguous
-prefix names and factors. A module must reject declarations whose names,
-symbols, prefixes, or compiler-derived delta forms would make parsing
-ambiguous.
+without changing the mode. Symbolic derivation concatenates the prefix symbol
+and complete unit symbol, while named derivation constructs one capitalized
+identifier from the long prefix and lowercased unit stem:
+
+```text
+c    + m      -> cm
+Centi + metre -> Centimetre
+
+Milli + second -> Millisecond
+Kilo  + gram   -> Kilogram
+Kibi  + byte   -> Kibibyte
+```
+
+The examples above show word components, not source tokens. Inside `[]`, each
+derived name is one atom with no whitespace:
+
+```topal
+1[Centimetre]
+5[Millisecond]
+2[Kilogram]
+4[Kibibyte]
+```
+
+Forms such as `[Centi Metre]` and `[Milli Second]` are invalid. The prefix is
+not an independent unit atom, and juxtaposition is not multiplication. This
+also keeps a prefixed symbol distinct from an explicit product:
+
+```topal
+1[ms]      # Millisecond.
+1[m * s]   # Metre multiplied by Second.
+```
+
+The selected language version supplies canonical long prefix names, their
+capitalization derivation, and factors. Enabling prefixes reserves every
+derived symbolic and named spelling. A module rejects an explicit declaration,
+import, or compiler-derived delta form which collides with any reserved atom;
+source or import order never chooses an interpretation.
 
 ## Linear arithmetic
 
@@ -296,10 +334,12 @@ select `none`, one family such as `SI` or `Binary`, or a product such as
 `( SI, Binary )`. Programs may define units but cannot redefine prefix families
 or their factors.
 
-The parser resolves one complete declared symbol before trying an enabled
-prefix followed by a symbol. Unit symbols are case-sensitive: `m`, `M`, `b`,
-and `B` are distinct. Prefixes scale units but never change their dimensions or
-turn points into deltas.
+The parser resolves one complete symbolic or named atom from the declarations
+and reserved derived forms in scope. There is no precedence rule between an
+explicit atom and a prefixed interpretation because declarations which would
+create both are rejected. Unit symbols are case-sensitive: `m`, `M`, `b`, and
+`B` are distinct. Prefixes scale units but never change their dimensions or turn
+points into deltas.
 
 For data amounts:
 
