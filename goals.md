@@ -53,7 +53,9 @@ when these preserve the program's meaning.
   are checked by construction. Undefined behavior is not part of the safe
   language.
 - [Measured quantities](units.md) carry statically checked dimensions and
-  scales; programmer-defined units compose using language-defined prefixes.
+  scales. Affine dimensions distinguish point coordinates from compiler-derived
+  deltas, while programmer-defined units compose using language-defined
+  prefixes.
 
 ## Functions and effects
 

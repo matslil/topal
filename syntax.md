@@ -163,6 +163,24 @@ described by the [quantity and unit model](units.md):
 5[kg]
 ```
 
+`Dimension`, `AffineDimension`, and `MeasurementUnit` are capitalized static
+constructions. An affine unit literal constructs a point, while compiler-derived
+`Delta D`, named `delta U`, and symbolic `ΔU` denote differences. Unit
+expressions use ordinary whitespace-sensitive `*`, `/`, and `^` operators.
+Within one expression, all unit atoms use either symbols or complete names:
+
+```topal
+9.81[m / (s ^ 2)]
+9.81[Metre / (Second ^ 2)]
+
+5[Δ°C]
+5[delta Celsius]
+```
+
+Operators and parentheses are shared between the forms, but atoms cannot mix;
+`[kg * Metre]` is invalid. The compiler derives `Δ°C` by prefixing `Δ` to the
+declared `°C` symbol, so no separate delta-symbol declaration exists.
+
 The brackets are not part of the numeric literal. Whitespace is permitted, but
 the formatter uses the compact spelling shown above.
 

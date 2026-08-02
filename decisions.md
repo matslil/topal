@@ -194,6 +194,15 @@ The following questions from the initial audit are no longer open:
   domains returns `Rational`. A narrower expected type is satisfied implicitly
   only when losslessness is statically proved, as in `fifty : Int is 100 / 2`;
   dynamic validation and all rounding remain explicit.
+- Unit declarations use the single capitalized `MeasurementUnit` construction.
+  `Dimension` creates linear dimensions, while `AffineDimension` creates point
+  classifiers
+  whose difference classifier is `Delta D`. Affine unit literals construct
+  points by default; the compiler derives named `delta U` and symbolic `ΔU`
+  difference units with no separate symbol declaration. Symbolic and named unit
+  atoms share ordinary `*`, `/`, `^`, and grouping syntax but cannot mix within
+  one `[]` expression. Points and deltas never convert implicitly; point-point
+  subtraction and point-delta translation supply the relationship.
 
 ## Surface grammar
 

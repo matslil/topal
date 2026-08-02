@@ -1,172 +1,330 @@
-# Quantities and units
+# Quantities, affine points, and units
 
-This document records the provisional model for measured quantities in Topal.
-A quantity combines a number with a unit. Units carry dimensions and scale;
-they do not change the arithmetic semantics of the underlying numeric type.
+Topal combines exact or approximate numbers with dimensioned units. Linear
+dimensions describe quantities such as distance and duration. Affine dimensions
+describe points such as absolute temperatures together with compiler-derived
+linear differences. Units determine scale and, for derived affine coordinates,
+origin; they do not change the arithmetic semantics of the underlying number.
+
+## Dimensions
+
+Capitalized language constructions distinguish linear and affine dimensions:
+
+```topal
+Distance is Dimension
+Duration is Dimension
+Temperature is AffineDimension
+```
+
+A linear dimension directly classifies quantities:
+
+```topal
+length : Distance
+elapsed : Duration
+```
+
+An affine dimension directly classifies points. Its associated linear
+difference classifier is constructed by language-defined `Delta`:
+
+```topal
+outside : Temperature
+change : Delta Temperature
+```
+
+`Delta` accepts an `AffineDimension` or one of its affine `MeasurementUnit`
+objects and produces the corresponding linear dimension or unit classifier. It
+is a static
+classifier construction rather than a capability. Applying it to an ordinary
+linear dimension or unit is invalid because that object is already linear.
+
+## One MeasurementUnit construction
+
+`MeasurementUnit` is the single capitalized construction for fundamental,
+derived, linear, and affine units. Its argument shape and referenced dimension
+determine which form is being declared.
+
+A fundamental linear unit names a `Dimension`:
+
+```topal
+Metre is MeasurementUnit (
+  symbol is m,
+  prefixes is SI,
+  dimension is Distance
+)
+```
+
+A fundamental affine unit names an `AffineDimension` and establishes its
+canonical coordinate origin and scale:
+
+```topal
+Kelvin is MeasurementUnit (
+  symbol is K,
+  prefixes is SI,
+  dimension is Temperature
+)
+```
+
+A derived linear unit supplies a dimensioned scale quantity. Its dimension is
+inferred, so it cannot also provide `dimension`:
+
+```topal
+Centimetre is MeasurementUnit (
+  symbol is cm,
+  prefixes is none,
+  scale is 0.01[m]
+)
+```
+
+A derived affine unit supplies a fundamental or derived affine reference, a
+dimensionless scale, and an offset expressed in the reference's delta unit:
+
+```topal
+Celsius is MeasurementUnit (
+  symbol is °C,
+  prefixes is none,
+  reference is Kelvin,
+  scale is 1,
+  offset is 273.15[ΔK]
+)
+```
+
+Its coordinate conversion is exact when the underlying number can represent
+the result:
+
+```text
+reference coordinate = source coordinate * scale + offset
+```
+
+The parameter forms are mutually exclusive:
+
+- `dimension : Dimension` declares a fundamental linear unit;
+- `dimension : AffineDimension` declares its fundamental affine unit;
+- one dimensioned `scale` declares a derived linear unit; and
+- affine `reference`, dimensionless `scale`, and delta-valued `offset` together
+  declare a derived affine unit.
+
+Every declaration supplies `symbol` and `prefixes` exactly once. A fundamental
+dimension has exactly one fundamental unit. A scale must be nonzero and finite,
+affine references must share one affine dimension, and derived declarations
+must not form cycles. Invalid mixtures are rejected rather than interpreted by
+argument order.
+
+## Compiler-derived delta units
+
+Every affine unit automatically provides its linear delta unit. Lowercase
+`delta` is the language-defined named-unit operator inside `[]`:
+
+```topal
+5[delta Celsius]
+5[delta Kelvin]
+```
+
+The symbolic form is derived by prefixing the language-defined capital delta
+symbol `Δ` to the complete unit symbol:
+
+```topal
+5[Δ°C]
+5[ΔK]
+```
+
+There is no `delta-symbol` declaration. The compiler owns this derivation and
+rejects an explicit symbol or prefix combination which would collide with it.
+The delta unit has the point unit's scale and no offset.
+
+At the classifier level, `Delta` is capitalized because it constructs a linear
+dimension classifier:
+
+```topal
+difference : Delta Temperature is 5[Δ°C]
+```
+
+Inside brackets, `delta` is lowercase to distinguish the unit operator from a
+named unit atom:
+
+```topal
+difference : Delta Temperature is 5[delta Celsius]
+```
 
 ## Quantity expressions
 
-A unit expression in square brackets following a number constructs a quantity:
+A bracketed unit expression following a number constructs a linear quantity or
+an affine point:
 
 ```topal
 9.81[N]
 250[g]
 5[kg]
-4[KiB]
+20[°C]
+5[Δ°C]
 ```
 
 The brackets are structural syntax rather than part of the numeric token.
-Whitespace around and within them is accepted, while the formatter uses the
-compact spelling above. Thus `9.81 [ N ]` and `9.81[N]` have the same meaning.
-
-Unit expressions may multiply, divide, and raise units to integer powers:
+Whitespace around delimiters is accepted. Ordinary mathematical operators
+retain Topal's normal whitespace rules, so these are valid:
 
 ```topal
-10[m]
-3[s]
-9.81[m / ( s ^ 2 )]
+9.81[m / (s ^ 2)]
 25[N * m]
-100[kg * m / ( s ^ 2 )]
+100[kg * m / (s ^ 2)]
 ```
 
-The exact operator spelling remains provisional. Operations on quantities
-combine their unit expressions along with their numeric values.
+but `1[kg*m]` is invalid because `*` is not a delimiter and requires surrounding
+whitespace.
 
-## Dimensions and derived units
-
-Every unit has a dimension and a scale relative to the unit which establishes
-that dimension. Fundamental units establish the dimensions from which derived
-units are composed. A derived unit declaration establishes an equality rather
-than merely giving the compiler an optimization hint.
-
-For example, newton is the unit of force and is definitionally equivalent to
-kilogram metre per second squared. Provisional declaration syntax is:
+One unit-expression grammar accepts two non-mixing atom vocabularies. Symbolic
+mode uses declared symbols and enabled symbolic prefixes:
 
 ```topal
-Newton is unit (
-  symbol N ,
-  prefixes SI ,
-  scale 1[kg * m / ( s ^ 2 )]
+1[kg * m / (s ^ 2)]
+5[Δ°C]
+```
+
+Named mode uses complete static unit names and lowercase `delta`:
+
+```topal
+1[Kilogram * Metre / (Second ^ 2)]
+5[delta Celsius]
+```
+
+Unicode symbols do not require ASCII aliases. For example, angular degree and
+Celsius remain distinct complete symbols while their named forms stay readable:
+
+```topal
+90[°]
+90[Degree]
+20[°C]
+20[Celsius]
+```
+
+Both modes use the same `*`, `/`, `^`, and parenthesized grouping. There are no
+parallel prose operators such as `per`, `squared`, or `power`. The first unit
+atom selects the mode; every later atom must use the same vocabulary. Operators,
+parentheses, and whitespace are neutral. These are consequently invalid:
+
+```topal
+1[kg * Metre]
+1[Kilogram * m]
+5[delta °C]
+5[Δ Celsius]
+```
+
+Enabled language-defined prefixes derive both symbolic and complete named atoms
+without changing the mode. The selected language version supplies unambiguous
+prefix names and factors. A module must reject declarations whose names,
+symbols, prefixes, or compiler-derived delta forms would make parsing
+ambiguous.
+
+## Linear arithmetic
+
+Fundamental and derived linear units normalize to dimensions and exact scale
+factors. For example:
+
+```topal
+Newton is MeasurementUnit (
+  symbol is N,
+  prefixes is SI,
+  scale is 1[kg * m / (s ^ 2)]
 )
 ```
 
-The checker normalizes dimension products and scale factors. It can therefore
-prove this equality statically:
+The checker can prove:
 
 ```topal
-2[kg] * 4[m] / ( 1[s] ^ 2 ) = 8[N]
-```
-
-Conceptually, both sides normalize to `8[kg * m / ( s ^ 2 )]`. The inferred
-result need not be displayed using the derived symbol. An expected type,
-explicit conversion, or formatting choice may select `N`:
-
-```topal
-force : N
-force is 2[kg] * 4[m] / ( 1[s] ^ 2 )
+2[kg] * 4[m] / (1[s] ^ 2) = 8[N]
+2[kg] + 500[g] = 2.5[kg]
+8[N] + 2[kg * m / (s ^ 2)] = 10[N]
 ```
 
 Addition, subtraction, comparison, and equality require compatible dimensions.
-Scale conversion is exact whenever the underlying number type can represent the
-result:
+Multiplication, division, and integer powers derive dimension products. An
+expected type, explicit conversion, or formatting choice may select a preferred
+compatible unit without changing the semantic quantity.
+
+## Affine arithmetic
+
+An affine unit constructs a point by default; its delta unit constructs a
+linear difference:
 
 ```topal
-2[kg] + 500[g] = 2.5[kg]
-8[N] + 2[kg * m / ( s ^ 2 )] = 10[N]
-2[kg] + 4[m] # Invalid: mass and length have incompatible dimensions.
+outside : Temperature is 20[°C]
+inside : Temperature is 25[°C]
+step : Delta Temperature is 5[Δ°C]
 ```
 
-Multiplication and division instead derive new dimensions, so `2[kg] * 4[m]`
-is the valid quantity `8[kg * m]`.
+The language-defined operations are:
 
-## Prefixes
+```text
+Affine - Affine       -> Delta Affine
+Affine + Delta Affine -> Affine
+Delta Affine + Affine -> Affine
+Affine - Delta Affine -> Affine
 
-Prefix meanings are language-defined and case-sensitive. Programs may define
-units, but cannot redefine prefixes. Topal uses the standard SI spellings such
-as `m`, `k`, `M`, and `G`, and the standard binary spellings `Ki`, `Mi`, `Gi`,
-and so on:
-
-```topal
-1[kg] = 1_000[g]
-1[kN] = 1_000[N]
-1[KiB] = 1_024[B]
+Delta Affine + Delta Affine -> Delta Affine
+Delta Affine - Delta Affine -> Delta Affine
 ```
 
-A unit declaration controls whether prefixes may be applied to it. The parser
-first resolves a complete declared unit symbol and only then tries a recognized
-prefix followed by a unit symbol. A module must reject declarations that would
-make a quantity's unit spelling ambiguous.
-
-Unit symbols are case-sensitive: `m`, `M`, and `N` are distinct. Prefixes scale
-units but never change their dimensions.
-
-## Custom units
-
-Programs may declare new fundamental or derived units, give them symbols, and
-choose whether language-defined prefixes are accepted. Declarations must state
-enough dimension and scale information for the checker to normalize quantities
-without relying on their textual unit spellings.
-
-A fully defined unit has a `symbol`, a `prefixes` policy, and exactly one of
-`dimension` or `scale`. Naming a dimension directly establishes the unit whose
-scale is one for that dimension:
+Adding two affine points, multiplying or dividing a point, and raising a point
+to a power are invalid. Points have no implicit numeric zero. A delta cannot
+become a point implicitly because it carries no origin; add it to an existing
+point. Conversely, subtract an origin point to obtain a delta:
 
 ```topal
-DataAmount is dimension
-
-Bit is unit (
-  symbol b ,
-  prefixes ( SI , Binary ) ,
-  dimension DataAmount
-)
-
-Byte is unit (
-  symbol B ,
-  prefixes ( SI , Binary ) ,
-  scale 8[b]
-)
+freezing : Temperature is 0[°C]
+boiling : Temperature is freezing + 100[Δ°C]
+difference : Delta Temperature is boiling - freezing
 ```
 
-Unit symbols are case-sensitive, so `b` means bits and `B` means bytes.
-Consequently, `1[B]` is definitionally equal to `8[b]`.
-
-A dimension may be declared before its unit, allowing an interface to describe
-dimension relationships abstractly. Concrete quantities in that dimension
-cannot be constructed until exactly one unit establishes it by naming the
-dimension directly.
-
-A derived unit supplies `scale` instead. Its dimension and scale are inferred
-from that quantity, so it must not also supply `dimension`:
+Converting between point units preserves one point and applies scale plus
+offset. Converting between delta units preserves one difference and applies
+scale only:
 
 ```topal
-Block is unit (
-  symbol block ,
-  prefixes none ,
-  scale 512[B]
+celsius : Temperature is 20[°C]
+kelvin : Temperature is celsius as Kelvin
+
+change-celsius : Delta Temperature is 5[Δ°C]
+change-kelvin : Delta Temperature is change-celsius as Delta Kelvin
+```
+
+There is no separate `Point` wrapper or `at` construction. The affine dimension
+is the point classifier, and its unit literal constructs a point directly.
+
+## Prefixes and symbols
+
+Prefix meanings are language-defined and case-sensitive. Unit declarations
+select `none`, one family such as `SI` or `Binary`, or a product such as
+`( SI, Binary )`. Programs may define units but cannot redefine prefix families
+or their factors.
+
+The parser resolves one complete declared symbol before trying an enabled
+prefix followed by a symbol. Unit symbols are case-sensitive: `m`, `M`, `b`,
+and `B` are distinct. Prefixes scale units but never change their dimensions or
+turn points into deltas.
+
+For data amounts:
+
+```topal
+DataAmount is Dimension
+
+Bit is MeasurementUnit (
+  symbol is b,
+  prefixes is ( SI, Binary ),
+  dimension is DataAmount
 )
 
-Smoot is unit (
-  symbol smoot ,
-  prefixes none ,
-  scale 1.7018[m]
+Byte is MeasurementUnit (
+  symbol is B,
+  prefixes is ( SI, Binary ),
+  scale is 8[b]
 )
 ```
 
-The supported prefix policies are `none`, one language-defined family such as
-`SI` or `Binary`, or a product of families such as `( SI , Binary )`. A policy
-is always explicit. Programs cannot define new prefix families or change their
-factors.
+Consequently, `1[B]` equals `8[b]` and `1[KiB]` equals `1_024[B]`.
 
-The checker requires `symbol` and `prefixes` exactly once and requires exactly
-one of `dimension` and `scale`. A scale must be nonzero, finite, and dimensioned;
-derived-unit definitions must not form cycles. Symbols and the prefixed forms
-they enable must be unambiguous in their scope.
+## Context-dependent conversions
 
-Simple multiplicative scaling does not describe every measurement system.
-Affine units such as degrees Celsius additionally require an offset, and units
-with context-dependent conversions require explicit conversion functions.
-Their declaration syntax and arithmetic rules remain undecided.
-
-Mass and force remain distinct dimensions. Grams and kilograms measure mass;
-newtons measure force. Informal uses of “weight” do not make values in grams
-compatible with values in newtons.
+Fixed affine conversion does not describe exchange rates, civil time zones,
+historical calendars, sensor calibration, or other conversions which depend on
+time, external state, policy, or effects. Those remain ordinary explicit
+functions. Affine units provide only a fixed scale and offset relative to one
+declared reference.
