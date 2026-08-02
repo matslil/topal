@@ -800,9 +800,9 @@ operations or representations. In particular:
   `Tuple`, `Record`, `Variant`, and `Union` similarly describe product and sum
   structure rather than positions in a container hierarchy.
 - A canonical embedding between distinct numeric domains is a lossless
-  conversion, not automatically a refinement. The finite-to-extended relations
-  such as `Int` to `ExtendedInt` are lossless, while the reverse direction is
-  checked because an infinity cannot become an `Int`. Approximation, rounding,
+  conversion, not automatically a refinement. `Finite Int` to `Int` instead
+  forgets constraint evidence, while constructing `Finite Int` from `Int` is
+  checked because the value may be infinite. Approximation, rounding,
   saturation, wrapping, and interpretation from bits remain explicit.
 
 Evidence forgetting is transitive: a value may forget several refinements on

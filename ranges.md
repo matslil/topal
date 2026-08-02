@@ -44,7 +44,7 @@ or successor evidence.
 
 ## Bounds and inclusivity
 
-Comparison predicates express whether each finite bound is included:
+Comparison predicates express whether each bound is included:
 
 ```topal
 range ( >= 0 and <= 10 ) # closed at both ends
@@ -69,14 +69,14 @@ but the general range model does not assume or silently apply it.
 
 ## Unbounded ranges
 
-One-sided ranges use predicate sections directly, so the remaining finite bound
+One-sided ranges use predicate sections directly, so the remaining explicit bound
 states its inclusivity without placeholder syntax:
 
 ```topal
-range ( >= 0 )  # includes 0 and has no maximum
-range ( > 0 )   # excludes 0 and has no maximum
-range ( <= 10 ) # has no minimum and includes 10
-range ( < 10 )  # has no minimum and excludes 10
+range ( >= 0 )  # includes 0 and has no explicit upper bound
+range ( > 0 )   # excludes 0 and has no explicit upper bound
+range ( <= 10 ) # has no explicit lower bound and includes 10
+range ( < 10 )  # has no explicit lower bound and excludes 10
 ```
 
 When the expected kind is already `Range T`, the explicit `range` construction
@@ -95,24 +95,24 @@ It accepts every value in that domain. A singleton accepts one value, while
 contradictory bounds describe the empty range; neither requires a special
 failure case.
 
-Extended numeric values can also supply unbounded endpoints. Range construction
-normalizes infinities rather than treating them as members that must be visited:
+Infinite numeric values can also be range endpoints. Because infinity now
+belongs to the ordinary numeric domain, it remains an endpoint value rather than
+being normalized into an absent bound:
 
 ```topal
-0 .. +Infinity  # equivalent to range ( >= 0 )
--Infinity .. 10 # equivalent to range ( <= 10 )
+0 .. +Infinity                     # Includes +Infinity.
+range ( >= 0 and < +Infinity )     # Every finite nonnegative value.
+-Infinity .. 10                    # Includes -Infinity.
 ```
 
 This applies when an endpoint is calculated at run time as well as when it is
-written directly. A function may return `ExtendedInt`, `ExtendedRational`, or
-another ordered extended numeric type; a finite result supplies a finite bound,
-while the appropriate infinity supplies no bound on that side. An indeterminate
-or arithmetic-error result cannot construct a range endpoint.
-
-Internally, the normalized bound remains finite or unbounded. Consequently,
-whether an infinity was written or calculated does not make it a member of a
-range over the corresponding finite type, and endpoint inclusivity has no
-separate meaning at infinity.
+written directly. A function returning `Int`, `Rational`, or another ordered
+numeric type with infinities may supply a finite or infinite bound. The ordinary
+open and closed endpoint rules decide whether that infinity is a member. An absent
+bound is still distinct: `range ( >= 0 )` has no upper endpoint and includes
+every `Int` satisfying the predicate, including `+Infinity`. Combine the range
+with the numeric `Finite` constraint when only finite members are intended. An
+indeterminate or arithmetic-error result cannot construct a range endpoint.
 
 ## Constructing ranges from predicates
 

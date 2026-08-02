@@ -175,13 +175,14 @@ while retaining its complete type and laws. It therefore does not erase an
 `Int`, `FixedPoint`, or `Approx` value to a boxed common number, and it does not
 promise that every numeric operation has the same result type or algebraic
 laws. The concrete domains include `Int`, `Nat`, `Rational`, `FixedPoint`,
-`Approx`, their applicable extended forms, modular numbers, and measured
-numeric quantities. Their semantics and conversions are defined in the
-[number model](numbers.md).
+`Approx`, modular numbers, and measured numeric quantities. Unbounded ordered
+numeric domains contain their applicable infinities; `Finite N` constrains a
+numeric type to non-infinite values. Their semantics and conversions are
+defined in the [number model](numbers.md).
 
-The initial numeric vocabulary uses `Approx` and `ExtendedApprox`.
-`Approximate` and `ExtendedApproximate` are descriptive English, not additional
-type names.
+The initial numeric vocabulary uses `Approx`; `Approximate` is descriptive
+English, not an additional type name. There are no parallel `Extended` numeric
+types.
 
 `Comparison` and `PartialComparison` are enum result types for total and partial
 ordering. `Comparison` contains `Less`, `Equal`, and `Greater`;

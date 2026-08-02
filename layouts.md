@@ -297,6 +297,11 @@ constraint is invalid, and a value outside the encoded range cannot be written.
 Modular values use canonical representatives; layout conversion never performs
 modular reduction and unused bit patterns remain invalid.
 
+These integer encoding families represent only finite values. Reading them
+therefore always produces `Finite` evidence; writing an unconstrained `Int` or
+`Nat` fails when its value is infinite. A layout may state `Finite Int` or
+`Finite Nat` when rejecting infinity should be visible in its semantic subtype.
+
 ### Rational and fixed point encodings
 
 `Layout Rational` admits `Ratio`:
@@ -310,6 +315,8 @@ canonical            ReducedPositiveDenominator
 Both component layouts are required. Zero denominators are invalid. The
 canonical policy requires a positive denominator and relatively prime parts;
 reads reject alternatives and writes emit that unique representation.
+`Ratio` represents finite rationals only, so a successful read carries `Finite`
+evidence and writing a rational infinity fails.
 
 A layout of a `FixedPoint` type admits `ScaledInteger`:
 
@@ -321,6 +328,9 @@ quantum              positive Rational
 The integer layout is required. `quantum` is inferred from the fixed-point type
 and, when written explicitly, must match it. Stored integer times quantum is the
 semantic value. No rounding is implied.
+`ScaledInteger` represents finite fixed-point values only. As with integer and
+ratio layouts, a successful read proves `Finite` and an infinity cannot be
+written.
 
 ### Approximate encodings
 
@@ -332,7 +342,7 @@ exponent-bits       positive Nat
 fraction-bits       Nat
 exponent-bias       Nat
 subnormal           Gradual | Absent
-infinity            Signed | Absent
+infinity            Signed
 signed-zero         Preserve | Discard
 nan                  Invalid
 ```
@@ -340,8 +350,10 @@ nan                  Invalid
 Widths and bias are required unless uniquely derived from the approximate type
 and total size. The policy fields must agree with that type. `nan` is currently
 fixed to `Invalid`: raw `Bits` can preserve a NaN pattern, but decoding it as a
-number fails. Infinity patterns require an infinity-capable semantic type.
-Signed zero becomes ordinary zero plus direction evidence when preserved.
+number fails. Approximate types contain signed infinities, so an IEEE encoding
+must represent them. A layout of `Finite ApproxType` uses the same encoding but
+rejects infinity patterns on read and infinite values on write. Signed zero
+becomes ordinary zero plus direction evidence when preserved.
 
 Layouts do not round exact values. Rounding happens during an explicit
 exact-to-approximate conversion; a layout only validates and stores an already

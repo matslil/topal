@@ -125,10 +125,15 @@ check every input combination. This is proof even when implemented through the
 testing runtime:
 
 ```text
-Finite T
+FiniteEnumeration T
   every-value : List T
   every value of T occurs exactly once
 ```
+
+`FiniteEnumeration` is deliberately distinct from the numeric `Finite N`
+constraint. The constraint excludes infinities but does not imply that the
+remaining domain is bounded or enumerable; `Finite Int`, for example, still
+contains infinitely many values.
 
 The compiler must prove the completeness and uniqueness of the enumeration.
 The number of combinations may grow rapidly: associativity over `T` requires

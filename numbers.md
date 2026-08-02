@@ -9,8 +9,9 @@ Numbers may be combined with dimensioned units to form values described by the
 
 ## Exact integers
 
-`Int` is an arbitrary-precision mathematical integer. It has no intrinsic
-minimum, maximum, overflow, or storage width:
+`Int` contains arbitrary-precision mathematical integers together with
+`-Infinity` and `+Infinity`. Its finite values have no intrinsic bound, overflow,
+or storage width:
 
 ```topal
 Int
@@ -27,8 +28,9 @@ Nat is >= 0 Int
 ```
 
 The names provide the familiar signed/nonnegative distinction, but neither type
-implies a sign bit or fixed storage. `Nat` uses mathematical arithmetic rather
-than machine-style unsigned overflow.
+implies a sign bit or fixed storage. The constraint excludes `-Infinity` and
+retains `+Infinity`. Finite `Nat` values use mathematical arithmetic rather than
+machine-style unsigned overflow.
 
 Operations derive the strongest practical result constraints. For example,
 subtracting two `Nat` values produces `Int` unless their ordering proves that
@@ -46,12 +48,15 @@ Ranges refine exact numbers without changing their arithmetic:
 ```topal
 ByteValue is ( >= 0 and <= 255 ) Nat
 Percentage is ( >= 0 and <= 100 ) Nat
-Temperature is ( >= -273 ) Int
+Temperature is ( Finite and >= -273 ) Int
 ```
 
 If an exact operation produces a result outside a refinement, the result still
 exists as `Int` or `Nat`; assigning it back to the refined type requires proof
 or explicit validation. Constraints never silently truncate, saturate, or wrap.
+Any finite upper or lower bound excludes the infinity beyond that bound. A
+one-sided constraint otherwise retains the infinity on its unbounded side;
+combine it with `Finite` when that value is not intended.
 
 Ranges are specialized convex predicates rather than numeric containers. Their
 general construction, open and unbounded bounds, and relationship to collection
@@ -239,15 +244,17 @@ left cyclic-before right
 Topal should distinguish exact domains from finite approximations rather than
 using one `Float` type for all non-integers.
 
-`Rational` represents an exact ratio of arbitrary-precision integers:
+The finite values of `Rational` are exact ratios of arbitrary-precision
+integers; the type additionally contains signed infinities:
 
 ```topal
 Rational ( 1 , 3 )
 ```
 
-Its addition and multiplication are exact, associative, and commutative where
-the corresponding mathematical operations have those laws. Numerators and
-denominators may grow and therefore consume increasing resources.
+Finite addition and multiplication are exact, associative, and commutative.
+Numerators and denominators may grow and therefore consume increasing
+resources. Operations involving infinities follow the common rules below and
+can be indeterminate.
 
 Fractional decimal literals construct exact `Rational` values by default:
 
@@ -263,11 +270,12 @@ literals are integers rather than alternate spellings of rational values.
 Trailing fractional zeroes do not change numeric identity; formatting policy
 chooses how many digits to display.
 
-`FixedPoint` represents exact values on a statically declared scale. It stores
-an arbitrary-precision integer coefficient semantically, so scale does not
-imply overflow or a machine width. Its construction accepts exactly one of two
-scale forms. Conventional radix fixed point declares the number of fractional
-digits, with radix ten as the default:
+`FixedPoint` represents exact finite values on a statically declared scale and
+also contains signed infinities. A finite value has an arbitrary-precision
+integer coefficient semantically, so scale does not imply overflow or a machine
+width. Its construction accepts exactly one of two scale forms. Conventional
+radix fixed point declares the number of fractional digits, with radix ten as
+the default:
 
 ```topal
 CentAmount is FixedPoint (
@@ -301,8 +309,10 @@ price : CentAmount is 12.34  # Statically verified implicit conversion.
 invalid : CentAmount is 12.345 # Compile error.
 ```
 
-A dynamic rational becomes `Result ( FixedType, ArithmeticErrorCode )` unless
-available constraints prove exact representability. Rounding is never implicit:
+A dynamic finite rational becomes `Result ( FixedType, ArithmeticErrorCode )`
+unless available constraints prove exact representability. A rational infinity
+maps to the same fixed-point infinity without inspecting the quantum. Rounding
+is never implicit:
 
 ```topal
 price is amount round (
@@ -323,48 +333,66 @@ select encoded width, signedness, scale, and overflow validation. Currency is
 also separate: applications combine a fixed-point amount with a currency type,
 unit, or record rather than treating all two-place values as interchangeable.
 
-## Extended numbers and infinity
+## Infinity and finite constraints
 
-Ordered numeric domains may have corresponding extended supertypes that add
-infinite values. These are numeric types in their own right, not wrapper values:
-
-```topal
-ExtendedNat
-ExtendedInt
-ExtendedRational
-ExtendedApprox
-```
-
-`ExtendedNat` adds `+Infinity`. The signed extended types add both `-Infinity`
-and `+Infinity`. Here `Approx` denotes a policy without infinite values. IEEE
-formats remain available as encodings for storage and interoperability, but
-their NaN bit patterns do not become semantic numeric values. Every finite value
-embeds losslessly in its extended type:
+Topal's ordinary ordered scalar numeric domains contain their applicable
+infinities. This is part of the numeric type rather than a parallel `Extended`
+family:
 
 ```text
-Nat      <: ExtendedNat
-Int      <: ExtendedInt
-Rational <: ExtendedRational
-Approx   <: ExtendedApprox
+Nat          finite nonnegative values and +Infinity
+Int          finite integers, -Infinity, and +Infinity
+Rational     finite ratios, -Infinity, and +Infinity
+FixedPoint   finite multiples of its quantum, -Infinity, and +Infinity
+Approx       finite approximations, -Infinity, and +Infinity
 ```
 
-Conversion in the other direction is checked. An `ExtendedInt` containing a
-finite integer can become `Int`, while either infinity produces a conversion
-error. A function returning `Int` therefore cannot silently return an infinity;
-one that permits the result declares `ExtendedInt`.
+`Nat` excludes `-Infinity` through its existing nonnegative constraint.
+`ModNat`, `ModInt`, and bounded numeric constraints remain inherently finite:
+their definitions admit only their finite canonical values. A range with a
+finite lower and upper bound likewise proves finiteness. `Bits` is not a numeric
+domain and has no infinity.
 
-Operation result types still follow the ordinary numeric domain. Exact division
-involving extended integers may produce `ExtendedRational`, for example, rather
-than `ExtendedInt`; division of ordinary finite integers produces `Rational`.
-Modular and fixed-point types do not acquire infinities: their algebra has no
-natural infinite endpoint, and an operation needing one promotes to the
-applicable extended exact domain.
+`+Infinity` and `-Infinity` are language numeric constants. Their expected
+numeric type determines the value; `-Infinity` cannot satisfy `Nat` or another
+nonnegative constraint. Without sufficient context, the compiler requires an
+explicit numeric classification rather than choosing one domain.
 
-Arithmetic on infinities is defined only where the chosen extended domain gives
-an unambiguous result. In particular, `0 / 0`, `0 * Infinity`, and
-`Infinity - Infinity` are indeterminate and do not become ordinary infinities.
-The initial model reports an arithmetic error for such expressions rather than
-adding a NaN-like value to every extended type.
+`Finite N` is the language-defined constraint family for a numeric type `N`. It
+retains the complete underlying numeric type and operations but excludes both
+infinities where present:
+
+```topal
+count : Finite Nat
+balance : Finite Rational
+sample : Finite Binary64
+```
+
+Constructing `Finite N` from a dynamic `N` validates the existing value and
+returns the ordinary constraint-validation `Result`. Forgetting the constraint
+is implicit and lossless. `Finite` is a value constraint, not a storage policy,
+approximation mode, capability, or separate arithmetic implementation.
+
+Operations preserve the strongest provable constraint. Addition, subtraction,
+and multiplication of finite exact values remain finite. Exact division of
+finite values by a proven nonzero finite divisor remains finite. Approximate
+arithmetic may overflow to an infinity, so finite approximate operands do not
+alone prove a finite result; the result retains `Finite` only when range and
+policy analysis proves that overflow is impossible. Constraints and compiler
+proofs apply the same rule to generic numeric code.
+
+Arithmetic on infinities is defined only where the numeric domain gives an
+unambiguous result. Adding a finite value to an infinity preserves that
+infinity; multiplying an infinity by a nonzero value follows its sign; and
+ordering places negative infinity below every finite value and positive
+infinity above every finite value. Forms such as `0 * Infinity`,
+`Infinity - Infinity` with equal signs, `Infinity / Infinity`, and `0 / 0` are
+indeterminate. They report the numeric domain's `indeterminate` arithmetic error
+rather than producing a NaN-like semantic value.
+
+The former names `ExtendedNat`, `ExtendedInt`, `ExtendedRational`, and
+`ExtendedApprox` are removed. Code which requires finite inputs says so with
+`Finite`; code using the unconstrained numeric type accepts its infinities.
 
 ## Zero directionality
 
@@ -384,9 +412,9 @@ the algebraic laws of its numeric type. A spelling such as `-0` may denote zero
 with `FromBelow` evidence where a directional value is expected; converting it
 to a plain exact number intentionally discards that evidence.
 
-Directionality can accompany calculations over basic numeric types. It does not
-require the input to be extended. An operation that reaches a singularity may
-then produce an extended result:
+Directionality can accompany calculations over basic numeric types. An
+operation that reaches a singularity may then produce an infinite result in
+that ordinary numeric domain:
 
 ```text
 positive / zero FromAbove -> +Infinity
@@ -411,20 +439,30 @@ rather than a special zero representation makes this behavior general.
 
 ## Approximate numbers
 
-`Approx` is the provisional name for finite-precision approximate values. It is
+`Approx` is the provisional name for finite-precision approximate arithmetic. It is
 more explicit about semantics than `Float`, while named IEEE formats remain
 available for storage and interoperability.
 
-An approximate type may include a radix, precision, rounding rule, and special
-value policy:
+An approximate type declares its radix, significand precision, finite exponent
+range, subnormal behavior, and rounding rule:
 
 ```topal
 Approx (
-  radix 2 ,
-  precision 53 ,
-  rounding NearestEven
+  radix is 2 ,
+  precision is 53 ,
+  minimum-normal-exponent is -1022 ,
+  maximum-exponent is 1023 ,
+  subnormal is Gradual ,
+  rounding is NearestEven
 )
 ```
+
+`precision` counts radix digits in the significand. The exponent fields bound
+finite normal values, while `subnormal` is `Gradual` or `Absent`. Every `Approx`
+type also contains signed infinities. A finite operation whose rounded magnitude
+exceeds `maximum-exponent` produces the corresponding infinity; a tiny result
+follows the declared subnormal and rounding policies. `Finite ApproxType`
+excludes those infinity results as an ordinary constraint.
 
 Aliases can describe standard formats:
 
@@ -443,7 +481,7 @@ explicit:
 
 The exact spelling remains provisional.
 
-NaN is not a value of `Approx` or `ExtendedApprox`. An operation which would
+NaN is not a value of `Approx`. An operation which would
 produce NaN under IEEE arithmetic instead reports an `indeterminate` arithmetic
 error at that operation. An IEEE encoding may contain a NaN bit pattern so it
 can be preserved at an external boundary, but decoding that pattern as a
@@ -469,17 +507,17 @@ c + b + a
 
 Increasing precision reduces error but cannot remove this property for all
 inputs. Infinities and directional zero evidence add further algebraic
-distinctions when the selected approximate domain includes them.
+distinctions.
 
 Topal therefore associates algebraic law evidence with operations and operand
 types:
 
 ```text
-Int addition             associative, commutative, identity 0
-Rational addition        associative, commutative, identity 0
-same-type FixedPoint addition associative, commutative, identity 0
-modular addition         associative, commutative, identity 0
-ordinary Approx addition deterministic only for a defined evaluation order
+Finite Int addition        associative, commutative, identity 0
+Finite Rational addition   associative, commutative, identity 0
+same-type finite FixedPoint addition associative, commutative, identity 0
+modular addition           associative, commutative, identity 0
+ordinary Approx addition   deterministic only for a defined evaluation order
 ```
 
 The compiler may reorder or parallelize a reduction only when the selected
@@ -680,20 +718,18 @@ when either operand is negative. `^` is exponentiation where the operand domain
 supports the requested exponent; its detailed result typing is
 capability-specific.
 
-For a domain whose result does not include infinity, a zero divisor has no
-numeric result. The same is always true for the discrete `%` and `/%`
-operations. These operations report the numeric domain's `division-by-zero`
-arithmetic error as soon as an invalid operation is evaluated. A statically
-evident invalid zero divisor is rejected during compilation. If the divisor is
-proven nonzero, the operation has its ordinary result type; otherwise its type
-is `Result` of that result type, and the caller must handle or propagate the
-error according to the standard error model.
-
-An extended domain, including `ExtendedApprox`, can instead divide a nonzero
-value by directional zero to produce the corresponding infinity, as described
-under zero directionality. Directionless zero still reports
+Directional zero allows an ordinary numeric domain to divide a nonzero value
+by that zero and produce the corresponding infinity, as described under zero
+directionality. Directionless zero still reports
 `division-by-zero`, and indeterminate forms such as `0 / 0` report
 `indeterminate` rather than producing NaN.
+
+The discrete `%` and `/%` operations never produce infinity. They report the
+numeric domain's `division-by-zero` arithmetic error for a zero divisor. A
+statically evident invalid zero divisor is rejected during compilation. If a
+divisor is proven nonzero, an operation has its ordinary result type; otherwise
+its type is `Result` of that result type, and the caller handles or propagates
+the error according to the standard error model.
 
 `absolute` produces a value's nonnegative magnitude. Prefix `-` is the compact
 syntax for `negate`; binary `-` remains subtraction.

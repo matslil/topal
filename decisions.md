@@ -194,6 +194,14 @@ The following questions from the initial audit are no longer open:
   domains returns `Rational`. A narrower expected type is satisfied implicitly
   only when losslessness is statically proved, as in `fifty : Int is 100 / 2`;
   dynamic validation and all rounding remain explicit.
+- Unbounded ordered numeric domains contain their applicable infinities directly;
+  there are no parallel `ExtendedNat`, `ExtendedInt`, `ExtendedRational`, or
+  `ExtendedApprox` types. `Nat` retains only `+Infinity`, while signed
+  domains retain both. `Finite N` is the numeric constraint excluding infinity;
+  exact finite arithmetic preserves it when mathematically closed, while
+  approximate results retain it only when overflow is proven impossible.
+  Indeterminate infinite arithmetic returns an arithmetic error rather than a
+  semantic NaN.
 - Unit declarations use the single capitalized `MeasurementUnit` construction.
   `Dimension` creates linear dimensions, while `AffineDimension` creates point
   classifiers
