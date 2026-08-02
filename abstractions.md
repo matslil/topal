@@ -778,10 +778,11 @@ relations. Topal distinguishes them by the guarantee they provide:
   view without changing the value. It is implicit.
 - **Lossless conversion** changes the semantic type while preserving all
   information. It may be implicit only when one canonical conversion exists.
-- **Checked conversion** validates a value and produces `Result` plus evidence
-  on success.
-- **Lossy conversion** discards or rounds information and is always explicit,
-  with a named policy where more than one result is reasonable.
+- **Checked construction** applies the destination type, validates exact
+  representability, and produces `Result` plus evidence on dynamic success.
+- **Lossy transformation** uses a specifically named function such as
+  `round-to-even`, `truncate`, or `saturate`; there is no generic lossy
+  conversion operation.
 - **Representation interpretation** reads or writes an external layout and is
   an effectful boundary operation, never an ordinary conversion.
 

@@ -148,6 +148,23 @@ For an eight-bit `ModNat`:
 
 Static literals that fit can be checked during compilation.
 
+## Arithmetic errors
+
+The initial `ArithmeticErrorCode` vocabulary distinguishes:
+
+```text
+out-of-range       value lies outside the destination's admitted range
+not-representable  value is in range but has no exact destination value
+division-by-zero   directionless zero is used where no quotient exists
+indeterminate      operands do not determine one numeric result
+```
+
+For example, constructing a byte-sized constraint from `300` is
+`out-of-range`, while constructing `Binary64` from exact rational `0.1` is
+`not-representable`. The distinction is preserved by checked construction and
+the explicitly lossy functions below. A statically known error is rejected at
+compilation; a dynamic operation returns the applicable `Result`.
+
 ## Fixed-width bits
 
 `Bits width` is a fixed-width sequence of bits. The width is a positive `Nat`
@@ -301,8 +318,8 @@ NickelAmount is FixedPoint (
 ```
 
 `quantum` is mutually exclusive with both `radix` and `fractional-digits`.
-Construction and conversion require the value to be an exact integer multiple
-of the resulting quantum:
+Checked construction requires the value to be an exact integer multiple of the
+resulting quantum:
 
 ```topal
 price : CentAmount is 12.34  # Statically verified implicit conversion.
@@ -310,15 +327,12 @@ invalid : CentAmount is 12.345 # Compile error.
 ```
 
 A dynamic finite rational becomes `Result ( FixedType, ArithmeticErrorCode )`
-unless available constraints prove exact representability. A rational infinity
-maps to the same fixed-point infinity without inspecting the quantum. Rounding
-is never implicit:
+with `not-representable` unless available constraints prove exact
+representability. A rational infinity maps to the same fixed-point infinity
+without inspecting the quantum. Rounding is never implicit:
 
 ```topal
-price is amount round (
-  to is CentAmount,
-  using is NearestEven
-)
+price is amount round-to-even CentAmount
 ```
 
 Addition and subtraction of one complete fixed-point type remain in that type;
@@ -464,6 +478,11 @@ exceeds `maximum-exponent` produces the corresponding infinity; a tiny result
 follows the declared subnormal and rounding policies. `Finite ApproxType`
 excludes those infinity results as an ordinary constraint.
 
+The type's `rounding` field governs results of arithmetic already performed in
+that approximate domain. It does not make construction from another numeric
+domain lossy: entry into the type is exact checked construction or uses one of
+the named rounding functions below.
+
 Aliases can describe standard formats:
 
 ```topal
@@ -472,14 +491,18 @@ Binary64
 IeeeDecimal128
 ```
 
-Exact literals do not silently become binary approximations. Conversion is
-explicit:
+Exact literals do not silently become binary approximations. Applying an
+approximate type is exact checked construction:
 
 ```topal
-0.1 approximate Binary64
+half is Binary64 0.5
+invalid is Binary64 0.1 # Compile error: not exactly representable.
 ```
 
-The exact spelling remains provisional.
+A dynamic value which is not exactly representable returns
+`Result ( Binary64, ArithmeticErrorCode )` with `not-representable`. Selecting a
+nearby representable value instead uses one of the explicitly named rounding
+functions below.
 
 NaN is not a value of `Approx`. An operation which would
 produce NaN under IEEE arithmetic instead reports an `indeterminate` arithmetic
@@ -539,13 +562,99 @@ Examples of distinct intent are:
 ```topal
 values fold ( Binary64 0 , + )
 values reproducible-sum Binary64
-values exact-sum approximate Binary64
+values exact-sum round-to-even Binary64
 ```
 
 An ordered fold reproduces its declared order but is not invariant under source
 reordering. `reproducible-sum` promises its documented permutation-independent
 result. Exact accumulation followed by one rounding also gives an
 order-independent sum, subject to its resource requirements.
+
+## Explicit lossy numeric functions
+
+Applying a numeric type performs exact checked construction. Implicit
+classification is accepted only when losslessness is statically proved. Every
+operation which deliberately discards numeric information therefore has a name
+which states how it chooses the replacement value; there is no generic numeric
+`convert` function.
+
+The six nearest-value rounding functions are:
+
+```topal
+value round-to-zero Target
+value round-from-zero Target
+value round-to-even Target
+value round-to-odd Target
+value round-to-pos Target
+value round-to-neg Target
+```
+
+Every function selects the nearest value representable by `Target`. Its suffix
+matters only when the input is exactly halfway between the adjacent candidates:
+
+```text
+operation          positive tie    negative tie
+round-to-zero      toward zero      toward zero
+round-from-zero    away from zero   away from zero
+round-to-even      even last retained radix digit
+round-to-odd       odd last retained radix digit
+round-to-pos       toward +Infinity toward +Infinity
+round-to-neg       toward -Infinity toward -Infinity
+```
+
+For example, `2.6 round-to-zero Int` is `3`; it is not a tie. In contrast,
+`2.5 round-to-zero Int` is `2`, while `2.5 round-from-zero Int` is `3`.
+`round-to-even` and `round-to-odd` are available only when the target's radix
+and representable steps define a last retained digit. A tie is defined by the
+target's adjacent representable values, not specifically by a decimal digit
+`5`.
+
+Rounding first requires the input to lie within the target's numeric range. It
+does not clamp an out-of-range input to the nearest endpoint; that separate loss
+belongs to `saturate`. An ordinary `Approx` target includes infinities: a
+magnitude beyond its finite exponent range follows that target's overflow rule
+and produces the applicable infinity. A `Finite ApproxType` target instead
+reports `out-of-range`.
+
+Directed information loss uses separate functions:
+
+```topal
+value truncate Target
+value floor Target
+value ceiling Target
+value saturate Target
+```
+
+`truncate` selects the representable value nearest to the input in the direction
+of zero. `floor` selects the greatest representable value not greater than the
+input. `ceiling` selects the least representable value not less than the input.
+Thus truncating `-3.9` to `Int` produces `-3`, flooring it produces `-4`, and
+ceiling it produces `-3`.
+
+These directed operations likewise require the input to be within the target's
+numeric range before discarding precision. They do not clamp at one endpoint.
+
+`saturate` handles range loss only. The target must have a least and greatest
+finite value. Inputs below or above that range, including signed infinities,
+become the corresponding endpoint. An input already within the range must be
+exactly representable; saturation does not also round or truncate it. For
+example, a `Binary64` infinity may use:
+
+```topal
+finite is value saturate ( Finite Binary64 )
+```
+
+Arbitrary-precision `Finite Int` has no finite extrema and is therefore not a
+saturation target. A bounded integer constraint is. When both precision and
+range must be discarded, the programmer composes visibly named operations.
+
+Checked construction and these lossy functions report distinct failures.
+`not-representable` means exact construction or saturation encountered an
+in-range value absent from the target representation. `out-of-range` means the
+input is outside the target range for an operation which does not saturate. A
+statically known failure is a compile error; otherwise the operation returns
+`Result ( Target, ArithmeticErrorCode )`. When analysis
+proves a result exists, the result is plain `Target`.
 
 ## Arithmetic policies
 
@@ -638,7 +747,6 @@ left / right
 left % right
 left /% right
 left ^ right
-value convert NumberType
 ```
 
 `=` is the fundamental equality operation and returns `Boolean`; `!=` is its

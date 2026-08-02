@@ -208,6 +208,14 @@ The following questions from the initial audit are no longer open:
   approximate results retain it only when overflow is proven impossible.
   Indeterminate infinite arithmetic returns an arithmetic error rather than a
   semantic NaN.
+- Numeric type application is exact checked construction, and implicit numeric
+  classification is accepted only when statically proven lossless. There is no
+  generic lossy `convert` or `approximate` function. Nearest-value loss uses
+  `round-to-zero`, `round-from-zero`, `round-to-even`, `round-to-odd`,
+  `round-to-pos`, or `round-to-neg`; the suffix resolves only exact ties.
+  `truncate`, `floor`, and `ceiling` name directed precision loss, while
+  `saturate` alone clamps range and never also rounds. Dynamic checked failures
+  distinguish `not-representable` from `out-of-range`.
 - Unit declarations use the single capitalized `MeasurementUnit` construction.
   `Dimension` creates linear dimensions, while `AffineDimension` creates point
   classifiers
