@@ -573,9 +573,9 @@ or requested representations, not the semantics of `Int` and `Nat`:
 
 ```topal
 value encode (
-  width 32 ,
-  signed TwosComplement ,
-  endian Little
+  width is 32,
+  signed is TwosComplement,
+  endian is Little
 )
 ```
 

@@ -7,9 +7,10 @@ where that representation can be accessed. The compiler may use direct loads,
 direct stores, lazy conversion, copying, or in-place updates when these choices
 preserve the source semantics.
 
-The examples show attribute maps as parenthesized lists of named entries. The
-exact map-literal syntax remains undecided. Curly braces are not used because
-they already introduce short function bodies.
+Attributes use the ordinary parenthesized `name is value` construction syntax.
+Their schema comes from `AddressRange`, `AddressOffset`, `Layout T`, or the
+selected encoding family. Curly braces are not used because they already
+introduce short function bodies.
 
 ## Construction and reusable subtypes
 
@@ -35,16 +36,20 @@ Location layout                       -> location subtype
 location-subtype AddressOffset         -> location value
 ```
 
-For example, `( caching Uncached ) AddressRange ( 0 .. 255 )` constructs a
-complete range directly. `AddressRange ( caching Uncached )` instead constructs
-a subtype which can be reused to construct several ranges. This asymmetry keeps
-the complete expression attribute-first while leaving subtype construction as
-an ordinary one-parameter application.
+For example, `( caching is Uncached ) AddressRange ( 0 .. 255 )` constructs a
+complete range directly. `AddressRange ( caching is Uncached )` instead
+constructs a subtype which can be reused to construct several ranges. This
+asymmetry keeps the complete expression attribute-first while leaving subtype
+construction as an ordinary one-parameter application.
 
 ## Address ranges
 
 An `AddressRange` value stores an ordinary `Nat .. Nat` range. Its subtype's
 attribute map initially supports:
+
+Schema tables in this document place a field name and its accepted classifier
+in columns; they are not source expressions. Source constructions always place
+`is` between the field name and value.
 
 ```text
 caching             Cached | Uncached
@@ -56,9 +61,9 @@ For example:
 
 ```topal
 DeviceAddresses is AddressRange (
-  caching Uncached ,
-  minimum-access-size bits 32 ,
-  medium MMIO
+  caching is Uncached,
+  minimum-access-size is 32[b],
+  medium is MMIO
 )
 
 device is DeviceAddresses (
@@ -102,15 +107,15 @@ For example:
 
 ```topal
 DeviceOffset is AddressOffset (
-  range device ,
-  alignment 4
+  range is device,
+  alignment is 4
 )
 
 control-offset is DeviceOffset 0x20
 ```
 
 Because offsets are measured in bytes, alignment is also measured in bytes and
-the `bytes` name is optional. Thus `alignment 4` means four-byte alignment.
+the `bytes` name is optional. Thus `alignment is 4` means four-byte alignment.
 Construction proves that the offset belongs to the associated range and
 satisfies the alignment. Applying a layout later additionally proves that the
 complete stored representation fits within the range.
@@ -158,7 +163,7 @@ in the referenced schema and reused by every listed type family:
 | `integer-layout`, `quantum` | `ScaledInteger` |
 | `exponent-bits`, `fraction-bits`, `exponent-bias`, `subnormal`, `infinity`, `signed-zero`, `nan` | `IeeeBinary`, `IeeeDecimal` |
 | `termination`, `padding` | text encodings |
-| `packing`, `field-order`, component `offset` | tuple and record layouts |
+| `packing`, `field-order`, component `layout` and `offset` | tuple and record layouts |
 | `tag-layout`, `tags`, `payload-placement` | `Tagged` sums and enums |
 | `element-layout`, `stride`, `entry-layout`, `ordering` | arrays and collections |
 | `measurement-unit` | measured numeric layouts |
@@ -167,14 +172,14 @@ Attributes precede the semantic type:
 
 ```topal
 UInt32LE is (
-  storage-size bits 32 ,
-  encoding UnsignedBinary ,
-  endian Little ,
-  access ReadWrite
+  storage-size is 32[b],
+  encoding is UnsignedBinary,
+  endian is Little,
+  access is ReadWrite
 ) Layout Nat
 ```
 
-The combination of `storage-size bits 32` and `encoding UnsignedBinary`
+The combination of `storage-size is 32[b]` and `encoding is UnsignedBinary`
 specifies the 32-bit unsigned binary representation. Width is not duplicated in
 the encoding name. Similarly, a signed integer layout can combine a storage
 size with `TwosComplement`, and an approximate-number layout can combine one
@@ -213,12 +218,12 @@ attribute map still precedes the contained layout:
 
 ```topal
 HeaderLayout is (
-  alignment 4 ,
-  access ReadWrite
+  alignment is 4,
+  access is ReadWrite
 ) Layout (
-  kind UInt8 ,
-  length UInt16BE ,
-  sequence UInt32BE
+  kind is UInt8,
+  length is UInt16BE,
+  sequence is UInt32BE
 )
 ```
 
@@ -260,7 +265,7 @@ containing fixed-size representation's complete remainder.
 
 ## Fundamental scalar schemas
 
-`Layout Unit` has inferred `storage-size bits 0` and encoding `Empty`. It may be
+`Layout Unit` has inferred `storage-size is 0[b]` and encoding `Empty`. It may be
 a zero-size component but cannot independently name an addressable location.
 
 `Layout Boolean` admits `BooleanBits` with these required fields:
@@ -285,9 +290,11 @@ the applicable families:
 ```text
 UnsignedBinary
 TwosComplement
-OnesComplement ( canonical PositiveZero | NegativeZero )
-SignMagnitude ( canonical PositiveZero | NegativeZero )
-BiasedBinary ( bias Int )
+OnesComplement ( canonical is PositiveZero )
+OnesComplement ( canonical is NegativeZero )
+SignMagnitude ( canonical is PositiveZero )
+SignMagnitude ( canonical is NegativeZero )
+BiasedBinary ( bias is 127 )
 ```
 
 `UnsignedBinary` requires nonnegative represented values. `BiasedBinary` stores
@@ -364,17 +371,17 @@ policy, its little-endian IEEE layout is:
 
 ```topal
 IeeeBinary64LE is (
-  storage-size bits 64 ,
-  encoding IeeeBinary (
-    exponent-bits 11 ,
-    fraction-bits 52 ,
-    exponent-bias 1023 ,
-    subnormal Gradual ,
-    infinity Signed ,
-    signed-zero Preserve ,
-    nan Invalid
-  ) ,
-  endian Little
+  storage-size is 64[b],
+  encoding is IeeeBinary (
+    exponent-bits is 11,
+    fraction-bits is 52,
+    exponent-bias is 1023,
+    subnormal is Gradual,
+    infinity is Signed,
+    signed-zero is Preserve,
+    nan is Invalid
+  ),
+  endian is Little
 ) Layout Binary64
 ```
 
@@ -416,11 +423,27 @@ field-order         Declared | explicit list of all field identities
 
 Natural packing is the default and inserts minimum alignment padding. `Packed`
 inserts none and is invalid when a component cannot safely be accessed at its
-resulting alignment. Declared field order is the default. Each component entry
-may additionally specify:
+resulting alignment. Declared field order is the default. Each component
+association accepts a layout directly, as in `kind is UInt8`, or an expanded
+entry with these fields:
 
 ```text
+layout              layout of the component's semantic type
 offset              size in bits or bytes from the product start
+```
+
+`layout` is required in the expanded form and `offset` is optional:
+
+```topal
+HeaderLayout is (
+  packing is Packed
+) Layout (
+  kind is UInt8,
+  length is (
+    layout is UInt16BE,
+    offset is 2[B]
+  )
+)
 ```
 
 An explicit offset overrides inferred placement. Components cannot overlap.

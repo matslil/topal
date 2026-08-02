@@ -154,8 +154,14 @@ The following questions from the initial audit are no longer open:
 - `with` is the immutable record-reconstruction keyword. It retains unspecified
   fields, revalidates invariants, and never mutates aliases of the original
   value. Persistent task-field replacement always uses a qualified left side,
-  as in `@ count is @ count + amount`; an unqualified `is` always introduces a
-  lexical binding.
+  as in `@ count is @ count + amount`; an unqualified `is` in statement binding
+  position introduces a lexical binding.
+- Schema-directed named construction fields use parenthesized `name is value`
+  associations. The constructor or expected constructed type supplies the
+  closed field schema; the association list does not infer an anonymous record
+  type. Explicit anonymous records retain `name : Type is value`, and expected
+  maps interpret the same `is` token as key-to-value association. A
+  parenthesized `name is value` is therefore never a grouped lexical binding.
 - `match-first` is an ordered interaction decision table which initiates
   speculation-safe requests together and selects the first committed response;
   source order breaks logical ties. `match-all` waits for a labeled product of all
