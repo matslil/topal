@@ -234,7 +234,7 @@ with a valid maximum distance rather than overloading ordinary `<`:
 left cyclic-before right
 ```
 
-## Exact non-integers
+## Exact non-integers and fixed point
 
 Topal should distinguish exact domains from finite approximations rather than
 using one `Float` type for all non-integers.
@@ -249,22 +249,79 @@ Its addition and multiplication are exact, associative, and commutative where
 the corresponding mathematical operations have those laws. Numerators and
 denominators may grow and therefore consume increasing resources.
 
-`Decimal` represents an exact finite decimal value. Decimal literals are exact
-by default:
+Fractional decimal literals construct exact `Rational` values by default:
 
 ```topal
-0.1
-12.50
-1.25e3
+0.1     # Rational ( 1, 10 )
+12.50   # Rational ( 25, 2 )
+1.25e3  # Rational 1250
 ```
 
 Their decimal point, exponent, and digit-grouping rules are defined in
 [the numeric literal syntax](syntax.md#numeric-literals). Base-prefixed
-literals are integers rather than alternate spellings of `Decimal` values.
+literals are integers rather than alternate spellings of rational values.
+Trailing fractional zeroes do not change numeric identity; formatting policy
+chooses how many digits to display.
 
-Finite decimal addition and multiplication can remain exact. Division may
-produce a `Rational`, require an explicit approximation, or report that no
-finite decimal result exists; the precise division API remains undecided.
+`FixedPoint` represents exact values on a statically declared scale. It stores
+an arbitrary-precision integer coefficient semantically, so scale does not
+imply overflow or a machine width. Its construction accepts exactly one of two
+scale forms. Conventional radix fixed point declares the number of fractional
+digits, with radix ten as the default:
+
+```topal
+CentAmount is FixedPoint (
+  fractional-digits is 2
+)
+
+BinaryFraction is FixedPoint (
+  radix is 2,
+  fractional-digits is 8
+)
+```
+
+The exact quantum is `1 / (radix ^ fractional-digits)`. `CentAmount` therefore
+contains multiples of `1 / 100`, while `BinaryFraction` contains multiples of
+`1 / 256`. `radix` must be at least two and `fractional-digits` is a `Nat`.
+
+The alternative form names an arbitrary positive rational quantum directly:
+
+```topal
+NickelAmount is FixedPoint (
+  quantum is 0.05
+)
+```
+
+`quantum` is mutually exclusive with both `radix` and `fractional-digits`.
+Construction and conversion require the value to be an exact integer multiple
+of the resulting quantum:
+
+```topal
+price : CentAmount is 12.34  # Statically verified implicit conversion.
+invalid : CentAmount is 12.345 # Compile error.
+```
+
+A dynamic rational becomes `Result ( FixedType, ArithmeticErrorCode )` unless
+available constraints prove exact representability. Rounding is never implicit:
+
+```topal
+price is amount round (
+  to is CentAmount,
+  using is NearestEven
+)
+```
+
+Addition and subtraction of one complete fixed-point type remain in that type;
+multiplication by an integer also preserves it. Multiplying fixed-point values
+with quanta `A` and `B` may derive `FixedPoint ( quantum is A * B )`. Arithmetic
+between incompatible fixed-point scales otherwise promotes to `Rational` unless
+a statically proven lossless common fixed-point type is required by context.
+Division always follows the exact rational rule described below.
+
+Fixed point describes semantic granularity, not storage. Layouts independently
+select encoded width, signedness, scale, and overflow validation. Currency is
+also separate: applications combine a fixed-point amount with a currency type,
+unit, or record rather than treating all two-place values as interchangeable.
 
 ## Extended numbers and infinity
 
@@ -275,7 +332,6 @@ infinite values. These are numeric types in their own right, not wrapper values:
 ExtendedNat
 ExtendedInt
 ExtendedRational
-ExtendedDecimal
 ExtendedApprox
 ```
 
@@ -289,7 +345,6 @@ embeds losslessly in its extended type:
 Nat      <: ExtendedNat
 Int      <: ExtendedInt
 Rational <: ExtendedRational
-Decimal  <: ExtendedDecimal
 Approx   <: ExtendedApprox
 ```
 
@@ -299,9 +354,11 @@ error. A function returning `Int` therefore cannot silently return an infinity;
 one that permits the result declares `ExtendedInt`.
 
 Operation result types still follow the ordinary numeric domain. Exact division
-of two integers may produce `ExtendedRational`, for example, rather than
-`ExtendedInt`. Modular types do not acquire infinities: their cyclic algebra has
-no natural infinite endpoint.
+involving extended integers may produce `ExtendedRational`, for example, rather
+than `ExtendedInt`; division of ordinary finite integers produces `Rational`.
+Modular and fixed-point types do not acquire infinities: their algebra has no
+natural infinite endpoint, and an operation needing one promotes to the
+applicable extended exact domain.
 
 Arithmetic on infinities is defined only where the chosen extended domain gives
 an unambiguous result. In particular, `0 / 0`, `0 * Infinity`, and
@@ -311,8 +368,8 @@ adding a NaN-like value to every extended type.
 
 ## Zero directionality
 
-Exact numeric domains have one zero. `Int`, `Nat`, `Rational`, and exact
-`Decimal` do not gain a second numeric value named `-0`. Topal may instead carry
+Exact numeric domains have one zero. `Int`, `Nat`, `Rational`, and `FixedPoint`
+do not gain a second numeric value named `-0`. Topal may instead carry
 directional evidence with a calculation:
 
 ```text
@@ -340,12 +397,12 @@ positive / zero Exact     -> DivisionByZero
 zero Exact / zero Exact   -> Indeterminate
 ```
 
-For dense domains such as `Rational` and arbitrary-scale `Decimal`, direction
-can describe an ordinary one-sided limit. Integers are discrete, so direction
-on an `Int` or `Nat` instead records calculation provenance, rounding, or an
-extrapolation; it is not a claim that distinct integers lie arbitrarily close
-to zero. `Nat` calculations cannot approach zero from below while remaining in
-the `Nat` domain.
+For the dense `Rational` domain, direction can describe an ordinary one-sided
+limit. Integers and fixed-point domains are discrete, so direction on an `Int`,
+`Nat`, or `FixedPoint` instead records calculation provenance, rounding, or an
+extrapolation; it is not a claim that distinct values in that domain lie
+arbitrarily close to zero. `Nat` calculations cannot approach zero from below
+while remaining in the `Nat` domain.
 
 Direction is useful at nonzero boundaries as well. Retaining `FromBelow` or
 `FromAbove` on a calculation approaching `10` lets a later subtraction expose
@@ -374,7 +431,7 @@ Aliases can describe standard formats:
 ```topal
 Binary32
 Binary64
-Decimal128
+IeeeDecimal128
 ```
 
 Exact literals do not silently become binary approximations. Conversion is
@@ -420,6 +477,7 @@ types:
 ```text
 Int addition             associative, commutative, identity 0
 Rational addition        associative, commutative, identity 0
+same-type FixedPoint addition associative, commutative, identity 0
 modular addition         associative, commutative, identity 0
 ordinary Approx addition deterministic only for a defined evaluation order
 ```
@@ -580,10 +638,24 @@ losslessly to `PartialComparison`, while converting `Incomparable` to
 `PartialOrder` and `TotalOrder` are defined in the
 [capability vocabulary](capabilities.md#value-comparison).
 
-`/` is exact division. For example, dividing two integers may produce a
-`Rational`; it does not silently round to another integer. `%` and `/%` are the
-compact Euclidean operations for discrete numeric domains. `%` produces the
-modulo, while `/%` produces the quotient and modulo together:
+`/` is exact division. Dividing values from `Nat`, `Int`, `Rational`, or
+`FixedPoint` produces `Rational`; it never silently rounds or truncates to the
+operand domain. A statically verified lossless conversion may immediately
+satisfy a narrower expected type:
+
+```topal
+fifty : Int is 100 / 2
+third : Rational is 1.0 / 3.0
+```
+
+The first declaration is valid because the compiler proves that the exact
+rational result is the integer `50`. With dynamic operands, conversion to `Int`
+is infallible only when evidence proves a nonzero divisor and exact divisibility;
+otherwise zero division and failed integer conversion are reported through the
+ordinary composed `Result` vocabularies.
+
+`%` and `/%` are the compact Euclidean operations for discrete numeric domains.
+`%` produces the modulo, while `/%` produces the quotient and modulo together:
 
 ```topal
 17 % 5    # 2
@@ -667,7 +739,7 @@ remains capability-specific rather than being supported by every numeric type.
 Int
 Nat
 Rational
-Decimal
+FixedPoint specification
 Approx specification
 
 ModInt range

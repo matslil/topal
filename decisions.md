@@ -187,6 +187,13 @@ The following questions from the initial audit are no longer open:
   ignoring channels outside its model; explicit compiler options or language
   variants may accept indeterminate evidence, known violations, or broader
   channel models while preserving trust status in compiled contracts.
+- Fractional decimal literals are exact `Rational` values; Topal has no
+  `Decimal` or `ExtendedDecimal` numeric domain. `FixedPoint` instead declares
+  exact granularity using either radix plus fractional digits or an arbitrary
+  positive rational quantum. `/` over exact integer, rational, and fixed-point
+  domains returns `Rational`. A narrower expected type is satisfied implicitly
+  only when losslessness is statically proved, as in `fifty : Int is 100 / 2`;
+  dynamic validation and all rounding remain explicit.
 
 ## Surface grammar
 

@@ -158,7 +158,7 @@ universally quantified values.
 The strongest initial domain includes:
 
 - tuples, records, variants, and unions;
-- exact integers, rationals, decimals, modular numbers, and bits;
+- exact integers, rationals, fixed-point values, modular numbers, and bits;
 - constraints and dependent fields;
 - immutable lists and arrays;
 - finite recursive algebraic data;

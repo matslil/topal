@@ -25,7 +25,7 @@ Predicate T
 Range T is Convex Predicate T
 ```
 
-This applies to domains such as integers, rationals, decimals, strings,
+This applies to domains such as integers, rationals, fixed-point values, strings,
 indexes, and ordered map keys. The order is part of the range's meaning. A
 partially ordered domain does not provide an unambiguous interval, and a map key
 range must use the same ordering as the map.
@@ -64,7 +64,8 @@ The internal representation may expose included and excluded bounds for
 inspection and efficient implementation, but separate inclusivity flags are
 not fundamental to source construction. Open bounds must not be normalized by
 adding or subtracting one: that fails at finite extremes and does not apply to
-dense domains such as `Rational` and `Decimal`.
+dense domains such as `Rational`. A fixed-point domain has a successor quantum,
+but the general range model does not assume or silently apply it.
 
 ## Unbounded ranges
 

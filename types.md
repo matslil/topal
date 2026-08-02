@@ -172,9 +172,9 @@ normalization, indexing, and encoding model is defined in
 `Number` is the generic classification for numeric types, not one additional
 numeric representation. A matcher requiring `Number` accepts a numeric type
 while retaining its complete type and laws. It therefore does not erase an
-`Int`, `Decimal`, or `Approx` value to a boxed common number, and it does not
+`Int`, `FixedPoint`, or `Approx` value to a boxed common number, and it does not
 promise that every numeric operation has the same result type or algebraic
-laws. The concrete domains include `Int`, `Nat`, `Rational`, `Decimal`,
+laws. The concrete domains include `Int`, `Nat`, `Rational`, `FixedPoint`,
 `Approx`, their applicable extended forms, modular numbers, and measured
 numeric quantities. Their semantics and conversions are defined in the
 [number model](numbers.md).
