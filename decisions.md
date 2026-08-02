@@ -178,6 +178,15 @@ The following questions from the initial audit are no longer open:
   one explicit owner-scoped destructor. Its result is `Unit` or
   `Result ( Unit, ErrorVocabulary )`; explicit cleanup is always followed by
   reverse-order component destruction and storage release, even on failure.
+- Sensitive provenance uses the classifier `Sensitive T`. Directly represented
+  information retains it, while the separate hard guarantee
+  `Leakage ( source <= amount )` bounds conclusions and all channels in a named,
+  versioned observable-leakage model, including derivable timing behavior.
+  Bounds compose conservatively and use `b` for bits and `B` for bytes. The
+  default rejects disproved and recognized-indeterminate requirements while
+  ignoring channels outside its model; explicit compiler options or language
+  variants may accept indeterminate evidence, known violations, or broader
+  channel models while preserving trust status in compiled contracts.
 
 ## Surface grammar
 
