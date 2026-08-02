@@ -362,9 +362,10 @@ must represent them. A layout of `Finite ApproxType` uses the same encoding but
 rejects infinity patterns on read and infinite values on write. Signed zero
 becomes ordinary zero plus direction evidence when preserved.
 
-Layouts do not round exact values. Rounding happens during an explicit
-exact-to-approximate conversion; a layout only validates and stores an already
-constructed approximate value.
+Layouts do not round exact values. An approximate value is produced through
+exact checked type construction or an explicitly named rounding function before
+the layout stores it. Layout interpretation only validates and stores that
+already constructed value.
 
 For example, assuming `Binary64` names the corresponding semantic `Approx`
 policy, its little-endian IEEE layout is:

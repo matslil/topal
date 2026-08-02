@@ -154,6 +154,18 @@ Trailing fractional zeroes do not change numeric identity. An expected
 `FixedPoint` type may accept such a literal implicitly when the compiler proves
 that it is an exact multiple of the declared quantum.
 
+Applying a numeric type to a literal is exact checked construction. For example,
+a library-defined binary approximate type may accept `Binary64 0.5`, while
+`Binary64 0.1` is a compile error because exact rational `0.1` is not
+representable. Deliberate loss uses a function naming its policy:
+
+```topal
+value is 0.1 round-to-even Binary64
+```
+
+The complete rounding, directed precision-loss, and saturation vocabulary is
+defined by the [number model](numbers.md#explicit-lossy-numeric-functions).
+
 The reserved numeric constants `+Infinity` and `-Infinity` denote the two
 infinite endpoints. Their expected numeric type selects the domain; insufficient
 context is an error. Each spelling is one token with no internal whitespace and
