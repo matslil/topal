@@ -154,8 +154,14 @@ Trailing fractional zeroes do not change numeric identity. An expected
 `FixedPoint` type may accept such a literal implicitly when the compiler proves
 that it is an exact multiple of the declared quantum.
 
-A bracketed unit following a numeric literal constructs a measured quantity as
-described by the [quantity and unit model](units.md):
+The reserved numeric constants `+Infinity` and `-Infinity` denote the two
+infinite endpoints. Their expected numeric type selects the domain; insufficient
+context is an error. Each spelling is one token with no internal whitespace and
+is not an application of an ordinary unary operator. `-Infinity` cannot satisfy
+`Nat` or another nonnegative constraint.
+
+A bracketed unit following a numeric literal or infinity constant constructs a
+measured quantity as described by the [quantity and unit model](units.md):
 
 ```topal
 9.81[N]
