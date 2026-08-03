@@ -154,3 +154,35 @@ fn test_trace_explains_exact_addition() {
     assert!(trace.contains("\"event\":\"evaluation.add\""));
     assert!(trace.contains("\"rule\":\"TOPAL-NUM-ADD-001\""));
 }
+
+#[test]
+fn all_modes_execute_exact_subtraction() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "1_000 - 0x1 - 1\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"998\n");
+    }
+}
+
+#[test]
+fn test_trace_distinguishes_literal_sign_and_prefix_negation() {
+    let literal = run(&["--test"], "-42\n");
+    let literal_trace = String::from_utf8(literal.stderr).unwrap();
+    assert!(literal_trace.contains("\"detail\":\"-42\""));
+    assert!(!literal_trace.contains("evaluation.negate"));
+
+    let prefix = run(&["--test"], "- 42\n");
+    let prefix_trace = String::from_utf8(prefix.stderr).unwrap();
+    assert!(prefix_trace.contains("\"detail\":\"root.-(Int)\""));
+    assert!(prefix_trace.contains("\"rule\":\"TOPAL-NUM-NEG-001\""));
+}
+
+#[test]
+fn test_trace_explains_binary_subtraction() {
+    let output = run(&["--test"], "10 - 3\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"detail\":\"root.-(Int,Int)\""));
+    assert!(trace.contains("\"event\":\"evaluation.subtract\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-SUB-001\""));
+}
