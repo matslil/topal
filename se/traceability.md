@@ -36,3 +36,12 @@ domains. Test and implementation columns will be added with those artifacts.
 - A normative specification rule without a requirement or approved design
   source is suspect and must be reviewed.
 - A functional test without a specification-rule reference is incomplete.
+
+## Implementation coverage
+
+| Tool requirement | Specification rules | Functional evidence | Implementation |
+| --- | --- | --- | --- |
+| `TOPAL-INTP-MODE-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-NUM-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
+| `TOPAL-INTP-MODE-002` | `TOPAL-SYN-NUM-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
+| `TOPAL-INTP-MODE-003` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-NUM-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
+| `TOPAL-INTP-SUBSET-001` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-REQ-TOOLS-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |

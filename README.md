@@ -20,8 +20,9 @@ of one coherent model. Its goals include:
 - language semantics precise enough to support independent, interoperable
   tools.
 
-Topal is currently a design project. It does not yet provide a compiler,
-interpreter, or stable language release.
+Topal is currently an experimental language project. It provides an early
+interpreter for a deliberately small subset, but no compiler or stable language
+release.
 
 ## Repository layout
 
@@ -34,8 +35,7 @@ interpreter, or stable language release.
 - [`spec/`](spec/) contains the normative formal language specifications.
 - [`agents/`](agents/) describes the agent roles used to evolve and verify the
   project.
-- `src/` will contain the interpreter, compiler, linter, other tools, and their
-  tests once implementation begins.
+- `src/` contains language tools, shared libraries, and their tests.
 
 Repository-wide agent instructions live in [`AGENTS.md`](AGENTS.md). Each implemented
 tool will carry its tool-specific requirements in an `se-requirements.md` file
@@ -43,10 +43,23 @@ in that tool's directory.
 
 ## Build
 
-Topal does not have an implementation to build yet. Build instructions will be
-added with the first implementation code.
+Build and test the workspace with Rust 1.97 or newer:
+
+```console
+cargo build --workspace
+cargo test --workspace --all-targets
+```
 
 ## Use
 
-There is no build result to use yet. Interpreter, compiler, and tool usage will
-be documented when those tools are introduced.
+The `topal` binary defaults to script execution from a file or standard input:
+
+```console
+cargo run -p topal-interpreter -- program.topal
+cargo run -p topal-interpreter < program.topal
+```
+
+Use `--interactive` for a persistent exploratory session and `--test` for
+script execution with stable JSON Lines decision traces on standard error. The
+implemented subset and mode contracts are recorded in
+[`src/topal-interpreter/se-requirements.md`](src/topal-interpreter/se-requirements.md).
