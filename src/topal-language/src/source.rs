@@ -3,7 +3,7 @@ use std::fmt;
 
 use num_bigint::BigInt;
 use topal_source::{SourceText, Span};
-use topal_syntax::{Expression, Statement, lex, parse};
+use topal_syntax::{CallableKind, Expression, Statement, lex, parse};
 
 use crate::{TraceEvent, TraceSink};
 
@@ -179,31 +179,81 @@ impl Session {
                 });
                 Ok(value)
             }
-            Expression::Add { left, right, span } => {
-                let left = self.evaluate_expression(source, left, trace)?;
-                let right = self.evaluate_expression(source, right, trace)?;
-                let (Value::Int(left), Value::Int(right)) = (left, right) else {
-                    return Err(diagnostic(
-                        source,
-                        "E-NO-APPLICABLE-OVERLOAD",
-                        *span,
-                        "+ requires two Int operands in the implemented subset",
-                    ));
-                };
-                trace.record(TraceEvent {
-                    event: "operator.selected",
-                    rule: "TOPAL-TYPE-CALL-001",
-                    detail: "root.+(Int,Int)",
-                });
-                trace.record(TraceEvent {
-                    event: "evaluation.add",
-                    rule: "TOPAL-NUM-ADD-001",
-                    detail: "Int",
-                });
-                Ok(Value::Int(left + right))
+            Expression::Callable { span, .. } => Err(diagnostic(
+                source,
+                "E-UNSUPPORTED-CALLABLE-VALUE",
+                *span,
+                "callable values are not yet executable in isolation",
+            )),
+            Expression::Application { items, span } => {
+                let mut result = self.evaluate_expression(source, &items[0], trace)?;
+                let mut index = 1;
+                while index < items.len() {
+                    let Expression::Callable {
+                        kind,
+                        span: operator_span,
+                    } = &items[index]
+                    else {
+                        return Err(diagnostic(
+                            source,
+                            "E-UNSUPPORTED-APPLICATION",
+                            items[index].span(),
+                            "the implemented subset requires a symbolic callable",
+                        ));
+                    };
+                    let Some(right) = items.get(index + 1) else {
+                        return Err(diagnostic(
+                            source,
+                            "E-EXPECTED-OPERAND",
+                            Span::new(operator_span.end, operator_span.end),
+                            "expected an operand after callable",
+                        ));
+                    };
+                    let right = self.evaluate_expression(source, right, trace)?;
+                    result = apply_binary(source, *kind, result, right, *span, trace)?;
+                    index += 2;
+                }
+                Ok(result)
             }
         }
     }
+}
+
+fn apply_binary(
+    source: &SourceText,
+    kind: CallableKind,
+    left: Value,
+    right: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let CallableKind::Plus = kind else {
+        return Err(diagnostic(
+            source,
+            "E-UNSUPPORTED-SYNTAX",
+            span,
+            "this fixed callable has no implemented overload yet",
+        ));
+    };
+    let (Value::Int(left), Value::Int(right)) = (left, right) else {
+        return Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            span,
+            "+ requires two Int operands in the implemented subset",
+        ));
+    };
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: "root.+(Int,Int)",
+    });
+    trace.record(TraceEvent {
+        event: "evaluation.add",
+        rule: "TOPAL-NUM-ADD-001",
+        detail: "Int",
+    });
+    Ok(Value::Int(left + right))
 }
 
 fn diagnostic(

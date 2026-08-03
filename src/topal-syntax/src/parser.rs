@@ -6,18 +6,27 @@ use crate::{Lexed, SyntaxDiagnostic, Token, TokenKind};
 pub enum Expression {
     Integer(Span),
     Identifier(Span),
-    Add {
-        left: Box<Self>,
-        right: Box<Self>,
-        span: Span,
-    },
+    Callable { kind: CallableKind, span: Span },
+    Application { items: Vec<Self>, span: Span },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CallableKind {
+    Plus,
+    Minus,
+    Multiply,
+    Divide,
+    Power,
 }
 
 impl Expression {
     #[must_use]
     pub const fn span(&self) -> Span {
         match self {
-            Self::Integer(span) | Self::Identifier(span) | Self::Add { span, .. } => *span,
+            Self::Integer(span)
+            | Self::Identifier(span)
+            | Self::Callable { span, .. }
+            | Self::Application { span, .. } => *span,
         }
     }
 }
@@ -98,32 +107,28 @@ impl Parser<'_> {
     }
 
     fn expression(&mut self) -> Option<Expression> {
-        let mut left = self.primary()?;
+        let first = self.primary()?;
+        let mut items = vec![first];
         loop {
-            let checkpoint = self.cursor;
-            let Some(operator) = self.take_nontrivia() else {
-                break;
-            };
-            if operator.kind != TokenKind::Plus {
-                self.cursor = checkpoint;
+            if self
+                .peek_nontrivia()
+                .is_none_or(|token| matches!(token.kind, TokenKind::RightParen | TokenKind::Comma))
+            {
                 break;
             }
-            let Some(right) = self.primary() else {
-                self.diagnostics.push(SyntaxDiagnostic {
-                    code: "E-EXPECTED-OPERAND",
-                    span: Span::new(operator.span.end, operator.span.end),
-                    message: "expected an operand after +",
-                });
+            let Some(item) = self.primary() else {
                 break;
             };
-            let span = Span::new(left.span().start, right.span().end);
-            left = Expression::Add {
-                left: Box::new(left),
-                right: Box::new(right),
-                span,
-            };
+            items.push(item);
         }
-        Some(left)
+        if items.len() == 1 {
+            return items.pop();
+        }
+        let span = Span::new(
+            items[0].span().start,
+            items.last().expect("nonempty").span().end,
+        );
+        Some(Expression::Application { items, span })
     }
 
     fn primary(&mut self) -> Option<Expression> {
@@ -131,6 +136,26 @@ impl Parser<'_> {
         match token.kind {
             TokenKind::Integer => Some(Expression::Integer(token.span)),
             TokenKind::Identifier => Some(Expression::Identifier(token.span)),
+            TokenKind::Plus => Some(Expression::Callable {
+                kind: CallableKind::Plus,
+                span: token.span,
+            }),
+            TokenKind::Minus => Some(Expression::Callable {
+                kind: CallableKind::Minus,
+                span: token.span,
+            }),
+            TokenKind::Star => Some(Expression::Callable {
+                kind: CallableKind::Multiply,
+                span: token.span,
+            }),
+            TokenKind::Slash => Some(Expression::Callable {
+                kind: CallableKind::Divide,
+                span: token.span,
+            }),
+            TokenKind::Caret => Some(Expression::Callable {
+                kind: CallableKind::Power,
+                span: token.span,
+            }),
             TokenKind::LeftParen => {
                 let expression = self.expression();
                 let closing = self.take_nontrivia();
@@ -219,21 +244,65 @@ mod tests {
     use crate::lex;
 
     #[test]
-    fn addition_associates_left() {
-        let source = SourceText::new("1 + 2 + 3").unwrap();
+    fn retains_generic_application_order() {
+        let source = SourceText::new("1 + 2 * 3").unwrap();
         let parsed = parse(&source, &lex(&source));
-        let Statement::Expression(Expression::Add { left, .. }) = &parsed.statements[0] else {
-            panic!("expected addition");
+        let Statement::Expression(Expression::Application { items, .. }) = &parsed.statements[0]
+        else {
+            panic!("expected application");
         };
-        assert!(matches!(left.as_ref(), Expression::Add { .. }));
+        assert_eq!(items.len(), 5);
+        assert!(matches!(
+            items[1],
+            Expression::Callable {
+                kind: CallableKind::Plus,
+                ..
+            }
+        ));
+        assert!(matches!(
+            items[3],
+            Expression::Callable {
+                kind: CallableKind::Multiply,
+                ..
+            }
+        ));
         assert!(parsed.diagnostics.is_empty());
     }
 
     #[test]
-    fn recovers_incomplete_addition() {
+    fn retains_named_and_prefix_application_terms() {
+        let named_source = SourceText::new("print value").unwrap();
+        let named = parse(&named_source, &lex(&named_source));
+        let Statement::Expression(Expression::Application { items, .. }) = &named.statements[0]
+        else {
+            panic!("expected named application");
+        };
+        assert_eq!(items.len(), 2);
+
+        let prefix_source = SourceText::new("- 42").unwrap();
+        let prefix = parse(&prefix_source, &lex(&prefix_source));
+        let Statement::Expression(Expression::Application { items, .. }) = &prefix.statements[0]
+        else {
+            panic!("expected prefix application");
+        };
+        assert!(matches!(
+            items[0],
+            Expression::Callable {
+                kind: CallableKind::Minus,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn retains_incomplete_application_for_semantic_recovery() {
         let source = SourceText::new("1 +").unwrap();
         let parsed = parse(&source, &lex(&source));
-        assert_eq!(parsed.diagnostics[0].code, "E-EXPECTED-OPERAND");
+        assert!(matches!(
+            parsed.statements[0],
+            Statement::Expression(Expression::Application { .. })
+        ));
+        assert!(parsed.diagnostics.is_empty());
     }
 
     #[test]
