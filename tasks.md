@@ -760,10 +760,7 @@ If the message call has effective type:
 ```topal
 Result (
   Response,
-  (
-    NetworkErrorCode,
-    TaskErrorCode
-  )
+  NetworkErrorCode and TaskErrorCode
 )
 ```
 
@@ -772,11 +769,7 @@ the complete timeout expression has:
 ```topal
 Result (
   Response,
-  (
-    NetworkErrorCode,
-    TaskErrorCode,
-    TimeoutErrorCode
-  )
+  NetworkErrorCode and TaskErrorCode and TimeoutErrorCode
 )
 ```
 
@@ -809,11 +802,7 @@ message result becomes:
 ```topal
 Result (
   TransferSummary,
-  (
-    NetworkErrorCode,
-    TaskErrorCode,
-    TimeoutErrorCode
-  )
+  NetworkErrorCode and TaskErrorCode and TimeoutErrorCode
 )
 ```
 

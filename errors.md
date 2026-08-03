@@ -6,29 +6,30 @@ function declares the error-code vocabulary it may return.
 
 ## Result
 
-`Result` takes the success type and one explicit error-vocabulary component:
+`Result` takes the success type and one explicit error-code type expression:
 
 ```text
-Result ( Value, Errors ) = Value + Error
+Result ( Value, Codes ) = Value + Error
 ```
 
-`Errors` is either one concrete `ErrorCode` subtype, a product of several such
-types, or the empty product `()`. For example:
+`Codes` is one concrete `ErrorCode` subtype, several such types combined with
+`and`, or the empty combination `()`. For example:
 
 ```topal
 Result ( Document, FileErrorCode )
 
 Result (
   Document,
-  ( FileErrorCode, ParserErrorCode )
+  FileErrorCode and ParserErrorCode
 )
 ```
 
-The compiler flattens nested error-vocabulary products, removes duplicate
-nominal types, and treats their order as irrelevant. The first component is
-always the successful value type; every member of the second component must be
-an `ErrorCode` type. `Result Value` is invalid and no error vocabulary is
-resolved implicitly from the surrounding scope.
+The compiler flattens nested `and` expressions, removes duplicate nominal
+types, and treats their order as irrelevant. The first component is always the
+successful value type; every member of the second component must be an
+`ErrorCode` type. `Result Value` is invalid and no error-code type is resolved
+implicitly from the surrounding scope. Here `and` combines the permitted code
+types; one failed `Result` still contains one `Error` with one `code` value.
 
 The empty vocabulary is valid:
 
@@ -79,7 +80,7 @@ Result ( MyType, AnotherErrorCode )
 compose as:
 
 ```topal
-Result ( MyType, ( MyErrorCode, AnotherErrorCode ) )
+Result ( MyType, MyErrorCode and AnotherErrorCode )
 ```
 
 Two anonymous value-producing results cannot be composed. The programmer must
@@ -101,7 +102,7 @@ Result (
     first : FirstType,
     second : SecondType
   ),
-  ( FirstErrorCode, SecondErrorCode )
+  FirstErrorCode and SecondErrorCode
 )
 ```
 
@@ -138,9 +139,13 @@ type and representation. For example, a file code remains an `ErrorCode` when
 stored in `Error.code`, and the containing value remains simply `Error`.
 
 The compiler obtains a function's permitted code subtypes from the explicit
-second component of its `Result` contract. It does not parameterize `Error`,
+second component of its `Result` contract. That declaration classifies the
+`code` field of a possible runtime `Error`; it does not replace the failure
+value with an error-code value. The compiler does not parameterize `Error`,
 derive an `Error FileErrorCode` type, or require callers to inspect the type of
-an error.
+an error. `domain` remains a field of the runtime `Error` and is supplied by the
+reporting operation or implementation boundary rather than by the `Result`
+type expression.
 
 ## Error-code vocabularies
 
@@ -159,19 +164,24 @@ functions. A fallible function names every permitted vocabulary explicitly in
 the second component of its `Result`. No specially named `ErrorCode` binding is
 searched for in the function's scope.
 
-Visible generic code may capture that complete second component symbolically:
+Visible generic code may capture that complete second component symbolically by
+classifying the newly bound static object as `ErrorCode`. This is a type-level
+construction match, not a binding of a runtime error-code value:
 
-```text
-retry :
-  ( () -> Result ( T, Errors ) )
-  -> Result ( T, Errors )
+```topal
+retry is fn (
+  action : () -> Result (
+    T : Type,
+    Errors : ErrorCode
+  )
+) -> Result ( T, Errors )
 ```
 
 If the generic body introduces another vocabulary, its result combines the
 components:
 
 ```topal
-Result ( T, ( Errors, RetryErrorCode ) )
+Result ( T, Errors and RetryErrorCode )
 ```
 
 Typed generic intermediate code retains `Errors` until final application
@@ -188,7 +198,7 @@ contract:
 ```topal
 Result (
   Value,
-  ( ApplicationErrors, TaskErrorCode )
+  ApplicationErrors and TaskErrorCode
 )
 ```
 
@@ -235,11 +245,7 @@ result rather than adding another wrapper:
 
 Result (
   Response,
-  (
-    NetworkErrorCode,
-    TaskErrorCode,
-    TimeoutErrorCode
-  )
+  NetworkErrorCode and TaskErrorCode and TimeoutErrorCode
 )
 ```
 
@@ -266,10 +272,10 @@ evidence rather than creating another portable timeout error code.
 Different functions in the same source file may name different error
 vocabularies directly. Naming a type in `Result` does not move it into the
 function's namespace or create a new subtype there. Ordinary aliases remain
-available for long or repeated vocabulary products:
+available for long or repeated error-code expressions:
 
 ```topal
-DocumentErrors is ( FileErrorCode, ParserErrorCode )
+DocumentErrors is FileErrorCode and ParserErrorCode
 
 load-document is fn (
   path : Path
@@ -277,7 +283,7 @@ load-document is fn (
   body
 ```
 
-The complete vocabulary product is part of a fallible function's public type.
+The complete error-code expression is part of a fallible function's public type.
 When the function is exported, every vocabulary it names must also be exported
 through a reachable namespace. The compiler rejects a public fallible function
 whose result names a private vocabulary.
@@ -354,7 +360,7 @@ load-configuration is fn (
   path : Path
 ) -> Result (
   Configuration,
-  ( FileErrorCode, ParserErrorCode )
+  FileErrorCode and ParserErrorCode
 )
   text : String is read-file path
   parse-configuration text
