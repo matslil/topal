@@ -29,15 +29,15 @@ interpreter, or stable language release.
   authority for design intent.
 - [`decisions.md`](decisions.md) records settled fundamental design decisions.
 - [`FUTURE.md`](FUTURE.md) records deliberately deferred work.
-- `se/` will contain system-engineering goals, requirements, validation, and
+- [`se/`](se/) contains system-engineering goals, requirements, validation, and
   traceability information.
 - `spec/` will contain the normative formal language specifications.
-- `agents/` will describe the agent roles used to evolve and verify the
+- [`agents/`](agents/) describes the agent roles used to evolve and verify the
   project.
 - `src/` will contain the interpreter, compiler, linter, other tools, and their
   tests once implementation begins.
 
-Repository-wide agent instructions will live in `AGENTS.md`. Each implemented
+Repository-wide agent instructions live in [`AGENTS.md`](AGENTS.md). Each implemented
 tool will carry its tool-specific requirements in an `se-requirements.md` file
 in that tool's directory.
 
