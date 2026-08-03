@@ -238,8 +238,9 @@ impl Session {
                             "expected an operand after callable",
                         ));
                     };
+                    let right_span = right.span();
                     let right = self.evaluate_expression(source, right, trace)?;
-                    result = apply_binary(source, *kind, result, right, *span, trace)?;
+                    result = apply_binary(source, *kind, result, right, *span, right_span, trace)?;
                     index += 2;
                 }
                 Ok(result)
@@ -254,6 +255,7 @@ fn apply_binary(
     left: Value,
     right: Value,
     span: Span,
+    right_span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let (Value::Int(left), Value::Int(right)) = (left, right) else {
@@ -306,13 +308,23 @@ fn apply_binary(
         }
         CallableKind::Divide => {
             if right == BigInt::from(0) {
+                trace.record(TraceEvent {
+                    event: "obligation.refuted",
+                    rule: "TOPAL-NUM-DIVZERO-001",
+                    detail: "divisor.nonzero",
+                });
                 return Err(diagnostic(
                     source,
                     "E-DIVISION-BY-ZERO",
-                    span,
+                    right_span,
                     "statically evident division by zero",
                 ));
             }
+            trace.record(TraceEvent {
+                event: "obligation.proved",
+                rule: "TOPAL-NUM-DIVZERO-001",
+                detail: "divisor.nonzero",
+            });
             trace.record(TraceEvent {
                 event: "operator.selected",
                 rule: "TOPAL-TYPE-CALL-001",

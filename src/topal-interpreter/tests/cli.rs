@@ -241,8 +241,22 @@ fn test_trace_explains_exact_division() {
     let output = run(&["--test"], "6 / 8\n");
     assert!(output.status.success());
     let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"obligation.proved\""));
+    assert!(trace.contains("\"detail\":\"divisor.nonzero\""));
     assert!(trace.contains("\"detail\":\"root./(Int,Int)\""));
     assert!(trace.contains("\"event\":\"evaluation.divide\""));
     assert!(trace.contains("\"rule\":\"TOPAL-NUM-DIV-001\""));
     assert!(trace.contains("\"detail\":\"Rational\""));
+}
+
+#[test]
+fn test_trace_explains_zero_division_rejection() {
+    let output = run(&["--test"], "1 / 0\n");
+    assert!(!output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"obligation.refuted\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-DIVZERO-001\""));
+    assert!(!trace.contains("root./(Int,Int)"));
+    assert!(!trace.contains("evaluation.divide"));
+    assert!(trace.contains("E-DIVISION-BY-ZERO at 1:5"));
 }
