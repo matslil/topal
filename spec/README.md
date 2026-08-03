@@ -10,8 +10,8 @@ The specification is divided into:
 
 - [language syntax](syntax.md);
 - [type system](type-system.md);
-- generic export intermediate language (`generic-ir.md`);
-- native serialization protocol (`serialization.md`);
+- [generic export intermediate language](generic-ir.md);
+- [native serialization protocol](serialization.md);
 - memory model (`memory-model.md`); and
 - concurrency model (`concurrency-model.md`).
 
