@@ -31,7 +31,7 @@ interpreter, or stable language release.
 - [`FUTURE.md`](FUTURE.md) records deliberately deferred work.
 - [`se/`](se/) contains system-engineering goals, requirements, validation, and
   traceability information.
-- `spec/` will contain the normative formal language specifications.
+- [`spec/`](spec/) contains the normative formal language specifications.
 - [`agents/`](agents/) describes the agent roles used to evolve and verify the
   project.
 - `src/` will contain the interpreter, compiler, linter, other tools, and their
