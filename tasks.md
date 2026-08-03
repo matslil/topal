@@ -176,9 +176,10 @@ process-cmd is fn (
   process cmd
 ```
 
-`_` introduces no binding and may not be referenced. It is only the reserved
-spelling for an intentionally unnamed identifier; it is not a wildcard and has
-no independent pattern-matching meaning.
+`_` introduces no binding and may not be referenced. It is the reserved
+spelling for an intentionally unnamed declaration or pattern position. In a
+pattern it still consumes exactly one required value and retains every
+surrounding constructor and classifier check.
 
 ## Service discovery
 
@@ -202,6 +203,13 @@ ServiceBrokerInterface is Interface
   ) -> Result ( Endpoint, ServiceBrokerErrorCode )
 
   find-interface is generator (
+    interface : Interface
+  )
+    yields Endpoint
+    resumes Unit
+    -> Result ( Unit, ServiceBrokerErrorCode )
+
+  find-interface is generator (
     interface : Interface,
     within : Namespace
   )
@@ -210,10 +218,12 @@ ServiceBrokerInterface is Interface
     -> Result ( Unit, ServiceBrokerErrorCode )
 ```
 
-The `within` namespace narrows where interface discovery starts. Omitting that
-narrowing searches the namespaces accessible through the selected broker; the
-exact optional-operand spelling remains provisional. Namespace search respects
-ordinary visibility and does not traverse inaccessible declarations.
+The one-input `find-interface` searches every namespace accessible through the
+selected broker. The two-input overload restricts the same search to `within`
+and its visible descendants. Namespace search respects ordinary visibility and
+does not traverse inaccessible declarations. These are distinct declared
+operations rather than one operation with an optional operand; a broker must
+implement both, although they may share one internal search implementation.
 
 `find-task` selects an exact identity. `find-interface` may produce any number
 of live endpoints whose definitions explicitly implement the requested
