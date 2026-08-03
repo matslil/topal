@@ -47,13 +47,13 @@ fn interactive_mode_evaluates_each_input() {
 
 #[test]
 fn interactive_mode_recovers_after_diagnostic() {
-    let output = run(&["--interactive"], "1 ^ 2\n2\n");
+    let output = run(&["--interactive"], "1 % 2\n2\n");
     assert!(output.status.success());
     assert_eq!(output.stdout, b"2\n");
     assert!(
         String::from_utf8(output.stderr)
             .unwrap()
-            .contains("E-UNSUPPORTED-SYNTAX")
+            .contains("E-UNKNOWN-TOKEN")
     );
 }
 
@@ -79,12 +79,12 @@ fn test_mode_emits_stable_decisions() {
 
 #[test]
 fn unsupported_syntax_is_explicit() {
-    let output = run(&[], "1 ^ 2\n");
+    let output = run(&[], "1 % 2\n");
     assert!(!output.status.success());
     assert!(
         String::from_utf8(output.stderr)
             .unwrap()
-            .contains("E-UNSUPPORTED-SYNTAX")
+            .contains("E-UNKNOWN-TOKEN")
     );
 }
 
@@ -259,4 +259,41 @@ fn test_trace_explains_zero_division_rejection() {
     assert!(!trace.contains("root./(Int,Int)"));
     assert!(!trace.contains("evaluation.divide"));
     assert!(trace.contains("E-DIVISION-BY-ZERO at 1:5"));
+}
+
+#[test]
+fn all_modes_execute_exact_natural_exponentiation() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "2 ^ 100\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"1267650600228229401496703205376\n");
+    }
+}
+
+#[test]
+fn zero_to_zero_is_empty_product() {
+    let output = run(&["--test"], "0 ^ 0\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"1\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"detail\":\"root.^(Int,Nat)\""));
+    assert!(trace.contains("\"event\":\"evaluation.power\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-POW-001\""));
+}
+
+#[test]
+fn exponentiation_has_no_hidden_precedence() {
+    assert_eq!(run(&[], "2 + 3 ^ 2\n").stdout, b"25\n");
+    assert_eq!(run(&[], "2 + (3 ^ 2)\n").stdout, b"11\n");
+}
+
+#[test]
+fn negative_exponent_is_rejected_for_int_overload() {
+    let output = run(&["--test"], "2 ^ -1\n");
+    assert!(!output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"obligation.refuted\""));
+    assert!(trace.contains("\"detail\":\"exponent.finite-nat\""));
+    assert!(!trace.contains("root.^(Int,Nat)"));
+    assert!(trace.contains("E-NO-APPLICABLE-OVERLOAD at 1:5"));
 }

@@ -306,44 +306,102 @@ fn apply_binary(
             });
             Ok(Value::Int(left * right))
         }
-        CallableKind::Divide => {
-            if right == BigInt::from(0) {
-                trace.record(TraceEvent {
-                    event: "obligation.refuted",
-                    rule: "TOPAL-NUM-DIVZERO-001",
-                    detail: "divisor.nonzero",
-                });
-                return Err(diagnostic(
-                    source,
-                    "E-DIVISION-BY-ZERO",
-                    right_span,
-                    "statically evident division by zero",
-                ));
-            }
-            trace.record(TraceEvent {
-                event: "obligation.proved",
-                rule: "TOPAL-NUM-DIVZERO-001",
-                detail: "divisor.nonzero",
-            });
-            trace.record(TraceEvent {
-                event: "operator.selected",
-                rule: "TOPAL-TYPE-CALL-001",
-                detail: "root./(Int,Int)",
-            });
-            trace.record(TraceEvent {
-                event: "evaluation.divide",
-                rule: "TOPAL-NUM-DIV-001",
-                detail: "Rational",
-            });
-            Ok(Value::Rational(BigRational::new(left, right)))
-        }
-        CallableKind::Power => Err(diagnostic(
-            source,
-            "E-UNSUPPORTED-SYNTAX",
-            span,
-            "this fixed callable has no implemented overload yet",
-        )),
+        CallableKind::Divide => apply_divide(source, left, right, right_span, trace),
+        CallableKind::Power => apply_power(source, left, right, right_span, trace),
     }
+}
+
+fn apply_divide(
+    source: &SourceText,
+    left: BigInt,
+    right: BigInt,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if right == BigInt::from(0) {
+        trace.record(TraceEvent {
+            event: "obligation.refuted",
+            rule: "TOPAL-NUM-DIVZERO-001",
+            detail: "divisor.nonzero",
+        });
+        return Err(diagnostic(
+            source,
+            "E-DIVISION-BY-ZERO",
+            right_span,
+            "statically evident division by zero",
+        ));
+    }
+    trace.record(TraceEvent {
+        event: "obligation.proved",
+        rule: "TOPAL-NUM-DIVZERO-001",
+        detail: "divisor.nonzero",
+    });
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: "root./(Int,Int)",
+    });
+    trace.record(TraceEvent {
+        event: "evaluation.divide",
+        rule: "TOPAL-NUM-DIV-001",
+        detail: "Rational",
+    });
+    Ok(Value::Rational(BigRational::new(left, right)))
+}
+
+fn apply_power(
+    source: &SourceText,
+    left: BigInt,
+    right: BigInt,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if right < BigInt::from(0) {
+        trace.record(TraceEvent {
+            event: "obligation.refuted",
+            rule: "TOPAL-NUM-POW-001",
+            detail: "exponent.finite-nat",
+        });
+        return Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            right_span,
+            "Int exponentiation requires a finite Nat exponent",
+        ));
+    }
+    trace.record(TraceEvent {
+        event: "obligation.proved",
+        rule: "TOPAL-NUM-POW-001",
+        detail: "exponent.finite-nat",
+    });
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: "root.^(Int,Nat)",
+    });
+    trace.record(TraceEvent {
+        event: "evaluation.power",
+        rule: "TOPAL-NUM-POW-001",
+        detail: "Int",
+    });
+    Ok(Value::Int(pow_int(left, right)))
+}
+
+fn pow_int(mut base: BigInt, mut exponent: BigInt) -> BigInt {
+    let zero = BigInt::from(0);
+    let one = BigInt::from(1);
+    let two = BigInt::from(2);
+    let mut result = one.clone();
+    while exponent > zero {
+        if &exponent % &two == one {
+            result *= &base;
+        }
+        exponent /= &two;
+        if exponent > zero {
+            base = &base * &base;
+        }
+    }
+    result
 }
 
 fn apply_negate(
@@ -515,6 +573,30 @@ mod tests {
     #[test]
     fn rejects_statically_evident_zero_divisor() {
         assert_eq!(evaluate("1 / 0").unwrap_err().code, "E-DIVISION-BY-ZERO");
+    }
+
+    #[test]
+    fn raises_integer_to_natural_power_exactly() {
+        assert_eq!(
+            evaluate("2 ^ 100").unwrap().to_string(),
+            "1267650600228229401496703205376"
+        );
+        assert_eq!(evaluate("0 ^ 0").unwrap().to_string(), "1");
+        assert_eq!(evaluate("-2 ^ 3").unwrap().to_string(), "-8");
+    }
+
+    #[test]
+    fn exponentiation_uses_ordinary_left_association() {
+        assert_eq!(evaluate("2 + 3 ^ 2").unwrap().to_string(), "25");
+        assert_eq!(evaluate("2 + (3 ^ 2)").unwrap().to_string(), "11");
+    }
+
+    #[test]
+    fn rejects_negative_integer_exponent() {
+        assert_eq!(
+            evaluate("2 ^ -1").unwrap_err().code,
+            "E-NO-APPLICABLE-OVERLOAD"
+        );
     }
 
     #[test]

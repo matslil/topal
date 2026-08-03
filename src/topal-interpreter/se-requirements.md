@@ -90,3 +90,11 @@ Test mode shall record whether the exact-division nonzero obligation was proved
 or refuted before overload selection. A refuted obligation shall identify
 `TOPAL-NUM-DIVZERO-001`, suppress selection and evaluation events for that
 application, and place the diagnostic at the divisor source range.
+
+## TOPAL-INTP-SUBSET-009 — Finite natural integer exponentiation
+
+The interpreter shall evaluate `Int ^ Nat -> Int` according to
+`TOPAL-NUM-POW-001`, including `0 ^ 0 = 1`, without restricting exponent or
+result to a machine width. It shall prove the exponent's finite nonnegative
+classification before overload selection, reject a negative exponent at its
+source range, and retain ordinary left-to-right application order.
