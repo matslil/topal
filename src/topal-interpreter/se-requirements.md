@@ -74,3 +74,12 @@ The interpreter shall evaluate finite `Int` multiplication according to
 `TOPAL-NUM-MUL-001` without overflow. Multiplication shall use ordinary
 left-to-right application order rather than conventional hidden precedence,
 and test mode shall expose selection and exact construction decisions.
+
+## TOPAL-INTP-SUBSET-007 — Finite exact integer division
+
+The interpreter shall divide finite `Int` values into canonical exact
+`Rational` values according to `TOPAL-NUM-RATIONAL-001` and
+`TOPAL-NUM-DIV-001`. It shall display the result as
+`Rational ( numerator, denominator )`, including a denominator of one, so the
+observable result retains its type. A statically evident zero divisor shall be
+rejected according to `TOPAL-NUM-DIVZERO-001`.

@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use num_bigint::BigInt;
+use num_rational::BigRational;
 use topal_source::{SourceText, Span};
 use topal_syntax::{CallableKind, Expression, Statement, lex, parse};
 
@@ -10,6 +11,7 @@ use crate::{TraceEvent, TraceSink};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
     Int(BigInt),
+    Rational(BigRational),
     Unit,
 }
 
@@ -17,6 +19,14 @@ impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Int(value) => value.fmt(formatter),
+            Self::Rational(value) => {
+                write!(
+                    formatter,
+                    "Rational ( {}, {} )",
+                    value.numer(),
+                    value.denom()
+                )
+            }
             Self::Unit => formatter.write_str("()"),
         }
     }
@@ -137,6 +147,7 @@ impl Session {
             rule: "TOPAL-SYN-GRAMMAR-001",
             detail: match &value {
                 Value::Int(_) => "Int",
+                Value::Rational(_) => "Rational",
                 Value::Unit => "Unit",
             },
         });
@@ -293,7 +304,28 @@ fn apply_binary(
             });
             Ok(Value::Int(left * right))
         }
-        _ => Err(diagnostic(
+        CallableKind::Divide => {
+            if right == BigInt::from(0) {
+                return Err(diagnostic(
+                    source,
+                    "E-DIVISION-BY-ZERO",
+                    span,
+                    "statically evident division by zero",
+                ));
+            }
+            trace.record(TraceEvent {
+                event: "operator.selected",
+                rule: "TOPAL-TYPE-CALL-001",
+                detail: "root./(Int,Int)",
+            });
+            trace.record(TraceEvent {
+                event: "evaluation.divide",
+                rule: "TOPAL-NUM-DIV-001",
+                detail: "Rational",
+            });
+            Ok(Value::Rational(BigRational::new(left, right)))
+        }
+        CallableKind::Power => Err(diagnostic(
             source,
             "E-UNSUPPORTED-SYNTAX",
             span,
@@ -456,6 +488,21 @@ mod tests {
                 .to_string(),
             "9999999999999999999800000000000000000001"
         );
+    }
+
+    #[test]
+    fn divides_to_canonical_rational() {
+        assert_eq!(evaluate("6 / 8").unwrap().to_string(), "Rational ( 3, 4 )");
+        assert_eq!(
+            evaluate("6 / -8").unwrap().to_string(),
+            "Rational ( -3, 4 )"
+        );
+        assert_eq!(evaluate("6 / 3").unwrap().to_string(), "Rational ( 2, 1 )");
+    }
+
+    #[test]
+    fn rejects_statically_evident_zero_divisor() {
+        assert_eq!(evaluate("1 / 0").unwrap_err().code, "E-DIVISION-BY-ZERO");
     }
 
     #[test]
