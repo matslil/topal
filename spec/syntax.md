@@ -21,7 +21,7 @@ identifier       ::= identifier-start identifier-continue* ;
 identifier-start ::= XID_Start | "_" ;
 identifier-continue ::= XID_Continue | "-" ;
 discard          ::= "_" ;
-symbol           ::= "(" | ")" | "[" | "]" | "{" | "}" | "," | ";"
+symbol           ::= "(" | ")" | "[" | "]" | "{" | "}" | ","
                    | ":" | "." | "=" | "->" | "..." ;
 newline          ::= "\n" ;
 comment          ::= "#" { any-scalar-except-newline } ;
@@ -87,7 +87,7 @@ is invalid in revision `design-0`.
 
 ```ebnf
 source        ::= separator* statement ( separator+ statement )* separator* EOF ;
-separator     ::= NEWLINE | ";" ;
+separator     ::= NEWLINE ;
 statement     ::= publication? declaration
                 | expression
                 | decision

@@ -99,12 +99,12 @@ program.
 
 ### TOPAL-CONC-BACKPRESSURE-001 — Bounded communication
 
-Every queue has a statically known finite capacity, a receiver-owned dynamic
-capacity value, or an explicitly unbounded resource capability. When capacity
-is unavailable, an interaction follows its declared policy: wait, return a
-typed error, or drop only when dropping is an explicit semantic effect. An
-implementation shall not substitute another policy. Capacity dependencies are
-included in deadlock analysis.
+Every event or request protocol declares one admission behavior: bounded wait,
+bounded rejection with a typed result, or contained loss for an isolated
+diagnostic event. Queue capacity is an implementation choice within that
+behavior. An ordinary `Unit` event is never silently dropped. A sender that may
+suspend or fail exposes that outcome in its protocol and effect contract, and
+the resulting capacity dependencies participate in deadlock analysis.
 
 ### TOPAL-CONC-CANCEL-001 — Cancellation and termination
 
@@ -124,14 +124,14 @@ each trace by declared independent-event swaps. Reductions executed in parallel
 shall carry verified associative evidence; unordered reductions additionally
 require verified commutative evidence.
 
-### TOPAL-CONC-PROGRESS-001 — Progress assumptions
+### TOPAL-CONC-PROGRESS-001 — Progress boundary
 
-The runtime shall eventually schedule every continuously runnable internal
-entity while the application is executing. No guarantee is made that a declared
-external event occurs or that a terminated application continues. Under this
-weak-fairness assumption, a closed accepted scope either completes, produces a
-declared infinite stream productively, or waits only on a declared external
-dependency.
+Race freedom, protocol fidelity, deterministic results, and absence of internal
+deadlock do not depend on scheduler fairness. Revision `design-0` makes no claim
+that every continuously runnable entity is eventually scheduled and therefore
+makes no unconditional eventual-completion claim for a concurrent application.
+Any liveness proof shall state its external progress and scheduler assumptions;
+those assumptions do not remove internal wait cycles from deadlock analysis.
 
 ## Graphical presentation
 
@@ -166,8 +166,8 @@ the corresponding evidence of completion. This distinction allows direct and
 message-based implementations to share interfaces without hiding scheduling
 dependencies.
 
-The model guarantees internal deadlock freedom, not success of the outside
-world. A server may wait forever for a network peer when that external
-dependency is declared. Timeouts are ordinary races between a reply transition
-and a clock transition, with the protocol defining exactly which winner is
-observed and how the losing obligation is closed.
+The model guarantees internal deadlock freedom, not scheduler fairness or
+success of the outside world. A server may wait forever for a network peer when
+that external dependency is declared. Timeouts are ordinary races between a
+reply transition and a clock transition, with the protocol defining exactly
+which winner is observed and how the losing obligation is closed.

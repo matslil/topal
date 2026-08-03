@@ -28,15 +28,15 @@ overlap; equal numeric addresses in different resources do not alias.
 
 ### TOPAL-MEM-EVENT-001 — Memory events
 
-A permitted execution has finite or countably infinite event set `E`. A memory
-event is:
+A permitted execution has finite or countably infinite event set `E`. An
+explicit storage event is:
 
-`Read(e,l,n,a,o)`, `Write(e,l,n,v,a,o)`, or `RMW(e,l,n,vin,vout,a,o)`,
+`Read(e,l,n)` or `Write(e,l,n,v)`,
 
-where `l` is a valid location, `n` is a declared access width, `a` is atomicity
-(`plain` or one atomic identity), and `o` is ordering (`relaxed`, `acquire`,
-`release`, `acq-rel`, or `seq-cst`). Volatile is a separate effect flag and
-does not imply atomicity or cross-task synchronization.
+where `l` is a valid location and `n` is a declared access width. Explicit
+storage access is an ordered effect. The access capability may additionally
+classify it as hardware-visible, cached, or otherwise constrained without
+changing the semantic value type.
 
 Each event shall be within range, aligned, authorized, live, and permitted by
 the location's access declaration. Failure to prove this rejects the program;
@@ -44,48 +44,39 @@ dynamic boundary validation returns an explicit error before an event occurs.
 
 ### TOPAL-MEM-REL-001 — Execution relations
 
-Every execution defines:
+Every execution defines strict per-call order `sb` and the ordering edges
+introduced by effects, task start and completion, message transfer, ownership
+transfer, and declared device protocols. `hb` is the transitive closure of
+those relations and shall be acyclic.
 
-- `sb`: strict per-call sequenced-before order;
-- `mo_l`: strict total modification order of atomic writes/RMWs to atomic
-  location identity `l`;
-- `rf`: each successful read maps to exactly one write/RMW of the same atomic
-  identity and width whose value it observes;
-- `sw`: release-to-acquire synchronization when an acquire reads from the
-  release or its release sequence; and
-- `hb = (sb ∪ sw ∪ task-start ∪ task-complete ∪ message-transfer)⁺`.
-
-`hb` shall be acyclic. `rf` shall not read from an event that follows the read
-in `hb`. A sequentially consistent execution has one strict total order `S`
-over all `seq-cst` events consistent with `hb` and every `mo_l`; each
-`seq-cst` read observes the latest eligible write in `S`.
+For each resource, all explicit storage events not proved independent have one
+total `coherence` order consistent with `hb`. A read observes the latest
+preceding write to its bytes in that order, or the location's validated initial
+value when no such write exists. Device declarations may define a read as an
+external observation instead; each such read still occupies exactly one place
+in `coherence` and returns exactly one value or declared error.
 
 ### TOPAL-MEM-PLAIN-001 — Plain access and data races
 
-Two events conflict when they access overlapping bytes of one resource, at
-least one writes, and they are not both reads or operations on the same atomic
-identity. A data race is a conflicting pair from distinct isolated calls or
-tasks unordered by `hb`. Every accepted safe program shall prove that no
-permitted execution contains a data race. Inability to prove this is a compile
-error. There is no execution with race-based undefined behavior.
+Two events conflict when they access overlapping bytes of one resource and at
+least one writes. A data race is a conflicting pair from distinct isolated
+calls or tasks unordered by `hb`. Every accepted safe program shall prove that
+no permitted execution contains a data race. Inability to prove this is a
+compile error. There is no execution with race-based undefined behavior.
 
-A plain read observes the unique latest `hb`-preceding plain write applicable to
-its bytes, or the initialized value if none exists. Acceptance requires that
-this write be unique for every permitted execution. Tearing is forbidden unless
-the location explicitly declares independently addressable subfields and the
-read's layout is composed from those subfields.
+A read observes the value selected by `coherence`. Acceptance requires that all
+coherence orders permitted by the program produce equivalent semantic results.
+Tearing is forbidden unless the location explicitly declares independently
+addressable subfields and the read layout is composed from those subfields.
 
-### TOPAL-MEM-ATOMIC-001 — Atomic access
+### TOPAL-MEM-ATOMIC-001 — Implementation synchronization
 
-All operations on one atomic location identity use one declared width and
-layout. Each atomic read observes exactly one write in `mo_l`, subject to `hb`
-and ordering rules; it never tears. Relaxed operations guarantee atomicity and
-modification order only. Acquire/release add `sw`; `seq-cst` additionally joins
-`S`. Mixed atomic and plain conflicting access to one byte range is rejected.
-
-Safe source has no general mutex primitive. Compiler-introduced synchronization
-may use target facilities only when its behavior refines these relations and is
-not observable as a source value.
+Safe source in `design-0` exposes neither general mutexes nor shared-memory
+atomic operations. Compiler-introduced synchronization may use target atomics,
+locks, transactions, or message queues only when their behavior refines `hb`
+and `coherence` and is not observable as a source value. A future source-level
+atomic facility requires its own revisioned ordering rules; target behavior
+must not leak through in its absence.
 
 ### TOPAL-MEM-HARDWARE-001 — Hardware and volatile access
 
