@@ -242,7 +242,7 @@ remainder of the line and ends at the newline:
 
 ```topal
 # A whole-line comment.
-value is Integer 10 # An end-of-line comment.
+value is Int 10 # An end-of-line comment.
 ```
 
 The separating space is required: `#comment` does not begin a comment. The
@@ -449,7 +449,7 @@ A function with one input uses prefix notation:
 
 ```topal
 print "Hello"
-Integer 10
+Int 10
 static function
 ```
 
@@ -519,6 +519,11 @@ a f ( b g c )
 
 Mixing familiar operators does not introduce hidden precedence. Code must group
 the intended operation explicitly when left-to-right evaluation is not wanted.
+The fixed symbolic callable names are `+`, `-`, `*`, `/`, and `^`. They are
+language-provided function names under these ordinary application rules, not a
+separate expression hierarchy and not user-declarable operator syntax. Thus
+`1 + 2 * 3` means `( 1 + 2 ) * 3`; write `1 + ( 2 * 3 )` for the other
+grouping.
 
 ## Products and construction
 
@@ -729,8 +734,8 @@ named construction, record construction, reconstruction, or map construction,
 it instead associates the entry on its left with the value on its right:
 
 ```topal
-limit is Integer 10
-number-type is Integer
+limit is Int 10
+number-type is Int
 ```
 
 Because types are first-class objects, this distinction is significant:
@@ -791,7 +796,7 @@ themselves make an anonymous record a map.
 
 ```topal
 text : String
-index : Integer
+index : Int
 ```
 
 The classifier may be a type, a constraint which retains its base type, or a
@@ -918,11 +923,11 @@ part of the declared type:
 
 ```topal
 pub Interval is Record
-  pub start : Integer
-  pub end : Integer constraint { end } end > start
+  pub start : Int
+  pub end : Int constraint { end } end > start
 ```
 
-Here `end` is an `Integer` constrained to be greater than the particular
+Here `end` is an `Int` constrained to be greater than the particular
 `start` in the same `Interval`; the declaration describes a dependent product,
 not two independently classified integers. The constraint evidence remains
 attached to the value when its fields are projected or matched.
@@ -940,8 +945,8 @@ already proven, construction performs validation and produces
 
 ```topal
 pub interval is fn (
-  start : Integer,
-  end : Integer
+  start : Int,
+  end : Int
 ) -> Result ( Interval, ConstraintErrorCode )
   Interval (
     start is start,
@@ -960,7 +965,7 @@ plain `Interval`.
 object using `is`:
 
 ```topal
-strlen is fn ( text : String ) -> Integer
+strlen is fn ( text : String ) -> Int
   body
 ```
 
@@ -972,10 +977,10 @@ and two components declare the left and right operands of an infix function:
 current-time is fn () -> Instant
   body
 
-strlen is fn ( text : String ) -> Integer
+strlen is fn ( text : String ) -> Int
   body
 
-minimum is fn ( left : Integer , right : Integer ) -> Integer
+minimum is fn ( left : Int , right : Int ) -> Int
   left
     < right then left
     otherwise right
@@ -1021,12 +1026,12 @@ operand or turn a binary function into a unary one. Unknown and duplicate
 association names are errors.
 
 The input and output types are mandatory parts of a function declaration.
-They are not inferred from the body. In particular, an output of `Integer`
+They are not inferred from the body. In particular, an output of `Int`
 promises an infallible function, while a fallible function declares
-`Result ( Integer, ParseErrorCode )` explicitly:
+`Result ( Int, ParseErrorCode )` explicitly:
 
 ```topal
-parse-count is fn ( text : String ) -> Result ( Integer, ParseErrorCode )
+parse-count is fn ( text : String ) -> Result ( Int, ParseErrorCode )
   body
 ```
 
@@ -1237,10 +1242,10 @@ distinguish overloads. Consequently, ordinary and static functions with the
 same name and input types may coexist:
 
 ```topal
-size is fn ( value : Data ) -> Integer
+size is fn ( value : Data ) -> Int
   runtime-size value
 
-size is fn static ( value : Data ) -> Integer
+size is fn static ( value : Data ) -> Int
   encoded-size value
 ```
 
@@ -1254,7 +1259,7 @@ expected output type never changes the choice.
 Authors consequently place narrow or preferred cases before general fallbacks:
 
 ```topal
-describe is fn ( value : Integer ) -> String
+describe is fn ( value : Int ) -> String
   describe-integer value
 
 describe is fn (
@@ -1290,7 +1295,7 @@ Static evaluation is an optional part of a function's type contract. The
 types as well as definitions:
 
 ```topal
-increment is fn static ( input : Integer ) -> Integer
+increment is fn static ( input : Int ) -> Int
   input + 1
 ```
 
@@ -1298,7 +1303,7 @@ Publication is separate from the function type and uniformly prefixes a named
 declaration. A public static function therefore uses:
 
 ```topal
-pub increment is fn static ( input : Integer ) -> Integer
+pub increment is fn static ( input : Int ) -> Int
   input + 1
 ```
 
@@ -1322,9 +1327,9 @@ Staticness remains visible when functions are passed as values:
 
 ```topal
 apply-statically is fn static (
-  transformation : fn static ( Integer ) -> Integer,
-  input : Integer
-) -> Integer
+  transformation : fn static ( Int ) -> Int,
+  input : Int
+) -> Int
   transformation input
 ```
 
@@ -1813,7 +1818,7 @@ message
   Stop then stop ()
 ```
 
-An explicit form such as `_ : Integer` additionally requires that classifier.
+An explicit form such as `_ : Int` additionally requires that classifier.
 Each occurrence is independent and introduces neither a binding nor an equality
 relationship. Dependent patterns may still use evidence from the discarded
 position to check later components, but cannot refer to it by name.

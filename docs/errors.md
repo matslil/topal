@@ -46,15 +46,15 @@ Fallibility is part of a function's explicit interface. Input and output types
 are mandatory and are not inferred from its body:
 
 ```topal
-increment is fn ( value : Integer ) -> Integer
+increment is fn ( value : Int ) -> Int
   value + 1
 
-read-count is fn ( path : Path ) -> Result ( Integer, FileErrorCode )
+read-count is fn ( path : Path ) -> Result ( Int, FileErrorCode )
   body
 ```
 
 `increment` cannot return or propagate an error. `read-count` may return either
-an `Integer` or an `Error`. `Result` is never added implicitly to a declared
+an `Int` or an `Error`. `Result` is never added implicitly to a declared
 output type.
 
 A task message implementation is permitted only where the operation already
@@ -384,7 +384,7 @@ that explicitly requires the success type. An infallible function cannot
 project a result because it has nowhere to return the error:
 
 ```topal
-load-length is fn ( path : Path ) -> Integer
+load-length is fn ( path : Path ) -> Int
   text : String is read-file path  # error: load-length is infallible
   text length
 ```

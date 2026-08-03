@@ -152,7 +152,7 @@ Publication is not part of a function's type. `static`, by contrast, follows
 therefore has only one spelling:
 
 ```topal
-pub encoded-size is fn static ( value : Data ) -> Integer
+pub encoded-size is fn static ( value : Data ) -> Int
   calculate-size value
 ```
 
@@ -193,7 +193,7 @@ use shared-error
 
 pub read-count is fn (
   path : Path
-) -> Result ( Integer, shared-error FileErrorCode )
+) -> Result ( Int, shared-error FileErrorCode )
   body
 ```
 

@@ -207,7 +207,7 @@ distinction is the base case versus one or more recursive steps.
 For example:
 
 ```topal
-contains is fn ( values : List Integer, wanted : Integer ) -> Boolean
+contains is fn ( values : List Int, wanted : Int ) -> Boolean
   values each value
     value = wanted then return true
 
@@ -249,7 +249,7 @@ This automatically covers every result region introduced by a control-flow
 decision. Variation within branchless computation does not create more paths:
 
 ```topal
-double is fn ( value : Integer ) -> Integer
+double is fn ( value : Int ) -> Int
   value * 2
 ```
 

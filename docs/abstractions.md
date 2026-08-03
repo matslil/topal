@@ -28,14 +28,14 @@ The base type is the left operand and the inferred anonymous function is the
 right operand:
 
 ```topal
-Positive is Integer constraint { value }
+Positive is Int constraint { value }
   value > 0
 ```
 
 Conceptually:
 
 ```text
-Positive : Constraint Integer
+Positive : Constraint Int
 ```
 
 A constraint already retains its base type, so classification does not repeat
@@ -447,8 +447,8 @@ A homogeneous container construction has the conceptual pattern:
 Container Value
 ```
 
-Matching `List Integer` binds `Container` to `List` and `Value` to `Integer`.
-Matching `Array N Integer` can bind `Container` to the partially constructed
+Matching `List Int` binds `Container` to `List` and `Value` to `Int`.
+Matching `Array N Int` can bind `Container` to the partially constructed
 `Array N`, retaining `N` in the complete matched type. `Map ( K, V )` does not
 match this unary construction pattern: its type constructor accepts the
 key/value product as one explicit argument rather than exposing an independently
