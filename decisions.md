@@ -185,6 +185,12 @@ The following questions from the initial audit are no longer open:
   successful promotion may still be followed by `task-terminated`. Endpoints
   remain restricted messaging authorities, while the final task result belongs
   exclusively to the owning instance's implicit join obligation.
+- Service discovery has two explicit `find-interface` generator overloads.
+  The one-input form searches every namespace accessible through the selected
+  broker; the two-input form restricts that search to one `Namespace` and its
+  visible descendants. Both obey ordinary visibility. There is no optional
+  namespace operand or `Optional Namespace` value, and broker implementations
+  provide both operation identities even when they share internal code.
 - `destructor` is a distinct non-callable language construction rather than a
   `Function`. Its sole classified parameter identifies the complete owned type
   and is a terminal, non-escaping borrow. Each complete owned type has at most
