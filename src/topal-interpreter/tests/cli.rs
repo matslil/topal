@@ -72,6 +72,8 @@ fn test_mode_emits_stable_decisions() {
     assert!(trace.contains("\"schema\":\"topal.test-trace/1\""));
     assert!(trace.contains("\"event\":\"token.integer\""));
     assert!(trace.contains("\"rule\":\"TOPAL-SYN-NUM-001\""));
+    assert!(trace.contains("\"event\":\"evaluation.result\""));
+    assert!(trace.contains("\"detail\":\"Int\""));
 }
 
 #[test]

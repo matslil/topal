@@ -8,14 +8,14 @@ use crate::{TraceEvent, TraceSink};
 /// A value produced by the implemented language subset.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
-    Integer(BigInt),
+    Int(BigInt),
     Unit,
 }
 
 impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Integer(value) => value.fmt(formatter),
+            Self::Int(value) => value.fmt(formatter),
             Self::Unit => formatter.write_str("()"),
         }
     }
@@ -113,7 +113,7 @@ impl Session {
             message: "expected a statement".into(),
         })?;
         let classifier = match &value {
-            Value::Integer(_) => "Integer",
+            Value::Int(_) => "Int",
             Value::Unit => "Unit",
         };
         trace.record(TraceEvent {
@@ -135,7 +135,7 @@ impl Session {
                 rule: "TOPAL-SYN-NUM-001",
                 detail: expression.text,
             });
-            return Ok(Value::Integer(value));
+            return Ok(Value::Int(value));
         }
         if valid_identifier(expression.text) {
             let value = self

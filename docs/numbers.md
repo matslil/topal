@@ -17,7 +17,7 @@ or storage width:
 Int
 ```
 
-Integer literal radix prefixes, optional digit grouping, and the
+Int literal radix prefixes, optional digit grouping, and the
 whitespace-sensitive spelling of negative literals are defined in
 [the numeric literal syntax](syntax.md#numeric-literals).
 

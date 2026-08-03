@@ -52,7 +52,7 @@ TypeDef = identity:text kind:u8 payload-length:uvarint payload:bytes(payload-len
 
 kind 0  Unit       payload = empty
 kind 1  Boolean    payload = empty
-kind 2  Integer    payload = signed:u8 width-bits:uvarint
+kind 2  Int    payload = signed:u8 width-bits:uvarint
 kind 3  Rational   payload = numerator-type:id denominator-type:id
 kind 4  Text       payload = normalization:u8       # 0 means NFC
 kind 5  Bytes      payload = empty

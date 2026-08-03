@@ -15,7 +15,7 @@ The following questions from the initial audit are no longer open:
   Constraints retain a base type and limit its values through a predicate;
   capabilities make static interface and law promises.
 - Constraint construction is object-first, as in
-  `Integer constraint { value } ...`. The inferred anonymous function is the
+  `Int constraint { value } ...`. The inferred anonymous function is the
   predicate.
 - Chained classification proceeds from left to right. A function header such
   as `values : ( C : Sortable )` binds `C` with the subject kind supplied by
@@ -238,6 +238,14 @@ The following questions from the initial audit are no longer open:
   domains returns `Rational`. A narrower expected type is satisfied implicitly
   only when losslessness is statically proved, as in `fifty : Int is 100 / 2`;
   dynamic validation and all rounding remain explicit.
+- `Int` is the sole canonical name of the arbitrary-precision signed integer
+  domain; the provisional `Integer` spelling is retired without an alias.
+  `+`, `-`, `*`, `/`, and `^` are fixed language-provided callable symbols,
+  not a facility for arbitrary operator declarations. Binary application uses
+  the same left-to-right association as named infix functions and has no
+  operator-specific precedence. An adjacent minus belongs to a signed numeric
+  literal (`-42`), while spaced `- 42` is prefix application and
+  `left - right` is binary application.
 - Unbounded ordered numeric domains contain their applicable infinities directly;
   there are no parallel `ExtendedNat`, `ExtendedInt`, `ExtendedRational`, or
   `ExtendedApprox` types. `Nat` retains only `+Infinity`, while signed

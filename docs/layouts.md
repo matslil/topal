@@ -282,7 +282,7 @@ invalid. Boolean storage is therefore not assumed to be numeric zero and one.
 is inferred. `Byte` is the `Bits 8` storage unit. `Bytes` uses the sequence
 schema below. Endianness never reverses uninterpreted bits or bytes.
 
-### Integer encodings
+### Int encodings
 
 `Layout Nat`, `Layout Int`, constrained integers, `ModNat`, and `ModInt` admit
 the applicable families:

@@ -22,7 +22,8 @@ identifier-start ::= XID_Start | "_" ;
 identifier-continue ::= XID_Continue | "-" ;
 discard          ::= "_" ;
 symbol           ::= "(" | ")" | "[" | "]" | "{" | "}" | ","
-                   | ":" | "." | "=" | "->" | "..." ;
+                   | ":" | "." | "=" | "->" | "..."
+                   | "+" | "-" | "*" | "/" | "^" ;
 newline          ::= "\n" ;
 comment          ::= "#" { any-scalar-except-newline } ;
 ```
@@ -32,6 +33,11 @@ between identifier continuation characters; leading, trailing, and repeated
 hyphens are invalid. Keywords are recognized from an identifier token by the
 grammar position. The scanner selects the longest declared symbol. No other
 punctuation run forms a token.
+
+When `-` is immediately followed by a numeric-literal body, the scanner emits
+one signed numeric literal. With intervening whitespace it emits the callable
+symbol `-`. `+Infinity` and `-Infinity` are reserved numeric constants; no
+other leading plus forms part of a literal.
 
 Comments extend to but exclude the newline. Comment text has no syntactic
 effect. Blank and comment-only lines do not affect indentation.
@@ -53,17 +59,19 @@ grouped-decimal ::= nonzero digit{0,2} ( "_" digit{3} )+ ;
 based-integer   ::= ( "0b" bindigits | "0o" octdigits | "0x" hexdigits ) ;
 rational        ::= decimal-integer "." fractional exponent?
                   | decimal-integer exponent ;
+signed-number   ::= "-" ( decimal-integer | based-integer | rational ) ;
 fractional      ::= digit+ | digit{3} ( "_" digit{3} )* ( "_" digit{1,2} )? ;
 exponent        ::= ( "e" | "E" ) ( "+" | "-" )? decimal-integer ;
 ```
 
 `bindigits`, `octdigits`, and `hexdigits` are either ungrouped valid digits or
 groups of four separated at every boundary, with an initial group of one to
-four digits. Signs are prefix functions and are not part of a literal. Integer
-literals denote exact nonnegative `Integer` values. Fractional and exponent
-forms denote the exact rational represented by their decimal expansion. A
-lexeme matching no complete production is rejected rather than split into
-adjacent numeric tokens.
+four digits. Unsigned integer literals denote exact nonnegative `Int` values;
+signed integer literals denote their exact additive inverse. Fractional and
+exponent forms denote the exact rational represented by their decimal
+expansion, with an adjacent sign included before reduction. A lexeme matching
+no complete production is rejected rather than split into adjacent numeric
+tokens.
 
 ### TOPAL-SYN-STRING-001 — String literals
 
@@ -109,7 +117,8 @@ classifier   ::= application ;
 expression   ::= decision | application | product | block ;
 application  ::= primary primary* ;
 primary      ::= identifier | discard | literal | product | block
-               | qualified | type-construction ;
+               | qualified | type-construction | callable-symbol ;
+callable-symbol ::= "+" | "-" | "*" | "/" | "^" ;
 qualified    ::= primary "." identifier ;
 product      ::= "(" [ field-value ( "," field-value )* [ "," ] ] ")" ;
 field-value  ::= [ identifier "is" ] expression ;
@@ -121,7 +130,8 @@ pattern      ::= discard | identifier | literal
                | "(" [ pattern-field ( "," pattern-field )* [ "," ] ] ")" ;
 pattern-field ::= [ identifier "is" ] pattern [ ":" classifier ]
                 | "..." ;
-literal      ::= decimal-integer | based-integer | rational | string ;
+literal      ::= decimal-integer | based-integer | rational | signed-number
+               | string ;
 type-construction ::= expression "type" suite ;
 interface    ::= "interface" suite ;
 task         ::= "task" suite ;
@@ -132,7 +142,8 @@ diagnostic-control ::= "lang" ( "disable-warning"
 `...` may occur only once and only as the final field of a structural record
 pattern. A product with zero fields is `Unit`; a one-field parenthesized form is
 grouping unless its field is labeled or followed by a comma. Application groups
-left-to-right and has no user-defined precedence. Newline terminates a statement
+left-to-right and has no operator-specific or user-defined precedence;
+`a + b * c` groups as `(a + b) * c`. Newline terminates a statement
 unless delimiters are open or the grammar requires a following suite.
 
 ### TOPAL-SYN-BIND-001 — Binding and discard
