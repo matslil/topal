@@ -201,6 +201,19 @@ message
   Stop then stop ()
 ```
 
+A payload position which is irrelevant to one action may use the ordinary
+discard identifier without changing the matched constructor:
+
+```topal
+message
+  Move ( _, 0 ) then stop-horizontal-motion ()
+  Move ( x, y ) then move-to ( x, y )
+  Stop then stop ()
+```
+
+`_` accepts exactly one required payload position, introduces no binding, and
+does not match a different constructor or an absent payload.
+
 When a union constructor name is unambiguous from its scope or expected union
 type, the short name is sufficient. Otherwise it must be selected through the
 union's ordinary declaration scope; unions do not introduce a separate global

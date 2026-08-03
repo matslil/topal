@@ -24,10 +24,14 @@ The following questions from the initial audit are no longer open:
   explicitly classified components such as `X : Type` and `Y : Type` from a
   tuple, and the function body is the implicit successful branch of the header
   match. Bare unbound names are not introduced.
-- `_ : Kind` discards one construction parameter without removing it from the
-  complete matched object. Matching and introspection see only declarations,
-  structural views, fields, and capability evidence visible in their lexical
-  scope.
+- `_` uniformly discards one required declaration or pattern position without
+  introducing a binding. The surrounding constructor, field, and classifier
+  checks still apply; repeated discards are independent, and `_` never spans
+  positions or behaves like a regular-expression wildcard. `_ : Kind` makes
+  the retained check explicit. A discarded static component remains in the
+  complete matched object and may supply unnamed evidence for dependent checks.
+  Matching and introspection see only declarations, structural views, fields,
+  and capability evidence visible in their lexical scope.
 - Open record patterns accept anonymous structural records with at least their
   stated visible fields. Nominal records participate only through an explicitly
   published structural view; `...` neither captures a row nor grants
@@ -228,20 +232,6 @@ The following questions from the initial audit are no longer open:
   atoms share ordinary `*`, `/`, `^`, and grouping syntax but cannot mix within
   one `[]` expression. Points and deltas never convert implicitly; point-point
   subtraction and point-delta translation supply the relationship.
-
-## Surface grammar
-
-The grammar must select compatible spellings for:
-
-- type-construction patterns beyond homogeneous `Container Value`, including
-  constructions such as `Map ( Key, Value )`;
-- otherwise uninferable public error-code bounds which cannot be recovered by
-  `Result` construction matching.
-
-These should be designed together so that indentation, recursive
-classification, prefix application, and the zero-to-two operand rule remain
-unambiguous. Function headers already bind generic type components through
-static matching rather than through a separate generic-parameter list.
 
 ## String literals and formatting
 
