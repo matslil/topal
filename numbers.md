@@ -192,7 +192,8 @@ bit-xor : ( Bits width , Bits width ) -> Bits width
 bit-not : Bits width -> Bits width
 ```
 
-Their provisional application syntax is:
+Their application syntax follows Topal's ordinary binary-infix and unary-prefix
+function rules:
 
 ```topal
 left bit-and right
@@ -453,9 +454,9 @@ rather than a special zero representation makes this behavior general.
 
 ## Approximate numbers
 
-`Approx` is the provisional name for finite-precision approximate arithmetic. It is
-more explicit about semantics than `Float`, while named IEEE formats remain
-available for storage and interoperability.
+`Approx` is the fundamental name for finite-precision approximate arithmetic.
+It is more explicit about semantics than `Float`, while named IEEE formats
+remain available for storage and interoperability.
 
 An approximate type declares its radix, significand precision, finite exponent
 range, subnormal behavior, and rounding rule:
