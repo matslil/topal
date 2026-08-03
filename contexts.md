@@ -53,8 +53,26 @@ package version is v5.3.1
 ```
 
 The capitalized structural words distinguish context construction from `fn`
-declarations and ordinary value bindings. The exact ordering of the constructor
-declaration and mandatory package metadata remains provisional.
+declarations and ordinary value bindings. Their source position is not
+semantic. After the mandatory initial language selection, the compiler collects
+the complete file's context constructor and recognized metadata declarations
+before checking static definitions and dependency evaluation. A `package.t`
+must contain exactly one `Package` declaration, and a `module.t` exactly one
+`Module` declaration, but neither must precede the file's other declarations.
+
+Package metadata and applicable module/source defaults may likewise be
+interleaved with dependencies and ordinary declarations. The compiler rejects
+duplicates and checks mandatory metadata after collection. Ordinary `use`
+visibility and overload source order are unchanged; moving a structural
+constructor or metadata declaration between them does not reorder those
+declarations. Static value and dependency relationships must still be acyclic.
+
+The file's initial language selection defines the `Package` or `Module`
+constructor and metadata schema for the complete file. A later language
+selection may govern subsequent ordinary declarations but cannot reinterpret
+those structural declarations. Formatters may place the constructor and
+metadata near the beginning as a convention without making that order part of
+the language.
 
 Constructor arguments are immutable for the lifetime of an instance. They are
 not application state. Mutable private state belongs to a
