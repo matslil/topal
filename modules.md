@@ -622,10 +622,7 @@ package status is maintained
 package description is "Exact numerical calculations"
 package license is "Apache-2.0"
 package copyrights is (
-  (
-    holder is "Example AB",
-    years is ( 2024 .. 2026 )
-  )
+  ( "Example AB", ( 2024 .. 2026 ) )
 )
 package repository is URI "https://github.com/example/calculator"
 package documentation is URI "https://docs.example.com/calculator"
@@ -917,10 +914,7 @@ their work:
 
 ```topal
 copyrights is (
-  (
-    holder is "Example AB",
-    years is ( 2024 .. 2026 )
-  )
+  ( "Example AB", ( 2024 .. 2026 ) )
 )
 ```
 
@@ -928,22 +922,18 @@ Several notices remain distinct when several holders contributed:
 
 ```topal
 copyrights is (
-  (
-    holder is "Example AB",
-    years is ( 2024 .. 2026 )
-  ),
-  (
-    holder is "Alice Smith",
-    years is ( 2025 )
-  )
+  ( "Example AB", ( 2024 .. 2026 ) ),
+  ( "Alice Smith", ( 2025 ) )
 )
 ```
 
-`Copyright` has a `holder : String` field and a
-`years : List (Range Year)` field. A singleton year is accepted where a
-singleton range is expected. Keeping years as a list permits gaps without
-claiming one continuous range, and `..` is Topal's ordinary inclusive range
-syntax.
+`Copyright` is the positional product
+`Tuple ( CopyrightHolder, List (Range Year) )`. `CopyrightHolder` accepts a
+human-readable `String` or an identifying `URI`. The positions remain
+unambiguous: the first identifies the holder and the second lists attributed
+years. A singleton year is accepted where a singleton range is expected.
+Keeping years as a list permits gaps without claiming one continuous range,
+and `..` is Topal's ordinary inclusive range syntax.
 
 The compiler checks and propagates these declarations but does not establish
 that a declared party owns the copyright or has authority to select a license.
@@ -965,10 +955,7 @@ package status is maintained
 package description is "Exact numerical calculations"
 package license is "Apache-2.0"
 package copyrights is (
-  (
-    holder is "Example AB",
-    years is ( 2024 .. 2026 )
-  )
+  ( "Example AB", ( 2024 .. 2026 ) )
 )
 package repository is URI "https://github.com/example/calculator"
 package documentation is URI "https://docs.example.com/calculator"
@@ -985,21 +972,17 @@ file to repeat package-wide information.
 
 ### Metadata inheritance
 
-A function may declare license or copyrights metadata directly. Otherwise it
-inherits each missing item independently from the nearest applicable source
-context:
+Unqualified `license` and `copyrights` are source-ordered declarations in the
+root scope of one source file, like `use lang`. Each changes the active
+provenance for subsequent declarations in that file. They are independent:
+declaring a license retains the active copyrights, and declaring copyrights
+retains the active license. A copyrights declaration replaces the complete
+active list rather than appending or merging holders.
 
-1. The function declaration.
-2. Its ordinary source file.
-3. The containing directory's applicable `application.t`, `library.t`, or
-   `module.t` declaration.
-4. Successive parent directories, from nearest to farthest.
-5. The mandatory declaration in the source root's `package.t`.
-
-A declaration may provide a license while inheriting copyrights, or provide
-copyrights while inheriting a license. The two searches are independent.
-
-An ordinary source file can establish defaults for its functions:
+At the beginning of a file, each active value is inherited independently from
+the nearest applicable artifact or module context and ultimately from the
+mandatory package defaults. A root declaration then overrides only its own
+active value from that point forward:
 
 ```topal
 use lang topal (
@@ -1008,22 +991,34 @@ use lang topal (
 
 license is "MIT"
 copyrights is (
-  (
-    holder is "Alice Smith",
-    years is ( 2025 )
-  )
+  ( "Alice Smith", ( 2025 ) )
 )
 
 parse is fn ...
 tokenize is fn ...
+
+license is "BSD-3-Clause"
+copyrights is (
+  ( "Adapted parser contributors", ( 2022 .. 2026 ) )
+)
+
+adapted-parse is fn ...
+
+license is "MIT"
+copyrights is (
+  ( "Alice Smith", ( 2025 ) )
+)
+
+generate is fn ...
 ```
 
-Both functions inherit the file declarations unless they provide more specific
-metadata. Function-specific metadata supports a file containing code with
-different provenance, for example a function adapted from another project.
-Its precise attachment syntax remains part of the language revision, but
-metadata is not a function modifier: it belongs structurally to the declaration
-rather than becoming part of the function type, an input, or a runtime value.
+`parse` and `tokenize` use MIT and Alice Smith. `adapted-parse` uses BSD-3-Clause
+and only the adapted contributors. `generate` uses the explicitly restored MIT
+and Alice Smith values. A later declaration never changes earlier provenance.
+Nested and anonymous code belongs to its enclosing subsequent declaration and
+receives the same effective pair. Imported declarations retain their own
+recorded provenance instead of inheriting the importing file's active values.
+The active state ends with the file.
 
 At each directory, `module.t` describes defaults intrinsic to the shared
 implementation:
@@ -1036,15 +1031,13 @@ use lang topal (
 
 license is "BSD-3-Clause"
 copyrights is (
-  (
-    holder is "Parser contributors",
-    years is ( 2022 .. 2026 )
-  )
+  ( "Parser contributors", ( 2022 .. 2026 ) )
 )
 ```
 
-These defaults also apply to descendants that have no more specific
-declaration.
+Within `module.t` these declarations have the same forward effect on its own
+code. Its final active values also supply defaults to descendants that have no
+more specific artifact or source declaration.
 
 ### Artifact contexts
 
@@ -1083,15 +1076,15 @@ start is fn (
 
 At the same directory, the facade matching the artifact being constructed is
 more specific than `module.t`. The contextual declaration affects only
-functions that reach it without function- or file-specific metadata. It does
-not erase explicit provenance attached to incorporated or imported code.
+declarations that reach it without a later source-level provenance override. It
+does not erase provenance already recorded on incorporated or imported code.
 
 Consequently, one shared function can have different effective licenses in the
 library and application contexts when its nearest applicable declarations
-offer it under those different terms. A function with an explicit license
-retains that license in both artifacts. The compiler rejects an artifact whose
-selected terms cannot satisfy the effective licenses of all included
-functions.
+offer it under those different terms. A function declared after an unqualified
+source-level license override retains that license in both artifacts. The
+compiler rejects an artifact whose selected terms cannot satisfy the effective
+licenses of all included functions.
 
 Copyright normally describes provenance rather than an artifact choice. Shared
 functions therefore retain the same holders in the library and application

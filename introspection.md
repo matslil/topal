@@ -238,7 +238,7 @@ lang DeclarationView is Record
   canonical-path : Optional (lang Path)
   documentation : Optional String
   license : Optional License
-  copyright : Optional Copyright
+  copyrights : Optional (List Copyright)
   language : lang LanguageContext
 ```
 
