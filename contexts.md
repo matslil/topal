@@ -329,6 +329,8 @@ construction-record = "("
 construction-association = identifier "is" object ;
 metadata-declaration = metadata-namespace qualified-identifier "is" object ;
 metadata-namespace = "package" | "library" | "application" ;
+source-provenance-declaration =
+  ( "license" | "copyrights" ) "is" object ;
 ```
 
 `context-selection` is a prefix expression and otherwise follows the normal
@@ -338,3 +340,9 @@ static construction objects; the selected language assigns the fields their
 meaning. Metadata declarations are permitted only at the top level of their
 matching special file; use from a function requires `@` followed by the
 qualified metadata path.
+
+An unqualified `source-provenance-declaration` is permitted only in a source
+file's root scope. Unlike qualified package or artifact metadata, it establishes
+forward source state: each declaration replaces its own active value for
+subsequent declarations in that file without changing the other provenance
+field.

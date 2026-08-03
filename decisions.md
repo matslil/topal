@@ -73,6 +73,14 @@ The following questions from the initial audit are no longer open:
   are invalid. Effects and guarantees retain their post-return positions, while
   provenance metadata remains structural declaration metadata rather than a
   modifier.
+- Source provenance is forward-scoped state in one file's root scope.
+  Unqualified `license is ...` and `copyrights is ...` declarations independently
+  replace their active values for subsequent declarations; neither affects
+  earlier or imported code, and the state ends with the file. A copyright list
+  replacement never merges with its predecessor. `Copyright` is the positional
+  product `Tuple ( CopyrightHolder, List (Range Year) )`, where the holder is a
+  name string or identifying URI. Qualified package and artifact metadata
+  remains contextual fallback rather than forward source state.
 - Capability evidence is coherent and claims are owner-scoped. Each canonical
   object-capability pair has at most one interpretation, claimed in the
   definition context of either the capability or satisfying object. Unrelated
