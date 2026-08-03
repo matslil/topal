@@ -53,3 +53,10 @@ The implemented subset shall accept arbitrary-precision decimal, binary,
 octal, and hexadecimal integer literals with the grouping validation required
 by `TOPAL-SYN-NUM-001`. Display shall use the value's canonical decimal form;
 lexical radix and grouping shall not change numeric identity.
+
+## TOPAL-INTP-SUBSET-004 — Finite exact integer addition
+
+The interpreter shall consume the shared source and syntax layers and evaluate
+left-associated finite `Int` addition according to `TOPAL-NUM-ADD-001` in all
+three modes. Test mode shall distinguish callable selection from exact result
+construction using stable semantic events and governing rule identities.
