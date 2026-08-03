@@ -39,3 +39,10 @@ The interpreter shall reject valid `design-0` syntax which it does not yet
 implement with an explicit unsupported-syntax diagnostic. It shall not guess
 semantics for syntax absent from the formal language revision.
 
+## TOPAL-INTP-SUBSET-002 — Immutable bindings
+
+The implemented subset shall execute source-ordered `is` bindings and name
+lookups according to `TOPAL-SYN-BIND-001`. A binding initializer shall complete
+before the name becomes visible, rebinding in one session scope shall be
+rejected, and a non-final value expression shall be rejected rather than
+silently discarded. A successful declaration statement produces `Unit`.

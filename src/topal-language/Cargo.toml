@@ -7,7 +7,7 @@ rust-version.workspace = true
 
 [dependencies]
 num-bigint = "0.4"
+unicode-ident = "1"
 
 [lints]
 workspace = true
-

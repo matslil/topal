@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 
 use num_bigint::BigInt;
@@ -8,12 +9,14 @@ use crate::{TraceEvent, TraceSink};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
     Integer(BigInt),
+    Unit,
 }
 
 impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Integer(value) => value.fmt(formatter),
+            Self::Unit => formatter.write_str("()"),
         }
     }
 }
@@ -41,12 +44,14 @@ impl std::error::Error for Diagnostic {}
 
 /// Persistent evaluation context used by scripts and interactive sessions.
 #[derive(Default)]
-pub struct Session;
+pub struct Session {
+    bindings: BTreeMap<String, Value>,
+}
 
 impl Session {
     #[must_use]
-    pub const fn new() -> Self {
-        Self
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Evaluate one source unit and return its final value.
@@ -66,27 +71,120 @@ impl Session {
             detail: "unicode source normalized",
         });
 
-        let token = scan_single_integer(&normalized)?;
-        trace.record(TraceEvent {
-            event: "token.integer",
-            rule: "TOPAL-SYN-NUM-001",
-            detail: token,
-        });
-
-        let digits = token.replace('_', "");
-        let value = digits.parse::<BigInt>().map_err(|_| Diagnostic {
-            code: "E-NUMERIC-LITERAL",
+        let statements = scan_statements(&normalized)?;
+        let mut result = None;
+        for (index, statement) in statements.iter().enumerate() {
+            match statement {
+                Statement::Binding { name, expression } => {
+                    if self.bindings.contains_key(*name) {
+                        return Err(Diagnostic {
+                            code: "E-DUPLICATE-BINDING",
+                            line: expression.line,
+                            column: 1,
+                            message: format!("{name} is already bound in this scope"),
+                        });
+                    }
+                    let value = self.evaluate_expression(expression, trace)?;
+                    self.bindings.insert((*name).to_owned(), value);
+                    trace.record(TraceEvent {
+                        event: "binding.created",
+                        rule: "TOPAL-SYN-BIND-001",
+                        detail: name,
+                    });
+                    result = Some(Value::Unit);
+                }
+                Statement::Expression(expression) => {
+                    if index + 1 != statements.len() {
+                        return Err(Diagnostic {
+                            code: "E-DISCARDED-VALUE",
+                            line: expression.line,
+                            column: expression.column,
+                            message: "a non-final expression value cannot be discarded".into(),
+                        });
+                    }
+                    result = Some(self.evaluate_expression(expression, trace)?);
+                }
+            }
+        }
+        let value = result.ok_or_else(|| Diagnostic {
+            code: "E-EXPECTED-EXPRESSION",
             line: 1,
             column: 1,
-            message: "invalid decimal integer literal".into(),
+            message: "expected a statement".into(),
         })?;
+        let classifier = match &value {
+            Value::Integer(_) => "Integer",
+            Value::Unit => "Unit",
+        };
         trace.record(TraceEvent {
             event: "evaluation.result",
             rule: "TOPAL-SYN-GRAMMAR-001",
-            detail: "Integer",
+            detail: classifier,
         });
-        Ok(Value::Integer(value))
+        Ok(value)
     }
+
+    fn evaluate_expression(
+        &self,
+        expression: &Expression<'_>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if valid_decimal_integer(expression.text) {
+            trace.record(TraceEvent {
+                event: "token.integer",
+                rule: "TOPAL-SYN-NUM-001",
+                detail: expression.text,
+            });
+            let digits = expression.text.replace('_', "");
+            return digits
+                .parse::<BigInt>()
+                .map(Value::Integer)
+                .map_err(|_| Diagnostic {
+                    code: "E-NUMERIC-LITERAL",
+                    line: expression.line,
+                    column: expression.column,
+                    message: "invalid decimal integer literal".into(),
+                });
+        }
+        if valid_identifier(expression.text) {
+            let value = self
+                .bindings
+                .get(expression.text)
+                .cloned()
+                .ok_or_else(|| Diagnostic {
+                    code: "E-UNBOUND-NAME",
+                    line: expression.line,
+                    column: expression.column,
+                    message: format!("{} is not bound", expression.text),
+                })?;
+            trace.record(TraceEvent {
+                event: "binding.resolved",
+                rule: "TOPAL-SYN-BIND-001",
+                detail: expression.text,
+            });
+            return Ok(value);
+        }
+        Err(Diagnostic {
+            code: "E-UNSUPPORTED-SYNTAX",
+            line: expression.line,
+            column: expression.column,
+            message: "the implemented subset accepts integer literals and bound names".into(),
+        })
+    }
+}
+
+enum Statement<'a> {
+    Binding {
+        name: &'a str,
+        expression: Expression<'a>,
+    },
+    Expression(Expression<'a>),
+}
+
+struct Expression<'a> {
+    text: &'a str,
+    line: usize,
+    column: usize,
 }
 
 fn normalize(source: &str) -> Result<String, Diagnostic> {
@@ -118,43 +216,74 @@ fn normalize(source: &str) -> Result<String, Diagnostic> {
     Ok(source.replace("\r\n", "\n"))
 }
 
-fn scan_single_integer(source: &str) -> Result<&str, Diagnostic> {
-    let mut token = None;
+fn scan_statements(source: &str) -> Result<Vec<Statement<'_>>, Diagnostic> {
+    let mut statements = Vec::new();
     for (line_index, line) in source.lines().enumerate() {
         let code = line.split_once('#').map_or(line, |(before, _)| before);
         let trimmed = code.trim();
         if trimmed.is_empty() {
             continue;
         }
-        if token.is_some() {
-            return Err(Diagnostic {
-                code: "E-UNSUPPORTED-SYNTAX",
-                line: line_index + 1,
-                column: code.find(trimmed).unwrap_or(0) + 1,
-                message: "the initial subset accepts one integer expression".into(),
-            });
-        }
-        token = Some((trimmed, line_index + 1, code.find(trimmed).unwrap_or(0) + 1));
+        let line_number = line_index + 1;
+        let column = code.find(trimmed).unwrap_or(0) + 1;
+        let words = trimmed.split_whitespace().collect::<Vec<_>>();
+        let statement = match words.as_slice() {
+            [expression] => Statement::Expression(Expression {
+                text: expression,
+                line: line_number,
+                column,
+            }),
+            [name, "is", expression] if valid_identifier(name) => Statement::Binding {
+                name,
+                expression: Expression {
+                    text: expression,
+                    line: line_number,
+                    column: column + name.chars().count() + 4,
+                },
+            },
+            _ => {
+                return Err(Diagnostic {
+                    code: "E-UNSUPPORTED-SYNTAX",
+                    line: line_number,
+                    column,
+                    message: "the implemented subset accepts `name is expression` or one expression per line".into(),
+                });
+            }
+        };
+        statements.push(statement);
     }
-
-    let Some((token, line, column)) = token else {
+    if statements.is_empty() {
         return Err(Diagnostic {
             code: "E-EXPECTED-EXPRESSION",
             line: 1,
             column: 1,
             message: "expected an integer expression".into(),
         });
-    };
-    if valid_decimal_integer(token) {
-        Ok(token)
-    } else {
-        Err(Diagnostic {
-            code: "E-UNSUPPORTED-SYNTAX",
-            line,
-            column,
-            message: "the initial subset accepts one decimal integer literal".into(),
-        })
     }
+    Ok(statements)
+}
+
+fn valid_identifier(token: &str) -> bool {
+    if token == "_" {
+        return false;
+    }
+    let mut characters = token.chars().peekable();
+    if !characters.next().is_some_and(unicode_ident::is_xid_start) {
+        return false;
+    }
+    while let Some(character) = characters.next() {
+        if character == '-' {
+            if !characters
+                .peek()
+                .is_some_and(|next| unicode_ident::is_xid_continue(*next))
+            {
+                return false;
+            }
+        } else if !unicode_ident::is_xid_continue(character) {
+            return false;
+        }
+    }
+    true
 }
 
 fn valid_decimal_integer(token: &str) -> bool {
@@ -222,5 +351,33 @@ mod tests {
     #[test]
     fn rejects_bare_carriage_return() {
         assert_eq!(evaluate("1\r").unwrap_err().code, "E-SOURCE-LINE-END");
+    }
+
+    #[test]
+    fn evaluates_binding_and_lookup() {
+        assert_eq!(evaluate("answer is 42\nanswer").unwrap().to_string(), "42");
+    }
+
+    #[test]
+    fn rejects_duplicate_binding() {
+        assert_eq!(
+            evaluate("answer is 1\nanswer is 2\nanswer")
+                .unwrap_err()
+                .code,
+            "E-DUPLICATE-BINDING"
+        );
+    }
+
+    #[test]
+    fn rejects_unbound_name() {
+        assert_eq!(evaluate("missing").unwrap_err().code, "E-UNBOUND-NAME");
+    }
+
+    #[test]
+    fn accepts_unicode_and_hyphenated_identifiers() {
+        assert_eq!(
+            evaluate("värde-1 is 42\nvärde-1").unwrap().to_string(),
+            "42"
+        );
     }
 }
