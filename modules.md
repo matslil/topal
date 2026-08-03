@@ -420,6 +420,10 @@ Language selection has stricter rules than an ordinary module `use`:
 5. An omitted initial selection is an error rather than an implicit request for the
    latest revision.
 6. Every compiled declaration records its exact constructed language context.
+7. In `package.t` and `module.t`, the initial selection defines the context
+   constructor and recognized metadata schema for the complete file. Later
+   selections cannot reinterpret those structural declarations wherever they
+   appear.
 
 Files in one package may construct different language contexts. The
 compiler checks that their published interfaces agree on representations and
@@ -496,6 +500,16 @@ defines the grammar and meaning of `Package`, `use package`, version values,
 constructor arguments, and every other declaration in `package.t`. Package
 syntax may consequently evolve between language revisions without otherwise
 enlarging the fixed bootstrap grammar.
+
+The compiler then performs declaration collection over the complete local
+`package.t` before resolving external packages. It obtains the one required
+`Package` constructor, all `package` metadata fields, and dependency
+declarations regardless of their relative source positions. Missing or
+duplicate structural declarations are errors after collection. Dependencies
+may refer to collected constructor arguments and metadata, subject to ordinary
+static type checking and acyclic dependency requirements. This collection does
+not make ordinary imported names visible before their `use` declaration or
+change source order among overloads.
 
 `package.t` constructs the root implementation scope and is a semantic superset
 of `module.t`. Its top-level declarations and expressions are subject to an

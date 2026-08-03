@@ -144,6 +144,14 @@ The following questions from the initial audit are no longer open:
   capability `Decreases ( Measures )` supplies pure well-founded measure
   expressions when termination inference needs guidance or an opaque,
   interface, or higher-order contract must publish the relationship.
+- `package.t` and `module.t` apply the same declaration-collection model to
+  their context constructor and recognized metadata. After the mandatory
+  initial language selection, exactly one `Package` or `Module` declaration and
+  all metadata may be interleaved with dependencies and ordinary declarations.
+  The initial language context fixes their schema for the complete file;
+  duplicates, missing mandatory fields, and static dependency cycles are
+  errors. Collection does not move ordinary `use` visibility or overload source
+  order. Conventional formatter ordering is not a language restriction.
 - [Resource complexity guarantees](performance.md) are distinct from semantic
   capabilities but compose with them as classifiers. `OExec ( E )` and
   `OAlloc ( E )` express argument-dependent asymptotic upper bounds on abstract
