@@ -280,6 +280,19 @@ fn apply_binary(
             });
             Ok(Value::Int(left - right))
         }
+        CallableKind::Multiply => {
+            trace.record(TraceEvent {
+                event: "operator.selected",
+                rule: "TOPAL-TYPE-CALL-001",
+                detail: "root.*(Int,Int)",
+            });
+            trace.record(TraceEvent {
+                event: "evaluation.multiply",
+                rule: "TOPAL-NUM-MUL-001",
+                detail: "Int",
+            });
+            Ok(Value::Int(left * right))
+        }
         _ => Err(diagnostic(
             source,
             "E-UNSUPPORTED-SYNTAX",
@@ -431,6 +444,18 @@ mod tests {
         assert_eq!(evaluate("- 42").unwrap().to_string(), "-42");
         assert_eq!(evaluate("10 - 3 - 2").unwrap().to_string(), "5");
         assert_eq!(evaluate("10 - -2").unwrap().to_string(), "12");
+    }
+
+    #[test]
+    fn multiplies_without_hidden_precedence() {
+        assert_eq!(evaluate("2 + 3 * 4").unwrap().to_string(), "20");
+        assert_eq!(evaluate("2 + (3 * 4)").unwrap().to_string(), "14");
+        assert_eq!(
+            evaluate("99999999999999999999 * 99999999999999999999")
+                .unwrap()
+                .to_string(),
+            "9999999999999999999800000000000000000001"
+        );
     }
 
     #[test]

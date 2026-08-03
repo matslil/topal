@@ -54,6 +54,16 @@ independent of operand representation or evaluation tool. This realizes
 `TOPAL-REQ-SAFE-001`, `TOPAL-REQ-DETERMINISM-001`, and
 `TOPAL-REQ-INTEROP-001`.
 
+### TOPAL-NUM-MUL-001 — Finite exact integer multiplication
+
+For finite `a : Int` and `b : Int`, binary `*` selects a total, pure root
+overload `(Int, Int) -> Int` and evaluates to the unique mathematical product
+of `a` and `b`. Its result is finite, carries no arithmetic error, and cannot
+overflow. Multiplication has no syntactic precedence over addition or
+subtraction; mixed applications group left-to-right under
+`TOPAL-SYN-GRAMMAR-001`. This realizes `TOPAL-REQ-SAFE-001`,
+`TOPAL-REQ-DETERMINISM-001`, and `TOPAL-REQ-INTEROP-001`.
+
 Other numeric domains and the remaining fixed callable names are outside this
 initial formal numeric subset until later rules define their applicable
 overloads. Their tokens remain reserved, and a conforming partial tool shall
@@ -62,7 +72,6 @@ reject unsupported applications explicitly rather than infer behavior.
 ## Explanatory notes
 
 The initial subset establishes arithmetic paths incrementally before
-formalizing multiplication, exact division, exponentiation, or infinite
-operands. Left association is fixed by `TOPAL-SYN-GRAMMAR-001`; for example,
-`10 - 3 - 2` selects the finite `Int` subtraction overload twice and produces
-`5`.
+formalizing exact division, exponentiation, or infinite operands. Left
+association is fixed by `TOPAL-SYN-GRAMMAR-001`; for example, `2 + 3 * 4`
+produces `20`, while `2 + ( 3 * 4 )` produces `14`.

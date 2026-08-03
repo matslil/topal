@@ -67,3 +67,10 @@ The interpreter shall evaluate spaced prefix negation and binary subtraction
 according to `TOPAL-NUM-NEG-001` and `TOPAL-NUM-SUB-001`. Adjacent signed
 literals shall retain their distinct literal-construction trace path. Binary
 subtraction shall compose left-to-right with every ordinary application.
+
+## TOPAL-INTP-SUBSET-006 — Finite exact integer multiplication
+
+The interpreter shall evaluate finite `Int` multiplication according to
+`TOPAL-NUM-MUL-001` without overflow. Multiplication shall use ordinary
+left-to-right application order rather than conventional hidden precedence,
+and test mode shall expose selection and exact construction decisions.

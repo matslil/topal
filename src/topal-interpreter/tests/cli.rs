@@ -47,7 +47,7 @@ fn interactive_mode_evaluates_each_input() {
 
 #[test]
 fn interactive_mode_recovers_after_diagnostic() {
-    let output = run(&["--interactive"], "1 * 2\n2\n");
+    let output = run(&["--interactive"], "1 / 2\n2\n");
     assert!(output.status.success());
     assert_eq!(output.stdout, b"2\n");
     assert!(
@@ -79,7 +79,7 @@ fn test_mode_emits_stable_decisions() {
 
 #[test]
 fn unsupported_syntax_is_explicit() {
-    let output = run(&[], "1 * 2\n");
+    let output = run(&[], "1 / 2\n");
     assert!(!output.status.success());
     assert!(
         String::from_utf8(output.stderr)
@@ -185,4 +185,26 @@ fn test_trace_explains_binary_subtraction() {
     assert!(trace.contains("\"detail\":\"root.-(Int,Int)\""));
     assert!(trace.contains("\"event\":\"evaluation.subtract\""));
     assert!(trace.contains("\"rule\":\"TOPAL-NUM-SUB-001\""));
+}
+
+#[test]
+fn all_modes_execute_exact_multiplication_left_to_right() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "2 + 3 * 4\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"20\n");
+    }
+    let grouped = run(&[], "2 + (3 * 4)\n");
+    assert!(grouped.status.success());
+    assert_eq!(grouped.stdout, b"14\n");
+}
+
+#[test]
+fn test_trace_explains_exact_multiplication() {
+    let output = run(&["--test"], "6 * 7\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"detail\":\"root.*(Int,Int)\""));
+    assert!(trace.contains("\"event\":\"evaluation.multiply\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-MUL-001\""));
 }
