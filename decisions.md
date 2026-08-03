@@ -65,6 +65,14 @@ The following questions from the initial audit are no longer open:
   call selects its namespace before searching that namespace's declarations;
   scope aliases preserve the same order. Explicit cross-namespace overload-set
   composition has no current surface syntax.
+- Publication and function staticness do not form a reorderable modifier list.
+  `pub` prefixes any complete named declaration because it controls namespace
+  visibility and is not part of the value's type. `static` follows `fn` because
+  it is part of the function contract and overload identity. The combined form
+  is therefore `pub name is fn static (...)`; `fn pub` and other permutations
+  are invalid. Effects and guarantees retain their post-return positions, while
+  provenance metadata remains structural declaration metadata rather than a
+  modifier.
 - Capability evidence is coherent and claims are owner-scoped. Each canonical
   object-capability pair has at most one interpretation, claimed in the
   definition context of either the capability or satisfying object. Unrelated

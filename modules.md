@@ -133,23 +133,33 @@ defined in [constructed package and module contexts](contexts.md).
 ## Private by default
 
 Every declaration in a source file is private by default. `pub` makes a name
-visible across its nearest enclosing constructed-context boundary. For
-functions, `pub` occupies the modifier position used by `static`:
+visible across its nearest enclosing constructed-context boundary. It uniformly
+prefixes the complete declaration, including a function declaration:
 
 ```topal
-set-logger is fn pub ( logger : Logger ) -> Logger
+pub set-logger is fn ( logger : Logger ) -> Logger
   implementation
 ```
 
-For other classified values, it prefixes the declaration while the ordinary
-classification continues to describe the binding's type:
+The ordinary classification continues to describe the binding's type:
 
 ```topal
 pub destination : String
 ```
 
-The precise ordering when modifiers are combined remains part of the
-provisional surface syntax.
+Publication is not part of a function's type. `static`, by contrast, follows
+`fn` and remains part of that function contract. A declaration combining them
+therefore has only one spelling:
+
+```topal
+pub encoded-size is fn static ( value : Data ) -> Integer
+  calculate-size value
+```
+
+There is no general modifier list and spellings such as `fn pub`,
+`fn pub static`, and `fn static pub` are invalid. Effects and other
+post-return classifiers retain their positions after the completed function
+type.
 
 Publication can also name an existing binding. This supports both values and
 scopes without a separate export or re-export construct:
@@ -181,7 +191,7 @@ and need not share its namespace:
 ```topal
 use shared-error
 
-read-count is fn pub (
+pub read-count is fn (
   path : Path
 ) -> Result ( Integer, shared-error FileErrorCode )
   body
@@ -235,7 +245,7 @@ in `logger/module.t` therefore belong directly to `logger`:
 ```topal
 # logger/module.t
 
-set-logger is fn pub ( logger : Logger ) -> Logger
+pub set-logger is fn ( logger : Logger ) -> Logger
   implementation
 ```
 
@@ -1011,9 +1021,9 @@ tokenize is fn ...
 Both functions inherit the file declarations unless they provide more specific
 metadata. Function-specific metadata supports a file containing code with
 different provenance, for example a function adapted from another project.
-The precise modifier syntax remains part of the language revision, but the
-metadata belongs to the function declaration rather than becoming an input or
-runtime value.
+Its precise attachment syntax remains part of the language revision, but
+metadata is not a function modifier: it belongs structurally to the declaration
+rather than becoming part of the function type, an input, or a runtime value.
 
 At each directory, `module.t` describes defaults intrinsic to the shared
 implementation:
