@@ -52,6 +52,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "topal-source"
+version = "0.1.0"
+
+[[package]]
+name = "topal-syntax"
+version = "0.1.0"
+dependencies = [
+ "topal-source",
+ "unicode-ident",
+]
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
