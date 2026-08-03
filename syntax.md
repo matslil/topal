@@ -345,7 +345,7 @@ A placeholder may contain a flat, record-like list of formatting fields after
 `:`:
 
 ```topal
-summary is "{description : max-width is 40, truncate is at-end}" format (
+summary is template"{description : max-width is 40, truncate is at-end, trunc-chars is "..."}"template format (
   description is description
 )
 
@@ -359,7 +359,7 @@ field means that it is enabled; for example, `with-prefix` abbreviates
 `with-prefix is true`. The common fields are:
 
 - `min-width : Nat`, `max-width : Nat`, `align : Alignment`,
-  `pad : Character`, and `truncate : Truncation`;
+  `pad : Character`, `truncate : Truncation`, and `trunc-chars : String`;
 - `base : Nat`, with `bin`, `oct`, `dec`, and `hex` abbreviating bases 2, 8,
   10, and 16;
 - `uppercase`, `with-prefix`, `always-sign`, `min-digits`, `group-size`,
@@ -374,9 +374,15 @@ The supported integer bases are 2 through 36. `with-prefix` supplies the
 conventional prefix for binary, octal, and hexadecimal output; a literal prefix
 can be written outside the placeholder for other bases. Width counts Topal
 `Character` values rather than encoded bytes or terminal display cells.
-`max-width` is the only field that permits truncation. The default alignment is
-left for strings and right for numbers, the default pad is a space, and the
-default truncation position is `at-end`.
+`max-width` is the only field that permits truncation. When truncation occurs,
+`trunc-chars` is inserted where content was removed: at the start, end, or
+between the retained ends according to `truncate`. Its characters count toward
+`max-width` and therefore replace characters that would otherwise have been
+shown. If the marker is itself wider than `max-width`, it is clipped to fit.
+The default `trunc-chars` is the empty string, so truncation has no visible
+marker unless one is requested. The default alignment is left for strings and
+right for numbers, the default pad is a space, and the default truncation
+position is `at-end`.
 
 Formatting that changes a value, such as rounding an approximate number, is
 performed explicitly before `format`. The fields above only select a textual

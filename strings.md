@@ -361,6 +361,8 @@ It is total: statically visible mistakes are compiler errors, while a dynamic
 placeholder that cannot be resolved is preserved verbatim. It is not an
 encoding and does not capture bindings implicitly. Formatting fields use a
 flat, record-like syntax and may select a type-checked custom formatter.
+`trunc-chars` optionally places a visible marker inside `max-width` where
+content was removed; it is empty by default.
 Custom formatters return `Result ( String, FormatErrorCode )`, where the
 standard vocabulary contains `formatting-failed`. On failure, `format`
 preserves the complete original placeholder; a future strict operation can
