@@ -46,3 +46,4 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-INTP-MODE-003` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-NUM-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-SUBSET-001` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-REQ-TOOLS-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
 | `TOPAL-INTP-SUBSET-002` | `TOPAL-SYN-BIND-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
+| `TOPAL-INTP-SUBSET-003` | `TOPAL-SYN-NUM-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
