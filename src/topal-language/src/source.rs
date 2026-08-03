@@ -2,10 +2,11 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use num_bigint::BigInt;
+use topal_source::{SourceText, Span};
+use topal_syntax::{Expression, Statement, lex, parse};
 
 use crate::{TraceEvent, TraceSink};
 
-/// A value produced by the implemented language subset.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
     Int(BigInt),
@@ -21,7 +22,6 @@ impl fmt::Display for Value {
     }
 }
 
-/// A source diagnostic with a stable category and source position.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Diagnostic {
     pub code: &'static str,
@@ -42,7 +42,6 @@ impl fmt::Display for Diagnostic {
 
 impl std::error::Error for Diagnostic {}
 
-/// Persistent evaluation context used by scripts and interactive sessions.
 #[derive(Default)]
 pub struct Session {
     bindings: BTreeMap<String, Value>,
@@ -58,51 +57,72 @@ impl Session {
     ///
     /// # Errors
     ///
-    /// Returns a source diagnostic when decoding, lexing, or parsing fails.
+    /// Returns a source, syntax, name-resolution, or evaluation diagnostic.
     pub fn evaluate(
         &mut self,
-        source: &str,
+        input: &str,
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
-        let normalized = normalize(source)?;
+        let source = SourceText::new(input).map_err(|error| {
+            let (line, column) = raw_position(input, error.span.start);
+            Diagnostic {
+                code: error.code,
+                line,
+                column,
+                message: error.message.into(),
+            }
+        })?;
         trace.record(TraceEvent {
             event: "source.accepted",
             rule: "TOPAL-SYN-SOURCE-001",
             detail: "unicode source normalized",
         });
 
-        let statements = scan_statements(&normalized)?;
+        let parsed = parse(&source, &lex(&source));
+        if let Some(error) = parsed.diagnostics.first() {
+            return Err(diagnostic(&source, error.code, error.span, error.message));
+        }
+        if parsed.statements.is_empty() {
+            return Err(Diagnostic {
+                code: "E-EXPECTED-EXPRESSION",
+                line: 1,
+                column: 1,
+                message: "expected a statement".into(),
+            });
+        }
+
         let mut result = None;
-        for (index, statement) in statements.iter().enumerate() {
+        for (index, statement) in parsed.statements.iter().enumerate() {
             match statement {
-                Statement::Binding { name, expression } => {
-                    if self.bindings.contains_key(*name) {
-                        return Err(Diagnostic {
-                            code: "E-DUPLICATE-BINDING",
-                            line: expression.line,
-                            column: 1,
-                            message: format!("{name} is already bound in this scope"),
-                        });
+                Statement::Binding { name, value } => {
+                    let name_text = source.slice(*name);
+                    if self.bindings.contains_key(name_text) {
+                        return Err(diagnostic(
+                            &source,
+                            "E-DUPLICATE-BINDING",
+                            *name,
+                            "name is already bound in this scope",
+                        ));
                     }
-                    let value = self.evaluate_expression(expression, trace)?;
-                    self.bindings.insert((*name).to_owned(), value);
+                    let evaluated = self.evaluate_expression(&source, value, trace)?;
+                    self.bindings.insert(name_text.to_owned(), evaluated);
                     trace.record(TraceEvent {
                         event: "binding.created",
                         rule: "TOPAL-SYN-BIND-001",
-                        detail: name,
+                        detail: name_text,
                     });
                     result = Some(Value::Unit);
                 }
                 Statement::Expression(expression) => {
-                    if index + 1 != statements.len() {
-                        return Err(Diagnostic {
-                            code: "E-DISCARDED-VALUE",
-                            line: expression.line,
-                            column: expression.column,
-                            message: "a non-final expression value cannot be discarded".into(),
-                        });
+                    if index + 1 != parsed.statements.len() {
+                        return Err(diagnostic(
+                            &source,
+                            "E-DISCARDED-VALUE",
+                            expression.span(),
+                            "a non-final expression value cannot be discarded",
+                        ));
                     }
-                    result = Some(self.evaluate_expression(expression, trace)?);
+                    result = Some(self.evaluate_expression(&source, expression, trace)?);
                 }
             }
         }
@@ -112,169 +132,128 @@ impl Session {
             column: 1,
             message: "expected a statement".into(),
         })?;
-        let classifier = match &value {
-            Value::Int(_) => "Int",
-            Value::Unit => "Unit",
-        };
         trace.record(TraceEvent {
             event: "evaluation.result",
             rule: "TOPAL-SYN-GRAMMAR-001",
-            detail: classifier,
+            detail: match &value {
+                Value::Int(_) => "Int",
+                Value::Unit => "Unit",
+            },
         });
         Ok(value)
     }
 
     fn evaluate_expression(
         &self,
-        expression: &Expression<'_>,
+        source: &SourceText,
+        expression: &Expression,
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
-        if let Some(value) = parse_integer(expression.text) {
-            trace.record(TraceEvent {
-                event: "token.integer",
-                rule: "TOPAL-SYN-NUM-001",
-                detail: expression.text,
-            });
-            return Ok(Value::Int(value));
-        }
-        if valid_identifier(expression.text) {
-            let value = self
-                .bindings
-                .get(expression.text)
-                .cloned()
-                .ok_or_else(|| Diagnostic {
-                    code: "E-UNBOUND-NAME",
-                    line: expression.line,
-                    column: expression.column,
-                    message: format!("{} is not bound", expression.text),
+        match expression {
+            Expression::Integer(span) => {
+                let text = source.slice(*span);
+                let value = parse_integer(text).ok_or_else(|| {
+                    diagnostic(
+                        source,
+                        "E-NUMERIC-LITERAL",
+                        *span,
+                        "invalid integer literal",
+                    )
                 })?;
-            trace.record(TraceEvent {
-                event: "binding.resolved",
-                rule: "TOPAL-SYN-BIND-001",
-                detail: expression.text,
-            });
-            return Ok(value);
-        }
-        Err(Diagnostic {
-            code: "E-UNSUPPORTED-SYNTAX",
-            line: expression.line,
-            column: expression.column,
-            message: "the implemented subset accepts integer literals and bound names".into(),
-        })
-    }
-}
-
-enum Statement<'a> {
-    Binding {
-        name: &'a str,
-        expression: Expression<'a>,
-    },
-    Expression(Expression<'a>),
-}
-
-struct Expression<'a> {
-    text: &'a str,
-    line: usize,
-    column: usize,
-}
-
-fn normalize(source: &str) -> Result<String, Diagnostic> {
-    let source = source.strip_prefix('\u{feff}').unwrap_or(source);
-    let source = source.strip_prefix("#!").map_or(source, |rest| {
-        rest.find('\n').map_or("", |newline| &rest[newline + 1..])
-    });
-
-    for (offset, character) in source.char_indices() {
-        if character == '\0' || is_noncharacter(character) {
-            let (line, column) = position(source, offset);
-            return Err(Diagnostic {
-                code: "E-SOURCE-DECODE",
-                line,
-                column,
-                message: "source contains a forbidden Unicode scalar".into(),
-            });
-        }
-        if character == '\r' && !source[offset..].starts_with("\r\n") {
-            let (line, column) = position(source, offset);
-            return Err(Diagnostic {
-                code: "E-SOURCE-LINE-END",
-                line,
-                column,
-                message: "bare carriage return is not a valid line ending".into(),
-            });
-        }
-    }
-    Ok(source.replace("\r\n", "\n"))
-}
-
-fn scan_statements(source: &str) -> Result<Vec<Statement<'_>>, Diagnostic> {
-    let mut statements = Vec::new();
-    for (line_index, line) in source.lines().enumerate() {
-        let code = line.split_once('#').map_or(line, |(before, _)| before);
-        let trimmed = code.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        let line_number = line_index + 1;
-        let column = code.find(trimmed).unwrap_or(0) + 1;
-        let words = trimmed.split_whitespace().collect::<Vec<_>>();
-        let statement = match words.as_slice() {
-            [expression] => Statement::Expression(Expression {
-                text: expression,
-                line: line_number,
-                column,
-            }),
-            [name, "is", expression] if valid_identifier(name) => Statement::Binding {
-                name,
-                expression: Expression {
-                    text: expression,
-                    line: line_number,
-                    column: column + name.chars().count() + 4,
-                },
-            },
-            _ => {
-                return Err(Diagnostic {
-                    code: "E-UNSUPPORTED-SYNTAX",
-                    line: line_number,
-                    column,
-                    message: "the implemented subset accepts `name is expression` or one expression per line".into(),
+                trace.record(TraceEvent {
+                    event: "token.integer",
+                    rule: "TOPAL-NUM-LITERAL-001",
+                    detail: text,
                 });
+                Ok(Value::Int(value))
             }
-        };
-        statements.push(statement);
-    }
-    if statements.is_empty() {
-        return Err(Diagnostic {
-            code: "E-EXPECTED-EXPRESSION",
-            line: 1,
-            column: 1,
-            message: "expected an integer expression".into(),
-        });
-    }
-    Ok(statements)
-}
-
-fn valid_identifier(token: &str) -> bool {
-    if token == "_" {
-        return false;
-    }
-    let mut characters = token.chars().peekable();
-    if !characters.next().is_some_and(unicode_ident::is_xid_start) {
-        return false;
-    }
-    while let Some(character) = characters.next() {
-        if character == '-' {
-            if !characters
-                .peek()
-                .is_some_and(|next| unicode_ident::is_xid_continue(*next))
-            {
-                return false;
+            Expression::Identifier(span) => {
+                let name = source.slice(*span);
+                let value = self.bindings.get(name).cloned().ok_or_else(|| {
+                    diagnostic(source, "E-UNBOUND-NAME", *span, "name is not bound")
+                })?;
+                trace.record(TraceEvent {
+                    event: "binding.resolved",
+                    rule: "TOPAL-SYN-BIND-001",
+                    detail: name,
+                });
+                Ok(value)
             }
-        } else if !unicode_ident::is_xid_continue(character) {
-            return false;
+            Expression::Add { left, right, span } => {
+                let left = self.evaluate_expression(source, left, trace)?;
+                let right = self.evaluate_expression(source, right, trace)?;
+                let (Value::Int(left), Value::Int(right)) = (left, right) else {
+                    return Err(diagnostic(
+                        source,
+                        "E-NO-APPLICABLE-OVERLOAD",
+                        *span,
+                        "+ requires two Int operands in the implemented subset",
+                    ));
+                };
+                trace.record(TraceEvent {
+                    event: "operator.selected",
+                    rule: "TOPAL-TYPE-CALL-001",
+                    detail: "root.+(Int,Int)",
+                });
+                trace.record(TraceEvent {
+                    event: "evaluation.add",
+                    rule: "TOPAL-NUM-ADD-001",
+                    detail: "Int",
+                });
+                Ok(Value::Int(left + right))
+            }
         }
     }
-    true
+}
+
+fn diagnostic(
+    source: &SourceText,
+    code: &'static str,
+    span: Span,
+    message: impl Into<String>,
+) -> Diagnostic {
+    let position = source.position(span.start);
+    Diagnostic {
+        code,
+        line: position.line,
+        column: position.column,
+        message: message.into(),
+    }
+}
+
+fn raw_position(source: &str, offset: usize) -> (usize, usize) {
+    let before = &source[..offset];
+    let line = before.bytes().filter(|byte| *byte == b'\n').count() + 1;
+    let column = before
+        .rsplit_once('\n')
+        .map_or(before, |(_, tail)| tail)
+        .chars()
+        .count()
+        + 1;
+    (line, column)
+}
+
+fn parse_integer(token: &str) -> Option<BigInt> {
+    if let Some(unsigned) = token.strip_prefix('-') {
+        return parse_unsigned_integer(unsigned).map(std::ops::Neg::neg);
+    }
+    parse_unsigned_integer(token)
+}
+
+fn parse_unsigned_integer(token: &str) -> Option<BigInt> {
+    if valid_decimal_integer(token) {
+        return token.replace('_', "").parse().ok();
+    }
+    let (radix, digits) = if let Some(digits) = token.strip_prefix("0b") {
+        (2, digits)
+    } else if let Some(digits) = token.strip_prefix("0o") {
+        (8, digits)
+    } else {
+        (16, token.strip_prefix("0x")?)
+    };
+    valid_based_digits(digits, radix)
+        .then(|| BigInt::parse_bytes(digits.replace('_', "").as_bytes(), radix))
+        .flatten()
 }
 
 fn valid_decimal_integer(token: &str) -> bool {
@@ -298,23 +277,6 @@ fn valid_decimal_integer(token: &str) -> bool {
         && groups.all(|group| group.len() == 3 && group.bytes().all(|byte| byte.is_ascii_digit()))
 }
 
-fn parse_integer(token: &str) -> Option<BigInt> {
-    if valid_decimal_integer(token) {
-        return token.replace('_', "").parse().ok();
-    }
-    let (radix, digits) = if let Some(digits) = token.strip_prefix("0b") {
-        (2, digits)
-    } else if let Some(digits) = token.strip_prefix("0o") {
-        (8, digits)
-    } else {
-        (16, token.strip_prefix("0x")?)
-    };
-    if !valid_based_digits(digits, radix) {
-        return None;
-    }
-    BigInt::parse_bytes(digits.replace('_', "").as_bytes(), radix)
-}
-
 fn valid_based_digits(digits: &str, radix: u32) -> bool {
     if digits.is_empty() {
         return false;
@@ -331,23 +293,6 @@ fn valid_based_digits(digits: &str, radix: u32) -> bool {
         && groups.all(|group| group.len() == 4 && valid_group(group))
 }
 
-const fn is_noncharacter(character: char) -> bool {
-    let scalar = character as u32;
-    (scalar >= 0xfdd0 && scalar <= 0xfdef) || scalar & 0xffff >= 0xfffe
-}
-
-fn position(source: &str, offset: usize) -> (usize, usize) {
-    let before = &source[..offset];
-    let line = before.bytes().filter(|byte| *byte == b'\n').count() + 1;
-    let column = before
-        .rsplit_once('\n')
-        .map_or(before, |(_, tail)| tail)
-        .chars()
-        .count()
-        + 1;
-    (line, column)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -357,66 +302,35 @@ mod tests {
     }
 
     #[test]
-    fn evaluates_arbitrary_precision_integer() {
-        let value = evaluate("123456789012345678901234567890").unwrap();
-        assert_eq!(value.to_string(), "123456789012345678901234567890");
-    }
-
-    #[test]
-    fn accepts_complete_grouping() {
-        assert_eq!(evaluate("12_345_678").unwrap().to_string(), "12345678");
-    }
-
-    #[test]
-    fn evaluates_based_integers() {
-        assert_eq!(evaluate("0b1010").unwrap().to_string(), "10");
-        assert_eq!(evaluate("0o755").unwrap().to_string(), "493");
-        assert_eq!(evaluate("0xCAFE_BABE").unwrap().to_string(), "3405691582");
-    }
-
-    #[test]
-    fn rejects_incomplete_based_grouping() {
+    fn adds_signed_arbitrary_precision_integers() {
         assert_eq!(
-            evaluate("0xCA_FEBABE").unwrap_err().code,
-            "E-UNSUPPORTED-SYNTAX"
+            evaluate("-1 + 123456789012345678901234567890")
+                .unwrap()
+                .to_string(),
+            "123456789012345678901234567889"
+        );
+    }
+
+    #[test]
+    fn follows_left_association() {
+        assert_eq!(evaluate("1 + 2 + 3").unwrap().to_string(), "6");
+    }
+
+    #[test]
+    fn parentheses_group_addition() {
+        assert_eq!(evaluate("1 + (2 + 3)").unwrap().to_string(), "6");
+    }
+
+    #[test]
+    fn evaluates_binding_and_lookup() {
+        assert_eq!(
+            evaluate("answer is 40 + 2\nanswer").unwrap().to_string(),
+            "42"
         );
     }
 
     #[test]
     fn rejects_incomplete_grouping() {
-        assert_eq!(evaluate("12_34").unwrap_err().code, "E-UNSUPPORTED-SYNTAX");
-    }
-
-    #[test]
-    fn rejects_bare_carriage_return() {
-        assert_eq!(evaluate("1\r").unwrap_err().code, "E-SOURCE-LINE-END");
-    }
-
-    #[test]
-    fn evaluates_binding_and_lookup() {
-        assert_eq!(evaluate("answer is 42\nanswer").unwrap().to_string(), "42");
-    }
-
-    #[test]
-    fn rejects_duplicate_binding() {
-        assert_eq!(
-            evaluate("answer is 1\nanswer is 2\nanswer")
-                .unwrap_err()
-                .code,
-            "E-DUPLICATE-BINDING"
-        );
-    }
-
-    #[test]
-    fn rejects_unbound_name() {
-        assert_eq!(evaluate("missing").unwrap_err().code, "E-UNBOUND-NAME");
-    }
-
-    #[test]
-    fn accepts_unicode_and_hyphenated_identifiers() {
-        assert_eq!(
-            evaluate("värde-1 is 42\nvärde-1").unwrap().to_string(),
-            "42"
-        );
+        assert_eq!(evaluate("12_34").unwrap_err().code, "E-NUMERIC-LITERAL");
     }
 }

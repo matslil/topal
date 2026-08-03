@@ -1,6 +1,7 @@
 //! Functional conformance tests for TOPAL-SYN-SOURCE-001,
-//! TOPAL-SYN-NUM-001, TOPAL-SYN-GRAMMAR-001, TOPAL-SYN-BIND-001, and
-//! TOPAL-INTP-MODE-001 through TOPAL-INTP-MODE-003.
+//! TOPAL-SYN-NUM-001, TOPAL-SYN-GRAMMAR-001, TOPAL-SYN-BIND-001,
+//! TOPAL-NUM-LITERAL-001, TOPAL-NUM-ADD-001, and TOPAL-INTP-MODE-001 through
+//! TOPAL-INTP-MODE-003.
 
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -46,7 +47,7 @@ fn interactive_mode_evaluates_each_input() {
 
 #[test]
 fn interactive_mode_recovers_after_diagnostic() {
-    let output = run(&["--interactive"], "1 + 2\n2\n");
+    let output = run(&["--interactive"], "1 * 2\n2\n");
     assert!(output.status.success());
     assert_eq!(output.stdout, b"2\n");
     assert!(
@@ -71,14 +72,14 @@ fn test_mode_emits_stable_decisions() {
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("\"schema\":\"topal.test-trace/1\""));
     assert!(trace.contains("\"event\":\"token.integer\""));
-    assert!(trace.contains("\"rule\":\"TOPAL-SYN-NUM-001\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-LITERAL-001\""));
     assert!(trace.contains("\"event\":\"evaluation.result\""));
     assert!(trace.contains("\"detail\":\"Int\""));
 }
 
 #[test]
 fn unsupported_syntax_is_explicit() {
-    let output = run(&[], "1 + 2\n");
+    let output = run(&[], "1 * 2\n");
     assert!(!output.status.success());
     assert!(
         String::from_utf8(output.stderr)
@@ -132,4 +133,24 @@ fn test_trace_explains_binding_decisions() {
     assert!(trace.contains("\"event\":\"binding.created\""));
     assert!(trace.contains("\"event\":\"binding.resolved\""));
     assert!(trace.contains("\"rule\":\"TOPAL-SYN-BIND-001\""));
+}
+
+#[test]
+fn all_modes_execute_signed_exact_addition() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "-0x1 + 1_000\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"999\n");
+    }
+}
+
+#[test]
+fn test_trace_explains_exact_addition() {
+    let output = run(&["--test"], "40 + 2\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"operator.selected\""));
+    assert!(trace.contains("\"detail\":\"root.+(Int,Int)\""));
+    assert!(trace.contains("\"event\":\"evaluation.add\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-ADD-001\""));
 }
