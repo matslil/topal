@@ -46,3 +46,10 @@ lookups according to `TOPAL-SYN-BIND-001`. A binding initializer shall complete
 before the name becomes visible, rebinding in one session scope shall be
 rejected, and a non-final value expression shall be rejected rather than
 silently discarded. A successful declaration statement produces `Unit`.
+
+## TOPAL-INTP-SUBSET-003 — Exact integer literal bases
+
+The implemented subset shall accept arbitrary-precision decimal, binary,
+octal, and hexadecimal integer literals with the grouping validation required
+by `TOPAL-SYN-NUM-001`. Display shall use the value's canonical decimal form;
+lexical radix and grouping shall not change numeric identity.

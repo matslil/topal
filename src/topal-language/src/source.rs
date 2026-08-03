@@ -129,22 +129,13 @@ impl Session {
         expression: &Expression<'_>,
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
-        if valid_decimal_integer(expression.text) {
+        if let Some(value) = parse_integer(expression.text) {
             trace.record(TraceEvent {
                 event: "token.integer",
                 rule: "TOPAL-SYN-NUM-001",
                 detail: expression.text,
             });
-            let digits = expression.text.replace('_', "");
-            return digits
-                .parse::<BigInt>()
-                .map(Value::Integer)
-                .map_err(|_| Diagnostic {
-                    code: "E-NUMERIC-LITERAL",
-                    line: expression.line,
-                    column: expression.column,
-                    message: "invalid decimal integer literal".into(),
-                });
+            return Ok(Value::Integer(value));
         }
         if valid_identifier(expression.text) {
             let value = self
@@ -307,6 +298,39 @@ fn valid_decimal_integer(token: &str) -> bool {
         && groups.all(|group| group.len() == 3 && group.bytes().all(|byte| byte.is_ascii_digit()))
 }
 
+fn parse_integer(token: &str) -> Option<BigInt> {
+    if valid_decimal_integer(token) {
+        return token.replace('_', "").parse().ok();
+    }
+    let (radix, digits) = if let Some(digits) = token.strip_prefix("0b") {
+        (2, digits)
+    } else if let Some(digits) = token.strip_prefix("0o") {
+        (8, digits)
+    } else {
+        (16, token.strip_prefix("0x")?)
+    };
+    if !valid_based_digits(digits, radix) {
+        return None;
+    }
+    BigInt::parse_bytes(digits.replace('_', "").as_bytes(), radix)
+}
+
+fn valid_based_digits(digits: &str, radix: u32) -> bool {
+    if digits.is_empty() {
+        return false;
+    }
+    let valid_group =
+        |group: &str| !group.is_empty() && group.chars().all(|character| character.is_digit(radix));
+    if !digits.contains('_') {
+        return valid_group(digits);
+    }
+    let mut groups = digits.split('_');
+    let first = groups.next().unwrap_or_default();
+    (1..=4).contains(&first.len())
+        && valid_group(first)
+        && groups.all(|group| group.len() == 4 && valid_group(group))
+}
+
 const fn is_noncharacter(character: char) -> bool {
     let scalar = character as u32;
     (scalar >= 0xfdd0 && scalar <= 0xfdef) || scalar & 0xffff >= 0xfffe
@@ -341,6 +365,21 @@ mod tests {
     #[test]
     fn accepts_complete_grouping() {
         assert_eq!(evaluate("12_345_678").unwrap().to_string(), "12345678");
+    }
+
+    #[test]
+    fn evaluates_based_integers() {
+        assert_eq!(evaluate("0b1010").unwrap().to_string(), "10");
+        assert_eq!(evaluate("0o755").unwrap().to_string(), "493");
+        assert_eq!(evaluate("0xCAFE_BABE").unwrap().to_string(), "3405691582");
+    }
+
+    #[test]
+    fn rejects_incomplete_based_grouping() {
+        assert_eq!(
+            evaluate("0xCA_FEBABE").unwrap_err().code,
+            "E-UNSUPPORTED-SYNTAX"
+        );
     }
 
     #[test]

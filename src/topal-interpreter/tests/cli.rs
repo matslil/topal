@@ -93,6 +93,25 @@ fn script_executes_bindings_in_source_order() {
 }
 
 #[test]
+fn script_executes_arbitrary_precision_based_integer() {
+    let output = run(&[], "0xFFFF_FFFF_FFFF_FFFF_FFFF\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"1208925819614629174706175\n");
+}
+
+#[test]
+fn test_mode_preserves_based_literal_lexeme_in_trace() {
+    let output = run(&["--test"], "0b1010_1100\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"172\n");
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("\"detail\":\"0b1010_1100\"")
+    );
+}
+
+#[test]
 fn script_rejects_discarded_expression_values() {
     let output = run(&[], "1\n2\n");
     assert!(!output.status.success());
