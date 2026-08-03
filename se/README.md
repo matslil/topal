@@ -11,6 +11,7 @@ formal specification.
 - [Validation strategy](validation-strategy.md)
 - [Verification strategy](verification-strategy.md)
 - [Test strategy](test-strategy.md)
+- [Toolchain architecture](toolchain-architecture.md)
 - [Traceability](traceability.md)
 
 Stable IDs are permanent references. Retired statements keep their IDs and are

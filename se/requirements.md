@@ -70,3 +70,13 @@ interpreter and compiled result shall have equivalent semantic behavior.
 Normative rules and functional tests shall reference stable specification IDs;
 specification rules shall trace to the design goals and requirements they
 realize.
+
+## TOPAL-REQ-SHARED-001 — Reusable toolchain layers
+
+Language tools shall consume reusable source, lossless syntax, semantic, and
+diagnostic layers rather than derive incompatible private representations.
+Shared source and syntax data shall retain stable byte ranges, trivia, malformed
+input, and incomplete input needed by batch tools, editor services, custom lint
+rules, and static debugging. Runtime tools shall correlate execution decisions
+with the same stable source identities without making application semantics
+depend on observation.

@@ -2,6 +2,8 @@
 members = [
     "src/topal-interpreter",
     "src/topal-language",
+    "src/topal-source",
+    "src/topal-syntax",
 ]
 resolver = "3"
 
@@ -16,4 +18,3 @@ unsafe_code = "forbid"
 [workspace.lints.clippy]
 all = "warn"
 pedantic = "warn"
-

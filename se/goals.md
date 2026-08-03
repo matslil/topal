@@ -34,3 +34,9 @@ agree on accepted programs and observable results.
 
 Design changes should remain connected to goals, requirements,
 specifications, tests, and implementations throughout language evolution.
+
+## TOPAL-GOAL-TOOLCHAIN-001 — Shared language understanding
+
+The interpreter, compiler, language server, linter, and debuggers should share
+one source, syntax, and semantic understanding so their accepted programs,
+locations, diagnostics, and completion models do not drift apart.

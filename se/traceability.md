@@ -12,6 +12,7 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-GOAL-ZEROCOST-001` | `TOPAL-REQ-DETERMINISM-001`, `TOPAL-REQ-RESOURCE-001` |
 | `TOPAL-GOAL-PRECISE-001` | `TOPAL-REQ-GENERIC-001`, `TOPAL-REQ-SERIAL-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001` |
 | `TOPAL-GOAL-EVOLVE-001` | `TOPAL-REQ-TRACE-001`, `TOPAL-REQ-TOOLS-001` |
+| `TOPAL-GOAL-TOOLCHAIN-001` | `TOPAL-REQ-SHARED-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001` |
 
 | Requirement | Governing specification rules |
 | --- | --- |
@@ -27,6 +28,7 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-REQ-TOOLS-001` | `TOPAL-SYN-SOURCE-001` through `TOPAL-SYN-DIAG-001`, `TOPAL-NUM-SYMBOL-001`, `TOPAL-GIR-VALID-001` |
 | `TOPAL-REQ-INTEROP-001` | `TOPAL-TYPE-SOUND-001`, `TOPAL-NUM-ADD-001`, `TOPAL-MEM-OPT-001`, `TOPAL-CONC-DETERMINISM-001` |
 | `TOPAL-REQ-TRACE-001` | all stable `TOPAL-*` specification rules |
+| `TOPAL-REQ-SHARED-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-INDENT-001`, `TOPAL-SYN-GRAMMAR-001` |
 
 ## Maintenance rules
 
@@ -47,3 +49,4 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-INTP-SUBSET-001` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-REQ-TOOLS-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
 | `TOPAL-INTP-SUBSET-002` | `TOPAL-SYN-BIND-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
 | `TOPAL-INTP-SUBSET-003` | `TOPAL-SYN-NUM-001`, `TOPAL-NUM-LITERAL-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
+| `TOPAL-REQ-SHARED-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-LEX-001` | unit tests in `topal-source` and `topal-syntax` | `topal-source`, `topal-syntax` |
