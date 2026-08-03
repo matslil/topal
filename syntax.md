@@ -397,7 +397,7 @@ CustomerFormat is Record
 customer-formatter is fn (
   customer : Customer,
   parameters : CustomerFormat
-) -> Formatted
+) -> Result ( String, FormatErrorCode )
 
 line is "{customer : formatter is customer-formatter (show-id, name-case is upper)}" format (
   customer is customer
@@ -410,19 +410,18 @@ declared record rather than treated as an untyped map entry. Unknown fields and
 wrong field types are compile errors whenever statically visible. General
 fields such as `min-width` apply to the text returned by the custom formatter.
 
-`Formatted` is a pair of the text to use and an optional formatting error:
+A custom formatter returns an ordinary `Result`. `FormatErrorCode`, published
+by the standard string namespace, contains `formatting-failed`. Details about
+which parameter failed and why belong in the structured error's `detail` and
+`cause` fields rather than in increasingly specific error codes.
 
-```topal
-Formatted is Tuple ( String, Optional Error )
-```
-
-A formatter must always provide useful fallback text. When it also reports an
-error, the code is `formatting-failed` from the standard string namespace's
-`FormatErrorCode`; more specific information may be attached as its cause. A
-successful formatter returns `(text, None)`. The current total `format`
-operation uses the text and ignores the optional error. This contract allows a
-future strict formatting operation to expose the same formatter's error without
-requiring a second formatter API.
+On success, `format` substitutes the returned `String`. On failure, it keeps
+the complete original placeholder verbatim, including its braces and formatting
+fields. A statically compiled template therefore embeds its placeholder text as
+the fallback; a dynamically interpreted template retains the corresponding
+source span. The current total `format` consumes the error. This ordinary
+`Result` contract allows a future strict formatting operation to propagate the
+same formatter's error without requiring a second formatter API.
 
 ## Expressions and application
 

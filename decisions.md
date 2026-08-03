@@ -251,9 +251,10 @@ fields cover width, alignment, truncation, numeric base and presentation, and
 the spelling of structural names; value-changing operations such as rounding
 remain explicit conversions. A placeholder may select an ordinary custom
 formatter whose closed parameter record supplies types and defaults. It returns
-fallback text plus an optional `formatting-failed` error. Total `format` uses
-the text, while the same contract leaves room for a future strict operation to
-expose the error.
+`Result ( String, FormatErrorCode )`, using `formatting-failed` for failure.
+Total `format` substitutes successful text and preserves the complete original
+placeholder on failure, while the same contract leaves room for a future strict
+operation to propagate the error.
 
 ## Capability vocabulary and matching
 

@@ -361,11 +361,12 @@ It is total: statically visible mistakes are compiler errors, while a dynamic
 placeholder that cannot be resolved is preserved verbatim. It is not an
 encoding and does not capture bindings implicitly. Formatting fields use a
 flat, record-like syntax and may select a type-checked custom formatter.
-Custom formatters return `Formatted`, containing both fallback text and an
-optional `formatting-failed : FormatErrorCode` error. `format` uses the fallback
-text; the optional error exists so a future strict operation can reuse the same
-formatter. The complete surface syntax, delimiter rules, fields, and examples
-are described in [the syntax sketch](syntax.md#string-formatting).
+Custom formatters return `Result ( String, FormatErrorCode )`, where the
+standard vocabulary contains `formatting-failed`. On failure, `format`
+preserves the complete original placeholder; a future strict operation can
+instead propagate the same result. The complete surface syntax, delimiter
+rules, fields, and examples are described in
+[the syntax sketch](syntax.md#string-formatting).
 
 ## Equality and human-language comparison
 
