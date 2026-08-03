@@ -45,8 +45,8 @@ arbitrary runs of punctuation.
 at the end of an open structural record pattern; it is not a general spread,
 rest, range, or wildcard operator.
 
-`_` is a reserved discard identifier. It may occupy an identifier position for
-a value which is deliberately left unnamed:
+`_` is a reserved discard identifier. It may occupy a declaration or pattern
+position for a value which is deliberately left unnamed:
 
 ```topal
 consume is fn (
@@ -58,9 +58,23 @@ consume is fn (
 
 The value is still supplied and classified, but `_` introduces no binding,
 cannot be referenced, and does not produce an unused-binding diagnostic. It may
-occur more than once because its occurrences do not name the same value. `_`
-has no wildcard or other pattern-matching meaning; wildcard syntax remains
-undecided.
+occur more than once because its occurrences do not name the same value. In a
+pattern, it accepts the one value required at that position while retaining all
+surrounding constructor, field, and classifier checks:
+
+```topal
+message
+  Move ( _, 0 ) then stop-horizontal-motion ()
+  Move ( x, y ) then move-to ( x, y )
+
+result
+  Ok _ then continue ()
+  Error _ then report-failure ()
+```
+
+This is the same non-binding discard behavior, not a regular-expression-style
+wildcard. `_` never consumes several positions, matches missing structure, or
+weakens an explicit classifier.
 
 ## Diagnostic control
 
@@ -821,8 +835,8 @@ array : Array (
 ```
 
 The parameter must be present and satisfy `Nat`, but receives no local name.
-This does not give `_` general wildcard behavior. The actual size remains part
-of the complete array type. Naming it instead uses `array-size : Nat`.
+The actual size remains part of the complete array type. Naming it instead uses
+`array-size : Nat`.
 
 An open record pattern uses `...` only as an openness marker:
 
@@ -1777,6 +1791,21 @@ A successful pattern may introduce bindings and evidence. These are available
 only in its action. Patterns and predicates share a general matcher abstraction,
 so `and` and `or` have one meaning: combine compatible matchers over the same
 subject.
+
+`_` may replace any one binding position in a pattern when its value is not
+needed. The constructor or expected subject supplies its classifier when none
+is written:
+
+```topal
+message
+  Move ( _, y ) then move-vertically y
+  Stop then stop ()
+```
+
+An explicit form such as `_ : Integer` additionally requires that classifier.
+Each occurrence is independent and introduces neither a binding nor an equality
+relationship. Dependent patterns may still use evidence from the discarded
+position to check later components, but cannot refer to it by name.
 
 The same decision-table form opens an existential package:
 

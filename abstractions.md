@@ -385,10 +385,11 @@ array : Array (
 )
 ```
 
-This accepts every array size with the exact element type `Int`. `_` remains a
-discard identifier rather than a general wildcard: the parameter must exist
-and satisfy `Nat`, but its identity receives no source binding. To use the
-parameter, the pattern names it:
+This accepts every array size with the exact element type `Int`. The parameter
+must exist and satisfy `Nat`, but its identity receives no source binding. This
+is the same discard permitted in ordinary value patterns: `_` consumes exactly
+one structurally required position and does not weaken its classifier. To use
+the parameter, the pattern names it:
 
 ```topal
 array : Array (
