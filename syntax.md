@@ -262,21 +262,22 @@ the otherwise conflicting sequence:
 example is outer"This contains "text delimiters"text."outer
 ```
 
-The ordinary quoted form is the empty-tag case. A run of three or more quotes
-is a quote-only tagged delimiter, so triple quotes follow the same model rather
-than introducing a separate kind of string:
+The ordinary quoted form is the empty-tag case. Every opening and closing
+delimiter contains exactly one quote. The tag itself cannot contain a quote,
+which keeps the beginning of the contents unambiguous even when the first
+content character is a quote:
 
 ```topal
 ordinary is "Literal string"
 empty is ""
-quoted is """A "quoted" literal"""
+quoted is -""A quoted value begins here""-
 ```
 
 Literal tags are lexical delimiters, not identifier references. A tag may use
-any NFC source character except whitespace and the structural delimiters `()`,
-`{}`, and `[]`; a tag made only of quotes supplies the quote-only form above.
-The enclosed contents may contain any valid Unicode sequence. Whitespace
-separates ordinary tokens, so these remain distinct constructs:
+any NFC source character except `"`, whitespace, and the structural delimiters
+`()`, `{}`, and `[]`. The enclosed contents may contain any valid Unicode
+sequence. Whitespace separates ordinary tokens, so these remain distinct
+constructs:
 
 ```topal
 ascii is Ascii "ASCII text"       # Apply Ascii to an ordinary literal.
@@ -289,9 +290,10 @@ constraint or conversion explicitly gives it another property.
 
 ## String formatting
 
-Formatting is an operation on an ordinary string template, not a literal
+Formatting is a total operation on an ordinary string template, not a literal
 encoding or a distinct fundamental string type. Braced names in a template are
-resolved from an explicit map supplied as the other operand of `format`:
+resolved from an explicit labeled product supplied as the other operand of
+`format`:
 
 ```topal
 player is "Nanne"
@@ -307,9 +309,9 @@ message is "Player: {player}, Score: {score}, High score: {high-score}" format (
 print message
 ```
 
-Placeholders are names rather than general expressions. The explicit map keeps
-the formatted expression's dependencies visible and permits template names to
-differ from bindings at the call site:
+Placeholders are names rather than general expressions. The explicit product
+keeps the formatted expression's dependencies visible and permits template
+names to differ from bindings at the call site:
 
 ```topal
 score-line is "Player: {name}, Score: {current}, High score: {highest}"
@@ -321,11 +323,111 @@ message is score-line format (
 )
 ```
 
-The result is `String`. Values accepted by the map provide the formatting
-capability; formatting does not assign an encoding to the template or result.
-When the template is statically known, the compiler checks that every named
-placeholder has a supplied value. Format specifications and a spelling for
-literal placeholder delimiters remain provisional.
+The result is always `String`; formatting does not assign an encoding to the
+template or result. `{{` and `}}` insert literal opening and closing braces.
+Substituted text is not scanned again. For example:
+
+```topal
+result is -""{{{word}}}" world"- format (
+  word is "hello"
+)
+```
+
+produces `"{hello}" world`.
+
+When the compiler can prove that a placeholder is missing, malformed, or
+incompatible with its supplied value, compilation fails. At runtime an
+unresolved placeholder instead remains unchanged, including its braces. This
+fallback covers dynamically obtained templates and specifications and makes
+`format` unable to fail. Extra supplied fields are ignored.
+
+A placeholder may contain a flat, record-like list of formatting fields after
+`:`:
+
+```topal
+summary is template"{description : max-width is 40, truncate is at-end, trunc-chars is "..."}"template format (
+  description is description
+)
+
+identifier is "{number : hex, with-prefix, min-width is 12, align is right}" format (
+  number is number
+)
+```
+
+Names are lower-case because these are fields rather than types. A bare Boolean
+field means that it is enabled; for example, `with-prefix` abbreviates
+`with-prefix is true`. The common fields are:
+
+- `min-width : Nat`, `max-width : Nat`, `align : Alignment`,
+  `pad : Character`, `truncate : Truncation`, and `trunc-chars : String`;
+- `base : Nat`, with `bin`, `oct`, `dec`, and `hex` abbreviating bases 2, 8,
+  10, and 16;
+- `uppercase`, `with-prefix`, `always-sign`, `min-digits`, `group-size`,
+  `group-separator`, and `decimal-separator` for numeric presentation;
+- `notation`, with `plain`, `scientific`, `engineering`, and `ratio`
+  alternatives, plus `exponent-marker`, `exponent-sign`, and
+  `min-exponent-digits` for exponent presentation;
+- `name-case`, whose `original`, `lower`, and `upper` alternatives control
+  compiler-derived enum alternative and record field names.
+
+The supported integer bases are 2 through 36. `with-prefix` supplies the
+conventional prefix for binary, octal, and hexadecimal output; a literal prefix
+can be written outside the placeholder for other bases. Width counts Topal
+`Character` values rather than encoded bytes or terminal display cells.
+`max-width` is the only field that permits truncation. When truncation occurs,
+`trunc-chars` is inserted where content was removed: at the start, end, or
+between the retained ends according to `truncate`. Its characters count toward
+`max-width` and therefore replace characters that would otherwise have been
+shown. If the marker is itself wider than `max-width`, it is clipped to fit.
+The default `trunc-chars` is the empty string, so truncation has no visible
+marker unless one is requested. The default alignment is left for strings and
+right for numbers, the default pad is a space, and the default truncation
+position is `at-end`.
+
+Formatting that changes a value, such as rounding an approximate number, is
+performed explicitly before `format`. The fields above only select a textual
+presentation of the value they receive.
+
+### Custom formatters
+
+A placeholder selects an ordinary formatter function with `formatter`. Its
+first argument is the placeholder value. Its second argument is a closed record
+whose defaults determine which parameters callers may omit:
+
+```topal
+CustomerFormat is Record
+  show-id : Boolean default false
+  name-case : NameCase default original
+  max-name-width : Nat default 40
+
+customer-formatter is fn (
+  customer : Customer,
+  parameters : CustomerFormat
+) -> Result ( String, FormatErrorCode )
+
+line is "{customer : formatter is customer-formatter (show-id, name-case is upper)}" format (
+  customer is customer
+)
+```
+
+Within a formatter parameter record, naming a Boolean field whose default is
+`false` sets it to `true`; `show-id` above is therefore checked against the
+declared record rather than treated as an untyped map entry. Unknown fields and
+wrong field types are compile errors whenever statically visible. General
+fields such as `min-width` apply to the text returned by the custom formatter.
+
+A custom formatter returns an ordinary `Result`. `FormatErrorCode`, published
+by the standard string namespace, contains `formatting-failed`. Details about
+which parameter failed and why belong in the structured error's `detail` and
+`cause` fields rather than in increasingly specific error codes.
+
+On success, `format` substitutes the returned `String`. On failure, it keeps
+the complete original placeholder verbatim, including its braces and formatting
+fields. A statically compiled template therefore embeds its placeholder text as
+the fallback; a dynamically interpreted template retains the corresponding
+source span. The current total `format` consumes the error. This ordinary
+`Result` contract allows a future strict formatting operation to propagate the
+same formatter's error without requiring a second formatter API.
 
 ## Expressions and application
 
