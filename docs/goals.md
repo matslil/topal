@@ -143,8 +143,8 @@ when these preserve the program's meaning.
 
 The semantic foundations intentionally leave a smaller set of grammar, proof,
 and boundary questions listed in [remaining fundamental design
-decisions](decisions.md).
+decisions](../decisions.md).
 
 Potential compiler-generated tests, symbolic proofs, capability-law
 verification, and task-protocol guarantees are collected as
-[future work](FUTURE.md).
+[future work](../FUTURE.md).

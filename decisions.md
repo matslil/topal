@@ -11,7 +11,7 @@ extensions remain future work rather than gaps in the initial language.
 
 The following questions from the initial audit are no longer open:
 
-- [Constraints and capabilities](abstractions.md) are distinct kinds.
+- [Constraints and capabilities](docs/abstractions.md) are distinct kinds.
   Constraints retain a base type and limit its values through a predicate;
   capabilities make static interface and law promises.
 - Constraint construction is object-first, as in
@@ -115,7 +115,7 @@ The following questions from the initial audit are no longer open:
 - Foreign-language integration is postponed. Its retained boundary principles
   require sandboxed, validated, explicitly capability-restricted adapters, but
   the current language defines no foreign declaration syntax or ABI catalog.
-- The [initial capability vocabulary](capabilities.md) now defines comparison,
+- The [initial capability vocabulary](docs/capabilities.md) now defines comparison,
   collection observation and construction, keyed association, combination, and
   function-law capabilities.
 - Possible compiler-generated tests, symbolic proof tables, capability-law
@@ -169,7 +169,7 @@ The following questions from the initial audit are no longer open:
   duplicates, missing mandatory fields, and static dependency cycles are
   errors. Collection does not move ordinary `use` visibility or overload source
   order. Conventional formatter ordering is not a language restriction.
-- [Resource complexity guarantees](performance.md) are distinct from semantic
+- [Resource complexity guarantees](docs/performance.md) are distinct from semantic
   capabilities but compose with them as classifiers. `OExec ( E )` and
   `OAlloc ( E )` express argument-dependent asymptotic upper bounds on abstract
   work and total dynamic allocation. `NoAlloc` separately promises exactly no
@@ -293,7 +293,7 @@ operation to propagate the error.
 ## Capability vocabulary and matching
 
 Capability claim ownership and coherence are settled. The
-[initial capability vocabulary](capabilities.md) selects the fundamental
+[initial capability vocabulary](docs/capabilities.md) selects the fundamental
 comparison, collection, and function-law names. Libraries express formatting,
 parsing, checked construction, and similar behavior with ordinary functions,
 interfaces, and combinations of capabilities already supplied by the selected
@@ -453,7 +453,7 @@ linkage metadata, and all related surface syntax are deliberately unspecified.
 ## Resource complexity
 
 The initial resource complexity model is settled in
-[resource complexity guarantees](performance.md). Core collection names still
+[resource complexity guarantees](docs/performance.md). Core collection names still
 do not imply a representation or complexity class. Semantic capabilities such
 as `Indexed` may be combined with applicable performance evidence to name
 stronger classifiers such as `RandomAccess`, while callers may forget that
