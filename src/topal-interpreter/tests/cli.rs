@@ -1,6 +1,6 @@
 //! Functional conformance tests for TOPAL-SYN-SOURCE-001,
-//! TOPAL-SYN-NUM-001, TOPAL-SYN-GRAMMAR-001, and TOPAL-INTP-MODE-001 through
-//! TOPAL-INTP-MODE-003.
+//! TOPAL-SYN-NUM-001, TOPAL-SYN-GRAMMAR-001, TOPAL-SYN-BIND-001, and
+//! TOPAL-INTP-MODE-001 through TOPAL-INTP-MODE-003.
 
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -46,7 +46,7 @@ fn interactive_mode_evaluates_each_input() {
 
 #[test]
 fn interactive_mode_recovers_after_diagnostic() {
-    let output = run(&["--interactive"], "unsupported\n2\n");
+    let output = run(&["--interactive"], "1 + 2\n2\n");
     assert!(output.status.success());
     assert_eq!(output.stdout, b"2\n");
     assert!(
@@ -54,6 +54,13 @@ fn interactive_mode_recovers_after_diagnostic() {
             .unwrap()
             .contains("E-UNSUPPORTED-SYNTAX")
     );
+}
+
+#[test]
+fn interactive_mode_preserves_bindings() {
+    let output = run(&["--interactive"], "answer is 42\nanswer\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"()\n42\n");
 }
 
 #[test]
@@ -76,4 +83,32 @@ fn unsupported_syntax_is_explicit() {
             .unwrap()
             .contains("E-UNSUPPORTED-SYNTAX")
     );
+}
+
+#[test]
+fn script_executes_bindings_in_source_order() {
+    let output = run(&[], "answer is 42\nanswer\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"42\n");
+}
+
+#[test]
+fn script_rejects_discarded_expression_values() {
+    let output = run(&[], "1\n2\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-DISCARDED-VALUE")
+    );
+}
+
+#[test]
+fn test_trace_explains_binding_decisions() {
+    let output = run(&["--test"], "answer is 42\nanswer\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"binding.created\""));
+    assert!(trace.contains("\"event\":\"binding.resolved\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-SYN-BIND-001\""));
 }
