@@ -1,12 +1,13 @@
-# Remaining fundamental design decisions
+# Fundamental design decisions
 
-The semantic foundations define generic evidence, effects, execution, structured
-tasks, scoped resources, typed error vocabularies, and foreign boundaries.
-Several choices deliberately remain open because they affect grammar,
-ergonomics, or the trusted implementation boundary rather than following
-uniquely from Topal's existing principles.
+The initial design audit is complete and has no known unresolved fundamental
+language decision. This document records the settled foundations for generic
+evidence, effects, execution, structured tasks, scoped resources, typed errors,
+and related syntax. General effect handlers, foreign integration, stronger
+automated proof, additional resource dimensions, and other explicitly identified
+extensions remain future work rather than gaps in the initial language.
 
-## Recently settled foundations
+## Settled foundations
 
 The following questions from the initial audit are no longer open:
 
@@ -253,6 +254,12 @@ The following questions from the initial audit are no longer open:
   `truncate`, `floor`, and `ceiling` name directed precision loss, while
   `saturate` alone clamps range and never also rounds. Dynamic checked failures
   distinguish `not-representable` from `out-of-range`.
+- `Approx` is the fundamental name for finite-precision approximate arithmetic;
+  `Float`, `ExtendedApprox`, and representation names such as `Binary64` do not
+  replace its semantic role. Equal-width bit operations use the ordinary
+  function spellings `left bit-and right`, `left bit-or right`,
+  `left bit-xor right`, and `bit-not value`. Binary operations are infix and
+  unary `bit-not` is prefix under the normal application rules.
 - Unit declarations use the single capitalized `MeasurementUnit` construction.
   `Dimension` creates linear dimensions, while `AffineDimension` creates point
   classifiers
