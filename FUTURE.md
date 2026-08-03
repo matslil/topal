@@ -50,7 +50,7 @@ diagnostics even when that warning is suppressed.
 ## Compiler-generated structural test tables
 
 Topal's [unit-test tables and structural path
-coverage](testing.md) could generate table rows automatically from a function:
+coverage](docs/testing.md) could generate table rows automatically from a function:
 
 - one row for every feasible decision path;
 - zero and one-or-more cases for structural repetition;
