@@ -12,10 +12,8 @@ The specification is divided into:
 - [type system](type-system.md);
 - [generic export intermediate language](generic-ir.md);
 - [native serialization protocol](serialization.md);
-- memory model (`memory-model.md`); and
-- concurrency model (`concurrency-model.md`).
-
-The unlinked entries are added by later changes in the specification series.
+- [memory model](memory-model.md); and
+- [concurrency model](concurrency-model.md).
 
 Each normative rule has a stable ID. **Shall**, **must**, and **is** are
 normative; **should** is a recommendation; **may** grants permission. Mermaid

@@ -1,7 +1,7 @@
 # Traceability
 
-This initial matrix connects system goals to core requirements. Specification,
-test, and implementation columns will be added as those artifacts are created.
+This matrix connects system goals to core requirements and formal specification
+domains. Test and implementation columns will be added with those artifacts.
 
 | Goal | Requirements |
 | --- | --- |
@@ -12,6 +12,21 @@ test, and implementation columns will be added as those artifacts are created.
 | `TOPAL-GOAL-ZEROCOST-001` | `TOPAL-REQ-DETERMINISM-001`, `TOPAL-REQ-RESOURCE-001` |
 | `TOPAL-GOAL-PRECISE-001` | `TOPAL-REQ-GENERIC-001`, `TOPAL-REQ-SERIAL-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001` |
 | `TOPAL-GOAL-EVOLVE-001` | `TOPAL-REQ-TRACE-001`, `TOPAL-REQ-TOOLS-001` |
+
+| Requirement | Governing specification rules |
+| --- | --- |
+| `TOPAL-REQ-MODEL-001` | `TOPAL-TYPE-KIND-001` through `TOPAL-TYPE-MATCH-001` |
+| `TOPAL-REQ-SAFE-001` | `TOPAL-TYPE-SOUND-001`, `TOPAL-MEM-LOCATION-001`, `TOPAL-MEM-PLAIN-001`, `TOPAL-CONC-RACE-001` |
+| `TOPAL-REQ-TOTAL-001` | `TOPAL-TYPE-TOTAL-001`, `TOPAL-CONC-PROGRESS-001` |
+| `TOPAL-REQ-CONC-001` | `TOPAL-CONC-DEADLOCK-001`, `TOPAL-CONC-RACE-001` |
+| `TOPAL-REQ-DETERMINISM-001` | `TOPAL-MEM-OPT-001`, `TOPAL-CONC-DETERMINISM-001` |
+| `TOPAL-REQ-EFFECT-001` | `TOPAL-GIR-EFFECT-001`, `TOPAL-MEM-HARDWARE-001`, `TOPAL-CONC-ORDER-001` |
+| `TOPAL-REQ-RESOURCE-001` | `TOPAL-MEM-LOCATION-001` through `TOPAL-MEM-LIFETIME-001` |
+| `TOPAL-REQ-GENERIC-001` | `TOPAL-GIR-PURPOSE-001` through `TOPAL-GIR-COMPAT-001` |
+| `TOPAL-REQ-SERIAL-001` | `TOPAL-SER-SCOPE-001` through `TOPAL-SER-CANON-001` |
+| `TOPAL-REQ-TOOLS-001` | `TOPAL-SYN-SOURCE-001` through `TOPAL-SYN-DIAG-001`, `TOPAL-GIR-VALID-001` |
+| `TOPAL-REQ-INTEROP-001` | `TOPAL-TYPE-SOUND-001`, `TOPAL-MEM-OPT-001`, `TOPAL-CONC-DETERMINISM-001` |
+| `TOPAL-REQ-TRACE-001` | all stable `TOPAL-*` specification rules |
 
 ## Maintenance rules
 
