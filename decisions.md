@@ -239,6 +239,22 @@ classification, prefix application, and the zero-to-two operand rule remain
 unambiguous. Function headers already bind generic type components through
 static matching rather than through a separate generic-parameter list.
 
+## String literals and formatting
+
+String literal delimiters contain exactly one quote and may surround it with a
+matching non-quote tag. Formatting is a total `String` operation: statically
+provable template mistakes are errors, while unresolved dynamic placeholders
+are preserved verbatim. Doubled braces produce literal braces.
+
+Placeholder options form one flat, lower-case, record-like field list. Built-in
+fields cover width, alignment, truncation, numeric base and presentation, and
+the spelling of structural names; value-changing operations such as rounding
+remain explicit conversions. A placeholder may select an ordinary custom
+formatter whose closed parameter record supplies types and defaults. It returns
+fallback text plus an optional `formatting-failed` error. Total `format` uses
+the text, while the same contract leaves room for a future strict operation to
+expose the error.
+
 ## Capability vocabulary and matching
 
 Capability claim ownership and coherence are settled. The

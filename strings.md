@@ -350,16 +350,22 @@ described in [the range model](ranges.md).
 
 ## Formatting
 
-Formatting transforms a `String` template and an explicit map of formattable
+Formatting transforms a `String` template and an explicit labeled product of
 values into another `String`:
 
 ```text
 template format values -> String
 ```
 
-It is not an encoding and does not capture bindings implicitly. The surface
-syntax, placeholder rules, and examples are described in
-[the syntax sketch](syntax.md#string-formatting).
+It is total: statically visible mistakes are compiler errors, while a dynamic
+placeholder that cannot be resolved is preserved verbatim. It is not an
+encoding and does not capture bindings implicitly. Formatting fields use a
+flat, record-like syntax and may select a type-checked custom formatter.
+Custom formatters return `Formatted`, containing both fallback text and an
+optional `formatting-failed : FormatErrorCode` error. `format` uses the fallback
+text; the optional error exists so a future strict operation can reuse the same
+formatter. The complete surface syntax, delimiter rules, fields, and examples
+are described in [the syntax sketch](syntax.md#string-formatting).
 
 ## Equality and human-language comparison
 
