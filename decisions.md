@@ -100,12 +100,15 @@ The following questions from the initial audit are no longer open:
 - Possible compiler-generated tests, symbolic proof tables, capability-law
   verification, and task/protocol proofs are recorded as
   [future work](FUTURE.md), not current language guarantees.
-- `Result` has two explicit components:
-  `Result ( Value, ErrorVocabularies )`. The second is one `ErrorCode` type, a
-  product of them, or `()`. Products are flattened, deduplicated by nominal
-  identity, and order-independent. No specially named error type is resolved
-  from the surrounding scope. Visible generic bodies retain the complete
-  vocabulary component symbolically in typed intermediate code.
+- `Result` has two explicit components: `Result ( Value, Codes )`. A runtime
+  failure is always an `Error`; the second declaration component restricts its
+  `code` field rather than replacing that value. `Codes` is one `ErrorCode`
+  type, several combined with `and`, or `()`. Combinations are flattened,
+  deduplicated by nominal identity, and order-independent. `Error.domain`
+  remains compiler-supplied runtime information. No specially named error type
+  is resolved from the surrounding scope. Visible generic bodies bind a
+  symbolic component explicitly as `Codes : ErrorCode` and retain it in typed
+  intermediate code.
 - Composing several `Result` values always merges their error vocabularies. An
   anonymous composition permits at most one value-producing success; `Unit`
   and completion-only successes contribute no payload. When every
@@ -182,7 +185,7 @@ The following questions from the initial audit are no longer open:
   `Function`. Its sole classified parameter identifies the complete owned type
   and is a terminal, non-escaping borrow. Each complete owned type has at most
   one explicit owner-scoped destructor. Its result is `Unit` or
-  `Result ( Unit, ErrorVocabulary )`; explicit cleanup is always followed by
+  `Result ( Unit, Codes )`; explicit cleanup is always followed by
   reverse-order component destruction and storage release, even on failure.
 - Sensitive provenance uses the classifier `Sensitive T`. Directly represented
   information retains it, while the separate hard guarantee
@@ -232,7 +235,8 @@ The grammar must select compatible spellings for:
 
 - type-construction patterns beyond homogeneous `Container Value`, including
   constructions such as `Map ( Key, Value )`;
-- otherwise uninferable public error-vocabulary parameters and bounds.
+- otherwise uninferable public error-code bounds which cannot be recovered by
+  `Result` construction matching.
 
 These should be designed together so that indentation, recursive
 classification, prefix application, and the zero-to-two operand rule remain

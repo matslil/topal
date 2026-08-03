@@ -468,7 +468,7 @@ unassigned patterns are invalid. Payload placement defaults to `AfterTag`.
 alternative supplies its payload layout; a `Unit` alternative occupies no
 payload. Total size covers the tag and largest alternative.
 
-`Optional T` and `Result ( T, ErrorCodes )` use this same sum schema; they do
+`Optional T` and `Result ( T, Codes )` use this same sum schema; they do
 not introduce private tag fields. Their alternatives and payload layouts are
 selected in the ordinary `tags` map.
 

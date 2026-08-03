@@ -229,7 +229,7 @@ from value flow and effect declarations. When neither exact aliasing nor
 independence can be established, the generic contract preserves `MayAlias`.
 
 Fallibility remains in `Result`, not in an effect row. A callback returning
-`Result ( B, Errors )` gives `map` a fallible value transformation, while a
+`Result ( B, Codes )` gives `map` a fallible value transformation, while a
 callback which performs I/O but cannot report failure has an effect without a
 `Result`. Neither property silently implies the other.
 
