@@ -60,3 +60,10 @@ The interpreter shall consume the shared source and syntax layers and evaluate
 left-associated finite `Int` addition according to `TOPAL-NUM-ADD-001` in all
 three modes. Test mode shall distinguish callable selection from exact result
 construction using stable semantic events and governing rule identities.
+
+## TOPAL-INTP-SUBSET-005 — Finite exact integer negation and subtraction
+
+The interpreter shall evaluate spaced prefix negation and binary subtraction
+according to `TOPAL-NUM-NEG-001` and `TOPAL-NUM-SUB-001`. Adjacent signed
+literals shall retain their distinct literal-construction trace path. Binary
+subtraction shall compose left-to-right with every ordinary application.

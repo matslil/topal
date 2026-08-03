@@ -37,6 +37,23 @@ independent of operand representation or evaluation tool. This realizes
 `TOPAL-REQ-SAFE-001`, `TOPAL-REQ-DETERMINISM-001`, and
 `TOPAL-REQ-INTEROP-001`.
 
+### TOPAL-NUM-NEG-001 — Finite exact integer negation
+
+For finite `a : Int`, prefix `-` selects a total, pure root overload
+`Int -> Int` and evaluates to the unique additive inverse of `a`. Its result is
+finite and cannot overflow. Adjacent `-a` numeric source is instead literal
+construction under `TOPAL-NUM-LITERAL-001`; both forms produce the same `Int`
+value but take distinct syntactic and semantic paths.
+
+### TOPAL-NUM-SUB-001 — Finite exact integer subtraction
+
+For finite `a : Int` and `b : Int`, binary `-` selects a total, pure root
+overload `(Int, Int) -> Int` and evaluates to the unique mathematical difference
+of `a` and `b`. Its result is finite, carries no arithmetic error, and is
+independent of operand representation or evaluation tool. This realizes
+`TOPAL-REQ-SAFE-001`, `TOPAL-REQ-DETERMINISM-001`, and
+`TOPAL-REQ-INTEROP-001`.
+
 Other numeric domains and the remaining fixed callable names are outside this
 initial formal numeric subset until later rules define their applicable
 overloads. Their tokens remain reserved, and a conforming partial tool shall
@@ -44,7 +61,8 @@ reject unsupported applications explicitly rather than infer behavior.
 
 ## Explanatory notes
 
-The initial subset deliberately establishes one complete arithmetic path before
-formalizing subtraction, multiplication, exact division, exponentiation, or
-infinite operands. Left association is fixed by `TOPAL-SYN-GRAMMAR-001`; for
-example, `1 + 2 + 3` selects the finite `Int` addition overload twice.
+The initial subset establishes arithmetic paths incrementally before
+formalizing multiplication, exact division, exponentiation, or infinite
+operands. Left association is fixed by `TOPAL-SYN-GRAMMAR-001`; for example,
+`10 - 3 - 2` selects the finite `Int` subtraction overload twice and produces
+`5`.

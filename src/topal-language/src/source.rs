@@ -186,8 +186,26 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
-                let mut result = self.evaluate_expression(source, &items[0], trace)?;
-                let mut index = 1;
+                let (mut result, mut index) = if matches!(
+                    items.first(),
+                    Some(Expression::Callable {
+                        kind: CallableKind::Minus,
+                        ..
+                    })
+                ) {
+                    let Some(operand) = items.get(1) else {
+                        return Err(diagnostic(
+                            source,
+                            "E-EXPECTED-OPERAND",
+                            *span,
+                            "expected an operand after prefix -",
+                        ));
+                    };
+                    let operand = self.evaluate_expression(source, operand, trace)?;
+                    (apply_negate(source, operand, *span, trace)?, 2)
+                } else {
+                    (self.evaluate_expression(source, &items[0], trace)?, 1)
+                };
                 while index < items.len() {
                     let Expression::Callable {
                         kind,
@@ -227,33 +245,75 @@ fn apply_binary(
     span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
-    let CallableKind::Plus = kind else {
-        return Err(diagnostic(
-            source,
-            "E-UNSUPPORTED-SYNTAX",
-            span,
-            "this fixed callable has no implemented overload yet",
-        ));
-    };
     let (Value::Int(left), Value::Int(right)) = (left, right) else {
         return Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",
             span,
-            "+ requires two Int operands in the implemented subset",
+            "the fixed callable requires two Int operands in the implemented subset",
+        ));
+    };
+    match kind {
+        CallableKind::Plus => {
+            trace.record(TraceEvent {
+                event: "operator.selected",
+                rule: "TOPAL-TYPE-CALL-001",
+                detail: "root.+(Int,Int)",
+            });
+            trace.record(TraceEvent {
+                event: "evaluation.add",
+                rule: "TOPAL-NUM-ADD-001",
+                detail: "Int",
+            });
+            Ok(Value::Int(left + right))
+        }
+        CallableKind::Minus => {
+            trace.record(TraceEvent {
+                event: "operator.selected",
+                rule: "TOPAL-TYPE-CALL-001",
+                detail: "root.-(Int,Int)",
+            });
+            trace.record(TraceEvent {
+                event: "evaluation.subtract",
+                rule: "TOPAL-NUM-SUB-001",
+                detail: "Int",
+            });
+            Ok(Value::Int(left - right))
+        }
+        _ => Err(diagnostic(
+            source,
+            "E-UNSUPPORTED-SYNTAX",
+            span,
+            "this fixed callable has no implemented overload yet",
+        )),
+    }
+}
+
+fn apply_negate(
+    source: &SourceText,
+    operand: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::Int(operand) = operand else {
+        return Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            span,
+            "prefix - requires one Int operand",
         ));
     };
     trace.record(TraceEvent {
         event: "operator.selected",
         rule: "TOPAL-TYPE-CALL-001",
-        detail: "root.+(Int,Int)",
+        detail: "root.-(Int)",
     });
     trace.record(TraceEvent {
-        event: "evaluation.add",
-        rule: "TOPAL-NUM-ADD-001",
+        event: "evaluation.negate",
+        rule: "TOPAL-NUM-NEG-001",
         detail: "Int",
     });
-    Ok(Value::Int(left + right))
+    Ok(Value::Int(-operand))
 }
 
 fn diagnostic(
@@ -364,6 +424,13 @@ mod tests {
     #[test]
     fn follows_left_association() {
         assert_eq!(evaluate("1 + 2 + 3").unwrap().to_string(), "6");
+    }
+
+    #[test]
+    fn negates_and_subtracts_exact_integers() {
+        assert_eq!(evaluate("- 42").unwrap().to_string(), "-42");
+        assert_eq!(evaluate("10 - 3 - 2").unwrap().to_string(), "5");
+        assert_eq!(evaluate("10 - -2").unwrap().to_string(), "12");
     }
 
     #[test]
