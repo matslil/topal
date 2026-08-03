@@ -1294,6 +1294,17 @@ increment is fn static ( input : Integer ) -> Integer
   input + 1
 ```
 
+Publication is separate from the function type and uniformly prefixes a named
+declaration. A public static function therefore uses:
+
+```topal
+pub increment is fn static ( input : Integer ) -> Integer
+  input + 1
+```
+
+`pub` never occurs after `fn`, and `static` never moves before the binding name.
+Topal has no reorderable list combining these words.
+
 A static function may call only other static functions, may not depend on
 runtime-only state or observable effects, and must have provably bounded
 execution. Bounded execution means that the compiler can prove termination for
