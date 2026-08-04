@@ -324,6 +324,47 @@ impl Session {
                     (self.evaluate_expression(source, &items[0], trace)?, 1)
                 };
                 while index < items.len() {
+                    if let Expression::Identifier(callable_span) = &items[index]
+                        && source.slice(*callable_span) == "concatenate"
+                        && let Value::String(left) = &result
+                    {
+                        let Some(right) = items.get(index + 1) else {
+                            return Err(diagnostic(
+                                source,
+                                "E-EXPECTED-OPERAND",
+                                Span::new(callable_span.end, callable_span.end),
+                                "expected a String after concatenate",
+                            ));
+                        };
+                        let right_span = right.span();
+                        let right = self.evaluate_expression(source, right, trace)?;
+                        let Value::String(right) = right else {
+                            return Err(diagnostic(
+                                source,
+                                "E-NO-APPLICABLE-OVERLOAD",
+                                right_span,
+                                "concatenate requires two String operands",
+                            ));
+                        };
+                        trace.record(TraceEvent {
+                            event: "operator.selected",
+                            rule: "TOPAL-TYPE-CALL-001",
+                            detail: "root.concatenate(String,String)",
+                        });
+                        trace.record(TraceEvent {
+                            event: "evaluation.concatenate",
+                            rule: "TOPAL-STRING-CONCAT-001",
+                            detail: "String",
+                        });
+                        result = Value::String(format!("{left}{right}"));
+                        self.checkpoint(
+                            trace,
+                            Some(&result),
+                            Some(cover(items[0].span(), right_span)),
+                        );
+                        index += 2;
+                        continue;
+                    }
                     if let Expression::Identifier(label_span) = &items[index]
                         && let Value::Record(fields) = &result
                     {
@@ -1447,6 +1488,25 @@ mod tests {
             .evaluate("(name is \"Ada\") age\n", &mut std::io::sink())
             .unwrap_err();
         assert_eq!(error.code, "E-NO-SUCH-RECORD-FIELD");
+    }
+
+    #[test]
+    fn concatenates_plain_strings_without_normalizing_the_join() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("\"e\" concatenate \"\u{301}\"\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "\"e\u{301}\"");
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("TOPAL-STRING-CONCAT-001"))
+        );
+
+        let error = Session::new()
+            .evaluate("\"value\" concatenate 1\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
     }
 
     #[test]

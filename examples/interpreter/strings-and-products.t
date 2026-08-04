@@ -8,8 +8,10 @@ person is (
   active is true
 )
 person-name is person name
+greeting is "Hello, " concatenate person-name
 (
   message,
+  greeting,
   flags,
   person,
   person-name,

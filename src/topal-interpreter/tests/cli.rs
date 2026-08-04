@@ -90,6 +90,17 @@ fn test_mode_records_record_field_selection() {
 }
 
 #[test]
+fn test_mode_records_plain_string_concatenation() {
+    let output = run(&["--test"], "\"Hello, \" concatenate \"Topal\"\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"\"Hello, Topal\"\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let selection = trace.find("root.concatenate(String,String)").unwrap();
+    let evaluation = trace.find("TOPAL-STRING-CONCAT-001").unwrap();
+    assert!(selection < evaluation);
+}
+
+#[test]
 fn version_exposes_the_language_context_unicode_version() {
     let output = run(&["--version"], "");
     assert!(output.status.success());
