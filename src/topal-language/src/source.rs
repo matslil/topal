@@ -169,6 +169,14 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         match expression {
+            Expression::Unit(_) => {
+                trace.record(TraceEvent {
+                    event: "product.unit",
+                    rule: "TOPAL-TYPE-PRODUCT-001",
+                    detail: "Tuple()",
+                });
+                Ok(Value::Unit)
+            }
             Expression::Integer(span) => evaluate_integer_literal(source, *span, trace),
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
             Expression::String(span) => evaluate_string_literal(source, *span, trace),

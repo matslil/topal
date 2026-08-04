@@ -61,3 +61,4 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-INTP-SUBSET-012` | `TOPAL-TYPE-CONVERT-001`, `TOPAL-NUM-INT-RATIONAL-CONVERT-001`, `TOPAL-TYPE-CALL-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-SUBSET-013` | `TOPAL-SYN-STRING-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-source`, `topal-syntax`, `topal-language` |
 | `TOPAL-INTP-SUBSET-014` | `TOPAL-SYN-UNICODE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-STRING-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-source` and `topal-syntax` | `topal-source`, `topal-syntax`, `topal-language`, `topal-interpreter` |
+| `TOPAL-INTP-SUBSET-015` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-PRODUCT-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-syntax` | `topal-syntax`, `topal-language`, `topal-interpreter` |

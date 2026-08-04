@@ -35,6 +35,8 @@ Visibility may hide structure but never changes identity.
 ### TOPAL-TYPE-PRODUCT-001 — Products, records, sums, and enums
 
 `Tuple(T₁…Tₙ)` classifies ordered values `(v₁…vₙ)` exactly when each `vᵢ:Tᵢ`.
+The zero-field product `Tuple()` is `Unit` and classifies exactly the single
+value `()`.
 `Record{lᵢ:Tᵢ}` classifies a value containing each label exactly once. Label
 order is declaration order and does not affect label lookup. A closed record
 admits no additional field; an open record pattern may observe additional

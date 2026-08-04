@@ -81,6 +81,25 @@ fn script_mode_is_default() {
 }
 
 #[test]
+fn every_mode_evaluates_the_unit_product() {
+    let script = run(&[], "()\n");
+    assert!(script.status.success());
+    assert_eq!(script.stdout, b"()\n");
+
+    let interactive = run(&["--interactive"], "()\n");
+    assert!(interactive.status.success());
+    assert_eq!(interactive.stdout, b"()\n");
+
+    let test = run(&["--test"], "()\n");
+    assert!(test.status.success());
+    assert_eq!(test.stdout, b"()\n");
+    let trace = String::from_utf8(test.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"product.unit\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-TYPE-PRODUCT-001\""));
+    assert!(trace.contains("\"detail\":\"Tuple()\""));
+}
+
+#[test]
 fn script_mode_ignores_hashbang_launcher_line() {
     let output = run(&[], "#!/usr/bin/env topal\n42\n");
     assert!(output.status.success());
