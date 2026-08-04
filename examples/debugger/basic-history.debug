@@ -6,4 +6,8 @@ bindings
 history
 step
 print
+source-step
+where
+source-step
+reverse-source-step
 quit

@@ -126,7 +126,7 @@ impl Session {
         input: &str,
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
-        self.checkpoint(trace, None);
+        self.checkpoint(trace, None, None);
         trace.record(TraceEvent {
             event: "context.selected",
             rule: "TOPAL-SYN-UNICODE-001",
@@ -167,6 +167,7 @@ impl Session {
         }
 
         let mut result = None;
+        let mut result_span = None;
         for (index, statement) in parsed.statements.iter().enumerate() {
             match statement {
                 Statement::Binding { name, value } => {
@@ -187,7 +188,8 @@ impl Session {
                         detail: name_text,
                     });
                     result = Some(Value::Unit);
-                    self.checkpoint(trace, result.as_ref());
+                    result_span = Some(cover(*name, value.span()));
+                    self.checkpoint(trace, result.as_ref(), result_span);
                 }
                 Statement::Expression(expression) => {
                     if index + 1 != parsed.statements.len() {
@@ -199,6 +201,7 @@ impl Session {
                         ));
                     }
                     result = Some(self.evaluate_expression(&source, expression, trace)?);
+                    result_span = Some(expression.span());
                 }
             }
         }
@@ -223,14 +226,15 @@ impl Session {
                 Value::Unit => "Unit",
             },
         });
-        self.checkpoint(trace, Some(&value));
+        self.checkpoint(trace, Some(&value), result_span);
         Ok(value)
     }
 
-    fn checkpoint(&self, trace: &mut impl TraceSink, value: Option<&Value>) {
+    fn checkpoint(&self, trace: &mut impl TraceSink, value: Option<&Value>, span: Option<Span>) {
         trace.checkpoint(ExecutionSnapshot {
             bindings: &self.bindings,
             value,
+            span,
         });
     }
 
@@ -337,6 +341,13 @@ impl Session {
                 Ok(result)
             }
         }
+    }
+}
+
+const fn cover(first: Span, second: Span) -> Span {
+    Span {
+        start: first.start,
+        end: second.end,
     }
 }
 

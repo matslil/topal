@@ -28,14 +28,19 @@ fn run() -> Result<(), String> {
     println!("loaded {} transitions", history.transitions().len());
     if let Some(commands) = arguments.commands {
         if commands == "-" {
-            command_loop(io::stdin().lock(), &mut history)
+            command_loop(io::stdin().lock(), &mut history, &source, &arguments.source)
         } else {
             let file = fs::File::open(&commands)
                 .map_err(|error| format!("cannot read command script {commands}: {error}"))?;
-            command_loop(BufReader::new(file), &mut history)
+            command_loop(
+                BufReader::new(file),
+                &mut history,
+                &source,
+                &arguments.source,
+            )
         }
     } else {
-        command_loop(io::stdin().lock(), &mut history)
+        command_loop(io::stdin().lock(), &mut history, &source, &arguments.source)
     }
 }
 
@@ -67,7 +72,12 @@ fn parse_arguments(mut arguments: impl Iterator<Item = String>) -> Result<Argume
     Ok(Arguments { source, commands })
 }
 
-fn command_loop(input: impl Read, history: &mut ExecutionHistory) -> Result<(), String> {
+fn command_loop(
+    input: impl Read,
+    history: &mut ExecutionHistory,
+    source: &str,
+    source_name: &str,
+) -> Result<(), String> {
     let lines = BufReader::new(input).lines();
     for line in lines {
         let command = line.map_err(|error| error.to_string())?;
@@ -88,6 +98,15 @@ fn command_loop(input: impl Read, history: &mut ExecutionHistory) -> Result<(), 
                 }
             }
             "history" => print_history(history),
+            "source-step" | "ss" => match history.step_source_forward() {
+                Some(_) => print_source_location(history, source, source_name),
+                None => println!("end of source execution"),
+            },
+            "reverse-source-step" | "rss" => match history.step_source_backward() {
+                Some(_) => print_source_location(history, source, source_name),
+                None => println!("start of source execution"),
+            },
+            "where" | "w" => print_source_location(history, source, source_name),
             "print" | "p" => match history.state().and_then(|state| state.value.as_ref()) {
                 Some(value) => println!("{value}"),
                 None => println!("no value at current execution state"),
@@ -100,7 +119,9 @@ fn command_loop(input: impl Read, history: &mut ExecutionHistory) -> Result<(), 
                 }
             }
             "help" | "h" => {
-                println!("step | reverse-step | history | print | bindings | quit");
+                println!(
+                    "step | reverse-step | source-step | reverse-source-step | where | history | print | bindings | quit"
+                );
             }
             "quit" | "q" => return Ok(()),
             "" => {}
@@ -109,6 +130,29 @@ fn command_loop(input: impl Read, history: &mut ExecutionHistory) -> Result<(), 
         io::stdout().flush().map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+fn print_source_location(history: &ExecutionHistory, source: &str, source_name: &str) {
+    let Some(range) = history.state().and_then(|state| state.source_range) else {
+        println!("before first source statement");
+        return;
+    };
+    let (line, column) = line_column(source, range.start);
+    let source_line = source.lines().nth(line.saturating_sub(1)).unwrap_or("");
+    println!("{source_name}:{line}:{column}");
+    println!("{source_line}");
+    println!(
+        "{}{}",
+        " ".repeat(column.saturating_sub(1)),
+        "^".repeat(range.end.saturating_sub(range.start).max(1))
+    );
+}
+
+fn line_column(source: &str, offset: usize) -> (usize, usize) {
+    let prefix = &source[..offset.min(source.len())];
+    let line = prefix.bytes().filter(|byte| *byte == b'\n').count() + 1;
+    let column = prefix.rsplit('\n').next().unwrap_or("").chars().count() + 1;
+    (line, column)
 }
 
 fn print_transition(transition: &ExecutionTransition) {
