@@ -12,6 +12,7 @@ use crate::{TraceEvent, TraceSink};
 pub enum Value {
     Int(BigInt),
     Rational(BigRational),
+    String(String),
     Unit,
 }
 
@@ -27,6 +28,7 @@ impl fmt::Display for Value {
                     value.denom()
                 )
             }
+            Self::String(value) => formatter.write_str(&display_string(value)),
             Self::Unit => formatter.write_str("()"),
         }
     }
@@ -148,6 +150,7 @@ impl Session {
             detail: match &value {
                 Value::Int(_) => "Int",
                 Value::Rational(_) => "Rational",
+                Value::String(_) => "String",
                 Value::Unit => "Unit",
             },
         });
@@ -163,6 +166,7 @@ impl Session {
         match expression {
             Expression::Integer(span) => evaluate_integer_literal(source, *span, trace),
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
+            Expression::String(span) => evaluate_string_literal(source, *span, trace),
             Expression::Identifier(span) => {
                 let name = source.slice(*span);
                 let value = self.bindings.get(name).cloned().ok_or_else(|| {
@@ -270,6 +274,46 @@ fn evaluate_rational_literal(
         detail: text,
     });
     Ok(Value::Rational(value))
+}
+
+fn evaluate_string_literal(
+    source: &SourceText,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let lexeme = source.slice(span);
+    let value = parse_string(lexeme).ok_or_else(|| {
+        diagnostic(
+            source,
+            "E-STRING-LITERAL",
+            span,
+            "invalid string literal delimiter",
+        )
+    })?;
+    trace.record(TraceEvent {
+        event: "token.string",
+        rule: "TOPAL-SYN-STRING-001",
+        detail: lexeme,
+    });
+    Ok(Value::String(value.to_owned()))
+}
+
+fn parse_string(lexeme: &str) -> Option<&str> {
+    let opening = lexeme.find('"')?;
+    let closing_length = opening + 1;
+    (lexeme.len() >= opening + 1 + closing_length)
+        .then(|| &lexeme[opening + 1..lexeme.len() - closing_length])
+}
+
+fn display_string(value: &str) -> String {
+    if !value.contains('"') {
+        return format!("\"{value}\"");
+    }
+    let mut tag = "text".to_owned();
+    while value.contains(&format!("\"{tag}")) {
+        tag.push('_');
+    }
+    format!("{tag}\"{value}\"{tag}")
 }
 
 fn apply_binary(
@@ -584,7 +628,7 @@ fn apply_negate(
             });
             Ok(Value::Rational(-operand))
         }
-        Value::Unit => Err(diagnostic(
+        Value::String(_) | Value::Unit => Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",
             span,
@@ -903,6 +947,34 @@ mod tests {
         assert_eq!(
             evaluate("1.0 / 0.0").unwrap_err().code,
             "E-DIVISION-BY-ZERO"
+        );
+    }
+
+    #[test]
+    fn preserves_ordinary_and_tagged_string_contents() {
+        assert_eq!(
+            evaluate(r#""plain\n{value}""#).unwrap().to_string(),
+            r#""plain\n{value}""#
+        );
+        assert_eq!(
+            evaluate(r#"text"He said "hello"."text"#)
+                .unwrap()
+                .to_string(),
+            r#"text"He said "hello"."text"#
+        );
+        assert_eq!(
+            evaluate("\"first\nsecond\"").unwrap().to_string(),
+            "\"first\nsecond\""
+        );
+    }
+
+    #[test]
+    fn display_extends_colliding_string_tag() {
+        assert_eq!(
+            evaluate(r#"tag"contains "text closing"tag"#)
+                .unwrap()
+                .to_string(),
+            r#"text_"contains "text closing"text_"#
         );
     }
 

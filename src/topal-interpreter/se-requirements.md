@@ -122,3 +122,12 @@ arithmetic overload applicable. It shall not synthesize mixed overloads, apply
 the conversion to the `Int ^ Nat` exponent position, or perform the reverse
 conversion without evidence. Test traces shall record each conversion before
 overload selection.
+
+## TOPAL-INTP-SUBSET-013 — Literal-preserving strings
+
+The interpreter shall construct ordinary and exactly tagged string literals
+according to `TOPAL-SYN-STRING-001`, preserving Unicode contents, newlines,
+backslashes, and braces without escapes or interpolation. Display shall emit a
+deterministic valid source-like literal, selecting and extending the tag `text`
+when the value contains quotes. Unterminated input shall remain available to
+shared syntax consumers and be rejected for execution.
