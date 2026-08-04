@@ -61,3 +61,12 @@ Each implemented debugger capability increment shall add or extend a runnable
 Topal source example and an automated debugger scenario exercising that
 capability. Language-feature increments shall continue to update LSP coverage
 and interpreter examples under their existing requirements.
+
+## TOPAL-DEBUG-MODE-001 — Scripted command mode
+
+`--script COMMANDS FILE` shall debug `FILE` by reading debugger commands from
+the named command file, or from standard input when `COMMANDS` is `-`. Script
+mode shall not emit prompts and shall produce deterministic command results on
+standard output and actionable diagnostics on standard error with a nonzero
+status. The debugger functional suite shall exercise debugger behavior through
+this mode so the tested interface is also available to users and other tools.
