@@ -141,3 +141,10 @@ without normalizing source spellings, preserve string contents, and expose the
 language-context Unicode version through deterministic version output and test
 trace context selection. A dependency with different Unicode tables shall fail
 the build rather than silently change source acceptance.
+
+## TOPAL-INTP-SUBSET-015 — Unit product
+
+All interpreter modes shall parse and evaluate the zero-field product `()` as
+the sole `Unit` value according to `TOPAL-SYN-GRAMMAR-001` and
+`TOPAL-TYPE-PRODUCT-001`. Test mode shall identify construction of `Tuple()` in
+a stable decision event.

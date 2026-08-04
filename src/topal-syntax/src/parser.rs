@@ -4,6 +4,7 @@ use crate::{Lexed, SyntaxDiagnostic, Token, TokenKind};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expression {
+    Unit(Span),
     Integer(Span),
     Rational(Span),
     String(Span),
@@ -25,7 +26,8 @@ impl Expression {
     #[must_use]
     pub const fn span(&self) -> Span {
         match self {
-            Self::Integer(span)
+            Self::Unit(span)
+            | Self::Integer(span)
             | Self::Rational(span)
             | Self::String(span)
             | Self::Identifier(span)
@@ -163,6 +165,18 @@ impl Parser<'_> {
                 span: token.span,
             }),
             TokenKind::LeftParen => {
+                if self
+                    .peek_nontrivia()
+                    .is_some_and(|value| value.kind == TokenKind::RightParen)
+                {
+                    let closing = self
+                        .take_nontrivia()
+                        .expect("peeked closing parenthesis remains available");
+                    return Some(Expression::Unit(Span::new(
+                        token.span.start,
+                        closing.span.end,
+                    )));
+                }
                 let expression = self.expression();
                 let closing = self.take_nontrivia();
                 if !closing.is_some_and(|value| value.kind == TokenKind::RightParen) {
@@ -273,6 +287,17 @@ mod tests {
             }
         ));
         assert!(parsed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn parses_the_zero_field_product_as_unit() {
+        let source = SourceText::new("()").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty());
+        assert_eq!(
+            parsed.statements,
+            vec![Statement::Expression(Expression::Unit(Span::new(0, 2)))]
+        );
     }
 
     #[test]
