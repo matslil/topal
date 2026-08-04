@@ -207,3 +207,12 @@ shall use and trace canonical exact conversion before overload selection. Test
 mode shall record the three-way comparison decision independently from the
 derived Boolean predicate result. Other value domains shall report no
 applicable overload.
+
+## TOPAL-INTP-SUBSET-022 — Lexicographic tuple ordering
+
+All interpreter modes shall derive lexicographic ordering for equal-arity
+positional products whose corresponding fields provide implemented
+`TotalOrder`, according to `TOPAL-TYPE-ORDERING-001`. Comparison shall stop at
+the first non-equal field, apply canonical numeric field conversions when
+needed, reject different arities or unsupported fields, and trace the resulting
+tuple-ordering decision separately from numeric comparison.

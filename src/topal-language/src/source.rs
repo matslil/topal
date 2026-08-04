@@ -487,25 +487,14 @@ fn apply_comparison(
     span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
-    let ordering = match (left, right) {
-        (Value::Int(left), Value::Int(right)) => left.cmp(&right),
-        (Value::Rational(left), Value::Rational(right)) => left.cmp(&right),
-        (Value::Int(left), Value::Rational(right)) => {
-            trace_conversion(trace, "Int->Rational:left");
-            BigRational::from_integer(left).cmp(&right)
-        }
-        (Value::Rational(left), Value::Int(right)) => {
-            trace_conversion(trace, "Int->Rational:right");
-            left.cmp(&BigRational::from_integer(right))
-        }
-        _ => {
-            return Err(diagnostic(
-                source,
-                "E-NO-APPLICABLE-OVERLOAD",
-                span,
-                "exact ordering requires Int or Rational operands",
-            ));
-        }
+    let tuple = matches!((&left, &right), (Value::Tuple(_), Value::Tuple(_)));
+    let Some(ordering) = values_compare(left, right, trace) else {
+        return Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            span,
+            "ordering requires operands with shared TotalOrder evidence",
+        ));
     };
     let (callable, result) = match kind {
         CallableKind::Less => ("root.<(TotalOrder,TotalOrder)", ordering == Ordering::Less),
@@ -529,7 +518,11 @@ fn apply_comparison(
     });
     trace.record(TraceEvent {
         event: "comparison.result",
-        rule: "TOPAL-NUM-COMPARE-001",
+        rule: if tuple {
+            "TOPAL-TYPE-ORDERING-001"
+        } else {
+            "TOPAL-NUM-COMPARE-001"
+        },
         detail: match ordering {
             Ordering::Less => "Less",
             Ordering::Equal => "Equal",
@@ -537,6 +530,31 @@ fn apply_comparison(
         },
     });
     Ok(Value::Boolean(result))
+}
+
+fn values_compare(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<Ordering> {
+    match (left, right) {
+        (Value::Int(left), Value::Int(right)) => Some(left.cmp(&right)),
+        (Value::Rational(left), Value::Rational(right)) => Some(left.cmp(&right)),
+        (Value::Int(left), Value::Rational(right)) => {
+            trace_conversion(trace, "Int->Rational:left");
+            Some(BigRational::from_integer(left).cmp(&right))
+        }
+        (Value::Rational(left), Value::Int(right)) => {
+            trace_conversion(trace, "Int->Rational:right");
+            Some(left.cmp(&BigRational::from_integer(right)))
+        }
+        (Value::Tuple(left), Value::Tuple(right)) if left.len() == right.len() => {
+            for (left, right) in left.into_iter().zip(right) {
+                let ordering = values_compare(left, right, trace)?;
+                if ordering != Ordering::Equal {
+                    return Some(ordering);
+                }
+            }
+            Some(Ordering::Equal)
+        }
+        _ => None,
+    }
 }
 
 fn apply_equality(

@@ -233,6 +233,48 @@ fn exact_ordering_rejects_values_without_total_order() {
 }
 
 #[test]
+fn every_mode_derives_lexicographic_tuple_ordering() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "(1, (2, 3)) < (1.0, (2, 4))\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"true\n");
+    }
+
+    let output = run(&[], "(2, true) > (1, false)\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"true\n");
+}
+
+#[test]
+fn tuple_ordering_requires_comparable_fields_until_decided() {
+    let unsupported_field = run(&[], "(1, true) < (1, false)\n");
+    assert!(!unsupported_field.status.success());
+    assert!(
+        String::from_utf8(unsupported_field.stderr)
+            .unwrap()
+            .contains("E-NO-APPLICABLE-OVERLOAD")
+    );
+
+    let different_arity = run(&[], "(1,) < (1, 2)\n");
+    assert!(!different_arity.status.success());
+    assert!(
+        String::from_utf8(different_arity.stderr)
+            .unwrap()
+            .contains("E-NO-APPLICABLE-OVERLOAD")
+    );
+}
+
+#[test]
+fn tuple_ordering_trace_names_the_derived_rule() {
+    let output = run(&["--test"], "(1, 2) >= (1, 2)\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"comparison.result\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-TYPE-ORDERING-001\""));
+    assert!(trace.contains("\"detail\":\"Equal\""));
+}
+
+#[test]
 fn every_mode_evaluates_the_unit_product() {
     let script = run(&[], "()\n");
     assert!(script.status.success());
