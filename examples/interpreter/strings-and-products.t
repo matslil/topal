@@ -1,10 +1,15 @@
 #!/usr/bin/env topal
-# Demonstrates literal-preserving tagged strings and positional products.
+# Demonstrates tagged strings plus positional and fully labeled products.
 message is text"Topal strings preserve "quotes",
 newlines, and {braces}."text
 flags is (true, false)
+person is (
+  name is "Ada",
+  active is true
+)
 (
   message,
   flags,
+  person,
   (),
 )

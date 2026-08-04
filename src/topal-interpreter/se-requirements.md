@@ -232,3 +232,12 @@ All interpreter modes shall evaluate `_ is expression` according to
 by the initializer, then produce `Unit` without introducing a binding. The
 complete `_` spelling shall be reserved from identifier lookup, and test mode
 shall record the discard decision.
+
+## TOPAL-INTP-SUBSET-024 — Labeled record products
+
+All interpreter modes shall evaluate products whose fields are all labeled as
+anonymous `Record` values according to `TOPAL-SYN-GRAMMAR-001` and
+`TOPAL-TYPE-PRODUCT-001`. Labels shall be unique, field values shall evaluate
+left-to-right, display shall preserve source field order, and test mode shall
+record record construction. Products mixing labeled and positional fields
+shall remain explicitly unsupported until their classification is specified.

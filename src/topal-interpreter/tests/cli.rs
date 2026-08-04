@@ -69,6 +69,17 @@ fn test_mode_records_discard_after_its_initializer() {
 }
 
 #[test]
+fn test_mode_records_labeled_record_construction() {
+    let output = run(&["--test"], "(name is \"Ada\", active is true)\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"(name is \"Ada\", active is true)\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"product.record\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-TYPE-PRODUCT-001\""));
+    assert!(trace.contains("\"detail\":\"fields=2\""));
+}
+
+#[test]
 fn version_exposes_the_language_context_unicode_version() {
     let output = run(&["--version"], "");
     assert!(output.status.success());
