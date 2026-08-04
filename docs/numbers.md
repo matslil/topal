@@ -288,6 +288,19 @@ literals are integers rather than alternate spellings of rational values.
 Trailing fractional zeroes do not change numeric identity; formatting policy
 chooses how many digits to display.
 
+`Int` converts canonically and losslessly to `Rational` by using denominator
+one. Mixed finite exact arithmetic may consequently match an existing rational
+overload after this single implicit conversion:
+
+```topal
+1 + 0.5  # Rational ( 3, 2 )
+```
+
+There are no separate `(Int, Rational)` and `(Rational, Int)` arithmetic
+overloads. An arbitrary `Rational` does not convert implicitly to `Int`; a
+statically proven denominator of one permits lossless classification, while a
+dynamic value requires validation.
+
 `FixedPoint` represents exact finite values on a statically declared scale and
 also contains signed infinities. A finite value has an arbitrary-precision
 integer coefficient semantically, so scale does not imply overflow or a machine
