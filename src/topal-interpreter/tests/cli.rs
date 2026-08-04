@@ -47,7 +47,7 @@ fn interactive_mode_evaluates_each_input() {
 
 #[test]
 fn interactive_mode_recovers_after_diagnostic() {
-    let output = run(&["--interactive"], "1 / 2\n2\n");
+    let output = run(&["--interactive"], "1 ^ 2\n2\n");
     assert!(output.status.success());
     assert_eq!(output.stdout, b"2\n");
     assert!(
@@ -79,7 +79,7 @@ fn test_mode_emits_stable_decisions() {
 
 #[test]
 fn unsupported_syntax_is_explicit() {
-    let output = run(&[], "1 / 2\n");
+    let output = run(&[], "1 ^ 2\n");
     assert!(!output.status.success());
     assert!(
         String::from_utf8(output.stderr)
@@ -207,4 +207,42 @@ fn test_trace_explains_exact_multiplication() {
     assert!(trace.contains("\"detail\":\"root.*(Int,Int)\""));
     assert!(trace.contains("\"event\":\"evaluation.multiply\""));
     assert!(trace.contains("\"rule\":\"TOPAL-NUM-MUL-001\""));
+}
+
+#[test]
+fn all_modes_execute_exact_rational_division() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "-6 / -0x8\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"Rational ( 3, 4 )\n");
+    }
+}
+
+#[test]
+fn division_retains_rational_type_for_whole_result() {
+    let output = run(&[], "6 / 3\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"Rational ( 2, 1 )\n");
+}
+
+#[test]
+fn division_by_zero_is_rejected() {
+    let output = run(&[], "1 / 0\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-DIVISION-BY-ZERO")
+    );
+}
+
+#[test]
+fn test_trace_explains_exact_division() {
+    let output = run(&["--test"], "6 / 8\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"detail\":\"root./(Int,Int)\""));
+    assert!(trace.contains("\"event\":\"evaluation.divide\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-DIV-001\""));
+    assert!(trace.contains("\"detail\":\"Rational\""));
 }
