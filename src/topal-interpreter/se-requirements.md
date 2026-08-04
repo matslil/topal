@@ -164,3 +164,10 @@ parentheses as required by `TOPAL-SYN-INDENT-001` and
 `TOPAL-SYN-GRAMMAR-001`. Script and test modes shall evaluate multiline grouped
 and product expressions. Interactive mode shall retain incomplete parenthesized
 input and continue reading until the closing delimiter arrives.
+
+## TOPAL-INTP-SUBSET-018 — Boolean literals
+
+All interpreter modes shall evaluate reserved `true` and `false` literals as
+the two `Boolean` values according to `TOPAL-TYPE-BOOLEAN-001`. The spellings
+shall not participate in binding or name resolution, shall not convert to
+numbers, and test mode shall trace literal construction.

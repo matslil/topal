@@ -46,6 +46,13 @@ visible fields but neither captures nor reconstructs them.
 most one member for every admitted value. `Variant{Cᵢ:Tᵢ}` carries exactly one
 nominal tag and payload. An enum is a variant whose payloads are `Unit`.
 
+### TOPAL-TYPE-BOOLEAN-001 — Boolean values
+
+`Boolean` classifies exactly the two distinct values `true` and `false`. Neither
+value implicitly converts to or from a numeric value. The reserved literal
+`true` evaluates to the first value and `false` to the second without name
+resolution.
+
 ### TOPAL-TYPE-CONSTRAINT-001 — Constraints
 
 For base type `T` and total pure predicate `p:T→Boolean`, constraint `C=(T,p)`

@@ -158,7 +158,9 @@ knowledge.
 
 `Boolean` is the two-valued logical type with values `true` and `false`.
 Predicates and logical operations return `Boolean`; it does not implicitly
-coerce to or from numeric values.
+coerce to or from numeric values. The spellings `true` and `false` are reserved
+literals rather than names supplied by a prelude. They cannot be rebound or
+shadowed.
 
 `Unit` is the type with exactly one value, written `()`. It represents the
 absence of additional information, including the result of a function called

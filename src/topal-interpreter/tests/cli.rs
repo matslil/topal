@@ -81,6 +81,41 @@ fn script_mode_is_default() {
 }
 
 #[test]
+fn every_mode_evaluates_boolean_literals() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "true\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"true\n");
+    }
+
+    let output = run(&[], "false\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"false\n");
+}
+
+#[test]
+fn boolean_literal_spellings_cannot_be_rebound() {
+    let output = run(&[], "true is 1\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-RESERVED-BOOLEAN-LITERAL")
+    );
+}
+
+#[test]
+fn test_trace_explains_boolean_literal_construction() {
+    let output = run(&["--test"], "false\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"token.boolean\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-TYPE-BOOLEAN-001\""));
+    assert!(trace.contains("\"detail\":\"false\""));
+    assert!(trace.contains("\"detail\":\"Boolean\""));
+}
+
+#[test]
 fn every_mode_evaluates_the_unit_product() {
     let script = run(&[], "()\n");
     assert!(script.status.success());

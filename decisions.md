@@ -102,6 +102,9 @@ The following questions from the initial audit are no longer open:
   artifacts expose the selected Unicode version and reject unsupported
   contexts. Confusable and mixed-script checks are diagnostics, not semantic
   acceptance rules.
+- `true` and `false` are reserved Boolean literals. They are not ordinary
+  identifiers supplied by a prelude or language-context binding, and therefore
+  cannot be declared, rebound, or shadowed.
 - Programmers may declare law evidence. Soundly proved or exhaustively checked
   claims are verified; unresolved claims ordinarily become
   `trusted-unverified` evidence and emit `unverified-law` by default; refuted

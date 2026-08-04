@@ -10,6 +10,7 @@ use crate::{TraceEvent, TraceSink};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
+    Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
     String(String),
@@ -20,6 +21,7 @@ pub enum Value {
 impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Boolean(value) => value.fmt(formatter),
             Self::Int(value) => value.fmt(formatter),
             Self::Rational(value) => {
                 write!(
@@ -167,6 +169,7 @@ impl Session {
             event: "evaluation.result",
             rule: "TOPAL-SYN-GRAMMAR-001",
             detail: match &value {
+                Value::Boolean(_) => "Boolean",
                 Value::Int(_) => "Int",
                 Value::Rational(_) => "Rational",
                 Value::String(_) => "String",
@@ -184,6 +187,7 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         match expression {
+            Expression::Boolean(span) => Ok(evaluate_boolean_literal(source, *span, trace)),
             Expression::Unit(_) => {
                 trace.record(TraceEvent {
                     event: "product.unit",
@@ -277,6 +281,16 @@ impl Session {
             }
         }
     }
+}
+
+fn evaluate_boolean_literal(source: &SourceText, span: Span, trace: &mut impl TraceSink) -> Value {
+    let lexeme = source.slice(span);
+    trace.record(TraceEvent {
+        event: "token.boolean",
+        rule: "TOPAL-TYPE-BOOLEAN-001",
+        detail: lexeme,
+    });
+    Value::Boolean(lexeme == "true")
 }
 
 fn evaluate_integer_literal(
@@ -669,7 +683,7 @@ fn apply_negate(
             });
             Ok(Value::Rational(-operand))
         }
-        Value::String(_) | Value::Tuple(_) | Value::Unit => Err(diagnostic(
+        Value::Boolean(_) | Value::String(_) | Value::Tuple(_) | Value::Unit => Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",
             span,

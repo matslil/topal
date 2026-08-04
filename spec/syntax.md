@@ -35,6 +35,7 @@ identifier       ::= identifier-start identifier-continue* ;
 identifier-start ::= XID_Start | "_" ;
 identifier-continue ::= XID_Continue | "-" ;
 discard          ::= "_" ;
+boolean          ::= "true" | "false" ;
 symbol           ::= "(" | ")" | "[" | "]" | "{" | "}" | ","
                    | ":" | "." | "=" | "->" | "..."
                    | "+" | "-" | "*" | "/" | "^" ;
@@ -47,6 +48,10 @@ between identifier continuation characters; leading, trailing, and repeated
 hyphens are invalid. Keywords are recognized from an identifier token by the
 grammar position. The scanner selects the longest declared symbol. No other
 punctuation run forms a token.
+
+The complete ASCII lexemes `true` and `false` are reserved `boolean` literals,
+not identifiers. They cannot be bindings or be shadowed. A longer identifier
+which contains either spelling remains an identifier.
 
 When `-` is immediately followed by a numeric-literal body, the scanner emits
 one signed numeric literal. With intervening whitespace it emits the callable
@@ -150,7 +155,7 @@ pattern      ::= discard | identifier | literal
                | "(" [ pattern-field ( "," pattern-field )* [ "," ] ] ")" ;
 pattern-field ::= [ identifier "is" ] pattern [ ":" classifier ]
                 | "..." ;
-literal      ::= decimal-integer | based-integer | rational | signed-number
+literal      ::= boolean | decimal-integer | based-integer | rational | signed-number
                | string ;
 type-construction ::= expression "type" suite ;
 interface    ::= "interface" suite ;
