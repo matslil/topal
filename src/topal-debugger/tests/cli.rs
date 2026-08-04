@@ -25,6 +25,8 @@ fn navigates_recorded_execution_in_both_directions() {
     assert!(stdout.contains("breakpoint set at line 3"));
     assert!(stdout.contains("breakpoint set at line 4"));
     assert!(stdout.contains("breakpoint removed from line 3"));
+    assert!(stdout.contains("watchpoint set for answer"));
+    assert!(stdout.contains("watchpoint removed for answer"));
 }
 
 #[test]

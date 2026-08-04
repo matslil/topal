@@ -91,3 +91,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-DEBUG-REVERSE-001` (immutable binding checkpoints) | `TOPAL-SYN-BIND-001` and implemented value rules | unit tests in `topal-language`; `src/topal-debugger/tests/cli.rs` | `topal-language::ExecutionState`, `topal-debugger` |
 | `TOPAL-DEBUG-CONTROL-001` (source stepping) | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-SYN-BIND-001` | unit tests in `topal-language`; `src/topal-debugger/tests/cli.rs` | `topal-language::ExecutionHistory`, `topal-debugger` |
 | `TOPAL-DEBUG-CONTROL-001` (breakpoints and continue) | `TOPAL-SYN-GRAMMAR-001` | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.debug` | `topal-language::ExecutionHistory`, `topal-debugger` |
+| `TOPAL-DEBUG-CONTROL-001` (binding watchpoints) | `TOPAL-SYN-BIND-001` | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.debug` | `topal-debugger` |

@@ -81,6 +81,7 @@ fn command_loop(
 ) -> Result<(), String> {
     let lines = BufReader::new(input).lines();
     let mut breakpoints = BTreeSet::new();
+    let mut watchpoints = BTreeSet::new();
     for line in lines {
         let command = line.map_err(|error| error.to_string())?;
         match command.trim() {
@@ -110,14 +111,14 @@ fn command_loop(
             },
             "where" | "w" => print_source_location(history, source, source_name),
             "continue" | "c" => {
-                if continue_to_breakpoint(history, source, &breakpoints, false) {
+                if continue_to_stop(history, source, &breakpoints, &watchpoints, false) {
                     print_source_location(history, source, source_name);
                 } else {
                     println!("no later breakpoint");
                 }
             }
             "reverse-continue" | "rc" => {
-                if continue_to_breakpoint(history, source, &breakpoints, true) {
+                if continue_to_stop(history, source, &breakpoints, &watchpoints, true) {
                     print_source_location(history, source, source_name);
                 } else {
                     println!("no earlier breakpoint");
@@ -128,11 +129,22 @@ fn command_loop(
                     println!("{source_name}:{line}");
                 }
             }
+            "watchpoints" => {
+                for name in &watchpoints {
+                    println!("{name}");
+                }
+            }
             command if command.starts_with("break ") => {
                 update_breakpoint(command, "break ", &mut breakpoints, true);
             }
             command if command.starts_with("delete ") => {
                 update_breakpoint(command, "delete ", &mut breakpoints, false);
+            }
+            command if command.starts_with("watch ") => {
+                update_watchpoint(command, "watch ", &mut watchpoints, true);
+            }
+            command if command.starts_with("unwatch ") => {
+                update_watchpoint(command, "unwatch ", &mut watchpoints, false);
             }
             "print" | "p" => match history.state().and_then(|state| state.value.as_ref()) {
                 Some(value) => println!("{value}"),
@@ -147,7 +159,7 @@ fn command_loop(
             }
             "help" | "h" => {
                 println!(
-                    "step | reverse-step | source-step | reverse-source-step | break LINE | delete LINE | breakpoints | continue | reverse-continue | where | history | print | bindings | quit"
+                    "step | reverse-step | source-step | reverse-source-step | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | where | history | print | bindings | quit"
                 );
             }
             "quit" | "q" => return Ok(()),
@@ -157,6 +169,25 @@ fn command_loop(
         io::stdout().flush().map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+fn update_watchpoint(
+    command: &str,
+    prefix: &str,
+    watchpoints: &mut BTreeSet<String>,
+    insert: bool,
+) {
+    let name = command[prefix.len()..].trim();
+    if name.is_empty() || name.chars().any(char::is_whitespace) {
+        println!("watchpoint name must be one identifier");
+    } else if insert {
+        watchpoints.insert(name.to_owned());
+        println!("watchpoint set for {name}");
+    } else if watchpoints.remove(name) {
+        println!("watchpoint removed for {name}");
+    } else {
+        println!("no watchpoint for {name}");
+    }
 }
 
 fn update_breakpoint(command: &str, prefix: &str, breakpoints: &mut BTreeSet<usize>, insert: bool) {
@@ -176,17 +207,26 @@ fn update_breakpoint(command: &str, prefix: &str, breakpoints: &mut BTreeSet<usi
     }
 }
 
-fn continue_to_breakpoint(
+fn continue_to_stop(
     history: &mut ExecutionHistory,
     source: &str,
     breakpoints: &BTreeSet<usize>,
+    watchpoints: &BTreeSet<String>,
     reverse: bool,
 ) -> bool {
+    let current_bindings = history
+        .state()
+        .map(|state| state.bindings.clone())
+        .unwrap_or_default();
     let matches = |state: &topal_language::ExecutionState| {
-        state.source_range.is_some_and(|range| {
+        let breakpoint = state.source_range.is_some_and(|range| {
             let (line, _) = line_column(source, range.start);
             breakpoints.contains(&line)
-        })
+        });
+        let watched_change = watchpoints
+            .iter()
+            .any(|name| state.bindings.get(name) != current_bindings.get(name));
+        breakpoint || watched_change
     };
     if reverse {
         history.continue_source_backward(matches).is_some()
