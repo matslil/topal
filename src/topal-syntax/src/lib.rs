@@ -3,7 +3,7 @@
 use topal_source::{SourceText, Span, is_identifier_continue, is_identifier_start, is_nfc};
 
 mod parser;
-pub use parser::{CallableKind, Expression, ParsedSource, Statement, parse};
+pub use parser::{CallableKind, Expression, ParsedSource, ProductField, Statement, parse};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TokenKind {

@@ -16,6 +16,7 @@ pub enum Value {
     Rational(BigRational),
     String(String),
     Tuple(Vec<Self>),
+    Record(Vec<(String, Self)>),
     Unit,
 }
 
@@ -43,6 +44,16 @@ impl fmt::Display for Value {
                 }
                 if items.len() == 1 {
                     formatter.write_str(",")?;
+                }
+                formatter.write_str(")")
+            }
+            Self::Record(fields) => {
+                formatter.write_str("(")?;
+                for (index, (label, value)) in fields.iter().enumerate() {
+                    if index > 0 {
+                        formatter.write_str(", ")?;
+                    }
+                    write!(formatter, "{label} is {value}")?;
                 }
                 formatter.write_str(")")
             }
@@ -235,18 +246,31 @@ impl Session {
                 });
                 Ok(Value::Unit)
             }
-            Expression::Tuple { items, .. } => {
-                let values = items
-                    .iter()
-                    .map(|item| self.evaluate_expression(source, item, trace))
-                    .collect::<Result<Vec<_>, _>>()?;
-                let detail = format!("fields={}", values.len());
-                trace.record(TraceEvent {
-                    event: "product.tuple",
-                    rule: "TOPAL-TYPE-PRODUCT-001",
-                    detail: &detail,
-                });
-                Ok(Value::Tuple(values))
+            Expression::Product { fields, span } => {
+                let labeled = fields.iter().filter(|field| field.label.is_some()).count();
+                if labeled != 0 && labeled != fields.len() {
+                    return Err(diagnostic(
+                        source,
+                        "E-UNSUPPORTED-MIXED-PRODUCT",
+                        *span,
+                        "mixed positional and labeled product fields are not yet implemented",
+                    ));
+                }
+                if labeled == 0 {
+                    let values = fields
+                        .iter()
+                        .map(|field| self.evaluate_expression(source, &field.value, trace))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    let detail = format!("fields={}", values.len());
+                    trace.record(TraceEvent {
+                        event: "product.tuple",
+                        rule: "TOPAL-TYPE-PRODUCT-001",
+                        detail: &detail,
+                    });
+                    Ok(Value::Tuple(values))
+                } else {
+                    self.evaluate_record(source, fields, trace)
+                }
             }
             Expression::Integer(span) => evaluate_integer_literal(source, *span, trace),
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
@@ -335,6 +359,36 @@ impl Session {
         }?;
         self.checkpoint(trace, Some(&value), Some(expression.span()));
         Ok(value)
+    }
+
+    fn evaluate_record(
+        &self,
+        source: &SourceText,
+        fields: &[topal_syntax::ProductField],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let mut values = Vec::with_capacity(fields.len());
+        for field in fields {
+            let label_span = field.label.expect("record fields are labeled");
+            let label = source.slice(label_span);
+            if values.iter().any(|(existing, _)| existing == label) {
+                return Err(diagnostic(
+                    source,
+                    "E-DUPLICATE-RECORD-FIELD",
+                    label_span,
+                    "record field label occurs more than once",
+                ));
+            }
+            let value = self.evaluate_expression(source, &field.value, trace)?;
+            values.push((label.to_owned(), value));
+        }
+        let detail = format!("fields={}", values.len());
+        trace.record(TraceEvent {
+            event: "product.record",
+            rule: "TOPAL-TYPE-PRODUCT-001",
+            detail: &detail,
+        });
+        Ok(Value::Record(values))
     }
 }
 
@@ -464,6 +518,7 @@ fn record_result(trace: &mut impl TraceSink, value: &Value) {
             Value::Rational(_) => "Rational",
             Value::String(_) => "String",
             Value::Tuple(_) => "Tuple",
+            Value::Record(_) => "Record",
             Value::Unit => "Unit",
         },
     });
@@ -1038,12 +1093,14 @@ fn apply_negate(
             });
             Ok(Value::Rational(-operand))
         }
-        Value::Boolean(_) | Value::String(_) | Value::Tuple(_) | Value::Unit => Err(diagnostic(
-            source,
-            "E-NO-APPLICABLE-OVERLOAD",
-            span,
-            "prefix - requires an exact numeric operand",
-        )),
+        Value::Boolean(_) | Value::String(_) | Value::Tuple(_) | Value::Record(_) | Value::Unit => {
+            Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                "prefix - requires an exact numeric operand",
+            ))
+        }
     }
 }
 
@@ -1323,6 +1380,26 @@ mod tests {
                 .evaluate("_\n", &mut std::io::sink())
                 .is_err()
         );
+    }
+
+    #[test]
+    fn evaluates_labeled_record_products_in_field_order() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("(name is \"Ada\", active is true)\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "(name is \"Ada\", active is true)");
+        assert!(trace.iter().any(|event| event.contains("product.record")));
+
+        let duplicate = Session::new()
+            .evaluate("(name is 1, name is 2)\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(duplicate.code, "E-DUPLICATE-RECORD-FIELD");
+
+        let mixed = Session::new()
+            .evaluate("(1, name is 2)\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(mixed.code, "E-UNSUPPORTED-MIXED-PRODUCT");
     }
 
     #[test]

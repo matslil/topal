@@ -6,14 +6,23 @@ use crate::{Lexed, SyntaxDiagnostic, Token, TokenKind};
 pub enum Expression {
     Unit(Span),
     Boolean(Span),
-    Tuple { items: Vec<Self>, span: Span },
+    Product {
+        fields: Vec<ProductField>,
+        span: Span,
+    },
     Integer(Span),
     Rational(Span),
     String(Span),
     Identifier(Span),
     Discard(Span),
-    Callable { kind: CallableKind, span: Span },
-    Application { items: Vec<Self>, span: Span },
+    Callable {
+        kind: CallableKind,
+        span: Span,
+    },
+    Application {
+        items: Vec<Self>,
+        span: Span,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -43,10 +52,16 @@ impl Expression {
             | Self::Identifier(span)
             | Self::Discard(span)
             | Self::Callable { span, .. }
-            | Self::Tuple { span, .. }
+            | Self::Product { span, .. }
             | Self::Application { span, .. } => *span,
         }
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProductField {
+    pub label: Option<Span>,
+    pub value: Expression,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -255,7 +270,7 @@ impl Parser<'_> {
                 closing.span.end,
             )));
         }
-        let Some(first) = self.expression() else {
+        let Some(first) = self.product_field() else {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-RPAREN",
                 span: Span::new(opening.span.end, opening.span.end),
@@ -263,12 +278,19 @@ impl Parser<'_> {
             });
             return None;
         };
-        let mut items = self
-            .peek_nontrivia()
-            .is_some_and(|value| value.kind == TokenKind::Comma)
-            .then(|| vec![first.clone()]);
-        if let Some(product_items) = &mut items {
+        let product = first.label.is_some()
+            || self
+                .peek_nontrivia()
+                .is_some_and(|value| value.kind == TokenKind::Comma);
+        let mut fields = vec![first.clone()];
+        if product {
             loop {
+                if !self
+                    .peek_nontrivia()
+                    .is_some_and(|value| value.kind == TokenKind::Comma)
+                {
+                    break;
+                }
                 self.take_nontrivia();
                 if self
                     .peek_nontrivia()
@@ -276,7 +298,7 @@ impl Parser<'_> {
                 {
                     break;
                 }
-                let Some(item) = self.expression() else {
+                let Some(field) = self.product_field() else {
                     self.diagnostics.push(SyntaxDiagnostic {
                         code: "E-EXPECTED-RPAREN",
                         span: Span::new(opening.span.end, opening.span.end),
@@ -284,13 +306,7 @@ impl Parser<'_> {
                     });
                     return None;
                 };
-                product_items.push(item);
-                if !self
-                    .peek_nontrivia()
-                    .is_some_and(|value| value.kind == TokenKind::Comma)
-                {
-                    break;
-                }
+                fields.push(field);
             }
         }
         let closing = self.take_nontrivia();
@@ -301,17 +317,36 @@ impl Parser<'_> {
                 message: "expected closing parenthesis",
             });
         }
-        if let Some(items) = items {
-            Some(Expression::Tuple {
-                items,
+        if product {
+            Some(Expression::Product {
+                fields,
                 span: Span::new(
                     opening.span.start,
-                    closing.map_or(first.span().end, |value| value.span.end),
+                    closing.map_or(first.value.span().end, |value| value.span.end),
                 ),
             })
         } else {
-            Some(first)
+            Some(first.value)
         }
+    }
+
+    fn product_field(&mut self) -> Option<ProductField> {
+        let checkpoint = self.cursor;
+        if let Some(label) = self.take_nontrivia()
+            && label.kind == TokenKind::Identifier
+            && self.peek_nontrivia().is_some_and(|separator| {
+                separator.kind == TokenKind::Identifier && self.source.slice(separator.span) == "is"
+            })
+        {
+            self.take_nontrivia();
+            return self.expression().map(|value| ProductField {
+                label: Some(label.span),
+                value,
+            });
+        }
+        self.cursor = checkpoint;
+        self.expression()
+            .map(|value| ProductField { label: None, value })
     }
 
     fn skip_separators(&mut self) -> bool {
@@ -426,10 +461,10 @@ mod tests {
 
         let tuple_source = SourceText::new("(1, 2,)").unwrap();
         let tuple = parse(&tuple_source, &lex(&tuple_source));
-        let Statement::Expression(Expression::Tuple { items, .. }) = &tuple.statements[0] else {
+        let Statement::Expression(Expression::Product { fields, .. }) = &tuple.statements[0] else {
             panic!("expected tuple");
         };
-        assert_eq!(items.len(), 2);
+        assert_eq!(fields.len(), 2);
         assert!(tuple.diagnostics.is_empty());
     }
 
@@ -437,10 +472,25 @@ mod tests {
     fn ignores_newlines_inside_parentheses() {
         let source = SourceText::new("(\n1,\n2\n)").unwrap();
         let parsed = parse(&source, &lex(&source));
-        let Statement::Expression(Expression::Tuple { items, .. }) = &parsed.statements[0] else {
+        let Statement::Expression(Expression::Product { fields, .. }) = &parsed.statements[0]
+        else {
             panic!("expected tuple");
         };
-        assert_eq!(items.len(), 2);
+        assert_eq!(fields.len(), 2);
+        assert!(parsed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn retains_labels_on_record_product_fields() {
+        let source = SourceText::new("(name is \"Ada\", active is true)").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        let Statement::Expression(Expression::Product { fields, .. }) = &parsed.statements[0]
+        else {
+            panic!("expected product");
+        };
+        assert_eq!(fields.len(), 2);
+        assert_eq!(source.slice(fields[0].label.unwrap()), "name");
+        assert_eq!(source.slice(fields[1].label.unwrap()), "active");
         assert!(parsed.diagnostics.is_empty());
     }
 
