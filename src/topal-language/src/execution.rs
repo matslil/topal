@@ -77,6 +77,16 @@ impl ExecutionHistory {
         true
     }
 
+    pub fn finish(&mut self) -> Option<&ExecutionState> {
+        self.cursor = self.transitions.len();
+        self.state()
+    }
+
+    pub fn reverse_finish(&mut self) -> Option<&ExecutionState> {
+        self.cursor = 0;
+        self.state()
+    }
+
     #[must_use]
     pub fn state(&self) -> Option<&ExecutionState> {
         self.checkpoints

@@ -26,4 +26,10 @@ reverse-source-step
 restore result
 checkpoints
 delete-checkpoint result
+reverse-finish
+backtrace
+next
+finish
+backtrace
+reverse-next
 quit
