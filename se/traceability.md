@@ -82,3 +82,7 @@ The approved source-debugger requirements are staged for implementation in
 implementation entries shall be added incrementally when the corresponding
 debugger capabilities land; `TOPAL-DEBUG-MESSAGE-001` remains intentionally
 pending until message passing exists in the shared execution machine.
+
+| Tool requirement | Specification rules | Functional evidence | Implementation |
+| --- | --- | --- | --- |
+| `TOPAL-DEBUG-EXEC-001`, `TOPAL-DEBUG-TRACE-001` | implemented semantic trace rule IDs | unit tests in `topal-language`; `examples/debugger/basic-history.t` | `topal-language::ExecutionHistory` |
