@@ -191,6 +191,48 @@ fn inequality_preserves_equality_applicability() {
 }
 
 #[test]
+fn every_mode_evaluates_exact_ordering_predicates() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "-2 < 1\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"true\n");
+    }
+    for (expression, expected) in [
+        ("2 > 2", "false\n"),
+        ("2 <= 2", "true\n"),
+        ("3 >= 4", "false\n"),
+    ] {
+        let output = run(&[], &format!("{expression}\n"));
+        assert!(output.status.success());
+        assert_eq!(String::from_utf8(output.stdout).unwrap(), expected);
+    }
+}
+
+#[test]
+fn exact_ordering_traces_conversion_and_three_way_decision() {
+    let output = run(&["--test"], "1 < 1.5\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"true\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let conversion = trace.find("\"event\":\"conversion.applied\"").unwrap();
+    let comparison = trace.find("\"event\":\"comparison.result\"").unwrap();
+    let selection = trace.find("\"event\":\"operator.selected\"").unwrap();
+    assert!(conversion < selection);
+    assert!(selection < comparison);
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-COMPARE-001\""));
+    assert!(trace.contains("\"detail\":\"Less\""));
+}
+
+#[test]
+fn exact_ordering_rejects_values_without_total_order() {
+    let output = run(&[], "true < false\n");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-NO-APPLICABLE-OVERLOAD]"));
+    assert!(diagnostic.contains("= help: use operands supported by one overload"));
+}
+
+#[test]
 fn every_mode_evaluates_the_unit_product() {
     let script = run(&[], "()\n");
     assert!(script.status.success());

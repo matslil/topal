@@ -153,6 +153,16 @@ semantics require a later overload. Exponentiation has no hidden precedence and
 groups under `TOPAL-SYN-GRAMMAR-001`. This realizes `TOPAL-REQ-SAFE-001`,
 `TOPAL-REQ-DETERMINISM-001`, and `TOPAL-REQ-INTEROP-001`.
 
+### TOPAL-NUM-COMPARE-001 — Finite exact total ordering
+
+Finite `Int` and finite `Rational` each provide `TotalOrder` using their exact
+mathematical order. A same-domain comparison produces exactly `Less`, `Equal`,
+or `Greater`; the predicates `<`, `>`, `<=`, and `>=` select the corresponding
+result or result set and return `Boolean`. Mixed finite `Int` and `Rational`
+comparison first applies `TOPAL-NUM-INT-RATIONAL-CONVERT-001` to the integer and
+then uses rational order. These predicates use ordinary left-to-right
+application and have no special chaining rule.
+
 Other numeric domains and the remaining fixed callable names are outside this
 initial formal numeric subset until later rules define their applicable
 overloads. Their tokens remain reserved, and a conforming partial tool shall

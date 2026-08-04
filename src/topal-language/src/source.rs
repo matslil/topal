@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 
@@ -417,6 +418,15 @@ fn apply_binary(
     if matches!(kind, CallableKind::Equal | CallableKind::NotEqual) {
         return apply_equality(source, kind, left, right, span, trace);
     }
+    if matches!(
+        kind,
+        CallableKind::Less
+            | CallableKind::Greater
+            | CallableKind::LessEqual
+            | CallableKind::GreaterEqual
+    ) {
+        return apply_comparison(source, kind, left, right, span, trace);
+    }
     match (left, right) {
         (Value::Int(left), Value::Int(right)) => {
             apply_int_binary(source, kind, left, right, right_span, trace)
@@ -455,6 +465,66 @@ fn apply_binary(
             "the implemented subset requires operands from one exact numeric domain",
         )),
     }
+}
+
+fn apply_comparison(
+    source: &SourceText,
+    kind: CallableKind,
+    left: Value,
+    right: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let ordering = match (left, right) {
+        (Value::Int(left), Value::Int(right)) => left.cmp(&right),
+        (Value::Rational(left), Value::Rational(right)) => left.cmp(&right),
+        (Value::Int(left), Value::Rational(right)) => {
+            trace_conversion(trace, "Int->Rational:left");
+            BigRational::from_integer(left).cmp(&right)
+        }
+        (Value::Rational(left), Value::Int(right)) => {
+            trace_conversion(trace, "Int->Rational:right");
+            left.cmp(&BigRational::from_integer(right))
+        }
+        _ => {
+            return Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                "exact ordering requires Int or Rational operands",
+            ));
+        }
+    };
+    let (callable, result) = match kind {
+        CallableKind::Less => ("root.<(TotalOrder,TotalOrder)", ordering == Ordering::Less),
+        CallableKind::Greater => (
+            "root.>(TotalOrder,TotalOrder)",
+            ordering == Ordering::Greater,
+        ),
+        CallableKind::LessEqual => (
+            "root.<=(TotalOrder,TotalOrder)",
+            ordering != Ordering::Greater,
+        ),
+        CallableKind::GreaterEqual => {
+            ("root.>=(TotalOrder,TotalOrder)", ordering != Ordering::Less)
+        }
+        _ => unreachable!("comparison dispatch accepts only ordering predicates"),
+    };
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: callable,
+    });
+    trace.record(TraceEvent {
+        event: "comparison.result",
+        rule: "TOPAL-NUM-COMPARE-001",
+        detail: match ordering {
+            Ordering::Less => "Less",
+            Ordering::Equal => "Equal",
+            Ordering::Greater => "Greater",
+        },
+    });
+    Ok(Value::Boolean(result))
 }
 
 fn apply_equality(
@@ -537,8 +607,13 @@ fn apply_int_binary(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     match kind {
-        CallableKind::Equal | CallableKind::NotEqual => {
-            unreachable!("equality is dispatched before numeric operations")
+        CallableKind::Equal
+        | CallableKind::NotEqual
+        | CallableKind::Less
+        | CallableKind::Greater
+        | CallableKind::LessEqual
+        | CallableKind::GreaterEqual => {
+            unreachable!("comparison is dispatched before numeric operations")
         }
         CallableKind::Plus => {
             trace.record(TraceEvent {
@@ -594,8 +669,13 @@ fn apply_rational_binary(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let (callable, event, rule, result) = match kind {
-        CallableKind::Equal | CallableKind::NotEqual => {
-            unreachable!("equality is dispatched before numeric operations")
+        CallableKind::Equal
+        | CallableKind::NotEqual
+        | CallableKind::Less
+        | CallableKind::Greater
+        | CallableKind::LessEqual
+        | CallableKind::GreaterEqual => {
+            unreachable!("comparison is dispatched before numeric operations")
         }
         CallableKind::Plus => (
             "root.+(Rational,Rational)",
