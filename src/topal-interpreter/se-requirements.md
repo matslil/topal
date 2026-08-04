@@ -224,3 +224,11 @@ runnable source file under `examples/interpreter/`. The interpreter functional
 suite shall execute every such source file successfully in default script mode,
 including its hashbang when present, so examples cannot silently drift from the
 implemented language.
+
+## TOPAL-INTP-SUBSET-023 — Discard declarations
+
+All interpreter modes shall evaluate `_ is expression` according to
+`TOPAL-SYN-BIND-001`, including every semantic decision and diagnostic produced
+by the initializer, then produce `Unit` without introducing a binding. The
+complete `_` spelling shall be reserved from identifier lookup, and test mode
+shall record the discard decision.

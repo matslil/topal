@@ -1,4 +1,5 @@
 #!/usr/bin/env topal
+# Demonstrates arbitrary-precision integers, exact rationals, conversion, and powers.
 large is 123456789012345678901234567890
 fraction is 1.25
 scaled is large + fraction

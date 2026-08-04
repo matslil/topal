@@ -266,6 +266,12 @@ impl Session {
                 });
                 Ok(value)
             }
+            Expression::Discard(span) => Err(diagnostic(
+                source,
+                "E-DISCARD-VALUE",
+                *span,
+                "discard is valid only in a declaration or pattern",
+            )),
             Expression::Callable { span, .. } => Err(diagnostic(
                 source,
                 "E-UNSUPPORTED-CALLABLE-VALUE",
@@ -364,6 +370,15 @@ impl Execution {
                 });
                 (Value::Unit, cover(*name, value.span()))
             }
+            Statement::Discard { span, value } => {
+                session.evaluate_expression(&self.source, value, trace)?;
+                trace.record(TraceEvent {
+                    event: "binding.discarded",
+                    rule: "TOPAL-SYN-BIND-001",
+                    detail: "_",
+                });
+                (Value::Unit, cover(*span, value.span()))
+            }
             Statement::Expression(expression) => {
                 if self.cursor + 1 != self.statements.len() {
                     return Err(diagnostic(
@@ -401,6 +416,7 @@ const fn cover(first: Span, second: Span) -> Span {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value } => cover(*name, value.span()),
+        Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Expression(expression) => expression.span(),
     }
 }
@@ -1288,6 +1304,25 @@ mod tests {
         let second = execution.step(&mut session, &mut trace).unwrap();
         assert!(matches!(second, ExecutionStep::Complete(Value::Int(_))));
         assert!(trace.last().unwrap().contains("evaluation.result"));
+    }
+
+    #[test]
+    fn evaluates_discard_without_introducing_a_binding() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("_ is 20 + 22\n7\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "7");
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("binding.discarded"))
+        );
+        assert!(
+            Session::new()
+                .evaluate("_\n", &mut std::io::sink())
+                .is_err()
+        );
     }
 
     #[test]

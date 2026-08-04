@@ -11,6 +11,7 @@ pub enum Expression {
     Rational(Span),
     String(Span),
     Identifier(Span),
+    Discard(Span),
     Callable { kind: CallableKind, span: Span },
     Application { items: Vec<Self>, span: Span },
 }
@@ -40,6 +41,7 @@ impl Expression {
             | Self::Rational(span)
             | Self::String(span)
             | Self::Identifier(span)
+            | Self::Discard(span)
             | Self::Callable { span, .. }
             | Self::Tuple { span, .. }
             | Self::Application { span, .. } => *span,
@@ -50,6 +52,7 @@ impl Expression {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Statement {
     Binding { name: Span, value: Expression },
+    Discard { span: Span, value: Expression },
     Expression(Expression),
 }
 
@@ -112,7 +115,7 @@ impl Parser<'_> {
             self.skip_to_newline();
             return None;
         }
-        if first.kind == TokenKind::Identifier
+        if matches!(first.kind, TokenKind::Identifier | TokenKind::Discard)
             && let Some(second) = self.peek_nontrivia()
             && second.kind == TokenKind::Identifier
             && self.source.slice(second.span) == "is"
@@ -121,9 +124,16 @@ impl Parser<'_> {
                 .take_nontrivia()
                 .expect("peeked token remains available");
             if let Some(value) = self.expression() {
-                return Some(Statement::Binding {
-                    name: first.span,
-                    value,
+                return Some(if first.kind == TokenKind::Discard {
+                    Statement::Discard {
+                        span: first.span,
+                        value,
+                    }
+                } else {
+                    Statement::Binding {
+                        name: first.span,
+                        value,
+                    }
                 });
             }
             self.diagnostics.push(SyntaxDiagnostic {
@@ -170,6 +180,7 @@ impl Parser<'_> {
             TokenKind::Rational => Some(Expression::Rational(token.span)),
             TokenKind::String => Some(Expression::String(token.span)),
             TokenKind::Identifier => Some(Expression::Identifier(token.span)),
+            TokenKind::Discard => Some(Expression::Discard(token.span)),
             TokenKind::Equals => Some(Expression::Callable {
                 kind: CallableKind::Equal,
                 span: token.span,
