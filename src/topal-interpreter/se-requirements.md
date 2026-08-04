@@ -187,3 +187,12 @@ All interpreter modes shall evaluate `!=` as the Boolean negation of the
 applicable `TOPAL-TYPE-EQUALITY-001` result. It shall preserve equality's
 conversion, evidence, tuple, and error behavior, and shall appear as one
 longest-match callable symbol in shared syntax and test traces.
+
+## TOPAL-INTP-DIAG-001 — Actionable source diagnostics
+
+Interpreter diagnostics shall retain stable machine-readable codes while their
+human rendering identifies severity, source name, line and column, the relevant
+source line, a Unicode-column-aligned marker, and actionable help when a safe
+general correction exists. Script filenames, standard input, and interactive
+input shall have deterministic source labels. Rendering concerns shall not
+change interpreter semantics or test trace events.

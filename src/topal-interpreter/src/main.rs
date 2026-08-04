@@ -20,7 +20,7 @@ fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
-            eprintln!("topal: {message}");
+            eprintln!("{message}");
             ExitCode::from(1)
         }
     }
@@ -32,12 +32,18 @@ fn run() -> Result<(), String> {
         Mode::Interactive => interactive(arguments.source.as_deref()),
         Mode::Script | Mode::Test => {
             let source = read_source(arguments.source.as_deref())?;
+            let source_name = arguments.source.as_deref().unwrap_or("<stdin>");
             let mut session = Session::new();
             if matches!(arguments.mode, Mode::Test) {
                 let stderr = io::stderr();
-                evaluate_and_print(&mut session, &source, &mut JsonLines::new(stderr.lock()))
+                evaluate_and_print(
+                    &mut session,
+                    &source,
+                    source_name,
+                    &mut JsonLines::new(stderr.lock()),
+                )
             } else {
-                evaluate_and_print(&mut session, &source, &mut io::sink())
+                evaluate_and_print(&mut session, &source, source_name, &mut io::sink())
             }
         }
     }
@@ -112,7 +118,7 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
             if !pending.is_empty()
                 && let Err(error) = session.evaluate(&pending, &mut io::sink())
             {
-                eprintln!("topal: {error}");
+                eprintln!("{}", error.render("<interactive>"));
             }
             return Ok(());
         }
@@ -127,7 +133,7 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
             }
             Err(error) if matches!(error.code, "E-UNTERMINATED-STRING" | "E-EXPECTED-RPAREN") => {}
             Err(error) => {
-                eprintln!("topal: {error}");
+                eprintln!("{}", error.render("<interactive>"));
                 pending.clear();
             }
         }
@@ -137,11 +143,12 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
 fn evaluate_and_print(
     session: &mut Session,
     source: &str,
+    source_name: &str,
     trace: &mut impl TraceSink,
 ) -> Result<(), String> {
     let value = session
         .evaluate(source, trace)
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| error.render(source_name))?;
     println!("{value}");
     Ok(())
 }
