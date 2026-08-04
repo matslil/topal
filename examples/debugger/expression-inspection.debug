@@ -1,0 +1,8 @@
+source-step
+source-step
+print answer
+print answer + 2
+print (answer, answer + 2)
+reverse-finish
+print answer
+quit
