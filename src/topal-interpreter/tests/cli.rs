@@ -300,6 +300,27 @@ fn unsupported_syntax_is_explicit() {
 }
 
 #[test]
+fn script_diagnostic_shows_source_marker_and_help() {
+    let output = run(&[], "value + ?\n");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-UNKNOWN-TOKEN]"));
+    assert!(diagnostic.contains(" --> <stdin>:1:9"));
+    assert!(diagnostic.contains("1 | value + ?"));
+    assert!(diagnostic.contains("  |         ^"));
+    assert!(diagnostic.contains("= help: remove this character"));
+}
+
+#[test]
+fn interactive_diagnostic_uses_an_interactive_source_label() {
+    let output = run(&["--interactive"], "missing\n");
+    assert!(output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains(" --> <interactive>:1:1"));
+    assert!(diagnostic.contains("= help: declare this name earlier"));
+}
+
+#[test]
 fn script_executes_bindings_in_source_order() {
     let output = run(&[], "answer is 42\nanswer\n");
     assert!(output.status.success());
@@ -469,7 +490,8 @@ fn test_trace_explains_zero_division_rejection() {
     assert!(trace.contains("\"rule\":\"TOPAL-NUM-DIVZERO-001\""));
     assert!(!trace.contains("root./(Int,Int)"));
     assert!(!trace.contains("evaluation.divide"));
-    assert!(trace.contains("E-DIVISION-BY-ZERO at 1:5"));
+    assert!(trace.contains("error[E-DIVISION-BY-ZERO]"));
+    assert!(trace.contains("<stdin>:1:5"));
 }
 
 #[test]
@@ -506,7 +528,8 @@ fn negative_exponent_is_rejected_for_int_overload() {
     assert!(trace.contains("\"event\":\"obligation.refuted\""));
     assert!(trace.contains("\"detail\":\"exponent.finite-nat\""));
     assert!(!trace.contains("root.^(Int,Nat)"));
-    assert!(trace.contains("E-NO-APPLICABLE-OVERLOAD at 1:5"));
+    assert!(trace.contains("error[E-NO-APPLICABLE-OVERLOAD]"));
+    assert!(trace.contains("<stdin>:1:5"));
 }
 
 #[test]

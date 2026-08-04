@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::fmt;
+use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -56,19 +56,47 @@ pub struct Diagnostic {
     pub line: usize,
     pub column: usize,
     pub message: String,
+    source_line: Option<String>,
+    marker_width: usize,
 }
 
 impl fmt::Display for Diagnostic {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            formatter,
-            "{} at {}:{}: {}",
-            self.code, self.line, self.column, self.message
-        )
+        formatter.write_str(&self.render("<input>"))
     }
 }
 
 impl std::error::Error for Diagnostic {}
+
+impl Diagnostic {
+    #[must_use]
+    pub fn render(&self, source_name: &str) -> String {
+        let mut rendered = format!(
+            "error[{}]: {}\n --> {source_name}:{}:{}",
+            self.code, self.message, self.line, self.column
+        );
+        if let Some(source_line) = &self.source_line {
+            let gutter_width = self.line.to_string().len();
+            let _ = write!(
+                rendered,
+                "\n{empty:>gutter_width$} |\n{line:>gutter_width$} | {source_line}\n{empty:>gutter_width$} | {padding}{markers}",
+                empty = "",
+                line = self.line,
+                padding = " ".repeat(self.column.saturating_sub(1)),
+                markers = "^".repeat(self.marker_width.max(1)),
+            );
+        }
+        if let Some(help) = diagnostic_help(self.code) {
+            let _ = write!(
+                rendered,
+                "\n{empty:>width$} |\n{empty:>width$} = help: {help}",
+                empty = "",
+                width = self.line.to_string().len()
+            );
+        }
+        rendered
+    }
+}
 
 #[derive(Default)]
 pub struct Session {
@@ -103,6 +131,8 @@ impl Session {
                 line,
                 column,
                 message: error.message.into(),
+                source_line: raw_source_line(input, line),
+                marker_width: marker_width(input, error.span),
             }
         })?;
         trace.record(TraceEvent {
@@ -121,6 +151,8 @@ impl Session {
                 line: 1,
                 column: 1,
                 message: "expected a statement".into(),
+                source_line: raw_source_line(input, 1),
+                marker_width: 1,
             });
         }
 
@@ -164,6 +196,8 @@ impl Session {
             line: 1,
             column: 1,
             message: "expected a statement".into(),
+            source_line: raw_source_line(input, 1),
+            marker_width: 1,
         })?;
         trace.record(TraceEvent {
             event: "evaluation.result",
@@ -776,7 +810,46 @@ fn diagnostic(
         line: position.line,
         column: position.column,
         message: message.into(),
+        source_line: source
+            .as_str()
+            .lines()
+            .nth(position.line - 1)
+            .map(str::to_owned),
+        marker_width: marker_width(source.as_str(), span),
     }
+}
+
+fn diagnostic_help(code: &str) -> Option<&'static str> {
+    match code {
+        "E-UNKNOWN-TOKEN" => Some("remove this character or use a symbol declared by design-0"),
+        "E-UNBOUND-NAME" => Some("declare this name earlier in the same source session"),
+        "E-EXPECTED-RPAREN" => Some("add a closing `)` for this parenthesized expression"),
+        "E-UNTERMINATED-STRING" => Some("add the literal's matching closing quote and tag"),
+        "E-DIVISION-BY-ZERO" => Some("use a divisor that is provably nonzero"),
+        "E-NO-APPLICABLE-OVERLOAD" => {
+            Some("use operands supported by one overload or apply an explicit conversion")
+        }
+        "E-RESERVED-BOOLEAN-LITERAL" => {
+            Some("choose an identifier other than the reserved literals `true` and `false`")
+        }
+        _ => None,
+    }
+}
+
+fn raw_source_line(source: &str, line: usize) -> Option<String> {
+    source.lines().nth(line - 1).map(str::to_owned)
+}
+
+fn marker_width(source: &str, span: Span) -> usize {
+    source
+        .get(span.start..span.end)
+        .unwrap_or("")
+        .split(['\r', '\n'])
+        .next()
+        .unwrap_or("")
+        .chars()
+        .count()
+        .max(1)
 }
 
 fn raw_position(source: &str, offset: usize) -> (usize, usize) {
@@ -977,6 +1050,15 @@ mod tests {
     #[test]
     fn rejects_statically_evident_zero_divisor() {
         assert_eq!(evaluate("1 / 0").unwrap_err().code, "E-DIVISION-BY-ZERO");
+    }
+
+    #[test]
+    fn renders_unicode_aligned_actionable_diagnostics() {
+        let error = evaluate("α is 1\nα + missing").unwrap_err();
+        assert_eq!(
+            error.render("example.t"),
+            "error[E-UNBOUND-NAME]: name is not bound\n --> example.t:2:5\n  |\n2 | α + missing\n  |     ^^^^^^^\n  |\n  = help: declare this name earlier in the same source session"
+        );
     }
 
     #[test]
