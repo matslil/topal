@@ -11,10 +11,24 @@ lexical error. Line endings `LF` and `CRLF` normalize to `LF`; bare `CR` is an
 error. Tabs are forbidden in indentation. This realizes
 `TOPAL-REQ-TOOLS-001`.
 
+### TOPAL-SYN-UNICODE-001 — Revisioned Unicode semantics
+
+The initial `design-0` language context shall use Unicode 17.0.0 for every
+Unicode-derived semantic operation, including normalization, identifier
+properties, character segmentation, and case operations. A conforming tool
+shall use the data for that exact version and shall expose the selected version
+in build metadata. Any generated artifact which records a language context
+shall also record its Unicode version.
+
+Changing the Unicode version creates a distinct revisioned language context.
+A tool shall diagnose an unsupported Unicode context rather than substitute
+host, dependency, or newer Unicode data. Mixed-script and confusable-name
+diagnostics shall not change lexical acceptance or program semantics.
+
 ### TOPAL-SYN-LEX-001 — Tokens
 
-Let `XID_Start` and `XID_Continue` be the Unicode identifier properties fixed
-by the language context's Unicode version.
+Let `XID_Start` and `XID_Continue` be the Unicode 17.0.0 identifier properties
+fixed by `TOPAL-SYN-UNICODE-001`.
 
 ```ebnf
 identifier       ::= identifier-start identifier-continue* ;
