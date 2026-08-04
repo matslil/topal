@@ -4,7 +4,7 @@ use std::fs;
 use std::io::{self, BufRead, BufReader, IsTerminal, Write};
 use std::process::ExitCode;
 
-use topal_language::{ExecutionHistory, ExecutionTransition, Session};
+use topal_language::{Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session};
 
 fn main() -> ExitCode {
     match run() {
@@ -20,18 +20,28 @@ fn run() -> Result<(), String> {
     let arguments = parse_arguments(env::args().skip(1))?;
     let source = fs::read_to_string(&arguments.source)
         .map_err(|error| format!("cannot read {}: {error}", arguments.source))?;
+    let session = Session::new();
     let mut history = ExecutionHistory::new();
-    Session::new()
-        .evaluate(&source, &mut history)
+    let execution = session
+        .prepare(&source, &mut history)
         .map_err(|error| error.render(&arguments.source))?;
     history.rewind();
+    let mut debuggee = Debuggee {
+        session,
+        execution,
+        history,
+        complete: false,
+    };
 
-    println!("loaded {} transitions", history.transitions().len());
+    println!(
+        "loaded {} transitions",
+        debuggee.history.transitions().len()
+    );
     if let Some(commands) = arguments.commands {
         if commands == "-" {
             command_loop(
                 io::stdin().lock(),
-                &mut history,
+                &mut debuggee,
                 &source,
                 &arguments.source,
                 Some("<stdin>"),
@@ -42,7 +52,7 @@ fn run() -> Result<(), String> {
                 .map_err(|error| format!("cannot read command script {commands}: {error}"))?;
             command_loop(
                 BufReader::new(file),
-                &mut history,
+                &mut debuggee,
                 &source,
                 &arguments.source,
                 Some(&commands),
@@ -53,7 +63,7 @@ fn run() -> Result<(), String> {
         let prompt = io::stdin().is_terminal();
         command_loop(
             io::stdin().lock(),
-            &mut history,
+            &mut debuggee,
             &source,
             &arguments.source,
             None,
@@ -65,6 +75,13 @@ fn run() -> Result<(), String> {
 struct Arguments {
     source: String,
     commands: Option<String>,
+}
+
+struct Debuggee {
+    session: Session,
+    execution: Execution,
+    history: ExecutionHistory,
+    complete: bool,
 }
 
 fn parse_arguments(mut arguments: impl Iterator<Item = String>) -> Result<Arguments, String> {
@@ -90,14 +107,21 @@ fn parse_arguments(mut arguments: impl Iterator<Item = String>) -> Result<Argume
     Ok(Arguments { source, commands })
 }
 
+#[allow(clippy::too_many_lines)] // Command aliases remain visible in one deterministic dispatcher.
 fn command_loop(
     mut input: impl BufRead,
-    history: &mut ExecutionHistory,
+    debuggee: &mut Debuggee,
     source: &str,
     source_name: &str,
     script_name: Option<&str>,
     prompt: bool,
 ) -> Result<(), String> {
+    let Debuggee {
+        session,
+        execution,
+        history,
+        complete,
+    } = debuggee;
     let mut breakpoints = BTreeSet::new();
     let mut watchpoints = BTreeSet::new();
     let mut checkpoints = BTreeMap::new();
@@ -108,7 +132,26 @@ fn command_loop(
         };
         line_number += 1;
         match command.trim() {
-            command if handle_frame_command(command, history, source, source_name) => {}
+            command
+                if handle_source_command(
+                    command,
+                    history,
+                    source,
+                    source_name,
+                    session,
+                    execution,
+                    complete,
+                )? => {}
+            command
+                if handle_frame_command(
+                    command,
+                    history,
+                    source,
+                    source_name,
+                    session,
+                    execution,
+                    complete,
+                ) => {}
             command
                 if handle_continue_command(
                     command,
@@ -135,15 +178,6 @@ fn command_loop(
             }
             "history" => print_history(history),
             "why" => print_reason(history),
-            "source-step" | "ss" => match history.step_source_forward() {
-                Some(_) => print_source_location(history, source, source_name),
-                None => println!("end of source execution"),
-            },
-            "reverse-source-step" | "rss" => match history.step_source_backward() {
-                Some(_) => print_source_location(history, source, source_name),
-                None => println!("start of source execution"),
-            },
-            "where" | "w" => print_source_location(history, source, source_name),
             "breakpoints" => {
                 print_breakpoints(&breakpoints, source_name);
             }
@@ -197,6 +231,35 @@ fn command_loop(
         }
         io::stdout().flush().map_err(|error| error.to_string())?;
     }
+}
+
+fn handle_source_command(
+    command: &str,
+    history: &mut ExecutionHistory,
+    source: &str,
+    source_name: &str,
+    session: &mut Session,
+    execution: &mut Execution,
+    complete: &mut bool,
+) -> Result<bool, String> {
+    match command {
+        "source-step" | "ss" => {
+            if live_source_step(history, session, execution, complete)
+                .map_err(|error| error.render(source_name))?
+            {
+                print_source_location(history, source, source_name);
+            } else {
+                println!("end of source execution");
+            }
+        }
+        "reverse-source-step" | "rss" => match history.step_source_backward() {
+            Some(_) => print_source_location(history, source, source_name),
+            None => println!("start of source execution"),
+        },
+        "where" | "w" => print_source_location(history, source, source_name),
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 fn print_reason(history: &ExecutionHistory) {
@@ -258,17 +321,31 @@ fn handle_frame_command(
     history: &mut ExecutionHistory,
     source: &str,
     source_name: &str,
+    session: &mut Session,
+    execution: &mut Execution,
+    complete: &mut bool,
 ) -> bool {
     match command {
-        "next" | "n" => match history.step_source_forward() {
-            Some(_) => print_source_location(history, source, source_name),
-            None => println!("end of current frame"),
+        "next" | "n" => match live_source_step(history, session, execution, complete) {
+            Ok(true) => print_source_location(history, source, source_name),
+            Ok(false) => println!("end of current frame"),
+            Err(error) => println!("{}", error.render(source_name)),
         },
         "reverse-next" | "rn" => match history.step_source_backward() {
             Some(_) => print_source_location(history, source, source_name),
             None => println!("start of current frame"),
         },
         "finish" => {
+            while !*complete {
+                match execution.step(session, history) {
+                    Ok(ExecutionStep::Complete(_)) => *complete = true,
+                    Ok(ExecutionStep::Advanced { .. }) => {}
+                    Err(error) => {
+                        println!("{}", error.render(source_name));
+                        break;
+                    }
+                }
+            }
             history.finish();
             print_source_location(history, source, source_name);
         }
@@ -280,6 +357,24 @@ fn handle_frame_command(
         _ => return false,
     }
     true
+}
+
+fn live_source_step(
+    history: &mut ExecutionHistory,
+    session: &mut Session,
+    execution: &mut Execution,
+    complete: &mut bool,
+) -> Result<bool, topal_language::Diagnostic> {
+    if history.step_source_forward().is_some() {
+        return Ok(true);
+    }
+    history.seek(history.transitions().len());
+    if *complete {
+        return Ok(false);
+    }
+    let step = execution.step(session, history)?;
+    *complete = matches!(step, ExecutionStep::Complete(_));
+    Ok(true)
 }
 
 fn print_backtrace(history: &ExecutionHistory, source: &str, source_name: &str) {

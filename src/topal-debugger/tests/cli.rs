@@ -39,6 +39,25 @@ fn navigates_recorded_execution_in_both_directions() {
 }
 
 #[test]
+fn executes_the_debuggee_only_when_commands_advance_it() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}live-execution.debug"),
+            &format!("{root}basic-history.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let before = stdout.find("no value at current execution state").unwrap();
+    let binding = stdout.find("answer = 40").unwrap();
+    let result = stdout.rfind("\n42\n").unwrap();
+    assert!(before < binding && binding < result);
+}
+
+#[test]
 fn script_mode_reports_command_file_errors() {
     let source = concat!(
         env!("CARGO_MANIFEST_DIR"),
