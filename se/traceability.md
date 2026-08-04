@@ -73,3 +73,4 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-LSP-PROTOCOL-001` | `TOPAL-REQ-TOOLS-001` | `src/topal-lsp/tests/protocol.rs` | `topal-lsp` |
 | `TOPAL-LSP-SYNC-001` | `TOPAL-REQ-SHARED-001` | unit tests in `topal-lsp` and `src/topal-lsp/tests/protocol.rs` | `topal-lsp` |
 | `TOPAL-LSP-DIAG-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-GRAMMAR-001`, `TOPAL-REQ-SHARED-001` | unit tests in `topal-lsp` and `src/topal-lsp/tests/protocol.rs` | `topal-source`, `topal-syntax`, `topal-lsp` |
+| `TOPAL-LSP-TOKENS-001` | `TOPAL-SYN-LEX-001`, `TOPAL-SYN-STRING-001`, `TOPAL-REQ-SHARED-001` | unit tests in `topal-lsp` | `topal-source`, `topal-syntax`, `topal-lsp` |

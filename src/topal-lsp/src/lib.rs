@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
 use topal_source::{SourceText, Span};
-use topal_syntax::{SyntaxDiagnostic, lex, parse};
+use topal_syntax::{SyntaxDiagnostic, TokenKind, lex, parse};
 
 #[derive(Default)]
 pub struct Server {
@@ -24,7 +24,16 @@ impl Server {
                 &json!({
                     "capabilities": {
                         "positionEncoding": "utf-16",
-                        "textDocumentSync": { "openClose": true, "change": 1 }
+                        "textDocumentSync": { "openClose": true, "change": 1 },
+                        "semanticTokensProvider": {
+                            "legend": {
+                                "tokenTypes": [
+                                    "variable", "number", "string", "comment", "keyword", "operator"
+                                ],
+                                "tokenModifiers": []
+                            },
+                            "full": true
+                        }
                     },
                     "serverInfo": {
                         "name": "topal-lsp",
@@ -44,6 +53,9 @@ impl Server {
             Some("textDocument/didOpen") => self.did_open(message),
             Some("textDocument/didChange") => self.did_change(message),
             Some("textDocument/didClose") => self.did_close(message),
+            Some("textDocument/semanticTokens/full") => {
+                vec![response(id, &self.semantic_tokens(message))]
+            }
             Some(_) if id.is_some() => vec![error_response(id, -32601, "method not found")],
             Some(_) | None => Vec::new(),
         }
@@ -106,6 +118,18 @@ impl Server {
             "method": "textDocument/publishDiagnostics",
             "params": { "uri": uri, "diagnostics": [] }
         })]
+    }
+
+    fn semantic_tokens(&self, message: &Value) -> Value {
+        let Some(uri) = message
+            .pointer("/params/textDocument/uri")
+            .and_then(Value::as_str)
+        else {
+            return json!({ "data": [] });
+        };
+        self.documents
+            .get(uri)
+            .map_or_else(|| json!({ "data": [] }), |text| semantic_tokens(text))
     }
 }
 
@@ -173,10 +197,76 @@ fn protocol_diagnostic(text: &str, span: Span, code: &str, message: &str) -> Val
 }
 
 fn protocol_position(text: &str, offset: usize) -> Value {
+    let (line, character) = protocol_coordinates(text, offset);
+    json!({ "line": line, "character": character })
+}
+
+fn protocol_coordinates(text: &str, offset: usize) -> (usize, usize) {
     let before = text.get(..offset).unwrap_or(text);
     let line = before.bytes().filter(|byte| *byte == b'\n').count();
     let tail = before.rsplit_once('\n').map_or(before, |(_, tail)| tail);
-    json!({ "line": line, "character": tail.encode_utf16().count() })
+    (line, tail.encode_utf16().count())
+}
+
+fn semantic_tokens(text: &str) -> Value {
+    let Ok(source) = SourceText::new(text) else {
+        return json!({ "data": [] });
+    };
+    let mut absolute = Vec::new();
+    for token in lex(&source).tokens {
+        let Some(token_type) = semantic_token_type(token.kind) else {
+            continue;
+        };
+        let mut offset = token.span.start;
+        for segment in source.slice(token.span).split_inclusive('\n') {
+            let content = segment.strip_suffix('\n').unwrap_or(segment);
+            if !content.is_empty() {
+                let (line, start) = protocol_coordinates(source.as_str(), offset);
+                absolute.push((line, start, content.encode_utf16().count(), token_type));
+            }
+            offset += segment.len();
+        }
+    }
+    let mut data = Vec::with_capacity(absolute.len() * 5);
+    let mut previous_line = 0;
+    let mut previous_start = 0;
+    for (line, start, length, token_type) in absolute {
+        let delta_line = line - previous_line;
+        let delta_start = if delta_line == 0 {
+            start - previous_start
+        } else {
+            start
+        };
+        data.extend([delta_line, delta_start, length, token_type, 0]);
+        previous_line = line;
+        previous_start = start;
+    }
+    json!({ "data": data })
+}
+
+const fn semantic_token_type(kind: TokenKind) -> Option<usize> {
+    match kind {
+        TokenKind::Identifier => Some(0),
+        TokenKind::Integer | TokenKind::Rational => Some(1),
+        TokenKind::String => Some(2),
+        TokenKind::Comment | TokenKind::Hashbang => Some(3),
+        TokenKind::Boolean => Some(4),
+        TokenKind::LeftParen
+        | TokenKind::RightParen
+        | TokenKind::Comma
+        | TokenKind::Equals
+        | TokenKind::NotEquals
+        | TokenKind::Less
+        | TokenKind::Greater
+        | TokenKind::LessEqual
+        | TokenKind::GreaterEqual
+        | TokenKind::Plus
+        | TokenKind::Minus
+        | TokenKind::Star
+        | TokenKind::Slash
+        | TokenKind::Caret => Some(5),
+        TokenKind::Whitespace | TokenKind::Newline | TokenKind::Unknown => None,
+    }
 }
 
 #[cfg(test)]
@@ -235,5 +325,26 @@ mod tests {
             "params": { "textDocument": { "uri": "file:///a.t" } }
         }));
         assert_eq!(closed[0]["params"]["diagnostics"], json!([]));
+    }
+
+    #[test]
+    fn returns_utf16_semantic_tokens_for_incomplete_unicode_source() {
+        let mut server = Server::default();
+        let _ = server.handle(&json!({
+            "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///tokens.t", "text": "𐐀 + true\ntag\"one\ntwo"
+            }}
+        }));
+        let output = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 3, "method": "textDocument/semanticTokens/full",
+            "params": { "textDocument": { "uri": "file:///tokens.t" } }
+        }));
+        assert_eq!(
+            output[0]["result"]["data"],
+            json!([
+                0, 0, 2, 0, 0, 0, 3, 1, 5, 0, 0, 2, 4, 4, 0, 1, 0, 7, 2, 0, 1, 0, 3, 2, 0
+            ])
+        );
     }
 }
