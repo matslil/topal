@@ -83,3 +83,10 @@ The interpreter shall divide finite `Int` values into canonical exact
 `Rational ( numerator, denominator )`, including a denominator of one, so the
 observable result retains its type. A statically evident zero divisor shall be
 rejected according to `TOPAL-NUM-DIVZERO-001`.
+
+## TOPAL-INTP-SUBSET-008 — Division evidence traces
+
+Test mode shall record whether the exact-division nonzero obligation was proved
+or refuted before overload selection. A refuted obligation shall identify
+`TOPAL-NUM-DIVZERO-001`, suppress selection and evaluation events for that
+application, and place the diagnostic at the divisor source range.
