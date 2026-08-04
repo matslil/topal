@@ -87,3 +87,5 @@ pending until message passing exists in the shared execution machine.
 | --- | --- | --- | --- |
 | `TOPAL-DEBUG-EXEC-001`, `TOPAL-DEBUG-TRACE-001` | implemented semantic trace rule IDs | unit tests in `topal-language`; `examples/debugger/basic-history.t` | `topal-language::ExecutionHistory` |
 | `TOPAL-DEBUG-CONTROL-001` (transition navigation foundation) | implemented semantic trace rule IDs | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.t` | `topal-debugger` |
+| `TOPAL-DEBUG-MODE-001` | debugger command contract | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.debug` | `topal-debugger` |
+| `TOPAL-DEBUG-REVERSE-001` (immutable binding checkpoints) | `TOPAL-SYN-BIND-001` and implemented value rules | unit tests in `topal-language`; `src/topal-debugger/tests/cli.rs` | `topal-language::ExecutionState`, `topal-debugger` |

@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::process::ExitCode;
 
 use topal_language::{ExecutionHistory, ExecutionTransition, Session};
@@ -16,38 +16,59 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), String> {
-    let path = parse_path(env::args().skip(1))?;
-    let source =
-        fs::read_to_string(&path).map_err(|error| format!("cannot read {path}: {error}"))?;
+    let arguments = parse_arguments(env::args().skip(1))?;
+    let source = fs::read_to_string(&arguments.source)
+        .map_err(|error| format!("cannot read {}: {error}", arguments.source))?;
     let mut history = ExecutionHistory::new();
-    let value = Session::new()
+    Session::new()
         .evaluate(&source, &mut history)
-        .map_err(|error| error.render(&path))?;
+        .map_err(|error| error.render(&arguments.source))?;
     history.rewind();
 
     println!("loaded {} transitions", history.transitions().len());
-    command_loop(&mut history, &value)
+    if let Some(commands) = arguments.commands {
+        if commands == "-" {
+            command_loop(io::stdin().lock(), &mut history)
+        } else {
+            let file = fs::File::open(&commands)
+                .map_err(|error| format!("cannot read command script {commands}: {error}"))?;
+            command_loop(BufReader::new(file), &mut history)
+        }
+    } else {
+        command_loop(io::stdin().lock(), &mut history)
+    }
 }
 
-fn parse_path(mut arguments: impl Iterator<Item = String>) -> Result<String, String> {
-    let path = arguments
+struct Arguments {
+    source: String,
+    commands: Option<String>,
+}
+
+fn parse_arguments(mut arguments: impl Iterator<Item = String>) -> Result<Arguments, String> {
+    let first = arguments
         .next()
-        .ok_or_else(|| "usage: topal-debug FILE".to_owned())?;
-    if path.starts_with('-') {
-        return Err(format!("unknown option: {path}"));
-    }
+        .ok_or_else(|| "usage: topal-debug [--script COMMANDS] FILE".to_owned())?;
+    let (commands, source) = if first == "--script" {
+        let commands = arguments
+            .next()
+            .ok_or_else(|| "--script requires a command file or -".to_owned())?;
+        let source = arguments
+            .next()
+            .ok_or_else(|| "--script requires a Topal source file".to_owned())?;
+        (Some(commands), source)
+    } else if first.starts_with('-') {
+        return Err(format!("unknown option: {first}"));
+    } else {
+        (None, first)
+    };
     if let Some(extra) = arguments.next() {
         return Err(format!("unexpected second source file: {extra}"));
     }
-    Ok(path)
+    Ok(Arguments { source, commands })
 }
 
-fn command_loop(
-    history: &mut ExecutionHistory,
-    value: &impl std::fmt::Display,
-) -> Result<(), String> {
-    let stdin = io::stdin();
-    let lines = stdin.lock().lines();
+fn command_loop(input: impl Read, history: &mut ExecutionHistory) -> Result<(), String> {
+    let lines = BufReader::new(input).lines();
     for line in lines {
         let command = line.map_err(|error| error.to_string())?;
         match command.trim() {
@@ -67,11 +88,20 @@ fn command_loop(
                 }
             }
             "history" => print_history(history),
-            "print" | "p" if history.cursor() == history.transitions().len() => {
-                println!("{value}");
+            "print" | "p" => match history.state().and_then(|state| state.value.as_ref()) {
+                Some(value) => println!("{value}"),
+                None => println!("no value at current execution state"),
+            },
+            "bindings" => {
+                if let Some(state) = history.state() {
+                    for (name, value) in &state.bindings {
+                        println!("{name} = {value}");
+                    }
+                }
             }
-            "print" | "p" => println!("value is available at end of execution"),
-            "help" | "h" => println!("step | reverse-step | history | print | quit"),
+            "help" | "h" => {
+                println!("step | reverse-step | history | print | bindings | quit");
+            }
             "quit" | "q" => return Ok(()),
             "" => {}
             unknown => println!("unknown command: {unknown}; use help"),
