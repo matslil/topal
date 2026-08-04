@@ -86,6 +86,7 @@ fn command_loop(
     for line in lines {
         let command = line.map_err(|error| error.to_string())?;
         match command.trim() {
+            command if handle_frame_command(command, history, source, source_name) => {}
             "step" | "s" => match history.step_forward() {
                 Some(transition) => print_transition(transition),
                 None => println!("end of execution"),
@@ -168,7 +169,7 @@ fn command_loop(
             }
             "help" | "h" => {
                 println!(
-                    "step | reverse-step | source-step | reverse-source-step | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | history | print | bindings | quit"
+                    "step | reverse-step | source-step | reverse-source-step | next | reverse-next | finish | reverse-finish | backtrace | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | history | print | bindings | quit"
                 );
             }
             "quit" | "q" => return Ok(()),
@@ -178,6 +179,44 @@ fn command_loop(
         io::stdout().flush().map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+fn handle_frame_command(
+    command: &str,
+    history: &mut ExecutionHistory,
+    source: &str,
+    source_name: &str,
+) -> bool {
+    match command {
+        "next" | "n" => match history.step_source_forward() {
+            Some(_) => print_source_location(history, source, source_name),
+            None => println!("end of current frame"),
+        },
+        "reverse-next" | "rn" => match history.step_source_backward() {
+            Some(_) => print_source_location(history, source, source_name),
+            None => println!("start of current frame"),
+        },
+        "finish" => {
+            history.finish();
+            print_source_location(history, source, source_name);
+        }
+        "reverse-finish" => {
+            history.reverse_finish();
+            print_source_location(history, source, source_name);
+        }
+        "backtrace" | "bt" => print_backtrace(history, source, source_name),
+        _ => return false,
+    }
+    true
+}
+
+fn print_backtrace(history: &ExecutionHistory, source: &str, source_name: &str) {
+    if let Some(range) = history.state().and_then(|state| state.source_range) {
+        let (line, column) = line_column(source, range.start);
+        println!("#0 <script> at {source_name}:{line}:{column}");
+    } else {
+        println!("#0 <script> before first statement in {source_name}");
+    }
 }
 
 fn valid_checkpoint_name(name: &str) -> bool {

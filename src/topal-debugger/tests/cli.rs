@@ -30,6 +30,8 @@ fn navigates_recorded_execution_in_both_directions() {
     assert!(stdout.contains("checkpoint result saved"));
     assert!(stdout.contains("checkpoint result restored"));
     assert!(stdout.contains("checkpoint result deleted"));
+    assert!(stdout.contains("#0 <script> before first statement"));
+    assert!(stdout.contains("#0 <script> at"));
 }
 
 #[test]
