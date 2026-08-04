@@ -363,6 +363,16 @@ fn interactive_diagnostic_uses_an_interactive_source_label() {
 }
 
 #[test]
+fn unbound_name_diagnostic_suggests_a_close_visible_binding() {
+    let output = run(&[], "answer is 42\nanwser\n");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-UNBOUND-NAME]"));
+    assert!(diagnostic.contains("2 | anwser"));
+    assert!(diagnostic.contains("= help: did you mean `answer`?"));
+}
+
+#[test]
 fn script_executes_bindings_in_source_order() {
     let output = run(&[], "answer is 42\nanswer\n");
     assert!(output.status.success());

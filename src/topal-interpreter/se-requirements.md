@@ -195,7 +195,9 @@ human rendering identifies severity, source name, line and column, the relevant
 source line, a Unicode-column-aligned marker, and actionable help when a safe
 general correction exists. Script filenames, standard input, and interactive
 input shall have deterministic source labels. Rendering concerns shall not
-change interpreter semantics or test trace events.
+change interpreter semantics or test trace events. When an unbound name has one
+deterministically closest visible binding within a conservative edit-distance
+threshold, help shall suggest that spelling without changing name resolution.
 
 ## TOPAL-INTP-SUBSET-021 — Exact ordering predicates
 
