@@ -12,6 +12,7 @@ pub enum TokenKind {
     Comment,
     Hashbang,
     Identifier,
+    Boolean,
     Integer,
     Rational,
     String,
@@ -129,10 +130,15 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         '/' => (TokenKind::Slash, 1),
         '^' => (TokenKind::Caret, 1),
         c if c.is_ascii_digit() => take_number(rest),
-        c if is_identifier_start(c) => (
-            TokenKind::Identifier,
-            take_while(rest, |value| is_identifier_continue(value) || value == '-'),
-        ),
+        c if is_identifier_start(c) => {
+            let length = take_while(rest, |value| is_identifier_continue(value) || value == '-');
+            let kind = if matches!(&rest[..length], "true" | "false") {
+                TokenKind::Boolean
+            } else {
+                TokenKind::Identifier
+            };
+            (kind, length)
+        }
         c => (TokenKind::Unknown, c.len_utf8()),
     }
 }
@@ -262,6 +268,20 @@ mod tests {
                 TokenKind::Minus,
                 TokenKind::Whitespace,
                 TokenKind::Integer,
+            ]
+        );
+    }
+
+    #[test]
+    fn reserves_complete_boolean_literal_spellings() {
+        assert_eq!(
+            kinds("true false true-value"),
+            vec![
+                TokenKind::Boolean,
+                TokenKind::Whitespace,
+                TokenKind::Boolean,
+                TokenKind::Whitespace,
+                TokenKind::Identifier,
             ]
         );
     }

@@ -5,6 +5,7 @@ use crate::{Lexed, SyntaxDiagnostic, Token, TokenKind};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expression {
     Unit(Span),
+    Boolean(Span),
     Tuple { items: Vec<Self>, span: Span },
     Integer(Span),
     Rational(Span),
@@ -28,6 +29,7 @@ impl Expression {
     pub const fn span(&self) -> Span {
         match self {
             Self::Unit(span)
+            | Self::Boolean(span)
             | Self::Integer(span)
             | Self::Rational(span)
             | Self::String(span)
@@ -91,6 +93,19 @@ impl Parser<'_> {
     fn statement(&mut self) -> Option<Statement> {
         let checkpoint = self.cursor;
         let first = self.take_nontrivia()?;
+        if first.kind == TokenKind::Boolean
+            && self.peek_nontrivia().is_some_and(|second| {
+                second.kind == TokenKind::Identifier && self.source.slice(second.span) == "is"
+            })
+        {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-RESERVED-BOOLEAN-LITERAL",
+                span: first.span,
+                message: "a Boolean literal cannot introduce a binding",
+            });
+            self.skip_to_newline();
+            return None;
+        }
         if first.kind == TokenKind::Identifier
             && let Some(second) = self.peek_nontrivia()
             && second.kind == TokenKind::Identifier
@@ -144,6 +159,7 @@ impl Parser<'_> {
     fn primary(&mut self) -> Option<Expression> {
         let token = self.take_nontrivia()?;
         match token.kind {
+            TokenKind::Boolean => Some(Expression::Boolean(token.span)),
             TokenKind::Integer => Some(Expression::Integer(token.span)),
             TokenKind::Rational => Some(Expression::Rational(token.span)),
             TokenKind::String => Some(Expression::String(token.span)),
@@ -435,5 +451,12 @@ mod tests {
         let source = SourceText::new("answer is").unwrap();
         let parsed = parse(&source, &lex(&source));
         assert_eq!(parsed.diagnostics[0].code, "E-EXPECTED-EXPRESSION");
+    }
+
+    #[test]
+    fn rejects_boolean_literal_as_a_binding_name() {
+        let source = SourceText::new("true is 1").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert_eq!(parsed.diagnostics[0].code, "E-RESERVED-BOOLEAN-LITERAL");
     }
 }

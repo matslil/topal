@@ -45,6 +45,10 @@ arbitrary runs of punctuation.
 at the end of an open structural record pattern; it is not a general spread,
 rest, range, or wildcard operator.
 
+The ASCII spellings `true` and `false` are reserved Boolean literals. They are
+not identifiers and cannot introduce or resolve bindings. Longer identifiers
+such as `true-value` remain ordinary identifiers.
+
 `_` is a reserved discard identifier. It may occupy a declaration or pattern
 position for a value which is deliberately left unnamed:
 
