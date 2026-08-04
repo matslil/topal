@@ -98,6 +98,25 @@ fn exposes_intermediate_expression_values_as_reversible_states() {
 }
 
 #[test]
+fn evaluates_inspection_expressions_without_mutating_history() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}expression-inspection.debug"),
+            &format!("{root}basic-history.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("\n40\n"));
+    assert!(stdout.contains("\n42\n"));
+    assert!(stdout.contains("\n(40, 42)\n"));
+    assert!(stdout.contains("error[E-UNBOUND-NAME]: name is not bound"));
+}
+
+#[test]
 fn script_mode_reports_command_file_errors() {
     let source = concat!(
         env!("CARGO_MANIFEST_DIR"),

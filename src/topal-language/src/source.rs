@@ -177,6 +177,39 @@ impl Session {
         })
     }
 
+    /// Evaluate one expression against an immutable binding snapshot.
+    ///
+    /// # Errors
+    ///
+    /// Returns a diagnostic when the input is not exactly one expression or
+    /// when that expression cannot be evaluated.
+    pub fn inspect(
+        bindings: &BTreeMap<String, Value>,
+        input: &str,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let mut session = Self {
+            bindings: bindings.clone(),
+        };
+        let mut execution = session.prepare(input, trace)?;
+        if !matches!(execution.statements.as_slice(), [Statement::Expression(_)]) {
+            let span = execution
+                .statements
+                .first()
+                .map_or_else(|| Span::new(0, 0), statement_span);
+            return Err(diagnostic(
+                &execution.source,
+                "D-EXPECTED-EXPRESSION",
+                span,
+                "debugger inspection requires exactly one expression",
+            ));
+        }
+        match execution.step(&mut session, trace)? {
+            ExecutionStep::Complete(value) => Ok(value),
+            ExecutionStep::Advanced { .. } => unreachable!("one expression completes execution"),
+        }
+    }
+
     fn checkpoint(&self, trace: &mut impl TraceSink, value: Option<&Value>, span: Option<Span>) {
         trace.checkpoint(ExecutionSnapshot {
             bindings: &self.bindings,
@@ -362,6 +395,13 @@ const fn cover(first: Span, second: Span) -> Span {
     Span {
         start: first.start,
         end: second.end,
+    }
+}
+
+fn statement_span(statement: &Statement) -> Span {
+    match statement {
+        Statement::Binding { name, value } => cover(*name, value.span()),
+        Statement::Expression(expression) => expression.span(),
     }
 }
 

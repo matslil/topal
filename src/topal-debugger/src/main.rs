@@ -212,6 +212,10 @@ fn command_loop(
                 Some(value) => println!("{value}"),
                 None => println!("no value at current execution state"),
             },
+            command if command.starts_with("print ") || command.starts_with("p ") => {
+                let expression = command.split_once(' ').unwrap().1.trim();
+                print_expression(history, expression);
+            }
             "bindings" => print_bindings(history),
             "help" | "h" => {
                 println!(
@@ -314,6 +318,17 @@ fn print_bindings(history: &ExecutionHistory) {
         for (name, value) in &state.bindings {
             println!("{name} = {value}");
         }
+    }
+}
+
+fn print_expression(history: &ExecutionHistory, expression: &str) {
+    let Some(state) = history.state() else {
+        println!("no execution state selected");
+        return;
+    };
+    match Session::inspect(&state.bindings, expression, &mut io::sink()) {
+        Ok(value) => println!("{value}"),
+        Err(error) => println!("{}", error.render("<debugger-expression>")),
     }
 }
 
