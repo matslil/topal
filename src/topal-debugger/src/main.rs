@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
@@ -82,6 +82,7 @@ fn command_loop(
     let lines = BufReader::new(input).lines();
     let mut breakpoints = BTreeSet::new();
     let mut watchpoints = BTreeSet::new();
+    let mut checkpoints = BTreeMap::new();
     for line in lines {
         let command = line.map_err(|error| error.to_string())?;
         match command.trim() {
@@ -125,14 +126,13 @@ fn command_loop(
                 }
             }
             "breakpoints" => {
-                for line in &breakpoints {
-                    println!("{source_name}:{line}");
-                }
+                print_breakpoints(&breakpoints, source_name);
             }
             "watchpoints" => {
-                for name in &watchpoints {
-                    println!("{name}");
-                }
+                print_watchpoints(&watchpoints);
+            }
+            "checkpoints" => {
+                print_checkpoints(&checkpoints);
             }
             command if command.starts_with("break ") => {
                 update_breakpoint(command, "break ", &mut breakpoints, true);
@@ -145,6 +145,15 @@ fn command_loop(
             }
             command if command.starts_with("unwatch ") => {
                 update_watchpoint(command, "unwatch ", &mut watchpoints, false);
+            }
+            command if command.starts_with("checkpoint ") => {
+                save_checkpoint(command, &mut checkpoints, history.cursor());
+            }
+            command if command.starts_with("restore ") => {
+                restore_checkpoint(command, &checkpoints, history, source, source_name);
+            }
+            command if command.starts_with("delete-checkpoint ") => {
+                delete_checkpoint(command, &mut checkpoints);
             }
             "print" | "p" => match history.state().and_then(|state| state.value.as_ref()) {
                 Some(value) => println!("{value}"),
@@ -159,7 +168,7 @@ fn command_loop(
             }
             "help" | "h" => {
                 println!(
-                    "step | reverse-step | source-step | reverse-source-step | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | where | history | print | bindings | quit"
+                    "step | reverse-step | source-step | reverse-source-step | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | history | print | bindings | quit"
                 );
             }
             "quit" | "q" => return Ok(()),
@@ -169,6 +178,64 @@ fn command_loop(
         io::stdout().flush().map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+fn valid_checkpoint_name(name: &str) -> bool {
+    !name.is_empty() && !name.chars().any(char::is_whitespace)
+}
+
+fn print_breakpoints(breakpoints: &BTreeSet<usize>, source_name: &str) {
+    for line in breakpoints {
+        println!("{source_name}:{line}");
+    }
+}
+
+fn print_watchpoints(watchpoints: &BTreeSet<String>) {
+    for name in watchpoints {
+        println!("{name}");
+    }
+}
+
+fn print_checkpoints(checkpoints: &BTreeMap<String, usize>) {
+    for (name, cursor) in checkpoints {
+        println!("{name} = #{cursor}");
+    }
+}
+
+fn save_checkpoint(command: &str, checkpoints: &mut BTreeMap<String, usize>, cursor: usize) {
+    let name = command["checkpoint ".len()..].trim();
+    if valid_checkpoint_name(name) {
+        checkpoints.insert(name.to_owned(), cursor);
+        println!("checkpoint {name} saved at #{cursor}");
+    } else {
+        println!("checkpoint name must be one nonempty word");
+    }
+}
+
+fn restore_checkpoint(
+    command: &str,
+    checkpoints: &BTreeMap<String, usize>,
+    history: &mut ExecutionHistory,
+    source: &str,
+    source_name: &str,
+) {
+    let name = command["restore ".len()..].trim();
+    if let Some(cursor) = checkpoints.get(name) {
+        history.seek(*cursor);
+        println!("checkpoint {name} restored at #{cursor}");
+        print_source_location(history, source, source_name);
+    } else {
+        println!("unknown checkpoint: {name}");
+    }
+}
+
+fn delete_checkpoint(command: &str, checkpoints: &mut BTreeMap<String, usize>) {
+    let name = command["delete-checkpoint ".len()..].trim();
+    if checkpoints.remove(name).is_some() {
+        println!("checkpoint {name} deleted");
+    } else {
+        println!("unknown checkpoint: {name}");
+    }
 }
 
 fn update_watchpoint(

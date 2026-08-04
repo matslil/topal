@@ -20,4 +20,10 @@ watch answer
 watchpoints
 reverse-continue
 unwatch answer
+source-step
+checkpoint result
+reverse-source-step
+restore result
+checkpoints
+delete-checkpoint result
 quit

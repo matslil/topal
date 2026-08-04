@@ -69,6 +69,14 @@ impl ExecutionHistory {
         self.cursor
     }
 
+    pub fn seek(&mut self, cursor: usize) -> bool {
+        if cursor > self.transitions.len() {
+            return false;
+        }
+        self.cursor = cursor;
+        true
+    }
+
     #[must_use]
     pub fn state(&self) -> Option<&ExecutionState> {
         self.checkpoints
