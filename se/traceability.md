@@ -16,7 +16,7 @@ domains. Test and implementation columns will be added with those artifacts.
 
 | Requirement | Governing specification rules |
 | --- | --- |
-| `TOPAL-REQ-MODEL-001` | `TOPAL-TYPE-KIND-001` through `TOPAL-TYPE-MATCH-001`, including `TOPAL-TYPE-BOOLEAN-001`, `TOPAL-NUM-SYMBOL-001`, `TOPAL-NUM-INT-RATIONAL-CONVERT-001` |
+| `TOPAL-REQ-MODEL-001` | `TOPAL-TYPE-KIND-001` through `TOPAL-TYPE-MATCH-001`, including `TOPAL-TYPE-BOOLEAN-001` and `TOPAL-TYPE-EQUALITY-001`, `TOPAL-NUM-SYMBOL-001`, `TOPAL-NUM-INT-RATIONAL-CONVERT-001` |
 | `TOPAL-REQ-SAFE-001` | `TOPAL-TYPE-SOUND-001`, `TOPAL-NUM-INT-001`, `TOPAL-NUM-ADD-001`, `TOPAL-NUM-NEG-001`, `TOPAL-NUM-SUB-001`, `TOPAL-NUM-MUL-001`, `TOPAL-NUM-RATIONAL-001`, `TOPAL-NUM-DIV-001`, `TOPAL-NUM-DIVZERO-001`, `TOPAL-NUM-POW-001`, `TOPAL-NUM-INT-RATIONAL-CONVERT-001`, `TOPAL-MEM-LOCATION-001`, `TOPAL-MEM-PLAIN-001`, `TOPAL-CONC-RACE-001` |
 | `TOPAL-REQ-TOTAL-001` | `TOPAL-TYPE-TOTAL-001`, `TOPAL-CONC-PROGRESS-001` |
 | `TOPAL-REQ-CONC-001` | `TOPAL-CONC-DEADLOCK-001`, `TOPAL-CONC-RACE-001` |
@@ -65,3 +65,4 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-INTP-SUBSET-016` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-PRODUCT-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-syntax` | `topal-syntax`, `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-SUBSET-017` | `TOPAL-SYN-INDENT-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-syntax` | `topal-syntax`, `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-SUBSET-018` | `TOPAL-SYN-LEX-001`, `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-BOOLEAN-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-syntax` | `topal-syntax`, `topal-language`, `topal-interpreter` |
+| `TOPAL-INTP-SUBSET-019` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-TYPE-EQUALITY-001`, `TOPAL-NUM-INT-RATIONAL-CONVERT-001` | `src/topal-interpreter/tests/cli.rs` | `topal-syntax`, `topal-language`, `topal-interpreter` |

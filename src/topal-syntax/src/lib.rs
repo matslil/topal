@@ -19,6 +19,7 @@ pub enum TokenKind {
     LeftParen,
     RightParen,
     Comma,
+    Equals,
     Plus,
     Minus,
     Star,
@@ -120,6 +121,7 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         '(' => (TokenKind::LeftParen, 1),
         ')' => (TokenKind::RightParen, 1),
         ',' => (TokenKind::Comma, 1),
+        '=' => (TokenKind::Equals, 1),
         '+' => (TokenKind::Plus, 1),
         '-' if rest[1..].starts_with(|c: char| c.is_ascii_digit()) => {
             let (kind, length) = take_number(&rest[1..]);
@@ -254,6 +256,20 @@ mod tests {
                 TokenKind::Whitespace,
                 TokenKind::Comment,
                 TokenKind::Newline,
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_fundamental_equality_as_a_callable_symbol() {
+        assert_eq!(
+            kinds("true = false"),
+            vec![
+                TokenKind::Boolean,
+                TokenKind::Whitespace,
+                TokenKind::Equals,
+                TokenKind::Whitespace,
+                TokenKind::Boolean,
             ]
         );
     }

@@ -380,6 +380,9 @@ fn apply_binary(
     right_span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
+    if kind == CallableKind::Equal {
+        return apply_equality(source, left, right, span, trace);
+    }
     match (left, right) {
         (Value::Int(left), Value::Int(right)) => {
             apply_int_binary(source, kind, left, right, right_span, trace)
@@ -420,6 +423,59 @@ fn apply_binary(
     }
 }
 
+fn apply_equality(
+    source: &SourceText,
+    left: Value,
+    right: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Some(equal) = values_equal(left, right, trace) else {
+        return Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            span,
+            "the operand types do not share an applicable Equality operation",
+        ));
+    };
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: "root.=(Equality,Equality)",
+    });
+    trace.record(TraceEvent {
+        event: "evaluation.equal",
+        rule: "TOPAL-TYPE-EQUALITY-001",
+        detail: if equal { "true" } else { "false" },
+    });
+    Ok(Value::Boolean(equal))
+}
+
+fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<bool> {
+    match (left, right) {
+        (Value::Boolean(left), Value::Boolean(right)) => Some(left == right),
+        (Value::Int(left), Value::Int(right)) => Some(left == right),
+        (Value::Rational(left), Value::Rational(right)) => Some(left == right),
+        (Value::Int(left), Value::Rational(right)) => {
+            trace_conversion(trace, "Int->Rational:left");
+            Some(BigRational::from_integer(left) == right)
+        }
+        (Value::Rational(left), Value::Int(right)) => {
+            trace_conversion(trace, "Int->Rational:right");
+            Some(left == BigRational::from_integer(right))
+        }
+        (Value::String(left), Value::String(right)) => Some(left == right),
+        (Value::Unit, Value::Unit) => Some(true),
+        (Value::Tuple(left), Value::Tuple(right)) if left.len() == right.len() => left
+            .into_iter()
+            .zip(right)
+            .try_fold(true, |equal, (left, right)| {
+                values_equal(left, right, trace).map(|field_equal| equal && field_equal)
+            }),
+        _ => None,
+    }
+}
+
 fn trace_conversion(trace: &mut impl TraceSink, detail: &'static str) {
     trace.record(TraceEvent {
         event: "conversion.applied",
@@ -437,6 +493,7 @@ fn apply_int_binary(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     match kind {
+        CallableKind::Equal => unreachable!("equality is dispatched before numeric operations"),
         CallableKind::Plus => {
             trace.record(TraceEvent {
                 event: "operator.selected",
@@ -491,6 +548,7 @@ fn apply_rational_binary(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let (callable, event, rule, result) = match kind {
+        CallableKind::Equal => unreachable!("equality is dispatched before numeric operations"),
         CallableKind::Plus => (
             "root.+(Rational,Rational)",
             "evaluation.add",

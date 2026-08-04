@@ -171,3 +171,12 @@ All interpreter modes shall evaluate reserved `true` and `false` literals as
 the two `Boolean` values according to `TOPAL-TYPE-BOOLEAN-001`. The spellings
 shall not participate in binding or name resolution, shall not convert to
 numbers, and test mode shall trace literal construction.
+
+## TOPAL-INTP-SUBSET-019 — Fundamental equality
+
+All interpreter modes shall evaluate `=` according to
+`TOPAL-TYPE-EQUALITY-001` for `Unit`, `Boolean`, exact numbers, strings, and
+positional products. Mixed `Int` and `Rational` operands shall use the canonical
+conversion and trace it before equality overload selection. Operands without
+shared equality evidence shall report no applicable overload rather than
+returning `false`; test mode shall trace the selected operation and result.
