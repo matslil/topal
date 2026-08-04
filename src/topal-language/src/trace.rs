@@ -1,5 +1,7 @@
 use std::io::{self, Write};
 
+use crate::ExecutionSnapshot;
+
 /// One stable, machine-readable interpreter decision.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraceEvent<'a> {
@@ -11,6 +13,8 @@ pub struct TraceEvent<'a> {
 /// Destination for semantic decision events.
 pub trait TraceSink {
     fn record(&mut self, event: TraceEvent<'_>);
+
+    fn checkpoint(&mut self, _snapshot: ExecutionSnapshot<'_>) {}
 }
 
 impl TraceSink for Vec<String> {

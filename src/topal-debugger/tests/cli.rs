@@ -19,6 +19,7 @@ fn navigates_recorded_execution_in_both_directions() {
     assert!(stdout.contains("#0 context.selected [TOPAL-SYN-UNICODE-001]"));
     assert!(stdout.contains("#1 source.accepted [TOPAL-SYN-SOURCE-001]"));
     assert!(stdout.contains("> #0 context.selected"));
+    assert!(stdout.contains("no value at current execution state"));
 }
 
 #[test]

@@ -20,7 +20,7 @@ fn run() -> Result<(), String> {
     let source = fs::read_to_string(&arguments.source)
         .map_err(|error| format!("cannot read {}: {error}", arguments.source))?;
     let mut history = ExecutionHistory::new();
-    let value = Session::new()
+    Session::new()
         .evaluate(&source, &mut history)
         .map_err(|error| error.render(&arguments.source))?;
     history.rewind();
@@ -28,14 +28,14 @@ fn run() -> Result<(), String> {
     println!("loaded {} transitions", history.transitions().len());
     if let Some(commands) = arguments.commands {
         if commands == "-" {
-            command_loop(io::stdin().lock(), &mut history, &value)
+            command_loop(io::stdin().lock(), &mut history)
         } else {
             let file = fs::File::open(&commands)
                 .map_err(|error| format!("cannot read command script {commands}: {error}"))?;
-            command_loop(BufReader::new(file), &mut history, &value)
+            command_loop(BufReader::new(file), &mut history)
         }
     } else {
-        command_loop(io::stdin().lock(), &mut history, &value)
+        command_loop(io::stdin().lock(), &mut history)
     }
 }
 
@@ -67,11 +67,7 @@ fn parse_arguments(mut arguments: impl Iterator<Item = String>) -> Result<Argume
     Ok(Arguments { source, commands })
 }
 
-fn command_loop(
-    input: impl Read,
-    history: &mut ExecutionHistory,
-    value: &impl std::fmt::Display,
-) -> Result<(), String> {
+fn command_loop(input: impl Read, history: &mut ExecutionHistory) -> Result<(), String> {
     let lines = BufReader::new(input).lines();
     for line in lines {
         let command = line.map_err(|error| error.to_string())?;
@@ -92,11 +88,20 @@ fn command_loop(
                 }
             }
             "history" => print_history(history),
-            "print" | "p" if history.cursor() == history.transitions().len() => {
-                println!("{value}");
+            "print" | "p" => match history.state().and_then(|state| state.value.as_ref()) {
+                Some(value) => println!("{value}"),
+                None => println!("no value at current execution state"),
+            },
+            "bindings" => {
+                if let Some(state) = history.state() {
+                    for (name, value) in &state.bindings {
+                        println!("{name} = {value}");
+                    }
+                }
             }
-            "print" | "p" => println!("value is available at end of execution"),
-            "help" | "h" => println!("step | reverse-step | history | print | quit"),
+            "help" | "h" => {
+                println!("step | reverse-step | history | print | bindings | quit");
+            }
             "quit" | "q" => return Ok(()),
             "" => {}
             unknown => println!("unknown command: {unknown}; use help"),

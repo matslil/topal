@@ -7,7 +7,7 @@ use num_rational::BigRational;
 use topal_source::{SourceText, Span};
 use topal_syntax::{CallableKind, Expression, Statement, lex, parse};
 
-use crate::{TraceEvent, TraceSink};
+use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
@@ -126,6 +126,7 @@ impl Session {
         input: &str,
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
+        self.checkpoint(trace, None);
         trace.record(TraceEvent {
             event: "context.selected",
             rule: "TOPAL-SYN-UNICODE-001",
@@ -186,6 +187,7 @@ impl Session {
                         detail: name_text,
                     });
                     result = Some(Value::Unit);
+                    self.checkpoint(trace, result.as_ref());
                 }
                 Statement::Expression(expression) => {
                     if index + 1 != parsed.statements.len() {
@@ -221,7 +223,15 @@ impl Session {
                 Value::Unit => "Unit",
             },
         });
+        self.checkpoint(trace, Some(&value));
         Ok(value)
+    }
+
+    fn checkpoint(&self, trace: &mut impl TraceSink, value: Option<&Value>) {
+        trace.checkpoint(ExecutionSnapshot {
+            bindings: &self.bindings,
+            value,
+        });
     }
 
     fn evaluate_expression(
