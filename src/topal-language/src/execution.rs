@@ -103,6 +103,33 @@ impl ExecutionHistory {
         self.state()
     }
 
+    pub fn continue_source_forward(
+        &mut self,
+        predicate: impl Fn(&ExecutionState) -> bool,
+    ) -> Option<&ExecutionState> {
+        let cursor = self
+            .checkpoints
+            .iter()
+            .find(|checkpoint| checkpoint.cursor > self.cursor && predicate(&checkpoint.state))?
+            .cursor;
+        self.cursor = cursor;
+        self.state()
+    }
+
+    pub fn continue_source_backward(
+        &mut self,
+        predicate: impl Fn(&ExecutionState) -> bool,
+    ) -> Option<&ExecutionState> {
+        let cursor = self
+            .checkpoints
+            .iter()
+            .rev()
+            .find(|checkpoint| checkpoint.cursor < self.cursor && predicate(&checkpoint.state))?
+            .cursor;
+        self.cursor = cursor;
+        self.state()
+    }
+
     pub fn step_forward(&mut self) -> Option<&ExecutionTransition> {
         if self.cursor == self.transitions.len() {
             return None;

@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
@@ -79,6 +80,7 @@ fn command_loop(
     source_name: &str,
 ) -> Result<(), String> {
     let lines = BufReader::new(input).lines();
+    let mut breakpoints = BTreeSet::new();
     for line in lines {
         let command = line.map_err(|error| error.to_string())?;
         match command.trim() {
@@ -107,6 +109,31 @@ fn command_loop(
                 None => println!("start of source execution"),
             },
             "where" | "w" => print_source_location(history, source, source_name),
+            "continue" | "c" => {
+                if continue_to_breakpoint(history, source, &breakpoints, false) {
+                    print_source_location(history, source, source_name);
+                } else {
+                    println!("no later breakpoint");
+                }
+            }
+            "reverse-continue" | "rc" => {
+                if continue_to_breakpoint(history, source, &breakpoints, true) {
+                    print_source_location(history, source, source_name);
+                } else {
+                    println!("no earlier breakpoint");
+                }
+            }
+            "breakpoints" => {
+                for line in &breakpoints {
+                    println!("{source_name}:{line}");
+                }
+            }
+            command if command.starts_with("break ") => {
+                update_breakpoint(command, "break ", &mut breakpoints, true);
+            }
+            command if command.starts_with("delete ") => {
+                update_breakpoint(command, "delete ", &mut breakpoints, false);
+            }
             "print" | "p" => match history.state().and_then(|state| state.value.as_ref()) {
                 Some(value) => println!("{value}"),
                 None => println!("no value at current execution state"),
@@ -120,7 +147,7 @@ fn command_loop(
             }
             "help" | "h" => {
                 println!(
-                    "step | reverse-step | source-step | reverse-source-step | where | history | print | bindings | quit"
+                    "step | reverse-step | source-step | reverse-source-step | break LINE | delete LINE | breakpoints | continue | reverse-continue | where | history | print | bindings | quit"
                 );
             }
             "quit" | "q" => return Ok(()),
@@ -130,6 +157,42 @@ fn command_loop(
         io::stdout().flush().map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+fn update_breakpoint(command: &str, prefix: &str, breakpoints: &mut BTreeSet<usize>, insert: bool) {
+    match command[prefix.len()..].trim().parse::<usize>() {
+        Ok(0) | Err(_) => println!("breakpoint line must be a positive integer"),
+        Ok(line) if insert => {
+            breakpoints.insert(line);
+            println!("breakpoint set at line {line}");
+        }
+        Ok(line) => {
+            if breakpoints.remove(&line) {
+                println!("breakpoint removed from line {line}");
+            } else {
+                println!("no breakpoint at line {line}");
+            }
+        }
+    }
+}
+
+fn continue_to_breakpoint(
+    history: &mut ExecutionHistory,
+    source: &str,
+    breakpoints: &BTreeSet<usize>,
+    reverse: bool,
+) -> bool {
+    let matches = |state: &topal_language::ExecutionState| {
+        state.source_range.is_some_and(|range| {
+            let (line, _) = line_column(source, range.start);
+            breakpoints.contains(&line)
+        })
+    };
+    if reverse {
+        history.continue_source_backward(matches).is_some()
+    } else {
+        history.continue_source_forward(matches).is_some()
+    }
 }
 
 fn print_source_location(history: &ExecutionHistory, source: &str, source_name: &str) {

@@ -10,4 +10,10 @@ source-step
 where
 source-step
 reverse-source-step
+break 3
+break 4
+reverse-continue
+continue
+breakpoints
+delete 3
 quit
