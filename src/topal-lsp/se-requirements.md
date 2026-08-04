@@ -35,3 +35,12 @@ The initial legend shall distinguish variables, numbers, strings, comments,
 reserved literals, and operators. Token positions and lengths shall use UTF-16;
 multiline tokens shall be split into valid single-line protocol tokens without
 changing their shared source spans.
+
+## TOPAL-LSP-FEATURE-001 — Feature-increment editor coverage
+
+Every language-feature increment shall assess and update language-server
+behavior in the same reviewable series. When no protocol implementation change
+is required, the increment shall still add explicit LSP conformance coverage
+showing that shared diagnostics, semantic tokens, and other applicable editor
+features recognize the new syntax and semantics. The LSP suite shall open every
+runnable example and require it to be free of shared-frontend diagnostics.
