@@ -26,3 +26,12 @@ mutating an interpreter session. It shall publish every available source and
 syntax diagnostic with its stable code, message, severity, and UTF-16 protocol
 range. CRLF normalization shall not change the line and character range seen by
 the client.
+
+## TOPAL-LSP-TOKENS-001 — Recovery-friendly semantic tokens
+
+The language server shall provide full-document semantic tokens derived from
+the shared lossless lexer even when the document has recoverable syntax errors.
+The initial legend shall distinguish variables, numbers, strings, comments,
+reserved literals, and operators. Token positions and lengths shall use UTF-16;
+multiline tokens shall be split into valid single-line protocol tokens without
+changing their shared source spans.
