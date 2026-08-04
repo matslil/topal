@@ -77,6 +77,27 @@ fn retains_inspectable_history_when_live_execution_fails() {
 }
 
 #[test]
+fn exposes_intermediate_expression_values_as_reversible_states() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}expression-stepping.debug"),
+            &format!("{root}expression-stepping.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    for value in ["\n40\n", "\n41\n", "\n42\n"] {
+        assert!(
+            stdout.contains(value),
+            "missing intermediate value {value:?}"
+        );
+    }
+}
+
+#[test]
 fn script_mode_reports_command_file_errors() {
     let source = concat!(
         env!("CARGO_MANIFEST_DIR"),
