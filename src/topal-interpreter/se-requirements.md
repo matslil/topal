@@ -105,3 +105,11 @@ The interpreter shall construct fractional decimal and base-ten exponent
 literals as canonical exact `Rational` values under
 `TOPAL-NUM-RATIONAL-LITERAL-001`. All modes shall preserve arbitrary exponent
 size, grouping validity, sign, and the visible rational result type.
+
+## TOPAL-INTP-SUBSET-011 — Finite exact rational arithmetic
+
+The interpreter shall evaluate same-domain finite `Rational` negation,
+addition, subtraction, multiplication, and division according to
+`TOPAL-NUM-RAT-NEG-001` through `TOPAL-NUM-RAT-DIV-001`. Every result shall be
+canonical, rational zero division shall use the existing nonzero evidence
+contract, and no implicit mixed-domain conversion shall be invented.

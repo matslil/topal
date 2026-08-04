@@ -320,3 +320,33 @@ fn rational_literal_trace_retains_exact_lexeme() {
     assert!(trace.contains("\"detail\":\"1_000.000_125\""));
     assert!(trace.contains("\"detail\":\"Rational\""));
 }
+
+#[test]
+fn all_modes_execute_exact_rational_arithmetic_left_to_right() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "0.5 + 0.25 * 2.0\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"Rational ( 3, 2 )\n");
+    }
+    let grouped = run(&[], "0.5 + (0.25 * 2.0)\n");
+    assert_eq!(grouped.stdout, b"Rational ( 1, 1 )\n");
+}
+
+#[test]
+fn rational_arithmetic_trace_identifies_overload_and_rule() {
+    let output = run(&["--test"], "1.5 / 0.25\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"detail\":\"root./(Rational,Rational)\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-RAT-DIV-001\""));
+    assert!(trace.contains("\"event\":\"obligation.proved\""));
+}
+
+#[test]
+fn rational_zero_division_trace_refutes_obligation() {
+    let output = run(&["--test"], "1.0 / 0.0\n");
+    assert!(!output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"obligation.refuted\""));
+    assert!(!trace.contains("root./(Rational,Rational)"));
+}
