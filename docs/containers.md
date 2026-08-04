@@ -689,7 +689,7 @@ combination uses the general sequence vocabulary:
 ```topal
 list prepend value
 list append value
-list concatenate other-list
+list concat other-list
 ```
 
 Their defining results are `Entry ( value, list )`, the source followed by a
@@ -923,7 +923,7 @@ Its defining laws are:
 
 ```text
 sequence repeat 0 = empty
-sequence repeat (n + 1) = sequence concatenate (sequence repeat n)
+sequence repeat (n + 1) = sequence concat (sequence repeat n)
 ```
 
 These laws do not prescribe an implementation; the compiler may allocate
@@ -1023,7 +1023,7 @@ Membership Container Value
   contains-entry
 
 Concatenable Container
-  concatenate
+  concat
 
 SetAlgebra Container Value
   union

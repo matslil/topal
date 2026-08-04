@@ -306,7 +306,7 @@ Unique Container Value
 
 ```text
 Concatenable Container
-  concatenate : Container, Container -> Container
+  concat : Container, Container -> Container
 ```
 
 `Concatenable` promises ordered combination and is normally provided by

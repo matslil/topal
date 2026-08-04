@@ -110,7 +110,7 @@ reordering where they meet. Standard concatenation maintains a shared
 normalization constraint by repairing the join:
 
 ```text
-Normalized F concatenate Normalized F
+Normalized F concat Normalized F
   -> Normalized F
 ```
 
@@ -119,7 +119,7 @@ For example:
 ```topal
 left : Normalized NFC
 right : Normalized NFC
-combined is left concatenate right
+combined is left concat right
 combined : Normalized NFC
 ```
 
@@ -133,7 +133,7 @@ retain a normalization constraint when it can prove the particular join needs
 no repair. A plain result can always be normalized explicitly afterward:
 
 ```topal
-combined is ( left concatenate right ) normalize NFC
+combined is ( left concat right ) normalize NFC
 ```
 
 ## Fundamental operations
@@ -144,7 +144,7 @@ construction from one `Character`, concatenation, and character traversal:
 ```topal
 empty String
 String character
-left concatenate right
+left concat right
 characters text
 ```
 
