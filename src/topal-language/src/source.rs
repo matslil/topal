@@ -161,23 +161,8 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         match expression {
-            Expression::Integer(span) => {
-                let text = source.slice(*span);
-                let value = parse_integer(text).ok_or_else(|| {
-                    diagnostic(
-                        source,
-                        "E-NUMERIC-LITERAL",
-                        *span,
-                        "invalid integer literal",
-                    )
-                })?;
-                trace.record(TraceEvent {
-                    event: "token.integer",
-                    rule: "TOPAL-NUM-LITERAL-001",
-                    detail: text,
-                });
-                Ok(Value::Int(value))
-            }
+            Expression::Integer(span) => evaluate_integer_literal(source, *span, trace),
+            Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
             Expression::Identifier(span) => {
                 let name = source.slice(*span);
                 let value = self.bindings.get(name).cloned().ok_or_else(|| {
@@ -247,6 +232,44 @@ impl Session {
             }
         }
     }
+}
+
+fn evaluate_integer_literal(
+    source: &SourceText,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let text = source.slice(span);
+    let value = parse_integer(text)
+        .ok_or_else(|| diagnostic(source, "E-NUMERIC-LITERAL", span, "invalid integer literal"))?;
+    trace.record(TraceEvent {
+        event: "token.integer",
+        rule: "TOPAL-NUM-LITERAL-001",
+        detail: text,
+    });
+    Ok(Value::Int(value))
+}
+
+fn evaluate_rational_literal(
+    source: &SourceText,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let text = source.slice(span);
+    let value = parse_rational(text).ok_or_else(|| {
+        diagnostic(
+            source,
+            "E-NUMERIC-LITERAL",
+            span,
+            "invalid rational literal",
+        )
+    })?;
+    trace.record(TraceEvent {
+        event: "token.rational",
+        rule: "TOPAL-NUM-RATIONAL-LITERAL-001",
+        detail: text,
+    });
+    Ok(Value::Rational(value))
 }
 
 fn apply_binary(
@@ -465,6 +488,77 @@ fn parse_integer(token: &str) -> Option<BigInt> {
     parse_unsigned_integer(token)
 }
 
+fn parse_rational(token: &str) -> Option<BigRational> {
+    if let Some(unsigned) = token.strip_prefix('-') {
+        return parse_unsigned_rational(unsigned).map(std::ops::Neg::neg);
+    }
+    parse_unsigned_rational(token)
+}
+
+fn parse_unsigned_rational(token: &str) -> Option<BigRational> {
+    let (mantissa, exponent) = if let Some(offset) = token.find(['e', 'E']) {
+        (
+            &token[..offset],
+            parse_signed_decimal_integer(&token[offset + 1..])?,
+        )
+    } else {
+        (token, BigInt::from(0))
+    };
+    let (integer, fractional) = mantissa
+        .split_once('.')
+        .map_or((mantissa, ""), |parts| parts);
+    if !valid_decimal_integer(integer) || (!fractional.is_empty() && !valid_fractional(fractional))
+    {
+        return None;
+    }
+    if fractional.is_empty() && !token.contains(['e', 'E']) {
+        return None;
+    }
+    let integer_digits = integer.replace('_', "");
+    let fractional_digits = fractional.replace('_', "");
+    let numerator = format!("{integer_digits}{fractional_digits}")
+        .parse::<BigInt>()
+        .ok()?;
+    let scale = BigInt::from(fractional_digits.len()) - exponent;
+    if scale >= BigInt::from(0) {
+        Some(BigRational::new(
+            numerator,
+            pow_int(BigInt::from(10), scale),
+        ))
+    } else {
+        Some(BigRational::from_integer(
+            numerator * pow_int(BigInt::from(10), -scale),
+        ))
+    }
+}
+
+fn parse_signed_decimal_integer(token: &str) -> Option<BigInt> {
+    let (negative, unsigned) = token
+        .strip_prefix('-')
+        .map_or((false, token), |value| (true, value));
+    let unsigned = unsigned.strip_prefix('+').unwrap_or(unsigned);
+    if !valid_decimal_integer(unsigned) {
+        return None;
+    }
+    let value = unsigned.replace('_', "").parse::<BigInt>().ok()?;
+    Some(if negative { -value } else { value })
+}
+
+fn valid_fractional(token: &str) -> bool {
+    if !token.contains('_') {
+        return token.bytes().all(|byte| byte.is_ascii_digit());
+    }
+    let groups = token.split('_').collect::<Vec<_>>();
+    groups
+        .first()
+        .is_some_and(|group| group.len() == 3 && group.bytes().all(|byte| byte.is_ascii_digit()))
+        && groups.iter().skip(1).enumerate().all(|(index, group)| {
+            let final_group = index + 2 == groups.len();
+            (group.len() == 3 || (final_group && (1..=2).contains(&group.len())))
+                && group.bytes().all(|byte| byte.is_ascii_digit())
+        })
+}
+
 fn parse_unsigned_integer(token: &str) -> Option<BigInt> {
     if valid_decimal_integer(token) {
         return token.replace('_', "").parse().ok();
@@ -597,6 +691,28 @@ mod tests {
             evaluate("2 ^ -1").unwrap_err().code,
             "E-NO-APPLICABLE-OVERLOAD"
         );
+    }
+
+    #[test]
+    fn constructs_exact_rational_literals() {
+        assert_eq!(evaluate("0.1").unwrap().to_string(), "Rational ( 1, 10 )");
+        assert_eq!(
+            evaluate("1.25e3").unwrap().to_string(),
+            "Rational ( 1250, 1 )"
+        );
+        assert_eq!(
+            evaluate("-6.022e-24").unwrap().to_string(),
+            "Rational ( -3011, 500000000000000000000000000 )"
+        );
+        assert_eq!(
+            evaluate("1_000.000_125").unwrap().to_string(),
+            "Rational ( 8000001, 8000 )"
+        );
+    }
+
+    #[test]
+    fn rejects_malformed_rational_literal() {
+        assert_eq!(evaluate("1.2e").unwrap_err().code, "E-NUMERIC-LITERAL");
     }
 
     #[test]

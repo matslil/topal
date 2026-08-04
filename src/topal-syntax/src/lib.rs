@@ -13,6 +13,7 @@ pub enum TokenKind {
     Hashbang,
     Identifier,
     Integer,
+    Rational,
     LeftParen,
     RightParen,
     Comma,
@@ -93,13 +94,14 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         ',' => (TokenKind::Comma, 1),
         '+' => (TokenKind::Plus, 1),
         '-' if rest[1..].starts_with(|c: char| c.is_ascii_digit()) => {
-            (TokenKind::Integer, 1 + take_number(&rest[1..]))
+            let (kind, length) = take_number(&rest[1..]);
+            (kind, length + 1)
         }
         '-' => (TokenKind::Minus, 1),
         '*' => (TokenKind::Star, 1),
         '/' => (TokenKind::Slash, 1),
         '^' => (TokenKind::Caret, 1),
-        c if c.is_ascii_digit() => (TokenKind::Integer, take_number(rest)),
+        c if c.is_ascii_digit() => take_number(rest),
         c if unicode_ident::is_xid_start(c) => (
             TokenKind::Identifier,
             take_while(rest, |value| {
@@ -110,10 +112,49 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
     }
 }
 
-fn take_number(text: &str) -> usize {
-    take_while(text, |character| {
-        character.is_ascii_alphanumeric() || character == '_'
-    })
+fn take_number(text: &str) -> (TokenKind, usize) {
+    if text.starts_with("0b") || text.starts_with("0o") || text.starts_with("0x") {
+        return (
+            TokenKind::Integer,
+            take_while(text, |character| {
+                character.is_ascii_alphanumeric() || character == '_'
+            }),
+        );
+    }
+    let mut length = take_while(text, |character| {
+        character.is_ascii_digit() || character == '_'
+    });
+    let mut rational = false;
+    if text[length..].starts_with('.')
+        && text[length + 1..]
+            .chars()
+            .next()
+            .is_some_and(|character| character.is_ascii_digit())
+    {
+        rational = true;
+        length += 1;
+        length += take_while(&text[length..], |character| {
+            character.is_ascii_digit() || character == '_'
+        });
+    }
+    if text[length..].starts_with(['e', 'E']) {
+        rational = true;
+        length += 1;
+        if text[length..].starts_with(['+', '-']) {
+            length += 1;
+        }
+        length += take_while(&text[length..], |character| {
+            character.is_ascii_digit() || character == '_'
+        });
+    }
+    (
+        if rational {
+            TokenKind::Rational
+        } else {
+            TokenKind::Integer
+        },
+        length,
+    )
 }
 
 fn take_while(text: &str, predicate: impl Fn(char) -> bool) -> usize {
@@ -162,6 +203,14 @@ mod tests {
                 TokenKind::Whitespace,
                 TokenKind::Integer,
             ]
+        );
+    }
+
+    #[test]
+    fn distinguishes_rational_literals_from_operators_and_based_digits() {
+        assert_eq!(
+            kinds("-1.25e+3+0xCAFE"),
+            vec![TokenKind::Rational, TokenKind::Plus, TokenKind::Integer]
         );
     }
 

@@ -5,6 +5,7 @@ use crate::{Lexed, SyntaxDiagnostic, Token, TokenKind};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expression {
     Integer(Span),
+    Rational(Span),
     Identifier(Span),
     Callable { kind: CallableKind, span: Span },
     Application { items: Vec<Self>, span: Span },
@@ -24,6 +25,7 @@ impl Expression {
     pub const fn span(&self) -> Span {
         match self {
             Self::Integer(span)
+            | Self::Rational(span)
             | Self::Identifier(span)
             | Self::Callable { span, .. }
             | Self::Application { span, .. } => *span,
@@ -135,6 +137,7 @@ impl Parser<'_> {
         let token = self.take_nontrivia()?;
         match token.kind {
             TokenKind::Integer => Some(Expression::Integer(token.span)),
+            TokenKind::Rational => Some(Expression::Rational(token.span)),
             TokenKind::Identifier => Some(Expression::Identifier(token.span)),
             TokenKind::Plus => Some(Expression::Callable {
                 kind: CallableKind::Plus,

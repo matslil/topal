@@ -72,6 +72,14 @@ divides both components by their greatest common divisor, and represents zero
 as `(0, 1)`. Canonical identity and equality depend on the mathematical ratio,
 not the source spelling or construction path.
 
+### TOPAL-NUM-RATIONAL-LITERAL-001 — Exact rational literals
+
+A syntactically valid fractional decimal or base-ten exponent literal constructs
+the unique canonical finite `Rational` equal to its decimal expansion. An
+adjacent minus negates that exact value. Grouping underscores have no numeric
+effect, trailing fractional zeroes do not change identity, and no binary
+approximation or machine-width exponent is introduced.
+
 ### TOPAL-NUM-DIV-001 — Finite exact integer division
 
 For finite `a : Int` and finite nonzero `b : Int`, binary `/` selects a total,
