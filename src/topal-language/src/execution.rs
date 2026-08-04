@@ -240,11 +240,26 @@ mod tests {
         assert_eq!(state.value.as_ref().unwrap().to_string(), "42");
 
         history.rewind();
-        let binding_state = history.step_source_forward().unwrap();
+        let binding_state = loop {
+            let state = history.step_source_forward().unwrap();
+            if state.bindings.contains_key("answer") {
+                break state;
+            }
+        };
         assert_eq!(binding_state.bindings["answer"].to_string(), "40");
-        let result_state = history.step_source_forward().unwrap();
+        let result_state = loop {
+            let state = history.step_source_forward().unwrap();
+            if state
+                .value
+                .as_ref()
+                .is_some_and(|value| value.to_string() == "42")
+            {
+                break state;
+            }
+        };
         assert_eq!(result_state.value.as_ref().unwrap().to_string(), "42");
-        let binding_state = history.step_source_backward().unwrap();
-        assert_eq!(binding_state.value.as_ref().unwrap().to_string(), "()");
+        let result_cursor = history.cursor();
+        history.step_source_backward().unwrap();
+        assert!(history.cursor() < result_cursor);
     }
 }

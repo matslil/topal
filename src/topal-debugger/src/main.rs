@@ -217,6 +217,7 @@ fn command_loop(
                 println!(
                     "step | reverse-step | source-step | reverse-source-step | next | reverse-next | finish | reverse-finish | backtrace | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | why | history | print | bindings | quit"
                 );
+                println!("expression-step (es) advances to the next recorded expression state");
             }
             "quit" | "q" => return Ok(()),
             "" => {}
@@ -243,7 +244,7 @@ fn handle_source_command(
     complete: &mut bool,
 ) -> Result<bool, String> {
     match command {
-        "source-step" | "ss" => {
+        "source-step" | "ss" | "expression-step" | "es" => {
             if live_source_step(history, session, execution, complete)
                 .map_err(|error| error.render(source_name))?
             {
@@ -372,8 +373,13 @@ fn live_source_step(
     if *complete {
         return Ok(false);
     }
+    let frontier = history.transitions().len();
     let step = execution.step(session, history)?;
     *complete = matches!(step, ExecutionStep::Complete(_));
+    history.seek(frontier);
+    if history.step_source_forward().is_none() {
+        history.seek(history.transitions().len());
+    }
     Ok(true)
 }
 

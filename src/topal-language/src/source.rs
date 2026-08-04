@@ -185,13 +185,14 @@ impl Session {
         });
     }
 
+    #[allow(clippy::too_many_lines)] // Keep recursive expression cases together and auditable.
     fn evaluate_expression(
         &self,
         source: &SourceText,
         expression: &Expression,
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
-        match expression {
+        let value = match expression {
             Expression::Boolean(span) => Ok(evaluate_boolean_literal(source, *span, trace)),
             Expression::Unit(_) => {
                 trace.record(TraceEvent {
@@ -283,11 +284,18 @@ impl Session {
                     let right_span = right.span();
                     let right = self.evaluate_expression(source, right, trace)?;
                     result = apply_binary(source, *kind, result, right, *span, right_span, trace)?;
+                    self.checkpoint(
+                        trace,
+                        Some(&result),
+                        Some(cover(items[0].span(), right_span)),
+                    );
                     index += 2;
                 }
                 Ok(result)
             }
-        }
+        }?;
+        self.checkpoint(trace, Some(&value), Some(expression.span()));
+        Ok(value)
     }
 }
 
