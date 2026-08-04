@@ -1,17 +1,26 @@
 use std::collections::BTreeMap;
 
 use crate::{TraceEvent, TraceSink, Value};
+use topal_source::Span;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SourceRange {
+    pub start: usize,
+    pub end: usize,
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct ExecutionSnapshot<'a> {
     pub bindings: &'a BTreeMap<String, Value>,
     pub value: Option<&'a Value>,
+    pub span: Option<Span>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ExecutionState {
     pub bindings: BTreeMap<String, Value>,
     pub value: Option<Value>,
+    pub source_range: Option<SourceRange>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -69,6 +78,31 @@ impl ExecutionHistory {
             .map(|checkpoint| &checkpoint.state)
     }
 
+    pub fn step_source_forward(&mut self) -> Option<&ExecutionState> {
+        let cursor = self
+            .checkpoints
+            .iter()
+            .find(|checkpoint| {
+                checkpoint.cursor > self.cursor && checkpoint.state.source_range.is_some()
+            })?
+            .cursor;
+        self.cursor = cursor;
+        self.state()
+    }
+
+    pub fn step_source_backward(&mut self) -> Option<&ExecutionState> {
+        let cursor = self
+            .checkpoints
+            .iter()
+            .rev()
+            .find(|checkpoint| {
+                checkpoint.cursor < self.cursor && checkpoint.state.source_range.is_some()
+            })?
+            .cursor;
+        self.cursor = cursor;
+        self.state()
+    }
+
     pub fn step_forward(&mut self) -> Option<&ExecutionTransition> {
         if self.cursor == self.transitions.len() {
             return None;
@@ -106,6 +140,10 @@ impl TraceSink for ExecutionHistory {
         let state = ExecutionState {
             bindings: snapshot.bindings.clone(),
             value: snapshot.value.cloned(),
+            source_range: snapshot.span.map(|span| SourceRange {
+                start: span.start,
+                end: span.end,
+            }),
         };
         if let Some(checkpoint) = self
             .checkpoints
@@ -155,5 +193,13 @@ mod tests {
         let state = history.state().unwrap();
         assert_eq!(state.bindings["answer"].to_string(), "40");
         assert_eq!(state.value.as_ref().unwrap().to_string(), "42");
+
+        history.rewind();
+        let binding_state = history.step_source_forward().unwrap();
+        assert_eq!(binding_state.bindings["answer"].to_string(), "40");
+        let result_state = history.step_source_forward().unwrap();
+        assert_eq!(result_state.value.as_ref().unwrap().to_string(), "42");
+        let binding_state = history.step_source_backward().unwrap();
+        assert_eq!(binding_state.value.as_ref().unwrap().to_string(), "()");
     }
 }
