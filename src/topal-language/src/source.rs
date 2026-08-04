@@ -110,6 +110,18 @@ pub struct Session {
     bindings: BTreeMap<String, Value>,
 }
 
+pub struct Execution {
+    source: SourceText,
+    statements: Vec<Statement>,
+    cursor: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ExecutionStep {
+    Advanced { value: Value, span: Span },
+    Complete(Value),
+}
+
 impl Session {
     #[must_use]
     pub fn new() -> Self {
@@ -126,108 +138,43 @@ impl Session {
         input: &str,
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
+        let mut execution = self.prepare(input, trace)?;
+        loop {
+            if let ExecutionStep::Complete(value) = execution.step(self, trace)? {
+                return Ok(value);
+            }
+        }
+    }
+
+    /// Prepare a source unit for resumable execution.
+    ///
+    /// # Errors
+    ///
+    /// Returns a source or syntax diagnostic before any statement executes.
+    pub fn prepare(
+        &self,
+        input: &str,
+        trace: &mut impl TraceSink,
+    ) -> Result<Execution, Diagnostic> {
         self.checkpoint(trace, None, None);
         trace.record(TraceEvent {
             event: "context.selected",
             rule: "TOPAL-SYN-UNICODE-001",
             detail: "design-0;Unicode=17.0.0",
         });
-        let source = SourceText::new(input).map_err(|error| {
-            let (line, column) = raw_position(input, error.span.start);
-            Diagnostic {
-                code: error.code,
-                line,
-                column,
-                message: error.message.into(),
-                source_line: raw_source_line(input, line),
-                marker_width: marker_width(input, error.span),
-                help: diagnostic_help(error.code).map(str::to_owned),
-            }
-        })?;
-        trace.record(TraceEvent {
-            event: "source.accepted",
-            rule: "TOPAL-SYN-SOURCE-001",
-            detail: "unicode source normalized",
-        });
-
+        let source = accepted_source(input, trace)?;
         let parsed = parse(&source, &lex(&source));
         if let Some(error) = parsed.diagnostics.first() {
             return Err(diagnostic(&source, error.code, error.span, error.message));
         }
         if parsed.statements.is_empty() {
-            return Err(Diagnostic {
-                code: "E-EXPECTED-EXPRESSION",
-                line: 1,
-                column: 1,
-                message: "expected a statement".into(),
-                source_line: raw_source_line(input, 1),
-                marker_width: 1,
-                help: diagnostic_help("E-EXPECTED-EXPRESSION").map(str::to_owned),
-            });
+            return Err(expected_statement(input));
         }
-
-        let mut result = None;
-        let mut result_span = None;
-        for (index, statement) in parsed.statements.iter().enumerate() {
-            match statement {
-                Statement::Binding { name, value } => {
-                    let name_text = source.slice(*name);
-                    if self.bindings.contains_key(name_text) {
-                        return Err(diagnostic(
-                            &source,
-                            "E-DUPLICATE-BINDING",
-                            *name,
-                            "name is already bound in this scope",
-                        ));
-                    }
-                    let evaluated = self.evaluate_expression(&source, value, trace)?;
-                    self.bindings.insert(name_text.to_owned(), evaluated);
-                    trace.record(TraceEvent {
-                        event: "binding.created",
-                        rule: "TOPAL-SYN-BIND-001",
-                        detail: name_text,
-                    });
-                    result = Some(Value::Unit);
-                    result_span = Some(cover(*name, value.span()));
-                    self.checkpoint(trace, result.as_ref(), result_span);
-                }
-                Statement::Expression(expression) => {
-                    if index + 1 != parsed.statements.len() {
-                        return Err(diagnostic(
-                            &source,
-                            "E-DISCARDED-VALUE",
-                            expression.span(),
-                            "a non-final expression value cannot be discarded",
-                        ));
-                    }
-                    result = Some(self.evaluate_expression(&source, expression, trace)?);
-                    result_span = Some(expression.span());
-                }
-            }
-        }
-        let value = result.ok_or_else(|| Diagnostic {
-            code: "E-EXPECTED-EXPRESSION",
-            line: 1,
-            column: 1,
-            message: "expected a statement".into(),
-            source_line: raw_source_line(input, 1),
-            marker_width: 1,
-            help: diagnostic_help("E-EXPECTED-EXPRESSION").map(str::to_owned),
-        })?;
-        trace.record(TraceEvent {
-            event: "evaluation.result",
-            rule: "TOPAL-SYN-GRAMMAR-001",
-            detail: match &value {
-                Value::Boolean(_) => "Boolean",
-                Value::Int(_) => "Int",
-                Value::Rational(_) => "Rational",
-                Value::String(_) => "String",
-                Value::Tuple(_) => "Tuple",
-                Value::Unit => "Unit",
-            },
-        });
-        self.checkpoint(trace, Some(&value), result_span);
-        Ok(value)
+        Ok(Execution {
+            source,
+            statements: parsed.statements,
+            cursor: 0,
+        })
     }
 
     fn checkpoint(&self, trace: &mut impl TraceSink, value: Option<&Value>, span: Option<Span>) {
@@ -344,11 +291,118 @@ impl Session {
     }
 }
 
+impl Execution {
+    /// Execute one source statement.
+    ///
+    /// # Errors
+    ///
+    /// Returns a name-resolution or evaluation diagnostic at the failing step.
+    pub fn step(
+        &mut self,
+        session: &mut Session,
+        trace: &mut impl TraceSink,
+    ) -> Result<ExecutionStep, Diagnostic> {
+        let statement = &self.statements[self.cursor];
+        let (value, span) = match statement {
+            Statement::Binding { name, value } => {
+                let name_text = self.source.slice(*name);
+                if session.bindings.contains_key(name_text) {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-DUPLICATE-BINDING",
+                        *name,
+                        "name is already bound in this scope",
+                    ));
+                }
+                let evaluated = session.evaluate_expression(&self.source, value, trace)?;
+                session.bindings.insert(name_text.to_owned(), evaluated);
+                trace.record(TraceEvent {
+                    event: "binding.created",
+                    rule: "TOPAL-SYN-BIND-001",
+                    detail: name_text,
+                });
+                (Value::Unit, cover(*name, value.span()))
+            }
+            Statement::Expression(expression) => {
+                if self.cursor + 1 != self.statements.len() {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-DISCARDED-VALUE",
+                        expression.span(),
+                        "a non-final expression value cannot be discarded",
+                    ));
+                }
+                (
+                    session.evaluate_expression(&self.source, expression, trace)?,
+                    expression.span(),
+                )
+            }
+        };
+        self.cursor += 1;
+        if self.cursor == self.statements.len() {
+            record_result(trace, &value);
+            session.checkpoint(trace, Some(&value), Some(span));
+            Ok(ExecutionStep::Complete(value))
+        } else {
+            session.checkpoint(trace, Some(&value), Some(span));
+            Ok(ExecutionStep::Advanced { value, span })
+        }
+    }
+}
+
 const fn cover(first: Span, second: Span) -> Span {
     Span {
         start: first.start,
         end: second.end,
     }
+}
+
+fn accepted_source(input: &str, trace: &mut impl TraceSink) -> Result<SourceText, Diagnostic> {
+    let source = SourceText::new(input).map_err(|error| {
+        let (line, column) = raw_position(input, error.span.start);
+        Diagnostic {
+            code: error.code,
+            line,
+            column,
+            message: error.message.into(),
+            source_line: raw_source_line(input, line),
+            marker_width: marker_width(input, error.span),
+            help: diagnostic_help(error.code).map(str::to_owned),
+        }
+    })?;
+    trace.record(TraceEvent {
+        event: "source.accepted",
+        rule: "TOPAL-SYN-SOURCE-001",
+        detail: "unicode source normalized",
+    });
+    Ok(source)
+}
+
+fn expected_statement(input: &str) -> Diagnostic {
+    Diagnostic {
+        code: "E-EXPECTED-EXPRESSION",
+        line: 1,
+        column: 1,
+        message: "expected a statement".into(),
+        source_line: raw_source_line(input, 1),
+        marker_width: 1,
+        help: diagnostic_help("E-EXPECTED-EXPRESSION").map(str::to_owned),
+    }
+}
+
+fn record_result(trace: &mut impl TraceSink, value: &Value) {
+    trace.record(TraceEvent {
+        event: "evaluation.result",
+        rule: "TOPAL-SYN-GRAMMAR-001",
+        detail: match value {
+            Value::Boolean(_) => "Boolean",
+            Value::Int(_) => "Int",
+            Value::Rational(_) => "Rational",
+            Value::String(_) => "String",
+            Value::Tuple(_) => "Tuple",
+            Value::Unit => "Unit",
+        },
+    });
 }
 
 fn evaluate_boolean_literal(source: &SourceText, span: Span, trace: &mut impl TraceSink) -> Value {
@@ -1159,6 +1213,33 @@ mod tests {
 
     fn evaluate(source: &str) -> Result<Value, Diagnostic> {
         Session::new().evaluate(source, &mut std::io::sink())
+    }
+
+    #[test]
+    fn advances_a_prepared_execution_one_statement_at_a_time() {
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        let mut execution = session
+            .prepare("answer is 40\nanswer + 2\n", &mut trace)
+            .unwrap();
+
+        let first = execution.step(&mut session, &mut trace).unwrap();
+        assert!(matches!(
+            first,
+            ExecutionStep::Advanced {
+                value: Value::Unit,
+                ..
+            }
+        ));
+        assert!(
+            !trace
+                .iter()
+                .any(|event| event.contains("evaluation.result"))
+        );
+
+        let second = execution.step(&mut session, &mut trace).unwrap();
+        assert!(matches!(second, ExecutionStep::Complete(Value::Int(_))));
+        assert!(trace.last().unwrap().contains("evaluation.result"));
     }
 
     #[test]
