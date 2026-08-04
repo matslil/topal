@@ -57,3 +57,4 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-INTP-SUBSET-008` | `TOPAL-NUM-DIVZERO-001`, `TOPAL-TYPE-CALL-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-SUBSET-009` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-NUM-POW-001` | `src/topal-interpreter/tests/cli.rs` | `topal-syntax`, `topal-language` |
 | `TOPAL-INTP-SUBSET-010` | `TOPAL-SYN-NUM-001`, `TOPAL-NUM-RATIONAL-001`, `TOPAL-NUM-RATIONAL-LITERAL-001` | `src/topal-interpreter/tests/cli.rs` | `topal-syntax`, `topal-language` |
+| `TOPAL-INTP-SUBSET-011` | `TOPAL-TYPE-CALL-001`, `TOPAL-NUM-RAT-NEG-001` through `TOPAL-NUM-RAT-DIV-001`, `TOPAL-NUM-DIVZERO-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |

@@ -80,6 +80,37 @@ adjacent minus negates that exact value. Grouping underscores have no numeric
 effect, trailing fractional zeroes do not change identity, and no binary
 approximation or machine-width exponent is introduced.
 
+### TOPAL-NUM-RAT-NEG-001 — Finite exact rational negation
+
+For finite `a : Rational`, prefix `-` selects the total, pure root overload
+`Rational -> Rational` and returns the canonical additive inverse of `a`.
+
+### TOPAL-NUM-RAT-ADD-001 — Finite exact rational addition
+
+For finite `a, b : Rational`, binary `+` selects the total, pure root overload
+`(Rational, Rational) -> Rational` and returns their canonical mathematical sum.
+
+### TOPAL-NUM-RAT-SUB-001 — Finite exact rational subtraction
+
+For finite `a, b : Rational`, binary `-` selects the total, pure root overload
+`(Rational, Rational) -> Rational` and returns their canonical mathematical
+difference.
+
+### TOPAL-NUM-RAT-MUL-001 — Finite exact rational multiplication
+
+For finite `a, b : Rational`, binary `*` selects the total, pure root overload
+`(Rational, Rational) -> Rational` and returns their canonical mathematical
+product.
+
+### TOPAL-NUM-RAT-DIV-001 — Finite exact rational division
+
+For finite `a : Rational` and finite nonzero `b : Rational`, binary `/` selects
+the total, pure root overload `(Rational, Rational) -> Rational` and returns
+their canonical exact quotient. A statically zero divisor is rejected under
+`TOPAL-NUM-DIVZERO-001`. These finite rational arithmetic rules realize
+`TOPAL-REQ-SAFE-001`, `TOPAL-REQ-DETERMINISM-001`, and
+`TOPAL-REQ-INTEROP-001`.
+
 ### TOPAL-NUM-DIV-001 — Finite exact integer division
 
 For finite `a : Int` and finite nonzero `b : Int`, binary `/` selects a total,

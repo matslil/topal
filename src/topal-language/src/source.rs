@@ -281,14 +281,30 @@ fn apply_binary(
     right_span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
-    let (Value::Int(left), Value::Int(right)) = (left, right) else {
-        return Err(diagnostic(
+    match (left, right) {
+        (Value::Int(left), Value::Int(right)) => {
+            apply_int_binary(source, kind, left, right, right_span, trace)
+        }
+        (Value::Rational(left), Value::Rational(right)) => {
+            apply_rational_binary(source, kind, left, right, span, right_span, trace)
+        }
+        _ => Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",
             span,
-            "the fixed callable requires two Int operands in the implemented subset",
-        ));
-    };
+            "the implemented subset requires operands from one exact numeric domain",
+        )),
+    }
+}
+
+fn apply_int_binary(
+    source: &SourceText,
+    kind: CallableKind,
+    left: BigInt,
+    right: BigInt,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
     match kind {
         CallableKind::Plus => {
             trace.record(TraceEvent {
@@ -332,6 +348,82 @@ fn apply_binary(
         CallableKind::Divide => apply_divide(source, left, right, right_span, trace),
         CallableKind::Power => apply_power(source, left, right, right_span, trace),
     }
+}
+
+fn apply_rational_binary(
+    source: &SourceText,
+    kind: CallableKind,
+    left: BigRational,
+    right: BigRational,
+    span: Span,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let (callable, event, rule, result) = match kind {
+        CallableKind::Plus => (
+            "root.+(Rational,Rational)",
+            "evaluation.add",
+            "TOPAL-NUM-RAT-ADD-001",
+            left + right,
+        ),
+        CallableKind::Minus => (
+            "root.-(Rational,Rational)",
+            "evaluation.subtract",
+            "TOPAL-NUM-RAT-SUB-001",
+            left - right,
+        ),
+        CallableKind::Multiply => (
+            "root.*(Rational,Rational)",
+            "evaluation.multiply",
+            "TOPAL-NUM-RAT-MUL-001",
+            left * right,
+        ),
+        CallableKind::Divide => {
+            if right.numer() == &BigInt::from(0) {
+                trace.record(TraceEvent {
+                    event: "obligation.refuted",
+                    rule: "TOPAL-NUM-DIVZERO-001",
+                    detail: "divisor.nonzero",
+                });
+                return Err(diagnostic(
+                    source,
+                    "E-DIVISION-BY-ZERO",
+                    right_span,
+                    "statically evident division by zero",
+                ));
+            }
+            trace.record(TraceEvent {
+                event: "obligation.proved",
+                rule: "TOPAL-NUM-DIVZERO-001",
+                detail: "divisor.nonzero",
+            });
+            (
+                "root./(Rational,Rational)",
+                "evaluation.divide",
+                "TOPAL-NUM-RAT-DIV-001",
+                left / right,
+            )
+        }
+        CallableKind::Power => {
+            return Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                "Rational exponentiation is not in the implemented subset",
+            ));
+        }
+    };
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: callable,
+    });
+    trace.record(TraceEvent {
+        event,
+        rule,
+        detail: "Rational",
+    });
+    Ok(Value::Rational(result))
 }
 
 fn apply_divide(
@@ -433,25 +525,40 @@ fn apply_negate(
     span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
-    let Value::Int(operand) = operand else {
-        return Err(diagnostic(
+    match operand {
+        Value::Int(operand) => {
+            trace.record(TraceEvent {
+                event: "operator.selected",
+                rule: "TOPAL-TYPE-CALL-001",
+                detail: "root.-(Int)",
+            });
+            trace.record(TraceEvent {
+                event: "evaluation.negate",
+                rule: "TOPAL-NUM-NEG-001",
+                detail: "Int",
+            });
+            Ok(Value::Int(-operand))
+        }
+        Value::Rational(operand) => {
+            trace.record(TraceEvent {
+                event: "operator.selected",
+                rule: "TOPAL-TYPE-CALL-001",
+                detail: "root.-(Rational)",
+            });
+            trace.record(TraceEvent {
+                event: "evaluation.negate",
+                rule: "TOPAL-NUM-RAT-NEG-001",
+                detail: "Rational",
+            });
+            Ok(Value::Rational(-operand))
+        }
+        Value::Unit => Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",
             span,
-            "prefix - requires one Int operand",
-        ));
-    };
-    trace.record(TraceEvent {
-        event: "operator.selected",
-        rule: "TOPAL-TYPE-CALL-001",
-        detail: "root.-(Int)",
-    });
-    trace.record(TraceEvent {
-        event: "evaluation.negate",
-        rule: "TOPAL-NUM-NEG-001",
-        detail: "Int",
-    });
-    Ok(Value::Int(-operand))
+            "prefix - requires an exact numeric operand",
+        )),
+    }
 }
 
 fn diagnostic(
@@ -713,6 +820,42 @@ mod tests {
     #[test]
     fn rejects_malformed_rational_literal() {
         assert_eq!(evaluate("1.2e").unwrap_err().code, "E-NUMERIC-LITERAL");
+    }
+
+    #[test]
+    fn evaluates_exact_rational_arithmetic() {
+        assert_eq!(
+            evaluate("0.5 + 0.25").unwrap().to_string(),
+            "Rational ( 3, 4 )"
+        );
+        assert_eq!(
+            evaluate("- 1.5 - 0.25").unwrap().to_string(),
+            "Rational ( -7, 4 )"
+        );
+        assert_eq!(
+            evaluate("1.5 * 0.5").unwrap().to_string(),
+            "Rational ( 3, 4 )"
+        );
+        assert_eq!(
+            evaluate("1.5 / 0.25").unwrap().to_string(),
+            "Rational ( 6, 1 )"
+        );
+    }
+
+    #[test]
+    fn rejects_mixed_exact_domains_without_conversion_evidence() {
+        assert_eq!(
+            evaluate("1 + 0.5").unwrap_err().code,
+            "E-NO-APPLICABLE-OVERLOAD"
+        );
+    }
+
+    #[test]
+    fn rejects_rational_zero_divisor() {
+        assert_eq!(
+            evaluate("1.0 / 0.0").unwrap_err().code,
+            "E-DIVISION-BY-ZERO"
+        );
     }
 
     #[test]
