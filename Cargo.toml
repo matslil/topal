@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "src/topal-interpreter",
+    "src/topal-debugger",
     "src/topal-language",
     "src/topal-lsp",
     "src/topal-source",
