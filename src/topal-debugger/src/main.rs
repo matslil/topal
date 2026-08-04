@@ -134,6 +134,7 @@ fn command_loop(
                 }
             }
             "history" => print_history(history),
+            "why" => print_reason(history),
             "source-step" | "ss" => match history.step_source_forward() {
                 Some(_) => print_source_location(history, source, source_name),
                 None => println!("end of source execution"),
@@ -180,7 +181,7 @@ fn command_loop(
             "bindings" => print_bindings(history),
             "help" | "h" => {
                 println!(
-                    "step | reverse-step | source-step | reverse-source-step | next | reverse-next | finish | reverse-finish | backtrace | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | history | print | bindings | quit"
+                    "step | reverse-step | source-step | reverse-source-step | next | reverse-next | finish | reverse-finish | backtrace | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | why | history | print | bindings | quit"
                 );
             }
             "quit" | "q" => return Ok(()),
@@ -195,6 +196,17 @@ fn command_loop(
             }
         }
         io::stdout().flush().map_err(|error| error.to_string())?;
+    }
+}
+
+fn print_reason(history: &ExecutionHistory) {
+    if let Some(transition) = history.current() {
+        println!(
+            "decision #{}: {} because {} ({})",
+            transition.sequence, transition.event, transition.rule, transition.detail
+        );
+    } else {
+        println!("before the first semantic decision");
     }
 }
 

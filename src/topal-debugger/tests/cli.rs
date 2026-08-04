@@ -18,6 +18,9 @@ fn navigates_recorded_execution_in_both_directions() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("#0 context.selected [TOPAL-SYN-UNICODE-001]"));
+    assert!(stdout.contains(
+        "decision #0: context.selected because TOPAL-SYN-UNICODE-001 (design-0;Unicode=17.0.0)"
+    ));
     assert!(stdout.contains("#1 source.accepted [TOPAL-SYN-SOURCE-001]"));
     assert!(stdout.contains("> #0 context.selected"));
     assert!(stdout.contains("no value at current execution state"));

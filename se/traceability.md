@@ -95,3 +95,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-DEBUG-CONTROL-001` (named checkpoints) | implemented execution rules | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.debug` | `topal-language::ExecutionHistory`, `topal-debugger` |
 | `TOPAL-DEBUG-CONTROL-001` (top-level next, finish, and backtrace) | `TOPAL-SYN-GRAMMAR-001` | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.debug` | `topal-language::ExecutionHistory`, `topal-debugger` |
 | `TOPAL-DEBUG-MODE-001` (interactive prompts and strict scripts) | debugger command contract | `src/topal-debugger/tests/cli.rs` | `topal-debugger` |
+| `TOPAL-DEBUG-TRACE-001` (`why` decision inspection) | stable rule ID carried by each transition | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.debug` | `topal-debugger` |
