@@ -216,3 +216,11 @@ positional products whose corresponding fields provide implemented
 the first non-equal field, apply canonical numeric field conversions when
 needed, reject different arities or unsupported fields, and trace the resulting
 tuple-ordering decision separately from numeric comparison.
+
+## TOPAL-INTP-EXAMPLE-001 — Executable feature examples
+
+Every implemented language-feature increment shall add or extend a related
+runnable source file under `examples/interpreter/`. The interpreter functional
+suite shall execute every such source file successfully in default script mode,
+including its hashbang when present, so examples cannot silently drift from the
+implemented language.

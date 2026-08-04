@@ -4,6 +4,7 @@
 //! TOPAL-INTP-MODE-003.
 
 use std::io::Write;
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 fn run(arguments: &[&str], input: &str) -> std::process::Output {
@@ -21,6 +22,38 @@ fn run(arguments: &[&str], input: &str) -> std::process::Output {
         .write_all(input.as_bytes())
         .unwrap();
     child.wait_with_output().unwrap()
+}
+
+fn run_file(path: &Path) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_topal"))
+        .arg(path)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .unwrap()
+}
+
+#[test]
+fn every_interpreter_example_is_an_executable_script() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/interpreter");
+    let mut examples = std::fs::read_dir(directory)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
+        .collect::<Vec<_>>();
+    examples.sort();
+    assert_eq!(examples.len(), 3);
+    for example in examples {
+        let output = run_file(&example);
+        assert!(
+            output.status.success(),
+            "{} failed:\n{}",
+            example.display(),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(!output.stdout.is_empty());
+        assert!(output.stderr.is_empty());
+    }
 }
 
 #[test]

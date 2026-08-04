@@ -271,6 +271,8 @@ const fn semantic_token_type(kind: TokenKind) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
 
     #[test]
@@ -346,5 +348,40 @@ mod tests {
                 0, 0, 2, 0, 0, 0, 3, 1, 5, 0, 0, 2, 4, 4, 0, 1, 0, 7, 2, 0, 1, 0, 3, 2, 0
             ])
         );
+    }
+
+    #[test]
+    fn every_interpreter_example_has_clean_diagnostics_and_highlighting() {
+        let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/interpreter");
+        let mut examples = std::fs::read_dir(directory)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
+            .collect::<Vec<_>>();
+        examples.sort();
+        assert_eq!(examples.len(), 3);
+
+        let mut server = Server::default();
+        for (version, example) in examples.iter().enumerate() {
+            let text = std::fs::read_to_string(example).unwrap();
+            let uri = format!("file://{}", example.display());
+            let published = server.handle(&json!({
+                "method": "textDocument/didOpen",
+                "params": { "textDocument": {
+                    "uri": uri, "languageId": "topal", "version": version, "text": text
+                }}
+            }));
+            assert_eq!(published[0]["params"]["diagnostics"], json!([]));
+
+            let highlighted = server.handle(&json!({
+                "jsonrpc": "2.0", "id": version, "method": "textDocument/semanticTokens/full",
+                "params": { "textDocument": { "uri": uri } }
+            }));
+            assert!(
+                highlighted[0]["result"]["data"]
+                    .as_array()
+                    .is_some_and(|tokens| !tokens.is_empty())
+            );
+        }
     }
 }
