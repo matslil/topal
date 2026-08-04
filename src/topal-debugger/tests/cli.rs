@@ -58,6 +58,25 @@ fn executes_the_debuggee_only_when_commands_advance_it() {
 }
 
 #[test]
+fn retains_inspectable_history_when_live_execution_fails() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}failing-history.debug"),
+            &format!("{root}failing-history.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("error[E-UNBOUND-NAME]: name is not bound"));
+    assert!(stdout.contains("answer = 40"));
+    assert!(stdout.contains("binding.created [TOPAL-SYN-BIND-001] answer"));
+    assert!(stdout.contains("no value at current execution state"));
+}
+
+#[test]
 fn script_mode_reports_command_file_errors() {
     let source = concat!(
         env!("CARGO_MANIFEST_DIR"),
