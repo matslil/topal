@@ -7,9 +7,11 @@ person is (
   name is "Ada",
   active is true
 )
+person-name is person name
 (
   message,
   flags,
   person,
+  person-name,
   (),
 )

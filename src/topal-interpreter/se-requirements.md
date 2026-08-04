@@ -241,3 +241,11 @@ anonymous `Record` values according to `TOPAL-SYN-GRAMMAR-001` and
 left-to-right, display shall preserve source field order, and test mode shall
 record record construction. Products mixing labeled and positional fields
 shall remain explicitly unsupported until their classification is specified.
+
+## TOPAL-INTP-SUBSET-025 — Record field selection
+
+All interpreter modes shall evaluate `record label` as total static field
+selection according to `TOPAL-TYPE-PRODUCT-001`. Selection shall group with its
+record before later ordinary application, return the field's exact value, and
+diagnose an absent label at the label source range. Test mode shall record the
+selected label without evaluating it as a name.
