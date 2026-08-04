@@ -1,0 +1,18 @@
+[package]
+name = "topal-lsp"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "topal-lsp"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "=1.0.151"
+topal-source = { path = "../topal-source" }
+topal-syntax = { path = "../topal-syntax" }
+
+[lints]
+workspace = true

@@ -69,3 +69,6 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-INTP-SUBSET-020` | `TOPAL-SYN-LEX-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-TYPE-EQUALITY-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-syntax` | `topal-syntax`, `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-DIAG-001` | `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-SHARED-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-language` | `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-SUBSET-021` | `TOPAL-SYN-LEX-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-NUM-COMPARE-001`, `TOPAL-NUM-INT-RATIONAL-CONVERT-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-syntax` | `topal-syntax`, `topal-language`, `topal-interpreter` |
+| `TOPAL-LSP-PROTOCOL-001` | `TOPAL-REQ-TOOLS-001` | `src/topal-lsp/tests/protocol.rs` | `topal-lsp` |
+| `TOPAL-LSP-SYNC-001` | `TOPAL-REQ-SHARED-001` | unit tests in `topal-lsp` and `src/topal-lsp/tests/protocol.rs` | `topal-lsp` |
+| `TOPAL-LSP-DIAG-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-GRAMMAR-001`, `TOPAL-REQ-SHARED-001` | unit tests in `topal-lsp` and `src/topal-lsp/tests/protocol.rs` | `topal-source`, `topal-syntax`, `topal-lsp` |
