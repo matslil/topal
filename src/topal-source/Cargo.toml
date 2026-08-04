@@ -5,5 +5,9 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[dependencies]
+unicode-ident = "=1.0.24"
+unicode-normalization = "=0.1.25"
+
 [lints]
 workspace = true

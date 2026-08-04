@@ -75,6 +75,11 @@ impl Session {
         input: &str,
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
+        trace.record(TraceEvent {
+            event: "context.selected",
+            rule: "TOPAL-SYN-UNICODE-001",
+            detail: "design-0;Unicode=17.0.0",
+        });
         let source = SourceText::new(input).map_err(|error| {
             let (line, column) = raw_position(input, error.span.start);
             Diagnostic {

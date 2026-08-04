@@ -131,3 +131,13 @@ backslashes, and braces without escapes or interpolation. Display shall emit a
 deterministic valid source-like literal, selecting and extending the tag `text`
 when the value contains quotes. Unterminated input shall remain available to
 shared syntax consumers and be rejected for execution.
+
+## TOPAL-INTP-SUBSET-014 — Pinned Unicode source semantics
+
+The interpreter and its shared frontend shall use the exact Unicode 17.0.0
+normalization and identifier-property data required by
+`TOPAL-SYN-UNICODE-001`. They shall reject non-NFC identifiers and literal tags
+without normalizing source spellings, preserve string contents, and expose the
+language-context Unicode version through deterministic version output and test
+trace context selection. A dependency with different Unicode tables shall fail
+the build rather than silently change source acceptance.

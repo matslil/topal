@@ -24,6 +24,55 @@ fn run(arguments: &[&str], input: &str) -> std::process::Output {
 }
 
 #[test]
+fn version_exposes_the_language_context_unicode_version() {
+    let output = run(&["--version"], "");
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        "topal 0.1.0 (language design-0; Unicode 17.0.0)\n"
+    );
+}
+
+#[test]
+fn script_rejects_non_nfc_identifier_without_rewriting_it() {
+    let output = run(&[], "e\u{301} is 1\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-NON-NFC-TOKEN")
+    );
+}
+
+#[test]
+fn script_rejects_non_nfc_literal_tag() {
+    let output = run(&[], "tag\u{301}\"value\"tag\u{301}\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-NON-NFC-TOKEN")
+    );
+}
+
+#[test]
+fn script_preserves_non_nfc_string_contents() {
+    let output = run(&[], "\"e\u{301}\"\n");
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8(output.stdout).unwrap(), "\"e\u{301}\"\n");
+}
+
+#[test]
+fn test_trace_records_the_pinned_unicode_context() {
+    let output = run(&["--test"], "1\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"context.selected\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-SYN-UNICODE-001\""));
+    assert!(trace.contains("\"detail\":\"design-0;Unicode=17.0.0\""));
+}
+
+#[test]
 fn script_mode_is_default() {
     let output = run(&[], "123456789012345678901234567890\n");
     assert!(output.status.success());

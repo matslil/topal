@@ -1,6 +1,6 @@
 //! Lossless, recovery-friendly Topal tokenization shared by language tools.
 
-use topal_source::{SourceText, Span};
+use topal_source::{SourceText, Span, is_identifier_continue, is_identifier_start, is_nfc};
 
 mod parser;
 pub use parser::{CallableKind, Expression, ParsedSource, Statement, parse};
@@ -83,6 +83,22 @@ pub fn lex(source: &SourceText) -> Lexed {
                 message: "string literal has no matching closing delimiter",
             });
         }
+        if kind == TokenKind::Identifier && !is_nfc(source.slice(span)) {
+            result.diagnostics.push(SyntaxDiagnostic {
+                code: "E-NON-NFC-TOKEN",
+                span,
+                message: "source token is not Unicode Normalization Form C",
+            });
+        }
+        if kind == TokenKind::String
+            && let Some(tag_span) = non_nfc_string_tag(source.slice(span), span.start)
+        {
+            result.diagnostics.push(SyntaxDiagnostic {
+                code: "E-NON-NFC-TOKEN",
+                span: tag_span,
+                message: "string literal tag is not Unicode Normalization Form C",
+            });
+        }
         offset += length;
     }
     result
@@ -113,11 +129,9 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         '/' => (TokenKind::Slash, 1),
         '^' => (TokenKind::Caret, 1),
         c if c.is_ascii_digit() => take_number(rest),
-        c if unicode_ident::is_xid_start(c) => (
+        c if is_identifier_start(c) => (
             TokenKind::Identifier,
-            take_while(rest, |value| {
-                unicode_ident::is_xid_continue(value) || value == '-'
-            }),
+            take_while(rest, |value| is_identifier_continue(value) || value == '-'),
         ),
         c => (TokenKind::Unknown, c.len_utf8()),
     }
@@ -150,6 +164,12 @@ fn string_is_terminated(text: &str) -> bool {
     };
     let tag = &text[..opening];
     text[opening + 1..].ends_with(&format!("\"{tag}"))
+}
+
+fn non_nfc_string_tag(text: &str, token_start: usize) -> Option<Span> {
+    let opening = text.find('"')?;
+    let tag = &text[..opening];
+    (!tag.is_empty() && !is_nfc(tag)).then(|| Span::new(token_start, token_start + opening))
 }
 
 fn take_number(text: &str) -> (TokenKind, usize) {
@@ -269,6 +289,21 @@ mod tests {
         let lexed = lex(&source);
         assert_eq!(lexed.tokens[0].kind, TokenKind::String);
         assert_eq!(lexed.diagnostics[0].code, "E-UNTERMINATED-STRING");
+    }
+
+    #[test]
+    fn rejects_non_nfc_identifier_and_literal_tag_but_preserves_contents() {
+        let source =
+            SourceText::new("e\u{301} tag\u{301}\"e\u{301}\"tag\u{301} \"e\u{301}\"").unwrap();
+        let lexed = lex(&source);
+        assert_eq!(
+            lexed
+                .diagnostics
+                .iter()
+                .map(|diagnostic| diagnostic.code)
+                .collect::<Vec<_>>(),
+            vec!["E-NON-NFC-TOKEN", "E-NON-NFC-TOKEN"]
+        );
     }
 
     #[test]

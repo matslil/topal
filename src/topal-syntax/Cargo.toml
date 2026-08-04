@@ -7,7 +7,6 @@ rust-version.workspace = true
 
 [dependencies]
 topal-source = { path = "../topal-source" }
-unicode-ident = "1"
 
 [lints]
 workspace = true
