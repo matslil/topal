@@ -148,3 +148,11 @@ All interpreter modes shall parse and evaluate the zero-field product `()` as
 the sole `Unit` value according to `TOPAL-SYN-GRAMMAR-001` and
 `TOPAL-TYPE-PRODUCT-001`. Test mode shall identify construction of `Tuple()` in
 a stable decision event.
+
+## TOPAL-INTP-SUBSET-016 — Positional products
+
+All interpreter modes shall evaluate single-line positional products according
+to `TOPAL-SYN-GRAMMAR-001` and `TOPAL-TYPE-PRODUCT-001`. Parentheses without a
+comma remain grouping; a trailing comma distinguishes a one-field `Tuple`.
+Fields evaluate left-to-right, display preserves product arity, and test mode
+records the constructed field count.

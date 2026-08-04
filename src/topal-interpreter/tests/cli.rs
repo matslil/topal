@@ -100,6 +100,29 @@ fn every_mode_evaluates_the_unit_product() {
 }
 
 #[test]
+fn every_mode_evaluates_positional_products() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "(1, \"two\", ())\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"(1, \"two\", ())\n");
+    }
+
+    let grouped = run(&[], "(1)\n");
+    assert!(grouped.status.success());
+    assert_eq!(grouped.stdout, b"1\n");
+
+    let singleton = run(&[], "(1,)\n");
+    assert!(singleton.status.success());
+    assert_eq!(singleton.stdout, b"(1,)\n");
+
+    let traced = run(&["--test"], "(1, 2)\n");
+    let trace = String::from_utf8(traced.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"product.tuple\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-TYPE-PRODUCT-001\""));
+    assert!(trace.contains("\"detail\":\"fields=2\""));
+}
+
+#[test]
 fn script_mode_ignores_hashbang_launcher_line() {
     let output = run(&[], "#!/usr/bin/env topal\n42\n");
     assert!(output.status.success());
