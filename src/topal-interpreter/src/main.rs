@@ -87,9 +87,10 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
     let mut input = stdin.lock();
     let mut session = Session::new();
     let terminal = io::stdin().is_terminal();
+    let mut pending = String::new();
     loop {
         if terminal {
-            print!("> ");
+            print!("{}", if pending.is_empty() { "> " } else { "... " });
             io::stdout().flush().map_err(|error| error.to_string())?;
         }
         let mut line = String::new();
@@ -98,13 +99,27 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
             .map_err(|error| error.to_string())?
             == 0
         {
+            if !pending.is_empty()
+                && let Err(error) = session.evaluate(&pending, &mut io::sink())
+            {
+                eprintln!("topal: {error}");
+            }
             return Ok(());
         }
-        if line.trim().is_empty() {
+        if line.trim().is_empty() && pending.is_empty() {
             continue;
         }
-        if let Err(message) = evaluate_and_print(&mut session, &line, &mut io::sink()) {
-            eprintln!("topal: {message}");
+        pending.push_str(&line);
+        match session.evaluate(&pending, &mut io::sink()) {
+            Ok(value) => {
+                println!("{value}");
+                pending.clear();
+            }
+            Err(error) if error.code == "E-UNTERMINATED-STRING" => {}
+            Err(error) => {
+                eprintln!("topal: {error}");
+                pending.clear();
+            }
         }
     }
 }

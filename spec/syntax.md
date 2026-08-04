@@ -76,17 +76,23 @@ tokens.
 ### TOPAL-SYN-STRING-001 — String literals
 
 ```ebnf
-string        ::= '"' { string-character | escape | interpolation } '"' ;
-escape        ::= "\\" ( '"' | "\\" | "n" | "r" | "t"
-                | "u{" hex-scalar "}" ) ;
-interpolation ::= "{" expression [ ":" format-expression ] "}" ;
+string        ::= '"' { any-scalar } '"'
+                | literal-tag '"' { any-scalar } '"' literal-tag ;
+literal-tag   ::= tag-character+ ;
 ```
 
-An unescaped newline or closing quote ends or invalidates the literal. A
-Unicode escape shall denote one Unicode scalar and shall not denote a surrogate
-or noncharacter. Interpolation braces nest according to ordinary delimiter
-rules. Interpolated expressions shall be statically accepted by the applicable
-formatting capability; otherwise the source is rejected.
+The two `literal-tag` occurrences shall be the same nonempty NFC Unicode
+sequence. A tag character is any scalar except `"`, whitespace, or the
+structural delimiters `()`, `{}`, and `[]`. In the empty-tag form, the next `"`
+closes the literal. In the tagged form, only the exact sequence `"` followed by
+the opening tag closes it; other quotes belong to the contents.
+
+Contents preserve their exact Unicode scalar sequence, including newlines,
+backslashes, braces, and canonically equivalent spellings. String literals have
+no escape processing and no interpolation. Formatting placeholders and doubled
+braces are interpreted only by an explicit later `format` application, not by
+literal construction. An absent matching closing delimiter is a recoverable
+syntax error and the incomplete token extends to end of source.
 
 ### TOPAL-SYN-GRAMMAR-001 — Phrase grammar
 

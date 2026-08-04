@@ -14,6 +14,7 @@ pub enum TokenKind {
     Identifier,
     Integer,
     Rational,
+    String,
     LeftParen,
     RightParen,
     Comma,
@@ -75,12 +76,22 @@ pub fn lex(source: &SourceText) -> Lexed {
                 message: "character does not begin a token in design-0",
             });
         }
+        if kind == TokenKind::String && !string_is_terminated(source.slice(span)) {
+            result.diagnostics.push(SyntaxDiagnostic {
+                code: "E-UNTERMINATED-STRING",
+                span,
+                message: "string literal has no matching closing delimiter",
+            });
+        }
         offset += length;
     }
     result
 }
 
 fn next_token(rest: &str) -> (TokenKind, usize) {
+    if let Some(length) = take_string(rest) {
+        return (TokenKind::String, length);
+    }
     let first = rest.chars().next().expect("nonempty source");
     match first {
         ' ' | '\t' => (
@@ -110,6 +121,35 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         ),
         c => (TokenKind::Unknown, c.len_utf8()),
     }
+}
+
+fn take_string(text: &str) -> Option<usize> {
+    let opening = text.find('"')?;
+    let tag = &text[..opening];
+    if !tag.chars().all(valid_tag_character) {
+        return None;
+    }
+    let after_opening = &text[opening + 1..];
+    let closing = format!("\"{tag}");
+    Some(
+        after_opening
+            .find(&closing)
+            .map_or(text.len(), |offset| opening + 1 + offset + closing.len()),
+    )
+}
+
+fn valid_tag_character(character: char) -> bool {
+    character != '"'
+        && !character.is_whitespace()
+        && !matches!(character, '(' | ')' | '{' | '}' | '[' | ']')
+}
+
+fn string_is_terminated(text: &str) -> bool {
+    let Some(opening) = text.find('"') else {
+        return false;
+    };
+    let tag = &text[..opening];
+    text[opening + 1..].ends_with(&format!("\"{tag}"))
 }
 
 fn take_number(text: &str) -> (TokenKind, usize) {
@@ -212,6 +252,23 @@ mod tests {
             kinds("-1.25e+3+0xCAFE"),
             vec![TokenKind::Rational, TokenKind::Plus, TokenKind::Integer]
         );
+    }
+
+    #[test]
+    fn tokenizes_ordinary_tagged_and_multiline_strings_losslessly() {
+        assert_eq!(kinds("\"plain\\n{value}\""), vec![TokenKind::String]);
+        assert_eq!(
+            kinds("text\"a \"quote\" and\nnewline\"text"),
+            vec![TokenKind::String]
+        );
+    }
+
+    #[test]
+    fn retains_unterminated_string_for_recovery() {
+        let source = SourceText::new("tag\"unfinished").unwrap();
+        let lexed = lex(&source);
+        assert_eq!(lexed.tokens[0].kind, TokenKind::String);
+        assert_eq!(lexed.diagnostics[0].code, "E-UNTERMINATED-STRING");
     }
 
     #[test]

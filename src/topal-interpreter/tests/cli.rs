@@ -377,6 +377,48 @@ fn mixed_power_does_not_promote_exponent_contract() {
 }
 
 #[test]
+fn all_modes_preserve_literal_string_contents() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "text\"He said \"hello\". {value} \\n\"text\n");
+        assert!(output.status.success());
+        assert_eq!(
+            output.stdout,
+            b"text\"He said \"hello\". {value} \\n\"text\n"
+        );
+    }
+}
+
+#[test]
+fn interactive_mode_accumulates_multiline_string() {
+    let output = run(&["--interactive"], "\"first\nsecond\"\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"\"first\nsecond\"\n");
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn string_trace_retains_complete_tagged_lexeme() {
+    let output = run(&["--test"], "tag\"a \"quote\"\"tag\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"token.string\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-SYN-STRING-001\""));
+    assert!(trace.contains("\"detail\":\"tag\\\"a "));
+    assert!(trace.contains("\"detail\":\"String\""));
+}
+
+#[test]
+fn unterminated_string_is_rejected_recoverably() {
+    let output = run(&[], "tag\"unfinished\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-UNTERMINATED-STRING")
+    );
+}
+
+#[test]
 fn rational_zero_division_trace_refutes_obligation() {
     let output = run(&["--test"], "1.0 / 0.0\n");
     assert!(!output.status.success());

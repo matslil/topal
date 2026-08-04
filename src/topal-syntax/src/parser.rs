@@ -6,6 +6,7 @@ use crate::{Lexed, SyntaxDiagnostic, Token, TokenKind};
 pub enum Expression {
     Integer(Span),
     Rational(Span),
+    String(Span),
     Identifier(Span),
     Callable { kind: CallableKind, span: Span },
     Application { items: Vec<Self>, span: Span },
@@ -26,6 +27,7 @@ impl Expression {
         match self {
             Self::Integer(span)
             | Self::Rational(span)
+            | Self::String(span)
             | Self::Identifier(span)
             | Self::Callable { span, .. }
             | Self::Application { span, .. } => *span,
@@ -138,6 +140,7 @@ impl Parser<'_> {
         match token.kind {
             TokenKind::Integer => Some(Expression::Integer(token.span)),
             TokenKind::Rational => Some(Expression::Rational(token.span)),
+            TokenKind::String => Some(Expression::String(token.span)),
             TokenKind::Identifier => Some(Expression::Identifier(token.span)),
             TokenKind::Plus => Some(Expression::Callable {
                 kind: CallableKind::Plus,
@@ -175,7 +178,7 @@ impl Parser<'_> {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-EXPECTED-EXPRESSION",
                     span: token.span,
-                    message: "expected an integer, name, or parenthesized expression",
+                    message: "expected a literal, name, callable, or parenthesized expression",
                 });
                 None
             }
