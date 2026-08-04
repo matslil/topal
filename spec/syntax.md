@@ -37,7 +37,8 @@ identifier-continue ::= XID_Continue | "-" ;
 discard          ::= "_" ;
 boolean          ::= "true" | "false" ;
 symbol           ::= "(" | ")" | "[" | "]" | "{" | "}" | ","
-                   | ":" | "." | "=" | "!=" | "->" | "..."
+                   | ":" | "." | "=" | "!=" | "<" | ">" | "<=" | ">="
+                   | "->" | "..."
                    | "+" | "-" | "*" | "/" | "^" ;
 newline          ::= "\n" ;
 comment          ::= "#" { any-scalar-except-newline } ;
@@ -143,7 +144,8 @@ expression   ::= decision | application | product | block ;
 application  ::= primary primary* ;
 primary      ::= identifier | discard | literal | product | block
                | qualified | type-construction | callable-symbol ;
-callable-symbol ::= "+" | "-" | "*" | "/" | "^" | "=" | "!=" ;
+callable-symbol ::= "+" | "-" | "*" | "/" | "^" | "=" | "!="
+                  | "<" | ">" | "<=" | ">=" ;
 qualified    ::= primary "." identifier ;
 product      ::= "(" [ field-value ( "," field-value )* [ "," ] ] ")" ;
 field-value  ::= [ identifier "is" ] expression ;

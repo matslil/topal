@@ -196,3 +196,12 @@ source line, a Unicode-column-aligned marker, and actionable help when a safe
 general correction exists. Script filenames, standard input, and interactive
 input shall have deterministic source labels. Rendering concerns shall not
 change interpreter semantics or test trace events.
+
+## TOPAL-INTP-SUBSET-021 — Exact ordering predicates
+
+All interpreter modes shall evaluate `<`, `>`, `<=`, and `>=` for finite `Int`
+and `Rational` operands according to `TOPAL-NUM-COMPARE-001`. Mixed operands
+shall use and trace canonical exact conversion before overload selection. Test
+mode shall record the three-way comparison decision independently from the
+derived Boolean predicate result. Other value domains shall report no
+applicable overload.

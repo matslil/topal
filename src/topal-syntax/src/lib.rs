@@ -21,6 +21,10 @@ pub enum TokenKind {
     Comma,
     Equals,
     NotEquals,
+    Less,
+    Greater,
+    LessEqual,
+    GreaterEqual,
     Plus,
     Minus,
     Star,
@@ -114,6 +118,12 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
     if rest.starts_with("!=") {
         return (TokenKind::NotEquals, 2);
     }
+    if rest.starts_with("<=") {
+        return (TokenKind::LessEqual, 2);
+    }
+    if rest.starts_with(">=") {
+        return (TokenKind::GreaterEqual, 2);
+    }
     let first = rest.chars().next().expect("nonempty source");
     match first {
         ' ' | '\t' => (
@@ -126,6 +136,8 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         ')' => (TokenKind::RightParen, 1),
         ',' => (TokenKind::Comma, 1),
         '=' => (TokenKind::Equals, 1),
+        '<' => (TokenKind::Less, 1),
+        '>' => (TokenKind::Greater, 1),
         '+' => (TokenKind::Plus, 1),
         '-' if rest[1..].starts_with(|c: char| c.is_ascii_digit()) => {
             let (kind, length) = take_number(&rest[1..]);
@@ -286,6 +298,32 @@ mod tests {
                 TokenKind::Integer,
                 TokenKind::Whitespace,
                 TokenKind::NotEquals,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+            ]
+        );
+    }
+
+    #[test]
+    fn longest_matches_exact_ordering_symbols() {
+        assert_eq!(
+            kinds("1 < 2 <= 3 > 2 >= 1"),
+            vec![
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::Less,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::LessEqual,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::Greater,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::GreaterEqual,
                 TokenKind::Whitespace,
                 TokenKind::Integer,
             ]

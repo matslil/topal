@@ -19,6 +19,10 @@ pub enum Expression {
 pub enum CallableKind {
     Equal,
     NotEqual,
+    Less,
+    Greater,
+    LessEqual,
+    GreaterEqual,
     Plus,
     Minus,
     Multiply,
@@ -172,6 +176,22 @@ impl Parser<'_> {
             }),
             TokenKind::NotEquals => Some(Expression::Callable {
                 kind: CallableKind::NotEqual,
+                span: token.span,
+            }),
+            TokenKind::Less => Some(Expression::Callable {
+                kind: CallableKind::Less,
+                span: token.span,
+            }),
+            TokenKind::Greater => Some(Expression::Callable {
+                kind: CallableKind::Greater,
+                span: token.span,
+            }),
+            TokenKind::LessEqual => Some(Expression::Callable {
+                kind: CallableKind::LessEqual,
+                span: token.span,
+            }),
+            TokenKind::GreaterEqual => Some(Expression::Callable {
+                kind: CallableKind::GreaterEqual,
                 span: token.span,
             }),
             TokenKind::Plus => Some(Expression::Callable {
