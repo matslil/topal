@@ -2,6 +2,12 @@
 
 ## Formal text
 
+### TOPAL-STRING-EMPTY-001 — Empty construction
+
+`empty String` shall construct the unique plain `String` whose preserved
+Unicode scalar sequence has length zero. Construction shall not consult locale,
+normalization, encoding, or external state.
+
 ### TOPAL-STRING-CONCAT-001 — Plain exact concatenation
 
 For plain `String` values `a` and `b`, `a concatenate b` shall produce the
