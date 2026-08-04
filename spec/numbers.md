@@ -89,6 +89,17 @@ conservatively reject division when it cannot establish the nonzero obligation;
 it shall not assume nonzero or produce an undefined value. Later dynamic-input
 rules may instead construct the typed `Result` required by the error model.
 
+### TOPAL-NUM-POW-001 — Finite natural integer exponentiation
+
+For finite `a : Int` and finite `e : Nat`, binary `^` selects a total, pure root
+overload `(Int, Nat) -> Int` and evaluates to exact repeated multiplication:
+`a ^ 0 = 1` and `a ^ (e + 1) = (a ^ e) * a`. Consequently `0 ^ 0 = 1` as the
+empty product. The result is finite and cannot overflow. A finite negative
+`Int` exponent does not satisfy this overload; rational negative-exponent
+semantics require a later overload. Exponentiation has no hidden precedence and
+groups under `TOPAL-SYN-GRAMMAR-001`. This realizes `TOPAL-REQ-SAFE-001`,
+`TOPAL-REQ-DETERMINISM-001`, and `TOPAL-REQ-INTEROP-001`.
+
 Other numeric domains and the remaining fixed callable names are outside this
 initial formal numeric subset until later rules define their applicable
 overloads. Their tokens remain reserved, and a conforming partial tool shall
@@ -97,6 +108,6 @@ reject unsupported applications explicitly rather than infer behavior.
 ## Explanatory notes
 
 The initial subset establishes arithmetic paths incrementally before
-formalizing dynamic division, exponentiation, or infinite operands. Left
+formalizing dynamic division, rational exponentiation, or infinite operands. Left
 association is fixed by `TOPAL-SYN-GRAMMAR-001`; for example, `2 + 3 * 4`
 produces `20`, while `2 + ( 3 * 4 )` produces `14`.
