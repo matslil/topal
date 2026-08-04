@@ -343,6 +343,40 @@ fn rational_arithmetic_trace_identifies_overload_and_rule() {
 }
 
 #[test]
+fn all_modes_execute_mixed_exact_arithmetic() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "1 + 0.5 * 2\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"Rational ( 3, 1 )\n");
+    }
+}
+
+#[test]
+fn conversion_trace_precedes_rational_overload_selection() {
+    let output = run(&["--test"], "1 + 0.5\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let conversion = trace.find("\"event\":\"conversion.applied\"").unwrap();
+    let selection = trace
+        .find("\"detail\":\"root.+(Rational,Rational)\"")
+        .unwrap();
+    assert!(conversion < selection);
+    assert!(trace.contains("\"rule\":\"TOPAL-TYPE-CONVERT-001\""));
+    assert!(trace.contains("\"detail\":\"Int->Rational:left\""));
+}
+
+#[test]
+fn mixed_power_does_not_promote_exponent_contract() {
+    let output = run(&["--test"], "2.0 ^ 2\n");
+    assert!(!output.status.success());
+    assert!(
+        !String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("conversion.applied")
+    );
+}
+
+#[test]
 fn rational_zero_division_trace_refutes_obligation() {
     let output = run(&["--test"], "1.0 / 0.0\n");
     assert!(!output.status.success());

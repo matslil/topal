@@ -111,6 +111,20 @@ their canonical exact quotient. A statically zero divisor is rejected under
 `TOPAL-REQ-SAFE-001`, `TOPAL-REQ-DETERMINISM-001`, and
 `TOPAL-REQ-INTEROP-001`.
 
+### TOPAL-NUM-INT-RATIONAL-CONVERT-001 — Canonical exact embedding
+
+The canonical lossless conversion from finite `n : Int` to `Rational` produces
+the value `(n, 1)`. A mixed finite exact application may use this conversion
+once per `Int` operand to match an existing rational overload under
+`TOPAL-TYPE-CONVERT-001`; it does not create a separate mixed-domain overload
+and conversion quality does not alter source-order selection.
+
+The reverse conversion is implicit only when retained static evidence proves
+that the canonical rational denominator is one. Otherwise conversion to `Int`
+is validation and returns the applicable typed `Result`. No implicit conversion
+chains are introduced. This realizes `TOPAL-REQ-MODEL-001`,
+`TOPAL-REQ-SAFE-001`, and `TOPAL-REQ-INTEROP-001`.
+
 ### TOPAL-NUM-DIV-001 — Finite exact integer division
 
 For finite `a : Int` and finite nonzero `b : Int`, binary `/` selects a total,

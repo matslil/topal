@@ -288,6 +288,30 @@ fn apply_binary(
         (Value::Rational(left), Value::Rational(right)) => {
             apply_rational_binary(source, kind, left, right, span, right_span, trace)
         }
+        (Value::Int(left), Value::Rational(right)) if kind != CallableKind::Power => {
+            trace_conversion(trace, "Int->Rational:left");
+            apply_rational_binary(
+                source,
+                kind,
+                BigRational::from_integer(left),
+                right,
+                span,
+                right_span,
+                trace,
+            )
+        }
+        (Value::Rational(left), Value::Int(right)) if kind != CallableKind::Power => {
+            trace_conversion(trace, "Int->Rational:right");
+            apply_rational_binary(
+                source,
+                kind,
+                left,
+                BigRational::from_integer(right),
+                span,
+                right_span,
+                trace,
+            )
+        }
         _ => Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",
@@ -295,6 +319,14 @@ fn apply_binary(
             "the implemented subset requires operands from one exact numeric domain",
         )),
     }
+}
+
+fn trace_conversion(trace: &mut impl TraceSink, detail: &'static str) {
+    trace.record(TraceEvent {
+        event: "conversion.applied",
+        rule: "TOPAL-TYPE-CONVERT-001",
+        detail,
+    });
 }
 
 fn apply_int_binary(
@@ -843,9 +875,25 @@ mod tests {
     }
 
     #[test]
-    fn rejects_mixed_exact_domains_without_conversion_evidence() {
+    fn converts_int_for_mixed_exact_arithmetic() {
         assert_eq!(
-            evaluate("1 + 0.5").unwrap_err().code,
+            evaluate("1 + 0.5").unwrap().to_string(),
+            "Rational ( 3, 2 )"
+        );
+        assert_eq!(
+            evaluate("0.5 * 2").unwrap().to_string(),
+            "Rational ( 1, 1 )"
+        );
+        assert_eq!(
+            evaluate("1 / 0.5").unwrap().to_string(),
+            "Rational ( 2, 1 )"
+        );
+    }
+
+    #[test]
+    fn does_not_promote_natural_exponent_position() {
+        assert_eq!(
+            evaluate("2.0 ^ 2").unwrap_err().code,
             "E-NO-APPLICABLE-OVERLOAD"
         );
     }

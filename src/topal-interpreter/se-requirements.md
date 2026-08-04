@@ -113,3 +113,12 @@ addition, subtraction, multiplication, and division according to
 `TOPAL-NUM-RAT-NEG-001` through `TOPAL-NUM-RAT-DIV-001`. Every result shall be
 canonical, rational zero division shall use the existing nonzero evidence
 contract, and no implicit mixed-domain conversion shall be invented.
+
+## TOPAL-INTP-SUBSET-012 — Mixed finite exact arithmetic
+
+The interpreter shall apply the canonical `Int -> Rational` conversion from
+`TOPAL-NUM-INT-RATIONAL-CONVERT-001` when it makes an existing rational
+arithmetic overload applicable. It shall not synthesize mixed overloads, apply
+the conversion to the `Int ^ Nat` exponent position, or perform the reverse
+conversion without evidence. Test traces shall record each conversion before
+overload selection.

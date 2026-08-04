@@ -246,6 +246,12 @@ The following questions from the initial audit are no longer open:
   operator-specific precedence. An adjacent minus belongs to a signed numeric
   literal (`-42`), while spaced `- 42` is prefix application and
   `left - right` is binary application.
+- `Int` embeds canonically and losslessly into `Rational` as denominator-one
+  values. Mixed finite exact arithmetic uses that one implicit conversion to
+  match an existing rational overload rather than defining separate mixed-pair
+  overloads. Conversion never reorders applicable overloads. The reverse is
+  implicit only with static evidence that the rational denominator is one;
+  otherwise it is dynamic validation with an explicit `Result`.
 - Unbounded ordered numeric domains contain their applicable infinities directly;
   there are no parallel `ExtendedNat`, `ExtendedInt`, `ExtendedRational`, or
   `ExtendedApprox` types. `Nat` retains only `+Infinity`, while signed
