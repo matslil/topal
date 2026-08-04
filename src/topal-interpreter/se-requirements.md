@@ -240,7 +240,7 @@ anonymous `Record` values according to `TOPAL-SYN-GRAMMAR-001` and
 `TOPAL-TYPE-PRODUCT-001`. Labels shall be unique, field values shall evaluate
 left-to-right, display shall preserve source field order, and test mode shall
 record record construction. Products mixing labeled and positional fields
-shall remain explicitly unsupported until their classification is specified.
+shall be rejected as invalid syntax with help suggesting explicit nesting.
 
 ## TOPAL-INTP-SUBSET-025 — Record field selection
 

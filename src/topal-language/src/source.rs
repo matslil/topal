@@ -1231,6 +1231,9 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
         "E-RESERVED-BOOLEAN-LITERAL" => {
             Some("choose an identifier other than the reserved literals `true` and `false`")
         }
+        "E-MIXED-PRODUCT-FIELDS" => {
+            Some("nest a tuple in a labeled field, or place a record inside a tuple")
+        }
         _ => None,
     }
 }
@@ -1465,7 +1468,7 @@ mod tests {
         let mixed = Session::new()
             .evaluate("(1, name is 2)\n", &mut std::io::sink())
             .unwrap_err();
-        assert_eq!(mixed.code, "E-UNSUPPORTED-MIXED-PRODUCT");
+        assert_eq!(mixed.code, "E-MIXED-PRODUCT-FIELDS");
     }
 
     #[test]

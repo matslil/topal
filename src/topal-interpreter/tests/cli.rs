@@ -80,6 +80,15 @@ fn test_mode_records_labeled_record_construction() {
 }
 
 #[test]
+fn mixed_product_fields_suggest_explicit_nesting() {
+    let output = run(&[], "(1, name is \"Ada\")\n");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("E-MIXED-PRODUCT-FIELDS"));
+    assert!(diagnostic.contains("nest a tuple in a labeled field"));
+}
+
+#[test]
 fn test_mode_records_record_field_selection() {
     let output = run(&["--test"], "(name is \"Ada\", active is true) name\n");
     assert!(output.status.success());
