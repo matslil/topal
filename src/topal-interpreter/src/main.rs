@@ -125,7 +125,7 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
                 println!("{value}");
                 pending.clear();
             }
-            Err(error) if error.code == "E-UNTERMINATED-STRING" => {}
+            Err(error) if matches!(error.code, "E-UNTERMINATED-STRING" | "E-EXPECTED-RPAREN") => {}
             Err(error) => {
                 eprintln!("topal: {error}");
                 pending.clear();

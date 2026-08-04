@@ -156,3 +156,11 @@ to `TOPAL-SYN-GRAMMAR-001` and `TOPAL-TYPE-PRODUCT-001`. Parentheses without a
 comma remain grouping; a trailing comma distinguishes a one-field `Tuple`.
 Fields evaluate left-to-right, display preserves product arity, and test mode
 records the constructed field count.
+
+## TOPAL-INTP-SUBSET-017 — Delimiter-aware continuation
+
+The shared parser shall ignore statement-separating newlines inside paired
+parentheses as required by `TOPAL-SYN-INDENT-001` and
+`TOPAL-SYN-GRAMMAR-001`. Script and test modes shall evaluate multiline grouped
+and product expressions. Interactive mode shall retain incomplete parenthesized
+input and continue reading until the closing delimiter arrives.

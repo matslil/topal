@@ -57,6 +57,7 @@ pub fn parse(source: &SourceText, lexed: &Lexed) -> ParsedSource {
         source,
         tokens: &lexed.tokens,
         cursor: 0,
+        delimiter_depth: 0,
         diagnostics: lexed.diagnostics.clone(),
     };
     let mut statements = Vec::new();
@@ -82,6 +83,7 @@ struct Parser<'a> {
     source: &'a SourceText,
     tokens: &'a [Token],
     cursor: usize,
+    delimiter_depth: usize,
     diagnostics: Vec<SyntaxDiagnostic>,
 }
 
@@ -167,60 +169,10 @@ impl Parser<'_> {
                 span: token.span,
             }),
             TokenKind::LeftParen => {
-                if self
-                    .peek_nontrivia()
-                    .is_some_and(|value| value.kind == TokenKind::RightParen)
-                {
-                    let closing = self
-                        .take_nontrivia()
-                        .expect("peeked closing parenthesis remains available");
-                    return Some(Expression::Unit(Span::new(
-                        token.span.start,
-                        closing.span.end,
-                    )));
-                }
-                let first = self.expression()?;
-                let mut items = self
-                    .peek_nontrivia()
-                    .is_some_and(|value| value.kind == TokenKind::Comma)
-                    .then(|| vec![first.clone()]);
-                if let Some(product_items) = &mut items {
-                    loop {
-                        self.take_nontrivia();
-                        if self
-                            .peek_nontrivia()
-                            .is_some_and(|value| value.kind == TokenKind::RightParen)
-                        {
-                            break;
-                        }
-                        product_items.push(self.expression()?);
-                        if !self
-                            .peek_nontrivia()
-                            .is_some_and(|value| value.kind == TokenKind::Comma)
-                        {
-                            break;
-                        }
-                    }
-                }
-                let closing = self.take_nontrivia();
-                if !closing.is_some_and(|value| value.kind == TokenKind::RightParen) {
-                    self.diagnostics.push(SyntaxDiagnostic {
-                        code: "E-EXPECTED-RPAREN",
-                        span: Span::new(token.span.end, token.span.end),
-                        message: "expected closing parenthesis",
-                    });
-                }
-                if let Some(items) = items {
-                    Some(Expression::Tuple {
-                        items,
-                        span: Span::new(
-                            token.span.start,
-                            closing.map_or(first.span().end, |value| value.span.end),
-                        ),
-                    })
-                } else {
-                    Some(first)
-                }
+                self.delimiter_depth += 1;
+                let expression = self.parenthesized(token);
+                self.delimiter_depth -= 1;
+                expression
             }
             _ => {
                 self.diagnostics.push(SyntaxDiagnostic {
@@ -230,6 +182,78 @@ impl Parser<'_> {
                 });
                 None
             }
+        }
+    }
+
+    fn parenthesized(&mut self, opening: Token) -> Option<Expression> {
+        if self
+            .peek_nontrivia()
+            .is_some_and(|value| value.kind == TokenKind::RightParen)
+        {
+            let closing = self
+                .take_nontrivia()
+                .expect("peeked closing parenthesis remains available");
+            return Some(Expression::Unit(Span::new(
+                opening.span.start,
+                closing.span.end,
+            )));
+        }
+        let Some(first) = self.expression() else {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-RPAREN",
+                span: Span::new(opening.span.end, opening.span.end),
+                message: "expected expression and closing parenthesis",
+            });
+            return None;
+        };
+        let mut items = self
+            .peek_nontrivia()
+            .is_some_and(|value| value.kind == TokenKind::Comma)
+            .then(|| vec![first.clone()]);
+        if let Some(product_items) = &mut items {
+            loop {
+                self.take_nontrivia();
+                if self
+                    .peek_nontrivia()
+                    .is_some_and(|value| value.kind == TokenKind::RightParen)
+                {
+                    break;
+                }
+                let Some(item) = self.expression() else {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-EXPECTED-RPAREN",
+                        span: Span::new(opening.span.end, opening.span.end),
+                        message: "expected product field or closing parenthesis",
+                    });
+                    return None;
+                };
+                product_items.push(item);
+                if !self
+                    .peek_nontrivia()
+                    .is_some_and(|value| value.kind == TokenKind::Comma)
+                {
+                    break;
+                }
+            }
+        }
+        let closing = self.take_nontrivia();
+        if !closing.is_some_and(|value| value.kind == TokenKind::RightParen) {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-RPAREN",
+                span: Span::new(opening.span.end, opening.span.end),
+                message: "expected closing parenthesis",
+            });
+        }
+        if let Some(items) = items {
+            Some(Expression::Tuple {
+                items,
+                span: Span::new(
+                    opening.span.start,
+                    closing.map_or(first.span().end, |value| value.span.end),
+                ),
+            })
+        } else {
+            Some(first)
         }
     }
 
@@ -246,7 +270,7 @@ impl Parser<'_> {
 
     fn take_nontrivia(&mut self) -> Option<Token> {
         while let Some(token) = self.tokens.get(self.cursor).copied() {
-            if token.kind == TokenKind::Newline {
+            if token.kind == TokenKind::Newline && self.delimiter_depth == 0 {
                 return None;
             }
             self.cursor += 1;
@@ -259,7 +283,7 @@ impl Parser<'_> {
 
     fn peek_nontrivia(&self) -> Option<Token> {
         for token in self.tokens[self.cursor..].iter().copied() {
-            if token.kind == TokenKind::Newline {
+            if token.kind == TokenKind::Newline && self.delimiter_depth == 0 {
                 return None;
             }
             if !token.kind.is_trivia() {
@@ -350,6 +374,24 @@ mod tests {
         };
         assert_eq!(items.len(), 2);
         assert!(tuple.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn ignores_newlines_inside_parentheses() {
+        let source = SourceText::new("(\n1,\n2\n)").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        let Statement::Expression(Expression::Tuple { items, .. }) = &parsed.statements[0] else {
+            panic!("expected tuple");
+        };
+        assert_eq!(items.len(), 2);
+        assert!(parsed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn retains_incomplete_parentheses_for_recovery() {
+        let source = SourceText::new("(\n1,").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert_eq!(parsed.diagnostics[0].code, "E-EXPECTED-RPAREN");
     }
 
     #[test]
