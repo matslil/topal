@@ -123,6 +123,16 @@ fn every_mode_evaluates_positional_products() {
 }
 
 #[test]
+fn every_mode_evaluates_multiline_products() {
+    let source = "(\n1,\n(\n2\n),\n3\n)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"(1, 2, 3)\n");
+    }
+}
+
+#[test]
 fn script_mode_ignores_hashbang_launcher_line() {
     let output = run(&[], "#!/usr/bin/env topal\n42\n");
     assert!(output.status.success());
