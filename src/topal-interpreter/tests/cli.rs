@@ -297,3 +297,26 @@ fn negative_exponent_is_rejected_for_int_overload() {
     assert!(!trace.contains("root.^(Int,Nat)"));
     assert!(trace.contains("E-NO-APPLICABLE-OVERLOAD at 1:5"));
 }
+
+#[test]
+fn all_modes_construct_exact_rational_literals() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "-6.022e-24\n");
+        assert!(output.status.success());
+        assert_eq!(
+            output.stdout,
+            b"Rational ( -3011, 500000000000000000000000000 )\n"
+        );
+    }
+}
+
+#[test]
+fn rational_literal_trace_retains_exact_lexeme() {
+    let output = run(&["--test"], "1_000.000_125\n");
+    assert!(output.status.success());
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"token.rational\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-RATIONAL-LITERAL-001\""));
+    assert!(trace.contains("\"detail\":\"1_000.000_125\""));
+    assert!(trace.contains("\"detail\":\"Rational\""));
+}

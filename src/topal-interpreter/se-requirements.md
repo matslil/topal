@@ -98,3 +98,10 @@ The interpreter shall evaluate `Int ^ Nat -> Int` according to
 result to a machine width. It shall prove the exponent's finite nonnegative
 classification before overload selection, reject a negative exponent at its
 source range, and retain ordinary left-to-right application order.
+
+## TOPAL-INTP-SUBSET-010 — Exact rational literals
+
+The interpreter shall construct fractional decimal and base-ten exponent
+literals as canonical exact `Rational` values under
+`TOPAL-NUM-RATIONAL-LITERAL-001`. All modes shall preserve arbitrary exponent
+size, grouping validity, sign, and the visible rational result type.
