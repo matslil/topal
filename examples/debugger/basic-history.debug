@@ -16,4 +16,8 @@ reverse-continue
 continue
 breakpoints
 delete 3
+watch answer
+watchpoints
+reverse-continue
+unwatch answer
 quit
