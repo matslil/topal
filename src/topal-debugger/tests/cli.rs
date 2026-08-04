@@ -1,4 +1,5 @@
-use std::process::Command;
+use std::io::Write;
+use std::process::{Command, Stdio};
 
 #[test]
 fn navigates_recorded_execution_in_both_directions() {
@@ -49,6 +50,33 @@ fn script_mode_reports_command_file_errors() {
         String::from_utf8(output.stderr)
             .unwrap()
             .contains("cannot read command script missing-debug-commands")
+    );
+}
+
+#[test]
+fn script_mode_rejects_unknown_commands_with_a_line_diagnostic() {
+    let source = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/debugger/basic-history.t"
+    );
+    let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args(["--script", "-", source])
+        .stdin(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .as_mut()
+        .unwrap()
+        .write_all(b"step\nnot-a-command\n")
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr).unwrap().contains(
+            "<stdin>:2: error[D-UNKNOWN-COMMAND]: unknown debugger command `not-a-command`"
+        )
     );
 }
 
