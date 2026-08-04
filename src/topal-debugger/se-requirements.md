@@ -70,3 +70,12 @@ mode shall not emit prompts and shall produce deterministic command results on
 standard output and actionable diagnostics on standard error with a nonzero
 status. The debugger functional suite shall exercise debugger behavior through
 this mode so the tested interface is also available to users and other tools.
+
+## TOPAL-DEBUG-FAILURE-001 — Inspectable partial failure history
+
+When a diagnostic stops live execution, the debugger shall retain every
+completed transition and state checkpoint preceding the failure. The command
+session shall remain usable for inspection and reverse navigation rather than
+terminating with the debuggee. Repeated advancement may retry only when doing
+so cannot duplicate an external effect; otherwise it shall remain stopped at
+the recorded failure.

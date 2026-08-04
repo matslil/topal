@@ -98,3 +98,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-DEBUG-TRACE-001` (`why` decision inspection) | stable rule ID carried by each transition | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.debug` | `topal-debugger` |
 | `TOPAL-DEBUG-EXEC-001` (resumable source execution) | implemented statement and expression rules | unit tests in `topal-language`; existing interpreter functional suites | `topal-language::Execution`, `topal-language::Session` |
 | `TOPAL-DEBUG-EXEC-001` (live debugger control) | implemented statement and expression rules | `src/topal-debugger/tests/cli.rs`; `examples/debugger/live-execution.debug` | `topal-debugger`, `topal-language::Execution` |
+| `TOPAL-DEBUG-FAILURE-001` | implemented diagnostic and execution rules | `src/topal-debugger/tests/cli.rs`; `examples/debugger/failing-history.t`; `examples/debugger/failing-history.debug` | `topal-debugger`, `topal-language::ExecutionHistory` |
