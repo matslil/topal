@@ -146,8 +146,10 @@ primary      ::= identifier | discard | literal | product | block
                | type-construction | callable-symbol ;
 callable-symbol ::= "+" | "-" | "*" | "/" | "^" | "=" | "!="
                   | "<" | ">" | "<=" | ">=" ;
-product      ::= "(" [ field-value ( "," field-value )* [ "," ] ] ")" ;
-field-value  ::= [ identifier "is" ] expression ;
+product      ::= "(" [ positional-fields | labeled-fields ] ")" ;
+positional-fields ::= expression ( "," expression )* [ "," ] ;
+labeled-fields ::= labeled-field ( "," labeled-field )* [ "," ] ;
+labeled-field ::= identifier "is" expression ;
 block        ::= "{" [ statement ( separator+ statement )* ] "}" ;
 decision     ::= expression NEWLINE INDENT case+ DEDENT ;
 case         ::= pattern [ "if" expression ] "then" expression separator* ;
@@ -171,6 +173,9 @@ grouping unless its field is labeled or followed by a comma. Application groups
 left-to-right and has no operator-specific or user-defined precedence;
 `a + b * c` groups as `(a + b) * c`. Newline terminates a statement
 unless delimiters are open or the grammar requires a following suite.
+
+A product shall not mix positional and labeled fields. The forms may be nested
+explicitly when both structures are required.
 
 When semantic checking establishes that the accumulated left value is a
 record, the next identifier primary is its static field label rather than a

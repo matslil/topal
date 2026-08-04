@@ -488,6 +488,11 @@ names with values using `is`:
 )
 ```
 
+One product is uniformly positional or uniformly labeled. Positional fields
+construct a `Tuple`; labeled fields construct a `Record`. Mixing the forms in
+one pair of parentheses is invalid. Nest a tuple in a labeled field, or place a
+record inside a tuple, when both structures are needed.
+
 The second form does not add four operands to `combine`; it supplies two
 labeled-product operands, each containing two associations. An expected record
 or map type determines whether those associations are static fields or dynamic

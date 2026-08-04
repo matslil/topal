@@ -318,6 +318,17 @@ impl Parser<'_> {
             });
         }
         if product {
+            let first_labeled = fields[0].label.is_some();
+            if let Some(mixed) = fields
+                .iter()
+                .find(|field| field.label.is_some() != first_labeled)
+            {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-MIXED-PRODUCT-FIELDS",
+                    span: mixed.label.unwrap_or_else(|| mixed.value.span()),
+                    message: "a product cannot mix positional and labeled fields",
+                });
+            }
             Some(Expression::Product {
                 fields,
                 span: Span::new(
@@ -492,6 +503,14 @@ mod tests {
         assert_eq!(source.slice(fields[0].label.unwrap()), "name");
         assert_eq!(source.slice(fields[1].label.unwrap()), "active");
         assert!(parsed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn rejects_products_that_mix_positional_and_labeled_fields() {
+        let source = SourceText::new("(1, name is \"Ada\")").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert_eq!(parsed.diagnostics[0].code, "E-MIXED-PRODUCT-FIELDS");
+        assert_eq!(source.slice(parsed.diagnostics[0].span), "name");
     }
 
     #[test]
