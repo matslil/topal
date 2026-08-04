@@ -76,3 +76,9 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-LSP-TOKENS-001` | `TOPAL-SYN-LEX-001`, `TOPAL-SYN-STRING-001`, `TOPAL-REQ-SHARED-001` | unit tests in `topal-lsp` | `topal-source`, `topal-syntax`, `topal-lsp` |
 | `TOPAL-INTP-EXAMPLE-001` | implemented `TOPAL-SYN-*`, `TOPAL-TYPE-*`, and `TOPAL-NUM-*` subset rules | `examples/interpreter/*.t` via `src/topal-interpreter/tests/cli.rs` | `topal-interpreter` |
 | `TOPAL-LSP-FEATURE-001` | `TOPAL-REQ-SHARED-001` and each implemented feature rule | `examples/interpreter/*.t` via unit tests in `topal-lsp` | `topal-source`, `topal-syntax`, `topal-lsp` |
+
+The approved source-debugger requirements are staged for implementation in
+`src/topal-debugger/se-requirements.md`. Their functional-evidence and
+implementation entries shall be added incrementally when the corresponding
+debugger capabilities land; `TOPAL-DEBUG-MESSAGE-001` remains intentionally
+pending until message passing exists in the shared execution machine.
