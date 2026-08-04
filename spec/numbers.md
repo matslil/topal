@@ -162,6 +162,7 @@ result or result set and return `Boolean`. Mixed finite `Int` and `Rational`
 comparison first applies `TOPAL-NUM-INT-RATIONAL-CONVERT-001` to the integer and
 then uses rational order. These predicates use ordinary left-to-right
 application and have no special chaining rule.
+This is the numeric realization of `TOPAL-TYPE-ORDERING-001`.
 
 Other numeric domains and the remaining fixed callable names are outside this
 initial formal numeric subset until later rules define their applicable

@@ -73,6 +73,19 @@ coercion of that result.
 `a = b`, and returns the Boolean negation of that equality result. It is a
 derived operation and does not introduce distinct inequality evidence.
 
+### TOPAL-TYPE-ORDERING-001 — Total-order application
+
+If `T` provides canonical `TotalOrder` evidence and `a:T`, `b:T`, their
+three-way comparison produces exactly `Less`, `Equal`, or `Greater`, with
+`Equal` agreeing with `TOPAL-TYPE-EQUALITY-001`. The predicates `<`, `>`, `<=`,
+and `>=` select the corresponding result or result set and return `Boolean`.
+
+`Tuple(T₁…Tₙ)` provides `TotalOrder` exactly when every `Tᵢ` provides it.
+Tuple comparison is lexicographic from the first field and stops at the first
+non-`Equal` result. Tuples of different arity have different types and no shared
+tuple-ordering overload. Canonical field conversions may make the corresponding
+field comparison applicable before the tuple result is selected.
+
 ### TOPAL-TYPE-CONSTRAINT-001 — Constraints
 
 For base type `T` and total pure predicate `p:T→Boolean`, constraint `C=(T,p)`
