@@ -59,6 +59,7 @@ pub struct Diagnostic {
     pub message: String,
     source_line: Option<String>,
     marker_width: usize,
+    help: Option<String>,
 }
 
 impl fmt::Display for Diagnostic {
@@ -87,7 +88,7 @@ impl Diagnostic {
                 markers = "^".repeat(self.marker_width.max(1)),
             );
         }
-        if let Some(help) = diagnostic_help(self.code) {
+        if let Some(help) = &self.help {
             let _ = write!(
                 rendered,
                 "\n{empty:>width$} |\n{empty:>width$} = help: {help}",
@@ -96,6 +97,11 @@ impl Diagnostic {
             );
         }
         rendered
+    }
+
+    fn with_help(mut self, help: impl Into<String>) -> Self {
+        self.help = Some(help.into());
+        self
     }
 }
 
@@ -134,6 +140,7 @@ impl Session {
                 message: error.message.into(),
                 source_line: raw_source_line(input, line),
                 marker_width: marker_width(input, error.span),
+                help: diagnostic_help(error.code).map(str::to_owned),
             }
         })?;
         trace.record(TraceEvent {
@@ -154,6 +161,7 @@ impl Session {
                 message: "expected a statement".into(),
                 source_line: raw_source_line(input, 1),
                 marker_width: 1,
+                help: diagnostic_help("E-EXPECTED-EXPRESSION").map(str::to_owned),
             });
         }
 
@@ -199,6 +207,7 @@ impl Session {
             message: "expected a statement".into(),
             source_line: raw_source_line(input, 1),
             marker_width: 1,
+            help: diagnostic_help("E-EXPECTED-EXPRESSION").map(str::to_owned),
         })?;
         trace.record(TraceEvent {
             event: "evaluation.result",
@@ -250,7 +259,10 @@ impl Session {
             Expression::Identifier(span) => {
                 let name = source.slice(*span);
                 let value = self.bindings.get(name).cloned().ok_or_else(|| {
-                    diagnostic(source, "E-UNBOUND-NAME", *span, "name is not bound")
+                    let error = diagnostic(source, "E-UNBOUND-NAME", *span, "name is not bound");
+                    closest_name(name, self.bindings.keys()).map_or(error.clone(), |candidate| {
+                        error.with_help(format!("did you mean `{candidate}`?"))
+                    })
                 })?;
                 trace.record(TraceEvent {
                     event: "binding.resolved",
@@ -896,7 +908,34 @@ fn diagnostic(
             .nth(position.line - 1)
             .map(str::to_owned),
         marker_width: marker_width(source.as_str(), span),
+        help: diagnostic_help(code).map(str::to_owned),
     }
+}
+
+fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) -> Option<&'a str> {
+    let maximum = 2.max(name.chars().count() / 3);
+    candidates
+        .map(|candidate| (edit_distance(name, candidate), candidate.as_str()))
+        .filter(|(distance, _)| *distance <= maximum)
+        .min()
+        .map(|(_, candidate)| candidate)
+}
+
+fn edit_distance(left: &str, right: &str) -> usize {
+    let right = right.chars().collect::<Vec<_>>();
+    let mut previous = (0..=right.len()).collect::<Vec<_>>();
+    for (left_index, left_character) in left.chars().enumerate() {
+        let mut current = vec![left_index + 1];
+        for (right_index, right_character) in right.iter().enumerate() {
+            current.push(
+                (current[right_index] + 1)
+                    .min(previous[right_index + 1] + 1)
+                    .min(previous[right_index] + usize::from(left_character != *right_character)),
+            );
+        }
+        previous = current;
+    }
+    previous[right.len()]
 }
 
 fn diagnostic_help(code: &str) -> Option<&'static str> {
@@ -1139,6 +1178,12 @@ mod tests {
             error.render("example.t"),
             "error[E-UNBOUND-NAME]: name is not bound\n --> example.t:2:5\n  |\n2 | α + missing\n  |     ^^^^^^^\n  |\n  = help: declare this name earlier in the same source session"
         );
+    }
+
+    #[test]
+    fn edit_distance_counts_unicode_scalars() {
+        assert_eq!(edit_distance("räknare", "räknaren"), 1);
+        assert_eq!(edit_distance("αβ", "βα"), 2);
     }
 
     #[test]
