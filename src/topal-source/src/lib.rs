@@ -2,6 +2,33 @@
 
 use std::fmt;
 
+/// Unicode data version fixed by the initial Topal language context.
+pub const UNICODE_VERSION: (u8, u8, u8) = (17, 0, 0);
+
+const _: () = {
+    assert!(unicode_ident::UNICODE_VERSION.0 == UNICODE_VERSION.0);
+    assert!(unicode_ident::UNICODE_VERSION.1 == UNICODE_VERSION.1);
+    assert!(unicode_ident::UNICODE_VERSION.2 == UNICODE_VERSION.2);
+    assert!(unicode_normalization::UNICODE_VERSION.0 == UNICODE_VERSION.0);
+    assert!(unicode_normalization::UNICODE_VERSION.1 == UNICODE_VERSION.1);
+    assert!(unicode_normalization::UNICODE_VERSION.2 == UNICODE_VERSION.2);
+};
+
+#[must_use]
+pub fn is_nfc(text: &str) -> bool {
+    unicode_normalization::is_nfc(text)
+}
+
+#[must_use]
+pub fn is_identifier_start(character: char) -> bool {
+    unicode_ident::is_xid_start(character)
+}
+
+#[must_use]
+pub fn is_identifier_continue(character: char) -> bool {
+    unicode_ident::is_xid_continue(character)
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Span {
     pub start: usize,
@@ -117,5 +144,13 @@ mod tests {
             SourceText::new("a\rb").unwrap_err().code,
             "E-SOURCE-LINE-END"
         );
+    }
+
+    #[test]
+    fn exposes_pinned_unicode_17_tables() {
+        assert_eq!(UNICODE_VERSION, (17, 0, 0));
+        assert!(is_nfc("é"));
+        assert!(!is_nfc("e\u{301}"));
+        assert!(is_identifier_start('\u{1c89}'));
     }
 }

@@ -4,4 +4,5 @@ mod source;
 mod trace;
 
 pub use source::{Diagnostic, Session, Value};
+pub use topal_source::UNICODE_VERSION;
 pub use trace::{JsonLines, TraceEvent, TraceSink};

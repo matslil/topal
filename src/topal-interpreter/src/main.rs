@@ -3,7 +3,7 @@ use std::fs;
 use std::io::{self, BufRead, IsTerminal, Read, Write};
 use std::process::ExitCode;
 
-use topal_language::{JsonLines, Session, TraceSink};
+use topal_language::{JsonLines, Session, TraceSink, UNICODE_VERSION};
 
 enum Mode {
     Script,
@@ -56,6 +56,16 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             "--help" => {
                 println!(
                     "Usage: topal [--interactive | --test] [FILE]\n\nWith no FILE, source is read from standard input."
+                );
+                std::process::exit(0);
+            }
+            "--version" => {
+                println!(
+                    "topal {} (language design-0; Unicode {}.{}.{})",
+                    env!("CARGO_PKG_VERSION"),
+                    UNICODE_VERSION.0,
+                    UNICODE_VERSION.1,
+                    UNICODE_VERSION.2
                 );
                 std::process::exit(0);
             }
