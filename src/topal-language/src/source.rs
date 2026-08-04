@@ -13,6 +13,7 @@ pub enum Value {
     Int(BigInt),
     Rational(BigRational),
     String(String),
+    Tuple(Vec<Self>),
     Unit,
 }
 
@@ -29,6 +30,19 @@ impl fmt::Display for Value {
                 )
             }
             Self::String(value) => formatter.write_str(&display_string(value)),
+            Self::Tuple(items) => {
+                formatter.write_str("(")?;
+                for (index, item) in items.iter().enumerate() {
+                    if index > 0 {
+                        formatter.write_str(", ")?;
+                    }
+                    item.fmt(formatter)?;
+                }
+                if items.len() == 1 {
+                    formatter.write_str(",")?;
+                }
+                formatter.write_str(")")
+            }
             Self::Unit => formatter.write_str("()"),
         }
     }
@@ -156,6 +170,7 @@ impl Session {
                 Value::Int(_) => "Int",
                 Value::Rational(_) => "Rational",
                 Value::String(_) => "String",
+                Value::Tuple(_) => "Tuple",
                 Value::Unit => "Unit",
             },
         });
@@ -176,6 +191,19 @@ impl Session {
                     detail: "Tuple()",
                 });
                 Ok(Value::Unit)
+            }
+            Expression::Tuple { items, .. } => {
+                let values = items
+                    .iter()
+                    .map(|item| self.evaluate_expression(source, item, trace))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let detail = format!("fields={}", values.len());
+                trace.record(TraceEvent {
+                    event: "product.tuple",
+                    rule: "TOPAL-TYPE-PRODUCT-001",
+                    detail: &detail,
+                });
+                Ok(Value::Tuple(values))
             }
             Expression::Integer(span) => evaluate_integer_literal(source, *span, trace),
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
@@ -641,7 +669,7 @@ fn apply_negate(
             });
             Ok(Value::Rational(-operand))
         }
-        Value::String(_) | Value::Unit => Err(diagnostic(
+        Value::String(_) | Value::Tuple(_) | Value::Unit => Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",
             span,

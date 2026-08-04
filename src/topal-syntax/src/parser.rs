@@ -5,6 +5,7 @@ use crate::{Lexed, SyntaxDiagnostic, Token, TokenKind};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expression {
     Unit(Span),
+    Tuple { items: Vec<Self>, span: Span },
     Integer(Span),
     Rational(Span),
     String(Span),
@@ -32,6 +33,7 @@ impl Expression {
             | Self::String(span)
             | Self::Identifier(span)
             | Self::Callable { span, .. }
+            | Self::Tuple { span, .. }
             | Self::Application { span, .. } => *span,
         }
     }
@@ -177,7 +179,29 @@ impl Parser<'_> {
                         closing.span.end,
                     )));
                 }
-                let expression = self.expression();
+                let first = self.expression()?;
+                let mut items = self
+                    .peek_nontrivia()
+                    .is_some_and(|value| value.kind == TokenKind::Comma)
+                    .then(|| vec![first.clone()]);
+                if let Some(product_items) = &mut items {
+                    loop {
+                        self.take_nontrivia();
+                        if self
+                            .peek_nontrivia()
+                            .is_some_and(|value| value.kind == TokenKind::RightParen)
+                        {
+                            break;
+                        }
+                        product_items.push(self.expression()?);
+                        if !self
+                            .peek_nontrivia()
+                            .is_some_and(|value| value.kind == TokenKind::Comma)
+                        {
+                            break;
+                        }
+                    }
+                }
                 let closing = self.take_nontrivia();
                 if !closing.is_some_and(|value| value.kind == TokenKind::RightParen) {
                     self.diagnostics.push(SyntaxDiagnostic {
@@ -186,7 +210,17 @@ impl Parser<'_> {
                         message: "expected closing parenthesis",
                     });
                 }
-                expression
+                if let Some(items) = items {
+                    Some(Expression::Tuple {
+                        items,
+                        span: Span::new(
+                            token.span.start,
+                            closing.map_or(first.span().end, |value| value.span.end),
+                        ),
+                    })
+                } else {
+                    Some(first)
+                }
             }
             _ => {
                 self.diagnostics.push(SyntaxDiagnostic {
@@ -298,6 +332,24 @@ mod tests {
             parsed.statements,
             vec![Statement::Expression(Expression::Unit(Span::new(0, 2)))]
         );
+    }
+
+    #[test]
+    fn distinguishes_grouping_and_positional_products() {
+        let grouped_source = SourceText::new("(1)").unwrap();
+        let grouped = parse(&grouped_source, &lex(&grouped_source));
+        assert!(matches!(
+            grouped.statements[0],
+            Statement::Expression(Expression::Integer(_))
+        ));
+
+        let tuple_source = SourceText::new("(1, 2,)").unwrap();
+        let tuple = parse(&tuple_source, &lex(&tuple_source));
+        let Statement::Expression(Expression::Tuple { items, .. }) = &tuple.statements[0] else {
+            panic!("expected tuple");
+        };
+        assert_eq!(items.len(), 2);
+        assert!(tuple.diagnostics.is_empty());
     }
 
     #[test]
