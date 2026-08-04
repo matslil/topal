@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
-use std::io::{self, BufRead, BufReader, Read, Write};
+use std::io::{self, BufRead, BufReader, IsTerminal, Write};
 use std::process::ExitCode;
 
 use topal_language::{ExecutionHistory, ExecutionTransition, Session};
@@ -29,7 +29,14 @@ fn run() -> Result<(), String> {
     println!("loaded {} transitions", history.transitions().len());
     if let Some(commands) = arguments.commands {
         if commands == "-" {
-            command_loop(io::stdin().lock(), &mut history, &source, &arguments.source)
+            command_loop(
+                io::stdin().lock(),
+                &mut history,
+                &source,
+                &arguments.source,
+                Some("<stdin>"),
+                false,
+            )
         } else {
             let file = fs::File::open(&commands)
                 .map_err(|error| format!("cannot read command script {commands}: {error}"))?;
@@ -38,10 +45,20 @@ fn run() -> Result<(), String> {
                 &mut history,
                 &source,
                 &arguments.source,
+                Some(&commands),
+                false,
             )
         }
     } else {
-        command_loop(io::stdin().lock(), &mut history, &source, &arguments.source)
+        let prompt = io::stdin().is_terminal();
+        command_loop(
+            io::stdin().lock(),
+            &mut history,
+            &source,
+            &arguments.source,
+            None,
+            prompt,
+        )
     }
 }
 
@@ -74,19 +91,33 @@ fn parse_arguments(mut arguments: impl Iterator<Item = String>) -> Result<Argume
 }
 
 fn command_loop(
-    input: impl Read,
+    mut input: impl BufRead,
     history: &mut ExecutionHistory,
     source: &str,
     source_name: &str,
+    script_name: Option<&str>,
+    prompt: bool,
 ) -> Result<(), String> {
-    let lines = BufReader::new(input).lines();
     let mut breakpoints = BTreeSet::new();
     let mut watchpoints = BTreeSet::new();
     let mut checkpoints = BTreeMap::new();
-    for line in lines {
-        let command = line.map_err(|error| error.to_string())?;
+    let mut line_number = 0;
+    loop {
+        let Some(command) = read_command(&mut input, prompt)? else {
+            return Ok(());
+        };
+        line_number += 1;
         match command.trim() {
             command if handle_frame_command(command, history, source, source_name) => {}
+            command
+                if handle_continue_command(
+                    command,
+                    history,
+                    source,
+                    source_name,
+                    &breakpoints,
+                    &watchpoints,
+                ) => {}
             "step" | "s" => match history.step_forward() {
                 Some(transition) => print_transition(transition),
                 None => println!("end of execution"),
@@ -112,20 +143,6 @@ fn command_loop(
                 None => println!("start of source execution"),
             },
             "where" | "w" => print_source_location(history, source, source_name),
-            "continue" | "c" => {
-                if continue_to_stop(history, source, &breakpoints, &watchpoints, false) {
-                    print_source_location(history, source, source_name);
-                } else {
-                    println!("no later breakpoint");
-                }
-            }
-            "reverse-continue" | "rc" => {
-                if continue_to_stop(history, source, &breakpoints, &watchpoints, true) {
-                    print_source_location(history, source, source_name);
-                } else {
-                    println!("no earlier breakpoint");
-                }
-            }
             "breakpoints" => {
                 print_breakpoints(&breakpoints, source_name);
             }
@@ -160,13 +177,7 @@ fn command_loop(
                 Some(value) => println!("{value}"),
                 None => println!("no value at current execution state"),
             },
-            "bindings" => {
-                if let Some(state) = history.state() {
-                    for (name, value) in &state.bindings {
-                        println!("{name} = {value}");
-                    }
-                }
-            }
+            "bindings" => print_bindings(history),
             "help" | "h" => {
                 println!(
                     "step | reverse-step | source-step | reverse-source-step | next | reverse-next | finish | reverse-finish | backtrace | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | history | print | bindings | quit"
@@ -174,11 +185,60 @@ fn command_loop(
             }
             "quit" | "q" => return Ok(()),
             "" => {}
-            unknown => println!("unknown command: {unknown}; use help"),
+            unknown => {
+                if let Some(script_name) = script_name {
+                    return Err(format!(
+                        "{script_name}:{line_number}: error[D-UNKNOWN-COMMAND]: unknown debugger command `{unknown}`; use `help`"
+                    ));
+                }
+                println!("unknown command: {unknown}; use help");
+            }
         }
         io::stdout().flush().map_err(|error| error.to_string())?;
     }
-    Ok(())
+}
+
+fn handle_continue_command(
+    command: &str,
+    history: &mut ExecutionHistory,
+    source: &str,
+    source_name: &str,
+    breakpoints: &BTreeSet<usize>,
+    watchpoints: &BTreeSet<String>,
+) -> bool {
+    let reverse = match command {
+        "continue" | "c" => false,
+        "reverse-continue" | "rc" => true,
+        _ => return false,
+    };
+    if continue_to_stop(history, source, breakpoints, watchpoints, reverse) {
+        print_source_location(history, source, source_name);
+    } else if reverse {
+        println!("no earlier breakpoint");
+    } else {
+        println!("no later breakpoint");
+    }
+    true
+}
+
+fn read_command(input: &mut impl BufRead, prompt: bool) -> Result<Option<String>, String> {
+    if prompt {
+        print!("(topal-debug) ");
+        io::stdout().flush().map_err(|error| error.to_string())?;
+    }
+    let mut command = String::new();
+    let count = input
+        .read_line(&mut command)
+        .map_err(|error| error.to_string())?;
+    Ok((count != 0).then_some(command))
+}
+
+fn print_bindings(history: &ExecutionHistory) {
+    if let Some(state) = history.state() {
+        for (name, value) in &state.bindings {
+            println!("{name} = {value}");
+        }
+    }
 }
 
 fn handle_frame_command(
