@@ -3,6 +3,7 @@
 message is text"Topal strings preserve "quotes",
 newlines, and {braces}."text
 flags is (true, false)
+empty-text is empty String
 person is (
   name is "Ada",
   active is true
@@ -13,6 +14,7 @@ greeting is "Hello, " concatenate person-name
   message,
   greeting,
   flags,
+  empty-text,
   person,
   person-name,
   (),

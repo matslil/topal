@@ -110,6 +110,16 @@ fn test_mode_records_plain_string_concatenation() {
 }
 
 #[test]
+fn test_mode_records_empty_string_construction() {
+    let output = run(&["--test"], "empty String\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"\"\"\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"detail\":\"root.empty(String)\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-STRING-EMPTY-001\""));
+}
+
+#[test]
 fn version_exposes_the_language_context_unicode_version() {
     let output = run(&["--version"], "");
     assert!(output.status.success());

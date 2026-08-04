@@ -256,3 +256,9 @@ All interpreter modes shall evaluate `left concatenate right` for two plain
 `String` values according to `TOPAL-STRING-CONCAT-001`, preserving their exact
 Unicode sequences without normalization or separators. Test mode shall expose
 overload selection and exact concatenation as separate semantic decisions.
+
+## TOPAL-INTP-SUBSET-027 — Empty string construction
+
+All interpreter modes shall evaluate `empty String` according to
+`TOPAL-STRING-EMPTY-001` as the unique zero-scalar plain string. Test mode shall
+record callable selection and construction independently.

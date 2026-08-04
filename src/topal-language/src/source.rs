@@ -303,6 +303,24 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if items.len() == 2
+                    && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "empty")
+                    && matches!(&items[1], Expression::Identifier(name) if source.slice(*name) == "String")
+                {
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.empty(String)",
+                    });
+                    trace.record(TraceEvent {
+                        event: "string.empty",
+                        rule: "TOPAL-STRING-EMPTY-001",
+                        detail: "String",
+                    });
+                    let value = Value::String(String::new());
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
                 let (mut result, mut index) = if matches!(
                     items.first(),
                     Some(Expression::Callable {
@@ -1510,6 +1528,20 @@ mod tests {
             .evaluate("\"value\" concatenate 1\n", &mut std::io::sink())
             .unwrap_err();
         assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn constructs_the_unique_empty_plain_string() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("empty String\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "\"\"");
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("TOPAL-STRING-EMPTY-001"))
+        );
     }
 
     #[test]
