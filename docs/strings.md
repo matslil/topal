@@ -61,9 +61,19 @@ contents are preserved without escape processing or normalization. Literal tags
 are NFC source syntax and must match exactly; they are not part of the resulting
 string.
 
-The Unicode version used for normalization, character segmentation, properties,
-and case operations is fixed by the language or compiler version and is
-available as build metadata for reproducibility.
+The initial `design-0` language context uses Unicode 17.0.0 for normalization,
+character segmentation, properties, and case operations. The selected Unicode
+version is part of the language context and is available in tool build and
+generated-artifact metadata for reproducibility. Implementations do not obtain
+language meaning from whatever Unicode tables happen to be available on the
+host.
+
+Changing Unicode versions constructs a new revisioned language context. It is
+never an invisible consequence of updating a compiler, library, operating
+system, or dependency. A tool which does not implement the context's Unicode
+version diagnoses the unsupported context instead of interpreting the source
+with different tables. Confusable-name and mixed-script checks remain
+diagnostics; they do not alter which source tokens are valid.
 
 Protocols, signatures, tests, and lossless byte-for-byte round trips retain the
 original `Encoded` value. A decoded `String` preserves its Unicode sequence, but

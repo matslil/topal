@@ -95,6 +95,13 @@ The following questions from the initial audit are no longer open:
   `String` provides `CaseInsensitive` using Topal's fixed Unicode version;
   `Language T` separately supplies a static language identity. Language-specific
   case operations require both without changing canonical string equality.
+- The initial `design-0` language context fixes Unicode 17.0.0 for character
+  properties, normalization, segmentation, and case operations. A Unicode
+  upgrade constructs a new revisioned language context rather than silently
+  changing an existing context through a tool or dependency update. Tools and
+  artifacts expose the selected Unicode version and reject unsupported
+  contexts. Confusable and mixed-script checks are diagnostics, not semantic
+  acceptance rules.
 - Programmers may declare law evidence. Soundly proved or exhaustively checked
   claims are verified; unresolved claims ordinarily become
   `trusted-unverified` evidence and emit `unverified-law` by default; refuted
