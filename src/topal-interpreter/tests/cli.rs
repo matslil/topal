@@ -116,6 +116,54 @@ fn test_trace_explains_boolean_literal_construction() {
 }
 
 #[test]
+fn every_mode_evaluates_fundamental_equality() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(
+            arguments,
+            "(1, \"same\", true, ()) = (1, \"same\", true, ())\n",
+        );
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"true\n");
+    }
+
+    let output = run(&[], "\"e\u{301}\" = \"é\"\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"false\n");
+}
+
+#[test]
+fn equality_uses_canonical_exact_conversion() {
+    let output = run(&["--test"], "1 = 1.0\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"true\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let conversion = trace.find("\"event\":\"conversion.applied\"").unwrap();
+    let selection = trace.find("\"event\":\"operator.selected\"").unwrap();
+    assert!(conversion < selection);
+    assert!(trace.contains("\"event\":\"evaluation.equal\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-TYPE-EQUALITY-001\""));
+}
+
+#[test]
+fn equality_requires_a_shared_operation() {
+    let output = run(&[], "true = 1\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-NO-APPLICABLE-OVERLOAD")
+    );
+
+    let output = run(&[], "(1,) = (1, 2)\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-NO-APPLICABLE-OVERLOAD")
+    );
+}
+
+#[test]
 fn every_mode_evaluates_the_unit_product() {
     let script = run(&[], "()\n");
     assert!(script.status.success());

@@ -53,6 +53,22 @@ value implicitly converts to or from a numeric value. The reserved literal
 `true` evaluates to the first value and `false` to the second without name
 resolution.
 
+### TOPAL-TYPE-EQUALITY-001 — Equality application
+
+If `T` provides canonical `Equality` evidence and `a:T`, `b:T`, then `a = b`
+evaluates to `true` exactly when the two values are equal under that evidence,
+and otherwise to `false`. `Unit`, `Boolean`, `Int`, `Rational`, and `String`
+provide canonical equality; string equality compares the preserved Unicode
+sequence. A tuple provides equality exactly when corresponding fields do, and
+compares equal exactly when every corresponding field compares equal.
+
+Canonical conversion may make one equality overload applicable. In particular,
+mixed `Int` and `Rational` equality applies `TOPAL-NUM-INT-RATIONAL-CONVERT-001`
+once and then uses rational equality. Different types without such a conversion,
+and tuples of different arity, have no applicable equality overload rather than
+evaluating to `false`. Equality returns `Boolean` and performs no numeric
+coercion of that result.
+
 ### TOPAL-TYPE-CONSTRAINT-001 — Constraints
 
 For base type `T` and total pure predicate `p:T→Boolean`, constraint `C=(T,p)`
