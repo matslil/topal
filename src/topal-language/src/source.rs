@@ -380,8 +380,8 @@ fn apply_binary(
     right_span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
-    if kind == CallableKind::Equal {
-        return apply_equality(source, left, right, span, trace);
+    if matches!(kind, CallableKind::Equal | CallableKind::NotEqual) {
+        return apply_equality(source, kind, left, right, span, trace);
     }
     match (left, right) {
         (Value::Int(left), Value::Int(right)) => {
@@ -425,6 +425,7 @@ fn apply_binary(
 
 fn apply_equality(
     source: &SourceText,
+    kind: CallableKind,
     left: Value,
     right: Value,
     span: Span,
@@ -438,10 +439,19 @@ fn apply_equality(
             "the operand types do not share an applicable Equality operation",
         ));
     };
+    let equal = if kind == CallableKind::NotEqual {
+        !equal
+    } else {
+        equal
+    };
     trace.record(TraceEvent {
         event: "operator.selected",
         rule: "TOPAL-TYPE-CALL-001",
-        detail: "root.=(Equality,Equality)",
+        detail: if kind == CallableKind::NotEqual {
+            "root.!=(Equality,Equality)"
+        } else {
+            "root.=(Equality,Equality)"
+        },
     });
     trace.record(TraceEvent {
         event: "evaluation.equal",
@@ -493,7 +503,9 @@ fn apply_int_binary(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     match kind {
-        CallableKind::Equal => unreachable!("equality is dispatched before numeric operations"),
+        CallableKind::Equal | CallableKind::NotEqual => {
+            unreachable!("equality is dispatched before numeric operations")
+        }
         CallableKind::Plus => {
             trace.record(TraceEvent {
                 event: "operator.selected",
@@ -548,7 +560,9 @@ fn apply_rational_binary(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let (callable, event, rule, result) = match kind {
-        CallableKind::Equal => unreachable!("equality is dispatched before numeric operations"),
+        CallableKind::Equal | CallableKind::NotEqual => {
+            unreachable!("equality is dispatched before numeric operations")
+        }
         CallableKind::Plus => (
             "root.+(Rational,Rational)",
             "evaluation.add",

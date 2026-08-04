@@ -180,3 +180,10 @@ positional products. Mixed `Int` and `Rational` operands shall use the canonical
 conversion and trace it before equality overload selection. Operands without
 shared equality evidence shall report no applicable overload rather than
 returning `false`; test mode shall trace the selected operation and result.
+
+## TOPAL-INTP-SUBSET-020 — Derived inequality
+
+All interpreter modes shall evaluate `!=` as the Boolean negation of the
+applicable `TOPAL-TYPE-EQUALITY-001` result. It shall preserve equality's
+conversion, evidence, tuple, and error behavior, and shall appear as one
+longest-match callable symbol in shared syntax and test traces.

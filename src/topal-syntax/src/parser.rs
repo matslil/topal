@@ -18,6 +18,7 @@ pub enum Expression {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CallableKind {
     Equal,
+    NotEqual,
     Plus,
     Minus,
     Multiply,
@@ -167,6 +168,10 @@ impl Parser<'_> {
             TokenKind::Identifier => Some(Expression::Identifier(token.span)),
             TokenKind::Equals => Some(Expression::Callable {
                 kind: CallableKind::Equal,
+                span: token.span,
+            }),
+            TokenKind::NotEquals => Some(Expression::Callable {
+                kind: CallableKind::NotEqual,
                 span: token.span,
             }),
             TokenKind::Plus => Some(Expression::Callable {

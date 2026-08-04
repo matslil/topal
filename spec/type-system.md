@@ -69,6 +69,10 @@ and tuples of different arity, have no applicable equality overload rather than
 evaluating to `false`. Equality returns `Boolean` and performs no numeric
 coercion of that result.
 
+`a != b` has exactly the same applicability, conversions, and observations as
+`a = b`, and returns the Boolean negation of that equality result. It is a
+derived operation and does not introduce distinct inequality evidence.
+
 ### TOPAL-TYPE-CONSTRAINT-001 — Constraints
 
 For base type `T` and total pure predicate `p:T→Boolean`, constraint `C=(T,p)`

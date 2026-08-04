@@ -164,6 +164,33 @@ fn equality_requires_a_shared_operation() {
 }
 
 #[test]
+fn every_mode_evaluates_derived_inequality() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "(1, true) != (1.0, false)\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"true\n");
+    }
+
+    let output = run(&["--test"], "1 != 1.0\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"false\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"detail\":\"root.!=(Equality,Equality)\""));
+    assert!(trace.contains("\"event\":\"evaluation.equal\""));
+}
+
+#[test]
+fn inequality_preserves_equality_applicability() {
+    let output = run(&[], "false != 0\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-NO-APPLICABLE-OVERLOAD")
+    );
+}
+
+#[test]
 fn every_mode_evaluates_the_unit_product() {
     let script = run(&[], "()\n");
     assert!(script.status.success());

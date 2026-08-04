@@ -20,6 +20,7 @@ pub enum TokenKind {
     RightParen,
     Comma,
     Equals,
+    NotEquals,
     Plus,
     Minus,
     Star,
@@ -109,6 +110,9 @@ pub fn lex(source: &SourceText) -> Lexed {
 fn next_token(rest: &str) -> (TokenKind, usize) {
     if let Some(length) = take_string(rest) {
         return (TokenKind::String, length);
+    }
+    if rest.starts_with("!=") {
+        return (TokenKind::NotEquals, 2);
     }
     let first = rest.chars().next().expect("nonempty source");
     match first {
@@ -270,6 +274,20 @@ mod tests {
                 TokenKind::Equals,
                 TokenKind::Whitespace,
                 TokenKind::Boolean,
+            ]
+        );
+    }
+
+    #[test]
+    fn selects_the_declared_inequality_symbol_as_one_token() {
+        assert_eq!(
+            kinds("1 != 2"),
+            vec![
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::NotEquals,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
             ]
         );
     }
