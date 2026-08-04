@@ -12,6 +12,7 @@ pub enum TokenKind {
     Comment,
     Hashbang,
     Identifier,
+    Discard,
     Boolean,
     Integer,
     Rational,
@@ -148,6 +149,18 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         '/' => (TokenKind::Slash, 1),
         '^' => (TokenKind::Caret, 1),
         c if c.is_ascii_digit() => take_number(rest),
+        '_' if rest.len() == 1
+            || rest[1..]
+                .chars()
+                .next()
+                .is_none_or(|next| !is_identifier_continue(next) && next != '-') =>
+        {
+            (TokenKind::Discard, 1)
+        }
+        '_' => {
+            let length = take_while(rest, |value| is_identifier_continue(value) || value == '-');
+            (TokenKind::Identifier, length)
+        }
         c if is_identifier_start(c) => {
             let length = take_while(rest, |value| is_identifier_continue(value) || value == '-');
             let kind = if matches!(&rest[..length], "true" | "false") {
@@ -356,6 +369,18 @@ mod tests {
                 TokenKind::Identifier,
             ]
         );
+    }
+
+    #[test]
+    fn reserves_the_complete_discard_spelling() {
+        let source = SourceText::new("_ _value").unwrap();
+        let kinds = lex(&source)
+            .tokens
+            .into_iter()
+            .filter(|token| !token.kind.is_trivia())
+            .map(|token| token.kind)
+            .collect::<Vec<_>>();
+        assert_eq!(kinds, [TokenKind::Discard, TokenKind::Identifier]);
     }
 
     #[test]

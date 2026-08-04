@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 3);
+    assert_eq!(examples.len(), 4);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -54,6 +54,18 @@ fn every_interpreter_example_is_an_executable_script() {
         assert!(!output.stdout.is_empty());
         assert!(output.stderr.is_empty());
     }
+}
+
+#[test]
+fn test_mode_records_discard_after_its_initializer() {
+    let output = run(&["--test"], "_ is 20 + 22\n7\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"7\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let initializer = trace.find("root.+(Int,Int)").unwrap();
+    let discard = trace.find("\"event\":\"binding.discarded\"").unwrap();
+    assert!(initializer < discard);
+    assert!(trace.contains("\"rule\":\"TOPAL-SYN-BIND-001\""));
 }
 
 #[test]
