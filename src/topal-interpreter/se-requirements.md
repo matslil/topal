@@ -249,3 +249,10 @@ selection according to `TOPAL-TYPE-PRODUCT-001`. Selection shall group with its
 record before later ordinary application, return the field's exact value, and
 diagnose an absent label at the label source range. Test mode shall record the
 selected label without evaluating it as a name.
+
+## TOPAL-INTP-SUBSET-026 — Plain string concatenation
+
+All interpreter modes shall evaluate `left concatenate right` for two plain
+`String` values according to `TOPAL-STRING-CONCAT-001`, preserving their exact
+Unicode sequences without normalization or separators. Test mode shall expose
+overload selection and exact concatenation as separate semantic decisions.

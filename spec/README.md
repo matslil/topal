@@ -11,6 +11,7 @@ The specification is divided into:
 - [language syntax](syntax.md);
 - [type system](type-system.md);
 - [numeric semantics](numbers.md);
+- [string semantics](strings.md);
 - [generic export intermediate language](generic-ir.md);
 - [native serialization protocol](serialization.md);
 - [memory model](memory-model.md); and
