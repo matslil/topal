@@ -143,10 +143,9 @@ classifier   ::= application ;
 expression   ::= decision | application | product | block ;
 application  ::= primary primary* ;
 primary      ::= identifier | discard | literal | product | block
-               | qualified | type-construction | callable-symbol ;
+               | type-construction | callable-symbol ;
 callable-symbol ::= "+" | "-" | "*" | "/" | "^" | "=" | "!="
                   | "<" | ">" | "<=" | ">=" ;
-qualified    ::= primary "." identifier ;
 product      ::= "(" [ field-value ( "," field-value )* [ "," ] ] ")" ;
 field-value  ::= [ identifier "is" ] expression ;
 block        ::= "{" [ statement ( separator+ statement )* ] "}" ;
@@ -172,6 +171,11 @@ grouping unless its field is labeled or followed by a comma. Application groups
 left-to-right and has no operator-specific or user-defined precedence;
 `a + b * c` groups as `(a + b) * c`. Newline terminates a statement
 unless delimiters are open or the grammar requires a following suite.
+
+When semantic checking establishes that the accumulated left value is a
+record, the next identifier primary is its static field label rather than a
+separate value operand. Selection therefore uses `record label`, groups before
+the remaining ordinary application, and is rejected when the label is absent.
 
 ### TOPAL-SYN-BIND-001 — Binding and discard
 

@@ -324,6 +324,31 @@ impl Session {
                     (self.evaluate_expression(source, &items[0], trace)?, 1)
                 };
                 while index < items.len() {
+                    if let Expression::Identifier(label_span) = &items[index]
+                        && let Value::Record(fields) = &result
+                    {
+                        let label = source.slice(*label_span);
+                        let selected = fields
+                            .iter()
+                            .find(|(field, _)| field == label)
+                            .map(|(_, value)| value.clone())
+                            .ok_or_else(|| {
+                                diagnostic(
+                                    source,
+                                    "E-NO-SUCH-RECORD-FIELD",
+                                    *label_span,
+                                    format!("record has no field named `{label}`"),
+                                )
+                            })?;
+                        trace.record(TraceEvent {
+                            event: "record.field.selected",
+                            rule: "TOPAL-TYPE-PRODUCT-001",
+                            detail: label,
+                        });
+                        result = selected;
+                        index += 1;
+                        continue;
+                    }
                     let Expression::Callable {
                         kind,
                         span: operator_span,
@@ -1400,6 +1425,28 @@ mod tests {
             .evaluate("(1, name is 2)\n", &mut std::io::sink())
             .unwrap_err();
         assert_eq!(mixed.code, "E-UNSUPPORTED-MIXED-PRODUCT");
+    }
+
+    #[test]
+    fn selects_record_fields_without_resolving_the_label_as_a_name() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate(
+                "person is (name is \"Ada\", active is true)\nperson name\n",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(value.to_string(), "\"Ada\"");
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("record.field.selected"))
+        );
+
+        let error = Session::new()
+            .evaluate("(name is \"Ada\") age\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-NO-SUCH-RECORD-FIELD");
     }
 
     #[test]

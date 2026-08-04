@@ -80,6 +80,16 @@ fn test_mode_records_labeled_record_construction() {
 }
 
 #[test]
+fn test_mode_records_record_field_selection() {
+    let output = run(&["--test"], "(name is \"Ada\", active is true) name\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"\"Ada\"\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"record.field.selected\""));
+    assert!(trace.contains("\"detail\":\"name\""));
+}
+
+#[test]
 fn version_exposes_the_language_context_unicode_version() {
     let output = run(&["--version"], "");
     assert!(output.status.success());
