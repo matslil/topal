@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 22);
+    assert_eq!(examples.len(), 23);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1027,6 +1027,30 @@ fn every_mode_calls_a_later_function_declaration() {
         .find("function.entered\",\"rule\":\"TOPAL-FUNCTION-ORDINARY-001\",\"detail\":\"decorate")
         .unwrap();
     assert!(render < decorate);
+}
+
+#[test]
+fn every_mode_executes_proven_mutual_int_recursion() {
+    let source = "even is fn (value : Int) -> Boolean\n  value\n    <= 0 then true\n    otherwise odd (value - 1)\nodd is fn (value : Int) -> Boolean\n  value\n    <= 0 then false\n    otherwise even (value - 1)\n(even 6, odd 6)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n()\n(true, false)\n");
+        } else {
+            assert_eq!(output.stdout, b"(true, false)\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("function.recursion.edge.candidate"));
+    assert!(trace.contains("function.recursion.cycle.proven"));
+    assert!(trace.contains("TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001"));
 }
 
 #[test]
