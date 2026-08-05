@@ -1553,7 +1553,7 @@ fn prove_mutual_int_recursion_edge(
     let [(parameter, classifier)] = parameters else {
         return None;
     };
-    if classifier != "Int" {
+    if classifier != "Int" && classifier != "Nat" {
         return None;
     }
     let [Statement::Expression(Expression::DecisionTable { subject, rules, .. })] = body else {
@@ -1566,20 +1566,37 @@ fn prove_mutual_int_recursion_edge(
     let [base, recursive] = rules.as_slice() else {
         return None;
     };
-    let (step, proof_rule) = match &base.matcher {
-        DecisionMatcher::Comparison {
-            kind: CallableKind::LessEqual,
-            operand: Expression::Integer(_),
-            ..
-        } => (
+    let (step, proof_rule) = match (&**classifier, &base.matcher) {
+        (
+            "Nat",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::LessEqual,
+                operand: Expression::Integer(bound),
+                ..
+            },
+        ) if parse_integer(source.slice(*bound)).is_some_and(|value| value >= BigInt::from(0)) => (
+            CallableKind::Minus,
+            "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001",
+        ),
+        (
+            "Int",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::LessEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (
             CallableKind::Minus,
             "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001",
         ),
-        DecisionMatcher::Comparison {
-            kind: CallableKind::GreaterEqual,
-            operand: Expression::Integer(_),
-            ..
-        } => (
+        (
+            "Int",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::GreaterEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (
             CallableKind::Plus,
             "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001",
         ),
@@ -1591,7 +1608,11 @@ fn prove_mutual_int_recursion_edge(
     let (target, valid) =
         mutual_call_target(source, function_name, parameter, step, &recursive.action);
     let target = target?;
-    if !valid || contains_self_call(source, &target, &base.action) {
+    if !valid
+        || contains_self_call(source, &target, &base.action)
+        || (classifier == "Nat"
+            && !recursive_calls_use_unit_step(source, &target, parameter, &recursive.action))
+    {
         return None;
     }
     Some((target, proof_rule))
@@ -1663,11 +1684,14 @@ fn combine_mutual_call_targets(
 const MUTUAL_INT_RECURSION_RULE: &str = "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001";
 const MUTUAL_INCREASING_INT_RECURSION_RULE: &str =
     "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001";
+const MUTUAL_NAT_RECURSION_RULE: &str = "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001";
 
 fn is_mutual_recursion_rule(rule: &str) -> bool {
     matches!(
         rule,
-        MUTUAL_INT_RECURSION_RULE | MUTUAL_INCREASING_INT_RECURSION_RULE
+        MUTUAL_INT_RECURSION_RULE
+            | MUTUAL_INCREASING_INT_RECURSION_RULE
+            | MUTUAL_NAT_RECURSION_RULE
     )
 }
 
@@ -3488,6 +3512,24 @@ fn proves_increasing_nat_recursion_with_positive_steps() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001"))
+    );
+}
+
+#[test]
+fn proves_closed_mutual_nat_recursion() {
+    let source = "even is fn (value : Nat) -> Boolean\n  value\n    <= 0 then true\n    otherwise odd (value - 1)\nodd is fn (value : Nat) -> Boolean\n  value\n    <= 0 then false\n    otherwise even (value - 1)\n(even 6, odd 6)\n";
+    let mut trace = Vec::new();
+    assert_eq!(
+        Session::new()
+            .evaluate(source, &mut trace)
+            .unwrap()
+            .to_string(),
+        "(true, false)"
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001"))
     );
 }
 
