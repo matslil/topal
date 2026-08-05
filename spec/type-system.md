@@ -42,9 +42,19 @@ order is declaration order and does not affect label lookup. A closed record
 admits no additional field; an open record pattern may observe additional
 visible fields but neither captures nor reconstructs them.
 
-`Union(T₁…Tₙ)` is untagged and valid only when static matching identifies at
-most one member for every admitted value. `Variant{Cᵢ:Tᵢ}` carries exactly one
-nominal tag and payload. An enum is a variant whose payloads are `Unit`.
+`Variant(T₁…Tₙ)` is positional and selects one member by index.
+`Union{Cᵢ:Tᵢ}` carries exactly one labeled tag and payload. An enum is a nominal
+union whose payloads are all `Unit`.
+
+### TOPAL-TYPE-ENUM-001 — Nominal payload-free enum values
+
+A declaration `Name is Enum ( A₁, …, Aₙ )` introduces one nominal enum type and
+one complete value for each distinct alternative label. Display uses the label
+alone. Two values of the same enum type provide canonical equality and compare
+equal exactly when their alternatives are identical; values from different
+enum declarations do not share an equality operation merely because labels
+match. The type and every alternative name are immutable in their declaration
+scope.
 
 ### TOPAL-TYPE-BOOLEAN-001 — Boolean values
 
