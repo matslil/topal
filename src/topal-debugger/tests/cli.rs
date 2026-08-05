@@ -389,6 +389,30 @@ fn records_reversible_decreasing_int_recursion() {
 }
 
 #[test]
+fn records_reversible_increasing_int_recursion() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}increasing-int-recursion.debug"),
+            &format!("{root}increasing-int-recursion.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("function.recursion.proven [TOPAL-FUNCTION-RECURSION-INT-INCREASING-001]")
+    );
+    assert_eq!(stdout.matches("function.recursion.descended").count(), 5);
+    assert!(stdout.contains("\n5\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

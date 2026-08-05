@@ -136,7 +136,7 @@ struct UserFunction {
     result: String,
     body: Vec<Statement>,
     bindings: BTreeMap<String, Value>,
-    termination_proven: bool,
+    termination_rule: Option<&'static str>,
 }
 
 pub struct Execution {
@@ -499,7 +499,7 @@ impl Session {
                         ));
                     };
                     let recursive = self.call_stack.iter().any(|active| active == name);
-                    if recursive && !function.termination_proven {
+                    if recursive && function.termination_rule.is_none() {
                         return Err(diagnostic(
                             source,
                             "E-RECURSION-NOT-YET-PROVEN",
@@ -511,7 +511,9 @@ impl Session {
                     if recursive {
                         trace.record(TraceEvent {
                             event: "function.recursion.descended",
-                            rule: "TOPAL-FUNCTION-RECURSION-INT-001",
+                            rule: function
+                                .termination_rule
+                                .expect("recursive call has a termination proof"),
                             detail: name,
                         });
                     }
@@ -1040,8 +1042,7 @@ impl Execution {
                 "an overload with the same input classifiers and staticness already exists",
             ));
         }
-        let termination_proven =
-            proves_decreasing_int_recursion(&self.source, name_text, &parameters, body);
+        let termination_rule = prove_int_recursion(&self.source, name_text, &parameters, body);
         let rule = function_rule(is_static, parameters.len());
         let function = UserFunction {
             source: self.source.clone(),
@@ -1050,7 +1051,7 @@ impl Execution {
             result: result_text.to_owned(),
             body: body.to_vec(),
             bindings: session.bindings.clone(),
-            termination_proven,
+            termination_rule,
         };
         if session.local_function_names.contains(name_text) {
             session.functions.get_mut(name_text).unwrap().push(function);
@@ -1067,10 +1068,10 @@ impl Execution {
             rule,
             detail: name_text,
         });
-        if termination_proven {
+        if let Some(termination_rule) = termination_rule {
             trace.record(TraceEvent {
                 event: "function.recursion.proven",
-                rule: "TOPAL-FUNCTION-RECURSION-INT-001",
+                rule: termination_rule,
                 detail: name_text,
             });
         }
@@ -1391,86 +1392,94 @@ fn validate_parameter_names(
     Ok(())
 }
 
-fn proves_decreasing_int_recursion(
+fn prove_int_recursion(
     source: &SourceText,
     function_name: &str,
     parameters: &[(String, String)],
     body: &[Statement],
-) -> bool {
+) -> Option<&'static str> {
     let [(parameter, classifier)] = parameters else {
-        return false;
+        return None;
     };
     if classifier != "Int" {
-        return false;
+        return None;
     }
     let [Statement::Expression(Expression::DecisionTable { subject, rules, .. })] = body else {
-        return false;
+        return None;
     };
     if !matches!(subject.as_ref(), Expression::Identifier(span) if source.slice(*span) == parameter)
     {
-        return false;
+        return None;
     }
     let [base, recursive] = rules.as_slice() else {
-        return false;
+        return None;
     };
-    let guarded_at_zero = matches!(
-        &base.matcher,
+    let (step, proof_rule) = match &base.matcher {
         DecisionMatcher::Comparison {
             kind: CallableKind::LessEqual,
-            operand: Expression::Integer(span),
+            operand: Expression::Integer(_),
             ..
-        } if source.slice(*span) == "0"
-    );
-    if !guarded_at_zero
-        || !matches!(&recursive.matcher, DecisionMatcher::Otherwise(_))
+        } => (CallableKind::Minus, "TOPAL-FUNCTION-RECURSION-INT-001"),
+        DecisionMatcher::Comparison {
+            kind: CallableKind::GreaterEqual,
+            operand: Expression::Integer(_),
+            ..
+        } => (
+            CallableKind::Plus,
+            "TOPAL-FUNCTION-RECURSION-INT-INCREASING-001",
+        ),
+        _ => return None,
+    };
+    if !matches!(&recursive.matcher, DecisionMatcher::Otherwise(_))
         || contains_self_call(source, function_name, &base.action)
     {
-        return false;
+        return None;
     }
-    let (found, valid) = decreasing_self_calls(source, function_name, parameter, &recursive.action);
-    found && valid
+    let (found, valid) =
+        bounded_self_calls(source, function_name, parameter, step, &recursive.action);
+    (found && valid).then_some(proof_rule)
 }
 
 fn contains_self_call(source: &SourceText, function_name: &str, expression: &Expression) -> bool {
-    let (found, _) = decreasing_self_calls(source, function_name, "", expression);
+    let (found, _) = bounded_self_calls(source, function_name, "", CallableKind::Minus, expression);
     found
 }
 
-fn decreasing_self_calls(
+fn bounded_self_calls(
     source: &SourceText,
     function_name: &str,
     parameter: &str,
+    step: CallableKind,
     expression: &Expression,
 ) -> (bool, bool) {
     match expression {
         Expression::Application { items, .. } if matches!(items.first(), Some(Expression::Identifier(span)) if source.slice(*span) == function_name) =>
         {
-            let valid = matches!(items.as_slice(), [_, argument] if is_decrement(source, parameter, argument));
+            let valid = matches!(items.as_slice(), [_, argument] if is_unit_step(source, parameter, step, argument));
             (true, valid)
         }
         Expression::Application { items, .. } => combine_call_checks(
             items
                 .iter()
-                .map(|item| decreasing_self_calls(source, function_name, parameter, item)),
+                .map(|item| bounded_self_calls(source, function_name, parameter, step, item)),
         ),
-        Expression::Product { fields, .. } => combine_call_checks(
-            fields
-                .iter()
-                .map(|field| decreasing_self_calls(source, function_name, parameter, &field.value)),
-        ),
-        Expression::DecisionTable { subject, rules, .. } => {
-            combine_call_checks(
-                std::iter::once(decreasing_self_calls(
-                    source,
-                    function_name,
-                    parameter,
-                    subject,
-                ))
-                .chain(rules.iter().map(|rule| {
-                    decreasing_self_calls(source, function_name, parameter, &rule.action)
-                })),
-            )
+        Expression::Product { fields, .. } => {
+            combine_call_checks(fields.iter().map(|field| {
+                bounded_self_calls(source, function_name, parameter, step, &field.value)
+            }))
         }
+        Expression::DecisionTable { subject, rules, .. } => combine_call_checks(
+            std::iter::once(bounded_self_calls(
+                source,
+                function_name,
+                parameter,
+                step,
+                subject,
+            ))
+            .chain(rules.iter().map(|rule| {
+                bounded_self_calls(source, function_name, parameter, step, &rule.action)
+            })),
+        ),
         _ => (false, true),
     }
 }
@@ -1481,7 +1490,12 @@ fn combine_call_checks(checks: impl Iterator<Item = (bool, bool)>) -> (bool, boo
     })
 }
 
-fn is_decrement(source: &SourceText, parameter: &str, expression: &Expression) -> bool {
+fn is_unit_step(
+    source: &SourceText,
+    parameter: &str,
+    step: CallableKind,
+    expression: &Expression,
+) -> bool {
     matches!(
         expression,
         Expression::Application { items, .. }
@@ -1489,9 +1503,9 @@ fn is_decrement(source: &SourceText, parameter: &str, expression: &Expression) -
                 items.as_slice(),
                 [
                     Expression::Identifier(name),
-                    Expression::Callable { kind: CallableKind::Minus, .. },
+                    Expression::Callable { kind, .. },
                     Expression::Integer(one)
-                ] if source.slice(*name) == parameter && source.slice(*one) == "1"
+                ] if source.slice(*name) == parameter && *kind == step && source.slice(*one) == "1"
             )
     )
 }
@@ -3217,4 +3231,27 @@ fn decreasing_int_recursion_executes_only_after_structural_proof() {
         )
         .unwrap_err();
     assert_eq!(unproven.code, "E-RECURSION-NOT-YET-PROVEN");
+}
+
+#[test]
+fn increasing_int_recursion_executes_only_after_structural_proof() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "distance-up is fn (value : Int) -> Int\n  value\n    >= 0 then 0\n    otherwise 1 + (distance-up (value + 1))\ndistance-up (-5)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "5");
+    assert!(trace.iter().any(|event| {
+        event.contains("function.recursion.proven")
+            && event.contains("TOPAL-FUNCTION-RECURSION-INT-INCREASING-001")
+    }));
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.recursion.descended"))
+            .count(),
+        5
+    );
 }
