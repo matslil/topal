@@ -52,3 +52,6 @@ completion requests with a deterministic list of named root operations
 implemented by the current language subset. Each item shall identify the
 operation as a function and describe its implemented call shape. Completion
 shall not advertise planned operations before their interpreter semantics land.
+When an operation accepts a finite set of implemented static arguments, its
+detail shall name those arguments so completion does not imply support for
+planned alternatives.

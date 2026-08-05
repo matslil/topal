@@ -160,9 +160,19 @@ fn completion_items() -> Value {
                 "detail": "String -> String"
             },
             {
+                "label": "empty?",
+                "kind": 3,
+                "detail": "String -> Boolean"
+            },
+            {
                 "label": "entry-count",
                 "kind": 3,
                 "detail": "String -> Int"
+            },
+            {
+                "label": "normalize",
+                "kind": 3,
+                "detail": "String, NFC -> String"
             }
         ]
     })
@@ -353,9 +363,18 @@ mod tests {
                 "character-count",
                 "concat",
                 "empty",
-                "entry-count"
+                "empty?",
+                "entry-count",
+                "normalize"
             ]
         );
+        let normalize = output[0]["result"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|item| item["label"] == "normalize")
+            .unwrap();
+        assert_eq!(normalize["detail"], "String, NFC -> String");
         assert!(
             output[0]["result"]["items"]
                 .as_array()
