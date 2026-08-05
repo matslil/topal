@@ -76,9 +76,17 @@ pub struct FunctionParameter {
     pub classifier: Span,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DecisionMatcher {
-    Boolean { value: bool, span: Span },
+    Boolean {
+        value: bool,
+        span: Span,
+    },
+    Comparison {
+        kind: CallableKind,
+        operand: Expression,
+        span: Span,
+    },
     Otherwise(Span),
 }
 
@@ -349,7 +357,7 @@ impl Parser<'_> {
                     return None;
                 };
                 body.push(Statement::Expression(
-                    self.boolean_decision_table(subject, indent_width)?,
+                    self.decision_table(subject, indent_width)?,
                 ));
                 continue;
             }
@@ -363,11 +371,7 @@ impl Parser<'_> {
         Some(body)
     }
 
-    fn boolean_decision_table(
-        &mut self,
-        subject: Expression,
-        rule_indent: usize,
-    ) -> Option<Expression> {
+    fn decision_table(&mut self, subject: Expression, rule_indent: usize) -> Option<Expression> {
         let mut rules = Vec::new();
         while self
             .tokens
@@ -379,54 +383,14 @@ impl Parser<'_> {
             })
         {
             self.cursor += 2;
-            let matcher_token = self.take_nontrivia()?;
-            let (matcher, action) = match matcher_token.kind {
-                TokenKind::Boolean => {
-                    let separator = self.take_nontrivia()?;
-                    if separator.kind != TokenKind::Identifier
-                        || self.source.slice(separator.span) != "then"
-                    {
-                        self.diagnostics.push(SyntaxDiagnostic {
-                            code: "E-EXPECTED-THEN",
-                            span: separator.span,
-                            message: "expected `then` between the matcher and delayed action",
-                        });
-                        return None;
-                    }
-                    (
-                        DecisionMatcher::Boolean {
-                            value: self.source.slice(matcher_token.span) == "true",
-                            span: matcher_token.span,
-                        },
-                        self.expression()?,
-                    )
-                }
-                TokenKind::Identifier if self.source.slice(matcher_token.span) == "otherwise" => (
-                    DecisionMatcher::Otherwise(matcher_token.span),
-                    self.expression()?,
-                ),
-                _ => {
-                    self.diagnostics.push(SyntaxDiagnostic {
-                        code: "E-UNSUPPORTED-DECISION-MATCHER",
-                        span: matcher_token.span,
-                        message: "the implemented decision subset accepts `true`, `false`, or `otherwise`",
-                    });
-                    return None;
-                }
-            };
-            let span = Span::new(matcher_span(matcher).start, action.span().end);
-            rules.push(DecisionRule {
-                matcher,
-                action,
-                span,
-            });
+            rules.push(self.decision_rule()?);
         }
         let complete = rules
             .iter()
-            .any(|rule| matches!(rule.matcher, DecisionMatcher::Otherwise(_)))
+            .any(|rule| matches!(&rule.matcher, DecisionMatcher::Otherwise(_)))
             || [false, true].into_iter().all(|value| {
                 rules.iter().any(|rule| {
-                    matches!(rule.matcher, DecisionMatcher::Boolean { value: found, .. } if found == value)
+                    matches!(&rule.matcher, DecisionMatcher::Boolean { value: found, .. } if *found == value)
                 })
             });
         if !complete {
@@ -436,7 +400,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-UNSUPPORTED-INCOMPLETE-DECISION",
                 span: Span::new(subject.span().start, end),
-                message: "the implemented Boolean decision subset requires both Boolean cases or `otherwise`",
+                message: "the implemented decision subset requires complete Boolean cases or `otherwise`",
             });
             return None;
         }
@@ -445,6 +409,74 @@ impl Parser<'_> {
             span: Span::new(subject.span().start, end),
             subject: Box::new(subject),
             rules,
+        })
+    }
+
+    fn decision_rule(&mut self) -> Option<DecisionRule> {
+        let matcher_token = self.take_nontrivia()?;
+        let (matcher, action) = match matcher_token.kind {
+            TokenKind::Boolean => {
+                let separator = self.take_nontrivia()?;
+                if separator.kind != TokenKind::Identifier
+                    || self.source.slice(separator.span) != "then"
+                {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-EXPECTED-THEN",
+                        span: separator.span,
+                        message: "expected `then` between the matcher and delayed action",
+                    });
+                    return None;
+                }
+                (
+                    DecisionMatcher::Boolean {
+                        value: self.source.slice(matcher_token.span) == "true",
+                        span: matcher_token.span,
+                    },
+                    self.expression()?,
+                )
+            }
+            TokenKind::Identifier if self.source.slice(matcher_token.span) == "otherwise" => (
+                DecisionMatcher::Otherwise(matcher_token.span),
+                self.expression()?,
+            ),
+            token_kind if comparison_callable(token_kind).is_some() => {
+                let kind = comparison_callable(token_kind).expect("checked comparison token");
+                let operand = self.primary()?;
+                let separator = self.take_nontrivia()?;
+                if separator.kind != TokenKind::Identifier
+                    || self.source.slice(separator.span) != "then"
+                {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-EXPECTED-THEN",
+                        span: separator.span,
+                        message: "expected `then` between the matcher and delayed action",
+                    });
+                    return None;
+                }
+                let span = Span::new(matcher_token.span.start, operand.span().end);
+                (
+                    DecisionMatcher::Comparison {
+                        kind,
+                        operand,
+                        span,
+                    },
+                    self.expression()?,
+                )
+            }
+            _ => {
+                self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-UNSUPPORTED-DECISION-MATCHER",
+                        span: matcher_token.span,
+                        message: "the implemented decision subset accepts Boolean literals, comparisons, or `otherwise`",
+                    });
+                return None;
+            }
+        };
+        let span = Span::new(matcher_span(&matcher).start, action.span().end);
+        Some(DecisionRule {
+            matcher,
+            action,
+            span,
         })
     }
 
@@ -763,9 +795,23 @@ fn statement_span(statement: &Statement) -> Span {
     }
 }
 
-const fn matcher_span(matcher: DecisionMatcher) -> Span {
+const fn matcher_span(matcher: &DecisionMatcher) -> Span {
     match matcher {
-        DecisionMatcher::Boolean { span, .. } | DecisionMatcher::Otherwise(span) => span,
+        DecisionMatcher::Boolean { span, .. }
+        | DecisionMatcher::Comparison { span, .. }
+        | DecisionMatcher::Otherwise(span) => *span,
+    }
+}
+
+const fn comparison_callable(kind: TokenKind) -> Option<CallableKind> {
+    match kind {
+        TokenKind::Equals => Some(CallableKind::Equal),
+        TokenKind::NotEquals => Some(CallableKind::NotEqual),
+        TokenKind::Less => Some(CallableKind::Less),
+        TokenKind::Greater => Some(CallableKind::Greater),
+        TokenKind::LessEqual => Some(CallableKind::LessEqual),
+        TokenKind::GreaterEqual => Some(CallableKind::GreaterEqual),
+        _ => None,
     }
 }
 
@@ -1047,5 +1093,28 @@ mod tests {
             DecisionMatcher::Boolean { value: true, .. }
         ));
         assert!(matches!(rules[1].matcher, DecisionMatcher::Otherwise(_)));
+    }
+
+    #[test]
+    fn parses_comparison_decision_matcher() {
+        let source = SourceText::new(
+            "minimum is fn (left : Int, right : Int) -> Int\n  left\n    < right then left\n    otherwise right\nminimum (1, 2)",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function { body, .. } = &parsed.statements[0] else {
+            panic!("expected function");
+        };
+        let Statement::Expression(Expression::DecisionTable { rules, .. }) = &body[0] else {
+            panic!("expected decision table");
+        };
+        assert!(matches!(
+            &rules[0].matcher,
+            DecisionMatcher::Comparison {
+                kind: CallableKind::Less,
+                ..
+            }
+        ));
     }
 }

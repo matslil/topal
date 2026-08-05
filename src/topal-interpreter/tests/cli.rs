@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 15);
+    assert_eq!(examples.len(), 16);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -981,6 +981,29 @@ fn every_mode_executes_complete_boolean_decisions() {
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("\"event\":\"decision.rule.considered\""));
     assert!(trace.contains("\"event\":\"decision.rule.selected\""));
+}
+
+#[test]
+fn every_mode_executes_comparison_decisions() {
+    let source = "minimum is fn (left : Int, right : Int) -> Int\n  left\n    < right then left\n    otherwise right\n(42 minimum 50, 60 minimum 50)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n(42, 50)\n");
+        } else {
+            assert_eq!(output.stdout, b"(42, 50)\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("TOPAL-DECISION-COMPARISON-001"));
+    assert!(trace.contains("TOPAL-NUM-COMPARE-001"));
 }
 
 #[test]

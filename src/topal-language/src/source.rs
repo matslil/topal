@@ -331,24 +331,54 @@ impl Session {
             } => {
                 let subject_span = subject.span();
                 let subject = self.evaluate_expression(source, subject, trace)?;
-                let Value::Boolean(subject) = subject else {
-                    return Err(diagnostic(
-                        source,
-                        "E-DECISION-SUBJECT-TYPE",
-                        subject_span,
-                        "the implemented decision subset requires a Boolean subject",
-                    ));
+                let decision_rule = if rules
+                    .iter()
+                    .any(|rule| matches!(&rule.matcher, DecisionMatcher::Comparison { .. }))
+                {
+                    "TOPAL-DECISION-COMPARISON-001"
+                } else {
+                    "TOPAL-DECISION-BOOLEAN-001"
                 };
                 let mut selected = None;
                 for (index, rule) in rules.iter().enumerate() {
-                    let matches = match rule.matcher {
-                        DecisionMatcher::Boolean { value, .. } => value == subject,
+                    let matches = match &rule.matcher {
+                        DecisionMatcher::Boolean { value, .. } => {
+                            let Value::Boolean(subject) = &subject else {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-DECISION-SUBJECT-TYPE",
+                                    subject_span,
+                                    "Boolean literal matchers require a Boolean subject",
+                                ));
+                            };
+                            *value == *subject
+                        }
+                        DecisionMatcher::Comparison {
+                            kind,
+                            operand,
+                            span: matcher_span,
+                        } => {
+                            let right_span = operand.span();
+                            let right = self.evaluate_expression(source, operand, trace)?;
+                            matches!(
+                                apply_binary(
+                                    source,
+                                    *kind,
+                                    subject.clone(),
+                                    right,
+                                    *matcher_span,
+                                    right_span,
+                                    trace,
+                                )?,
+                                Value::Boolean(true)
+                            )
+                        }
                         DecisionMatcher::Otherwise(_) => true,
                     };
                     let detail = format!("rule={index};matched={matches}");
                     trace.record(TraceEvent {
                         event: "decision.rule.considered",
-                        rule: "TOPAL-DECISION-BOOLEAN-001",
+                        rule: decision_rule,
                         detail: &detail,
                     });
                     if matches {
@@ -367,7 +397,7 @@ impl Session {
                 let detail = format!("rule={index}");
                 trace.record(TraceEvent {
                     event: "decision.rule.selected",
-                    rule: "TOPAL-DECISION-BOOLEAN-001",
+                    rule: decision_rule,
                     detail: &detail,
                 });
                 self.evaluate_expression(source, action, trace)
@@ -3014,5 +3044,21 @@ fn boolean_decision_evaluates_only_selected_action() {
             .iter()
             .any(|event| { event.contains("decision.rule.selected") && event.contains("rule=0") })
     );
+    assert!(!trace.iter().any(|event| event.contains("missing")));
+}
+
+#[test]
+fn comparison_decision_uses_subject_as_left_operand() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "minimum is fn (left : Int, right : Int) -> Int\n  left\n    < right then left\n    otherwise missing\n42 minimum 50\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert!(trace.iter().any(|event| {
+        event.contains("decision.rule.selected") && event.contains("TOPAL-DECISION-COMPARISON-001")
+    }));
     assert!(!trace.iter().any(|event| event.contains("missing")));
 }

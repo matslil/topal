@@ -403,3 +403,10 @@ implemented function bodies according to `TOPAL-DECISION-BOOLEAN-001`, delaying
 unselected actions and preserving source rule order. Interactive mode shall
 retain the declaration until its deeper-indented rules are complete. Test
 traces and reversible debugger history shall expose consideration and selection.
+
+## TOPAL-INTP-SUBSET-045 — Comparison decision matchers
+
+All interpreter modes shall execute comparison decision matchers according to
+`TOPAL-DECISION-COMPARISON-001`, evaluating the subject once, applying each
+comparison in source order, and delaying unselected actions. Test traces and
+reversible debugger history shall expose comparison and selection reasons.
