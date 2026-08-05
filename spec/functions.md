@@ -166,6 +166,14 @@ Test traces and debugger history shall expose this proof separately from the
 more general signed-`Int` recursion rules. Other decreasing `Nat` forms require
 a proof that every recursive argument remains nonnegative.
 
+### TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001 — Proven increasing Nat recursion
+
+A unary `Nat` function is proven terminating when its complete body uses an
+inclusive `>= bound` base matcher followed by `otherwise recursive-action`, the
+base contains no self-call, and every self-call passes `parameter + step` for a
+positive integer literal step. Addition preserves nonnegativity; overshooting
+the bound is permitted because the inclusive matcher stops the next entry.
+
 ### TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001 — Proven mutual decreasing Int recursion
 
 An initial mutual-recursion rule proves a closed cycle of two or more unary

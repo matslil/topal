@@ -526,3 +526,10 @@ after proving `TOPAL-FUNCTION-RECURSION-NAT-001`. The proof shall require a
 nonnegative inclusive lower bound and preserve `Nat` at every recursive call.
 Test traces and reversible debugger history shall expose proof acceptance and
 each descent.
+
+## TOPAL-INTP-SUBSET-061 — Proven increasing Nat recursion
+
+All interpreter modes shall execute increasing `Nat` recursion only after
+proving `TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001`. Every recursive edge
+shall add a positive literal step toward an inclusive upper bound. Test traces
+and reversible debugger history shall expose the proof and every descent.
