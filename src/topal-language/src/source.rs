@@ -364,6 +364,9 @@ impl Session {
                         _ => None,
                     })
                     .collect::<BTreeSet<_>>();
+                let has_result_matchers = rules
+                    .iter()
+                    .any(|rule| matches!(rule.matcher, DecisionMatcher::Result { .. }));
                 if !enum_matchers.is_empty()
                     && !rules
                         .iter()
@@ -386,7 +389,9 @@ impl Session {
                         ));
                     }
                 }
-                let decision_rule = if !enum_matchers.is_empty() {
+                let decision_rule = if has_result_matchers {
+                    "TOPAL-DECISION-RESULT-001"
+                } else if !enum_matchers.is_empty() {
                     "TOPAL-DECISION-ENUM-001"
                 } else if rules
                     .iter()
@@ -422,6 +427,9 @@ impl Session {
                             };
                             values_equal(subject.clone(), candidate, trace).unwrap_or(false)
                         }
+                        DecisionMatcher::Result { error, .. } => {
+                            *error == matches!(subject, Value::Error { .. })
+                        }
                         DecisionMatcher::Comparison {
                             kind,
                             operand,
@@ -450,11 +458,11 @@ impl Session {
                         detail: &detail,
                     });
                     if matches {
-                        selected = Some((index, &rule.action));
+                        selected = Some((index, rule));
                         break;
                     }
                 }
-                let Some((index, action)) = selected else {
+                let Some((index, selected_rule)) = selected else {
                     return Err(diagnostic(
                         source,
                         "E-INCOMPLETE-DECISION",
@@ -468,7 +476,27 @@ impl Session {
                     rule: decision_rule,
                     detail: &detail,
                 });
-                self.evaluate_expression(source, action, trace)
+                if let DecisionMatcher::Result { binding, .. } = selected_rule.matcher {
+                    let name = source.slice(binding);
+                    let mut branch = Self {
+                        bindings: self.bindings.clone(),
+                        functions: self.functions.clone(),
+                        declared_names: self.declared_names.clone(),
+                        local_function_names: self.local_function_names.clone(),
+                        enum_types: self.enum_types.clone(),
+                        call_stack: self.call_stack.clone(),
+                        static_context: self.static_context,
+                    };
+                    branch.bindings.insert(name.to_owned(), subject);
+                    trace.record(TraceEvent {
+                        event: "result.payload.bound",
+                        rule: "TOPAL-DECISION-RESULT-001",
+                        detail: name,
+                    });
+                    branch.evaluate_expression(source, &selected_rule.action, trace)
+                } else {
+                    self.evaluate_expression(source, &selected_rule.action, trace)
+                }
             }
             Expression::Integer(span) => evaluate_integer_literal(source, *span, trace),
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
@@ -3988,6 +4016,24 @@ fn resolves_namespaced_arithmetic_error_codes_without_a_domain() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-NUM-ARITHMETIC-ERROR-001"))
+    );
+}
+
+#[test]
+fn matches_both_result_paths_exhaustively() {
+    let source = "divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\ndescribe is fn (denominator : Rational) -> String\n  1.0 divide denominator\n    Ok value then \"ok\"\n    Error problem then \"error\"\n(describe 2.0, describe 0.0)\n";
+    let mut trace = Vec::new();
+    assert_eq!(
+        Session::new()
+            .evaluate(source, &mut trace)
+            .unwrap()
+            .to_string(),
+        "(\"ok\", \"error\")"
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-DECISION-RESULT-001"))
     );
 }
 

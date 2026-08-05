@@ -47,3 +47,11 @@ matchers. The subject is evaluated once and the action whose alternative has
 the same nominal enum identity and label is selected in source order. Without
 `otherwise`, the matcher set shall equal the enum's declared alternative set;
 missing, foreign, or undeclared alternatives are diagnostics.
+
+### TOPAL-DECISION-RESULT-001 — Exhaustive Result matching
+
+A decision over `Result ( T, Codes )` may use `Ok value` and `Error problem`
+matchers. `Ok` selects every successful `T` value and binds it to `value`;
+`Error` selects a structured Error and binds it to `problem`. The pair is
+exhaustive without `otherwise`. The subject is evaluated once, only the
+selected action executes, and each payload binding is scoped to that action.
