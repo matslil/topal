@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 6);
+    assert_eq!(examples.len(), 7);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -630,6 +630,43 @@ fn script_executes_bindings_in_source_order() {
     let output = run(&[], "answer is 42\nanswer\n");
     assert!(output.status.success());
     assert_eq!(output.stdout, b"42\n");
+}
+
+#[test]
+fn every_mode_declares_and_calls_static_nullary_functions() {
+    let source = "answer is fn static () -> Int\n  40 + 2\nanswer ()\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n42\n");
+        } else {
+            assert_eq!(output.stdout, b"42\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let declared = trace.find("function.declared").unwrap();
+    let entered = trace.find("function.entered").unwrap();
+    let body = trace.find("root.+(Int,Int)").unwrap();
+    let returned = trace.find("function.returned").unwrap();
+    assert!(declared < entered && entered < body && body < returned);
+}
+
+#[test]
+fn static_function_result_classifier_is_checked() {
+    let output = run(&[], "wrong is fn static () -> Int\n  \"text\"\nwrong ()\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-FUNCTION-RESULT-TYPE")
+    );
 }
 
 #[test]

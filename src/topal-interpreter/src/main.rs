@@ -131,7 +131,11 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
                 println!("{value}");
                 pending.clear();
             }
-            Err(error) if matches!(error.code, "E-UNTERMINATED-STRING" | "E-EXPECTED-RPAREN") => {}
+            Err(error)
+                if matches!(
+                    error.code,
+                    "E-UNTERMINATED-STRING" | "E-EXPECTED-RPAREN" | "E-EXPECTED-FUNCTION-BODY"
+                ) => {}
             Err(error) => {
                 eprintln!("{}", error.render("<interactive>"));
                 pending.clear();

@@ -289,6 +289,7 @@ const fn semantic_token_type(kind: TokenKind) -> Option<usize> {
         TokenKind::LeftParen
         | TokenKind::RightParen
         | TokenKind::Comma
+        | TokenKind::Arrow
         | TokenKind::Equals
         | TokenKind::NotEquals
         | TokenKind::Less
@@ -433,7 +434,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 6);
+        assert_eq!(examples.len(), 7);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {
