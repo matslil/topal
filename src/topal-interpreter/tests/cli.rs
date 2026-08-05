@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 41);
+    assert_eq!(examples.len(), 42);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1822,6 +1822,27 @@ fn every_mode_executes_exact_negative_rational_exponents() {
     let trace = String::from_utf8(run(&["--test"], "1.5 ^ -2\n").stderr).unwrap();
     assert!(trace.contains("root.^(Rational,Int)"));
     assert!(trace.contains("TOPAL-NUM-RAT-NEG-POW-001"));
+}
+
+#[test]
+fn every_mode_returns_dynamic_negative_power_error() {
+    let source = "power is fn (base : Rational, exponent : Int) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  base ^ exponent\n0.0 power -1\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            output
+                .stdout
+                .ends_with(b"Error ( domain is root.^(Rational,Int), code is division-by-zero )\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("result.error.constructed"));
+    assert!(trace.contains("root.^(Rational,Int);division-by-zero"));
 }
 
 #[test]

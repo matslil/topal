@@ -606,3 +606,10 @@ All interpreter modes shall evaluate a statically nonzero Rational base raised
 to a negative Int exponent exactly under `TOPAL-NUM-RAT-NEG-POW-001`. A known
 zero base shall remain a division-by-zero diagnostic. Test traces and reversible
 debugger history shall distinguish the Rational/Int overload.
+
+## TOPAL-INTP-SUBSET-072 — Dynamic negative-power zero failure
+
+Within an arithmetic Result contract, all interpreter modes shall return a
+structured division-by-zero Error when a dynamic Rational base is zero and its
+exponent is negative. Domain and source provenance shall identify the reporting
+power overload and base occurrence independently.

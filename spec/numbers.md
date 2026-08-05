@@ -198,7 +198,8 @@ For finite nonzero `a : Rational` and finite negative `e : Int`, binary `^`
 selects `(Rational, Int) -> Rational` and returns the exact reciprocal of
 `a ^ absolute(e)`. No rounding or overflow occurs. A statically evident zero
 base is rejected as division by zero; a dynamic zero base requires the
-arithmetic Result failure path.
+arithmetic Result failure path and constructs `division-by-zero` with reporting
+domain `root.^(Rational,Int)` plus separate source provenance.
 
 ### TOPAL-NUM-COMPARE-001 — Finite exact total ordering
 
