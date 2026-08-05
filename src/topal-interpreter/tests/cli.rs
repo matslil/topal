@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 23);
+    assert_eq!(examples.len(), 24);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1051,6 +1051,29 @@ fn every_mode_executes_proven_mutual_int_recursion() {
     assert!(trace.contains("function.recursion.edge.candidate"));
     assert!(trace.contains("function.recursion.cycle.proven"));
     assert!(trace.contains("TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001"));
+}
+
+#[test]
+fn every_mode_executes_proven_mutual_increasing_int_recursion() {
+    let source = "even-up is fn (value : Int) -> Boolean\n  value\n    >= 0 then true\n    otherwise odd-up (value + 1)\nodd-up is fn (value : Int) -> Boolean\n  value\n    >= 0 then false\n    otherwise even-up (value + 1)\n(even-up (-6), odd-up (-6))\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n()\n(true, false)\n");
+        } else {
+            assert_eq!(output.stdout, b"(true, false)\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001"));
+    assert!(trace.contains("function.recursion.cycle.proven"));
 }
 
 #[test]

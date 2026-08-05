@@ -167,6 +167,19 @@ any participating edge does not satisfy the rule. Test traces and debugger
 history shall distinguish candidate edges, completed cycle proof, and recursive
 descent.
 
+### TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001 — Proven mutual increasing Int recursion
+
+The dual mutual-recursion rule proves a closed cycle of two or more unary `Int`
+functions when every member uses `>= bound then base` followed by
+`otherwise next-call`, each bound is an `Int` literal, each base contains no
+call to the next member, and every next call passes exactly `parameter + 1`.
+Every edge must use this increasing rule; mixing increasing and decreasing
+candidate edges shall not prove a cycle.
+
+An implementation shall establish the complete closed cycle before recursive
+descent and shall distinguish increasing candidates, completed cycle proof,
+and descent in test traces and debugger history.
+
 ### TOPAL-FUNCTION-NESTED-001 — Nested lexical function declaration
 
 A function body may declare another function in its invocation scope. The
