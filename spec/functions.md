@@ -130,8 +130,9 @@ parameter is proven terminating by this initial rule when its first rule is
 `<= bound then base`, where `bound` is an `Int` literal, its second rule is
 `otherwise recursive-action`, the base
 contains no self-call, and every self-call in the recursive action passes
-exactly `parameter - 1`. For values above zero each recursive edge strictly
-decreases toward the guarded bound; values at or below the bound take the base.
+`parameter - step`, where `step` satisfies
+`TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001`. Values above the guarded bound
+strictly decrease toward it; values at or below the bound take the base.
 
 Only a function satisfying this structural proof shall execute a recursive edge
 under this rule. Test traces and debugger history shall expose proof acceptance
@@ -143,8 +144,9 @@ without an implemented termination proof remain rejected.
 The dual structural rule proves a unary `Int` function terminating when its
 first decision rule is `>= bound then base` for an `Int` literal bound, its
 second rule is `otherwise recursive-action`, the base contains no self-call,
-and every self-call passes exactly `parameter + 1`. Values below the bound
-strictly increase toward it; values at or above the bound take the base.
+and every self-call passes `parameter + step`, where `step` satisfies
+`TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001`. Values below the bound strictly
+increase toward it; values at or above the bound take the base.
 
 Test traces and debugger history shall distinguish this increasing proof from
 the decreasing proof at declaration and on every recursive descent. Other
@@ -156,8 +158,8 @@ An initial mutual-recursion rule proves a closed cycle of two or more unary
 `Int` functions when every member's complete body is a decision table over its
 parameter with `<= bound then base` followed by `otherwise next-call`. Each
 `bound` shall be an `Int` literal, each base action shall contain no call to that
-member's next cycle function, and each next call shall pass exactly
-`parameter - 1` to the next member. The final member shall call the first, so
+member's next cycle function, and each next call shall pass `parameter - step`
+with a step satisfying `TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001`. The final member shall call the first, so
 every edge in the closed cycle strictly decreases before control returns to the
 same function.
 
@@ -172,13 +174,23 @@ descent.
 The dual mutual-recursion rule proves a closed cycle of two or more unary `Int`
 functions when every member uses `>= bound then base` followed by
 `otherwise next-call`, each bound is an `Int` literal, each base contains no
-call to the next member, and every next call passes exactly `parameter + 1`.
+call to the next member, and every next call passes `parameter + step` with a
+step satisfying `TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001`.
 Every edge must use this increasing rule; mixing increasing and decreasing
 candidate edges shall not prove a cycle.
 
 An implementation shall establish the complete closed cycle before recursive
 descent and shall distinguish increasing candidates, completed cycle proof,
 and descent in test traces and debugger history.
+
+### TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001 — Strict literal progress
+
+For the implemented bounded `Int` recursion proofs, `step` shall be an `Int`
+literal whose exact value is greater than zero. A decreasing edge shall
+subtract it and an increasing edge shall add it. Zero, a negative literal, a
+runtime value, or the opposite operation shall not establish progress under
+these rules. Overshooting the bound is permitted because the inclusive base
+matcher selects the base action on the next entry.
 
 ### TOPAL-FUNCTION-RECURSION-OVERLOAD-IDENTITY-001 — Overload-specific call graph nodes
 

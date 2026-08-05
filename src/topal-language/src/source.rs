@@ -1536,7 +1536,7 @@ fn prove_mutual_int_recursion_edge(
     };
     let target = source.slice(*target);
     if target == function_name
-        || !is_unit_step(source, parameter, step, argument)
+        || !is_positive_literal_step(source, parameter, step, argument)
         || contains_self_call(source, target, &base.action)
     {
         return None;
@@ -1601,7 +1601,7 @@ fn bounded_self_calls(
     match expression {
         Expression::Application { items, .. } if matches!(items.first(), Some(Expression::Identifier(span)) if source.slice(*span) == function_name) =>
         {
-            let valid = matches!(items.as_slice(), [_, argument] if is_unit_step(source, parameter, step, argument));
+            let valid = matches!(items.as_slice(), [_, argument] if is_positive_literal_step(source, parameter, step, argument));
             (true, valid)
         }
         Expression::Application { items, .. } => combine_call_checks(
@@ -1636,7 +1636,7 @@ fn combine_call_checks(checks: impl Iterator<Item = (bool, bool)>) -> (bool, boo
     })
 }
 
-fn is_unit_step(
+fn is_positive_literal_step(
     source: &SourceText,
     parameter: &str,
     step: CallableKind,
@@ -1650,8 +1650,10 @@ fn is_unit_step(
                 [
                     Expression::Identifier(name),
                     Expression::Callable { kind, .. },
-                    Expression::Integer(one)
-                ] if source.slice(*name) == parameter && *kind == step && source.slice(*one) == "1"
+                    Expression::Integer(amount)
+                ] if source.slice(*name) == parameter
+                    && *kind == step
+                    && parse_integer(source.slice(*amount)).is_some_and(|value| value > BigInt::from(0_u8))
             )
     )
 }
@@ -3442,6 +3444,35 @@ fn same_named_distinct_overloads_are_not_recursive() {
         .position(|event| event.contains("describe (Int)"))
         .unwrap();
     assert!(string < integer);
+}
+
+#[test]
+fn bounded_int_recursion_accepts_only_positive_literal_progress() {
+    let value = Session::new()
+        .evaluate(
+            "down is fn (value : Int) -> Int\n  value\n    <= 0 then 0\n    otherwise 1 + (down (value - 3))\nup is fn (value : Int) -> Int\n  value\n    >= 0 then 0\n    otherwise 1 + (up (value + 2))\n(down 7, up (-5))\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(3, 3)");
+
+    let mutual = Session::new()
+        .evaluate(
+            "first is fn (value : Int) -> Boolean\n  value\n    <= 0 then true\n    otherwise second (value - 2)\nsecond is fn (value : Int) -> Boolean\n  value\n    <= 0 then false\n    otherwise first (value - 3)\nfirst 7\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(mutual.to_string(), "false");
+
+    for invalid_step in ["0", "-1"] {
+        let source = format!(
+            "stuck is fn (value : Int) -> Int\n  value\n    <= 0 then 0\n    otherwise stuck (value - {invalid_step})\nstuck 1\n"
+        );
+        let error = Session::new()
+            .evaluate(&source, &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+    }
 }
 
 #[test]
