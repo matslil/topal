@@ -426,3 +426,11 @@ toward a guarded upper bound only after proving
 `TOPAL-FUNCTION-RECURSION-INT-INCREASING-001`. Test traces and reversible
 debugger history shall expose the distinct proof rule on declaration and every
 recursive descent.
+
+## TOPAL-INTP-SUBSET-048 — Comparison matcher operand expressions
+
+All interpreter modes shall parse and evaluate complete comparison matcher
+operand expressions according to `TOPAL-DECISION-OPERAND-EXPRESSION-001`, using
+the same application and grouping semantics as ordinary expressions. Test
+traces and reversible debugger history shall retain operand decisions before
+the containing matcher selection.

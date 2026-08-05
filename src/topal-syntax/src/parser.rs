@@ -441,18 +441,7 @@ impl Parser<'_> {
             ),
             token_kind if comparison_callable(token_kind).is_some() => {
                 let kind = comparison_callable(token_kind).expect("checked comparison token");
-                let operand = self.primary()?;
-                let separator = self.take_nontrivia()?;
-                if separator.kind != TokenKind::Identifier
-                    || self.source.slice(separator.span) != "then"
-                {
-                    self.diagnostics.push(SyntaxDiagnostic {
-                        code: "E-EXPECTED-THEN",
-                        span: separator.span,
-                        message: "expected `then` between the matcher and delayed action",
-                    });
-                    return None;
-                }
+                let operand = self.expression_before_then(matcher_token.span)?;
                 let span = Span::new(matcher_token.span.start, operand.span().end);
                 (
                     DecisionMatcher::Comparison {
@@ -478,6 +467,35 @@ impl Parser<'_> {
             action,
             span,
         })
+    }
+
+    fn expression_before_then(&mut self, matcher_span: Span) -> Option<Expression> {
+        let Some(separator_index) = self.tokens[self.cursor..]
+            .iter()
+            .take_while(|token| token.kind != TokenKind::Newline)
+            .position(|token| {
+                token.kind == TokenKind::Identifier && self.source.slice(token.span) == "then"
+            })
+            .map(|offset| self.cursor + offset)
+        else {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-THEN",
+                span: Span::new(matcher_span.end, matcher_span.end),
+                message: "expected `then` between the matcher and delayed action",
+            });
+            return None;
+        };
+        let mut parser = Self {
+            source: self.source,
+            tokens: &self.tokens[self.cursor..separator_index],
+            cursor: 0,
+            delimiter_depth: 0,
+            diagnostics: Vec::new(),
+        };
+        let operand = parser.expression();
+        self.diagnostics.extend(parser.diagnostics);
+        self.cursor = separator_index + 1;
+        operand
     }
 
     fn static_function_parameters(
@@ -1113,6 +1131,29 @@ mod tests {
             &rules[0].matcher,
             DecisionMatcher::Comparison {
                 kind: CallableKind::Less,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn parses_complete_comparison_operand_before_then() {
+        let source = SourceText::new(
+            "within is fn (value : Int, limit : Int) -> Boolean\n  value\n    < limit + 1 then true\n    otherwise false\n1 within 1",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function { body, .. } = &parsed.statements[0] else {
+            panic!("expected function");
+        };
+        let Statement::Expression(Expression::DecisionTable { rules, .. }) = &body[0] else {
+            panic!("expected decision table");
+        };
+        assert!(matches!(
+            &rules[0].matcher,
+            DecisionMatcher::Comparison {
+                operand: Expression::Application { .. },
                 ..
             }
         ));

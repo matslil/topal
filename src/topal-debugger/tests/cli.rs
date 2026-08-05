@@ -413,6 +413,29 @@ fn records_reversible_increasing_int_recursion() {
 }
 
 #[test]
+fn records_reversible_comparison_operand_expression() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}decision-operand-expression.debug"),
+            &format!("{root}decision-operand-expression.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let addition = stdout.find("root.+(Int,Int)").unwrap();
+    let comparison = stdout.find("root.<(TotalOrder,TotalOrder)").unwrap();
+    assert!(addition < comparison);
+    assert!(stdout.contains("\n(true, false)\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

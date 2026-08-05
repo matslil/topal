@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 18);
+    assert_eq!(examples.len(), 19);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1050,6 +1050,30 @@ fn every_mode_executes_proven_increasing_int_recursion() {
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("TOPAL-FUNCTION-RECURSION-INT-INCREASING-001"));
     assert_eq!(trace.matches("function.recursion.descended").count(), 5);
+}
+
+#[test]
+fn every_mode_executes_comparison_operand_expressions() {
+    let source = "within is fn (value : Int, limit : Int) -> Boolean\n  value\n    < limit + 1 then true\n    otherwise false\n(5 within 5, 6 within 5)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n(true, false)\n");
+        } else {
+            assert_eq!(output.stdout, b"(true, false)\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let addition = trace.find("root.+(Int,Int)").unwrap();
+    let comparison = trace.find("root.<(TotalOrder,TotalOrder)").unwrap();
+    assert!(addition < comparison);
 }
 
 #[test]
