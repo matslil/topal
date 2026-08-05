@@ -315,6 +315,33 @@ fn records_reversible_function_overload_reasons() {
 }
 
 #[test]
+fn records_reversible_boolean_decision_selection() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}boolean-decision.debug"),
+            &format!("{root}boolean-decision.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let first = stdout
+        .find("decision.rule.selected [TOPAL-DECISION-BOOLEAN-001] rule=0")
+        .unwrap();
+    let fallback = stdout
+        .find("decision.rule.selected [TOPAL-DECISION-BOOLEAN-001] rule=1")
+        .unwrap();
+    assert!(first < fallback);
+    assert!(stdout.contains("\n(42, 0)\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

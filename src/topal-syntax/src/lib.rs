@@ -4,7 +4,8 @@ use topal_source::{SourceText, Span, is_identifier_continue, is_identifier_start
 
 mod parser;
 pub use parser::{
-    CallableKind, Expression, FunctionParameter, ParsedSource, ProductField, Statement, parse,
+    CallableKind, DecisionMatcher, DecisionRule, Expression, FunctionParameter, ParsedSource,
+    ProductField, Statement, parse,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

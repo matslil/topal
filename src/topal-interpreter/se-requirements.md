@@ -395,3 +395,11 @@ according to `TOPAL-FUNCTION-OVERLOAD-001`, evaluating the argument once and
 rejecting duplicate input/staticness signatures. Diagnostics shall report
 available signatures when none applies. Test traces and reversible debugger
 history shall identify the selected signature before entry.
+
+## TOPAL-INTP-SUBSET-044 — Complete Boolean decision tables
+
+All interpreter modes shall execute complete Boolean decision tables inside
+implemented function bodies according to `TOPAL-DECISION-BOOLEAN-001`, delaying
+unselected actions and preserving source rule order. Interactive mode shall
+retain the declaration until its deeper-indented rules are complete. Test
+traces and reversible debugger history shall expose consideration and selection.

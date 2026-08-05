@@ -291,7 +291,14 @@ fn semantic_tokens(text: &str) -> Value {
 
 fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
     match kind {
-        TokenKind::Identifier if matches!(lexeme, "fn" | "is" | "return" | "static") => Some(4),
+        TokenKind::Identifier
+            if matches!(
+                lexeme,
+                "fn" | "is" | "otherwise" | "return" | "static" | "then"
+            ) =>
+        {
+            Some(4)
+        }
         TokenKind::Identifier => Some(0),
         TokenKind::Integer | TokenKind::Rational => Some(1),
         TokenKind::String => Some(2),
@@ -456,7 +463,7 @@ mod tests {
 
     #[test]
     fn highlights_function_declaration_words_as_keywords() {
-        for keyword in ["fn", "is", "static"] {
+        for keyword in ["fn", "is", "otherwise", "static", "then"] {
             assert_eq!(semantic_token_type(TokenKind::Identifier, keyword), Some(4));
         }
     }
@@ -470,7 +477,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 14);
+        assert_eq!(examples.len(), 15);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {
