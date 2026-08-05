@@ -46,3 +46,17 @@ Parameter names shall be distinct. Argument validation shall complete before
 function selection and entry; a failed shape, arity, or classifier check shall
 not enter the function. Test traces shall expose each successful binding in
 declaration order before selection, entry, body decisions, and return.
+
+### TOPAL-FUNCTION-BLOCK-001 — Function block execution
+
+An executable function body may contain one or more equally indented statements.
+They shall execute from top to bottom in a fresh function scope according to
+the block and sequencing rules of the language design. Each non-final statement
+shall either introduce a binding, explicitly discard its value, or evaluate to
+`Unit`; the final statement's value is the function result and shall satisfy the
+declared result classifier.
+
+Bindings introduced by the block shall become visible only to later statements
+in the same invocation and shall not escape it. Test traces and debugger history
+shall expose their creation and subsequent resolution between function entry
+and return.

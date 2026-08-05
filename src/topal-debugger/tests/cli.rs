@@ -171,7 +171,13 @@ fn records_reversible_static_product_argument_bindings() {
         .find("function.argument.bound [TOPAL-FUNCTION-STATIC-BINARY-001] right")
         .unwrap();
     let entered = stdout.find("function.entered").unwrap();
-    assert!(left < right && right < entered);
+    let created = stdout
+        .find("binding.created [TOPAL-SYN-BIND-001] sum")
+        .unwrap();
+    let resolved = stdout
+        .find("binding.resolved [TOPAL-SYN-BIND-001] sum")
+        .unwrap();
+    assert!(left < right && right < entered && entered < created && created < resolved);
     assert!(stdout.contains("\n42\n"));
 }
 

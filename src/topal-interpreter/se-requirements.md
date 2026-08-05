@@ -348,3 +348,11 @@ operands according to `TOPAL-FUNCTION-STATIC-BINARY-001`. Calls shall use infix
 application, diagnose classifier mismatches before function entry, bind
 validated operands in declaration order, and expose both bindings and nested
 body checkpoints to test traces and the debugger.
+
+## TOPAL-INTP-SUBSET-038 — Multi-statement function bodies
+
+All interpreter modes shall execute one-or-more-statement function bodies
+according to `TOPAL-FUNCTION-BLOCK-001`, including invocation-local immutable
+bindings and final-result validation. Test traces and reversible debugger
+history shall preserve the ordered statement decisions between function entry
+and return.

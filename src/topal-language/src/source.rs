@@ -127,7 +127,7 @@ struct StaticFunction {
     source: SourceText,
     parameters: Vec<(String, String)>,
     result: String,
-    body: Expression,
+    body: Vec<Statement>,
     bindings: BTreeMap<String, Value>,
 }
 
@@ -142,7 +142,7 @@ struct StaticFunctionDeclaration<'a> {
     name: Span,
     parameters: &'a [FunctionParameter],
     result: Span,
-    body: &'a Expression,
+    body: &'a [Statement],
     span: Span,
 }
 
@@ -452,16 +452,24 @@ impl Session {
                         rule,
                         detail: name,
                     });
-                    let value = function_scope.evaluate_expression(
-                        &function.source,
-                        &function.body,
-                        trace,
-                    )?;
+                    let mut body_execution = Execution {
+                        source: function.source.clone(),
+                        statements: function.body.clone(),
+                        cursor: 0,
+                    };
+                    let value = loop {
+                        match body_execution.step(&mut function_scope, trace)? {
+                            ExecutionStep::Advanced { .. } => {}
+                            ExecutionStep::Complete(value) => break value,
+                        }
+                    };
                     if !value_has_classifier(&value, &function.result) {
                         return Err(diagnostic(
                             &function.source,
                             "E-FUNCTION-RESULT-TYPE",
-                            function.body.span(),
+                            statement_span(
+                                function.body.last().expect("function body is nonempty"),
+                            ),
                             format!(
                                 "function `{name}` returned a value outside `{}`",
                                 function.result
@@ -932,7 +940,7 @@ impl Execution {
                 source: self.source.clone(),
                 parameters,
                 result: result_text.to_owned(),
-                body: body.clone(),
+                body: body.to_vec(),
                 bindings: session.bindings.clone(),
             },
         );
@@ -2548,4 +2556,39 @@ fn static_product_function_binds_typed_parameters_in_order() {
         )
         .unwrap_err();
     assert_eq!(error.code, "E-DUPLICATE-FUNCTION-PARAMETER");
+}
+
+#[test]
+fn function_block_bindings_are_local_to_each_invocation() {
+    let mut trace = Vec::new();
+    let mut session = Session::new();
+    let value = session
+        .evaluate(
+            "answer is fn static () -> Int\n  local is 40 + 2\n  local\nanswer ()\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    let created = trace
+        .iter()
+        .position(|event| event.contains("binding.created") && event.contains("local"))
+        .unwrap();
+    let resolved = trace
+        .iter()
+        .position(|event| event.contains("binding.resolved") && event.contains("local"))
+        .unwrap();
+    assert!(created < resolved);
+
+    let error = session
+        .evaluate("local\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-UNBOUND-NAME");
+
+    let error = session
+        .evaluate(
+            "invalid is fn static () -> Int\n  1\n  2\ninvalid ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-DISCARDED-VALUE");
 }
