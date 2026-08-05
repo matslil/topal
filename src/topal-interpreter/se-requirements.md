@@ -434,3 +434,10 @@ operand expressions according to `TOPAL-DECISION-OPERAND-EXPRESSION-001`, using
 the same application and grouping semantics as ordinary expressions. Test
 traces and reversible debugger history shall retain operand decisions before
 the containing matcher selection.
+
+## TOPAL-INTP-SUBSET-049 — Nested lexical functions
+
+All interpreter modes shall declare and call functions inside function bodies
+according to `TOPAL-FUNCTION-NESTED-001`, capturing invocation-local bindings
+without leaking the nested name. Test traces and reversible debugger history
+shall expose nested declaration and call decisions within the outer frame.

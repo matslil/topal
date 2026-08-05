@@ -436,6 +436,36 @@ fn records_reversible_comparison_operand_expression() {
 }
 
 #[test]
+fn records_reversible_nested_lexical_function() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}nested-function.debug"),
+            &format!("{root}nested-function.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let outer = stdout
+        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] answer")
+        .unwrap();
+    let declared = stdout
+        .find("function.declared [TOPAL-FUNCTION-ORDINARY-001] add-input")
+        .unwrap();
+    let nested = stdout
+        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] add-input")
+        .unwrap();
+    assert!(outer < declared && declared < nested);
+    assert!(stdout.contains("\n42\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

@@ -1158,4 +1158,19 @@ mod tests {
             }
         ));
     }
+
+    #[test]
+    fn parses_nested_function_declaration_in_body() {
+        let source = SourceText::new(
+            "answer is fn (input : Int) -> Int\n  helper is fn (value : Int) -> Int\n    value + input\n  helper 2\nanswer 40",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function { body, .. } = &parsed.statements[0] else {
+            panic!("expected outer function");
+        };
+        assert!(matches!(body[0], Statement::Function { .. }));
+        assert!(matches!(body[1], Statement::Expression(_)));
+    }
 }

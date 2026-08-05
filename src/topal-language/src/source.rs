@@ -3276,3 +3276,34 @@ fn comparison_matcher_evaluates_complete_operand_expression() {
         .unwrap();
     assert!(addition < comparison);
 }
+
+#[test]
+fn nested_function_captures_outer_parameter_without_leaking() {
+    let mut session = Session::new();
+    let mut trace = Vec::new();
+    let value = session
+        .evaluate(
+            "answer is fn (input : Int) -> Int\n  add-input is fn (value : Int) -> Int\n    value + input\n  add-input 2\nanswer 40\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    let outer_entry = trace
+        .iter()
+        .position(|event| event.contains("function.entered") && event.contains("answer"))
+        .unwrap();
+    let nested_declaration = trace
+        .iter()
+        .position(|event| event.contains("function.declared") && event.contains("add-input"))
+        .unwrap();
+    let nested_entry = trace
+        .iter()
+        .position(|event| event.contains("function.entered") && event.contains("add-input"))
+        .unwrap();
+    assert!(outer_entry < nested_declaration && nested_declaration < nested_entry);
+
+    let error = session
+        .evaluate("add-input 2\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-UNBOUND-NAME");
+}
