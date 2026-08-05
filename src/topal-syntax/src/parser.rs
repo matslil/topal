@@ -1158,6 +1158,18 @@ mod tests {
     }
 
     #[test]
+    fn parses_mutually_recursive_function_declarations() {
+        let source = SourceText::new(
+            "even is fn (value : Int) -> Boolean\n  value\n    <= 0 then true\n    otherwise odd (value - 1)\nodd is fn (value : Int) -> Boolean\n  value\n    <= 0 then false\n    otherwise even (value - 1)\neven 4",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(parsed.statements[0], Statement::Function { .. }));
+        assert!(matches!(parsed.statements[1], Statement::Function { .. }));
+    }
+
+    #[test]
     fn parses_comparison_decision_matcher() {
         let source = SourceText::new(
             "minimum is fn (left : Int, right : Int) -> Int\n  left\n    < right then left\n    otherwise right\nminimum (1, 2)",

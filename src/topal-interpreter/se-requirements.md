@@ -455,3 +455,11 @@ All interpreter modes shall allow an earlier function body to call a later
 function declaration with a complete explicit header according to
 `TOPAL-FUNCTION-FORWARD-DECLARATION-001`. Test traces and reversible debugger
 history shall retain the nested selection and entry in execution order.
+
+## TOPAL-INTP-SUBSET-052 — Proven mutual decreasing Int recursion
+
+All interpreter modes shall execute a closed mutual recursion cycle only after
+proving every participating edge according to
+`TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001`. An isolated candidate or a cycle with
+one invalid edge shall remain rejected. Test traces and reversible debugger
+history shall expose candidate edges, completed cycle proof, and descent.

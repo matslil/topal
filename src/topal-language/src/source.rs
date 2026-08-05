@@ -124,7 +124,7 @@ pub struct Session {
     functions: BTreeMap<String, Vec<UserFunction>>,
     declared_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
-    call_stack: Vec<String>,
+    call_stack: Vec<ActiveCall>,
     static_context: bool,
 }
 
@@ -137,6 +137,14 @@ struct UserFunction {
     body: Vec<Statement>,
     bindings: BTreeMap<String, Value>,
     termination_rule: Option<&'static str>,
+    recursion_target: Option<String>,
+}
+
+#[derive(Clone)]
+struct ActiveCall {
+    name: String,
+    termination_rule: Option<&'static str>,
+    recursion_target: Option<String>,
 }
 
 pub struct Execution {
@@ -498,22 +506,31 @@ impl Session {
                             self.static_context,
                         ));
                     };
-                    let recursive = self.call_stack.iter().any(|active| active == name);
-                    if recursive && function.termination_rule.is_none() {
+                    let recursion_rule = recursion_rule_for_call(&self.call_stack, name, &function);
+                    if self.call_stack.iter().any(|active| active.name == name)
+                        && recursion_rule.is_none()
+                    {
                         return Err(diagnostic(
                             source,
                             "E-RECURSION-NOT-YET-PROVEN",
                             *name_span,
-                            format!("recursive call to `{name}` requires termination proof"),
+                            format!(
+                                "recursive cycle returning to `{name}` requires termination proof on every call edge"
+                            ),
                         ));
                     }
                     let rule = function_rule(function.is_static, function.parameters.len());
-                    if recursive {
+                    if let Some(recursion_rule) = recursion_rule {
+                        if recursion_rule == "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001" {
+                            trace.record(TraceEvent {
+                                event: "function.recursion.cycle.proven",
+                                rule: recursion_rule,
+                                detail: name,
+                            });
+                        }
                         trace.record(TraceEvent {
                             event: "function.recursion.descended",
-                            rule: function
-                                .termination_rule
-                                .expect("recursive call has a termination proof"),
+                            rule: recursion_rule,
                             detail: name,
                         });
                     }
@@ -533,7 +550,11 @@ impl Session {
                         call_stack: self.call_stack.clone(),
                         static_context: function.is_static,
                     };
-                    function_scope.call_stack.push(name.to_owned());
+                    function_scope.call_stack.push(ActiveCall {
+                        name: name.to_owned(),
+                        termination_rule: function.termination_rule,
+                        recursion_target: function.recursion_target.clone(),
+                    });
                     bind_function_arguments(
                         &mut function_scope,
                         &function.parameters,
@@ -972,6 +993,7 @@ impl Session {
 }
 
 impl Execution {
+    #[allow(clippy::too_many_lines)] // Declaration validation and trace setup stay auditable together.
     fn declare_function(
         &self,
         session: &mut Session,
@@ -1042,7 +1064,17 @@ impl Execution {
                 "an overload with the same input classifiers and staticness already exists",
             ));
         }
-        let termination_rule = prove_int_recursion(&self.source, name_text, &parameters, body);
+        let direct_termination_rule =
+            prove_int_recursion(&self.source, name_text, &parameters, body);
+        let recursion_target = direct_termination_rule
+            .is_none()
+            .then(|| prove_mutual_int_recursion_edge(&self.source, name_text, &parameters, body))
+            .flatten();
+        let termination_rule = direct_termination_rule.or_else(|| {
+            recursion_target
+                .as_ref()
+                .map(|_| "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001")
+        });
         let rule = function_rule(is_static, parameters.len());
         let function = UserFunction {
             source: self.source.clone(),
@@ -1052,6 +1084,7 @@ impl Execution {
             body: body.to_vec(),
             bindings: session.bindings.clone(),
             termination_rule,
+            recursion_target: recursion_target.clone(),
         };
         if session.local_function_names.contains(name_text) {
             session.functions.get_mut(name_text).unwrap().push(function);
@@ -1068,11 +1101,18 @@ impl Execution {
             rule,
             detail: name_text,
         });
-        if let Some(termination_rule) = termination_rule {
+        if let Some(termination_rule) = direct_termination_rule {
             trace.record(TraceEvent {
                 event: "function.recursion.proven",
                 rule: termination_rule,
                 detail: name_text,
+            });
+        } else if let Some(target) = recursion_target {
+            let detail = format!("{name_text}->{target}");
+            trace.record(TraceEvent {
+                event: "function.recursion.edge.candidate",
+                rule: "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001",
+                detail: &detail,
             });
         }
         Ok((Value::Unit, span))
@@ -1438,6 +1478,84 @@ fn prove_int_recursion(
     let (found, valid) =
         bounded_self_calls(source, function_name, parameter, step, &recursive.action);
     (found && valid).then_some(proof_rule)
+}
+
+fn prove_mutual_int_recursion_edge(
+    source: &SourceText,
+    function_name: &str,
+    parameters: &[(String, String)],
+    body: &[Statement],
+) -> Option<String> {
+    let [(parameter, classifier)] = parameters else {
+        return None;
+    };
+    if classifier != "Int" {
+        return None;
+    }
+    let [Statement::Expression(Expression::DecisionTable { subject, rules, .. })] = body else {
+        return None;
+    };
+    if !matches!(subject.as_ref(), Expression::Identifier(span) if source.slice(*span) == parameter)
+    {
+        return None;
+    }
+    let [base, recursive] = rules.as_slice() else {
+        return None;
+    };
+    if !matches!(
+        &base.matcher,
+        DecisionMatcher::Comparison {
+            kind: CallableKind::LessEqual,
+            operand: Expression::Integer(_),
+            ..
+        }
+    ) || !matches!(&recursive.matcher, DecisionMatcher::Otherwise(_))
+    {
+        return None;
+    }
+    let Expression::Application { items, .. } = &recursive.action else {
+        return None;
+    };
+    let [Expression::Identifier(target), argument] = items.as_slice() else {
+        return None;
+    };
+    let target = source.slice(*target);
+    if target == function_name
+        || !is_unit_step(source, parameter, CallableKind::Minus, argument)
+        || contains_self_call(source, target, &base.action)
+    {
+        return None;
+    }
+    Some(target.to_owned())
+}
+
+const MUTUAL_INT_RECURSION_RULE: &str = "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001";
+
+fn recursion_rule_for_call(
+    call_stack: &[ActiveCall],
+    target: &str,
+    function: &UserFunction,
+) -> Option<&'static str> {
+    let cycle_start = call_stack.iter().position(|active| active.name == target)?;
+    let cycle = &call_stack[cycle_start..];
+    if function.recursion_target.is_none() {
+        return function.termination_rule;
+    }
+    if function.termination_rule != Some(MUTUAL_INT_RECURSION_RULE)
+        || cycle
+            .iter()
+            .any(|active| active.termination_rule != Some(MUTUAL_INT_RECURSION_RULE))
+    {
+        return None;
+    }
+    let internal_edges_match = cycle
+        .windows(2)
+        .all(|pair| pair[0].recursion_target.as_deref() == Some(pair[1].name.as_str()));
+    let closes_cycle = cycle
+        .last()
+        .and_then(|active| active.recursion_target.as_deref())
+        == Some(target);
+    (internal_edges_match && closes_cycle).then_some(MUTUAL_INT_RECURSION_RULE)
 }
 
 fn contains_self_call(source: &SourceText, function_name: &str, expression: &Expression) -> bool {
@@ -3226,6 +3344,35 @@ fn earlier_function_body_calls_later_declaration() {
         .position(|event| event.contains("function.entered") && event.contains("second"))
         .unwrap();
     assert!(first < second);
+}
+
+#[test]
+fn mutual_int_recursion_executes_only_when_every_cycle_edge_decreases() {
+    let source = "even is fn (value : Int) -> Boolean\n  value\n    <= 0 then true\n    otherwise odd (value - 1)\nodd is fn (value : Int) -> Boolean\n  value\n    <= 0 then false\n    otherwise even (value - 1)\n(even 6, odd 6)\n";
+    let mut trace = Vec::new();
+    let value = Session::new().evaluate(source, &mut trace).unwrap();
+    assert_eq!(value.to_string(), "(true, false)");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("function.recursion.cycle.proven"))
+    );
+
+    let three_member = Session::new()
+        .evaluate(
+            "first is fn (value : Int) -> Boolean\n  value\n    <= 0 then true\n    otherwise second (value - 1)\nsecond is fn (value : Int) -> Boolean\n  value\n    <= 0 then false\n    otherwise third (value - 1)\nthird is fn (value : Int) -> Boolean\n  value\n    <= 0 then false\n    otherwise first (value - 1)\nfirst 3\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(three_member.to_string(), "true");
+
+    let invalid = Session::new()
+        .evaluate(
+            "first is fn (value : Int) -> Boolean\n  value\n    <= 0 then true\n    otherwise second (value - 1)\nsecond is fn (value : Int) -> Boolean\n  value\n    <= 0 then false\n    otherwise first value\nfirst 2\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(invalid.code, "E-RECURSION-NOT-YET-PROVEN");
 }
 
 #[test]

@@ -150,6 +150,23 @@ Test traces and debugger history shall distinguish this increasing proof from
 the decreasing proof at declaration and on every recursive descent. Other
 recursive steps remain rejected until another termination rule proves them.
 
+### TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001 — Proven mutual decreasing Int recursion
+
+An initial mutual-recursion rule proves a closed cycle of two or more unary
+`Int` functions when every member's complete body is a decision table over its
+parameter with `<= bound then base` followed by `otherwise next-call`. Each
+`bound` shall be an `Int` literal, each base action shall contain no call to that
+member's next cycle function, and each next call shall pass exactly
+`parameter - 1` to the next member. The final member shall call the first, so
+every edge in the closed cycle strictly decreases before control returns to the
+same function.
+
+A conforming implementation shall not accept an isolated candidate edge as
+proof. It shall establish the complete closed cycle and reject execution when
+any participating edge does not satisfy the rule. Test traces and debugger
+history shall distinguish candidate edges, completed cycle proof, and recursive
+descent.
+
 ### TOPAL-FUNCTION-NESTED-001 — Nested lexical function declaration
 
 A function body may declare another function in its invocation scope. The
