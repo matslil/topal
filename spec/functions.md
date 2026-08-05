@@ -97,3 +97,15 @@ For an acyclic call chain, each nested call shall receive a fresh invocation
 scope and return its validated result to the caller expression. Test traces and
 debugger history shall nest selection, entry, body decisions, and return in
 call order without flattening or hiding the callee.
+
+### TOPAL-FUNCTION-LOCAL-SCOPE-001 — Invocation-local shadowing
+
+A function invocation shall create a lexical scope nested inside its captured
+declaration scope. A parameter or body declaration may shadow a captured outer
+name, while two declarations in the same invocation scope remain an error.
+Resolution after the shadowing declaration shall select the local name.
+
+Completing the invocation shall discard its local declarations without changing
+the captured or caller bindings. Test traces and debugger history shall expose
+local creation and resolution while snapshots after return retain the outer
+binding.

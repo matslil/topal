@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 12);
+    assert_eq!(examples.len(), 13);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -903,6 +903,25 @@ fn static_function_cannot_call_an_ordinary_function() {
             .unwrap()
             .contains("E-STATIC-CALLS-RUNTIME-FUNCTION")
     );
+}
+
+#[test]
+fn every_mode_preserves_outer_bindings_across_local_shadowing() {
+    let source =
+        "value is 40\nanswer is fn () -> Int\n  value is 42\n  value\n(answer (), value)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n()\n(42, 40)\n");
+        } else {
+            assert_eq!(output.stdout, b"(42, 40)\n");
+        }
+    }
 }
 
 #[test]

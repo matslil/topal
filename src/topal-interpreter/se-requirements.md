@@ -379,3 +379,11 @@ All interpreter modes shall execute acyclic function-to-function calls according
 to `TOPAL-FUNCTION-CALL-CHAIN-001`, enforce static-to-static dependencies, and
 preserve fresh invocation scopes. Test traces and reversible debugger history
 shall expose nested callee entry, decisions, and return before caller return.
+
+## TOPAL-INTP-SUBSET-042 — Function-local lexical shadowing
+
+All interpreter modes shall implement invocation-local shadowing according to
+`TOPAL-FUNCTION-LOCAL-SCOPE-001`, distinguishing same-scope duplicates from
+legal shadowing of captured bindings and restoring outer visibility after
+return. Test traces and reversible debugger history shall preserve both the
+local decisions and the unchanged outer state.

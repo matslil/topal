@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
@@ -120,6 +120,7 @@ impl Diagnostic {
 pub struct Session {
     bindings: BTreeMap<String, Value>,
     functions: BTreeMap<String, UserFunction>,
+    declared_names: BTreeSet<String>,
     call_stack: Vec<String>,
     static_context: bool,
 }
@@ -232,6 +233,7 @@ impl Session {
         let mut session = Self {
             bindings: bindings.clone(),
             functions: BTreeMap::new(),
+            declared_names: bindings.keys().cloned().collect(),
             call_stack: Vec::new(),
             static_context: false,
         };
@@ -368,6 +370,7 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name_span) = &items[0]
+                    && !self.bindings.contains_key(source.slice(*name_span))
                     && let Some(function) = self.functions.get(source.slice(*name_span)).cloned()
                 {
                     let name = source.slice(*name_span);
@@ -391,6 +394,7 @@ impl Session {
                     let mut function_scope = Self {
                         bindings: function.bindings,
                         functions: self.functions.clone(),
+                        declared_names: BTreeSet::new(),
                         call_stack: self.call_stack.clone(),
                         static_context: function.is_static,
                     };
@@ -417,6 +421,7 @@ impl Session {
                                 ));
                             }
                             function_scope.bindings.insert(parameter.clone(), argument);
+                            function_scope.declared_names.insert(parameter.clone());
                             trace.record(TraceEvent {
                                 event: "function.argument.bound",
                                 rule,
@@ -463,6 +468,7 @@ impl Session {
                                     ));
                                 }
                                 function_scope.bindings.insert(parameter.clone(), argument);
+                                function_scope.declared_names.insert(parameter.clone());
                                 trace.record(TraceEvent {
                                     event: "function.argument.bound",
                                     rule,
@@ -917,7 +923,7 @@ impl Execution {
             span,
         } = declaration;
         let name_text = self.source.slice(name);
-        if session.bindings.contains_key(name_text) || session.functions.contains_key(name_text) {
+        if session.declared_names.contains(name_text) {
             return Err(diagnostic(
                 &self.source,
                 "E-DUPLICATE-BINDING",
@@ -978,6 +984,8 @@ impl Execution {
                 bindings: session.bindings.clone(),
             },
         );
+        session.bindings.remove(name_text);
+        session.declared_names.insert(name_text.to_owned());
         trace.record(TraceEvent {
             event: "function.declared",
             rule,
@@ -1000,9 +1008,7 @@ impl Execution {
         let (value, span) = match statement {
             Statement::Binding { name, value } => {
                 let name_text = self.source.slice(*name);
-                if session.bindings.contains_key(name_text)
-                    || session.functions.contains_key(name_text)
-                {
+                if session.declared_names.contains(name_text) {
                     return Err(diagnostic(
                         &self.source,
                         "E-DUPLICATE-BINDING",
@@ -1012,6 +1018,8 @@ impl Execution {
                 }
                 let evaluated = session.evaluate_expression(&self.source, value, trace)?;
                 session.bindings.insert(name_text.to_owned(), evaluated);
+                session.functions.remove(name_text);
+                session.declared_names.insert(name_text.to_owned());
                 trace.record(TraceEvent {
                     event: "binding.created",
                     rule: "TOPAL-SYN-BIND-001",
@@ -2742,4 +2750,24 @@ fn nested_function_calls_preserve_staticness_and_detect_cycles() {
         )
         .unwrap_err();
     assert_eq!(recursion.code, "E-RECURSION-NOT-YET-PROVEN");
+}
+
+#[test]
+fn function_local_binding_shadows_capture_without_leaking() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "value is 40\nanswer is fn () -> Int\n  value is 42\n  value\n(answer (), value)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(42, 40)");
+
+    let duplicate = Session::new()
+        .evaluate(
+            "bad is fn (value : Int) -> Int\n  value is 42\n  value\nbad 1\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(duplicate.code, "E-DUPLICATE-BINDING");
 }
