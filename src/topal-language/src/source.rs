@@ -435,8 +435,7 @@ impl Session {
                                     *kind,
                                     subject.clone(),
                                     right,
-                                    *matcher_span,
-                                    right_span,
+                                    (*matcher_span, subject_span, right_span),
                                     trace,
                                 )?,
                                 Value::Boolean(true)
@@ -1015,7 +1014,14 @@ impl Session {
                     };
                     let right_span = right.span();
                     let right = self.evaluate_expression(source, right, trace)?;
-                    result = apply_binary(source, *kind, result, right, *span, right_span, trace)?;
+                    result = apply_binary(
+                        source,
+                        *kind,
+                        result,
+                        right,
+                        (*span, items[0].span(), right_span),
+                        trace,
+                    )?;
                     self.checkpoint(
                         trace,
                         Some(&result),
@@ -2220,10 +2226,10 @@ fn apply_binary(
     kind: CallableKind,
     left: Value,
     right: Value,
-    span: Span,
-    right_span: Span,
+    spans: (Span, Span, Span),
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
+    let (span, left_span, right_span) = spans;
     if matches!(kind, CallableKind::Equal | CallableKind::NotEqual) {
         return apply_equality(source, kind, left, right, span, trace);
     }
@@ -2244,7 +2250,7 @@ fn apply_binary(
             apply_rational_binary(source, kind, left, right, span, right_span, trace)
         }
         (Value::Rational(left), Value::Int(right)) if kind == CallableKind::Power => {
-            apply_rational_power(source, left, right, right_span, trace)
+            apply_rational_power(source, left, right, left_span, right_span, trace)
         }
         (Value::Int(left), Value::Rational(right)) if kind != CallableKind::Power => {
             trace_conversion(trace, "Int->Rational:left");
@@ -2688,6 +2694,7 @@ fn apply_rational_power(
     source: &SourceText,
     left: BigRational,
     right: BigInt,
+    left_span: Span,
     right_span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
@@ -2698,6 +2705,22 @@ fn apply_rational_power(
                 rule: "TOPAL-NUM-RAT-NEG-POW-001",
                 detail: "base.nonzero",
             });
+            if parse_rational(source.slice(left_span)).is_none()
+                && parse_integer(source.slice(left_span)).is_none()
+            {
+                let position = source.position(left_span.start);
+                trace.record(TraceEvent {
+                    event: "result.error.constructed",
+                    rule: "TOPAL-TYPE-RESULT-001",
+                    detail: "root.^(Rational,Int);division-by-zero",
+                });
+                return Ok(Value::Error {
+                    domain: "root.^(Rational,Int)".to_owned(),
+                    code: "division-by-zero".to_owned(),
+                    line: position.line,
+                    column: position.column,
+                });
+            }
             return Err(diagnostic(
                 source,
                 "E-DIVISION-BY-ZERO",
