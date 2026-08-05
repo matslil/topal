@@ -88,6 +88,12 @@ pub enum DecisionMatcher {
         binding: Span,
         span: Span,
     },
+    ErrorCode {
+        namespace: Span,
+        vocabulary: Span,
+        code: Span,
+        span: Span,
+    },
     Comparison {
         kind: CallableKind,
         operand: Expression,
@@ -476,6 +482,10 @@ impl Parser<'_> {
                 DecisionMatcher::Otherwise(matcher_token.span),
                 self.expression()?,
             ),
+            TokenKind::Identifier if self.begins_error_code_pattern(matcher_token.span) => (
+                self.error_code_matcher(matcher_token.span)?,
+                self.expression()?,
+            ),
             TokenKind::Identifier
                 if matches!(self.source.slice(matcher_token.span), "Ok" | "Error") =>
             {
@@ -546,6 +556,49 @@ impl Parser<'_> {
             action,
             span,
         })
+    }
+
+    fn error_code_matcher(&mut self, error: Span) -> Option<DecisionMatcher> {
+        let opening = self.take_nontrivia()?;
+        let field = self.take_nontrivia()?;
+        let is = self.take_nontrivia()?;
+        let namespace = self.take_nontrivia()?;
+        let vocabulary = self.take_nontrivia()?;
+        let code = self.take_nontrivia()?;
+        let closing = self.take_nontrivia()?;
+        let separator = self.take_nontrivia()?;
+        if opening.kind != TokenKind::LeftParen
+            || field.kind != TokenKind::Identifier
+            || self.source.slice(field.span) != "code"
+            || is.kind != TokenKind::Identifier
+            || self.source.slice(is.span) != "is"
+            || namespace.kind != TokenKind::Identifier
+            || vocabulary.kind != TokenKind::Identifier
+            || code.kind != TokenKind::Identifier
+            || closing.kind != TokenKind::RightParen
+            || separator.kind != TokenKind::Identifier
+            || self.source.slice(separator.span) != "then"
+        {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-ERROR-CODE-PATTERN",
+                span: Span::new(error.start, separator.span.end),
+                message: "expected `Error ( code is namespace vocabulary code ) then`",
+            });
+            return None;
+        }
+        Some(DecisionMatcher::ErrorCode {
+            namespace: namespace.span,
+            vocabulary: vocabulary.span,
+            code: code.span,
+            span: Span::new(error.start, closing.span.end),
+        })
+    }
+
+    fn begins_error_code_pattern(&self, matcher: Span) -> bool {
+        self.source.slice(matcher) == "Error"
+            && self
+                .peek_nontrivia()
+                .is_some_and(|token| token.kind == TokenKind::LeftParen)
     }
 
     fn expression_before_then(&mut self, matcher_span: Span) -> Option<Expression> {
@@ -897,6 +950,7 @@ const fn matcher_span(matcher: &DecisionMatcher) -> Span {
         DecisionMatcher::Boolean { span, .. }
         | DecisionMatcher::Identifier(span)
         | DecisionMatcher::Result { span, .. }
+        | DecisionMatcher::ErrorCode { span, .. }
         | DecisionMatcher::Comparison { span, .. }
         | DecisionMatcher::Otherwise(span) => *span,
     }
@@ -1327,5 +1381,33 @@ mod tests {
         };
         assert!(matches!(body[0], Statement::Function { .. }));
         assert!(matches!(body[1], Statement::Expression(_)));
+    }
+
+    #[test]
+    fn parses_qualified_error_code_decision_matcher() {
+        let source = SourceText::new(
+            "describe is fn (attempt : Result) -> Int\n  attempt\n    Ok value then value\n    Error ( code is lang arithmetic division-by-zero ) then 0\n    Error problem then 1",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function { body, .. } = &parsed.statements[0] else {
+            panic!("expected function");
+        };
+        let Statement::Expression(Expression::DecisionTable { rules, .. }) = &body[0] else {
+            panic!("expected decision table");
+        };
+        let DecisionMatcher::ErrorCode {
+            namespace,
+            vocabulary,
+            code,
+            ..
+        } = rules[1].matcher
+        else {
+            panic!("expected Error code matcher");
+        };
+        assert_eq!(source.slice(namespace), "lang");
+        assert_eq!(source.slice(vocabulary), "arithmetic");
+        assert_eq!(source.slice(code), "division-by-zero");
     }
 }

@@ -55,3 +55,12 @@ matchers. `Ok` selects every successful `T` value and binds it to `value`;
 `Error` selects a structured Error and binds it to `problem`. The pair is
 exhaustive without `otherwise`. The subject is evaluated once, only the
 selected action executes, and each payload binding is scoped to that action.
+
+### TOPAL-DECISION-ERROR-CODE-001 — Qualified Error-code matching
+
+A Result decision may match `Error ( code is N V C )`, where namespace `N`
+publishes vocabulary `V` containing code `C`. The matcher compares the nominal
+identity and alternative stored in `Error.code`; it does not compare or derive
+`Error.domain`. Code identifiers shall remain qualified rather than becoming
+global bindings. A later `Error problem` rule may provide the remaining Error
+case and bind the complete Error unchanged.

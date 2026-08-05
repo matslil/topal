@@ -635,3 +635,10 @@ under `TOPAL-ERROR-FIELD-001`. The code shall retain its namespace-defined
 concrete `ErrorCode` subtype while the compiler-derived reporting domain remains
 a distinct `ErrorDomain`. Test traces and reversible debugger history shall
 expose each selection.
+
+## TOPAL-INTP-SUBSET-076 — Qualified Error-code decisions
+
+All interpreter modes shall match qualified arithmetic code patterns within
+Result decisions under `TOPAL-DECISION-ERROR-CODE-001`, without publishing code
+identifiers into global scope or consulting `Error.domain`. Test traces and
+reversible debugger history shall expose code-pattern selection.
