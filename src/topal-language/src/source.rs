@@ -1579,6 +1579,17 @@ fn prove_mutual_int_recursion_edge(
             "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001",
         ),
         (
+            "Nat",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::GreaterEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (
+            CallableKind::Plus,
+            "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001",
+        ),
+        (
             "Int",
             DecisionMatcher::Comparison {
                 kind: CallableKind::LessEqual,
@@ -1611,6 +1622,7 @@ fn prove_mutual_int_recursion_edge(
     if !valid
         || contains_self_call(source, &target, &base.action)
         || (classifier == "Nat"
+            && step == CallableKind::Minus
             && !recursive_calls_use_unit_step(source, &target, parameter, &recursive.action))
     {
         return None;
@@ -1685,6 +1697,8 @@ const MUTUAL_INT_RECURSION_RULE: &str = "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001
 const MUTUAL_INCREASING_INT_RECURSION_RULE: &str =
     "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001";
 const MUTUAL_NAT_RECURSION_RULE: &str = "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001";
+const MUTUAL_INCREASING_NAT_RECURSION_RULE: &str =
+    "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001";
 
 fn is_mutual_recursion_rule(rule: &str) -> bool {
     matches!(
@@ -1692,6 +1706,7 @@ fn is_mutual_recursion_rule(rule: &str) -> bool {
         MUTUAL_INT_RECURSION_RULE
             | MUTUAL_INCREASING_INT_RECURSION_RULE
             | MUTUAL_NAT_RECURSION_RULE
+            | MUTUAL_INCREASING_NAT_RECURSION_RULE
     )
 }
 
@@ -3530,6 +3545,24 @@ fn proves_closed_mutual_nat_recursion() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001"))
+    );
+}
+
+#[test]
+fn proves_closed_mutual_increasing_nat_recursion() {
+    let source = "even is fn (value : Nat) -> Boolean\n  value\n    >= 6 then true\n    otherwise odd (value + 1)\nodd is fn (value : Nat) -> Boolean\n  value\n    >= 6 then false\n    otherwise even (value + 1)\n(even 0, odd 0)\n";
+    let mut trace = Vec::new();
+    assert_eq!(
+        Session::new()
+            .evaluate(source, &mut trace)
+            .unwrap()
+            .to_string(),
+        "(true, false)"
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001"))
     );
 }
 
