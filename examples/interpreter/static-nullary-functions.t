@@ -1,5 +1,7 @@
 #!/usr/bin/env topal
-# Demonstrates a static zero-parameter function with an explicit result type.
+# Demonstrates static zero- and one-parameter functions with explicit types.
 answer is fn static () -> Int
   40 + 2
-answer ()
+increment is fn static (input : Int) -> Int
+  input + 1
+(answer (), increment 41)

@@ -64,6 +64,12 @@ pub struct ProductField {
     pub value: Expression,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct FunctionParameter {
+    pub name: Span,
+    pub classifier: Span,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Statement {
     Binding {
@@ -72,6 +78,7 @@ pub enum Statement {
     },
     StaticFunction {
         name: Span,
+        parameter: Option<FunctionParameter>,
         result: Span,
         body: Expression,
         span: Span,
@@ -155,7 +162,7 @@ impl Parser<'_> {
                     token.kind == TokenKind::Identifier && self.source.slice(token.span) == "fn"
                 })
             {
-                return self.static_nullary_function(first);
+                return self.static_function(first);
             }
             if let Some(value) = self.expression() {
                 return Some(if first.kind == TokenKind::Discard {
@@ -181,11 +188,38 @@ impl Parser<'_> {
         self.expression().map(Statement::Expression)
     }
 
-    fn static_nullary_function(&mut self, name: Token) -> Option<Statement> {
+    fn static_function(&mut self, name: Token) -> Option<Statement> {
         let function = self.take_nontrivia()?;
         let static_token = self.take_nontrivia()?;
         let opening = self.take_nontrivia()?;
-        let closing = self.take_nontrivia()?;
+        let first_input = self.take_nontrivia()?;
+        let (parameter, closing) = if first_input.kind == TokenKind::RightParen {
+            (None, first_input)
+        } else {
+            let colon = self.take_nontrivia()?;
+            let classifier = self.take_nontrivia()?;
+            let closing = self.take_nontrivia()?;
+            if first_input.kind != TokenKind::Identifier
+                || colon.kind != TokenKind::Colon
+                || classifier.kind != TokenKind::Identifier
+                || closing.kind != TokenKind::RightParen
+            {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-UNSUPPORTED-FUNCTION-HEADER",
+                    span: Span::new(opening.span.start, closing.span.end),
+                    message: "the implemented function subset accepts `()` or one `name : Type` parameter",
+                });
+                self.skip_to_newline();
+                return None;
+            }
+            (
+                Some(FunctionParameter {
+                    name: first_input.span,
+                    classifier: classifier.span,
+                }),
+                closing,
+            )
+        };
         let arrow = self.take_nontrivia()?;
         let result = self.take_nontrivia()?;
         let valid = self.source.slice(function.span) == "fn"
@@ -199,7 +233,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-UNSUPPORTED-FUNCTION-HEADER",
                 span: Span::new(function.span.start, result.span.end),
-                message: "the implemented function subset requires `fn static () -> ResultType`",
+                message: "the implemented function subset requires `fn static ( [name : Type] ) -> ResultType`",
             });
             self.skip_to_newline();
             return None;
@@ -236,6 +270,7 @@ impl Parser<'_> {
         let body = self.expression()?;
         Some(Statement::StaticFunction {
             name: name.span,
+            parameter,
             result: result.span,
             span: Span::new(name.span.start, body.span().end),
             body,
@@ -665,5 +700,24 @@ mod tests {
         assert_eq!(source.slice(*result), "Int");
         assert!(matches!(body, Expression::Application { .. }));
         assert!(matches!(parsed.statements[1], Statement::Expression(_)));
+    }
+
+    #[test]
+    fn parses_one_typed_static_function_parameter() {
+        let source = SourceText::new(
+            "increment is fn static (input : Int) -> Int\n  input + 1\nincrement 41",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty());
+        let Statement::StaticFunction {
+            parameter: Some(parameter),
+            ..
+        } = parsed.statements[0]
+        else {
+            panic!("expected one static parameter");
+        };
+        assert_eq!(source.slice(parameter.name), "input");
+        assert_eq!(source.slice(parameter.classifier), "Int");
     }
 }

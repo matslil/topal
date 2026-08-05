@@ -5,7 +5,7 @@ use std::fmt::{self, Write as _};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_source::{SourceText, Span, character_count, normalize_nfc, normalize_nfd};
-use topal_syntax::{CallableKind, Expression, Statement, lex, parse};
+use topal_syntax::{CallableKind, Expression, FunctionParameter, Statement, lex, parse};
 
 use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
 
@@ -125,6 +125,7 @@ pub struct Session {
 #[derive(Clone)]
 struct StaticFunction {
     source: SourceText,
+    parameter: Option<(String, String)>,
     result: String,
     body: Expression,
     bindings: BTreeMap<String, Value>,
@@ -134,6 +135,15 @@ pub struct Execution {
     source: SourceText,
     statements: Vec<Statement>,
     cursor: usize,
+}
+
+#[derive(Clone, Copy)]
+struct StaticFunctionDeclaration<'a> {
+    name: Span,
+    parameter: Option<FunctionParameter>,
+    result: Span,
+    body: &'a Expression,
+    span: Span,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -317,10 +327,47 @@ impl Session {
             Expression::Application { items, span } => {
                 if items.len() == 2
                     && let Expression::Identifier(name_span) = &items[0]
-                    && matches!(&items[1], Expression::Unit(_))
                     && let Some(function) = self.functions.get(source.slice(*name_span)).cloned()
                 {
                     let name = source.slice(*name_span);
+                    let rule = if function.parameter.is_some() {
+                        "TOPAL-FUNCTION-STATIC-UNARY-001"
+                    } else {
+                        "TOPAL-FUNCTION-STATIC-NULLARY-001"
+                    };
+                    let mut function_scope = Self {
+                        bindings: function.bindings,
+                        functions: BTreeMap::new(),
+                    };
+                    match &function.parameter {
+                        None if !matches!(&items[1], Expression::Unit(_)) => {
+                            return Err(diagnostic(
+                                source,
+                                "E-NO-APPLICABLE-OVERLOAD",
+                                items[1].span(),
+                                format!("nullary function `{name}` requires ()"),
+                            ));
+                        }
+                        None => {}
+                        Some((parameter, classifier)) => {
+                            let argument_span = items[1].span();
+                            let argument = self.evaluate_expression(source, &items[1], trace)?;
+                            if !value_has_classifier(&argument, classifier) {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-FUNCTION-ARGUMENT-TYPE",
+                                    argument_span,
+                                    format!("argument for `{parameter}` is outside `{classifier}`"),
+                                ));
+                            }
+                            function_scope.bindings.insert(parameter.clone(), argument);
+                            trace.record(TraceEvent {
+                                event: "function.argument.bound",
+                                rule,
+                                detail: parameter,
+                            });
+                        }
+                    }
                     trace.record(TraceEvent {
                         event: "function.selected",
                         rule: "TOPAL-TYPE-CALL-001",
@@ -328,13 +375,9 @@ impl Session {
                     });
                     trace.record(TraceEvent {
                         event: "function.entered",
-                        rule: "TOPAL-FUNCTION-STATIC-NULLARY-001",
+                        rule,
                         detail: name,
                     });
-                    let function_scope = Self {
-                        bindings: function.bindings,
-                        functions: BTreeMap::new(),
-                    };
                     let value = function_scope.evaluate_expression(
                         &function.source,
                         &function.body,
@@ -353,7 +396,7 @@ impl Session {
                     }
                     trace.record(TraceEvent {
                         event: "function.returned",
-                        rule: "TOPAL-FUNCTION-STATIC-NULLARY-001",
+                        rule,
                         detail: name,
                     });
                     self.checkpoint(trace, Some(&value), Some(*span));
@@ -741,6 +784,77 @@ impl Session {
 }
 
 impl Execution {
+    fn declare_static_function(
+        &self,
+        session: &mut Session,
+        trace: &mut impl TraceSink,
+        declaration: StaticFunctionDeclaration<'_>,
+    ) -> Result<(Value, Span), Diagnostic> {
+        let StaticFunctionDeclaration {
+            name,
+            parameter,
+            result,
+            body,
+            span,
+        } = declaration;
+        let name_text = self.source.slice(name);
+        if session.bindings.contains_key(name_text) || session.functions.contains_key(name_text) {
+            return Err(diagnostic(
+                &self.source,
+                "E-DUPLICATE-BINDING",
+                name,
+                "name is already bound in this scope",
+            ));
+        }
+        let result_text = self.source.slice(result);
+        if !supported_value_classifier(result_text) {
+            return Err(diagnostic(
+                &self.source,
+                "E-UNSUPPORTED-RESULT-CLASSIFIER",
+                result,
+                "the implemented function subset requires Boolean, Int, Rational, String, or Unit",
+            ));
+        }
+        let parameter = parameter
+            .map(|parameter| {
+                let classifier = self.source.slice(parameter.classifier);
+                if !supported_value_classifier(classifier) {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-UNSUPPORTED-PARAMETER-CLASSIFIER",
+                        parameter.classifier,
+                        "the implemented function subset requires Boolean, Int, Rational, String, or Unit",
+                    ));
+                }
+                Ok((
+                    self.source.slice(parameter.name).to_owned(),
+                    classifier.to_owned(),
+                ))
+            })
+            .transpose()?;
+        let rule = if parameter.is_some() {
+            "TOPAL-FUNCTION-STATIC-UNARY-001"
+        } else {
+            "TOPAL-FUNCTION-STATIC-NULLARY-001"
+        };
+        session.functions.insert(
+            name_text.to_owned(),
+            StaticFunction {
+                source: self.source.clone(),
+                parameter,
+                result: result_text.to_owned(),
+                body: body.clone(),
+                bindings: session.bindings.clone(),
+            },
+        );
+        trace.record(TraceEvent {
+            event: "function.declared",
+            rule,
+            detail: name_text,
+        });
+        Ok((Value::Unit, span))
+    }
+
     /// Execute one source statement.
     ///
     /// # Errors
@@ -776,46 +890,21 @@ impl Execution {
             }
             Statement::StaticFunction {
                 name,
+                parameter,
                 result,
                 body,
                 span,
-            } => {
-                let name_text = self.source.slice(*name);
-                if session.bindings.contains_key(name_text)
-                    || session.functions.contains_key(name_text)
-                {
-                    return Err(diagnostic(
-                        &self.source,
-                        "E-DUPLICATE-BINDING",
-                        *name,
-                        "name is already bound in this scope",
-                    ));
-                }
-                let result_text = self.source.slice(*result);
-                if !supported_value_classifier(result_text) {
-                    return Err(diagnostic(
-                        &self.source,
-                        "E-UNSUPPORTED-RESULT-CLASSIFIER",
-                        *result,
-                        "the implemented function subset requires Boolean, Int, Rational, String, or Unit",
-                    ));
-                }
-                session.functions.insert(
-                    name_text.to_owned(),
-                    StaticFunction {
-                        source: self.source.clone(),
-                        result: result_text.to_owned(),
-                        body: body.clone(),
-                        bindings: session.bindings.clone(),
-                    },
-                );
-                trace.record(TraceEvent {
-                    event: "function.declared",
-                    rule: "TOPAL-FUNCTION-STATIC-NULLARY-001",
-                    detail: name_text,
-                });
-                (Value::Unit, *span)
-            }
+            } => self.declare_static_function(
+                session,
+                trace,
+                StaticFunctionDeclaration {
+                    name: *name,
+                    parameter: *parameter,
+                    result: *result,
+                    body,
+                    span: *span,
+                },
+            )?,
             Statement::Discard { span, value } => {
                 session.evaluate_expression(&self.source, value, trace)?;
                 trace.record(TraceEvent {
@@ -2315,6 +2404,31 @@ fn static_function_body_uses_declaration_order_lexical_bindings() {
     let error = Session::new()
         .evaluate(
             "answer is fn static () -> Int\n  later + 2\nlater is 40\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-UNBOUND-NAME");
+}
+
+#[test]
+fn static_unary_function_binds_a_typed_local_parameter() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "increment is fn static (input : Int) -> Int\n  input + 1\nincrement 41\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert!(
+        trace
+            .iter()
+            .any(|event| { event.contains("function.argument.bound") && event.contains("input") })
+    );
+
+    let error = Session::new()
+        .evaluate(
+            "increment is fn static (input : Int) -> Int\n  input + 1\ninput\n",
             &mut std::io::sink(),
         )
         .unwrap_err();

@@ -299,6 +299,7 @@ const fn semantic_token_type(kind: TokenKind) -> Option<usize> {
         TokenKind::LeftParen
         | TokenKind::RightParen
         | TokenKind::Comma
+        | TokenKind::Colon
         | TokenKind::Arrow
         | TokenKind::Equals
         | TokenKind::NotEquals
