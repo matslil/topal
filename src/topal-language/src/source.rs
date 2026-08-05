@@ -1471,6 +1471,17 @@ fn prove_int_recursion(
             (CallableKind::Minus, "TOPAL-FUNCTION-RECURSION-NAT-001")
         }
         (
+            "Nat",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::GreaterEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (
+            CallableKind::Plus,
+            "TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001",
+        ),
+        (
             "Int",
             DecisionMatcher::Comparison {
                 kind: CallableKind::LessEqual,
@@ -1499,6 +1510,7 @@ fn prove_int_recursion(
     let (found, valid) =
         bounded_self_calls(source, function_name, parameter, step, &recursive.action);
     let preserves_nat = classifier != "Nat"
+        || step == CallableKind::Plus
         || recursive_calls_use_unit_step(source, function_name, parameter, &recursive.action);
     (found && valid && preserves_nat).then_some(proof_rule)
 }
@@ -3459,6 +3471,24 @@ fn proves_unit_step_nat_recursion_without_overshoot() {
         )
         .unwrap_err();
     assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+}
+
+#[test]
+fn proves_increasing_nat_recursion_with_positive_steps() {
+    let source = "advance is fn (value : Nat) -> Nat\n  value\n    >= 5 then value\n    otherwise advance (value + 2)\nadvance 0\n";
+    let mut trace = Vec::new();
+    assert_eq!(
+        Session::new()
+            .evaluate(source, &mut trace)
+            .unwrap()
+            .to_string(),
+        "6"
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001"))
+    );
 }
 
 #[test]
