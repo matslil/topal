@@ -120,6 +120,8 @@ impl Diagnostic {
 pub struct Session {
     bindings: BTreeMap<String, Value>,
     functions: BTreeMap<String, UserFunction>,
+    call_stack: Vec<String>,
+    static_context: bool,
 }
 
 #[derive(Clone)]
@@ -230,6 +232,8 @@ impl Session {
         let mut session = Self {
             bindings: bindings.clone(),
             functions: BTreeMap::new(),
+            call_stack: Vec::new(),
+            static_context: false,
         };
         let mut execution = session.prepare(input, trace)?;
         if !matches!(execution.statements.as_slice(), [Statement::Expression(_)]) {
@@ -367,11 +371,30 @@ impl Session {
                     && let Some(function) = self.functions.get(source.slice(*name_span)).cloned()
                 {
                     let name = source.slice(*name_span);
+                    if self.static_context && !function.is_static {
+                        return Err(diagnostic(
+                            source,
+                            "E-STATIC-CALLS-RUNTIME-FUNCTION",
+                            *name_span,
+                            format!("static execution cannot call ordinary function `{name}`"),
+                        ));
+                    }
+                    if self.call_stack.iter().any(|active| active == name) {
+                        return Err(diagnostic(
+                            source,
+                            "E-RECURSION-NOT-YET-PROVEN",
+                            *name_span,
+                            format!("recursive call to `{name}` requires termination proof"),
+                        ));
+                    }
                     let rule = function_rule(function.is_static, function.parameters.len());
                     let mut function_scope = Self {
                         bindings: function.bindings,
-                        functions: BTreeMap::new(),
+                        functions: self.functions.clone(),
+                        call_stack: self.call_stack.clone(),
+                        static_context: function.is_static,
                     };
+                    function_scope.call_stack.push(name.to_owned());
                     match function.parameters.as_slice() {
                         [] if !matches!(&items[1], Expression::Unit(_)) => {
                             return Err(diagnostic(
@@ -2682,4 +2705,41 @@ fn ordinary_runtime_function_uses_ordinary_trace_rule() {
             .all(|event| event.contains("TOPAL-FUNCTION-ORDINARY-001")
                 || event.contains("TOPAL-TYPE-CALL-001"))
     );
+}
+
+#[test]
+fn nested_function_calls_preserve_staticness_and_detect_cycles() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "answer is fn () -> Int\n  increment 41\nincrement is fn (input : Int) -> Int\n  input + 1\nanswer ()\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    let outer_entry = trace
+        .iter()
+        .position(|event| event.contains("function.entered") && event.contains("answer"))
+        .unwrap();
+    let inner_entry = trace
+        .iter()
+        .position(|event| event.contains("function.entered") && event.contains("increment"))
+        .unwrap();
+    let inner_return = trace
+        .iter()
+        .position(|event| event.contains("function.returned") && event.contains("increment"))
+        .unwrap();
+    let outer_return = trace
+        .iter()
+        .position(|event| event.contains("function.returned") && event.contains("answer"))
+        .unwrap();
+    assert!(outer_entry < inner_entry && inner_entry < inner_return && inner_return < outer_return);
+
+    let recursion = Session::new()
+        .evaluate(
+            "again is fn () -> Int\n  again ()\nagain ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(recursion.code, "E-RECURSION-NOT-YET-PROVEN");
 }

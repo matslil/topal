@@ -228,6 +228,39 @@ fn records_reversible_ordinary_function_execution() {
 }
 
 #[test]
+fn records_reversible_nested_function_call_order() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-call-chain.debug"),
+            &format!("{root}function-call-chain.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let outer_entry = stdout
+        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] answer")
+        .unwrap();
+    let inner_entry = stdout
+        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] increment")
+        .unwrap();
+    let inner_return = stdout
+        .find("function.returned [TOPAL-FUNCTION-ORDINARY-001] increment")
+        .unwrap();
+    let outer_return = stdout
+        .find("function.returned [TOPAL-FUNCTION-ORDINARY-001] answer")
+        .unwrap();
+    assert!(outer_entry < inner_entry && inner_entry < inner_return && inner_return < outer_return);
+    assert!(stdout.contains("\n42\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
