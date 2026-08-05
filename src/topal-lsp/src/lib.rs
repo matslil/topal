@@ -25,6 +25,7 @@ impl Server {
                     "capabilities": {
                         "positionEncoding": "utf-16",
                         "textDocumentSync": { "openClose": true, "change": 1 },
+                        "completionProvider": {},
                         "semanticTokensProvider": {
                             "legend": {
                                 "tokenTypes": [
@@ -56,6 +57,7 @@ impl Server {
             Some("textDocument/semanticTokens/full") => {
                 vec![response(id, &self.semantic_tokens(message))]
             }
+            Some("textDocument/completion") => vec![response(id, &completion_items())],
             Some(_) if id.is_some() => vec![error_response(id, -32601, "method not found")],
             Some(_) | None => Vec::new(),
         }
@@ -131,6 +133,39 @@ impl Server {
             .get(uri)
             .map_or_else(|| json!({ "data": [] }), |text| semantic_tokens(text))
     }
+}
+
+fn completion_items() -> Value {
+    json!({
+        "isIncomplete": false,
+        "items": [
+            {
+                "label": "byte-count",
+                "kind": 3,
+                "detail": "String, Utf8 -> Int"
+            },
+            {
+                "label": "character-count",
+                "kind": 3,
+                "detail": "String -> Int"
+            },
+            {
+                "label": "concat",
+                "kind": 3,
+                "detail": "String, String -> String"
+            },
+            {
+                "label": "empty",
+                "kind": 3,
+                "detail": "String -> String"
+            },
+            {
+                "label": "entry-count",
+                "kind": 3,
+                "detail": "String -> Int"
+            }
+        ]
+    })
 }
 
 fn response(id: Option<Value>, result: &Value) -> Value {
@@ -288,6 +323,45 @@ mod tests {
         assert_eq!(
             output[0]["result"]["capabilities"]["textDocumentSync"]["change"],
             1
+        );
+        assert_eq!(
+            output[0]["result"]["capabilities"]["completionProvider"],
+            json!({})
+        );
+    }
+
+    #[test]
+    fn completes_only_implemented_named_root_operations() {
+        let mut server = Server::default();
+        let output = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 7, "method": "textDocument/completion",
+            "params": {
+                "textDocument": { "uri": "file:///completion.t" },
+                "position": { "line": 0, "character": 0 }
+            }
+        }));
+        let labels = output[0]["result"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["label"].as_str().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            labels,
+            [
+                "byte-count",
+                "character-count",
+                "concat",
+                "empty",
+                "entry-count"
+            ]
+        );
+        assert!(
+            output[0]["result"]["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|item| item["kind"] == 3)
         );
     }
 
