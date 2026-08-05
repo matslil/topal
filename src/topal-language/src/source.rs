@@ -129,6 +129,7 @@ pub struct Session {
     functions: BTreeMap<String, Vec<UserFunction>>,
     declared_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
+    enum_types: BTreeSet<String>,
     call_stack: Vec<ActiveCall>,
     static_context: bool,
 }
@@ -265,6 +266,7 @@ impl Session {
             functions: BTreeMap::new(),
             declared_names: bindings.keys().cloned().collect(),
             local_function_names: BTreeSet::new(),
+            enum_types: BTreeSet::new(),
             call_stack: Vec::new(),
             static_context: false,
         };
@@ -557,6 +559,7 @@ impl Session {
                         functions: self.functions.clone(),
                         declared_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
+                        enum_types: self.enum_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: function.is_static,
                     };
@@ -1031,12 +1034,12 @@ impl Execution {
             ));
         }
         let result_text = self.source.slice(result);
-        if !supported_value_classifier(result_text) {
+        if !supported_value_classifier(result_text) && !session.enum_types.contains(result_text) {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-RESULT-CLASSIFIER",
                 result,
-                "the implemented function subset requires Boolean, Int, Nat, Rational, String, or Unit",
+                "the implemented function subset requires a declared Enum, Boolean, Int, Nat, Rational, String, or Unit",
             ));
         }
         validate_parameter_names(&self.source, parameters)?;
@@ -1044,12 +1047,14 @@ impl Execution {
             .iter()
             .map(|parameter| {
                 let classifier = self.source.slice(parameter.classifier);
-                if !supported_value_classifier(classifier) {
+                if !supported_value_classifier(classifier)
+                    && !session.enum_types.contains(classifier)
+                {
                     return Err(diagnostic(
                         &self.source,
                         "E-UNSUPPORTED-PARAMETER-CLASSIFIER",
                         parameter.classifier,
-                        "the implemented function subset requires Boolean, Int, Nat, Rational, String, or Unit",
+                        "the implemented function subset requires a declared Enum, Boolean, Int, Nat, Rational, String, or Unit",
                     ));
                 }
                 Ok((
@@ -1310,6 +1315,7 @@ fn declare_enum(
         }
     }
     session.declared_names.insert(name_text.to_owned());
+    session.enum_types.insert(name_text.to_owned());
     for (alternative, _) in alternatives {
         session.bindings.insert(
             alternative.clone(),
@@ -1336,6 +1342,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::String(_), "String")
         | (Value::Unit, "Unit") => true,
         (Value::Int(value), "Nat") => value >= &BigInt::from(0),
+        (Value::Enum { type_name, .. }, classifier) => type_name == classifier,
         _ => false,
     }
 }
@@ -3731,6 +3738,20 @@ fn declares_nominal_payload_free_enum_values() {
             .iter()
             .any(|event| event.contains("TOPAL-TYPE-ENUM-001"))
     );
+}
+
+#[test]
+fn validates_enum_function_parameters_and_results() {
+    let source = "Color is Enum (Red, Green)\nidentity is fn (value : Color) -> Color\n  value\n(identity Red, identity Green)\n";
+    let mut trace = Vec::new();
+    assert_eq!(
+        Session::new()
+            .evaluate(source, &mut trace)
+            .unwrap()
+            .to_string(),
+        "(Red, Green)"
+    );
+    assert!(trace.iter().any(|event| event.contains("identity (Color)")));
 }
 
 #[test]

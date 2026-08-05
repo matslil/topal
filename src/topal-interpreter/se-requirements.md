@@ -562,3 +562,10 @@ All interpreter modes shall declare, resolve, display, and compare payload-free
 nominal enum alternatives according to `TOPAL-TYPE-ENUM-001`. Duplicate labels
 or collisions with existing names shall be diagnosed. Test traces and
 reversible debugger history shall expose enum declaration and alternative use.
+
+## TOPAL-INTP-SUBSET-066 — Enum function classifiers
+
+All interpreter modes shall accept a visible declared enum name as an
+implemented function parameter or result classifier. Calls and returns shall
+validate nominal enum identity under `TOPAL-TYPE-ENUM-001`; test traces and
+reversible debugger history shall retain the enum signature.

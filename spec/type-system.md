@@ -56,6 +56,11 @@ enum declarations do not share an equality operation merely because labels
 match. The type and every alternative name are immutable in their declaration
 scope.
 
+A declared enum name is a value classifier for its own alternatives. Function
+argument and result validation shall accept exactly values carrying that enum's
+nominal identity; alternatives of another enum remain outside the classifier
+even when a label has the same spelling in a different lexical scope.
+
 ### TOPAL-TYPE-BOOLEAN-001 — Boolean values
 
 `Boolean` classifies exactly the two distinct values `true` and `false`. Neither

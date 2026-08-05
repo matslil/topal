@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 35);
+    assert_eq!(examples.len(), 36);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1010,6 +1010,22 @@ fn every_mode_declares_and_compares_enum_values() {
             .unwrap()
             .contains("E-DUPLICATE-ENUM-ALTERNATIVE")
     );
+}
+
+#[test]
+fn every_mode_uses_enum_function_classifiers() {
+    let source = "Color is Enum (Red, Green)\nidentity is fn (value : Color) -> Color\n  value\n(identity Red, identity Green)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"(Red, Green)\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("identity (Color)"));
 }
 
 #[test]
