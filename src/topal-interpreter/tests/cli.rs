@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 24);
+    assert_eq!(examples.len(), 25);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1074,6 +1074,31 @@ fn every_mode_executes_proven_mutual_increasing_int_recursion() {
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001"));
     assert!(trace.contains("function.recursion.cycle.proven"));
+}
+
+#[test]
+fn every_mode_distinguishes_overloads_from_recursion() {
+    let source = "describe is fn (value : Int) -> String\n  \"integer\"\ndescribe is fn (value : String) -> String\n  (describe 42) concat \":\" concat value\ndescribe \"Topal\"\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n()\n\"integer:Topal\"\n");
+        } else {
+            assert_eq!(output.stdout, b"\"integer:Topal\"\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let string = trace.find("describe (String)").unwrap();
+    let integer = trace.find("describe (Int)").unwrap();
+    assert!(string < integer);
+    assert!(!trace.contains("E-RECURSION-NOT-YET-PROVEN"));
 }
 
 #[test]

@@ -471,3 +471,11 @@ only after proving every edge according to
 `TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001`. A mixed-direction cycle
 shall remain rejected. Test traces and reversible debugger history shall expose
 the increasing proof reason separately from decreasing mutual recursion.
+
+## TOPAL-INTP-SUBSET-054 — Overload-specific recursion identity
+
+All interpreter modes shall treat each selected input signature as a distinct
+recursion identity according to `TOPAL-FUNCTION-RECURSION-OVERLOAD-IDENTITY-001`.
+A call between same-named distinct overloads shall execute without recursion
+proof, while a return to the active signature shall retain the proof requirement.
+Test traces and reversible debugger history shall expose both selections.
