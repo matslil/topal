@@ -398,6 +398,31 @@ fn records_reversible_exhaustive_enum_decision() {
 }
 
 #[test]
+fn records_reversible_arithmetic_error_code_selection() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}arithmetic-error-codes.debug"),
+            &format!("{root}arithmetic-error-codes.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains(
+            "namespace.member.selected [TOPAL-NUM-ARITHMETIC-ERROR-001] division-by-zero"
+        )
+    );
+    assert!(stdout.contains("\n(division-by-zero, indeterminate, true)\n"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

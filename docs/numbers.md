@@ -150,7 +150,8 @@ Static literals that fit can be checked during compilation.
 
 ## Arithmetic errors
 
-The initial `ArithmeticErrorCode` vocabulary distinguishes:
+The `lang arithmetic` namespace publishes the initial `ArithmeticErrorCode`
+vocabulary, which distinguishes:
 
 ```text
 out-of-range       value lies outside the destination's admitted range
@@ -164,6 +165,10 @@ For example, constructing a byte-sized constraint from `300` is
 `not-representable`. The distinction is preserved by checked construction and
 the explicitly lossy functions below. A statically known error is rejected at
 compilation; a dynamic operation returns the applicable `Result`.
+
+The publishing namespace identifies the vocabulary, not an error occurrence's
+`Error.domain`. The compiler derives that domain from the qualified reporting
+declaration and occurrence unless an API explicitly selects a shared domain.
 
 ## Fixed-width bits
 

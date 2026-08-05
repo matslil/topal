@@ -576,3 +576,11 @@ All interpreter modes shall execute named enum alternative matchers according
 to `TOPAL-DECISION-ENUM-001`, prove complete coverage when `otherwise` is
 absent, and delay unselected actions. Test traces and reversible debugger
 history shall expose rule consideration and selection.
+
+## TOPAL-INTP-SUBSET-068 — Arithmetic error-code namespace
+
+All interpreter modes shall resolve the four `ArithmeticErrorCode` values from
+the qualified `lang arithmetic` namespace according to
+`TOPAL-NUM-ARITHMETIC-ERROR-001`. Resolution shall not invent or assign an
+`Error.domain`. Test traces and reversible debugger history shall expose the
+qualified namespace selection.

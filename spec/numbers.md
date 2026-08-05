@@ -151,6 +151,13 @@ conservatively reject division when it cannot establish the nonzero obligation;
 it shall not assume nonzero or produce an undefined value. Later dynamic-input
 rules may instead construct the typed `Result` required by the error model.
 
+### TOPAL-NUM-ARITHMETIC-ERROR-001 — Arithmetic error-code vocabulary
+
+The qualified namespace `lang arithmetic` publishes the nominal enum type
+`ArithmeticErrorCode` with alternatives `out-of-range`, `not-representable`,
+`division-by-zero`, and `indeterminate`. These code identities are independent
+of the compiler-derived reporting provenance stored in `Error.domain`.
+
 ### TOPAL-NUM-POW-001 — Finite natural integer exponentiation
 
 For finite `a : Int` and finite `e : Nat`, binary `^` selects a total, pure root
