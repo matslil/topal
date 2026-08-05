@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 16);
+    assert_eq!(examples.len(), 17);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1004,6 +1004,29 @@ fn every_mode_executes_comparison_decisions() {
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("TOPAL-DECISION-COMPARISON-001"));
     assert!(trace.contains("TOPAL-NUM-COMPARE-001"));
+}
+
+#[test]
+fn every_mode_executes_proven_decreasing_int_recursion() {
+    let source = "sum-down is fn (value : Int) -> Int\n  value\n    <= 0 then 0\n    otherwise value + (sum-down (value - 1))\nsum-down 5\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n15\n");
+        } else {
+            assert_eq!(output.stdout, b"15\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"function.recursion.proven\""));
+    assert_eq!(trace.matches("function.recursion.descended").count(), 5);
 }
 
 #[test]

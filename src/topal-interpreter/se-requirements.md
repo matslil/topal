@@ -410,3 +410,11 @@ All interpreter modes shall execute comparison decision matchers according to
 `TOPAL-DECISION-COMPARISON-001`, evaluating the subject once, applying each
 comparison in source order, and delaying unselected actions. Test traces and
 reversible debugger history shall expose comparison and selection reasons.
+
+## TOPAL-INTP-SUBSET-046 — Proven decreasing Int recursion
+
+All interpreter modes shall execute self-recursive unary `Int` functions only
+after proving the structural decrease required by
+`TOPAL-FUNCTION-RECURSION-INT-001`. Unproven cycles shall remain diagnostics.
+Test traces and reversible debugger history shall expose proof acceptance and
+each nested recursive descent.

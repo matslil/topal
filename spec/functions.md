@@ -122,3 +122,17 @@ staticness required by the call context, and select the first candidate in
 source order whose complete input header accepts that value. The result context
 shall not change selection. Test traces and debugger history shall identify the
 selected input signature separately from function entry.
+
+### TOPAL-FUNCTION-RECURSION-INT-001 — Proven decreasing Int recursion
+
+A unary `Int` function whose complete body is a decision table over its
+parameter is proven terminating by this initial rule when its first rule is
+`<= 0 then base`, its second rule is `otherwise recursive-action`, the base
+contains no self-call, and every self-call in the recursive action passes
+exactly `parameter - 1`. For values above zero each recursive edge strictly
+decreases toward the guarded bound; values at or below zero take the base.
+
+Only a function satisfying this structural proof shall execute a recursive edge
+under this rule. Test traces and debugger history shall expose proof acceptance
+at declaration and every recursive descent before nested function entry. Cycles
+without an implemented termination proof remain rejected.
