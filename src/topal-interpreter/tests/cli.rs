@@ -771,6 +771,32 @@ fn static_product_function_checks_shape_and_arity() {
 }
 
 #[test]
+fn every_mode_executes_multi_statement_function_bodies() {
+    let source = "answer is fn static () -> Int\n  local is 40 + 2\n  local\nanswer ()\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n42\n");
+        } else {
+            assert_eq!(output.stdout, b"42\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let entered = trace.find("function.entered").unwrap();
+    let created = trace.find("binding.created").unwrap();
+    let resolved = trace.find("binding.resolved").unwrap();
+    let returned = trace.find("function.returned").unwrap();
+    assert!(entered < created && created < resolved && resolved < returned);
+}
+
+#[test]
 fn script_executes_arbitrary_precision_based_integer() {
     let output = run(&[], "0xFFFF_FFFF_FFFF_FFFF_FFFF\n");
     assert!(output.status.success());

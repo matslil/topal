@@ -80,7 +80,7 @@ pub enum Statement {
         name: Span,
         parameters: Vec<FunctionParameter>,
         result: Span,
-        body: Expression,
+        body: Vec<Statement>,
         span: Span,
     },
     Discard {
@@ -248,15 +248,56 @@ impl Parser<'_> {
             });
             return None;
         }
-        self.cursor += 1;
-        let body = self.expression()?;
+        let body = self.indented_function_body()?;
+        let body_end = statement_span(body.last().expect("function body is nonempty")).end;
+        if self.source.slice(result.span) != "Unit"
+            && matches!(
+                body.last(),
+                Some(Statement::Binding { .. } | Statement::Discard { .. })
+            )
+            && self.tokens[self.cursor..]
+                .iter()
+                .all(|token| token.kind.is_trivia())
+        {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-FUNCTION-BODY",
+                span: Span::new(body_end, body_end),
+                message: "expected a final expression producing the function result",
+            });
+            return None;
+        }
         Some(Statement::StaticFunction {
             name: name.span,
             parameters,
             result: result.span,
-            span: Span::new(name.span.start, body.span().end),
+            span: Span::new(name.span.start, body_end),
             body,
         })
+    }
+
+    fn indented_function_body(&mut self) -> Option<Vec<Statement>> {
+        self.cursor += 1;
+        let mut body = vec![self.statement()?];
+        loop {
+            if !self
+                .peek()
+                .is_some_and(|token| token.kind == TokenKind::Newline)
+            {
+                break;
+            }
+            let checkpoint = self.cursor;
+            self.cursor += 1;
+            if !self
+                .peek()
+                .is_some_and(|token| token.kind == TokenKind::Whitespace)
+            {
+                self.cursor = checkpoint;
+                break;
+            }
+            self.cursor += 1;
+            body.push(self.statement()?);
+        }
+        Some(body)
     }
 
     fn static_function_parameters(
@@ -565,6 +606,14 @@ impl Parser<'_> {
     }
 }
 
+fn statement_span(statement: &Statement) -> Span {
+    match statement {
+        Statement::Binding { name, value } => Span::new(name.start, value.span().end),
+        Statement::StaticFunction { span, .. } | Statement::Discard { span, .. } => *span,
+        Statement::Expression(expression) => expression.span(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -729,7 +778,10 @@ mod tests {
         };
         assert_eq!(source.slice(*name), "answer");
         assert_eq!(source.slice(*result), "Int");
-        assert!(matches!(body, Expression::Application { .. }));
+        assert!(matches!(
+            body[0],
+            Statement::Expression(Expression::Application { .. })
+        ));
         assert!(matches!(parsed.statements[1], Statement::Expression(_)));
     }
 
@@ -773,5 +825,21 @@ mod tests {
         .unwrap();
         let parsed = parse(&source, &lex(&source));
         assert_eq!(parsed.diagnostics[0].code, "E-FUNCTION-OPERAND-COUNT");
+    }
+
+    #[test]
+    fn parses_a_multi_statement_function_body() {
+        let source =
+            SourceText::new("answer is fn static () -> Int\n  value is 40 + 2\n  value\nanswer ()")
+                .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty());
+        let Statement::StaticFunction { body, .. } = &parsed.statements[0] else {
+            panic!("expected static function body");
+        };
+        assert_eq!(body.len(), 2);
+        assert!(matches!(body[0], Statement::Binding { .. }));
+        assert!(matches!(body[1], Statement::Expression(_)));
+        assert_eq!(parsed.statements.len(), 2);
     }
 }
