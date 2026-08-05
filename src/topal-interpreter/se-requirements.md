@@ -599,3 +599,10 @@ All interpreter modes shall return a structured arithmetic `Error` for dynamic
 Rational division by zero under `TOPAL-NUM-DYNAMIC-DIVZERO-001`, while retaining
 the static-zero diagnostic. Test traces and reversible debugger history shall
 expose code construction, reporting-overload domain, and source provenance.
+
+## TOPAL-INTP-SUBSET-071 — Negative Rational exponentiation
+
+All interpreter modes shall evaluate a statically nonzero Rational base raised
+to a negative Int exponent exactly under `TOPAL-NUM-RAT-NEG-POW-001`. A known
+zero base shall remain a division-by-zero diagnostic. Test traces and reversible
+debugger history shall distinguish the Rational/Int overload.

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 40);
+    assert_eq!(examples.len(), 41);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1810,12 +1810,18 @@ fn all_modes_execute_exact_rational_natural_exponentiation() {
     assert!(trace.contains("\"detail\":\"root.^(Rational,Nat)\""));
     assert!(trace.contains("\"rule\":\"TOPAL-NUM-RAT-POW-001\""));
     assert!(!trace.contains("conversion.applied"));
+}
 
-    let negative = run(&["--test"], "1.5 ^ -1\n");
-    assert!(!negative.status.success());
-    let trace = String::from_utf8(negative.stderr).unwrap();
-    assert!(trace.contains("exponent.finite-nat"));
-    assert!(!trace.contains("root.^(Rational,Nat)"));
+#[test]
+fn every_mode_executes_exact_negative_rational_exponents() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "1.5 ^ -2\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"Rational ( 4, 9 )\n");
+    }
+    let trace = String::from_utf8(run(&["--test"], "1.5 ^ -2\n").stderr).unwrap();
+    assert!(trace.contains("root.^(Rational,Int)"));
+    assert!(trace.contains("TOPAL-NUM-RAT-NEG-POW-001"));
 }
 
 #[test]

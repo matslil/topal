@@ -2692,17 +2692,39 @@ fn apply_rational_power(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     if right < BigInt::from(0) {
+        if left.numer() == &BigInt::from(0) {
+            trace.record(TraceEvent {
+                event: "obligation.refuted",
+                rule: "TOPAL-NUM-RAT-NEG-POW-001",
+                detail: "base.nonzero",
+            });
+            return Err(diagnostic(
+                source,
+                "E-DIVISION-BY-ZERO",
+                right_span,
+                "a zero Rational base cannot be raised to a negative exponent",
+            ));
+        }
         trace.record(TraceEvent {
-            event: "obligation.refuted",
-            rule: "TOPAL-NUM-RAT-POW-001",
-            detail: "exponent.finite-nat",
+            event: "obligation.proved",
+            rule: "TOPAL-NUM-RAT-NEG-POW-001",
+            detail: "base.nonzero",
         });
-        return Err(diagnostic(
-            source,
-            "E-NO-APPLICABLE-OVERLOAD",
-            right_span,
-            "Rational exponentiation requires a finite Nat exponent",
-        ));
+        trace.record(TraceEvent {
+            event: "operator.selected",
+            rule: "TOPAL-TYPE-CALL-001",
+            detail: "root.^(Rational,Int)",
+        });
+        trace.record(TraceEvent {
+            event: "evaluation.power",
+            rule: "TOPAL-NUM-RAT-NEG-POW-001",
+            detail: "Rational",
+        });
+        let power = pow_rational(left, -right);
+        return Ok(Value::Rational(BigRational::new(
+            power.denom().clone(),
+            power.numer().clone(),
+        )));
     }
     trace.record(TraceEvent {
         event: "obligation.proved",
@@ -3440,13 +3462,14 @@ mod tests {
             "Rational ( 1, 1 )"
         );
         assert_eq!(
-            evaluate("1.5 ^ -1").unwrap_err().code,
-            "E-NO-APPLICABLE-OVERLOAD"
+            evaluate("1.5 ^ -2").unwrap().to_string(),
+            "Rational ( 4, 9 )"
         );
         assert_eq!(
             evaluate("1.5 ^ 2.0").unwrap_err().code,
             "E-NO-APPLICABLE-OVERLOAD"
         );
+        assert_eq!(evaluate("0.0 ^ -1").unwrap_err().code, "E-DIVISION-BY-ZERO");
     }
 
     #[test]

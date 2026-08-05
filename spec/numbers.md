@@ -187,11 +187,18 @@ multiplication: `a ^ 0 = Rational (1, 1)` and
 `a ^ (e + 1) = (a ^ e) * a`. Consequently a zero Rational base raised to zero
 is the Rational multiplicative identity. The canonical result cannot overflow.
 
-A negative `Int` exponent does not satisfy this overload. Reciprocal powers and
-their zero-base failure behavior remain unsupported until the corresponding
-fallible division/`Result` semantics are formalized. No `Int`-to-`Rational`
-conversion applies to the exponent; test traces shall identify
-`root.^(Rational,Nat)` directly.
+A negative `Int` exponent does not satisfy this natural-exponent overload and
+instead follows `TOPAL-NUM-RAT-NEG-POW-001`. No `Int`-to-`Rational` conversion
+applies to the exponent; test traces shall identify `root.^(Rational,Nat)`
+directly for nonnegative exponents.
+
+### TOPAL-NUM-RAT-NEG-POW-001 — Exact negative Rational exponentiation
+
+For finite nonzero `a : Rational` and finite negative `e : Int`, binary `^`
+selects `(Rational, Int) -> Rational` and returns the exact reciprocal of
+`a ^ absolute(e)`. No rounding or overflow occurs. A statically evident zero
+base is rejected as division by zero; a dynamic zero base requires the
+arithmetic Result failure path.
 
 ### TOPAL-NUM-COMPARE-001 — Finite exact total ordering
 
@@ -212,6 +219,6 @@ reject unsupported applications explicitly rather than infer behavior.
 ## Explanatory notes
 
 The initial subset establishes arithmetic paths incrementally before
-formalizing dynamic division, negative Rational exponentiation, or infinite operands. Left
+formalizing remaining dynamic arithmetic failures or infinite operands. Left
 association is fixed by `TOPAL-SYN-GRAMMAR-001`; for example, `2 + 3 * 4`
 produces `20`, while `2 + ( 3 * 4 )` produces `14`.
