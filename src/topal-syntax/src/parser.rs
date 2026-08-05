@@ -76,8 +76,9 @@ pub enum Statement {
         name: Span,
         value: Expression,
     },
-    StaticFunction {
+    Function {
         name: Span,
+        is_static: bool,
         parameters: Vec<FunctionParameter>,
         result: Span,
         body: Vec<Statement>,
@@ -180,7 +181,7 @@ impl Parser<'_> {
                     token.kind == TokenKind::Identifier && self.source.slice(token.span) == "fn"
                 })
             {
-                return self.static_function(first);
+                return self.function(first);
             }
             if let Some(value) = self.expression() {
                 return Some(if first.kind == TokenKind::Discard {
@@ -206,10 +207,16 @@ impl Parser<'_> {
         self.expression().map(Statement::Expression)
     }
 
-    fn static_function(&mut self, name: Token) -> Option<Statement> {
+    fn function(&mut self, name: Token) -> Option<Statement> {
         let function = self.take_nontrivia()?;
-        let static_token = self.take_nontrivia()?;
-        let opening = self.take_nontrivia()?;
+        let next = self.take_nontrivia()?;
+        let is_static =
+            next.kind == TokenKind::Identifier && self.source.slice(next.span) == "static";
+        let opening = if is_static {
+            self.take_nontrivia()?
+        } else {
+            next
+        };
         let (parameters, closing) = self.static_function_parameters(opening)?;
         if parameters.len() > 2 {
             self.diagnostics.push(SyntaxDiagnostic {
@@ -223,8 +230,6 @@ impl Parser<'_> {
         let arrow = self.take_nontrivia()?;
         let result = self.take_nontrivia()?;
         let valid = self.source.slice(function.span) == "fn"
-            && static_token.kind == TokenKind::Identifier
-            && self.source.slice(static_token.span) == "static"
             && opening.kind == TokenKind::LeftParen
             && closing.kind == TokenKind::RightParen
             && arrow.kind == TokenKind::Arrow
@@ -284,8 +289,9 @@ impl Parser<'_> {
             });
             return None;
         }
-        Some(Statement::StaticFunction {
+        Some(Statement::Function {
             name: name.span,
+            is_static,
             parameters,
             result: result.span,
             span: Span::new(name.span.start, body_end),
@@ -627,7 +633,7 @@ impl Parser<'_> {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value } => Span::new(name.start, value.span().end),
-        Statement::StaticFunction { span, .. } | Statement::Discard { span, .. } => *span,
+        Statement::Function { span, .. } | Statement::Discard { span, .. } => *span,
         Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
         Statement::Expression(expression) => expression.span(),
     }
@@ -789,7 +795,7 @@ mod tests {
         let source = SourceText::new("answer is fn static () -> Int\n  40 + 2\nanswer ()").unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty());
-        let Statement::StaticFunction {
+        let Statement::Function {
             name, result, body, ..
         } = &parsed.statements[0]
         else {
@@ -812,7 +818,7 @@ mod tests {
         .unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty());
-        let Statement::StaticFunction { parameters, .. } = &parsed.statements[0] else {
+        let Statement::Function { parameters, .. } = &parsed.statements[0] else {
             panic!("expected one static parameter");
         };
         assert_eq!(parameters.len(), 1);
@@ -828,7 +834,7 @@ mod tests {
         .unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty());
-        let Statement::StaticFunction { parameters, .. } = &parsed.statements[0] else {
+        let Statement::Function { parameters, .. } = &parsed.statements[0] else {
             panic!("expected static function parameters");
         };
         assert_eq!(parameters.len(), 2);
@@ -853,7 +859,7 @@ mod tests {
                 .unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty());
-        let Statement::StaticFunction { body, .. } = &parsed.statements[0] else {
+        let Statement::Function { body, .. } = &parsed.statements[0] else {
             panic!("expected static function body");
         };
         assert_eq!(body.len(), 2);
@@ -868,9 +874,26 @@ mod tests {
             SourceText::new("answer is fn static () -> Int\n  return 42\n  0\nanswer ()").unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty());
-        let Statement::StaticFunction { body, .. } = &parsed.statements[0] else {
+        let Statement::Function { body, .. } = &parsed.statements[0] else {
             panic!("expected static function body");
         };
         assert!(matches!(body[0], Statement::Return { .. }));
+    }
+
+    #[test]
+    fn distinguishes_ordinary_and_static_function_headers() {
+        let ordinary_source = SourceText::new("ordinary is fn () -> Int\n  42").unwrap();
+        let ordinary = parse(&ordinary_source, &lex(&ordinary_source));
+        let Statement::Function { is_static, .. } = ordinary.statements[0] else {
+            panic!("expected ordinary function");
+        };
+        assert!(!is_static);
+
+        let static_source = SourceText::new("compile is fn static () -> Int\n  42").unwrap();
+        let static_function = parse(&static_source, &lex(&static_source));
+        let Statement::Function { is_static, .. } = static_function.statements[0] else {
+            panic!("expected static function");
+        };
+        assert!(is_static);
     }
 }

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 10);
+    assert_eq!(examples.len(), 11);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -837,6 +837,28 @@ fn return_outside_a_function_is_rejected() {
             .unwrap()
             .contains("E-RETURN-OUTSIDE-FUNCTION")
     );
+}
+
+#[test]
+fn every_mode_executes_ordinary_runtime_functions() {
+    let source = "subtract is fn (left : Int, right : Int) -> Int\n  difference is left - right\n  return difference\n50 subtract 8\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n42\n");
+        } else {
+            assert_eq!(output.stdout, b"42\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-ORDINARY-001"));
 }
 
 #[test]

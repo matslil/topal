@@ -72,3 +72,16 @@ validation used for an implicit final-expression result.
 `return` outside a function body shall be rejected. Test traces and debugger
 history shall expose the explicit-return decision before the common function
 return event and shall contain no decisions from skipped statements.
+
+### TOPAL-FUNCTION-ORDINARY-001 — Ordinary runtime function execution
+
+A declaration `name is fn ( parameters ) -> R` shall introduce an ordinary
+runtime function without the static-evaluation guarantee. Nullary, unary, and
+positional-product parameters, lexical capture, block execution, explicit
+return, argument validation, and result validation shall otherwise follow the
+corresponding executable function rules above.
+
+Runtime application may select either an ordinary or static function; using a
+static function in a runtime context forgets only its static guarantee. Test
+traces shall distinguish ordinary declarations, argument bindings, entry, and
+return with this rule identity.

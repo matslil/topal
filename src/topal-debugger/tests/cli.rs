@@ -206,6 +206,28 @@ fn records_reversible_explicit_function_return() {
 }
 
 #[test]
+fn records_reversible_ordinary_function_execution() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}ordinary-function.debug"),
+            &format!("{root}ordinary-function.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("function.entered [TOPAL-FUNCTION-ORDINARY-001] subtract"));
+    assert!(stdout.contains("function.returned [TOPAL-FUNCTION-ORDINARY-001] subtract"));
+    assert!(stdout.contains("\n42\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

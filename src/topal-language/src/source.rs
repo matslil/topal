@@ -119,12 +119,13 @@ impl Diagnostic {
 #[derive(Default)]
 pub struct Session {
     bindings: BTreeMap<String, Value>,
-    functions: BTreeMap<String, StaticFunction>,
+    functions: BTreeMap<String, UserFunction>,
 }
 
 #[derive(Clone)]
-struct StaticFunction {
+struct UserFunction {
     source: SourceText,
+    is_static: bool,
     parameters: Vec<(String, String)>,
     result: String,
     body: Vec<Statement>,
@@ -139,8 +140,9 @@ pub struct Execution {
 }
 
 #[derive(Clone, Copy)]
-struct StaticFunctionDeclaration<'a> {
+struct FunctionDeclaration<'a> {
     name: Span,
+    is_static: bool,
     parameters: &'a [FunctionParameter],
     result: Span,
     body: &'a [Statement],
@@ -365,11 +367,7 @@ impl Session {
                     && let Some(function) = self.functions.get(source.slice(*name_span)).cloned()
                 {
                     let name = source.slice(*name_span);
-                    let rule = match function.parameters.len() {
-                        0 => "TOPAL-FUNCTION-STATIC-NULLARY-001",
-                        1 => "TOPAL-FUNCTION-STATIC-UNARY-001",
-                        _ => "TOPAL-FUNCTION-STATIC-BINARY-001",
-                    };
+                    let rule = function_rule(function.is_static, function.parameters.len());
                     let mut function_scope = Self {
                         bindings: function.bindings,
                         functions: BTreeMap::new(),
@@ -881,14 +879,15 @@ impl Session {
 }
 
 impl Execution {
-    fn declare_static_function(
+    fn declare_function(
         &self,
         session: &mut Session,
         trace: &mut impl TraceSink,
-        declaration: StaticFunctionDeclaration<'_>,
+        declaration: FunctionDeclaration<'_>,
     ) -> Result<(Value, Span), Diagnostic> {
-        let StaticFunctionDeclaration {
+        let FunctionDeclaration {
             name,
+            is_static,
             parameters,
             result,
             body,
@@ -944,15 +943,12 @@ impl Execution {
                 ))
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let rule = match parameters.len() {
-            0 => "TOPAL-FUNCTION-STATIC-NULLARY-001",
-            1 => "TOPAL-FUNCTION-STATIC-UNARY-001",
-            _ => "TOPAL-FUNCTION-STATIC-BINARY-001",
-        };
+        let rule = function_rule(is_static, parameters.len());
         session.functions.insert(
             name_text.to_owned(),
-            StaticFunction {
+            UserFunction {
                 source: self.source.clone(),
+                is_static,
                 parameters,
                 result: result_text.to_owned(),
                 body: body.to_vec(),
@@ -1000,17 +996,19 @@ impl Execution {
                 });
                 (Value::Unit, cover(*name, value.span()))
             }
-            Statement::StaticFunction {
+            Statement::Function {
                 name,
+                is_static,
                 parameters,
                 result,
                 body,
                 span,
-            } => self.declare_static_function(
+            } => self.declare_function(
                 session,
                 trace,
-                StaticFunctionDeclaration {
+                FunctionDeclaration {
                     name: *name,
+                    is_static: *is_static,
                     parameters,
                     result: *result,
                     body,
@@ -1083,7 +1081,7 @@ const fn cover(first: Span, second: Span) -> Span {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value } => cover(*name, value.span()),
-        Statement::StaticFunction { span, .. } => *span,
+        Statement::Function { span, .. } => *span,
         Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
         Statement::Expression(expression) => expression.span(),
@@ -1099,6 +1097,17 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
             | (Value::String(_), "String")
             | (Value::Unit, "Unit")
     )
+}
+
+const fn function_rule(is_static: bool, parameter_count: usize) -> &'static str {
+    if !is_static {
+        return "TOPAL-FUNCTION-ORDINARY-001";
+    }
+    match parameter_count {
+        0 => "TOPAL-FUNCTION-STATIC-NULLARY-001",
+        1 => "TOPAL-FUNCTION-STATIC-UNARY-001",
+        _ => "TOPAL-FUNCTION-STATIC-BINARY-001",
+    }
 }
 
 fn supported_value_classifier(classifier: &str) -> bool {
@@ -2654,4 +2663,23 @@ fn explicit_return_skips_later_function_statements() {
         .evaluate("return 42\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn ordinary_runtime_function_uses_ordinary_trace_rule() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "subtract is fn (left : Int, right : Int) -> Int\n  left - right\n50 subtract 8\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function."))
+            .all(|event| event.contains("TOPAL-FUNCTION-ORDINARY-001")
+                || event.contains("TOPAL-TYPE-CALL-001"))
+    );
 }
