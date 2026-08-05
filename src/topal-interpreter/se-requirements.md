@@ -642,3 +642,11 @@ All interpreter modes shall match qualified arithmetic code patterns within
 Result decisions under `TOPAL-DECISION-ERROR-CODE-001`, without publishing code
 identifiers into global scope or consulting `Error.domain`. Test traces and
 reversible debugger history shall expose code-pattern selection.
+
+## TOPAL-INTP-SUBSET-077 — Classified-binding Result projection
+
+All interpreter modes shall project a Result when a binding explicitly
+requires its successful classifier under `TOPAL-TYPE-RESULT-PROJECT-001`.
+Success shall create the binding; failure shall return the complete Error from
+the enclosing compatible fallible function without executing later statements.
+Test traces and reversible debugger history shall distinguish both paths.

@@ -113,6 +113,7 @@ pub struct DecisionRule {
 pub enum Statement {
     Binding {
         name: Span,
+        classifier: Option<Span>,
         value: Expression,
     },
     Function {
@@ -231,6 +232,7 @@ impl Parser<'_> {
                 } else {
                     Statement::Binding {
                         name: first.span,
+                        classifier: None,
                         value,
                     }
                 });
@@ -241,6 +243,31 @@ impl Parser<'_> {
                 message: "expected a binding initializer",
             });
             return None;
+        }
+        if first.kind == TokenKind::Identifier
+            && self
+                .peek_nontrivia()
+                .is_some_and(|token| token.kind == TokenKind::Colon)
+        {
+            self.take_nontrivia();
+            let classifier = self.take_nontrivia()?;
+            let separator = self.take_nontrivia()?;
+            if classifier.kind != TokenKind::Identifier
+                || separator.kind != TokenKind::Identifier
+                || self.source.slice(separator.span) != "is"
+            {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-EXPECTED-CLASSIFIED-BINDING",
+                    span: Span::new(first.span.start, separator.span.end),
+                    message: "expected `name : Classifier is expression`",
+                });
+                return None;
+            }
+            return self.expression().map(|value| Statement::Binding {
+                name: first.span,
+                classifier: Some(classifier.span),
+                value,
+            });
         }
         self.cursor = checkpoint;
         self.expression().map(Statement::Expression)
@@ -938,7 +965,7 @@ impl Parser<'_> {
 
 fn statement_span(statement: &Statement) -> Span {
     match statement {
-        Statement::Binding { name, value } => Span::new(name.start, value.span().end),
+        Statement::Binding { name, value, .. } => Span::new(name.start, value.span().end),
         Statement::Function { span, .. } | Statement::Discard { span, .. } => *span,
         Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
         Statement::Expression(expression) => expression.span(),
@@ -1409,5 +1436,20 @@ mod tests {
         assert_eq!(source.slice(namespace), "lang");
         assert_eq!(source.slice(vocabulary), "arithmetic");
         assert_eq!(source.slice(code), "division-by-zero");
+    }
+
+    #[test]
+    fn parses_classified_binding() {
+        let source = SourceText::new("value : Rational is operation input").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Binding {
+            name, classifier, ..
+        } = parsed.statements[0]
+        else {
+            panic!("expected binding");
+        };
+        assert_eq!(source.slice(name), "value");
+        assert_eq!(source.slice(classifier.unwrap()), "Rational");
     }
 }

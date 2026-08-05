@@ -190,6 +190,15 @@ returns the compiler-derived `ErrorDomain` identity stored independently in the
 same Error. Selection shall not reconstruct or otherwise alter the Error, and
 tools shall expose which field was selected.
 
+### TOPAL-TYPE-RESULT-PROJECT-001 — Contextual success projection
+
+When an expression classified as `Result ( T, Codes )` initializes a binding
+whose explicit classifier requires `T`, success binds the value and failure
+returns the complete Error immediately from the enclosing function. That
+function shall itself permit the propagated code vocabulary. An unclassified
+binding retains the complete Result and performs no projection; an infallible
+or top-level context cannot propagate the Error.
+
 ### TOPAL-TYPE-TOTAL-001 — Totality and failure
 
 Ordinary functions shall prove that every input reaches a value in finite
