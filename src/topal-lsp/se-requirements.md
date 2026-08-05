@@ -44,3 +44,11 @@ is required, the increment shall still add explicit LSP conformance coverage
 showing that shared diagnostics, semantic tokens, and other applicable editor
 features recognize the new syntax and semantics. The LSP suite shall open every
 runnable example and require it to be free of shared-frontend diagnostics.
+
+## TOPAL-LSP-COMPLETION-001 — Implemented root-operation completion
+
+The language server shall advertise and answer standard full-document
+completion requests with a deterministic list of named root operations
+implemented by the current language subset. Each item shall identify the
+operation as a function and describe its implemented call shape. Completion
+shall not advertise planned operations before their interpreter semantics land.

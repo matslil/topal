@@ -48,6 +48,13 @@ fn stdio_transcript_initializes_publishes_and_shuts_down() {
                 "uri": "file:///test.t", "languageId": "topal", "version": 1, "text": "?"
             }}
         }),
+        json!({
+            "jsonrpc": "2.0", "id": 3, "method": "textDocument/completion",
+            "params": {
+                "textDocument": { "uri": "file:///test.t" },
+                "position": { "line": 0, "character": 1 }
+            }
+        }),
         json!({ "jsonrpc": "2.0", "id": 2, "method": "shutdown", "params": null }),
         json!({ "jsonrpc": "2.0", "method": "exit", "params": null }),
     ] {
@@ -58,12 +65,14 @@ fn stdio_transcript_initializes_publishes_and_shuts_down() {
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
     let messages = responses(&output.stdout);
-    assert_eq!(messages.len(), 3);
+    assert_eq!(messages.len(), 4);
     assert_eq!(messages[0]["id"], 1);
     assert_eq!(messages[1]["method"], "textDocument/publishDiagnostics");
     assert_eq!(
         messages[1]["params"]["diagnostics"][0]["code"],
         "E-UNKNOWN-TOKEN"
     );
-    assert_eq!(messages[2]["id"], 2);
+    assert_eq!(messages[2]["id"], 3);
+    assert_eq!(messages[2]["result"]["items"][2]["label"], "concat");
+    assert_eq!(messages[3]["id"], 2);
 }
