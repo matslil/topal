@@ -364,3 +364,11 @@ All interpreter modes shall execute `return expression` according to
 returned value, and skip later body statements. Test traces and reversible
 debugger history shall expose the explicit-return decision and omit skipped
 decisions.
+
+## TOPAL-INTP-SUBSET-040 — Ordinary runtime functions
+
+All interpreter modes shall declare and call ordinary `fn` functions according
+to `TOPAL-FUNCTION-ORDINARY-001`, supporting the same implemented parameter and
+body subsets as static functions while omitting the static-evaluation
+guarantee. Test traces and reversible debugger history shall distinguish
+ordinary function decisions from static ones.
