@@ -1080,7 +1080,9 @@ impl Execution {
             ));
         }
         let result_text = self.source.slice(result);
-        if !supported_value_classifier(result_text) && !session.enum_types.contains_key(result_text)
+        if !supported_value_classifier(result_text)
+            && !session.enum_types.contains_key(result_text)
+            && result_success_classifier(result_text).is_none()
         {
             return Err(diagnostic(
                 &self.source,
@@ -1162,6 +1164,13 @@ impl Execution {
             rule,
             detail: name_text,
         });
+        if result_success_classifier(result_text).is_some() {
+            trace.record(TraceEvent {
+                event: "function.result.contract",
+                rule: "TOPAL-TYPE-RESULT-001",
+                detail: result_text,
+            });
+        }
         if let Some(termination_rule) = direct_termination_rule {
             trace.record(TraceEvent {
                 event: "function.recursion.proven",
@@ -1422,6 +1431,9 @@ fn declare_enum(
 }
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
+    if let Some(success) = result_success_classifier(classifier) {
+        return value_has_classifier(value, success);
+    }
     match (value, classifier) {
         (Value::Boolean(_), "Boolean")
         | (Value::Int(_), "Int")
@@ -1432,6 +1444,18 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         (Value::Enum { type_name, .. }, classifier) => type_name == classifier,
         _ => false,
     }
+}
+
+fn result_success_classifier(classifier: &str) -> Option<&str> {
+    let contents = classifier
+        .trim()
+        .strip_prefix("Result")?
+        .trim()
+        .strip_prefix('(')?
+        .strip_suffix(')')?;
+    let (success, errors) = contents.split_once(',')?;
+    let errors = errors.split_whitespace().collect::<Vec<_>>().join(" ");
+    (errors == "lang arithmetic ArithmeticErrorCode").then(|| success.trim())
 }
 
 const fn function_rule(is_static: bool, parameter_count: usize) -> &'static str {

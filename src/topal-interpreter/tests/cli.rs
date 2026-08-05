@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 38);
+    assert_eq!(examples.len(), 39);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1068,6 +1068,23 @@ fn every_mode_resolves_arithmetic_error_codes_qualified() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-NUM-ARITHMETIC-ERROR-001"));
     assert!(!trace.contains("Error.domain"));
+}
+
+#[test]
+fn every_mode_executes_successful_result_contracts() {
+    let source = "identity is fn (value : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  value\nidentity 1.5\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"Rational ( 3, 2 )\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("function.result.contract"));
+    assert!(trace.contains("TOPAL-TYPE-RESULT-001"));
 }
 
 #[test]

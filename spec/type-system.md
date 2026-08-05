@@ -168,6 +168,15 @@ constraints but cannot escape a scope unless the result type repackages it.
 Finite dynamic alternatives preserve a sum of exact implementation evidence;
 erasure retains only common guarantees and the union of possible effects.
 
+### TOPAL-TYPE-RESULT-001 — Explicit successful Result contract
+
+`Result ( Value, Codes )` explicitly classifies either a successful `Value` or
+a structured `Error` whose code belongs to `Codes`. In the initial executable
+slice, `Codes` may be `lang arithmetic ArithmeticErrorCode`; an ordinary value
+classified by `Value` satisfies the successful path without an additional
+runtime wrapper. Declaring `Result` shall not construct an `Error` or choose its
+compiler-derived domain.
+
 ### TOPAL-TYPE-TOTAL-001 — Totality and failure
 
 Ordinary functions shall prove that every input reaches a value in finite
