@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 27);
+    assert_eq!(examples.len(), 28);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1133,6 +1133,24 @@ fn every_mode_executes_multiple_proven_recursive_calls() {
             assert_eq!(output.stdout, b"()\n5\n");
         } else {
             assert_eq!(output.stdout, b"5\n");
+        }
+    }
+}
+
+#[test]
+fn every_mode_executes_multiple_calls_on_a_proven_mutual_edge() {
+    let source = "first-count is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise (second-count (value - 1)) + (second-count (value - 2))\nsecond-count is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise first-count (value - 1)\nfirst-count 3\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n()\n3\n");
+        } else {
+            assert_eq!(output.stdout, b"3\n");
         }
     }
 }
