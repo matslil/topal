@@ -58,3 +58,9 @@ under the language context's pinned Unicode data. The result shall be a plain
 `String` in this implemented subset. The operation is explicit: constructing,
 comparing, concatenating, counting, or encoding a plain String shall not invoke
 it implicitly.
+### TOPAL-STRING-EMPTY-PREDICATE-001 — String emptiness
+
+For a plain `String` value `text`, `empty? text` shall produce `true` exactly
+when its preserved Unicode scalar sequence is empty and `false` otherwise. It
+shall agree with both `character-count text = 0` and `entry-count text = 0`
+without normalizing, encoding, or otherwise transforming the value.
