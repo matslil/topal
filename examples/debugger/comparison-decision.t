@@ -4,4 +4,4 @@ minimum is fn (left : Int, right : Int) -> Int
   left
     < right then left
     otherwise right
-(minimum (42, 50), minimum (60, 50))
+(42 minimum 50, 60 minimum 50)

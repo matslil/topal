@@ -3052,7 +3052,7 @@ fn comparison_decision_uses_subject_as_left_operand() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            "minimum is fn (left : Int, right : Int) -> Int\n  left\n    < right then left\n    otherwise missing\nminimum (42, 50)\n",
+            "minimum is fn (left : Int, right : Int) -> Int\n  left\n    < right then left\n    otherwise missing\n42 minimum 50\n",
             &mut trace,
         )
         .unwrap();
