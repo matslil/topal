@@ -342,6 +342,33 @@ fn records_reversible_boolean_decision_selection() {
 }
 
 #[test]
+fn records_reversible_exhaustive_boolean_decision_selection() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}exhaustive-boolean-decision.debug"),
+            &format!("{root}exhaustive-boolean-decision.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let truth = stdout
+        .find("decision.rule.selected [TOPAL-DECISION-BOOLEAN-001] rule=0")
+        .unwrap();
+    let falsehood = stdout
+        .find("decision.rule.selected [TOPAL-DECISION-BOOLEAN-001] rule=1")
+        .unwrap();
+    assert!(truth < falsehood);
+    assert!(stdout.contains("\n(\"enabled\", \"disabled\")\n"));
+}
+
+#[test]
 fn records_reversible_comparison_decision_selection() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

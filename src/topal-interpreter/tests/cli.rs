@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 20);
+    assert_eq!(examples.len(), 21);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -981,6 +981,24 @@ fn every_mode_executes_complete_boolean_decisions() {
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("\"event\":\"decision.rule.considered\""));
     assert!(trace.contains("\"event\":\"decision.rule.selected\""));
+}
+
+#[test]
+fn every_mode_executes_exhaustive_boolean_decisions_without_otherwise() {
+    let source = "describe-flag is fn (flag : Boolean) -> String\n  flag\n    true then \"enabled\"\n    false then \"disabled\"\n(describe-flag true, describe-flag false)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n(\"enabled\", \"disabled\")\n");
+        } else {
+            assert_eq!(output.stdout, b"(\"enabled\", \"disabled\")\n");
+        }
+    }
 }
 
 #[test]

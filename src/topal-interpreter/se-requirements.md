@@ -441,3 +441,10 @@ All interpreter modes shall declare and call functions inside function bodies
 according to `TOPAL-FUNCTION-NESTED-001`, capturing invocation-local bindings
 without leaking the nested name. Test traces and reversible debugger history
 shall expose nested declaration and call decisions within the outer frame.
+
+## TOPAL-INTP-SUBSET-050 — Exhaustive Boolean decision tables
+
+All interpreter modes shall execute a Boolean decision table containing both
+literal matchers without requiring `otherwise`, according to
+`TOPAL-DECISION-BOOLEAN-001`. Test traces and reversible debugger history shall
+identify which exhaustive literal rule was considered and selected.
