@@ -304,8 +304,10 @@ impl Session {
             )),
             Expression::Application { items, span } => {
                 if items.len() == 2
-                    && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "character-count")
+                    && let Expression::Identifier(name) = &items[0]
+                    && matches!(source.slice(*name), "character-count" | "entry-count")
                 {
+                    let operation = source.slice(*name);
                     let operand_span = items[1].span();
                     let operand = self.evaluate_expression(source, &items[1], trace)?;
                     let Value::String(text) = operand else {
@@ -313,19 +315,28 @@ impl Session {
                             source,
                             "E-NO-APPLICABLE-OVERLOAD",
                             operand_span,
-                            "character-count requires a String operand",
+                            format!("{operation} requires a String operand"),
                         ));
                     };
+                    let selection = format!("root.{operation}(String)");
                     trace.record(TraceEvent {
                         event: "operator.selected",
                         rule: "TOPAL-TYPE-CALL-001",
-                        detail: "root.character-count(String)",
+                        detail: &selection,
                     });
                     let count = character_count(&text);
                     let detail = format!("characters={count}");
                     trace.record(TraceEvent {
-                        event: "string.character-count",
-                        rule: "TOPAL-STRING-CHARACTER-COUNT-001",
+                        event: if operation == "entry-count" {
+                            "string.entry-count"
+                        } else {
+                            "string.character-count"
+                        },
+                        rule: if operation == "entry-count" {
+                            "TOPAL-STRING-ENTRY-COUNT-001"
+                        } else {
+                            "TOPAL-STRING-CHARACTER-COUNT-001"
+                        },
                         detail: &detail,
                     });
                     let value = Value::Int(BigInt::from(count));
@@ -1677,6 +1688,20 @@ mod tests {
             .evaluate("character-count 1\n", &mut std::io::sink())
             .unwrap_err();
         assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn string_entry_count_agrees_with_character_count() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("entry-count \"a\u{301}👩‍🔬🇸🇪\"\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "3");
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("TOPAL-STRING-ENTRY-COUNT-001"))
+        );
     }
 
     #[test]

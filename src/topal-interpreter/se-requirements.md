@@ -282,3 +282,11 @@ same labeled field sequence when every corresponding field supports implemented
 equality, according to `TOPAL-TYPE-EQUALITY-001`. Field comparison shall retain
 existing exact numeric conversions. Different record shapes or unsupported
 fields shall report no applicable equality overload.
+
+## TOPAL-INTP-SUBSET-030 — String sequence entry count
+
+All interpreter modes shall evaluate `entry-count text` for a plain `String`
+according to `TOPAL-STRING-ENTRY-COUNT-001`, producing the same finite
+nonnegative `Int` as `character-count text`. Test mode shall identify selection
+of the generic sequence operation separately from its character segmentation
+result.
