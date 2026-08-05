@@ -82,6 +82,7 @@ pub enum DecisionMatcher {
         value: bool,
         span: Span,
     },
+    Identifier(Span),
     Comparison {
         kind: CallableKind,
         operand: Expression,
@@ -392,7 +393,10 @@ impl Parser<'_> {
                 rules.iter().any(|rule| {
                     matches!(&rule.matcher, DecisionMatcher::Boolean { value: found, .. } if *found == value)
                 })
-            });
+            })
+            || rules
+                .iter()
+                .all(|rule| matches!(rule.matcher, DecisionMatcher::Identifier(_)));
         if !complete {
             let end = rules
                 .last()
@@ -439,6 +443,23 @@ impl Parser<'_> {
                 DecisionMatcher::Otherwise(matcher_token.span),
                 self.expression()?,
             ),
+            TokenKind::Identifier => {
+                let separator = self.take_nontrivia()?;
+                if separator.kind != TokenKind::Identifier
+                    || self.source.slice(separator.span) != "then"
+                {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-EXPECTED-THEN",
+                        span: separator.span,
+                        message: "expected `then` between the matcher and delayed action",
+                    });
+                    return None;
+                }
+                (
+                    DecisionMatcher::Identifier(matcher_token.span),
+                    self.expression()?,
+                )
+            }
             token_kind if comparison_callable(token_kind).is_some() => {
                 let kind = comparison_callable(token_kind).expect("checked comparison token");
                 let operand = self.expression_before_then(matcher_token.span)?;
@@ -816,6 +837,7 @@ fn statement_span(statement: &Statement) -> Span {
 const fn matcher_span(matcher: &DecisionMatcher) -> Span {
     match matcher {
         DecisionMatcher::Boolean { span, .. }
+        | DecisionMatcher::Identifier(span)
         | DecisionMatcher::Comparison { span, .. }
         | DecisionMatcher::Otherwise(span) => *span,
     }
@@ -1136,6 +1158,24 @@ mod tests {
             rules[1].matcher,
             DecisionMatcher::Boolean { value: false, .. }
         ));
+    }
+
+    #[test]
+    fn preserves_named_enum_decision_matchers() {
+        let source = SourceText::new(
+            "name is fn (value : Color) -> String\n  value\n    Red then \"red\"\n    Green then \"green\"",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty());
+        let Statement::Function { body, .. } = &parsed.statements[0] else {
+            panic!("expected function");
+        };
+        let Statement::Expression(Expression::DecisionTable { rules, .. }) = &body[0] else {
+            panic!("expected function decision table");
+        };
+        assert!(matches!(rules[0].matcher, DecisionMatcher::Identifier(_)));
+        assert!(matches!(rules[1].matcher, DecisionMatcher::Identifier(_)));
     }
 
     #[test]

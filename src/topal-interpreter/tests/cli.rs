@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 36);
+    assert_eq!(examples.len(), 37);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1026,6 +1026,31 @@ fn every_mode_uses_enum_function_classifiers() {
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("identity (Color)"));
+}
+
+#[test]
+fn every_mode_executes_exhaustive_enum_decisions() {
+    let source = "Color is Enum (Red, Green)\nname is fn (value : Color) -> String\n  value\n    Red then \"red\"\n    Green then \"green\"\n(name Red, name Green)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"(\"red\", \"green\")\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-DECISION-ENUM-001"));
+
+    let incomplete = source.replace("    Green then \"green\"\n", "");
+    let output = run(&[], &incomplete);
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-INCOMPLETE-DECISION")
+    );
 }
 
 #[test]

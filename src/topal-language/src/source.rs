@@ -129,7 +129,7 @@ pub struct Session {
     functions: BTreeMap<String, Vec<UserFunction>>,
     declared_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
-    enum_types: BTreeSet<String>,
+    enum_types: BTreeMap<String, BTreeSet<String>>,
     call_stack: Vec<ActiveCall>,
     static_context: bool,
 }
@@ -266,7 +266,7 @@ impl Session {
             functions: BTreeMap::new(),
             declared_names: bindings.keys().cloned().collect(),
             local_function_names: BTreeSet::new(),
-            enum_types: BTreeSet::new(),
+            enum_types: BTreeMap::new(),
             call_stack: Vec::new(),
             static_context: false,
         };
@@ -348,7 +348,38 @@ impl Session {
             } => {
                 let subject_span = subject.span();
                 let subject = self.evaluate_expression(source, subject, trace)?;
-                let decision_rule = if rules
+                let enum_matchers = rules
+                    .iter()
+                    .filter_map(|rule| match rule.matcher {
+                        DecisionMatcher::Identifier(span) => Some(source.slice(span).to_owned()),
+                        _ => None,
+                    })
+                    .collect::<BTreeSet<_>>();
+                if !enum_matchers.is_empty()
+                    && !rules
+                        .iter()
+                        .any(|rule| matches!(rule.matcher, DecisionMatcher::Otherwise(_)))
+                {
+                    let Value::Enum { type_name, .. } = &subject else {
+                        return Err(diagnostic(
+                            source,
+                            "E-DECISION-SUBJECT-TYPE",
+                            subject_span,
+                            "enum alternative matchers require an Enum subject",
+                        ));
+                    };
+                    if self.enum_types.get(type_name) != Some(&enum_matchers) {
+                        return Err(diagnostic(
+                            source,
+                            "E-INCOMPLETE-DECISION",
+                            *span,
+                            format!("decision does not cover every `{type_name}` alternative"),
+                        ));
+                    }
+                }
+                let decision_rule = if !enum_matchers.is_empty() {
+                    "TOPAL-DECISION-ENUM-001"
+                } else if rules
                     .iter()
                     .any(|rule| matches!(&rule.matcher, DecisionMatcher::Comparison { .. }))
                 {
@@ -369,6 +400,18 @@ impl Session {
                                 ));
                             };
                             *value == *subject
+                        }
+                        DecisionMatcher::Identifier(matcher) => {
+                            let name = source.slice(*matcher);
+                            let Some(candidate) = self.bindings.get(name).cloned() else {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-UNBOUND-NAME",
+                                    *matcher,
+                                    format!("enum matcher `{name}` is not declared"),
+                                ));
+                            };
+                            values_equal(subject.clone(), candidate, trace).unwrap_or(false)
                         }
                         DecisionMatcher::Comparison {
                             kind,
@@ -1034,7 +1077,8 @@ impl Execution {
             ));
         }
         let result_text = self.source.slice(result);
-        if !supported_value_classifier(result_text) && !session.enum_types.contains(result_text) {
+        if !supported_value_classifier(result_text) && !session.enum_types.contains_key(result_text)
+        {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-RESULT-CLASSIFIER",
@@ -1048,7 +1092,7 @@ impl Execution {
             .map(|parameter| {
                 let classifier = self.source.slice(parameter.classifier);
                 if !supported_value_classifier(classifier)
-                    && !session.enum_types.contains(classifier)
+                    && !session.enum_types.contains_key(classifier)
                 {
                     return Err(diagnostic(
                         &self.source,
@@ -1315,7 +1359,13 @@ fn declare_enum(
         }
     }
     session.declared_names.insert(name_text.to_owned());
-    session.enum_types.insert(name_text.to_owned());
+    session.enum_types.insert(
+        name_text.to_owned(),
+        alternatives
+            .iter()
+            .map(|(alternative, _)| alternative.clone())
+            .collect(),
+    );
     for (alternative, _) in alternatives {
         session.bindings.insert(
             alternative.clone(),
@@ -3752,6 +3802,24 @@ fn validates_enum_function_parameters_and_results() {
         "(Red, Green)"
     );
     assert!(trace.iter().any(|event| event.contains("identity (Color)")));
+}
+
+#[test]
+fn executes_only_complete_enum_decisions() {
+    let source = "Color is Enum (Red, Green)\nname is fn (value : Color) -> String\n  value\n    Red then \"red\"\n    Green then \"green\"\nname Green\n";
+    let mut trace = Vec::new();
+    assert_eq!(
+        Session::new()
+            .evaluate(source, &mut trace)
+            .unwrap()
+            .to_string(),
+        "\"green\""
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-DECISION-ENUM-001"))
+    );
 }
 
 #[test]
