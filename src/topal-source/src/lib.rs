@@ -30,6 +30,14 @@ pub fn normalize_nfc(text: &str) -> String {
     text.nfc().collect()
 }
 
+/// Returns the canonical NFD transformation under the language context.
+#[must_use]
+pub fn normalize_nfd(text: &str) -> String {
+    use unicode_normalization::UnicodeNormalization as _;
+
+    text.nfd().collect()
+}
+
 #[must_use]
 pub fn is_identifier_start(character: char) -> bool {
     unicode_ident::is_xid_start(character)
@@ -177,6 +185,12 @@ mod tests {
     fn normalizes_preserved_text_explicitly() {
         assert_eq!(normalize_nfc("e\u{301}"), "é");
         assert_eq!(normalize_nfc("é"), "é");
+    }
+
+    #[test]
+    fn decomposes_preserved_text_explicitly() {
+        assert_eq!(normalize_nfd("é"), "e\u{301}");
+        assert_eq!(normalize_nfd("e\u{301}"), "e\u{301}");
     }
 
     #[test]
