@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 34);
+    assert_eq!(examples.len(), 35);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -985,6 +985,31 @@ fn test_mode_traces_proven_mutual_increasing_nat_recursion() {
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001"));
     assert!(trace.contains("function.recursion.cycle.proven"));
+}
+
+#[test]
+fn every_mode_declares_and_compares_enum_values() {
+    let source = "Color is Enum (Red, Green, Blue)\n(Red, Green, Red = Red, Red = Green)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"(Red, Green, true, false)\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("enum.declared"));
+    assert!(trace.contains("TOPAL-TYPE-ENUM-001"));
+
+    let duplicate = run(&[], "Color is Enum (Red, Red)\n");
+    assert!(!duplicate.status.success());
+    assert!(
+        String::from_utf8(duplicate.stderr)
+            .unwrap()
+            .contains("E-DUPLICATE-ENUM-ALTERNATIVE")
+    );
 }
 
 #[test]

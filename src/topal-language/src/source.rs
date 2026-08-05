@@ -19,6 +19,10 @@ pub enum Value {
     String(String),
     Tuple(Vec<Self>),
     Record(Vec<(String, Self)>),
+    Enum {
+        type_name: String,
+        alternative: String,
+    },
     Unit,
 }
 
@@ -59,6 +63,7 @@ impl fmt::Display for Value {
                 }
                 formatter.write_str(")")
             }
+            Self::Enum { alternative, .. } => formatter.write_str(alternative),
             Self::Unit => formatter.write_str("()"),
         }
     }
@@ -1144,16 +1149,20 @@ impl Execution {
                         "name is already bound in this scope",
                     ));
                 }
-                let evaluated = session.evaluate_expression(&self.source, value, trace)?;
-                session.bindings.insert(name_text.to_owned(), evaluated);
-                session.functions.remove(name_text);
-                session.declared_names.insert(name_text.to_owned());
-                trace.record(TraceEvent {
-                    event: "binding.created",
-                    rule: "TOPAL-SYN-BIND-001",
-                    detail: name_text,
-                });
-                (Value::Unit, cover(*name, value.span()))
+                if let Some(declared) = declare_enum(&self.source, *name, value, session, trace)? {
+                    declared
+                } else {
+                    let evaluated = session.evaluate_expression(&self.source, value, trace)?;
+                    session.bindings.insert(name_text.to_owned(), evaluated);
+                    session.functions.remove(name_text);
+                    session.declared_names.insert(name_text.to_owned());
+                    trace.record(TraceEvent {
+                        event: "binding.created",
+                        rule: "TOPAL-SYN-BIND-001",
+                        detail: name_text,
+                    });
+                    (Value::Unit, cover(*name, value.span()))
+                }
             }
             Statement::Function {
                 name,
@@ -1245,6 +1254,78 @@ fn statement_span(statement: &Statement) -> Span {
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
         Statement::Expression(expression) => expression.span(),
     }
+}
+
+fn enum_alternatives(source: &SourceText, expression: &Expression) -> Option<Vec<(String, Span)>> {
+    let Expression::Application { items, .. } = expression else {
+        return None;
+    };
+    let [
+        Expression::Identifier(constructor),
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    if source.slice(*constructor) != "Enum" {
+        return None;
+    }
+    fields
+        .iter()
+        .map(|field| {
+            let Expression::Identifier(alternative) = &field.value else {
+                return None;
+            };
+            field
+                .label
+                .is_none()
+                .then(|| (source.slice(*alternative).to_owned(), *alternative))
+        })
+        .collect()
+}
+
+fn declare_enum(
+    source: &SourceText,
+    name: Span,
+    expression: &Expression,
+    session: &mut Session,
+    trace: &mut impl TraceSink,
+) -> Result<Option<(Value, Span)>, Diagnostic> {
+    let Some(alternatives) = enum_alternatives(source, expression) else {
+        return Ok(None);
+    };
+    let name_text = source.slice(name);
+    let mut seen = BTreeSet::new();
+    for (alternative, span) in &alternatives {
+        if !seen.insert(alternative.as_str())
+            || session.declared_names.contains(alternative)
+            || alternative == name_text
+        {
+            return Err(diagnostic(
+                source,
+                "E-DUPLICATE-ENUM-ALTERNATIVE",
+                *span,
+                format!("enum alternative `{alternative}` is already declared in this scope"),
+            ));
+        }
+    }
+    session.declared_names.insert(name_text.to_owned());
+    for (alternative, _) in alternatives {
+        session.bindings.insert(
+            alternative.clone(),
+            Value::Enum {
+                type_name: name_text.to_owned(),
+                alternative: alternative.clone(),
+            },
+        );
+        session.declared_names.insert(alternative);
+    }
+    trace.record(TraceEvent {
+        event: "enum.declared",
+        rule: "TOPAL-TYPE-ENUM-001",
+        detail: name_text,
+    });
+    Ok(Some((Value::Unit, cover(name, expression.span()))))
 }
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
@@ -1905,6 +1986,7 @@ const fn value_classifier(value: &Value) -> &'static str {
         Value::String(_) => "String",
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
+        Value::Enum { .. } => "Enum",
         Value::Unit => "Unit",
     }
 }
@@ -2191,6 +2273,16 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
             Some(left == BigRational::from_integer(right))
         }
         (Value::String(left), Value::String(right)) => Some(left == right),
+        (
+            Value::Enum {
+                type_name: left_type,
+                alternative: left,
+            },
+            Value::Enum {
+                type_name: right_type,
+                alternative: right,
+            },
+        ) if left_type == right_type => Some(left == right),
         (Value::Unit, Value::Unit) => Some(true),
         (Value::Tuple(left), Value::Tuple(right)) if left.len() == right.len() => left
             .into_iter()
@@ -2545,14 +2637,17 @@ fn apply_negate(
             });
             Ok(Value::Rational(-operand))
         }
-        Value::Boolean(_) | Value::String(_) | Value::Tuple(_) | Value::Record(_) | Value::Unit => {
-            Err(diagnostic(
-                source,
-                "E-NO-APPLICABLE-OVERLOAD",
-                span,
-                "prefix - requires an exact numeric operand",
-            ))
-        }
+        Value::Boolean(_)
+        | Value::String(_)
+        | Value::Tuple(_)
+        | Value::Record(_)
+        | Value::Enum { .. }
+        | Value::Unit => Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            span,
+            "prefix - requires an exact numeric operand",
+        )),
     }
 }
 
@@ -3618,6 +3713,23 @@ fn proves_closed_mutual_increasing_nat_recursion() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001"))
+    );
+}
+
+#[test]
+fn declares_nominal_payload_free_enum_values() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "Color is Enum (Red, Green, Blue)\n(Red, Green, Red = Red, Red = Green)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(Red, Green, true, false)");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-TYPE-ENUM-001"))
     );
 }
 

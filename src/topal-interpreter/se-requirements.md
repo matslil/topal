@@ -555,3 +555,10 @@ debugger history shall expose completed cycle proof and every descent.
 Direct and mutual decreasing `Nat` proofs shall accept a positive literal step
 exactly when it is no greater than the nonnegative bound plus one. Larger steps
 shall remain unproven because some admitted argument could cross below zero.
+
+## TOPAL-INTP-SUBSET-065 — Payload-free enum values
+
+All interpreter modes shall declare, resolve, display, and compare payload-free
+nominal enum alternatives according to `TOPAL-TYPE-ENUM-001`. Duplicate labels
+or collisions with existing names shall be diagnosed. Test traces and
+reversible debugger history shall expose enum declaration and alternative use.
