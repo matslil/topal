@@ -119,8 +119,9 @@ impl Diagnostic {
 #[derive(Default)]
 pub struct Session {
     bindings: BTreeMap<String, Value>,
-    functions: BTreeMap<String, UserFunction>,
+    functions: BTreeMap<String, Vec<UserFunction>>,
     declared_names: BTreeSet<String>,
+    local_function_names: BTreeSet<String>,
     call_stack: Vec<String>,
     static_context: bool,
 }
@@ -234,6 +235,7 @@ impl Session {
             bindings: bindings.clone(),
             functions: BTreeMap::new(),
             declared_names: bindings.keys().cloned().collect(),
+            local_function_names: BTreeSet::new(),
             call_stack: Vec::new(),
             static_context: false,
         };
@@ -371,17 +373,38 @@ impl Session {
                 if items.len() == 2
                     && let Expression::Identifier(name_span) = &items[0]
                     && !self.bindings.contains_key(source.slice(*name_span))
-                    && let Some(function) = self.functions.get(source.slice(*name_span)).cloned()
+                    && let Some(candidates) = self.functions.get(source.slice(*name_span)).cloned()
                 {
                     let name = source.slice(*name_span);
-                    if self.static_context && !function.is_static {
-                        return Err(diagnostic(
+                    let argument_span = items[1].span();
+                    let argument = self.evaluate_expression(source, &items[1], trace)?;
+                    let function = candidates
+                        .iter()
+                        .find(|function| {
+                            (!self.static_context || function.is_static)
+                                && function_accepts(&function.parameters, &argument)
+                        })
+                        .cloned();
+                    let Some(function) = function else {
+                        if self.static_context
+                            && candidates.iter().all(|function| !function.is_static)
+                        {
+                            return Err(diagnostic(
+                                source,
+                                "E-STATIC-CALLS-RUNTIME-FUNCTION",
+                                *name_span,
+                                format!("static execution cannot call ordinary function `{name}`"),
+                            ));
+                        }
+                        return Err(no_applicable_overload(
                             source,
-                            "E-STATIC-CALLS-RUNTIME-FUNCTION",
-                            *name_span,
-                            format!("static execution cannot call ordinary function `{name}`"),
+                            name,
+                            argument_span,
+                            &argument,
+                            &candidates,
+                            self.static_context,
                         ));
-                    }
+                    };
                     if self.call_stack.iter().any(|active| active == name) {
                         return Err(diagnostic(
                             source,
@@ -391,92 +414,30 @@ impl Session {
                         ));
                     }
                     let rule = function_rule(function.is_static, function.parameters.len());
+                    if candidates.len() > 1 {
+                        let signature = function_signature(name, &function);
+                        trace.record(TraceEvent {
+                            event: "function.overload.selected",
+                            rule: "TOPAL-FUNCTION-OVERLOAD-001",
+                            detail: &signature,
+                        });
+                    }
                     let mut function_scope = Self {
                         bindings: function.bindings,
                         functions: self.functions.clone(),
                         declared_names: BTreeSet::new(),
+                        local_function_names: BTreeSet::new(),
                         call_stack: self.call_stack.clone(),
                         static_context: function.is_static,
                     };
                     function_scope.call_stack.push(name.to_owned());
-                    match function.parameters.as_slice() {
-                        [] if !matches!(&items[1], Expression::Unit(_)) => {
-                            return Err(diagnostic(
-                                source,
-                                "E-NO-APPLICABLE-OVERLOAD",
-                                items[1].span(),
-                                format!("nullary function `{name}` requires ()"),
-                            ));
-                        }
-                        [] => {}
-                        [(parameter, classifier)] => {
-                            let argument_span = items[1].span();
-                            let argument = self.evaluate_expression(source, &items[1], trace)?;
-                            if !value_has_classifier(&argument, classifier) {
-                                return Err(diagnostic(
-                                    source,
-                                    "E-FUNCTION-ARGUMENT-TYPE",
-                                    argument_span,
-                                    format!("argument for `{parameter}` is outside `{classifier}`"),
-                                ));
-                            }
-                            function_scope.bindings.insert(parameter.clone(), argument);
-                            function_scope.declared_names.insert(parameter.clone());
-                            trace.record(TraceEvent {
-                                event: "function.argument.bound",
-                                rule,
-                                detail: parameter,
-                            });
-                        }
-                        parameters => {
-                            let argument_span = items[1].span();
-                            let argument = self.evaluate_expression(source, &items[1], trace)?;
-                            let Value::Tuple(arguments) = argument else {
-                                return Err(diagnostic(
-                                    source,
-                                    "E-FUNCTION-ARGUMENT-SHAPE",
-                                    argument_span,
-                                    format!(
-                                        "function `{name}` requires a positional product with {} fields",
-                                        parameters.len()
-                                    ),
-                                ));
-                            };
-                            if arguments.len() != parameters.len() {
-                                return Err(diagnostic(
-                                    source,
-                                    "E-FUNCTION-ARGUMENT-ARITY",
-                                    argument_span,
-                                    format!(
-                                        "function `{name}` requires {} arguments but received {}",
-                                        parameters.len(),
-                                        arguments.len()
-                                    ),
-                                ));
-                            }
-                            for ((parameter, classifier), argument) in
-                                parameters.iter().zip(arguments)
-                            {
-                                if !value_has_classifier(&argument, classifier) {
-                                    return Err(diagnostic(
-                                        source,
-                                        "E-FUNCTION-ARGUMENT-TYPE",
-                                        argument_span,
-                                        format!(
-                                            "argument for `{parameter}` is outside `{classifier}`"
-                                        ),
-                                    ));
-                                }
-                                function_scope.bindings.insert(parameter.clone(), argument);
-                                function_scope.declared_names.insert(parameter.clone());
-                                trace.record(TraceEvent {
-                                    event: "function.argument.bound",
-                                    rule,
-                                    detail: parameter,
-                                });
-                            }
-                        }
-                    }
+                    bind_function_arguments(
+                        &mut function_scope,
+                        &function.parameters,
+                        argument,
+                        trace,
+                        rule,
+                    );
                     trace.record(TraceEvent {
                         event: "function.selected",
                         rule: "TOPAL-TYPE-CALL-001",
@@ -923,7 +884,9 @@ impl Execution {
             span,
         } = declaration;
         let name_text = self.source.slice(name);
-        if session.declared_names.contains(name_text) {
+        if session.declared_names.contains(name_text)
+            && !session.local_function_names.contains(name_text)
+        {
             return Err(diagnostic(
                 &self.source,
                 "E-DUPLICATE-BINDING",
@@ -940,20 +903,7 @@ impl Execution {
                 "the implemented function subset requires Boolean, Int, Rational, String, or Unit",
             ));
         }
-        for (index, parameter) in parameters.iter().enumerate() {
-            let name = self.source.slice(parameter.name);
-            if parameters[..index]
-                .iter()
-                .any(|earlier| self.source.slice(earlier.name) == name)
-            {
-                return Err(diagnostic(
-                    &self.source,
-                    "E-DUPLICATE-FUNCTION-PARAMETER",
-                    parameter.name,
-                    format!("parameter `{name}` is already declared in this function"),
-                ));
-            }
-        }
+        validate_parameter_names(&self.source, parameters)?;
         let parameters = parameters
             .iter()
             .map(|parameter| {
@@ -972,20 +922,42 @@ impl Execution {
                 ))
             })
             .collect::<Result<Vec<_>, _>>()?;
+        if session.local_function_names.contains(name_text)
+            && session.functions[name_text].iter().any(|function| {
+                function.is_static == is_static
+                    && function
+                        .parameters
+                        .iter()
+                        .map(|(_, classifier)| classifier)
+                        .eq(parameters.iter().map(|(_, classifier)| classifier))
+            })
+        {
+            return Err(diagnostic(
+                &self.source,
+                "E-DUPLICATE-FUNCTION-OVERLOAD",
+                name,
+                "an overload with the same input classifiers and staticness already exists",
+            ));
+        }
         let rule = function_rule(is_static, parameters.len());
-        session.functions.insert(
-            name_text.to_owned(),
-            UserFunction {
-                source: self.source.clone(),
-                is_static,
-                parameters,
-                result: result_text.to_owned(),
-                body: body.to_vec(),
-                bindings: session.bindings.clone(),
-            },
-        );
+        let function = UserFunction {
+            source: self.source.clone(),
+            is_static,
+            parameters,
+            result: result_text.to_owned(),
+            body: body.to_vec(),
+            bindings: session.bindings.clone(),
+        };
+        if session.local_function_names.contains(name_text) {
+            session.functions.get_mut(name_text).unwrap().push(function);
+        } else {
+            session
+                .functions
+                .insert(name_text.to_owned(), vec![function]);
+        }
         session.bindings.remove(name_text);
         session.declared_names.insert(name_text.to_owned());
+        session.local_function_names.insert(name_text.to_owned());
         trace.record(TraceEvent {
             event: "function.declared",
             rule,
@@ -1139,6 +1111,173 @@ const fn function_rule(is_static: bool, parameter_count: usize) -> &'static str 
         1 => "TOPAL-FUNCTION-STATIC-UNARY-001",
         _ => "TOPAL-FUNCTION-STATIC-BINARY-001",
     }
+}
+
+fn function_accepts(parameters: &[(String, String)], argument: &Value) -> bool {
+    match parameters {
+        [] => matches!(argument, Value::Unit),
+        [(_, classifier)] => value_has_classifier(argument, classifier),
+        parameters => {
+            let Value::Tuple(arguments) = argument else {
+                return false;
+            };
+            arguments.len() == parameters.len()
+                && parameters
+                    .iter()
+                    .zip(arguments)
+                    .all(|((_, classifier), argument)| value_has_classifier(argument, classifier))
+        }
+    }
+}
+
+fn bind_function_arguments(
+    scope: &mut Session,
+    parameters: &[(String, String)],
+    argument: Value,
+    trace: &mut impl TraceSink,
+    rule: &'static str,
+) {
+    let arguments = match (parameters, argument) {
+        ([], Value::Unit) => return,
+        ([_], argument) => vec![argument],
+        (_, Value::Tuple(arguments)) => arguments,
+        _ => unreachable!("selected overload has already validated its argument"),
+    };
+    for ((parameter, _), argument) in parameters.iter().zip(arguments) {
+        scope.bindings.insert(parameter.clone(), argument);
+        scope.declared_names.insert(parameter.clone());
+        trace.record(TraceEvent {
+            event: "function.argument.bound",
+            rule,
+            detail: parameter,
+        });
+    }
+}
+
+fn no_applicable_overload(
+    source: &SourceText,
+    name: &str,
+    argument_span: Span,
+    argument: &Value,
+    candidates: &[UserFunction],
+    static_context: bool,
+) -> Diagnostic {
+    let eligible = candidates
+        .iter()
+        .filter(|function| !static_context || function.is_static)
+        .collect::<Vec<_>>();
+    if let [function] = eligible.as_slice() {
+        match function.parameters.as_slice() {
+            [] => {
+                return diagnostic(
+                    source,
+                    "E-NO-APPLICABLE-OVERLOAD",
+                    argument_span,
+                    format!("nullary function `{name}` requires ()"),
+                );
+            }
+            [(parameter, classifier)] => {
+                return diagnostic(
+                    source,
+                    "E-FUNCTION-ARGUMENT-TYPE",
+                    argument_span,
+                    format!("argument for `{parameter}` is outside `{classifier}`"),
+                );
+            }
+            parameters => {
+                let Value::Tuple(arguments) = argument else {
+                    return diagnostic(
+                        source,
+                        "E-FUNCTION-ARGUMENT-SHAPE",
+                        argument_span,
+                        format!(
+                            "function `{name}` requires a positional product with {} fields",
+                            parameters.len()
+                        ),
+                    );
+                };
+                if arguments.len() != parameters.len() {
+                    return diagnostic(
+                        source,
+                        "E-FUNCTION-ARGUMENT-ARITY",
+                        argument_span,
+                        format!(
+                            "function `{name}` requires {} arguments but received {}",
+                            parameters.len(),
+                            arguments.len()
+                        ),
+                    );
+                }
+                if let Some(((parameter, classifier), _)) = parameters
+                    .iter()
+                    .zip(arguments)
+                    .find(|((_, classifier), argument)| !value_has_classifier(argument, classifier))
+                {
+                    return diagnostic(
+                        source,
+                        "E-FUNCTION-ARGUMENT-TYPE",
+                        argument_span,
+                        format!("argument for `{parameter}` is outside `{classifier}`"),
+                    );
+                }
+            }
+        }
+    }
+    let signatures = eligible
+        .iter()
+        .map(|function| {
+            let inputs = function
+                .parameters
+                .iter()
+                .map(|(_, classifier)| classifier.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{name} ({inputs})")
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    diagnostic(
+        source,
+        "E-NO-APPLICABLE-OVERLOAD",
+        argument_span,
+        format!(
+            "no overload of `{name}` accepts {} in this context",
+            value_classifier(argument)
+        ),
+    )
+    .with_help(format!("available overloads: {signatures}"))
+}
+
+fn function_signature(name: &str, function: &UserFunction) -> String {
+    let inputs = function
+        .parameters
+        .iter()
+        .map(|(_, classifier)| classifier.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let staticness = if function.is_static { " static" } else { "" };
+    format!("{name}{staticness} ({inputs})")
+}
+
+fn validate_parameter_names(
+    source: &SourceText,
+    parameters: &[FunctionParameter],
+) -> Result<(), Diagnostic> {
+    for (index, parameter) in parameters.iter().enumerate() {
+        let name = source.slice(parameter.name);
+        if parameters[..index]
+            .iter()
+            .any(|earlier| source.slice(earlier.name) == name)
+        {
+            return Err(diagnostic(
+                source,
+                "E-DUPLICATE-FUNCTION-PARAMETER",
+                parameter.name,
+                format!("parameter `{name}` is already declared in this function"),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn supported_value_classifier(classifier: &str) -> bool {
@@ -2770,4 +2909,30 @@ fn function_local_binding_shadows_capture_without_leaking() {
         )
         .unwrap_err();
     assert_eq!(duplicate.code, "E-DUPLICATE-BINDING");
+}
+
+#[test]
+fn overload_selection_uses_input_classifier_and_rejects_duplicate_signature() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "describe is fn (value : Int) -> String\n  \"integer\"\ndescribe is fn (value : String) -> String\n  value\n(describe 42, describe \"Topal\")\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(\"integer\", \"Topal\")");
+    assert!(trace.iter().any(|event| event.contains("describe (Int)")));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("describe (String)"))
+    );
+
+    let duplicate = Session::new()
+        .evaluate(
+            "same is fn (first : Int) -> Int\n  first\nsame is fn (second : Int) -> String\n  \"duplicate\"\nsame 1\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(duplicate.code, "E-DUPLICATE-FUNCTION-OVERLOAD");
 }

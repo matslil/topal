@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 13);
+    assert_eq!(examples.len(), 14);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -922,6 +922,42 @@ fn every_mode_preserves_outer_bindings_across_local_shadowing() {
             assert_eq!(output.stdout, b"(42, 40)\n");
         }
     }
+}
+
+#[test]
+fn every_mode_selects_typed_function_overloads() {
+    let source = "describe is fn (value : Int) -> String\n  \"integer\"\ndescribe is fn (value : String) -> String\n  value\n(describe 42, describe \"Topal\")\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n()\n(\"integer\", \"Topal\")\n");
+        } else {
+            assert_eq!(output.stdout, b"(\"integer\", \"Topal\")\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let integer = trace.find("describe (Int)").unwrap();
+    let string = trace.find("describe (String)").unwrap();
+    assert!(integer < string);
+}
+
+#[test]
+fn overload_failure_lists_available_signatures() {
+    let output = run(
+        &[],
+        "describe is fn (value : Int) -> String\n  \"integer\"\ndescribe is fn (value : String) -> String\n  value\ndescribe true\n",
+    );
+    assert!(!output.status.success());
+    let error = String::from_utf8(output.stderr).unwrap();
+    assert!(error.contains("E-NO-APPLICABLE-OVERLOAD"));
+    assert!(error.contains("available overloads: describe (Int), describe (String)"));
 }
 
 #[test]
