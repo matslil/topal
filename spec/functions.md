@@ -162,3 +162,15 @@ The nested name shall not escape the enclosing invocation. Test traces and
 debugger history shall expose nested declaration after outer entry, followed by
 the nested call's argument bindings, entry, body decisions, and return before
 the outer function returns.
+
+### TOPAL-FUNCTION-FORWARD-DECLARATION-001 — Complete header visibility
+
+Within one declaration scope, a function body may reference a function declared
+later in source order when the later declaration has a complete explicit input
+and result classification. The later function shall be available when the
+earlier body executes after both declarations have completed.
+
+This visibility shall apply only to function declarations in the same scope. It
+shall not make an ordinary initializer value available before that initializer
+has executed. Test traces and debugger history shall identify the later
+function's selection and entry inside the earlier function's call frame.

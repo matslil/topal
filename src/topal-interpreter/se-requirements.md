@@ -448,3 +448,10 @@ All interpreter modes shall execute a Boolean decision table containing both
 literal matchers without requiring `otherwise`, according to
 `TOPAL-DECISION-BOOLEAN-001`. Test traces and reversible debugger history shall
 identify which exhaustive literal rule was considered and selected.
+
+## TOPAL-INTP-SUBSET-051 — Forward function declarations
+
+All interpreter modes shall allow an earlier function body to call a later
+function declaration with a complete explicit header according to
+`TOPAL-FUNCTION-FORWARD-DECLARATION-001`. Test traces and reversible debugger
+history shall retain the nested selection and entry in execution order.

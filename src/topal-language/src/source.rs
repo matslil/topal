@@ -3208,6 +3208,27 @@ fn exhaustive_boolean_decision_selects_both_literal_cases() {
 }
 
 #[test]
+fn earlier_function_body_calls_later_declaration() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "first is fn (value : Int) -> Int\n  second value\nsecond is fn (value : Int) -> Int\n  value + 1\nfirst 41\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    let first = trace
+        .iter()
+        .position(|event| event.contains("function.entered") && event.contains("first"))
+        .unwrap();
+    let second = trace
+        .iter()
+        .position(|event| event.contains("function.entered") && event.contains("second"))
+        .unwrap();
+    assert!(first < second);
+}
+
+#[test]
 fn comparison_decision_uses_subject_as_left_operand() {
     let mut trace = Vec::new();
     let value = Session::new()
