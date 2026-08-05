@@ -369,6 +369,33 @@ fn records_reversible_exhaustive_boolean_decision_selection() {
 }
 
 #[test]
+fn records_reversible_call_to_later_function_declaration() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}forward-function-declaration.debug"),
+            &format!("{root}forward-function-declaration.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let render = stdout
+        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] render")
+        .unwrap();
+    let decorate = stdout
+        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] decorate")
+        .unwrap();
+    assert!(render < decorate);
+    assert!(stdout.contains("\n\"[Topal]\"\n"));
+}
+
+#[test]
 fn records_reversible_comparison_decision_selection() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

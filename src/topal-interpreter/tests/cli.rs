@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 21);
+    assert_eq!(examples.len(), 22);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -999,6 +999,34 @@ fn every_mode_executes_exhaustive_boolean_decisions_without_otherwise() {
             assert_eq!(output.stdout, b"(\"enabled\", \"disabled\")\n");
         }
     }
+}
+
+#[test]
+fn every_mode_calls_a_later_function_declaration() {
+    let source = "render is fn (text : String) -> String\n  decorate text\ndecorate is fn (text : String) -> String\n  \"[\" concat text concat \"]\"\nrender \"Topal\"\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n()\n\"[Topal]\"\n");
+        } else {
+            assert_eq!(output.stdout, b"\"[Topal]\"\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let render = trace
+        .find("function.entered\",\"rule\":\"TOPAL-FUNCTION-ORDINARY-001\",\"detail\":\"render")
+        .unwrap();
+    let decorate = trace
+        .find("function.entered\",\"rule\":\"TOPAL-FUNCTION-ORDINARY-001\",\"detail\":\"decorate")
+        .unwrap();
+    assert!(render < decorate);
 }
 
 #[test]

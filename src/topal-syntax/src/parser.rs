@@ -1139,6 +1139,25 @@ mod tests {
     }
 
     #[test]
+    fn parses_a_body_calling_a_later_function_declaration() {
+        let source = SourceText::new(
+            "first is fn (value : Int) -> Int\n  second value\nsecond is fn (value : Int) -> Int\n  value\nfirst 42",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(parsed.statements[0], Statement::Function { .. }));
+        assert!(matches!(parsed.statements[1], Statement::Function { .. }));
+        let Statement::Function { body, .. } = &parsed.statements[0] else {
+            unreachable!();
+        };
+        assert!(matches!(
+            &body[0],
+            Statement::Expression(Expression::Application { .. })
+        ));
+    }
+
+    #[test]
     fn parses_comparison_decision_matcher() {
         let source = SourceText::new(
             "minimum is fn (left : Int, right : Int) -> Int\n  left\n    < right then left\n    otherwise right\nminimum (1, 2)",
