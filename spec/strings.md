@@ -64,3 +64,12 @@ For a plain `String` value `text`, `empty? text` shall produce `true` exactly
 when its preserved Unicode scalar sequence is empty and `false` otherwise. It
 shall agree with both `character-count text = 0` and `entry-count text = 0`
 without normalizing, encoding, or otherwise transforming the value.
+
+### TOPAL-STRING-NORMALIZE-NFD-001 — Explicit NFD normalization
+
+For a plain `String` value `text`, `text normalize NFD` shall produce the
+Unicode Normalization Form D transformation of its preserved scalar sequence
+under the language context's pinned Unicode data. The result shall be a plain
+`String` in this implemented subset. The operation is explicit and shall not
+change the input binding or introduce normalization into other String
+operations.

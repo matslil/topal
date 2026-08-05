@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 7);
+    assert_eq!(examples.len(), 8);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -198,6 +198,21 @@ fn every_mode_normalizes_strings_to_nfc_explicitly() {
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("root.normalize(String,NFC)"));
     assert!(trace.contains("TOPAL-STRING-NORMALIZE-NFC-001"));
+    assert!(trace.contains("changed=false"));
+}
+
+#[test]
+fn every_mode_normalizes_strings_to_nfd_explicitly() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "\"é\" normalize NFD\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, "\"e\u{301}\"\n".as_bytes());
+    }
+
+    let output = run(&["--test"], "\"e\u{301}\" normalize NFD\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("root.normalize(String,NFD)"));
+    assert!(trace.contains("TOPAL-STRING-NORMALIZE-NFD-001"));
     assert!(trace.contains("changed=false"));
 }
 
