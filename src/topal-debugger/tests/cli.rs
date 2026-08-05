@@ -148,6 +148,34 @@ fn records_reversible_static_function_argument_binding() {
 }
 
 #[test]
+fn records_reversible_static_product_argument_bindings() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}static-product-function.debug"),
+            &format!("{root}static-product-function.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let left = stdout
+        .find("function.argument.bound [TOPAL-FUNCTION-STATIC-BINARY-001] left")
+        .unwrap();
+    let right = stdout
+        .find("function.argument.bound [TOPAL-FUNCTION-STATIC-BINARY-001] right")
+        .unwrap();
+    let entered = stdout.find("function.entered").unwrap();
+    assert!(left < right && right < entered);
+    assert!(stdout.contains("\n42\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 8);
+    assert_eq!(examples.len(), 9);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -722,6 +722,51 @@ fn static_unary_function_checks_argument_classifier() {
         String::from_utf8(output.stderr)
             .unwrap()
             .contains("E-FUNCTION-ARGUMENT-TYPE")
+    );
+}
+
+#[test]
+fn every_mode_calls_static_product_functions() {
+    let source = "add is fn static (left : Int, right : Int) -> Int\n  left + right\n20 add 22\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n42\n");
+        } else {
+            assert_eq!(output.stdout, b"42\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let left = trace.find("\"detail\":\"left\"").unwrap();
+    let right = trace.find("\"detail\":\"right\"").unwrap();
+    let entered = trace.find("function.entered").unwrap();
+    assert!(left < right && right < entered);
+}
+
+#[test]
+fn static_product_function_checks_shape_and_arity() {
+    let declaration = "add is fn static (left : Int, right : Int) -> Int\n  left + right\n";
+    let shape = run(&[], &format!("{declaration}add 1\n"));
+    assert!(!shape.status.success());
+    assert!(
+        String::from_utf8(shape.stderr)
+            .unwrap()
+            .contains("E-FUNCTION-ARGUMENT-SHAPE")
+    );
+
+    let arity = run(&[], &format!("{declaration}add (1, 2, 3)\n"));
+    assert!(!arity.status.success());
+    assert!(
+        String::from_utf8(arity.stderr)
+            .unwrap()
+            .contains("E-FUNCTION-ARGUMENT-ARITY")
     );
 }
 

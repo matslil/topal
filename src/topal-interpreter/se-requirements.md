@@ -340,3 +340,11 @@ according to `TOPAL-FUNCTION-STATIC-UNARY-001`. Calls shall evaluate and
 validate the argument in caller scope, bind the parameter only within the
 captured lexical function scope, validate the result classifier, and expose
 argument binding plus nested body checkpoints to test traces and the debugger.
+
+## TOPAL-INTP-SUBSET-037 — Static binary infix functions
+
+All interpreter modes shall declare and call static functions with two typed
+operands according to `TOPAL-FUNCTION-STATIC-BINARY-001`. Calls shall use infix
+application, diagnose classifier mismatches before function entry, bind
+validated operands in declaration order, and expose both bindings and nested
+body checkpoints to test traces and the debugger.

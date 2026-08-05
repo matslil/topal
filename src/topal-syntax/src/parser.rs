@@ -78,7 +78,7 @@ pub enum Statement {
     },
     StaticFunction {
         name: Span,
-        parameter: Option<FunctionParameter>,
+        parameters: Vec<FunctionParameter>,
         result: Span,
         body: Expression,
         span: Span,
@@ -192,34 +192,16 @@ impl Parser<'_> {
         let function = self.take_nontrivia()?;
         let static_token = self.take_nontrivia()?;
         let opening = self.take_nontrivia()?;
-        let first_input = self.take_nontrivia()?;
-        let (parameter, closing) = if first_input.kind == TokenKind::RightParen {
-            (None, first_input)
-        } else {
-            let colon = self.take_nontrivia()?;
-            let classifier = self.take_nontrivia()?;
-            let closing = self.take_nontrivia()?;
-            if first_input.kind != TokenKind::Identifier
-                || colon.kind != TokenKind::Colon
-                || classifier.kind != TokenKind::Identifier
-                || closing.kind != TokenKind::RightParen
-            {
-                self.diagnostics.push(SyntaxDiagnostic {
-                    code: "E-UNSUPPORTED-FUNCTION-HEADER",
-                    span: Span::new(opening.span.start, closing.span.end),
-                    message: "the implemented function subset accepts `()` or one `name : Type` parameter",
-                });
-                self.skip_to_newline();
-                return None;
-            }
-            (
-                Some(FunctionParameter {
-                    name: first_input.span,
-                    classifier: classifier.span,
-                }),
-                closing,
-            )
-        };
+        let (parameters, closing) = self.static_function_parameters(opening)?;
+        if parameters.len() > 2 {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-FUNCTION-OPERAND-COUNT",
+                span: Span::new(opening.span.start, closing.span.end),
+                message: "a function has at most two syntactic operands; package additional values explicitly",
+            });
+            self.skip_to_newline();
+            return None;
+        }
         let arrow = self.take_nontrivia()?;
         let result = self.take_nontrivia()?;
         let valid = self.source.slice(function.span) == "fn"
@@ -233,7 +215,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-UNSUPPORTED-FUNCTION-HEADER",
                 span: Span::new(function.span.start, result.span.end),
-                message: "the implemented function subset requires `fn static ( [name : Type] ) -> ResultType`",
+                message: "the implemented function subset requires `fn static ( name : Type, ... ) -> ResultType`",
             });
             self.skip_to_newline();
             return None;
@@ -270,11 +252,60 @@ impl Parser<'_> {
         let body = self.expression()?;
         Some(Statement::StaticFunction {
             name: name.span,
-            parameter,
+            parameters,
             result: result.span,
             span: Span::new(name.span.start, body.span().end),
             body,
         })
+    }
+
+    fn static_function_parameters(
+        &mut self,
+        opening: Token,
+    ) -> Option<(Vec<FunctionParameter>, Token)> {
+        let delimited = opening.kind == TokenKind::LeftParen;
+        self.delimiter_depth += usize::from(delimited);
+        let parsed = self.static_function_parameters_inner(opening);
+        self.delimiter_depth -= usize::from(delimited);
+        parsed
+    }
+
+    fn static_function_parameters_inner(
+        &mut self,
+        opening: Token,
+    ) -> Option<(Vec<FunctionParameter>, Token)> {
+        let mut parameters = Vec::new();
+        let mut input = self.take_nontrivia()?;
+        let closing = loop {
+            if input.kind == TokenKind::RightParen {
+                break input;
+            }
+            let colon = self.take_nontrivia()?;
+            let classifier = self.take_nontrivia()?;
+            let separator = self.take_nontrivia()?;
+            if input.kind != TokenKind::Identifier
+                || colon.kind != TokenKind::Colon
+                || classifier.kind != TokenKind::Identifier
+                || !matches!(separator.kind, TokenKind::Comma | TokenKind::RightParen)
+            {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-UNSUPPORTED-FUNCTION-HEADER",
+                    span: Span::new(opening.span.start, separator.span.end),
+                    message: "function parameters must have the form `name : Type`, separated by commas",
+                });
+                self.skip_to_newline();
+                return None;
+            }
+            parameters.push(FunctionParameter {
+                name: input.span,
+                classifier: classifier.span,
+            });
+            if separator.kind == TokenKind::RightParen {
+                break separator;
+            }
+            input = self.take_nontrivia()?;
+        };
+        Some((parameters, closing))
     }
 
     fn expression(&mut self) -> Option<Expression> {
@@ -710,14 +741,37 @@ mod tests {
         .unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty());
-        let Statement::StaticFunction {
-            parameter: Some(parameter),
-            ..
-        } = parsed.statements[0]
-        else {
+        let Statement::StaticFunction { parameters, .. } = &parsed.statements[0] else {
             panic!("expected one static parameter");
         };
-        assert_eq!(source.slice(parameter.name), "input");
-        assert_eq!(source.slice(parameter.classifier), "Int");
+        assert_eq!(parameters.len(), 1);
+        assert_eq!(source.slice(parameters[0].name), "input");
+        assert_eq!(source.slice(parameters[0].classifier), "Int");
+    }
+
+    #[test]
+    fn parses_multiple_typed_static_function_parameters() {
+        let source = SourceText::new(
+            "add is fn static (left : Int, right : Int) -> Int\n  left + right\n20 add 22",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty());
+        let Statement::StaticFunction { parameters, .. } = &parsed.statements[0] else {
+            panic!("expected static function parameters");
+        };
+        assert_eq!(parameters.len(), 2);
+        assert_eq!(source.slice(parameters[0].name), "left");
+        assert_eq!(source.slice(parameters[1].name), "right");
+    }
+
+    #[test]
+    fn rejects_more_than_two_function_operands() {
+        let source = SourceText::new(
+            "invalid is fn static (one : Int, two : Int, three : Int) -> Int\n  one",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert_eq!(parsed.diagnostics[0].code, "E-FUNCTION-OPERAND-COUNT");
     }
 }
