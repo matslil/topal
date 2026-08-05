@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 45);
+    assert_eq!(examples.len(), 46);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1896,6 +1896,19 @@ fn every_mode_selects_structured_error_fields() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert_eq!(trace.matches("error.field.selected").count(), 2);
     assert!(trace.contains("TOPAL-ERROR-FIELD-001"));
+}
+
+#[test]
+fn every_mode_matches_qualified_error_codes() {
+    let source = "divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\ndescribe is fn (denominator : Rational) -> String\n  1.0 divide denominator\n    Ok value then \"ok\"\n    Error ( code is lang arithmetic division-by-zero ) then \"zero\"\n    Error problem then \"other\"\n(describe 2.0, describe 0.0)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"(\"ok\", \"zero\")\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-DECISION-ERROR-CODE-001"));
+    assert!(trace.contains("error.code.matched"));
 }
 
 #[test]

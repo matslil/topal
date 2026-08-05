@@ -366,9 +366,12 @@ impl Session {
                         _ => None,
                     })
                     .collect::<BTreeSet<_>>();
-                let has_result_matchers = rules
-                    .iter()
-                    .any(|rule| matches!(rule.matcher, DecisionMatcher::Result { .. }));
+                let has_result_matchers = rules.iter().any(|rule| {
+                    matches!(
+                        rule.matcher,
+                        DecisionMatcher::Result { .. } | DecisionMatcher::ErrorCode { .. }
+                    )
+                });
                 if !enum_matchers.is_empty()
                     && !rules
                         .iter()
@@ -432,6 +435,29 @@ impl Session {
                         DecisionMatcher::Result { error, .. } => {
                             *error == matches!(subject, Value::Error { .. })
                         }
+                        DecisionMatcher::ErrorCode {
+                            namespace,
+                            vocabulary,
+                            code,
+                            ..
+                        } => {
+                            let namespace = source.slice(*namespace);
+                            let vocabulary = source.slice(*vocabulary);
+                            let code_span = *code;
+                            let code = source.slice(code_span);
+                            if namespace != "lang"
+                                || vocabulary != "arithmetic"
+                                || !is_arithmetic_error_code(code)
+                            {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-UNKNOWN-ERROR-CODE",
+                                    code_span,
+                                    "the implemented error-code pattern requires a code published by `lang arithmetic`",
+                                ));
+                            }
+                            matches!(&subject, Value::Error { code: subject_code, .. } if subject_code == code)
+                        }
                         DecisionMatcher::Comparison {
                             kind,
                             operand,
@@ -478,6 +504,13 @@ impl Session {
                     rule: decision_rule,
                     detail: &detail,
                 });
+                if let DecisionMatcher::ErrorCode { code, .. } = selected_rule.matcher {
+                    trace.record(TraceEvent {
+                        event: "error.code.matched",
+                        rule: "TOPAL-DECISION-ERROR-CODE-001",
+                        detail: source.slice(code),
+                    });
+                }
                 if let DecisionMatcher::Result { binding, .. } = selected_rule.matcher {
                     let name = source.slice(binding);
                     let mut branch = Self {
@@ -4527,4 +4560,19 @@ fn structured_error_fields_retain_code_type_and_domain_identity() {
             .count(),
         2
     );
+}
+
+#[test]
+fn qualified_error_code_pattern_selects_without_using_domain() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\ndescribe is fn (denominator : Rational) -> String\n  1.0 divide denominator\n    Ok value then \"ok\"\n    Error ( code is lang arithmetic division-by-zero ) then \"zero\"\n    Error problem then \"other\"\ndescribe 0.0\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("zero".into()));
+    assert!(trace.iter().any(|event| {
+        event.contains("error.code.matched") && event.contains("TOPAL-DECISION-ERROR-CODE-001")
+    }));
 }
