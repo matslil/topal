@@ -149,3 +149,16 @@ strictly increase toward it; values at or above the bound take the base.
 Test traces and debugger history shall distinguish this increasing proof from
 the decreasing proof at declaration and on every recursive descent. Other
 recursive steps remain rejected until another termination rule proves them.
+
+### TOPAL-FUNCTION-NESTED-001 — Nested lexical function declaration
+
+A function body may declare another function in its invocation scope. The
+nested declaration shall capture the bindings visible at that statement,
+including outer parameters and earlier body bindings, and may be called by
+later statements in the same invocation. Each invocation shall construct its
+own nested function and capture.
+
+The nested name shall not escape the enclosing invocation. Test traces and
+debugger history shall expose nested declaration after outer entry, followed by
+the nested call's argument bindings, entry, body decisions, and return before
+the outer function returns.

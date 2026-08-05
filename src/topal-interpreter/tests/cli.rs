@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 19);
+    assert_eq!(examples.len(), 20);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1074,6 +1074,30 @@ fn every_mode_executes_comparison_operand_expressions() {
     let addition = trace.find("root.+(Int,Int)").unwrap();
     let comparison = trace.find("root.<(TotalOrder,TotalOrder)").unwrap();
     assert!(addition < comparison);
+}
+
+#[test]
+fn every_mode_executes_nested_lexical_functions() {
+    let source = "answer is fn (input : Int) -> Int\n  add-input is fn (value : Int) -> Int\n    value + input\n  add-input 2\nanswer 40\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n42\n");
+        } else {
+            assert_eq!(output.stdout, b"42\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let outer = trace.find("\"detail\":\"answer\"").unwrap();
+    let nested = trace.find("\"detail\":\"add-input\"").unwrap();
+    assert!(outer < nested);
 }
 
 #[test]
