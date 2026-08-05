@@ -23,6 +23,7 @@ pub enum Value {
         type_name: String,
         alternative: String,
     },
+    ErrorDomain(String),
     Error {
         domain: String,
         code: String,
@@ -70,6 +71,7 @@ impl fmt::Display for Value {
                 formatter.write_str(")")
             }
             Self::Enum { alternative, .. } => formatter.write_str(alternative),
+            Self::ErrorDomain(domain) => formatter.write_str(domain),
             Self::Error { domain, code, .. } => {
                 write!(formatter, "Error ( domain is {domain}, code is {code} )")
             }
@@ -996,6 +998,34 @@ impl Session {
                             Some(cover(items[0].span(), right_span)),
                         );
                         index += 2;
+                        continue;
+                    }
+                    if let Expression::Identifier(label_span) = &items[index]
+                        && let Value::Error { domain, code, .. } = &result
+                    {
+                        let label = source.slice(*label_span);
+                        let selected = match label {
+                            "code" => Value::Enum {
+                                type_name: "lang arithmetic ArithmeticErrorCode".into(),
+                                alternative: code.clone(),
+                            },
+                            "domain" => Value::ErrorDomain(domain.clone()),
+                            _ => {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-NO-SUCH-ERROR-FIELD",
+                                    *label_span,
+                                    format!("Error has no implemented field named `{label}`"),
+                                ));
+                            }
+                        };
+                        trace.record(TraceEvent {
+                            event: "error.field.selected",
+                            rule: "TOPAL-ERROR-FIELD-001",
+                            detail: label,
+                        });
+                        result = selected;
+                        index += 1;
                         continue;
                     }
                     if let Expression::Identifier(label_span) = &items[index]
@@ -2166,6 +2196,7 @@ const fn value_classifier(value: &Value) -> &'static str {
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
         Value::Enum { .. } => "Enum",
+        Value::ErrorDomain(_) => "ErrorDomain",
         Value::Error { .. } => "Error",
         Value::Unit => "Unit",
     }
@@ -2877,6 +2908,7 @@ fn apply_negate(
         | Value::Tuple(_)
         | Value::Record(_)
         | Value::Enum { .. }
+        | Value::ErrorDomain(_)
         | Value::Error { .. }
         | Value::Unit => Err(diagnostic(
             source,
@@ -4463,4 +4495,36 @@ fn nested_function_captures_outer_parameter_without_leaking() {
         .evaluate("add-input 2\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-UNBOUND-NAME");
+}
+
+#[test]
+fn structured_error_fields_retain_code_type_and_domain_identity() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\nproblem is 1.0 divide 0.0\n(problem code, problem domain)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value,
+        Value::Tuple(vec![
+            Value::Enum {
+                type_name: "lang arithmetic ArithmeticErrorCode".into(),
+                alternative: "division-by-zero".into(),
+            },
+            Value::ErrorDomain("root./(Rational,Rational)".into()),
+        ])
+    );
+    assert_eq!(
+        value.to_string(),
+        "(division-by-zero, root./(Rational,Rational))"
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("error.field.selected"))
+            .count(),
+        2
+    );
 }

@@ -627,3 +627,11 @@ All interpreter modes shall execute exhaustive `Ok value` and `Error problem`
 decisions under `TOPAL-DECISION-RESULT-001`, bind only the selected payload,
 and delay the other action. Test traces and reversible debugger history shall
 expose matcher consideration, selection, and payload binding.
+
+## TOPAL-INTP-SUBSET-075 — Structured Error field selection
+
+All interpreter modes shall select `code` and `domain` from a structured Error
+under `TOPAL-ERROR-FIELD-001`. The code shall retain its namespace-defined
+concrete `ErrorCode` subtype while the compiler-derived reporting domain remains
+a distinct `ErrorDomain`. Test traces and reversible debugger history shall
+expose each selection.
