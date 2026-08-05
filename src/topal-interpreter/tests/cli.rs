@@ -313,7 +313,7 @@ fn equality_requires_a_shared_operation() {
 
 #[test]
 fn every_mode_derives_record_equality() {
-    let source = "(name is \"Ada\", score is 1) = (name is \"Ada\", score is 1.0)\n";
+    let source = "(name is \"Ada\", score is 1) = (score is 1.0, name is \"Ada\")\n";
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());

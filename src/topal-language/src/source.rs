@@ -1002,18 +1002,14 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
             .try_fold(true, |equal, (left, right)| {
                 values_equal(left, right, trace).map(|field_equal| equal && field_equal)
             }),
-        (Value::Record(left), Value::Record(right))
-            if left.len() == right.len()
-                && left
+        (Value::Record(left), Value::Record(right)) if left.len() == right.len() => {
+            left.into_iter().try_fold(true, |equal, (label, left)| {
+                let right = right
                     .iter()
-                    .zip(&right)
-                    .all(|((left, _), (right, _))| left == right) =>
-        {
-            left.into_iter()
-                .zip(right)
-                .try_fold(true, |equal, ((_, left), (_, right))| {
-                    values_equal(left, right, trace).map(|field_equal| equal && field_equal)
-                })
+                    .find(|(right_label, _)| right_label == &label)
+                    .map(|(_, value)| value.clone())?;
+                values_equal(left, right, trace).map(|field_equal| equal && field_equal)
+            })
         }
         _ => None,
     }
@@ -1637,7 +1633,7 @@ mod tests {
         let mut trace = Vec::new();
         let value = Session::new()
             .evaluate(
-                "(name is \"Ada\", score is 1) = (name is \"Ada\", score is 1.0)\n",
+                "(name is \"Ada\", score is 1) = (score is 1.0, name is \"Ada\")\n",
                 &mut trace,
             )
             .unwrap();
