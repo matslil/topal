@@ -39,3 +39,11 @@ rule is considered.
 Diagnostics for a missing `then` shall remain on the matcher rule and shall not
 consume a separator from a later rule. LSP semantic tokens shall classify
 `then` as a keyword independently of the operand expression it terminates.
+
+### TOPAL-DECISION-ENUM-001 — Exhaustive enum alternative matching
+
+A decision over a nominal enum may use its payload-free alternative names as
+matchers. The subject is evaluated once and the action whose alternative has
+the same nominal enum identity and label is selected in source order. Without
+`otherwise`, the matcher set shall equal the enum's declared alternative set;
+missing, foreign, or undeclared alternatives are diagnostics.

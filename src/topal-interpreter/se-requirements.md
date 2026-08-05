@@ -569,3 +569,10 @@ All interpreter modes shall accept a visible declared enum name as an
 implemented function parameter or result classifier. Calls and returns shall
 validate nominal enum identity under `TOPAL-TYPE-ENUM-001`; test traces and
 reversible debugger history shall retain the enum signature.
+
+## TOPAL-INTP-SUBSET-067 — Exhaustive enum decisions
+
+All interpreter modes shall execute named enum alternative matchers according
+to `TOPAL-DECISION-ENUM-001`, prove complete coverage when `otherwise` is
+absent, and delay unselected actions. Test traces and reversible debugger
+history shall expose rule consideration and selection.
