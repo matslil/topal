@@ -274,3 +274,11 @@ All interpreter modes shall evaluate `character-count text` for a plain
 Unicode segmentation data selected by the language context. The result shall
 be a finite nonnegative `Int`. Test mode shall record callable selection and
 the segmentation result independently.
+
+## TOPAL-INTP-SUBSET-029 — Derived record equality
+
+All interpreter modes shall derive `=` and `!=` for anonymous records with the
+same labeled field sequence when every corresponding field supports implemented
+equality, according to `TOPAL-TYPE-EQUALITY-001`. Field comparison shall retain
+existing exact numeric conversions. Different record shapes or unsupported
+fields shall report no applicable equality overload.

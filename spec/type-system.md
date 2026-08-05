@@ -61,6 +61,10 @@ and otherwise to `false`. `Unit`, `Boolean`, `Int`, `Rational`, and `String`
 provide canonical equality; string equality compares the preserved Unicode
 sequence. A tuple provides equality exactly when corresponding fields do, and
 compares equal exactly when every corresponding field compares equal.
+A record provides equality exactly when both operands have the same labeled
+field sequence and corresponding field values provide equality; it compares
+equal exactly when every corresponding field compares equal. Records with
+different labeled shapes have no shared equality overload.
 
 Canonical conversion may make one equality overload applicable. In particular,
 mixed `Int` and `Rational` equality applies `TOPAL-NUM-INT-RATIONAL-CONVERT-001`
