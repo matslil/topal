@@ -4,7 +4,7 @@ use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use topal_source::{SourceText, Span};
+use topal_source::{SourceText, Span, character_count};
 use topal_syntax::{CallableKind, Expression, Statement, lex, parse};
 
 use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
@@ -303,6 +303,35 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if items.len() == 2
+                    && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "character-count")
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(text) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-NO-APPLICABLE-OVERLOAD",
+                            operand_span,
+                            "character-count requires a String operand",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.character-count(String)",
+                    });
+                    let count = character_count(&text);
+                    let detail = format!("characters={count}");
+                    trace.record(TraceEvent {
+                        event: "string.character-count",
+                        rule: "TOPAL-STRING-CHARACTER-COUNT-001",
+                        detail: &detail,
+                    });
+                    let value = Value::Int(BigInt::from(count));
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
                 if items.len() == 2
                     && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "empty")
                     && matches!(&items[1], Expression::Identifier(name) if source.slice(*name) == "String")
@@ -1597,6 +1626,23 @@ mod tests {
                 .iter()
                 .any(|event| event.contains("TOPAL-STRING-EMPTY-001"))
         );
+    }
+
+    #[test]
+    fn counts_unicode_user_perceived_characters() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("character-count \"a\u{301}👩‍🔬🇸🇪\"\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "3");
+        assert!(trace.iter().any(|event| {
+            event.contains("TOPAL-STRING-CHARACTER-COUNT-001") && event.contains("characters=3")
+        }));
+
+        let error = Session::new()
+            .evaluate("character-count 1\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
     }
 
     #[test]

@@ -26,3 +26,11 @@ at construction into one plain `String` containing their preserved Unicode
 scalar sequences in source order. This rule applies only while every composed
 operand is a literal. A binding, function result, or other string-valued
 expression requires the explicit `concat` operation.
+
+### TOPAL-STRING-CHARACTER-COUNT-001 — User-perceived character count
+
+For a plain `String` value `text`, `character-count text` shall produce the
+finite nonnegative `Int` equal to the number of extended grapheme clusters in
+the preserved Unicode sequence under the language context's pinned Unicode
+segmentation data. Empty text has count zero. Canonically equivalent sequences
+shall be segmented as preserved rather than normalized before counting.
