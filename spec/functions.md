@@ -85,3 +85,15 @@ Runtime application may select either an ordinary or static function; using a
 static function in a runtime context forgets only its static guarantee. Test
 traces shall distinguish ordinary declarations, argument bindings, entry, and
 return with this rule identity.
+
+### TOPAL-FUNCTION-CALL-CHAIN-001 — Nested function calls
+
+While evaluating a function body, an application may select another visible
+function declaration using the same argument and result rules as a root call.
+An ordinary function may call an ordinary or static function. A static function
+may call only a static function, preserving its static-evaluation guarantee.
+
+For an acyclic call chain, each nested call shall receive a fresh invocation
+scope and return its validated result to the caller expression. Test traces and
+debugger history shall nest selection, entry, body decisions, and return in
+call order without flattening or hiding the callee.

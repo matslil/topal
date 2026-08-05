@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 11);
+    assert_eq!(examples.len(), 12);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -859,6 +859,50 @@ fn every_mode_executes_ordinary_runtime_functions() {
     let output = run(&["--test"], source);
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("TOPAL-FUNCTION-ORDINARY-001"));
+}
+
+#[test]
+fn every_mode_executes_nested_function_calls() {
+    let source = "answer is fn () -> Int\n  increment 41\nincrement is fn (input : Int) -> Int\n  input + 1\nanswer ()\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n()\n42\n");
+        } else {
+            assert_eq!(output.stdout, b"42\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let outer_entry = trace.find("\"event\":\"function.entered\"").unwrap();
+    let inner_entry = trace[outer_entry + 1..]
+        .find("\"event\":\"function.entered\"")
+        .unwrap()
+        + outer_entry
+        + 1;
+    let inner_return = trace.rfind("\"detail\":\"increment\"").unwrap();
+    let outer_return = trace.rfind("\"detail\":\"answer\"").unwrap();
+    assert!(outer_entry < inner_entry && inner_entry < inner_return && inner_return < outer_return);
+}
+
+#[test]
+fn static_function_cannot_call_an_ordinary_function() {
+    let output = run(
+        &[],
+        "runtime is fn () -> Int\n  42\ncompile is fn static () -> Int\n  runtime ()\ncompile ()\n",
+    );
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-STATIC-CALLS-RUNTIME-FUNCTION")
+    );
 }
 
 #[test]

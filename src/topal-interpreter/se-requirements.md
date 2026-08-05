@@ -372,3 +372,10 @@ to `TOPAL-FUNCTION-ORDINARY-001`, supporting the same implemented parameter and
 body subsets as static functions while omitting the static-evaluation
 guarantee. Test traces and reversible debugger history shall distinguish
 ordinary function decisions from static ones.
+
+## TOPAL-INTP-SUBSET-041 — Nested function call chains
+
+All interpreter modes shall execute acyclic function-to-function calls according
+to `TOPAL-FUNCTION-CALL-CHAIN-001`, enforce static-to-static dependencies, and
+preserve fresh invocation scopes. Test traces and reversible debugger history
+shall expose nested callee entry, decisions, and return before caller return.
