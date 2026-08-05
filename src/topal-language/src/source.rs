@@ -3186,6 +3186,28 @@ fn boolean_decision_evaluates_only_selected_action() {
 }
 
 #[test]
+fn exhaustive_boolean_decision_selects_both_literal_cases() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "choose is fn (condition : Boolean) -> Int\n  condition\n    true then 42\n    false then 0\n(choose true, choose false)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(42, 0)");
+    assert!(
+        trace
+            .iter()
+            .any(|event| { event.contains("decision.rule.selected") && event.contains("rule=0") })
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| { event.contains("decision.rule.selected") && event.contains("rule=1") })
+    );
+}
+
+#[test]
 fn comparison_decision_uses_subject_as_left_operand() {
     let mut trace = Vec::new();
     let value = Session::new()

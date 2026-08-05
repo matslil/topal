@@ -1114,6 +1114,31 @@ mod tests {
     }
 
     #[test]
+    fn parses_exhaustive_boolean_decision_without_otherwise() {
+        let source = SourceText::new(
+            "choose is fn (condition : Boolean) -> Int\n  condition\n    true then 42\n    false then 0\nchoose false",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function { body, .. } = &parsed.statements[0] else {
+            panic!("expected function");
+        };
+        let Statement::Expression(Expression::DecisionTable { rules, .. }) = &body[0] else {
+            panic!("expected decision table");
+        };
+        assert_eq!(rules.len(), 2);
+        assert!(matches!(
+            rules[0].matcher,
+            DecisionMatcher::Boolean { value: true, .. }
+        ));
+        assert!(matches!(
+            rules[1].matcher,
+            DecisionMatcher::Boolean { value: false, .. }
+        ));
+    }
+
+    #[test]
     fn parses_comparison_decision_matcher() {
         let source = SourceText::new(
             "minimum is fn (left : Int, right : Int) -> Int\n  left\n    < right then left\n    otherwise right\nminimum (1, 2)",
