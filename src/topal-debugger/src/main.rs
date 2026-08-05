@@ -354,7 +354,9 @@ fn handle_frame_command(
         "finish" => {
             while !*complete {
                 match execution.step(session, history) {
-                    Ok(ExecutionStep::Complete(_)) => *complete = true,
+                    Ok(ExecutionStep::Complete(_) | ExecutionStep::Returned { .. }) => {
+                        *complete = true;
+                    }
                     Ok(ExecutionStep::Advanced { .. }) => {}
                     Err(error) => {
                         println!("{}", error.render(source_name));
@@ -390,7 +392,10 @@ fn live_source_step(
     }
     let frontier = history.transitions().len();
     let step = execution.step(session, history)?;
-    *complete = matches!(step, ExecutionStep::Complete(_));
+    *complete = matches!(
+        step,
+        ExecutionStep::Complete(_) | ExecutionStep::Returned { .. }
+    );
     history.seek(frontier);
     if history.step_source_forward().is_none() {
         history.seek(history.transitions().len());

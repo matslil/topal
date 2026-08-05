@@ -135,6 +135,7 @@ pub struct Execution {
     source: SourceText,
     statements: Vec<Statement>,
     cursor: usize,
+    return_allowed: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -150,6 +151,7 @@ struct StaticFunctionDeclaration<'a> {
 pub enum ExecutionStep {
     Advanced { value: Value, span: Span },
     Complete(Value),
+    Returned { value: Value, span: Span },
 }
 
 impl Session {
@@ -170,8 +172,12 @@ impl Session {
     ) -> Result<Value, Diagnostic> {
         let mut execution = self.prepare(input, trace)?;
         loop {
-            if let ExecutionStep::Complete(value) = execution.step(self, trace)? {
-                return Ok(value);
+            match execution.step(self, trace)? {
+                ExecutionStep::Complete(value) => return Ok(value),
+                ExecutionStep::Advanced { .. } => {}
+                ExecutionStep::Returned { .. } => {
+                    unreachable!("top-level return is rejected before completing a step")
+                }
             }
         }
     }
@@ -204,6 +210,7 @@ impl Session {
             source,
             statements: parsed.statements,
             cursor: 0,
+            return_allowed: false,
         })
     }
 
@@ -238,6 +245,7 @@ impl Session {
         match execution.step(&mut session, trace)? {
             ExecutionStep::Complete(value) => Ok(value),
             ExecutionStep::Advanced { .. } => unreachable!("one expression completes execution"),
+            ExecutionStep::Returned { .. } => unreachable!("inspection rejects return statements"),
         }
     }
 
@@ -456,20 +464,27 @@ impl Session {
                         source: function.source.clone(),
                         statements: function.body.clone(),
                         cursor: 0,
+                        return_allowed: true,
                     };
-                    let value = loop {
+                    let (value, result_span) = loop {
                         match body_execution.step(&mut function_scope, trace)? {
                             ExecutionStep::Advanced { .. } => {}
-                            ExecutionStep::Complete(value) => break value,
+                            ExecutionStep::Complete(value) => {
+                                break (
+                                    value,
+                                    statement_span(
+                                        function.body.last().expect("function body is nonempty"),
+                                    ),
+                                );
+                            }
+                            ExecutionStep::Returned { value, span } => break (value, span),
                         }
                     };
                     if !value_has_classifier(&value, &function.result) {
                         return Err(diagnostic(
                             &function.source,
                             "E-FUNCTION-RESULT-TYPE",
-                            statement_span(
-                                function.body.last().expect("function body is nonempty"),
-                            ),
+                            result_span,
                             format!(
                                 "function `{name}` returned a value outside `{}`",
                                 function.result
@@ -1011,6 +1026,26 @@ impl Execution {
                 });
                 (Value::Unit, cover(*span, value.span()))
             }
+            Statement::Return { keyword, value } => {
+                if !self.return_allowed {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-RETURN-OUTSIDE-FUNCTION",
+                        *keyword,
+                        "`return` is valid only inside a function body",
+                    ));
+                }
+                let span = cover(*keyword, value.span());
+                let value = session.evaluate_expression(&self.source, value, trace)?;
+                trace.record(TraceEvent {
+                    event: "function.return.explicit",
+                    rule: "TOPAL-FUNCTION-RETURN-001",
+                    detail: value_classifier(&value),
+                });
+                session.checkpoint(trace, Some(&value), Some(span));
+                self.cursor = self.statements.len();
+                return Ok(ExecutionStep::Returned { value, span });
+            }
             Statement::Expression(expression) => {
                 if self.cursor + 1 != self.statements.len() {
                     return Err(diagnostic(
@@ -1050,6 +1085,7 @@ fn statement_span(statement: &Statement) -> Span {
         Statement::Binding { name, value } => cover(*name, value.span()),
         Statement::StaticFunction { span, .. } => *span,
         Statement::Discard { span, value } => cover(*span, value.span()),
+        Statement::Return { keyword, value } => cover(*keyword, value.span()),
         Statement::Expression(expression) => expression.span(),
     }
 }
@@ -1109,16 +1145,20 @@ fn record_result(trace: &mut impl TraceSink, value: &Value) {
     trace.record(TraceEvent {
         event: "evaluation.result",
         rule: "TOPAL-SYN-GRAMMAR-001",
-        detail: match value {
-            Value::Boolean(_) => "Boolean",
-            Value::Int(_) => "Int",
-            Value::Rational(_) => "Rational",
-            Value::String(_) => "String",
-            Value::Tuple(_) => "Tuple",
-            Value::Record(_) => "Record",
-            Value::Unit => "Unit",
-        },
+        detail: value_classifier(value),
     });
+}
+
+const fn value_classifier(value: &Value) -> &'static str {
+    match value {
+        Value::Boolean(_) => "Boolean",
+        Value::Int(_) => "Int",
+        Value::Rational(_) => "Rational",
+        Value::String(_) => "String",
+        Value::Tuple(_) => "Tuple",
+        Value::Record(_) => "Record",
+        Value::Unit => "Unit",
+    }
 }
 
 fn evaluate_boolean_literal(source: &SourceText, span: Span, trace: &mut impl TraceSink) -> Value {
@@ -2591,4 +2631,27 @@ fn function_block_bindings_are_local_to_each_invocation() {
         )
         .unwrap_err();
     assert_eq!(error.code, "E-DISCARDED-VALUE");
+}
+
+#[test]
+fn explicit_return_skips_later_function_statements() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "answer is fn static () -> Int\n  return 40 + 2\n  missing\nanswer ()\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("function.return.explicit"))
+    );
+    assert!(!trace.iter().any(|event| event.contains("missing")));
+
+    let error = Session::new()
+        .evaluate("return 42\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
 }

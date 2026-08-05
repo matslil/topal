@@ -60,3 +60,15 @@ Bindings introduced by the block shall become visible only to later statements
 in the same invocation and shall not escape it. Test traces and debugger history
 shall expose their creation and subsequent resolution between function entry
 and return.
+
+### TOPAL-FUNCTION-RETURN-001 — Explicit function return
+
+A statement `return expression` shall evaluate `expression` once and complete
+the nearest enclosing function immediately with that value. Statements after
+the return in the same function invocation shall not be evaluated. The returned
+value shall satisfy the function's declared result classifier through the same
+validation used for an implicit final-expression result.
+
+`return` outside a function body shall be rejected. Test traces and debugger
+history shall expose the explicit-return decision before the common function
+return event and shall contain no decisions from skipped statements.
