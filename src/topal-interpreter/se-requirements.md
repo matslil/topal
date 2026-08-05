@@ -418,3 +418,11 @@ after proving the structural decrease required by
 `TOPAL-FUNCTION-RECURSION-INT-001`. Unproven cycles shall remain diagnostics.
 Test traces and reversible debugger history shall expose proof acceptance and
 each nested recursive descent.
+
+## TOPAL-INTP-SUBSET-047 — Proven increasing Int recursion
+
+All interpreter modes shall execute unary `Int` recursion which increases
+toward a guarded upper bound only after proving
+`TOPAL-FUNCTION-RECURSION-INT-INCREASING-001`. Test traces and reversible
+debugger history shall expose the distinct proof rule on declaration and every
+recursive descent.

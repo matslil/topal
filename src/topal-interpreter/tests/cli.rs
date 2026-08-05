@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 17);
+    assert_eq!(examples.len(), 18);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1026,6 +1026,29 @@ fn every_mode_executes_proven_decreasing_int_recursion() {
     let output = run(&["--test"], source);
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("\"event\":\"function.recursion.proven\""));
+    assert_eq!(trace.matches("function.recursion.descended").count(), 5);
+}
+
+#[test]
+fn every_mode_executes_proven_increasing_int_recursion() {
+    let source = "distance-up is fn (value : Int) -> Int\n  value\n    >= 0 then 0\n    otherwise 1 + (distance-up (value + 1))\ndistance-up (-5)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n5\n");
+        } else {
+            assert_eq!(output.stdout, b"5\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-RECURSION-INT-INCREASING-001"));
     assert_eq!(trace.matches("function.recursion.descended").count(), 5);
 }
 

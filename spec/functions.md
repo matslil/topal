@@ -127,12 +127,25 @@ selected input signature separately from function entry.
 
 A unary `Int` function whose complete body is a decision table over its
 parameter is proven terminating by this initial rule when its first rule is
-`<= 0 then base`, its second rule is `otherwise recursive-action`, the base
+`<= bound then base`, where `bound` is an `Int` literal, its second rule is
+`otherwise recursive-action`, the base
 contains no self-call, and every self-call in the recursive action passes
 exactly `parameter - 1`. For values above zero each recursive edge strictly
-decreases toward the guarded bound; values at or below zero take the base.
+decreases toward the guarded bound; values at or below the bound take the base.
 
 Only a function satisfying this structural proof shall execute a recursive edge
 under this rule. Test traces and debugger history shall expose proof acceptance
 at declaration and every recursive descent before nested function entry. Cycles
 without an implemented termination proof remain rejected.
+
+### TOPAL-FUNCTION-RECURSION-INT-INCREASING-001 — Proven increasing Int recursion
+
+The dual structural rule proves a unary `Int` function terminating when its
+first decision rule is `>= bound then base` for an `Int` literal bound, its
+second rule is `otherwise recursive-action`, the base contains no self-call,
+and every self-call passes exactly `parameter + 1`. Values below the bound
+strictly increase toward it; values at or above the bound take the base.
+
+Test traces and debugger history shall distinguish this increasing proof from
+the decreasing proof at declaration and on every recursive descent. Other
+recursive steps remain rejected until another termination rule proves them.
