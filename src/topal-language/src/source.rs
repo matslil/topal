@@ -495,6 +495,9 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if let Some(value) = evaluate_arithmetic_error_code(source, items, trace) {
+                    return Ok(value);
+                }
                 if items.len() == 3
                     && let Expression::Identifier(name_span) = items[1]
                     && !self.bindings.contains_key(source.slice(name_span))
@@ -1331,6 +1334,40 @@ fn enum_alternatives(source: &SourceText, expression: &Expression) -> Option<Vec
                 .then(|| (source.slice(*alternative).to_owned(), *alternative))
         })
         .collect()
+}
+
+fn evaluate_arithmetic_error_code(
+    source: &SourceText,
+    items: &[Expression],
+    trace: &mut impl TraceSink,
+) -> Option<Value> {
+    let [
+        Expression::Identifier(lang),
+        Expression::Identifier(arithmetic),
+        Expression::Identifier(code),
+    ] = items
+    else {
+        return None;
+    };
+    if source.slice(*lang) != "lang" || source.slice(*arithmetic) != "arithmetic" {
+        return None;
+    }
+    let code = source.slice(*code);
+    if !matches!(
+        code,
+        "out-of-range" | "not-representable" | "division-by-zero" | "indeterminate"
+    ) {
+        return None;
+    }
+    trace.record(TraceEvent {
+        event: "namespace.member.selected",
+        rule: "TOPAL-NUM-ARITHMETIC-ERROR-001",
+        detail: code,
+    });
+    Some(Value::Enum {
+        type_name: "lang arithmetic ArithmeticErrorCode".to_owned(),
+        alternative: code.to_owned(),
+    })
 }
 
 fn declare_enum(
@@ -3819,6 +3856,23 @@ fn executes_only_complete_enum_decisions() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-DECISION-ENUM-001"))
+    );
+}
+
+#[test]
+fn resolves_namespaced_arithmetic_error_codes_without_a_domain() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "(lang arithmetic division-by-zero) = (lang arithmetic division-by-zero)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Boolean(true));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-NUM-ARITHMETIC-ERROR-001"))
     );
 }
 
