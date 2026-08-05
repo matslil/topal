@@ -592,3 +592,10 @@ All interpreter modes shall parse an explicit
 an ordinary successful `T` value under `TOPAL-TYPE-RESULT-001`. Declaration
 shall neither construct an `Error` nor assign `Error.domain`. Test traces and
 debugger history shall retain the complete result contract.
+
+## TOPAL-INTP-SUBSET-070 — Dynamic Rational division failure
+
+All interpreter modes shall return a structured arithmetic `Error` for dynamic
+Rational division by zero under `TOPAL-NUM-DYNAMIC-DIVZERO-001`, while retaining
+the static-zero diagnostic. Test traces and reversible debugger history shall
+expose code construction, reporting-overload domain, and source provenance.

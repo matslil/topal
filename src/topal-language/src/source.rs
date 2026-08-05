@@ -23,6 +23,12 @@ pub enum Value {
         type_name: String,
         alternative: String,
     },
+    Error {
+        domain: String,
+        code: String,
+        line: usize,
+        column: usize,
+    },
     Unit,
 }
 
@@ -64,6 +70,9 @@ impl fmt::Display for Value {
                 formatter.write_str(")")
             }
             Self::Enum { alternative, .. } => formatter.write_str(alternative),
+            Self::Error { domain, code, .. } => {
+                write!(formatter, "Error ( domain is {domain}, code is {code} )")
+            }
             Self::Unit => formatter.write_str("()"),
         }
     }
@@ -1432,7 +1441,8 @@ fn declare_enum(
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
     if let Some(success) = result_success_classifier(classifier) {
-        return value_has_classifier(value, success);
+        return matches!(value, Value::Error { code, .. } if is_arithmetic_error_code(code))
+            || value_has_classifier(value, success);
     }
     match (value, classifier) {
         (Value::Boolean(_), "Boolean")
@@ -1444,6 +1454,13 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         (Value::Enum { type_name, .. }, classifier) => type_name == classifier,
         _ => false,
     }
+}
+
+fn is_arithmetic_error_code(code: &str) -> bool {
+    matches!(
+        code,
+        "out-of-range" | "not-representable" | "division-by-zero" | "indeterminate"
+    )
 }
 
 fn result_success_classifier(classifier: &str) -> Option<&str> {
@@ -2105,6 +2122,7 @@ const fn value_classifier(value: &Value) -> &'static str {
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
         Value::Enum { .. } => "Enum",
+        Value::Error { .. } => "Error",
         Value::Unit => "Unit",
     }
 }
@@ -2533,6 +2551,22 @@ fn apply_rational_binary(
                     rule: "TOPAL-NUM-DIVZERO-001",
                     detail: "divisor.nonzero",
                 });
+                if parse_rational(source.slice(right_span)).is_none()
+                    && parse_integer(source.slice(right_span)).is_none()
+                {
+                    let position = source.position(right_span.start);
+                    trace.record(TraceEvent {
+                        event: "result.error.constructed",
+                        rule: "TOPAL-TYPE-RESULT-001",
+                        detail: "root./(Rational,Rational);division-by-zero",
+                    });
+                    return Ok(Value::Error {
+                        domain: "root./(Rational,Rational)".to_owned(),
+                        code: "division-by-zero".to_owned(),
+                        line: position.line,
+                        column: position.column,
+                    });
+                }
                 return Err(diagnostic(
                     source,
                     "E-DIVISION-BY-ZERO",
@@ -2760,6 +2794,7 @@ fn apply_negate(
         | Value::Tuple(_)
         | Value::Record(_)
         | Value::Enum { .. }
+        | Value::Error { .. }
         | Value::Unit => Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",

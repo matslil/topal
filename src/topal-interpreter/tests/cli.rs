@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 39);
+    assert_eq!(examples.len(), 40);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1085,6 +1085,33 @@ fn every_mode_executes_successful_result_contracts() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("function.result.contract"));
     assert!(trace.contains("TOPAL-TYPE-RESULT-001"));
+}
+
+#[test]
+fn every_mode_returns_dynamic_rational_division_error() {
+    let source = "divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\n1.0 divide 0.0\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(
+            b"Error ( domain is root./(Rational,Rational), code is division-by-zero )\n"
+        ));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("result.error.constructed"));
+    assert!(trace.contains("TOPAL-NUM-DIVZERO-001"));
+
+    let static_zero = run(&[], "1.0 / 0.0\n");
+    assert!(!static_zero.status.success());
+    assert!(
+        String::from_utf8(static_zero.stderr)
+            .unwrap()
+            .contains("E-DIVISION-BY-ZERO")
+    );
 }
 
 #[test]

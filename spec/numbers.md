@@ -151,6 +151,16 @@ conservatively reject division when it cannot establish the nonzero obligation;
 it shall not assume nonzero or produce an undefined value. Later dynamic-input
 rules may instead construct the typed `Result` required by the error model.
 
+### TOPAL-NUM-DYNAMIC-DIVZERO-001 — Dynamic Rational zero division
+
+Within a function explicitly returning
+`Result ( Rational, lang arithmetic ArithmeticErrorCode )`, division of a
+`Rational` by a dynamically obtained zero constructs an `Error` with code
+`division-by-zero`. Its domain is derived from the qualified reporting overload
+`root./(Rational,Rational)` and its source provenance identifies the divisor
+occurrence. The error returns through the declared Result path; a statically
+evident zero remains a diagnostic under `TOPAL-NUM-DIVZERO-001`.
+
 ### TOPAL-NUM-ARITHMETIC-ERROR-001 — Arithmetic error-code vocabulary
 
 The qualified namespace `lang arithmetic` publishes the nominal enum type
