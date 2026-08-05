@@ -177,6 +177,11 @@ classified by `Value` satisfies the successful path without an additional
 runtime wrapper. Declaring `Result` shall not construct an `Error` or choose its
 compiler-derived domain.
 
+When a fallible function returns an `Error` produced by another operation and
+its declared code vocabulary contains that error's code type, propagation
+preserves the complete Error unchanged, including domain, detail, cause, and
+source provenance. Propagation shall be traceable separately from construction.
+
 ### TOPAL-TYPE-TOTAL-001 — Totality and failure
 
 Ordinary functions shall prove that every input reaches a value in finite

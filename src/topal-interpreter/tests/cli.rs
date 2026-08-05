@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 42);
+    assert_eq!(examples.len(), 43);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1843,6 +1843,21 @@ fn every_mode_returns_dynamic_negative_power_error() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("result.error.constructed"));
     assert!(trace.contains("root.^(Rational,Int);division-by-zero"));
+}
+
+#[test]
+fn result_errors_propagate_unchanged_across_calls() {
+    let source = "divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\nouter is fn () -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  1.0 divide 0.0\nouter ()\n";
+    let output = run(&["--test"], source);
+    assert!(output.status.success());
+    assert_eq!(
+        output.stdout,
+        b"Error ( domain is root./(Rational,Rational), code is division-by-zero )\n"
+    );
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert_eq!(trace.matches("result.error.constructed").count(), 1);
+    assert_eq!(trace.matches("result.error.propagated").count(), 2);
+    assert!(trace.contains("domain=root./(Rational,Rational);code=division-by-zero"));
 }
 
 #[test]
