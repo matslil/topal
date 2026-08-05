@@ -119,6 +119,15 @@ impl Diagnostic {
 #[derive(Default)]
 pub struct Session {
     bindings: BTreeMap<String, Value>,
+    functions: BTreeMap<String, StaticFunction>,
+}
+
+#[derive(Clone)]
+struct StaticFunction {
+    source: SourceText,
+    result: String,
+    body: Expression,
+    bindings: BTreeMap<String, Value>,
 }
 
 pub struct Execution {
@@ -201,6 +210,7 @@ impl Session {
     ) -> Result<Value, Diagnostic> {
         let mut session = Self {
             bindings: bindings.clone(),
+            functions: BTreeMap::new(),
         };
         let mut execution = session.prepare(input, trace)?;
         if !matches!(execution.statements.as_slice(), [Statement::Expression(_)]) {
@@ -305,6 +315,50 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if items.len() == 2
+                    && let Expression::Identifier(name_span) = &items[0]
+                    && matches!(&items[1], Expression::Unit(_))
+                    && let Some(function) = self.functions.get(source.slice(*name_span)).cloned()
+                {
+                    let name = source.slice(*name_span);
+                    trace.record(TraceEvent {
+                        event: "function.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: name,
+                    });
+                    trace.record(TraceEvent {
+                        event: "function.entered",
+                        rule: "TOPAL-FUNCTION-STATIC-NULLARY-001",
+                        detail: name,
+                    });
+                    let function_scope = Self {
+                        bindings: function.bindings,
+                        functions: BTreeMap::new(),
+                    };
+                    let value = function_scope.evaluate_expression(
+                        &function.source,
+                        &function.body,
+                        trace,
+                    )?;
+                    if !value_has_classifier(&value, &function.result) {
+                        return Err(diagnostic(
+                            &function.source,
+                            "E-FUNCTION-RESULT-TYPE",
+                            function.body.span(),
+                            format!(
+                                "function `{name}` returned a value outside `{}`",
+                                function.result
+                            ),
+                        ));
+                    }
+                    trace.record(TraceEvent {
+                        event: "function.returned",
+                        rule: "TOPAL-FUNCTION-STATIC-NULLARY-001",
+                        detail: name,
+                    });
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
                 if items.len() == 2
                     && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "empty?")
                 {
@@ -682,7 +736,9 @@ impl Execution {
         let (value, span) = match statement {
             Statement::Binding { name, value } => {
                 let name_text = self.source.slice(*name);
-                if session.bindings.contains_key(name_text) {
+                if session.bindings.contains_key(name_text)
+                    || session.functions.contains_key(name_text)
+                {
                     return Err(diagnostic(
                         &self.source,
                         "E-DUPLICATE-BINDING",
@@ -698,6 +754,48 @@ impl Execution {
                     detail: name_text,
                 });
                 (Value::Unit, cover(*name, value.span()))
+            }
+            Statement::StaticFunction {
+                name,
+                result,
+                body,
+                span,
+            } => {
+                let name_text = self.source.slice(*name);
+                if session.bindings.contains_key(name_text)
+                    || session.functions.contains_key(name_text)
+                {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-DUPLICATE-BINDING",
+                        *name,
+                        "name is already bound in this scope",
+                    ));
+                }
+                let result_text = self.source.slice(*result);
+                if !supported_value_classifier(result_text) {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-UNSUPPORTED-RESULT-CLASSIFIER",
+                        *result,
+                        "the implemented function subset requires Boolean, Int, Rational, String, or Unit",
+                    ));
+                }
+                session.functions.insert(
+                    name_text.to_owned(),
+                    StaticFunction {
+                        source: self.source.clone(),
+                        result: result_text.to_owned(),
+                        body: body.clone(),
+                        bindings: session.bindings.clone(),
+                    },
+                );
+                trace.record(TraceEvent {
+                    event: "function.declared",
+                    rule: "TOPAL-FUNCTION-STATIC-NULLARY-001",
+                    detail: name_text,
+                });
+                (Value::Unit, *span)
             }
             Statement::Discard { span, value } => {
                 session.evaluate_expression(&self.source, value, trace)?;
@@ -745,9 +843,28 @@ const fn cover(first: Span, second: Span) -> Span {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value } => cover(*name, value.span()),
+        Statement::StaticFunction { span, .. } => *span,
         Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Expression(expression) => expression.span(),
     }
+}
+
+fn value_has_classifier(value: &Value, classifier: &str) -> bool {
+    matches!(
+        (value, classifier),
+        (Value::Boolean(_), "Boolean")
+            | (Value::Int(_), "Int")
+            | (Value::Rational(_), "Rational")
+            | (Value::String(_), "String")
+            | (Value::Unit, "Unit")
+    )
+}
+
+fn supported_value_classifier(classifier: &str) -> bool {
+    matches!(
+        classifier,
+        "Boolean" | "Int" | "Rational" | "String" | "Unit"
+    )
 }
 
 fn accepted_source(input: &str, trace: &mut impl TraceSink) -> Result<SourceText, Diagnostic> {
@@ -2128,4 +2245,47 @@ mod tests {
     fn rejects_incomplete_grouping() {
         assert_eq!(evaluate("12_34").unwrap_err().code, "E-NUMERIC-LITERAL");
     }
+}
+#[test]
+fn declares_and_calls_static_nullary_functions() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "answer is fn static () -> Int\n  40 + 2\nanswer ()\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    let declared = trace
+        .iter()
+        .position(|event| event.contains("function.declared"))
+        .unwrap();
+    let entered = trace
+        .iter()
+        .position(|event| event.contains("function.entered"))
+        .unwrap();
+    let returned = trace
+        .iter()
+        .position(|event| event.contains("function.returned"))
+        .unwrap();
+    assert!(declared < entered && entered < returned);
+}
+
+#[test]
+fn static_function_body_uses_declaration_order_lexical_bindings() {
+    let value = Session::new()
+        .evaluate(
+            "base is 40\nanswer is fn static () -> Int\n  base + 2\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+
+    let error = Session::new()
+        .evaluate(
+            "answer is fn static () -> Int\n  later + 2\nlater is 40\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-UNBOUND-NAME");
 }

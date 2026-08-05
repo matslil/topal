@@ -98,6 +98,31 @@ fn exposes_intermediate_expression_values_as_reversible_states() {
 }
 
 #[test]
+fn records_reversible_static_function_call_decisions() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}static-function-call.debug"),
+            &format!("{root}static-function-call.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let declaration = stdout.find("function.declared").unwrap();
+    let entered = stdout.find("function.entered").unwrap();
+    let body = stdout.find("root.+(Int,Int)").unwrap();
+    let returned = stdout.find("function.returned").unwrap();
+    assert!(declaration < entered && entered < body && body < returned);
+    assert!(stdout.contains("\n42\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

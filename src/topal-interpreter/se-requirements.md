@@ -314,3 +314,12 @@ identifier according to `TOPAL-SYN-LEX-001`. All interpreter modes shall
 evaluate `empty? text` for a plain `String` according to
 `TOPAL-STRING-EMPTY-PREDICATE-001`. Test mode shall record predicate selection
 and its Boolean result independently.
+
+## TOPAL-INTP-SUBSET-034 — Static nullary functions
+
+All interpreter modes shall declare and call zero-parameter static functions
+with one indented expression body according to
+`TOPAL-FUNCTION-STATIC-NULLARY-001`. Function bodies shall remain unevaluated at
+declaration, capture only earlier visible bindings, persist in interactive
+sessions, validate their explicit result classifier, and execute through shared debugger checkpoints. Test mode shall
+record declaration, selection, entry, body decisions, and return in order.

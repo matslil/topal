@@ -20,6 +20,7 @@ pub enum TokenKind {
     LeftParen,
     RightParen,
     Comma,
+    Arrow,
     Equals,
     NotEquals,
     Less,
@@ -124,6 +125,9 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
     }
     if rest.starts_with(">=") {
         return (TokenKind::GreaterEqual, 2);
+    }
+    if rest.starts_with("->") {
+        return (TokenKind::Arrow, 2);
     }
     let first = rest.chars().next().expect("nonempty source");
     match first {
@@ -307,6 +311,21 @@ mod tests {
                 TokenKind::Equals,
                 TokenKind::Whitespace,
                 TokenKind::Boolean,
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_function_result_arrow_as_one_symbol() {
+        assert_eq!(
+            kinds("() -> Int"),
+            vec![
+                TokenKind::LeftParen,
+                TokenKind::RightParen,
+                TokenKind::Whitespace,
+                TokenKind::Arrow,
+                TokenKind::Whitespace,
+                TokenKind::Identifier,
             ]
         );
     }

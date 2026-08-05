@@ -66,8 +66,20 @@ pub struct ProductField {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Statement {
-    Binding { name: Span, value: Expression },
-    Discard { span: Span, value: Expression },
+    Binding {
+        name: Span,
+        value: Expression,
+    },
+    StaticFunction {
+        name: Span,
+        result: Span,
+        body: Expression,
+        span: Span,
+    },
+    Discard {
+        span: Span,
+        value: Expression,
+    },
     Expression(Expression),
 }
 
@@ -138,6 +150,13 @@ impl Parser<'_> {
             let separator = self
                 .take_nontrivia()
                 .expect("peeked token remains available");
+            if first.kind == TokenKind::Identifier
+                && self.peek_nontrivia().is_some_and(|token| {
+                    token.kind == TokenKind::Identifier && self.source.slice(token.span) == "fn"
+                })
+            {
+                return self.static_nullary_function(first);
+            }
             if let Some(value) = self.expression() {
                 return Some(if first.kind == TokenKind::Discard {
                     Statement::Discard {
@@ -160,6 +179,67 @@ impl Parser<'_> {
         }
         self.cursor = checkpoint;
         self.expression().map(Statement::Expression)
+    }
+
+    fn static_nullary_function(&mut self, name: Token) -> Option<Statement> {
+        let function = self.take_nontrivia()?;
+        let static_token = self.take_nontrivia()?;
+        let opening = self.take_nontrivia()?;
+        let closing = self.take_nontrivia()?;
+        let arrow = self.take_nontrivia()?;
+        let result = self.take_nontrivia()?;
+        let valid = self.source.slice(function.span) == "fn"
+            && static_token.kind == TokenKind::Identifier
+            && self.source.slice(static_token.span) == "static"
+            && opening.kind == TokenKind::LeftParen
+            && closing.kind == TokenKind::RightParen
+            && arrow.kind == TokenKind::Arrow
+            && result.kind == TokenKind::Identifier;
+        if !valid {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-UNSUPPORTED-FUNCTION-HEADER",
+                span: Span::new(function.span.start, result.span.end),
+                message: "the implemented function subset requires `fn static () -> ResultType`",
+            });
+            self.skip_to_newline();
+            return None;
+        }
+        if !self
+            .peek()
+            .is_some_and(|token| token.kind == TokenKind::Newline)
+        {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-FUNCTION-BODY",
+                span: Span::new(result.span.end, result.span.end),
+                message: "expected an indented function body on the next line",
+            });
+            return None;
+        }
+        self.cursor += 1;
+        let Some(indent) = self.peek() else {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-FUNCTION-BODY",
+                span: Span::new(result.span.end, result.span.end),
+                message: "expected an indented function body on the next line",
+            });
+            return None;
+        };
+        if indent.kind != TokenKind::Whitespace {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-INDENTED-BODY",
+                span: indent.span,
+                message: "function body must be indented",
+            });
+            return None;
+        }
+        self.cursor += 1;
+        let body = self.expression()?;
+        Some(Statement::StaticFunction {
+            name: name.span,
+            result: result.span,
+            span: Span::new(name.span.start, body.span().end),
+            body,
+        })
     }
 
     fn expression(&mut self) -> Option<Expression> {
@@ -568,5 +648,22 @@ mod tests {
         let source = SourceText::new("true is 1").unwrap();
         let parsed = parse(&source, &lex(&source));
         assert_eq!(parsed.diagnostics[0].code, "E-RESERVED-BOOLEAN-LITERAL");
+    }
+
+    #[test]
+    fn parses_static_nullary_function_with_indented_body() {
+        let source = SourceText::new("answer is fn static () -> Int\n  40 + 2\nanswer ()").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty());
+        let Statement::StaticFunction {
+            name, result, body, ..
+        } = &parsed.statements[0]
+        else {
+            panic!("expected static function declaration");
+        };
+        assert_eq!(source.slice(*name), "answer");
+        assert_eq!(source.slice(*result), "Int");
+        assert!(matches!(body, Expression::Application { .. }));
+        assert!(matches!(parsed.statements[1], Statement::Expression(_)));
     }
 }
