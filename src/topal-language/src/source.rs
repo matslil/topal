@@ -3255,3 +3255,24 @@ fn increasing_int_recursion_executes_only_after_structural_proof() {
         5
     );
 }
+
+#[test]
+fn comparison_matcher_evaluates_complete_operand_expression() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "within is fn (value : Int, limit : Int) -> Boolean\n  value\n    < limit + 1 then true\n    otherwise false\n(5 within 5, 6 within 5)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(true, false)");
+    let addition = trace
+        .iter()
+        .position(|event| event.contains("root.+(Int,Int)"))
+        .unwrap();
+    let comparison = trace
+        .iter()
+        .position(|event| event.contains("root.<(TotalOrder,TotalOrder)"))
+        .unwrap();
+    assert!(addition < comparison);
+}
