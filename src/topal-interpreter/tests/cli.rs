@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 25);
+    assert_eq!(examples.len(), 26);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1099,6 +1099,24 @@ fn every_mode_distinguishes_overloads_from_recursion() {
     let integer = trace.find("describe (Int)").unwrap();
     assert!(string < integer);
     assert!(!trace.contains("E-RECURSION-NOT-YET-PROVEN"));
+}
+
+#[test]
+fn every_mode_executes_positive_literal_recursion_steps() {
+    let source = "down-hops is fn (value : Int) -> Int\n  value\n    <= 0 then 0\n    otherwise 1 + (down-hops (value - 3))\nup-hops is fn (value : Int) -> Int\n  value\n    >= 0 then 0\n    otherwise 1 + (up-hops (value + 2))\n(down-hops 7, up-hops (-5))\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n()\n(3, 3)\n");
+        } else {
+            assert_eq!(output.stdout, b"(3, 3)\n");
+        }
+    }
 }
 
 #[test]

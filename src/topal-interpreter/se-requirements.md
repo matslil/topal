@@ -479,3 +479,11 @@ recursion identity according to `TOPAL-FUNCTION-RECURSION-OVERLOAD-IDENTITY-001`
 A call between same-named distinct overloads shall execute without recursion
 proof, while a return to the active signature shall retain the proof requirement.
 Test traces and reversible debugger history shall expose both selections.
+
+## TOPAL-INTP-SUBSET-055 — Positive literal recursion steps
+
+All interpreter modes shall prove direct and mutual bounded `Int` recursion
+using any positive literal step according to
+`TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001`, while rejecting zero,
+negative, runtime, and wrong-direction steps. Test traces and reversible
+debugger history shall retain the applicable direction-specific proof rule.
