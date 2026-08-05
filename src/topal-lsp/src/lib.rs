@@ -477,7 +477,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 28);
+        assert_eq!(examples.len(), 29);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 28);
+    assert_eq!(examples.len(), 29);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1545,14 +1545,24 @@ fn conversion_trace_precedes_rational_overload_selection() {
 }
 
 #[test]
-fn mixed_power_does_not_promote_exponent_contract() {
-    let output = run(&["--test"], "2.0 ^ 2\n");
-    assert!(!output.status.success());
-    assert!(
-        !String::from_utf8(output.stderr)
-            .unwrap()
-            .contains("conversion.applied")
-    );
+fn all_modes_execute_exact_rational_natural_exponentiation() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "(1.5 ^ 3, 0.0 ^ 0)\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"(Rational ( 27, 8 ), Rational ( 1, 1 ))\n");
+    }
+
+    let output = run(&["--test"], "1.5 ^ 3\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"detail\":\"root.^(Rational,Nat)\""));
+    assert!(trace.contains("\"rule\":\"TOPAL-NUM-RAT-POW-001\""));
+    assert!(!trace.contains("conversion.applied"));
+
+    let negative = run(&["--test"], "1.5 ^ -1\n");
+    assert!(!negative.status.success());
+    let trace = String::from_utf8(negative.stderr).unwrap();
+    assert!(trace.contains("exponent.finite-nat"));
+    assert!(!trace.contains("root.^(Rational,Nat)"));
 }
 
 #[test]

@@ -153,6 +153,20 @@ semantics require a later overload. Exponentiation has no hidden precedence and
 groups under `TOPAL-SYN-GRAMMAR-001`. This realizes `TOPAL-REQ-SAFE-001`,
 `TOPAL-REQ-DETERMINISM-001`, and `TOPAL-REQ-INTEROP-001`.
 
+### TOPAL-NUM-RAT-POW-001 — Finite natural Rational exponentiation
+
+For finite `a : Rational` and finite `e : Nat`, binary `^` selects the total,
+pure root overload `(Rational, Nat) -> Rational` and evaluates by exact repeated
+multiplication: `a ^ 0 = Rational (1, 1)` and
+`a ^ (e + 1) = (a ^ e) * a`. Consequently a zero Rational base raised to zero
+is the Rational multiplicative identity. The canonical result cannot overflow.
+
+A negative `Int` exponent does not satisfy this overload. Reciprocal powers and
+their zero-base failure behavior remain unsupported until the corresponding
+fallible division/`Result` semantics are formalized. No `Int`-to-`Rational`
+conversion applies to the exponent; test traces shall identify
+`root.^(Rational,Nat)` directly.
+
 ### TOPAL-NUM-COMPARE-001 — Finite exact total ordering
 
 Finite `Int` and finite `Rational` each provide `TotalOrder` using their exact
@@ -172,6 +186,6 @@ reject unsupported applications explicitly rather than infer behavior.
 ## Explanatory notes
 
 The initial subset establishes arithmetic paths incrementally before
-formalizing dynamic division, rational exponentiation, or infinite operands. Left
+formalizing dynamic division, negative Rational exponentiation, or infinite operands. Left
 association is fixed by `TOPAL-SYN-GRAMMAR-001`; for example, `2 + 3 * 4`
 produces `20`, while `2 + ( 3 * 4 )` produces `14`.
