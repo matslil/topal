@@ -203,6 +203,12 @@ operands, and their results may be combined after each call returns.
 Test traces and debugger history shall retain every proven recursive descent in
 ordinary evaluation order.
 
+For a mutual-cycle member, one action may contain multiple calls to its next
+member within product fields or nested application operands. Every discovered
+cycle call shall name the same next member and independently satisfy the
+cycle's direction and progress rule. A different target or one invalid edge
+shall prevent the member from contributing a proven cycle edge.
+
 ### TOPAL-FUNCTION-RECURSION-OVERLOAD-IDENTITY-001 — Overload-specific call graph nodes
 
 Each selected function overload shall be a distinct node in recursion and call

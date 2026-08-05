@@ -1528,20 +1528,76 @@ fn prove_mutual_int_recursion_edge(
     if !matches!(&recursive.matcher, DecisionMatcher::Otherwise(_)) {
         return None;
     }
-    let Expression::Application { items, .. } = &recursive.action else {
-        return None;
-    };
-    let [Expression::Identifier(target), argument] = items.as_slice() else {
-        return None;
-    };
-    let target = source.slice(*target);
-    if target == function_name
-        || !is_positive_literal_step(source, parameter, step, argument)
-        || contains_self_call(source, target, &base.action)
-    {
+    let (target, valid) =
+        mutual_call_target(source, function_name, parameter, step, &recursive.action);
+    let target = target?;
+    if !valid || contains_self_call(source, &target, &base.action) {
         return None;
     }
-    Some((target.to_owned(), proof_rule))
+    Some((target, proof_rule))
+}
+
+fn mutual_call_target(
+    source: &SourceText,
+    function_name: &str,
+    parameter: &str,
+    step: CallableKind,
+    expression: &Expression,
+) -> (Option<String>, bool) {
+    match expression {
+        Expression::Application { items, .. }
+            if matches!(items.as_slice(), [Expression::Identifier(_), _]) =>
+        {
+            let [Expression::Identifier(target), argument] = items.as_slice() else {
+                unreachable!("guard established a unary named application");
+            };
+            let target = source.slice(*target);
+            (
+                Some(target.to_owned()),
+                target != function_name
+                    && is_positive_literal_step(source, parameter, step, argument),
+            )
+        }
+        Expression::Application { items, .. } => combine_mutual_call_targets(
+            items
+                .iter()
+                .map(|item| mutual_call_target(source, function_name, parameter, step, item)),
+        ),
+        Expression::Product { fields, .. } => {
+            combine_mutual_call_targets(fields.iter().map(|field| {
+                mutual_call_target(source, function_name, parameter, step, &field.value)
+            }))
+        }
+        Expression::DecisionTable { subject, rules, .. } => combine_mutual_call_targets(
+            std::iter::once(mutual_call_target(
+                source,
+                function_name,
+                parameter,
+                step,
+                subject,
+            ))
+            .chain(rules.iter().map(|rule| {
+                mutual_call_target(source, function_name, parameter, step, &rule.action)
+            })),
+        ),
+        _ => (None, true),
+    }
+}
+
+fn combine_mutual_call_targets(
+    checks: impl Iterator<Item = (Option<String>, bool)>,
+) -> (Option<String>, bool) {
+    checks.fold(
+        (None, true),
+        |(target, valid), (next_target, next_valid)| match (target, next_target) {
+            (Some(target), Some(next)) => {
+                let same = target == next;
+                (Some(target), valid && next_valid && same)
+            }
+            (Some(target), None) | (None, Some(target)) => (Some(target), valid && next_valid),
+            (None, None) => (None, valid && next_valid),
+        },
+    )
 }
 
 const MUTUAL_INT_RECURSION_RULE: &str = "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001";
@@ -3500,6 +3556,41 @@ fn every_recursive_call_in_one_action_must_progress() {
         )
         .unwrap_err();
     assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+}
+
+#[test]
+fn every_call_on_one_mutual_edge_must_share_target_and_progress() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "first-count is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise (second-count (value - 1)) + (second-count (value - 2))\nsecond-count is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise first-count (value - 1)\nfirst-count 3\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "3");
+    assert!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.recursion.descended"))
+            .count()
+            > 1
+    );
+
+    let error = Session::new()
+        .evaluate(
+            "first is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise (second (value - 1)) + (second value)\nsecond is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise first (value - 1)\nfirst 2\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+
+    let different_target = Session::new()
+        .evaluate(
+            "first is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise (second (value - 1)) + (third (value - 1))\nsecond is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise first (value - 1)\nthird is fn (value : Int) -> Int\n  value\nfirst 2\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(different_target.code, "E-RECURSION-NOT-YET-PROVEN");
 }
 
 #[test]

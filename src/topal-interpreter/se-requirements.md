@@ -495,3 +495,11 @@ calls only when every call is proven according to
 `TOPAL-FUNCTION-RECURSION-ALL-CALLS-001`. One invalid branch shall reject the
 function's recursive execution. Test traces and reversible debugger history
 shall expose each valid descent in evaluation order.
+
+## TOPAL-INTP-SUBSET-057 — Multiple calls on a mutual edge
+
+All interpreter modes shall prove a mutual-cycle member whose action contains
+multiple calls only when every discovered call names the same next member and
+independently progresses according to `TOPAL-FUNCTION-RECURSION-ALL-CALLS-001`.
+Test traces and reversible debugger history shall retain every resulting
+descent in evaluation order.
