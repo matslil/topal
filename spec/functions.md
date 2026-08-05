@@ -32,3 +32,18 @@ Test traces shall expose parameter binding, selection, entry, body decisions,
 and return in that semantic order. The supported parameter and result
 classifiers are the same initial value classifiers admitted by
 `TOPAL-FUNCTION-STATIC-NULLARY-001`.
+
+### TOPAL-FUNCTION-STATIC-PRODUCT-001 — Static positional-product function execution
+
+A declaration `name is fn static ( p1 : P1, ..., pn : Pn ) -> R` with
+`n >= 2` shall introduce a function whose input is the positional product of
+the declared parameter classifiers. An application `name ( a1, ..., an )`
+shall evaluate the positional product once in caller scope, require exactly
+`n` fields, validate field `ai` against `Pi`, and bind every validated field to
+`pi` in declaration order within the function scope defined by
+`TOPAL-FUNCTION-STATIC-UNARY-001`.
+
+Parameter names shall be distinct. Argument validation shall complete before
+function selection and entry; a failed shape, arity, or classifier check shall
+not enter the function. Test traces shall expose each successful binding in
+declaration order before selection, entry, body decisions, and return.

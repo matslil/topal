@@ -726,6 +726,52 @@ fn static_unary_function_checks_argument_classifier() {
 }
 
 #[test]
+fn every_mode_calls_static_product_functions() {
+    let source =
+        "add is fn static (left : Int, right : Int) -> Int\n  left + right\nadd (20, 22)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n42\n");
+        } else {
+            assert_eq!(output.stdout, b"42\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let left = trace.find("\"detail\":\"left\"").unwrap();
+    let right = trace.find("\"detail\":\"right\"").unwrap();
+    let entered = trace.find("function.entered").unwrap();
+    assert!(left < right && right < entered);
+}
+
+#[test]
+fn static_product_function_checks_shape_and_arity() {
+    let declaration = "add is fn static (left : Int, right : Int) -> Int\n  left + right\n";
+    let shape = run(&[], &format!("{declaration}add 1\n"));
+    assert!(!shape.status.success());
+    assert!(
+        String::from_utf8(shape.stderr)
+            .unwrap()
+            .contains("E-FUNCTION-ARGUMENT-SHAPE")
+    );
+
+    let arity = run(&[], &format!("{declaration}add (1, 2, 3)\n"));
+    assert!(!arity.status.success());
+    assert!(
+        String::from_utf8(arity.stderr)
+            .unwrap()
+            .contains("E-FUNCTION-ARGUMENT-ARITY")
+    );
+}
+
+#[test]
 fn script_executes_arbitrary_precision_based_integer() {
     let output = run(&[], "0xFFFF_FFFF_FFFF_FFFF_FFFF\n");
     assert!(output.status.success());

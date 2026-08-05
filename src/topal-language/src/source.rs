@@ -125,7 +125,7 @@ pub struct Session {
 #[derive(Clone)]
 struct StaticFunction {
     source: SourceText,
-    parameter: Option<(String, String)>,
+    parameters: Vec<(String, String)>,
     result: String,
     body: Expression,
     bindings: BTreeMap<String, Value>,
@@ -140,7 +140,7 @@ pub struct Execution {
 #[derive(Clone, Copy)]
 struct StaticFunctionDeclaration<'a> {
     name: Span,
-    parameter: Option<FunctionParameter>,
+    parameters: &'a [FunctionParameter],
     result: Span,
     body: &'a Expression,
     span: Span,
@@ -330,17 +330,17 @@ impl Session {
                     && let Some(function) = self.functions.get(source.slice(*name_span)).cloned()
                 {
                     let name = source.slice(*name_span);
-                    let rule = if function.parameter.is_some() {
-                        "TOPAL-FUNCTION-STATIC-UNARY-001"
-                    } else {
-                        "TOPAL-FUNCTION-STATIC-NULLARY-001"
+                    let rule = match function.parameters.len() {
+                        0 => "TOPAL-FUNCTION-STATIC-NULLARY-001",
+                        1 => "TOPAL-FUNCTION-STATIC-UNARY-001",
+                        _ => "TOPAL-FUNCTION-STATIC-PRODUCT-001",
                     };
                     let mut function_scope = Self {
                         bindings: function.bindings,
                         functions: BTreeMap::new(),
                     };
-                    match &function.parameter {
-                        None if !matches!(&items[1], Expression::Unit(_)) => {
+                    match function.parameters.as_slice() {
+                        [] if !matches!(&items[1], Expression::Unit(_)) => {
                             return Err(diagnostic(
                                 source,
                                 "E-NO-APPLICABLE-OVERLOAD",
@@ -348,8 +348,8 @@ impl Session {
                                 format!("nullary function `{name}` requires ()"),
                             ));
                         }
-                        None => {}
-                        Some((parameter, classifier)) => {
+                        [] => {}
+                        [(parameter, classifier)] => {
                             let argument_span = items[1].span();
                             let argument = self.evaluate_expression(source, &items[1], trace)?;
                             if !value_has_classifier(&argument, classifier) {
@@ -366,6 +366,53 @@ impl Session {
                                 rule,
                                 detail: parameter,
                             });
+                        }
+                        parameters => {
+                            let argument_span = items[1].span();
+                            let argument = self.evaluate_expression(source, &items[1], trace)?;
+                            let Value::Tuple(arguments) = argument else {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-FUNCTION-ARGUMENT-SHAPE",
+                                    argument_span,
+                                    format!(
+                                        "function `{name}` requires a positional product with {} fields",
+                                        parameters.len()
+                                    ),
+                                ));
+                            };
+                            if arguments.len() != parameters.len() {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-FUNCTION-ARGUMENT-ARITY",
+                                    argument_span,
+                                    format!(
+                                        "function `{name}` requires {} arguments but received {}",
+                                        parameters.len(),
+                                        arguments.len()
+                                    ),
+                                ));
+                            }
+                            for ((parameter, classifier), argument) in
+                                parameters.iter().zip(arguments)
+                            {
+                                if !value_has_classifier(&argument, classifier) {
+                                    return Err(diagnostic(
+                                        source,
+                                        "E-FUNCTION-ARGUMENT-TYPE",
+                                        argument_span,
+                                        format!(
+                                            "argument for `{parameter}` is outside `{classifier}`"
+                                        ),
+                                    ));
+                                }
+                                function_scope.bindings.insert(parameter.clone(), argument);
+                                trace.record(TraceEvent {
+                                    event: "function.argument.bound",
+                                    rule,
+                                    detail: parameter,
+                                });
+                            }
                         }
                     }
                     trace.record(TraceEvent {
@@ -792,7 +839,7 @@ impl Execution {
     ) -> Result<(Value, Span), Diagnostic> {
         let StaticFunctionDeclaration {
             name,
-            parameter,
+            parameters,
             result,
             body,
             span,
@@ -815,7 +862,22 @@ impl Execution {
                 "the implemented function subset requires Boolean, Int, Rational, String, or Unit",
             ));
         }
-        let parameter = parameter
+        for (index, parameter) in parameters.iter().enumerate() {
+            let name = self.source.slice(parameter.name);
+            if parameters[..index]
+                .iter()
+                .any(|earlier| self.source.slice(earlier.name) == name)
+            {
+                return Err(diagnostic(
+                    &self.source,
+                    "E-DUPLICATE-FUNCTION-PARAMETER",
+                    parameter.name,
+                    format!("parameter `{name}` is already declared in this function"),
+                ));
+            }
+        }
+        let parameters = parameters
+            .iter()
             .map(|parameter| {
                 let classifier = self.source.slice(parameter.classifier);
                 if !supported_value_classifier(classifier) {
@@ -831,17 +893,17 @@ impl Execution {
                     classifier.to_owned(),
                 ))
             })
-            .transpose()?;
-        let rule = if parameter.is_some() {
-            "TOPAL-FUNCTION-STATIC-UNARY-001"
-        } else {
-            "TOPAL-FUNCTION-STATIC-NULLARY-001"
+            .collect::<Result<Vec<_>, _>>()?;
+        let rule = match parameters.len() {
+            0 => "TOPAL-FUNCTION-STATIC-NULLARY-001",
+            1 => "TOPAL-FUNCTION-STATIC-UNARY-001",
+            _ => "TOPAL-FUNCTION-STATIC-PRODUCT-001",
         };
         session.functions.insert(
             name_text.to_owned(),
             StaticFunction {
                 source: self.source.clone(),
-                parameter,
+                parameters,
                 result: result_text.to_owned(),
                 body: body.clone(),
                 bindings: session.bindings.clone(),
@@ -890,7 +952,7 @@ impl Execution {
             }
             Statement::StaticFunction {
                 name,
-                parameter,
+                parameters,
                 result,
                 body,
                 span,
@@ -899,7 +961,7 @@ impl Execution {
                 trace,
                 StaticFunctionDeclaration {
                     name: *name,
-                    parameter: *parameter,
+                    parameters,
                     result: *result,
                     body,
                     span: *span,
@@ -2433,4 +2495,30 @@ fn static_unary_function_binds_a_typed_local_parameter() {
         )
         .unwrap_err();
     assert_eq!(error.code, "E-UNBOUND-NAME");
+}
+
+#[test]
+fn static_product_function_binds_typed_parameters_in_order() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "subtract is fn static (left : Int, right : Int) -> Int\n  left - right\nsubtract (50, 8)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    let bindings = trace
+        .iter()
+        .filter(|event| event.contains("function.argument.bound"))
+        .collect::<Vec<_>>();
+    assert!(bindings[0].contains("left"));
+    assert!(bindings[1].contains("right"));
+
+    let error = Session::new()
+        .evaluate(
+            "bad is fn static (value : Int, value : Int) -> Int\n  value\nbad (1, 2)\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-DUPLICATE-FUNCTION-PARAMETER");
 }
