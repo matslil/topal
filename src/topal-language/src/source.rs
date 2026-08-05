@@ -1446,7 +1446,7 @@ fn prove_int_recursion(
     let [(parameter, classifier)] = parameters else {
         return None;
     };
-    if classifier != "Int" {
+    if classifier != "Int" && classifier != "Nat" {
         return None;
     }
     let [Statement::Expression(Expression::DecisionTable { subject, rules, .. })] = body else {
@@ -1459,17 +1459,33 @@ fn prove_int_recursion(
     let [base, recursive] = rules.as_slice() else {
         return None;
     };
-    let (step, proof_rule) = match &base.matcher {
-        DecisionMatcher::Comparison {
-            kind: CallableKind::LessEqual,
-            operand: Expression::Integer(_),
-            ..
-        } => (CallableKind::Minus, "TOPAL-FUNCTION-RECURSION-INT-001"),
-        DecisionMatcher::Comparison {
-            kind: CallableKind::GreaterEqual,
-            operand: Expression::Integer(_),
-            ..
-        } => (
+    let (step, proof_rule) = match (&**classifier, &base.matcher) {
+        (
+            "Nat",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::LessEqual,
+                operand: Expression::Integer(bound),
+                ..
+            },
+        ) if parse_integer(source.slice(*bound)).is_some_and(|value| value >= BigInt::from(0)) => {
+            (CallableKind::Minus, "TOPAL-FUNCTION-RECURSION-NAT-001")
+        }
+        (
+            "Int",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::LessEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (CallableKind::Minus, "TOPAL-FUNCTION-RECURSION-INT-001"),
+        (
+            "Int",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::GreaterEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (
             CallableKind::Plus,
             "TOPAL-FUNCTION-RECURSION-INT-INCREASING-001",
         ),
@@ -1482,7 +1498,38 @@ fn prove_int_recursion(
     }
     let (found, valid) =
         bounded_self_calls(source, function_name, parameter, step, &recursive.action);
-    (found && valid).then_some(proof_rule)
+    let preserves_nat = classifier != "Nat"
+        || recursive_calls_use_unit_step(source, function_name, parameter, &recursive.action);
+    (found && valid && preserves_nat).then_some(proof_rule)
+}
+
+fn recursive_calls_use_unit_step(
+    source: &SourceText,
+    function_name: &str,
+    parameter: &str,
+    expression: &Expression,
+) -> bool {
+    match expression {
+        Expression::Application { items, .. } if matches!(items.first(), Some(Expression::Identifier(span)) if source.slice(*span) == function_name) =>
+        {
+            matches!(items.as_slice(), [_, Expression::Application { items, .. }]
+                if matches!(items.as_slice(), [Expression::Identifier(name), Expression::Callable { kind: CallableKind::Minus, .. }, Expression::Integer(amount)]
+                    if source.slice(*name) == parameter && parse_integer(source.slice(*amount)) == Some(BigInt::from(1))))
+        }
+        Expression::Application { items, .. } => items
+            .iter()
+            .all(|item| recursive_calls_use_unit_step(source, function_name, parameter, item)),
+        Expression::Product { fields, .. } => fields.iter().all(|field| {
+            recursive_calls_use_unit_step(source, function_name, parameter, &field.value)
+        }),
+        Expression::DecisionTable { subject, rules, .. } => {
+            recursive_calls_use_unit_step(source, function_name, parameter, subject)
+                && rules.iter().all(|rule| {
+                    recursive_calls_use_unit_step(source, function_name, parameter, &rule.action)
+                })
+        }
+        _ => true,
+    }
 }
 
 fn prove_mutual_int_recursion_edge(
@@ -3386,6 +3433,32 @@ fn nat_classifiers_accept_only_nonnegative_int_values() {
         )
         .unwrap_err();
     assert_eq!(result_error.code, "E-FUNCTION-RESULT-TYPE");
+}
+
+#[test]
+fn proves_unit_step_nat_recursion_without_overshoot() {
+    let source = "count-down is fn (value : Nat) -> Nat\n  value\n    <= 0 then 0\n    otherwise count-down (value - 1)\ncount-down 3\n";
+    let mut trace = Vec::new();
+    assert_eq!(
+        Session::new()
+            .evaluate(source, &mut trace)
+            .unwrap()
+            .to_string(),
+        "0"
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-FUNCTION-RECURSION-NAT-001"))
+    );
+
+    let error = Session::new()
+        .evaluate(
+            &source.replace("value - 1", "value - 2"),
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
 }
 
 #[test]
