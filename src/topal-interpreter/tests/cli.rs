@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 32);
+    assert_eq!(examples.len(), 33);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -931,6 +931,23 @@ fn every_mode_executes_proven_increasing_nat_recursion() {
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001"));
     assert_eq!(trace.matches("function.recursion.descended").count(), 3);
+}
+
+#[test]
+fn every_mode_executes_proven_mutual_nat_recursion() {
+    let source = "even is fn (value : Nat) -> Boolean\n  value\n    <= 0 then true\n    otherwise odd (value - 1)\nodd is fn (value : Nat) -> Boolean\n  value\n    <= 0 then false\n    otherwise even (value - 1)\n(even 6, odd 6)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"(true, false)\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001"));
+    assert!(trace.contains("function.recursion.cycle.proven"));
 }
 
 #[test]

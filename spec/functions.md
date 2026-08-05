@@ -174,6 +174,15 @@ base contains no self-call, and every self-call passes `parameter + step` for a
 positive integer literal step. Addition preserves nonnegativity; overshooting
 the bound is permitted because the inclusive matcher stops the next entry.
 
+### TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001 — Proven mutual decreasing Nat recursion
+
+A closed cycle of unary `Nat` functions is proven terminating when every member
+uses the shape of `TOPAL-FUNCTION-RECURSION-NAT-001`, every recursive action
+calls the same next cycle member with `parameter - 1`, and the final member
+calls the first. Each bound shall be a nonnegative integer literal. The complete
+cycle shall be established before any recursive edge executes; an isolated or
+overshooting candidate remains unproven.
+
 ### TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001 — Proven mutual decreasing Int recursion
 
 An initial mutual-recursion rule proves a closed cycle of two or more unary
