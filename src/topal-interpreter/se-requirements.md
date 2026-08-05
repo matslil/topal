@@ -252,10 +252,14 @@ selected label without evaluating it as a name.
 
 ## TOPAL-INTP-SUBSET-026 — Plain string concatenation
 
-All interpreter modes shall evaluate `left concatenate right` for two plain
+All interpreter modes shall evaluate `left concat right` for two plain
 `String` values according to `TOPAL-STRING-CONCAT-001`, preserving their exact
 Unicode sequences without normalization or separators. Test mode shall expose
 overload selection and exact concatenation as separate semantic decisions.
+
+Adjacent string literals shall additionally compose according to
+`TOPAL-STRING-LITERAL-COMPOSE-001`. This implicit construction shall not extend
+to bindings, function results, or other runtime string expressions.
 
 ## TOPAL-INTP-SUBSET-027 — Empty string construction
 

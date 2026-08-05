@@ -341,9 +341,34 @@ impl Session {
                 } else {
                     (self.evaluate_expression(source, &items[0], trace)?, 1)
                 };
+                let mut composing_literals = matches!(items.first(), Some(Expression::String(_)));
                 while index < items.len() {
+                    if composing_literals
+                        && let Expression::String(right_span) = &items[index]
+                        && let Value::String(left) = &result
+                    {
+                        let Value::String(right) =
+                            self.evaluate_expression(source, &items[index], trace)?
+                        else {
+                            unreachable!("string literal constructs String");
+                        };
+                        trace.record(TraceEvent {
+                            event: "string.literals.composed",
+                            rule: "TOPAL-STRING-LITERAL-COMPOSE-001",
+                            detail: "String",
+                        });
+                        result = Value::String(format!("{left}{right}"));
+                        self.checkpoint(
+                            trace,
+                            Some(&result),
+                            Some(cover(items[0].span(), *right_span)),
+                        );
+                        index += 1;
+                        continue;
+                    }
+                    composing_literals = false;
                     if let Expression::Identifier(callable_span) = &items[index]
-                        && source.slice(*callable_span) == "concatenate"
+                        && source.slice(*callable_span) == "concat"
                         && let Value::String(left) = &result
                     {
                         let Some(right) = items.get(index + 1) else {
@@ -351,7 +376,7 @@ impl Session {
                                 source,
                                 "E-EXPECTED-OPERAND",
                                 Span::new(callable_span.end, callable_span.end),
-                                "expected a String after concatenate",
+                                "expected a String after concat",
                             ));
                         };
                         let right_span = right.span();
@@ -361,16 +386,16 @@ impl Session {
                                 source,
                                 "E-NO-APPLICABLE-OVERLOAD",
                                 right_span,
-                                "concatenate requires two String operands",
+                                "concat requires two String operands",
                             ));
                         };
                         trace.record(TraceEvent {
                             event: "operator.selected",
                             rule: "TOPAL-TYPE-CALL-001",
-                            detail: "root.concatenate(String,String)",
+                            detail: "root.concat(String,String)",
                         });
                         trace.record(TraceEvent {
-                            event: "evaluation.concatenate",
+                            event: "evaluation.concat",
                             rule: "TOPAL-STRING-CONCAT-001",
                             detail: "String",
                         });
@@ -1515,7 +1540,7 @@ mod tests {
     fn concatenates_plain_strings_without_normalizing_the_join() {
         let mut trace = Vec::new();
         let value = Session::new()
-            .evaluate("\"e\" concatenate \"\u{301}\"\n", &mut trace)
+            .evaluate("\"e\" concat \"\u{301}\"\n", &mut trace)
             .unwrap();
         assert_eq!(value.to_string(), "\"e\u{301}\"");
         assert!(
@@ -1525,9 +1550,39 @@ mod tests {
         );
 
         let error = Session::new()
-            .evaluate("\"value\" concatenate 1\n", &mut std::io::sink())
+            .evaluate("\"value\" concat 1\n", &mut std::io::sink())
             .unwrap_err();
         assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn composes_only_adjacent_string_literals_implicitly() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("\"Hello, \" \"Topal\"\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "\"Hello, Topal\"");
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("TOPAL-STRING-LITERAL-COMPOSE-001"))
+        );
+
+        let value = Session::new()
+            .evaluate(
+                "left is \"Hello, \"\nright is \"Topal\"\nleft concat right\n",
+                &mut std::io::sink(),
+            )
+            .unwrap();
+        assert_eq!(value.to_string(), "\"Hello, Topal\"");
+
+        let error = Session::new()
+            .evaluate(
+                "left is \"Hello, \"\nright is \"Topal\"\nleft right\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "E-UNSUPPORTED-APPLICATION");
     }
 
     #[test]

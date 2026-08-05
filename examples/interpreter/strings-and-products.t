@@ -9,10 +9,12 @@ person is (
   active is true
 )
 person-name is person name
-greeting is "Hello, " concatenate person-name
+literal-composition is "adjacent " "literals"
+greeting is "Hello, " concat person-name
 (
   message,
   greeting,
+  literal-composition,
   flags,
   empty-text,
   person,

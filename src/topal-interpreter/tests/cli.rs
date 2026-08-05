@@ -100,13 +100,23 @@ fn test_mode_records_record_field_selection() {
 
 #[test]
 fn test_mode_records_plain_string_concatenation() {
-    let output = run(&["--test"], "\"Hello, \" concatenate \"Topal\"\n");
+    let output = run(&["--test"], "\"Hello, \" concat \"Topal\"\n");
     assert!(output.status.success());
     assert_eq!(output.stdout, b"\"Hello, Topal\"\n");
     let trace = String::from_utf8(output.stderr).unwrap();
-    let selection = trace.find("root.concatenate(String,String)").unwrap();
+    let selection = trace.find("root.concat(String,String)").unwrap();
     let evaluation = trace.find("TOPAL-STRING-CONCAT-001").unwrap();
     assert!(selection < evaluation);
+}
+
+#[test]
+fn test_mode_records_adjacent_literal_composition() {
+    let output = run(&["--test"], "\"Hello, \" \"Topal\"\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"\"Hello, Topal\"\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("string.literals.composed"));
+    assert!(trace.contains("TOPAL-STRING-LITERAL-COMPOSE-001"));
 }
 
 #[test]
