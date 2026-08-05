@@ -984,6 +984,29 @@ fn every_mode_executes_complete_boolean_decisions() {
 }
 
 #[test]
+fn every_mode_executes_comparison_decisions() {
+    let source = "minimum is fn (left : Int, right : Int) -> Int\n  left\n    < right then left\n    otherwise right\n(minimum (42, 50), minimum (60, 50))\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n(42, 50)\n");
+        } else {
+            assert_eq!(output.stdout, b"(42, 50)\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("TOPAL-DECISION-COMPARISON-001"));
+    assert!(trace.contains("TOPAL-NUM-COMPARE-001"));
+}
+
+#[test]
 fn script_executes_arbitrary_precision_based_integer() {
     let output = run(&[], "0xFFFF_FFFF_FFFF_FFFF_FFFF\n");
     assert!(output.status.success());

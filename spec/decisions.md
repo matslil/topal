@@ -14,3 +14,16 @@ source order, the first matching rule shall be selected, and only its action
 shall be evaluated. Every action shall produce a value compatible with the
 function's result path. Test traces and debugger history shall expose each
 considered rule and its match result followed by the selected rule.
+
+### TOPAL-DECISION-COMPARISON-001 — Comparison decision matchers
+
+A decision rule may begin with `=`, `/=`, `<`, `>`, `<=`, or `>=` followed by
+one implemented operand expression and `then action`. The matcher shall compare
+the table's once-evaluated subject as its left operand with the matcher's
+evaluated operand as its right operand, using the corresponding ordinary
+comparison rule. A comparison table in this subset shall contain `otherwise`.
+
+Comparison rules shall be considered in source order. Evaluation shall stop at
+the first true comparison, and only that rule's delayed action shall execute;
+if none is true, the `otherwise` action shall execute. Test traces and debugger
+history shall retain both the comparison operation reason and table selection.
