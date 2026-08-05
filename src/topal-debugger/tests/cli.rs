@@ -420,6 +420,28 @@ fn records_reversible_mutual_int_recursion_proof() {
 }
 
 #[test]
+fn records_reversible_mutual_increasing_int_recursion_proof() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}mutual-increasing-int-recursion.debug"),
+            &format!("{root}mutual-increasing-int-recursion.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001"));
+    assert!(stdout.contains("function.recursion.cycle.proven"));
+    assert!(stdout.contains("\n(true, false)\n"));
+}
+
+#[test]
 fn records_reversible_comparison_decision_selection() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

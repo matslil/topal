@@ -521,7 +521,7 @@ impl Session {
                     }
                     let rule = function_rule(function.is_static, function.parameters.len());
                     if let Some(recursion_rule) = recursion_rule {
-                        if recursion_rule == "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001" {
+                        if is_mutual_recursion_rule(recursion_rule) {
                             trace.record(TraceEvent {
                                 event: "function.recursion.cycle.proven",
                                 rule: recursion_rule,
@@ -1066,15 +1066,13 @@ impl Execution {
         }
         let direct_termination_rule =
             prove_int_recursion(&self.source, name_text, &parameters, body);
-        let recursion_target = direct_termination_rule
+        let mutual_edge = direct_termination_rule
             .is_none()
             .then(|| prove_mutual_int_recursion_edge(&self.source, name_text, &parameters, body))
             .flatten();
-        let termination_rule = direct_termination_rule.or_else(|| {
-            recursion_target
-                .as_ref()
-                .map(|_| "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001")
-        });
+        let recursion_target = mutual_edge.as_ref().map(|(target, _)| target.clone());
+        let termination_rule =
+            direct_termination_rule.or_else(|| mutual_edge.as_ref().map(|(_, rule)| *rule));
         let rule = function_rule(is_static, parameters.len());
         let function = UserFunction {
             source: self.source.clone(),
@@ -1111,7 +1109,7 @@ impl Execution {
             let detail = format!("{name_text}->{target}");
             trace.record(TraceEvent {
                 event: "function.recursion.edge.candidate",
-                rule: "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001",
+                rule: termination_rule.expect("a mutual edge has a termination rule"),
                 detail: &detail,
             });
         }
@@ -1485,7 +1483,7 @@ fn prove_mutual_int_recursion_edge(
     function_name: &str,
     parameters: &[(String, String)],
     body: &[Statement],
-) -> Option<String> {
+) -> Option<(String, &'static str)> {
     let [(parameter, classifier)] = parameters else {
         return None;
     };
@@ -1502,15 +1500,26 @@ fn prove_mutual_int_recursion_edge(
     let [base, recursive] = rules.as_slice() else {
         return None;
     };
-    if !matches!(
-        &base.matcher,
+    let (step, proof_rule) = match &base.matcher {
         DecisionMatcher::Comparison {
             kind: CallableKind::LessEqual,
             operand: Expression::Integer(_),
             ..
-        }
-    ) || !matches!(&recursive.matcher, DecisionMatcher::Otherwise(_))
-    {
+        } => (
+            CallableKind::Minus,
+            "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001",
+        ),
+        DecisionMatcher::Comparison {
+            kind: CallableKind::GreaterEqual,
+            operand: Expression::Integer(_),
+            ..
+        } => (
+            CallableKind::Plus,
+            "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001",
+        ),
+        _ => return None,
+    };
+    if !matches!(&recursive.matcher, DecisionMatcher::Otherwise(_)) {
         return None;
     }
     let Expression::Application { items, .. } = &recursive.action else {
@@ -1521,15 +1530,24 @@ fn prove_mutual_int_recursion_edge(
     };
     let target = source.slice(*target);
     if target == function_name
-        || !is_unit_step(source, parameter, CallableKind::Minus, argument)
+        || !is_unit_step(source, parameter, step, argument)
         || contains_self_call(source, target, &base.action)
     {
         return None;
     }
-    Some(target.to_owned())
+    Some((target.to_owned(), proof_rule))
 }
 
 const MUTUAL_INT_RECURSION_RULE: &str = "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001";
+const MUTUAL_INCREASING_INT_RECURSION_RULE: &str =
+    "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001";
+
+fn is_mutual_recursion_rule(rule: &str) -> bool {
+    matches!(
+        rule,
+        MUTUAL_INT_RECURSION_RULE | MUTUAL_INCREASING_INT_RECURSION_RULE
+    )
+}
 
 fn recursion_rule_for_call(
     call_stack: &[ActiveCall],
@@ -1541,10 +1559,11 @@ fn recursion_rule_for_call(
     if function.recursion_target.is_none() {
         return function.termination_rule;
     }
-    if function.termination_rule != Some(MUTUAL_INT_RECURSION_RULE)
+    let cycle_rule = function.termination_rule?;
+    if !is_mutual_recursion_rule(cycle_rule)
         || cycle
             .iter()
-            .any(|active| active.termination_rule != Some(MUTUAL_INT_RECURSION_RULE))
+            .any(|active| active.termination_rule != Some(cycle_rule))
     {
         return None;
     }
@@ -1555,7 +1574,7 @@ fn recursion_rule_for_call(
         .last()
         .and_then(|active| active.recursion_target.as_deref())
         == Some(target);
-    (internal_edges_match && closes_cycle).then_some(MUTUAL_INT_RECURSION_RULE)
+    (internal_edges_match && closes_cycle).then_some(cycle_rule)
 }
 
 fn contains_self_call(source: &SourceText, function_name: &str, expression: &Expression) -> bool {
@@ -3373,6 +3392,26 @@ fn mutual_int_recursion_executes_only_when_every_cycle_edge_decreases() {
         )
         .unwrap_err();
     assert_eq!(invalid.code, "E-RECURSION-NOT-YET-PROVEN");
+}
+
+#[test]
+fn mutual_increasing_int_recursion_requires_one_direction_for_the_complete_cycle() {
+    let source = "even-up is fn (value : Int) -> Boolean\n  value\n    >= 0 then true\n    otherwise odd-up (value + 1)\nodd-up is fn (value : Int) -> Boolean\n  value\n    >= 0 then false\n    otherwise even-up (value + 1)\n(even-up (-6), odd-up (-6))\n";
+    let mut trace = Vec::new();
+    let value = Session::new().evaluate(source, &mut trace).unwrap();
+    assert_eq!(value.to_string(), "(true, false)");
+    assert!(trace.iter().any(|event| {
+        event.contains("function.recursion.cycle.proven")
+            && event.contains("TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001")
+    }));
+
+    let mixed = Session::new()
+        .evaluate(
+            "first is fn (value : Int) -> Boolean\n  value\n    <= 0 then true\n    otherwise second (value - 1)\nsecond is fn (value : Int) -> Boolean\n  value\n    >= 10 then false\n    otherwise first (value + 1)\nfirst 2\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(mixed.code, "E-RECURSION-NOT-YET-PROVEN");
 }
 
 #[test]

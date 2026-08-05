@@ -463,3 +463,11 @@ proving every participating edge according to
 `TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001`. An isolated candidate or a cycle with
 one invalid edge shall remain rejected. Test traces and reversible debugger
 history shall expose candidate edges, completed cycle proof, and descent.
+
+## TOPAL-INTP-SUBSET-053 — Proven mutual increasing Int recursion
+
+All interpreter modes shall execute a closed mutually increasing `Int` cycle
+only after proving every edge according to
+`TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001`. A mixed-direction cycle
+shall remain rejected. Test traces and reversible debugger history shall expose
+the increasing proof reason separately from decreasing mutual recursion.
