@@ -948,6 +948,19 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
             .try_fold(true, |equal, (left, right)| {
                 values_equal(left, right, trace).map(|field_equal| equal && field_equal)
             }),
+        (Value::Record(left), Value::Record(right))
+            if left.len() == right.len()
+                && left
+                    .iter()
+                    .zip(&right)
+                    .all(|((left, _), (right, _))| left == right) =>
+        {
+            left.into_iter()
+                .zip(right)
+                .try_fold(true, |equal, ((_, left), (_, right))| {
+                    values_equal(left, right, trace).map(|field_equal| equal && field_equal)
+                })
+        }
         _ => None,
     }
 }
@@ -1563,6 +1576,27 @@ mod tests {
             .evaluate("(name is \"Ada\") age\n", &mut std::io::sink())
             .unwrap_err();
         assert_eq!(error.code, "E-NO-SUCH-RECORD-FIELD");
+    }
+
+    #[test]
+    fn derives_equality_for_records_with_the_same_shape() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate(
+                "(name is \"Ada\", score is 1) = (name is \"Ada\", score is 1.0)\n",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(value.to_string(), "true");
+        assert!(trace.iter().any(|event| event.contains("Int->Rational")));
+
+        let error = Session::new()
+            .evaluate(
+                "(name is \"Ada\") = (name is \"Ada\", active is true)\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
     }
 
     #[test]
