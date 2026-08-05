@@ -278,10 +278,11 @@ the segmentation result independently.
 ## TOPAL-INTP-SUBSET-029 — Derived record equality
 
 All interpreter modes shall derive `=` and `!=` for anonymous records with the
-same labeled field sequence when every corresponding field supports implemented
-equality, according to `TOPAL-TYPE-EQUALITY-001`. Field comparison shall retain
-existing exact numeric conversions. Different record shapes or unsupported
-fields shall report no applicable equality overload.
+same labeled field set when every corresponding field supports implemented
+equality, according to `TOPAL-TYPE-EQUALITY-001`. Construction order shall not
+affect applicability or the result. Field comparison shall retain existing exact
+numeric conversions. Different record shapes or unsupported fields shall report
+no applicable equality overload.
 
 ## TOPAL-INTP-SUBSET-030 — String sequence entry count
 
