@@ -290,3 +290,11 @@ according to `TOPAL-STRING-ENTRY-COUNT-001`, producing the same finite
 nonnegative `Int` as `character-count text`. Test mode shall identify selection
 of the generic sequence operation separately from its character segmentation
 result.
+
+## TOPAL-INTP-SUBSET-031 — Prospective UTF-8 String byte count
+
+All interpreter modes shall evaluate `text byte-count Utf8` for a plain
+`String` according to `TOPAL-STRING-UTF8-BYTE-COUNT-001`, producing a finite
+nonnegative `Int` without changing the String value or normalizing its preserved
+sequence. Test mode shall record operation selection and the exact byte count
+as separate decisions. Other encodings remain explicitly unsupported.

@@ -41,3 +41,11 @@ Because plain `String` provides `Sequence Character`, `entry-count text` shall
 produce exactly the same finite nonnegative `Int` as `character-count text`
 under `TOPAL-STRING-CHARACTER-COUNT-001`. It shall count user-perceived
 characters, not Unicode scalar values, encoded bytes, or display columns.
+
+### TOPAL-STRING-UTF8-BYTE-COUNT-001 — Prospective UTF-8 byte count
+
+For a plain `String` value `text`, `text byte-count Utf8` shall produce the
+finite nonnegative `Int` equal to the number of bytes in the standard UTF-8
+encoding of its preserved Unicode scalar sequence. The operation observes a
+prospective encoding boundary; it shall not attach an encoding to `text`,
+normalize it, or count user-perceived characters or display columns.
