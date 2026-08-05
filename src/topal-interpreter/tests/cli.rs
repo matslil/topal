@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 26);
+    assert_eq!(examples.len(), 27);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1115,6 +1115,24 @@ fn every_mode_executes_positive_literal_recursion_steps() {
             assert_eq!(output.stdout, b"()\n()\n(3, 3)\n");
         } else {
             assert_eq!(output.stdout, b"(3, 3)\n");
+        }
+    }
+}
+
+#[test]
+fn every_mode_executes_multiple_proven_recursive_calls() {
+    let source = "branch-count is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise (branch-count (value - 1)) + (branch-count (value - 2))\nbranch-count 3\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n5\n");
+        } else {
+            assert_eq!(output.stdout, b"5\n");
         }
     }
 }
