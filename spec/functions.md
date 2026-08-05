@@ -192,6 +192,17 @@ runtime value, or the opposite operation shall not establish progress under
 these rules. Overshooting the bound is permitted because the inclusive base
 matcher selects the base action on the next entry.
 
+### TOPAL-FUNCTION-RECURSION-ALL-CALLS-001 — Every recursive edge progresses
+
+When one recursive action contains multiple calls returning to the same active
+function, every such call shall independently satisfy the applicable
+termination rule. The action is not proven merely because one recursive branch
+progresses. Calls may occur within product fields or nested application
+operands, and their results may be combined after each call returns.
+
+Test traces and debugger history shall retain every proven recursive descent in
+ordinary evaluation order.
+
 ### TOPAL-FUNCTION-RECURSION-OVERLOAD-IDENTITY-001 — Overload-specific call graph nodes
 
 Each selected function overload shall be a distinct node in recursion and call

@@ -487,3 +487,11 @@ using any positive literal step according to
 `TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001`, while rejecting zero,
 negative, runtime, and wrong-direction steps. Test traces and reversible
 debugger history shall retain the applicable direction-specific proof rule.
+
+## TOPAL-INTP-SUBSET-056 — Multiple recursive calls
+
+All interpreter modes shall execute an action containing multiple recursive
+calls only when every call is proven according to
+`TOPAL-FUNCTION-RECURSION-ALL-CALLS-001`. One invalid branch shall reject the
+function's recursive execution. Test traces and reversible debugger history
+shall expose each valid descent in evaluation order.

@@ -3476,6 +3476,33 @@ fn bounded_int_recursion_accepts_only_positive_literal_progress() {
 }
 
 #[test]
+fn every_recursive_call_in_one_action_must_progress() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "branch-count is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise (branch-count (value - 1)) + (branch-count (value - 2))\nbranch-count 3\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "5");
+    assert!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.recursion.descended"))
+            .count()
+            > 2
+    );
+
+    let error = Session::new()
+        .evaluate(
+            "unsafe-branch is fn (value : Int) -> Int\n  value\n    <= 0 then 1\n    otherwise (unsafe-branch (value - 1)) + (unsafe-branch value)\nunsafe-branch 2\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+}
+
+#[test]
 fn comparison_decision_uses_subject_as_left_operand() {
     let mut trace = Vec::new();
     let value = Session::new()
