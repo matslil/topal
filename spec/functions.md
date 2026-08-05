@@ -33,14 +33,13 @@ and return in that semantic order. The supported parameter and result
 classifiers are the same initial value classifiers admitted by
 `TOPAL-FUNCTION-STATIC-NULLARY-001`.
 
-### TOPAL-FUNCTION-STATIC-PRODUCT-001 — Static positional-product function execution
+### TOPAL-FUNCTION-STATIC-BINARY-001 — Static binary infix function execution
 
-A declaration `name is fn static ( p1 : P1, ..., pn : Pn ) -> R` with
-`n >= 2` shall introduce a function whose input is the positional product of
-the declared parameter classifiers. An application `name ( a1, ..., an )`
-shall evaluate the positional product once in caller scope, require exactly
-`n` fields, validate field `ai` against `Pi`, and bind every validated field to
-`pi` in declaration order within the function scope defined by
+A declaration `name is fn static ( left : L, right : R ) -> O` shall introduce
+a two-operand function. An infix application `left-value name right-value`
+shall evaluate the left and right operands once in source order, validate them
+against `L` and `R`, and bind them to `left` and `right` in declaration order
+within the function scope defined by
 `TOPAL-FUNCTION-STATIC-UNARY-001`.
 
 Parameter names shall be distinct. Argument validation shall complete before

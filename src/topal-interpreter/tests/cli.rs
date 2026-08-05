@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 8);
+    assert_eq!(examples.len(), 9);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -727,8 +727,7 @@ fn static_unary_function_checks_argument_classifier() {
 
 #[test]
 fn every_mode_calls_static_product_functions() {
-    let source =
-        "add is fn static (left : Int, right : Int) -> Int\n  left + right\nadd (20, 22)\n";
+    let source = "add is fn static (left : Int, right : Int) -> Int\n  left + right\n20 add 22\n";
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(

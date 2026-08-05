@@ -193,6 +193,15 @@ impl Parser<'_> {
         let static_token = self.take_nontrivia()?;
         let opening = self.take_nontrivia()?;
         let (parameters, closing) = self.static_function_parameters(opening)?;
+        if parameters.len() > 2 {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-FUNCTION-OPERAND-COUNT",
+                span: Span::new(opening.span.start, closing.span.end),
+                message: "a function has at most two syntactic operands; package additional values explicitly",
+            });
+            self.skip_to_newline();
+            return None;
+        }
         let arrow = self.take_nontrivia()?;
         let result = self.take_nontrivia()?;
         let valid = self.source.slice(function.span) == "fn"
@@ -743,7 +752,7 @@ mod tests {
     #[test]
     fn parses_multiple_typed_static_function_parameters() {
         let source = SourceText::new(
-            "add is fn static (left : Int, right : Int) -> Int\n  left + right\nadd (20, 22)",
+            "add is fn static (left : Int, right : Int) -> Int\n  left + right\n20 add 22",
         )
         .unwrap();
         let parsed = parse(&source, &lex(&source));
@@ -754,5 +763,15 @@ mod tests {
         assert_eq!(parameters.len(), 2);
         assert_eq!(source.slice(parameters[0].name), "left");
         assert_eq!(source.slice(parameters[1].name), "right");
+    }
+
+    #[test]
+    fn rejects_more_than_two_function_operands() {
+        let source = SourceText::new(
+            "invalid is fn static (one : Int, two : Int, three : Int) -> Int\n  one",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert_eq!(parsed.diagnostics[0].code, "E-FUNCTION-OPERAND-COUNT");
     }
 }

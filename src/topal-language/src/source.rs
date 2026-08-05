@@ -325,6 +325,33 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if items.len() == 3
+                    && let Expression::Identifier(name_span) = items[1]
+                    && !self.bindings.contains_key(source.slice(name_span))
+                    && self.functions.contains_key(source.slice(name_span))
+                {
+                    let argument_span = cover(items[0].span(), items[2].span());
+                    let call = Expression::Application {
+                        items: vec![
+                            Expression::Identifier(name_span),
+                            Expression::Product {
+                                fields: vec![
+                                    topal_syntax::ProductField {
+                                        label: None,
+                                        value: items[0].clone(),
+                                    },
+                                    topal_syntax::ProductField {
+                                        label: None,
+                                        value: items[2].clone(),
+                                    },
+                                ],
+                                span: argument_span,
+                            },
+                        ],
+                        span: *span,
+                    };
+                    return self.evaluate_expression(source, &call, trace);
+                }
                 if items.len() == 2
                     && let Expression::Identifier(name_span) = &items[0]
                     && let Some(function) = self.functions.get(source.slice(*name_span)).cloned()
@@ -333,7 +360,7 @@ impl Session {
                     let rule = match function.parameters.len() {
                         0 => "TOPAL-FUNCTION-STATIC-NULLARY-001",
                         1 => "TOPAL-FUNCTION-STATIC-UNARY-001",
-                        _ => "TOPAL-FUNCTION-STATIC-PRODUCT-001",
+                        _ => "TOPAL-FUNCTION-STATIC-BINARY-001",
                     };
                     let mut function_scope = Self {
                         bindings: function.bindings,
@@ -897,7 +924,7 @@ impl Execution {
         let rule = match parameters.len() {
             0 => "TOPAL-FUNCTION-STATIC-NULLARY-001",
             1 => "TOPAL-FUNCTION-STATIC-UNARY-001",
-            _ => "TOPAL-FUNCTION-STATIC-PRODUCT-001",
+            _ => "TOPAL-FUNCTION-STATIC-BINARY-001",
         };
         session.functions.insert(
             name_text.to_owned(),
@@ -2502,7 +2529,7 @@ fn static_product_function_binds_typed_parameters_in_order() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            "subtract is fn static (left : Int, right : Int) -> Int\n  left - right\nsubtract (50, 8)\n",
+            "subtract is fn static (left : Int, right : Int) -> Int\n  left - right\n50 subtract 8\n",
             &mut trace,
         )
         .unwrap();

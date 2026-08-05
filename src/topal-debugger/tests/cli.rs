@@ -165,10 +165,10 @@ fn records_reversible_static_product_argument_bindings() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     let left = stdout
-        .find("function.argument.bound [TOPAL-FUNCTION-STATIC-PRODUCT-001] left")
+        .find("function.argument.bound [TOPAL-FUNCTION-STATIC-BINARY-001] left")
         .unwrap();
     let right = stdout
-        .find("function.argument.bound [TOPAL-FUNCTION-STATIC-PRODUCT-001] right")
+        .find("function.argument.bound [TOPAL-FUNCTION-STATIC-BINARY-001] right")
         .unwrap();
     let entered = stdout.find("function.entered").unwrap();
     assert!(left < right && right < entered);

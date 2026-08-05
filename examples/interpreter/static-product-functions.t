@@ -1,9 +1,9 @@
 #!/usr/bin/env topal
-# Demonstrates a static function whose positional-product input binds two
-# independently typed parameters in declaration order.
+# Demonstrates a static binary function whose infix application binds two
+# independently typed operands in declaration order.
 add is fn static (
   left : Int,
   right : Int
 ) -> Int
   left + right
-add (20, 22)
+20 add 22
