@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 29);
+    assert_eq!(examples.len(), 30);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -859,6 +859,33 @@ fn every_mode_executes_ordinary_runtime_functions() {
     let output = run(&["--test"], source);
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("TOPAL-FUNCTION-ORDINARY-001"));
+}
+
+#[test]
+fn every_mode_validates_nat_function_boundaries() {
+    let source = "identity is fn (value : Nat) -> Nat\n  value\nidentity 42\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"42\n"));
+    }
+
+    let negative_argument = run(
+        &["--test"],
+        "identity is fn (value : Nat) -> Nat\n  value\nidentity -1\n",
+    );
+    assert!(!negative_argument.status.success());
+    let error = String::from_utf8(negative_argument.stderr).unwrap();
+    assert!(error.contains("E-FUNCTION-ARGUMENT-TYPE"));
+    assert!(!error.contains("function.entered"));
+
+    let negative_result = run(&[], "negative is fn () -> Nat\n  -1\nnegative ()\n");
+    assert!(!negative_result.status.success());
+    assert!(
+        String::from_utf8(negative_result.stderr)
+            .unwrap()
+            .contains("E-FUNCTION-RESULT-TYPE")
+    );
 }
 
 #[test]

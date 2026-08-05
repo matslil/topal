@@ -557,7 +557,7 @@ impl Session {
                     };
                     function_scope.call_stack.push(ActiveCall {
                         name: name.to_owned(),
-                        signature,
+                        signature: signature.clone(),
                         termination_rule: function.termination_rule,
                         recursion_target: function.recursion_target.clone(),
                     });
@@ -571,7 +571,7 @@ impl Session {
                     trace.record(TraceEvent {
                         event: "function.selected",
                         rule: "TOPAL-TYPE-CALL-001",
-                        detail: name,
+                        detail: &signature,
                     });
                     trace.record(TraceEvent {
                         event: "function.entered",
@@ -1031,7 +1031,7 @@ impl Execution {
                 &self.source,
                 "E-UNSUPPORTED-RESULT-CLASSIFIER",
                 result,
-                "the implemented function subset requires Boolean, Int, Rational, String, or Unit",
+                "the implemented function subset requires Boolean, Int, Nat, Rational, String, or Unit",
             ));
         }
         validate_parameter_names(&self.source, parameters)?;
@@ -1044,7 +1044,7 @@ impl Execution {
                         &self.source,
                         "E-UNSUPPORTED-PARAMETER-CLASSIFIER",
                         parameter.classifier,
-                        "the implemented function subset requires Boolean, Int, Rational, String, or Unit",
+                        "the implemented function subset requires Boolean, Int, Nat, Rational, String, or Unit",
                     ));
                 }
                 Ok((
@@ -1248,14 +1248,15 @@ fn statement_span(statement: &Statement) -> Span {
 }
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
-    matches!(
-        (value, classifier),
+    match (value, classifier) {
         (Value::Boolean(_), "Boolean")
-            | (Value::Int(_), "Int")
-            | (Value::Rational(_), "Rational")
-            | (Value::String(_), "String")
-            | (Value::Unit, "Unit")
-    )
+        | (Value::Int(_), "Int")
+        | (Value::Rational(_), "Rational")
+        | (Value::String(_), "String")
+        | (Value::Unit, "Unit") => true,
+        (Value::Int(value), "Nat") => value >= &BigInt::from(0),
+        _ => false,
+    }
 }
 
 const fn function_rule(is_static: bool, parameter_count: usize) -> &'static str {
@@ -1717,7 +1718,7 @@ fn is_positive_literal_step(
 fn supported_value_classifier(classifier: &str) -> bool {
     matches!(
         classifier,
-        "Boolean" | "Int" | "Rational" | "String" | "Unit"
+        "Boolean" | "Int" | "Nat" | "Rational" | "String" | "Unit"
     )
 }
 
@@ -3356,6 +3357,35 @@ fn ordinary_runtime_function_uses_ordinary_trace_rule() {
             .all(|event| event.contains("TOPAL-FUNCTION-ORDINARY-001")
                 || event.contains("TOPAL-TYPE-CALL-001"))
     );
+}
+
+#[test]
+fn nat_classifiers_accept_only_nonnegative_int_values() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "identity is fn (value : Nat) -> Nat\n  value\nidentity 42\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert!(trace.iter().any(|event| event.contains("identity (Nat)")));
+
+    let argument_error = Session::new()
+        .evaluate(
+            "identity is fn (value : Nat) -> Nat\n  value\nidentity -1\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(argument_error.code, "E-FUNCTION-ARGUMENT-TYPE");
+
+    let result_error = Session::new()
+        .evaluate(
+            "negative is fn () -> Nat\n  -1\nnegative ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(result_error.code, "E-FUNCTION-RESULT-TYPE");
 }
 
 #[test]

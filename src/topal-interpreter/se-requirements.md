@@ -510,3 +510,11 @@ All interpreter modes shall evaluate `Rational ^ Nat` exactly according to
 `TOPAL-NUM-RAT-POW-001`, including the zero-exponent empty product. Negative
 exponents shall remain inapplicable. Test traces and reversible debugger
 history shall identify the Rational overload and exact evaluation rule.
+
+## TOPAL-INTP-SUBSET-059 — Nat function classification
+
+All interpreter modes shall accept `Nat` in implemented function parameter and
+result classifiers according to `TOPAL-NUM-NAT-001`. Calls shall preserve exact
+nonnegative `Int` values and reject negative arguments before function entry;
+negative results shall fail the ordinary result validation. Test traces and
+reversible debugger history shall retain the selected `Nat` signature.
