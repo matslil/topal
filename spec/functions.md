@@ -180,6 +180,17 @@ An implementation shall establish the complete closed cycle before recursive
 descent and shall distinguish increasing candidates, completed cycle proof,
 and descent in test traces and debugger history.
 
+### TOPAL-FUNCTION-RECURSION-OVERLOAD-IDENTITY-001 — Overload-specific call graph nodes
+
+Each selected function overload shall be a distinct node in recursion and call
+graph analysis. A call from one overload to another overload with the same name
+but a different complete input signature shall be an ordinary call edge, not a
+recursive return to the active overload. Returning to the same selected input
+signature shall remain recursive and require applicable termination evidence.
+
+Test traces and debugger history shall expose overload selection before entry so
+the two identities and their execution order remain observable.
+
 ### TOPAL-FUNCTION-NESTED-001 — Nested lexical function declaration
 
 A function body may declare another function in its invocation scope. The

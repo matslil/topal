@@ -143,6 +143,7 @@ struct UserFunction {
 #[derive(Clone)]
 struct ActiveCall {
     name: String,
+    signature: String,
     termination_rule: Option<&'static str>,
     recursion_target: Option<String>,
 }
@@ -506,8 +507,13 @@ impl Session {
                             self.static_context,
                         ));
                     };
-                    let recursion_rule = recursion_rule_for_call(&self.call_stack, name, &function);
-                    if self.call_stack.iter().any(|active| active.name == name)
+                    let signature = function_signature(name, &function);
+                    let recursion_rule =
+                        recursion_rule_for_call(&self.call_stack, name, &signature, &function);
+                    if self
+                        .call_stack
+                        .iter()
+                        .any(|active| active.signature == signature)
                         && recursion_rule.is_none()
                     {
                         return Err(diagnostic(
@@ -535,7 +541,6 @@ impl Session {
                         });
                     }
                     if candidates.len() > 1 {
-                        let signature = function_signature(name, &function);
                         trace.record(TraceEvent {
                             event: "function.overload.selected",
                             rule: "TOPAL-FUNCTION-OVERLOAD-001",
@@ -552,6 +557,7 @@ impl Session {
                     };
                     function_scope.call_stack.push(ActiveCall {
                         name: name.to_owned(),
+                        signature,
                         termination_rule: function.termination_rule,
                         recursion_target: function.recursion_target.clone(),
                     });
@@ -1552,9 +1558,12 @@ fn is_mutual_recursion_rule(rule: &str) -> bool {
 fn recursion_rule_for_call(
     call_stack: &[ActiveCall],
     target: &str,
+    target_signature: &str,
     function: &UserFunction,
 ) -> Option<&'static str> {
-    let cycle_start = call_stack.iter().position(|active| active.name == target)?;
+    let cycle_start = call_stack
+        .iter()
+        .position(|active| active.signature == target_signature)?;
     let cycle = &call_stack[cycle_start..];
     if function.recursion_target.is_none() {
         return function.termination_rule;
@@ -3412,6 +3421,27 @@ fn mutual_increasing_int_recursion_requires_one_direction_for_the_complete_cycle
         )
         .unwrap_err();
     assert_eq!(mixed.code, "E-RECURSION-NOT-YET-PROVEN");
+}
+
+#[test]
+fn same_named_distinct_overloads_are_not_recursive() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "describe is fn (value : Int) -> String\n  \"integer\"\ndescribe is fn (value : String) -> String\n  (describe 42) concat \":\" concat value\ndescribe \"Topal\"\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "\"integer:Topal\"");
+    let string = trace
+        .iter()
+        .position(|event| event.contains("describe (String)"))
+        .unwrap();
+    let integer = trace
+        .iter()
+        .position(|event| event.contains("describe (Int)"))
+        .unwrap();
+    assert!(string < integer);
 }
 
 #[test]
