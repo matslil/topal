@@ -279,9 +279,11 @@ impl Session {
                 let name = source.slice(*span);
                 let value = self.bindings.get(name).cloned().ok_or_else(|| {
                     let error = diagnostic(source, "E-UNBOUND-NAME", *span, "name is not bound");
-                    closest_name(name, self.bindings.keys()).map_or(error.clone(), |candidate| {
-                        error.with_help(format!("did you mean `{candidate}`?"))
-                    })
+                    closest_name(name, self.bindings.keys())
+                        .or_else(|| closest_root_operation(name))
+                        .map_or(error.clone(), |candidate| {
+                            error.with_help(format!("did you mean `{candidate}`?"))
+                        })
                 })?;
                 trace.record(TraceEvent {
                     event: "binding.resolved",
@@ -548,12 +550,19 @@ impl Session {
                         span: operator_span,
                     } = &items[index]
                     else {
-                        return Err(diagnostic(
+                        let mut error = diagnostic(
                             source,
                             "E-UNSUPPORTED-APPLICATION",
                             items[index].span(),
                             "the implemented subset requires a symbolic callable",
-                        ));
+                        );
+                        if let Expression::Identifier(name_span) = &items[index]
+                            && let Some(candidate) =
+                                closest_root_operation(source.slice(*name_span))
+                        {
+                            error = error.with_help(format!("did you mean `{candidate}`?"));
+                        }
+                        return Err(error);
                     };
                     let Some(right) = items.get(index + 1) else {
                         return Err(diagnostic(
@@ -1363,6 +1372,28 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
+const ROOT_OPERATIONS: [&str; 6] = [
+    "byte-count",
+    "character-count",
+    "concat",
+    "empty",
+    "entry-count",
+    "normalize",
+];
+
+fn closest_root_operation(name: &str) -> Option<&'static str> {
+    if name == "concatenate" {
+        return Some("concat");
+    }
+    let maximum = 2.max(name.chars().count() / 3);
+    ROOT_OPERATIONS
+        .into_iter()
+        .map(|candidate| (edit_distance(name, candidate), candidate))
+        .filter(|(distance, _)| *distance <= maximum)
+        .min()
+        .map(|(_, candidate)| candidate)
+}
+
 fn edit_distance(left: &str, right: &str) -> usize {
     let right = right.chars().collect::<Vec<_>>();
     let mut previous = (0..=right.len()).collect::<Vec<_>>();
@@ -1870,6 +1901,24 @@ mod tests {
     fn edit_distance_counts_unicode_scalars() {
         assert_eq!(edit_distance("räknare", "räknaren"), 1);
         assert_eq!(edit_distance("αβ", "βα"), 2);
+    }
+
+    #[test]
+    fn diagnostics_suggest_root_operations_and_the_concat_migration() {
+        let error = Session::new()
+            .evaluate("charcter-count \"Topal\"\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-UNBOUND-NAME");
+        assert_eq!(
+            error.help.as_deref(),
+            Some("did you mean `character-count`?")
+        );
+
+        let error = Session::new()
+            .evaluate("\"a\" concatenate \"b\"\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-UNSUPPORTED-APPLICATION");
+        assert_eq!(error.help.as_deref(), Some("did you mean `concat`?"));
     }
 
     #[test]
