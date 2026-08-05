@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 30);
+    assert_eq!(examples.len(), 31);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -885,6 +885,33 @@ fn every_mode_validates_nat_function_boundaries() {
         String::from_utf8(negative_result.stderr)
             .unwrap()
             .contains("E-FUNCTION-RESULT-TYPE")
+    );
+}
+
+#[test]
+fn every_mode_executes_proven_nat_recursion() {
+    let source = "count-down is fn (value : Nat) -> Nat\n  value\n    <= 0 then 0\n    otherwise count-down (value - 1)\ncount-down 3\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"0\n"));
+    }
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-RECURSION-NAT-001"));
+    assert_eq!(trace.matches("function.recursion.descended").count(), 3);
+
+    let unsafe_step = source.replace("value - 1", "value - 2");
+    let output = run(&[], &unsafe_step);
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-RECURSION-NOT-YET-PROVEN")
     );
 }
 

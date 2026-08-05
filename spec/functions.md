@@ -152,6 +152,20 @@ Test traces and debugger history shall distinguish this increasing proof from
 the decreasing proof at declaration and on every recursive descent. Other
 recursive steps remain rejected until another termination rule proves them.
 
+### TOPAL-FUNCTION-RECURSION-NAT-001 — Proven unit-step decreasing Nat recursion
+
+A unary `Nat` function is proven terminating when its complete body is a
+decision table over its parameter with `<= bound then base` followed by
+`otherwise recursive-action`, where `bound` is a nonnegative integer literal,
+the base contains no self-call, and every self-call passes `parameter - 1`.
+The unit step both strictly decreases and preserves the `Nat` classifier until
+the inclusive base matcher is selected; larger steps are not admitted by this
+initial rule because they may overshoot below zero.
+
+Test traces and debugger history shall expose this proof separately from the
+more general signed-`Int` recursion rules. Other decreasing `Nat` forms require
+a proof that every recursive argument remains nonnegative.
+
 ### TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001 — Proven mutual decreasing Int recursion
 
 An initial mutual-recursion rule proves a closed cycle of two or more unary

@@ -518,3 +518,11 @@ result classifiers according to `TOPAL-NUM-NAT-001`. Calls shall preserve exact
 nonnegative `Int` values and reject negative arguments before function entry;
 negative results shall fail the ordinary result validation. Test traces and
 reversible debugger history shall retain the selected `Nat` signature.
+
+## TOPAL-INTP-SUBSET-060 — Proven decreasing Nat recursion
+
+All interpreter modes shall execute unit-step decreasing `Nat` recursion only
+after proving `TOPAL-FUNCTION-RECURSION-NAT-001`. The proof shall require a
+nonnegative inclusive lower bound and preserve `Nat` at every recursive call.
+Test traces and reversible debugger history shall expose proof acceptance and
+each descent.

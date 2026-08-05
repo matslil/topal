@@ -246,6 +246,28 @@ fn records_reversible_nat_function_execution() {
 }
 
 #[test]
+fn records_reversible_nat_recursion() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}nat-recursion.debug"),
+            &format!("{root}nat-recursion.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-FUNCTION-RECURSION-NAT-001"));
+    assert!(stdout.contains("function.recursion.descended"));
+    assert!(stdout.contains("\n0\n"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
