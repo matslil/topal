@@ -387,3 +387,11 @@ All interpreter modes shall implement invocation-local shadowing according to
 legal shadowing of captured bindings and restoring outer visibility after
 return. Test traces and reversible debugger history shall preserve both the
 local decisions and the unchanged outer state.
+
+## TOPAL-INTP-SUBSET-043 — Ordered typed function overloads
+
+All interpreter modes shall retain same-name function overloads and select them
+according to `TOPAL-FUNCTION-OVERLOAD-001`, evaluating the argument once and
+rejecting duplicate input/staticness signatures. Diagnostics shall report
+available signatures when none applies. Test traces and reversible debugger
+history shall identify the selected signature before entry.

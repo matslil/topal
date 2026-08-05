@@ -288,6 +288,33 @@ fn records_reversible_function_local_shadowing() {
 }
 
 #[test]
+fn records_reversible_function_overload_reasons() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-overloads.debug"),
+            &format!("{root}function-overloads.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let integer = stdout
+        .find("function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] describe (Int)")
+        .unwrap();
+    let string = stdout
+        .find("function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] describe (String)")
+        .unwrap();
+    assert!(integer < string);
+    assert!(stdout.contains("\n(\"integer\", \"Topal\")\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

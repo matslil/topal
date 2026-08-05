@@ -109,3 +109,16 @@ Completing the invocation shall discard its local declarations without changing
 the captured or caller bindings. Test traces and debugger history shall expose
 local creation and resolution while snapshots after return retain the outer
 binding.
+
+### TOPAL-FUNCTION-OVERLOAD-001 — Ordered typed overload selection
+
+Multiple function declarations in one scope may share a name when their input
+classifier sequence or staticness differs. Parameter names and result
+classifiers shall not distinguish otherwise identical overloads. The overload
+set shall preserve source declaration order.
+
+An application shall evaluate its argument once, restrict candidates to the
+staticness required by the call context, and select the first candidate in
+source order whose complete input header accepts that value. The result context
+shall not change selection. Test traces and debugger history shall identify the
+selected input signature separately from function entry.
