@@ -613,3 +613,10 @@ Within an arithmetic Result contract, all interpreter modes shall return a
 structured division-by-zero Error when a dynamic Rational base is zero and its
 exponent is negative. Domain and source provenance shall identify the reporting
 power overload and base occurrence independently.
+
+## TOPAL-INTP-SUBSET-073 — Structured Error propagation
+
+All interpreter modes shall propagate an arithmetic Error through a compatible
+fallible function result without reconstructing it. Test traces and reversible
+debugger history shall distinguish initial construction from each propagation
+boundary and retain code and domain.

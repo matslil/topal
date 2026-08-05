@@ -671,6 +671,16 @@ impl Session {
                             ),
                         ));
                     }
+                    if let Value::Error { domain, code, .. } = &value
+                        && result_success_classifier(&function.result).is_some()
+                    {
+                        let detail = format!("domain={domain};code={code}");
+                        trace.record(TraceEvent {
+                            event: "result.error.propagated",
+                            rule: "TOPAL-TYPE-RESULT-001",
+                            detail: &detail,
+                        });
+                    }
                     trace.record(TraceEvent {
                         event: "function.returned",
                         rule,
