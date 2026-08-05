@@ -50,6 +50,14 @@ encoding of its preserved Unicode scalar sequence. The operation observes a
 prospective encoding boundary; it shall not attach an encoding to `text`,
 normalize it, or count user-perceived characters or display columns.
 
+### TOPAL-STRING-NORMALIZE-NFC-001 — Explicit NFC normalization
+
+For a plain `String` value `text`, `text normalize NFC` shall produce the
+Unicode Normalization Form C transformation of its preserved scalar sequence
+under the language context's pinned Unicode data. The result shall be a plain
+`String` in this implemented subset. The operation is explicit: constructing,
+comparing, concatenating, counting, or encoding a plain String shall not invoke
+it implicitly.
 ### TOPAL-STRING-EMPTY-PREDICATE-001 — String emptiness
 
 For a plain `String` value `text`, `empty? text` shall produce `true` exactly

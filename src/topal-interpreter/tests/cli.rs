@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 5);
+    assert_eq!(examples.len(), 6);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -184,6 +184,21 @@ fn every_mode_counts_prospective_utf8_bytes() {
     assert!(trace.contains("root.byte-count(String,Utf8)"));
     assert!(trace.contains("TOPAL-STRING-UTF8-BYTE-COUNT-001"));
     assert!(trace.contains("bytes=2"));
+}
+
+#[test]
+fn every_mode_normalizes_strings_to_nfc_explicitly() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "\"e\u{301}\" normalize NFC\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, "\"é\"\n".as_bytes());
+    }
+
+    let output = run(&["--test"], "\"é\" normalize NFC\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("root.normalize(String,NFC)"));
+    assert!(trace.contains("TOPAL-STRING-NORMALIZE-NFC-001"));
+    assert!(trace.contains("changed=false"));
 }
 
 #[test]

@@ -4,7 +4,7 @@ use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use topal_source::{SourceText, Span, character_count};
+use topal_source::{SourceText, Span, character_count, normalize_nfc};
 use topal_syntax::{CallableKind, Expression, Statement, lex, parse};
 
 use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
@@ -436,6 +436,53 @@ impl Session {
                         continue;
                     }
                     composing_literals = false;
+                    if let Expression::Identifier(callable_span) = &items[index]
+                        && source.slice(*callable_span) == "normalize"
+                        && let Value::String(text) = &result
+                    {
+                        let Some(form) = items.get(index + 1) else {
+                            return Err(diagnostic(
+                                source,
+                                "E-EXPECTED-OPERAND",
+                                Span::new(callable_span.end, callable_span.end),
+                                "expected a normalization form after normalize",
+                            ));
+                        };
+                        let form_span = form.span();
+                        if !matches!(form, Expression::Identifier(name) if source.slice(*name) == "NFC")
+                        {
+                            return Err(diagnostic(
+                                source,
+                                "E-NO-APPLICABLE-OVERLOAD",
+                                form_span,
+                                "the implemented String normalize operation requires NFC",
+                            ));
+                        }
+                        trace.record(TraceEvent {
+                            event: "operator.selected",
+                            rule: "TOPAL-TYPE-CALL-001",
+                            detail: "root.normalize(String,NFC)",
+                        });
+                        let normalized = normalize_nfc(text);
+                        let changed = normalized != *text;
+                        trace.record(TraceEvent {
+                            event: "string.normalized",
+                            rule: "TOPAL-STRING-NORMALIZE-NFC-001",
+                            detail: if changed {
+                                "changed=true"
+                            } else {
+                                "changed=false"
+                            },
+                        });
+                        result = Value::String(normalized);
+                        self.checkpoint(
+                            trace,
+                            Some(&result),
+                            Some(cover(items[0].span(), form_span)),
+                        );
+                        index += 2;
+                        continue;
+                    }
                     if let Expression::Identifier(callable_span) = &items[index]
                         && source.slice(*callable_span) == "byte-count"
                         && let Value::String(text) = &result
@@ -1835,6 +1882,23 @@ mod tests {
 
         let error = Session::new()
             .evaluate("\"text\" byte-count Utf16\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn normalizes_plain_strings_to_nfc_explicitly() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("\"e\u{301}\" normalize NFC\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "\"é\"");
+        assert!(trace.iter().any(|event| {
+            event.contains("TOPAL-STRING-NORMALIZE-NFC-001") && event.contains("changed=true")
+        }));
+
+        let error = Session::new()
+            .evaluate("\"text\" normalize NFD\n", &mut std::io::sink())
             .unwrap_err();
         assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
     }
