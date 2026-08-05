@@ -182,6 +182,14 @@ its declared code vocabulary contains that error's code type, propagation
 preserves the complete Error unchanged, including domain, detail, cause, and
 source provenance. Propagation shall be traceable separately from construction.
 
+### TOPAL-ERROR-FIELD-001 — Structured Error observation
+
+Selecting `code` from an `Error` returns the concrete namespace-defined
+`ErrorCode` subtype value stored by the reporting operation. Selecting `domain`
+returns the compiler-derived `ErrorDomain` identity stored independently in the
+same Error. Selection shall not reconstruct or otherwise alter the Error, and
+tools shall expose which field was selected.
+
 ### TOPAL-TYPE-TOTAL-001 — Totality and failure
 
 Ordinary functions shall prove that every input reaches a value in finite
