@@ -123,6 +123,31 @@ fn records_reversible_static_function_call_decisions() {
 }
 
 #[test]
+fn records_reversible_static_function_argument_binding() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}static-unary-function.debug"),
+            &format!("{root}static-unary-function.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let bound = stdout.find("function.argument.bound").unwrap();
+    let entered = stdout.find("function.entered").unwrap();
+    let body = stdout.find("root.+(Int,Int)").unwrap();
+    let returned = stdout.find("function.returned").unwrap();
+    assert!(bound < entered && entered < body && body < returned);
+    assert!(stdout.contains("\n42\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

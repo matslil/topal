@@ -321,8 +321,9 @@ All interpreter modes shall declare and call zero-parameter static functions
 with one indented expression body according to
 `TOPAL-FUNCTION-STATIC-NULLARY-001`. Function bodies shall remain unevaluated at
 declaration, capture only earlier visible bindings, persist in interactive
-sessions, validate their explicit result classifier, and execute through shared debugger checkpoints. Test mode shall
-record declaration, selection, entry, body decisions, and return in order.
+sessions, validate their explicit result classifier, and execute through shared
+debugger checkpoints. Test mode shall record declaration, selection, entry,
+body decisions, and return in order.
 
 ## TOPAL-INTP-SUBSET-035 — Explicit String NFD normalization
 
@@ -331,3 +332,11 @@ according to `TOPAL-STRING-NORMALIZE-NFD-001`, using the exact Unicode tables
 selected by the language context. The operation shall preserve the input
 binding and remain explicit. Test mode shall record operation selection and
 whether normalization changed the preserved sequence.
+
+## TOPAL-INTP-SUBSET-036 — Static unary functions
+
+All interpreter modes shall declare and call one-parameter static functions
+according to `TOPAL-FUNCTION-STATIC-UNARY-001`. Calls shall evaluate and
+validate the argument in caller scope, bind the parameter only within the
+captured lexical function scope, validate the result classifier, and expose
+argument binding plus nested body checkpoints to test traces and the debugger.

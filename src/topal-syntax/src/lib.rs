@@ -3,7 +3,9 @@
 use topal_source::{SourceText, Span, is_identifier_continue, is_identifier_start, is_nfc};
 
 mod parser;
-pub use parser::{CallableKind, Expression, ParsedSource, ProductField, Statement, parse};
+pub use parser::{
+    CallableKind, Expression, FunctionParameter, ParsedSource, ProductField, Statement, parse,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TokenKind {
@@ -20,6 +22,7 @@ pub enum TokenKind {
     LeftParen,
     RightParen,
     Comma,
+    Colon,
     Arrow,
     Equals,
     NotEquals,
@@ -140,6 +143,7 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         '(' => (TokenKind::LeftParen, 1),
         ')' => (TokenKind::RightParen, 1),
         ',' => (TokenKind::Comma, 1),
+        ':' => (TokenKind::Colon, 1),
         '=' => (TokenKind::Equals, 1),
         '<' => (TokenKind::Less, 1),
         '>' => (TokenKind::Greater, 1),
@@ -324,6 +328,20 @@ mod tests {
                 TokenKind::RightParen,
                 TokenKind::Whitespace,
                 TokenKind::Arrow,
+                TokenKind::Whitespace,
+                TokenKind::Identifier,
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_parameter_classifier_colon() {
+        assert_eq!(
+            kinds("input : Int"),
+            vec![
+                TokenKind::Identifier,
+                TokenKind::Whitespace,
+                TokenKind::Colon,
                 TokenKind::Whitespace,
                 TokenKind::Identifier,
             ]

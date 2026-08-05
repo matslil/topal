@@ -685,6 +685,47 @@ fn static_function_result_classifier_is_checked() {
 }
 
 #[test]
+fn every_mode_declares_and_calls_static_unary_functions() {
+    let source = "increment is fn static (input : Int) -> Int\n  input + 1\nincrement 41\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n42\n");
+        } else {
+            assert_eq!(output.stdout, b"42\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let bound = trace.find("function.argument.bound").unwrap();
+    let selected = trace.find("function.selected").unwrap();
+    let entered = trace.find("function.entered").unwrap();
+    let body = trace.find("root.+(Int,Int)").unwrap();
+    let returned = trace.find("function.returned").unwrap();
+    assert!(bound < selected && selected < entered && entered < body && body < returned);
+}
+
+#[test]
+fn static_unary_function_checks_argument_classifier() {
+    let output = run(
+        &[],
+        "increment is fn static (input : Int) -> Int\n  input + 1\nincrement \"one\"\n",
+    );
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-FUNCTION-ARGUMENT-TYPE")
+    );
+}
+
+#[test]
 fn script_executes_arbitrary_precision_based_integer() {
     let output = run(&[], "0xFFFF_FFFF_FFFF_FFFF_FFFF\n");
     assert!(output.status.success());
