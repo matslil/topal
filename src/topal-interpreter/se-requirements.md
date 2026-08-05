@@ -266,3 +266,11 @@ to bindings, function results, or other runtime string expressions.
 All interpreter modes shall evaluate `empty String` according to
 `TOPAL-STRING-EMPTY-001` as the unique zero-scalar plain string. Test mode shall
 record callable selection and construction independently.
+
+## TOPAL-INTP-SUBSET-028 — String character count
+
+All interpreter modes shall evaluate `character-count text` for a plain
+`String` according to `TOPAL-STRING-CHARACTER-COUNT-001`, using the exact
+Unicode segmentation data selected by the language context. The result shall
+be a finite nonnegative `Int`. Test mode shall record callable selection and
+the segmentation result independently.

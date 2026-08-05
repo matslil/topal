@@ -12,6 +12,9 @@ const _: () = {
     assert!(unicode_normalization::UNICODE_VERSION.0 == UNICODE_VERSION.0);
     assert!(unicode_normalization::UNICODE_VERSION.1 == UNICODE_VERSION.1);
     assert!(unicode_normalization::UNICODE_VERSION.2 == UNICODE_VERSION.2);
+    assert!(unicode_segmentation::UNICODE_VERSION.0 == UNICODE_VERSION.0 as u64);
+    assert!(unicode_segmentation::UNICODE_VERSION.1 == UNICODE_VERSION.1 as u64);
+    assert!(unicode_segmentation::UNICODE_VERSION.2 == UNICODE_VERSION.2 as u64);
 };
 
 #[must_use]
@@ -27,6 +30,14 @@ pub fn is_identifier_start(character: char) -> bool {
 #[must_use]
 pub fn is_identifier_continue(character: char) -> bool {
     unicode_ident::is_xid_continue(character)
+}
+
+/// Counts extended grapheme clusters under the language context's Unicode data.
+#[must_use]
+pub fn character_count(text: &str) -> usize {
+    use unicode_segmentation::UnicodeSegmentation as _;
+
+    text.graphemes(true).count()
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
@@ -152,5 +163,13 @@ mod tests {
         assert!(is_nfc("é"));
         assert!(!is_nfc("e\u{301}"));
         assert!(is_identifier_start('\u{1c89}'));
+    }
+
+    #[test]
+    fn counts_user_perceived_characters() {
+        assert_eq!(character_count(""), 0);
+        assert_eq!(character_count("a\u{301}"), 1);
+        assert_eq!(character_count("👩‍🔬"), 1);
+        assert_eq!(character_count("🇸🇪!"), 2);
     }
 }

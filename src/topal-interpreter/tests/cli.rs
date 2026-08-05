@@ -130,6 +130,18 @@ fn test_mode_records_empty_string_construction() {
 }
 
 #[test]
+fn test_mode_records_string_character_count() {
+    let output = run(&["--test"], "character-count \"a\u{301}👩‍🔬🇸🇪\"\n");
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"3\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let selection = trace.find("root.character-count(String)").unwrap();
+    let evaluation = trace.find("TOPAL-STRING-CHARACTER-COUNT-001").unwrap();
+    assert!(selection < evaluation);
+    assert!(trace.contains("characters=3"));
+}
+
+#[test]
 fn version_exposes_the_language_context_unicode_version() {
     let output = run(&["--version"], "");
     assert!(output.status.success());
