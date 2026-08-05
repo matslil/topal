@@ -1890,6 +1890,9 @@ fn apply_binary(
         (Value::Rational(left), Value::Rational(right)) => {
             apply_rational_binary(source, kind, left, right, span, right_span, trace)
         }
+        (Value::Rational(left), Value::Int(right)) if kind == CallableKind::Power => {
+            apply_rational_power(source, left, right, right_span, trace)
+        }
         (Value::Int(left), Value::Rational(right)) if kind != CallableKind::Power => {
             trace_conversion(trace, "Int->Rational:left");
             apply_rational_binary(
@@ -2302,11 +2305,66 @@ fn apply_power(
     Ok(Value::Int(pow_int(left, right)))
 }
 
+fn apply_rational_power(
+    source: &SourceText,
+    left: BigRational,
+    right: BigInt,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if right < BigInt::from(0) {
+        trace.record(TraceEvent {
+            event: "obligation.refuted",
+            rule: "TOPAL-NUM-RAT-POW-001",
+            detail: "exponent.finite-nat",
+        });
+        return Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            right_span,
+            "Rational exponentiation requires a finite Nat exponent",
+        ));
+    }
+    trace.record(TraceEvent {
+        event: "obligation.proved",
+        rule: "TOPAL-NUM-RAT-POW-001",
+        detail: "exponent.finite-nat",
+    });
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: "root.^(Rational,Nat)",
+    });
+    trace.record(TraceEvent {
+        event: "evaluation.power",
+        rule: "TOPAL-NUM-RAT-POW-001",
+        detail: "Rational",
+    });
+    Ok(Value::Rational(pow_rational(left, right)))
+}
+
 fn pow_int(mut base: BigInt, mut exponent: BigInt) -> BigInt {
     let zero = BigInt::from(0);
     let one = BigInt::from(1);
     let two = BigInt::from(2);
     let mut result = one.clone();
+    while exponent > zero {
+        if &exponent % &two == one {
+            result *= &base;
+        }
+        exponent /= &two;
+        if exponent > zero {
+            base = &base * &base;
+        }
+    }
+    result
+}
+
+fn pow_rational(mut base: BigRational, mut exponent: BigInt) -> BigRational {
+    let zero = BigInt::from(0);
+    let one = BigInt::from(1);
+    let two = BigInt::from(2);
+    let mut result = BigRational::from_integer(one.clone());
     while exponent > zero {
         if &exponent % &two == one {
             result *= &base;
@@ -2989,6 +3047,26 @@ mod tests {
     }
 
     #[test]
+    fn raises_rationals_to_natural_powers_exactly() {
+        assert_eq!(
+            evaluate("1.5 ^ 3").unwrap().to_string(),
+            "Rational ( 27, 8 )"
+        );
+        assert_eq!(
+            evaluate("0.0 ^ 0").unwrap().to_string(),
+            "Rational ( 1, 1 )"
+        );
+        assert_eq!(
+            evaluate("1.5 ^ -1").unwrap_err().code,
+            "E-NO-APPLICABLE-OVERLOAD"
+        );
+        assert_eq!(
+            evaluate("1.5 ^ 2.0").unwrap_err().code,
+            "E-NO-APPLICABLE-OVERLOAD"
+        );
+    }
+
+    #[test]
     fn rejects_negative_integer_exponent() {
         assert_eq!(
             evaluate("2 ^ -1").unwrap_err().code,
@@ -3051,14 +3129,6 @@ mod tests {
         assert_eq!(
             evaluate("1 / 0.5").unwrap().to_string(),
             "Rational ( 2, 1 )"
-        );
-    }
-
-    #[test]
-    fn does_not_promote_natural_exponent_position() {
-        assert_eq!(
-            evaluate("2.0 ^ 2").unwrap_err().code,
-            "E-NO-APPLICABLE-OVERLOAD"
         );
     }
 

@@ -503,3 +503,10 @@ multiple calls only when every discovered call names the same next member and
 independently progresses according to `TOPAL-FUNCTION-RECURSION-ALL-CALLS-001`.
 Test traces and reversible debugger history shall retain every resulting
 descent in evaluation order.
+
+## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
+
+All interpreter modes shall evaluate `Rational ^ Nat` exactly according to
+`TOPAL-NUM-RAT-POW-001`, including the zero-exponent empty product. Negative
+exponents shall remain inapplicable. Test traces and reversible debugger
+history shall identify the Rational overload and exact evaluation rule.
