@@ -49,3 +49,10 @@ finite nonnegative `Int` equal to the number of bytes in the standard UTF-8
 encoding of its preserved Unicode scalar sequence. The operation observes a
 prospective encoding boundary; it shall not attach an encoding to `text`,
 normalize it, or count user-perceived characters or display columns.
+
+### TOPAL-STRING-EMPTY-PREDICATE-001 — String emptiness
+
+For a plain `String` value `text`, `empty? text` shall produce `true` exactly
+when its preserved Unicode scalar sequence is empty and `false` otherwise. It
+shall agree with both `character-count text = 0` and `entry-count text = 0`
+without normalizing, encoding, or otherwise transforming the value.

@@ -153,16 +153,16 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
             || rest[1..]
                 .chars()
                 .next()
-                .is_none_or(|next| !is_identifier_continue(next) && next != '-') =>
+                .is_none_or(|next| !is_identifier_continue(next) && !matches!(next, '-' | '?')) =>
         {
             (TokenKind::Discard, 1)
         }
         '_' => {
-            let length = take_while(rest, |value| is_identifier_continue(value) || value == '-');
+            let length = take_identifier(rest);
             (TokenKind::Identifier, length)
         }
         c if is_identifier_start(c) => {
-            let length = take_while(rest, |value| is_identifier_continue(value) || value == '-');
+            let length = take_identifier(rest);
             let kind = if matches!(&rest[..length], "true" | "false") {
                 TokenKind::Boolean
             } else {
@@ -172,6 +172,14 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         }
         c => (TokenKind::Unknown, c.len_utf8()),
     }
+}
+
+fn take_identifier(text: &str) -> usize {
+    let mut length = take_while(text, |value| is_identifier_continue(value) || value == '-');
+    if text[length..].starts_with('?') {
+        length += 1;
+    }
+    length
 }
 
 fn take_string(text: &str) -> Option<usize> {
@@ -421,6 +429,18 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["E-NON-NFC-TOKEN", "E-NON-NFC-TOKEN"]
         );
+    }
+
+    #[test]
+    fn predicate_question_mark_is_a_terminal_identifier_suffix() {
+        let source = SourceText::new("empty? value?? _?").unwrap();
+        let lexed = lex(&source);
+        assert_eq!(source.slice(lexed.tokens[0].span), "empty?");
+        assert_eq!(lexed.tokens[0].kind, TokenKind::Identifier);
+        assert_eq!(source.slice(lexed.tokens[2].span), "value?");
+        assert_eq!(lexed.tokens[3].kind, TokenKind::Unknown);
+        assert_eq!(source.slice(lexed.tokens[5].span), "_?");
+        assert_eq!(lexed.tokens[5].kind, TokenKind::Identifier);
     }
 
     #[test]

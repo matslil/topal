@@ -299,3 +299,11 @@ All interpreter modes shall evaluate `text byte-count Utf8` for a plain
 nonnegative `Int` without changing the String value or normalizing its preserved
 sequence. Test mode shall record operation selection and the exact byte count
 as separate decisions. Other encodings remain explicitly unsupported.
+
+## TOPAL-INTP-SUBSET-032 — String emptiness predicate
+
+The shared frontend shall accept a single terminal `?` as part of a predicate
+identifier according to `TOPAL-SYN-LEX-001`. All interpreter modes shall
+evaluate `empty? text` for a plain `String` according to
+`TOPAL-STRING-EMPTY-PREDICATE-001`. Test mode shall record predicate selection
+and its Boolean result independently.

@@ -130,6 +130,21 @@ fn test_mode_records_empty_string_construction() {
 }
 
 #[test]
+fn every_mode_tests_string_emptiness() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "empty? (empty String)\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"true\n");
+    }
+
+    let output = run(&["--test"], "empty? \"Topal\"\n");
+    assert_eq!(output.stdout, b"false\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("root.empty?(String)"));
+    assert!(trace.contains("TOPAL-STRING-EMPTY-PREDICATE-001"));
+}
+
+#[test]
 fn test_mode_records_string_character_count() {
     let output = run(&["--test"], "character-count \"a\u{301}👩‍🔬🇸🇪\"\n");
     assert!(output.status.success());
