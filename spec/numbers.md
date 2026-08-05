@@ -45,6 +45,15 @@ finite and cannot overflow. Adjacent `-a` numeric source is instead literal
 construction under `TOPAL-NUM-LITERAL-001`; both forms produce the same `Int`
 value but take distinct syntactic and semantic paths.
 
+### TOPAL-NUM-NAT-001 — Nonnegative integer refinement
+
+`Nat` classifies exactly the finite `Int` values greater than or equal to zero
+in the currently implemented finite numeric subset. It preserves the underlying
+exact integer value and introduces no unsigned representation, truncation, or
+wrapping. A function parameter or result classified as `Nat` accepts zero and
+positive `Int` values and rejects negative values at the applicable validation
+boundary.
+
 ### TOPAL-NUM-SUB-001 — Finite exact integer subtraction
 
 For finite `a : Int` and `b : Int`, binary `-` selects a total, pure root
