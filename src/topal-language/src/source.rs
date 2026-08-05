@@ -5,7 +5,9 @@ use std::fmt::{self, Write as _};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_source::{SourceText, Span, character_count, normalize_nfc, normalize_nfd};
-use topal_syntax::{CallableKind, Expression, FunctionParameter, Statement, lex, parse};
+use topal_syntax::{
+    CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, lex, parse,
+};
 
 use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
 
@@ -166,6 +168,18 @@ impl Session {
         Self::default()
     }
 
+    /// Report whether a complete function declaration should await a dedented
+    /// line before an interactive session submits it.
+    #[must_use]
+    pub fn awaits_dedent(input: &str) -> bool {
+        let Ok(source) = SourceText::new(input) else {
+            return false;
+        };
+        let parsed = parse(&source, &lex(&source));
+        parsed.diagnostics.is_empty()
+            && matches!(parsed.statements.as_slice(), [Statement::Function { .. }])
+    }
+
     /// Evaluate one source unit and return its final value.
     ///
     /// # Errors
@@ -309,6 +323,54 @@ impl Session {
                 } else {
                     self.evaluate_record(source, fields, trace)
                 }
+            }
+            Expression::DecisionTable {
+                subject,
+                rules,
+                span,
+            } => {
+                let subject_span = subject.span();
+                let subject = self.evaluate_expression(source, subject, trace)?;
+                let Value::Boolean(subject) = subject else {
+                    return Err(diagnostic(
+                        source,
+                        "E-DECISION-SUBJECT-TYPE",
+                        subject_span,
+                        "the implemented decision subset requires a Boolean subject",
+                    ));
+                };
+                let mut selected = None;
+                for (index, rule) in rules.iter().enumerate() {
+                    let matches = match rule.matcher {
+                        DecisionMatcher::Boolean { value, .. } => value == subject,
+                        DecisionMatcher::Otherwise(_) => true,
+                    };
+                    let detail = format!("rule={index};matched={matches}");
+                    trace.record(TraceEvent {
+                        event: "decision.rule.considered",
+                        rule: "TOPAL-DECISION-BOOLEAN-001",
+                        detail: &detail,
+                    });
+                    if matches {
+                        selected = Some((index, &rule.action));
+                        break;
+                    }
+                }
+                let Some((index, action)) = selected else {
+                    return Err(diagnostic(
+                        source,
+                        "E-INCOMPLETE-DECISION",
+                        *span,
+                        "no decision rule matched the subject",
+                    ));
+                };
+                let detail = format!("rule={index}");
+                trace.record(TraceEvent {
+                    event: "decision.rule.selected",
+                    rule: "TOPAL-DECISION-BOOLEAN-001",
+                    detail: &detail,
+                });
+                self.evaluate_expression(source, action, trace)
             }
             Expression::Integer(span) => evaluate_integer_literal(source, *span, trace),
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
@@ -2935,4 +2997,22 @@ fn overload_selection_uses_input_classifier_and_rejects_duplicate_signature() {
         )
         .unwrap_err();
     assert_eq!(duplicate.code, "E-DUPLICATE-FUNCTION-OVERLOAD");
+}
+
+#[test]
+fn boolean_decision_evaluates_only_selected_action() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "choose is fn (condition : Boolean) -> Int\n  condition\n    true then 42\n    otherwise missing\nchoose true\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert!(
+        trace
+            .iter()
+            .any(|event| { event.contains("decision.rule.selected") && event.contains("rule=0") })
+    );
+    assert!(!trace.iter().any(|event| event.contains("missing")));
 }

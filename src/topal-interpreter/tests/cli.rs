@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 14);
+    assert_eq!(examples.len(), 15);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -958,6 +958,29 @@ fn overload_failure_lists_available_signatures() {
     let error = String::from_utf8(output.stderr).unwrap();
     assert!(error.contains("E-NO-APPLICABLE-OVERLOAD"));
     assert!(error.contains("available overloads: describe (Int), describe (String)"));
+}
+
+#[test]
+fn every_mode_executes_complete_boolean_decisions() {
+    let source = "choose is fn (condition : Boolean) -> Int\n  condition\n    true then 42\n    otherwise 0\n(choose true, choose false)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n(42, 0)\n");
+        } else {
+            assert_eq!(output.stdout, b"(42, 0)\n");
+        }
+    }
+
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"event\":\"decision.rule.considered\""));
+    assert!(trace.contains("\"event\":\"decision.rule.selected\""));
 }
 
 #[test]

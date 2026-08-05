@@ -115,17 +115,32 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
             .map_err(|error| error.to_string())?
             == 0
         {
-            if !pending.is_empty()
-                && let Err(error) = session.evaluate(&pending, &mut io::sink())
-            {
-                eprintln!("{}", error.render("<interactive>"));
+            if !pending.is_empty() {
+                match session.evaluate(&pending, &mut io::sink()) {
+                    Ok(value) => println!("{value}"),
+                    Err(error) => eprintln!("{}", error.render("<interactive>")),
+                }
             }
             return Ok(());
+        }
+        if !pending.is_empty()
+            && (line.trim().is_empty() || !line.chars().next().is_some_and(char::is_whitespace))
+            && Session::awaits_dedent(&pending)
+        {
+            match session.evaluate(&pending, &mut io::sink()) {
+                Ok(value) => println!("{value}"),
+                Err(error) => eprintln!("{}", error.render("<interactive>")),
+            }
+            pending.clear();
         }
         if line.trim().is_empty() && pending.is_empty() {
             continue;
         }
         pending.push_str(&line);
+        if line.chars().next().is_some_and(char::is_whitespace) && Session::awaits_dedent(&pending)
+        {
+            continue;
+        }
         match session.evaluate(&pending, &mut io::sink()) {
             Ok(value) => {
                 println!("{value}");
@@ -134,7 +149,10 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
             Err(error)
                 if matches!(
                     error.code,
-                    "E-UNTERMINATED-STRING" | "E-EXPECTED-RPAREN" | "E-EXPECTED-FUNCTION-BODY"
+                    "E-UNTERMINATED-STRING"
+                        | "E-EXPECTED-RPAREN"
+                        | "E-EXPECTED-FUNCTION-BODY"
+                        | "E-UNSUPPORTED-INCOMPLETE-DECISION"
                 ) => {}
             Err(error) => {
                 eprintln!("{}", error.render("<interactive>"));

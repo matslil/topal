@@ -10,6 +10,11 @@ pub enum Expression {
         fields: Vec<ProductField>,
         span: Span,
     },
+    DecisionTable {
+        subject: Box<Expression>,
+        rules: Vec<DecisionRule>,
+        span: Span,
+    },
     Integer(Span),
     Rational(Span),
     String(Span),
@@ -53,6 +58,7 @@ impl Expression {
             | Self::Discard(span)
             | Self::Callable { span, .. }
             | Self::Product { span, .. }
+            | Self::DecisionTable { span, .. }
             | Self::Application { span, .. } => *span,
         }
     }
@@ -68,6 +74,19 @@ pub struct ProductField {
 pub struct FunctionParameter {
     pub name: Span,
     pub classifier: Span,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DecisionMatcher {
+    Boolean { value: bool, span: Span },
+    Otherwise(Span),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DecisionRule {
+    pub matcher: DecisionMatcher,
+    pub action: Expression,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -271,7 +290,7 @@ impl Parser<'_> {
             });
             return None;
         }
-        let body = self.indented_function_body()?;
+        let body = self.indented_function_body(indent.span.end - indent.span.start)?;
         let body_end = statement_span(body.last().expect("function body is nonempty")).end;
         if self.source.slice(result.span) != "Unit"
             && matches!(
@@ -299,7 +318,7 @@ impl Parser<'_> {
         })
     }
 
-    fn indented_function_body(&mut self) -> Option<Vec<Statement>> {
+    fn indented_function_body(&mut self, body_indent: usize) -> Option<Vec<Statement>> {
         self.cursor += 1;
         let mut body = vec![self.statement()?];
         loop {
@@ -311,10 +330,30 @@ impl Parser<'_> {
             }
             let checkpoint = self.cursor;
             self.cursor += 1;
-            if !self
+            let Some(indent) = self
                 .peek()
-                .is_some_and(|token| token.kind == TokenKind::Whitespace)
-            {
+                .filter(|token| token.kind == TokenKind::Whitespace)
+            else {
+                self.cursor = checkpoint;
+                break;
+            };
+            let indent_width = indent.span.end - indent.span.start;
+            if indent_width > body_indent {
+                self.cursor = checkpoint;
+                let Some(Statement::Expression(subject)) = body.pop() else {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-DECISION-SUBJECT",
+                        span: indent.span,
+                        message: "a decision table must follow a subject expression",
+                    });
+                    return None;
+                };
+                body.push(Statement::Expression(
+                    self.boolean_decision_table(subject, indent_width)?,
+                ));
+                continue;
+            }
+            if indent_width < body_indent {
                 self.cursor = checkpoint;
                 break;
             }
@@ -322,6 +361,91 @@ impl Parser<'_> {
             body.push(self.statement()?);
         }
         Some(body)
+    }
+
+    fn boolean_decision_table(
+        &mut self,
+        subject: Expression,
+        rule_indent: usize,
+    ) -> Option<Expression> {
+        let mut rules = Vec::new();
+        while self
+            .tokens
+            .get(self.cursor)
+            .is_some_and(|token| token.kind == TokenKind::Newline)
+            && self.tokens.get(self.cursor + 1).is_some_and(|token| {
+                token.kind == TokenKind::Whitespace
+                    && token.span.end - token.span.start == rule_indent
+            })
+        {
+            self.cursor += 2;
+            let matcher_token = self.take_nontrivia()?;
+            let (matcher, action) = match matcher_token.kind {
+                TokenKind::Boolean => {
+                    let separator = self.take_nontrivia()?;
+                    if separator.kind != TokenKind::Identifier
+                        || self.source.slice(separator.span) != "then"
+                    {
+                        self.diagnostics.push(SyntaxDiagnostic {
+                            code: "E-EXPECTED-THEN",
+                            span: separator.span,
+                            message: "expected `then` between the matcher and delayed action",
+                        });
+                        return None;
+                    }
+                    (
+                        DecisionMatcher::Boolean {
+                            value: self.source.slice(matcher_token.span) == "true",
+                            span: matcher_token.span,
+                        },
+                        self.expression()?,
+                    )
+                }
+                TokenKind::Identifier if self.source.slice(matcher_token.span) == "otherwise" => (
+                    DecisionMatcher::Otherwise(matcher_token.span),
+                    self.expression()?,
+                ),
+                _ => {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-UNSUPPORTED-DECISION-MATCHER",
+                        span: matcher_token.span,
+                        message: "the implemented decision subset accepts `true`, `false`, or `otherwise`",
+                    });
+                    return None;
+                }
+            };
+            let span = Span::new(matcher_span(matcher).start, action.span().end);
+            rules.push(DecisionRule {
+                matcher,
+                action,
+                span,
+            });
+        }
+        let complete = rules
+            .iter()
+            .any(|rule| matches!(rule.matcher, DecisionMatcher::Otherwise(_)))
+            || [false, true].into_iter().all(|value| {
+                rules.iter().any(|rule| {
+                    matches!(rule.matcher, DecisionMatcher::Boolean { value: found, .. } if found == value)
+                })
+            });
+        if !complete {
+            let end = rules
+                .last()
+                .map_or(subject.span().end, |rule| rule.span.end);
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-UNSUPPORTED-INCOMPLETE-DECISION",
+                span: Span::new(subject.span().start, end),
+                message: "the implemented Boolean decision subset requires both Boolean cases or `otherwise`",
+            });
+            return None;
+        }
+        let end = rules.last().expect("complete decision has rules").span.end;
+        Some(Expression::DecisionTable {
+            span: Span::new(subject.span().start, end),
+            subject: Box::new(subject),
+            rules,
+        })
     }
 
     fn static_function_parameters(
@@ -639,6 +763,12 @@ fn statement_span(statement: &Statement) -> Span {
     }
 }
 
+const fn matcher_span(matcher: DecisionMatcher) -> Span {
+    match matcher {
+        DecisionMatcher::Boolean { span, .. } | DecisionMatcher::Otherwise(span) => span,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -895,5 +1025,27 @@ mod tests {
             panic!("expected static function");
         };
         assert!(is_static);
+    }
+
+    #[test]
+    fn parses_complete_boolean_decision_table() {
+        let source = SourceText::new(
+            "choose is fn (condition : Boolean) -> Int\n  condition\n    true then 42\n    otherwise 0\nchoose true",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function { body, .. } = &parsed.statements[0] else {
+            panic!("expected function");
+        };
+        let Statement::Expression(Expression::DecisionTable { rules, .. }) = &body[0] else {
+            panic!("expected decision table");
+        };
+        assert_eq!(rules.len(), 2);
+        assert!(matches!(
+            rules[0].matcher,
+            DecisionMatcher::Boolean { value: true, .. }
+        ));
+        assert!(matches!(rules[1].matcher, DecisionMatcher::Otherwise(_)));
     }
 }
