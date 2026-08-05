@@ -87,6 +87,10 @@ pub enum Statement {
         span: Span,
         value: Expression,
     },
+    Return {
+        keyword: Span,
+        value: Expression,
+    },
     Expression(Expression),
 }
 
@@ -136,6 +140,20 @@ impl Parser<'_> {
     fn statement(&mut self) -> Option<Statement> {
         let checkpoint = self.cursor;
         let first = self.take_nontrivia()?;
+        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "return" {
+            let Some(value) = self.expression() else {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-EXPECTED-RETURN-VALUE",
+                    span: Span::new(first.span.end, first.span.end),
+                    message: "expected an expression after `return`",
+                });
+                return None;
+            };
+            return Some(Statement::Return {
+                keyword: first.span,
+                value,
+            });
+        }
         if first.kind == TokenKind::Boolean
             && self.peek_nontrivia().is_some_and(|second| {
                 second.kind == TokenKind::Identifier && self.source.slice(second.span) == "is"
@@ -610,6 +628,7 @@ fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value } => Span::new(name.start, value.span().end),
         Statement::StaticFunction { span, .. } | Statement::Discard { span, .. } => *span,
+        Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
         Statement::Expression(expression) => expression.span(),
     }
 }
@@ -841,5 +860,17 @@ mod tests {
         assert!(matches!(body[0], Statement::Binding { .. }));
         assert!(matches!(body[1], Statement::Expression(_)));
         assert_eq!(parsed.statements.len(), 2);
+    }
+
+    #[test]
+    fn parses_explicit_return_as_a_function_statement() {
+        let source =
+            SourceText::new("answer is fn static () -> Int\n  return 42\n  0\nanswer ()").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty());
+        let Statement::StaticFunction { body, .. } = &parsed.statements[0] else {
+            panic!("expected static function body");
+        };
+        assert!(matches!(body[0], Statement::Return { .. }));
     }
 }

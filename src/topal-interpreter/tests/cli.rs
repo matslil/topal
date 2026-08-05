@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 9);
+    assert_eq!(examples.len(), 10);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -794,6 +794,49 @@ fn every_mode_executes_multi_statement_function_bodies() {
     let resolved = trace.find("binding.resolved").unwrap();
     let returned = trace.find("function.returned").unwrap();
     assert!(entered < created && created < resolved && resolved < returned);
+}
+
+#[test]
+fn every_mode_returns_early_from_functions() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let source = if arguments == ["--interactive"] {
+            "answer is fn static () -> Int\n  return 40 + 2\nanswer ()\n"
+        } else {
+            "answer is fn static () -> Int\n  return 40 + 2\n  missing\nanswer ()\n"
+        };
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if arguments == ["--interactive"] {
+            assert_eq!(output.stdout, b"()\n42\n");
+        } else {
+            assert_eq!(output.stdout, b"42\n");
+        }
+    }
+
+    let output = run(
+        &["--test"],
+        "answer is fn static () -> Int\n  return 40 + 2\n  missing\nanswer ()\n",
+    );
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let explicit = trace.find("function.return.explicit").unwrap();
+    let returned = trace.find("function.returned").unwrap();
+    assert!(explicit < returned);
+    assert!(!trace.contains("missing"));
+}
+
+#[test]
+fn return_outside_a_function_is_rejected() {
+    let output = run(&[], "return 42\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-RETURN-OUTSIDE-FUNCTION")
+    );
 }
 
 #[test]

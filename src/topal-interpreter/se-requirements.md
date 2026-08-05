@@ -356,3 +356,11 @@ according to `TOPAL-FUNCTION-BLOCK-001`, including invocation-local immutable
 bindings and final-result validation. Test traces and reversible debugger
 history shall preserve the ordered statement decisions between function entry
 and return.
+
+## TOPAL-INTP-SUBSET-039 — Explicit function return
+
+All interpreter modes shall execute `return expression` according to
+`TOPAL-FUNCTION-RETURN-001`, enforce the nearest function boundary, validate the
+returned value, and skip later body statements. Test traces and reversible
+debugger history shall expose the explicit-return decision and omit skipped
+decisions.

@@ -259,7 +259,7 @@ fn semantic_tokens(text: &str) -> Value {
     };
     let mut absolute = Vec::new();
     for token in lex(&source).tokens {
-        let Some(token_type) = semantic_token_type(token.kind) else {
+        let Some(token_type) = semantic_token_type(token.kind, source.slice(token.span)) else {
             continue;
         };
         let mut offset = token.span.start;
@@ -289,8 +289,9 @@ fn semantic_tokens(text: &str) -> Value {
     json!({ "data": data })
 }
 
-const fn semantic_token_type(kind: TokenKind) -> Option<usize> {
+fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
     match kind {
+        TokenKind::Identifier if lexeme == "return" => Some(4),
         TokenKind::Identifier => Some(0),
         TokenKind::Integer | TokenKind::Rational => Some(1),
         TokenKind::String => Some(2),
@@ -446,6 +447,14 @@ mod tests {
     }
 
     #[test]
+    fn highlights_return_as_a_keyword() {
+        assert_eq!(
+            semantic_tokens("return 42")["data"],
+            json!([0, 0, 6, 4, 0, 0, 7, 2, 1, 0])
+        );
+    }
+
+    #[test]
     fn every_interpreter_example_has_clean_diagnostics_and_highlighting() {
         let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/interpreter");
         let mut examples = std::fs::read_dir(directory)
@@ -454,7 +463,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 9);
+        assert_eq!(examples.len(), 10);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {

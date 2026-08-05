@@ -182,6 +182,30 @@ fn records_reversible_static_product_argument_bindings() {
 }
 
 #[test]
+fn records_reversible_explicit_function_return() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-return.debug"),
+            &format!("{root}function-return.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let explicit = stdout.find("function.return.explicit").unwrap();
+    let returned = stdout.find("function.returned").unwrap();
+    assert!(explicit < returned);
+    assert!(!stdout.contains("binding.resolved [TOPAL-SYN-BIND-001] missing"));
+    assert!(stdout.contains("\n42\n"));
+}
+
+#[test]
 fn evaluates_inspection_expressions_without_mutating_history() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
