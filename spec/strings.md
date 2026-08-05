@@ -34,3 +34,10 @@ finite nonnegative `Int` equal to the number of extended grapheme clusters in
 the preserved Unicode sequence under the language context's pinned Unicode
 segmentation data. Empty text has count zero. Canonically equivalent sequences
 shall be segmented as preserved rather than normalized before counting.
+
+### TOPAL-STRING-ENTRY-COUNT-001 — String sequence entry count
+
+Because plain `String` provides `Sequence Character`, `entry-count text` shall
+produce exactly the same finite nonnegative `Int` as `character-count text`
+under `TOPAL-STRING-CHARACTER-COUNT-001`. It shall count user-perceived
+characters, not Unicode scalar values, encoded bytes, or display columns.

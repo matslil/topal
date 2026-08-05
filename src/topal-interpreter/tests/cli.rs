@@ -142,6 +142,21 @@ fn test_mode_records_string_character_count() {
 }
 
 #[test]
+fn every_mode_counts_string_sequence_entries() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "entry-count \"a\u{301}👩‍🔬🇸🇪\"\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"3\n");
+    }
+
+    let output = run(&["--test"], "entry-count \"👩‍🔬\"\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("root.entry-count(String)"));
+    assert!(trace.contains("TOPAL-STRING-ENTRY-COUNT-001"));
+    assert!(trace.contains("characters=1"));
+}
+
+#[test]
 fn version_exposes_the_language_context_unicode_version() {
     let output = run(&["--version"], "");
     assert!(output.status.success());
