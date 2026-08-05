@@ -256,16 +256,17 @@ impl Parser<'_> {
             return None;
         }
         let arrow = self.take_nontrivia()?;
-        let result = self.take_nontrivia()?;
+        let result_token = self.take_nontrivia()?;
+        let result = self.function_result(result_token)?;
         let valid = self.source.slice(function.span) == "fn"
             && opening.kind == TokenKind::LeftParen
             && closing.kind == TokenKind::RightParen
             && arrow.kind == TokenKind::Arrow
-            && result.kind == TokenKind::Identifier;
+            && result_token.kind == TokenKind::Identifier;
         if !valid {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-UNSUPPORTED-FUNCTION-HEADER",
-                span: Span::new(function.span.start, result.span.end),
+                span: Span::new(function.span.start, result.end),
                 message: "the implemented function subset requires `fn static ( name : Type, ... ) -> ResultType`",
             });
             self.skip_to_newline();
@@ -277,7 +278,7 @@ impl Parser<'_> {
         {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-FUNCTION-BODY",
-                span: Span::new(result.span.end, result.span.end),
+                span: Span::new(result.end, result.end),
                 message: "expected an indented function body on the next line",
             });
             return None;
@@ -286,7 +287,7 @@ impl Parser<'_> {
         let Some(indent) = self.peek() else {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-FUNCTION-BODY",
-                span: Span::new(result.span.end, result.span.end),
+                span: Span::new(result.end, result.end),
                 message: "expected an indented function body on the next line",
             });
             return None;
@@ -301,7 +302,7 @@ impl Parser<'_> {
         }
         let body = self.indented_function_body(indent.span.end - indent.span.start)?;
         let body_end = statement_span(body.last().expect("function body is nonempty")).end;
-        if self.source.slice(result.span) != "Unit"
+        if self.source.slice(result) != "Unit"
             && matches!(
                 body.last(),
                 Some(Statement::Binding { .. } | Statement::Discard { .. })
@@ -321,10 +322,32 @@ impl Parser<'_> {
             name: name.span,
             is_static,
             parameters,
-            result: result.span,
+            result,
             span: Span::new(name.span.start, body_end),
             body,
         })
+    }
+
+    fn function_result(&mut self, first: Token) -> Option<Span> {
+        if first.kind != TokenKind::Identifier || self.source.slice(first.span) != "Result" {
+            return Some(first.span);
+        }
+        let opening = self.take_nontrivia()?;
+        if opening.kind != TokenKind::LeftParen {
+            return None;
+        }
+        let mut depth = 1_usize;
+        let mut end = opening.span.end;
+        while depth > 0 {
+            let token = self.take_nontrivia()?;
+            match token.kind {
+                TokenKind::LeftParen => depth += 1,
+                TokenKind::RightParen => depth -= 1,
+                _ => {}
+            }
+            end = token.span.end;
+        }
+        Some(Span::new(first.span.start, end))
     }
 
     fn indented_function_body(&mut self, body_indent: usize) -> Option<Vec<Statement>> {

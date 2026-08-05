@@ -584,3 +584,11 @@ the qualified `lang arithmetic` namespace according to
 `TOPAL-NUM-ARITHMETIC-ERROR-001`. Resolution shall not invent or assign an
 `Error.domain`. Test traces and reversible debugger history shall expose the
 qualified namespace selection.
+
+## TOPAL-INTP-SUBSET-069 — Successful Result contracts
+
+All interpreter modes shall parse an explicit
+`Result ( T, lang arithmetic ArithmeticErrorCode )` function result and accept
+an ordinary successful `T` value under `TOPAL-TYPE-RESULT-001`. Declaration
+shall neither construct an `Error` nor assign `Error.domain`. Test traces and
+debugger history shall retain the complete result contract.

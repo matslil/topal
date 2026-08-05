@@ -423,6 +423,27 @@ fn records_reversible_arithmetic_error_code_selection() {
 }
 
 #[test]
+fn records_reversible_successful_result_contract() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}result-success.debug"),
+            &format!("{root}result-success.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("function.result.contract [TOPAL-TYPE-RESULT-001]"));
+    assert!(stdout.contains("\nRational ( 3, 2 )\n"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
