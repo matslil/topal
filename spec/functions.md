@@ -183,6 +183,14 @@ calls the first. Each bound shall be a nonnegative integer literal. The complete
 cycle shall be established before any recursive edge executes; an isolated or
 overshooting candidate remains unproven.
 
+### TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001 — Proven mutual increasing Nat recursion
+
+A closed cycle of unary `Nat` functions is proven terminating when every member
+uses an inclusive `>= bound` base matcher and every recursive action calls the
+same next member with `parameter + step` for a positive integer literal step.
+The final member shall call the first. Every edge preserves nonnegativity and
+strictly progresses; the complete cycle shall be proven before execution.
+
 ### TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001 — Proven mutual decreasing Int recursion
 
 An initial mutual-recursion rule proves a closed cycle of two or more unary

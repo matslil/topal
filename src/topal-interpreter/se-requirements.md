@@ -541,3 +541,10 @@ after proving every member under `TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001`.
 Every edge shall preserve `Nat` through a unit decrement toward a nonnegative
 bound. Test traces and reversible debugger history shall expose cycle proof and
 descent.
+
+## TOPAL-INTP-SUBSET-063 — Proven mutual increasing Nat recursion
+
+All interpreter modes shall execute a mutually increasing `Nat` cycle only
+after proving every member under
+`TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001`. Test traces and reversible
+debugger history shall expose completed cycle proof and every descent.
