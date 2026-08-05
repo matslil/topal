@@ -1,11 +1,11 @@
 #!/usr/bin/env topal
-# Demonstrates a closed mutual Nat cycle whose every edge decrements by one.
+# Demonstrates a closed mutual Nat cycle whose bounded decrements preserve Nat.
 even is fn (value : Nat) -> Boolean
   value
-    <= 0 then true
-    otherwise odd (value - 1)
+    <= 2 then true
+    otherwise odd (value - 3)
 odd is fn (value : Nat) -> Boolean
   value
-    <= 0 then false
-    otherwise even (value - 1)
-(even 6, odd 6)
+    <= 2 then false
+    otherwise even (value - 3)
+(even 8, odd 8)

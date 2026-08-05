@@ -1509,35 +1509,69 @@ fn prove_int_recursion(
     }
     let (found, valid) =
         bounded_self_calls(source, function_name, parameter, step, &recursive.action);
+    let nat_step_limit = nat_decrement_step_limit(source, &base.matcher);
     let preserves_nat = classifier != "Nat"
         || step == CallableKind::Plus
-        || recursive_calls_use_unit_step(source, function_name, parameter, &recursive.action);
+        || nat_step_limit.is_some_and(|limit| {
+            recursive_calls_fit_nat_bound(
+                source,
+                function_name,
+                parameter,
+                &recursive.action,
+                &limit,
+            )
+        });
     (found && valid && preserves_nat).then_some(proof_rule)
 }
 
-fn recursive_calls_use_unit_step(
+fn nat_decrement_step_limit(source: &SourceText, matcher: &DecisionMatcher) -> Option<BigInt> {
+    let DecisionMatcher::Comparison {
+        kind: CallableKind::LessEqual,
+        operand: Expression::Integer(bound),
+        ..
+    } = matcher
+    else {
+        return None;
+    };
+    parse_integer(source.slice(*bound)).map(|bound| bound + BigInt::from(1))
+}
+
+fn recursive_calls_fit_nat_bound(
     source: &SourceText,
     function_name: &str,
     parameter: &str,
     expression: &Expression,
+    maximum_step: &BigInt,
 ) -> bool {
     match expression {
         Expression::Application { items, .. } if matches!(items.first(), Some(Expression::Identifier(span)) if source.slice(*span) == function_name) =>
         {
             matches!(items.as_slice(), [_, Expression::Application { items, .. }]
                 if matches!(items.as_slice(), [Expression::Identifier(name), Expression::Callable { kind: CallableKind::Minus, .. }, Expression::Integer(amount)]
-                    if source.slice(*name) == parameter && parse_integer(source.slice(*amount)) == Some(BigInt::from(1))))
+                    if source.slice(*name) == parameter && parse_integer(source.slice(*amount)).is_some_and(|step| step > BigInt::from(0) && step <= *maximum_step)))
         }
-        Expression::Application { items, .. } => items
-            .iter()
-            .all(|item| recursive_calls_use_unit_step(source, function_name, parameter, item)),
+        Expression::Application { items, .. } => items.iter().all(|item| {
+            recursive_calls_fit_nat_bound(source, function_name, parameter, item, maximum_step)
+        }),
         Expression::Product { fields, .. } => fields.iter().all(|field| {
-            recursive_calls_use_unit_step(source, function_name, parameter, &field.value)
+            recursive_calls_fit_nat_bound(
+                source,
+                function_name,
+                parameter,
+                &field.value,
+                maximum_step,
+            )
         }),
         Expression::DecisionTable { subject, rules, .. } => {
-            recursive_calls_use_unit_step(source, function_name, parameter, subject)
+            recursive_calls_fit_nat_bound(source, function_name, parameter, subject, maximum_step)
                 && rules.iter().all(|rule| {
-                    recursive_calls_use_unit_step(source, function_name, parameter, &rule.action)
+                    recursive_calls_fit_nat_bound(
+                        source,
+                        function_name,
+                        parameter,
+                        &rule.action,
+                        maximum_step,
+                    )
                 })
         }
         _ => true,
@@ -1623,7 +1657,9 @@ fn prove_mutual_int_recursion_edge(
         || contains_self_call(source, &target, &base.action)
         || (classifier == "Nat"
             && step == CallableKind::Minus
-            && !recursive_calls_use_unit_step(source, &target, parameter, &recursive.action))
+            && !nat_decrement_step_limit(source, &base.matcher).is_some_and(|limit| {
+                recursive_calls_fit_nat_bound(source, &target, parameter, &recursive.action, &limit)
+            }))
     {
         return None;
     }
@@ -3506,6 +3542,25 @@ fn proves_unit_step_nat_recursion_without_overshoot() {
     let error = Session::new()
         .evaluate(
             &source.replace("value - 1", "value - 2"),
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+}
+
+#[test]
+fn proves_nat_decrement_when_the_bound_prevents_overshoot() {
+    let safe = "count-down is fn (value : Nat) -> Nat\n  value\n    <= 2 then value\n    otherwise count-down (value - 3)\ncount-down 8\n";
+    assert_eq!(
+        Session::new()
+            .evaluate(safe, &mut std::io::sink())
+            .unwrap()
+            .to_string(),
+        "2"
+    );
+    let error = Session::new()
+        .evaluate(
+            &safe.replace("value - 3", "value - 4"),
             &mut std::io::sink(),
         )
         .unwrap_err();

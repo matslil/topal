@@ -152,15 +152,15 @@ Test traces and debugger history shall distinguish this increasing proof from
 the decreasing proof at declaration and on every recursive descent. Other
 recursive steps remain rejected until another termination rule proves them.
 
-### TOPAL-FUNCTION-RECURSION-NAT-001 — Proven unit-step decreasing Nat recursion
+### TOPAL-FUNCTION-RECURSION-NAT-001 — Proven range-preserving decreasing Nat recursion
 
 A unary `Nat` function is proven terminating when its complete body is a
 decision table over its parameter with `<= bound then base` followed by
 `otherwise recursive-action`, where `bound` is a nonnegative integer literal,
-the base contains no self-call, and every self-call passes `parameter - 1`.
-The unit step both strictly decreases and preserves the `Nat` classifier until
-the inclusive base matcher is selected; larger steps are not admitted by this
-initial rule because they may overshoot below zero.
+the base contains no self-call, and every self-call passes `parameter - step`
+for a positive integer literal satisfying `step <= bound + 1`. This bound makes
+the smallest possible recursive argument nonnegative while every step strictly
+decreases toward the inclusive base matcher.
 
 Test traces and debugger history shall expose this proof separately from the
 more general signed-`Int` recursion rules. Other decreasing `Nat` forms require
@@ -178,7 +178,7 @@ the bound is permitted because the inclusive matcher stops the next entry.
 
 A closed cycle of unary `Nat` functions is proven terminating when every member
 uses the shape of `TOPAL-FUNCTION-RECURSION-NAT-001`, every recursive action
-calls the same next cycle member with `parameter - 1`, and the final member
+calls the same next cycle member with a bound-preserving decrement, and the final member
 calls the first. Each bound shall be a nonnegative integer literal. The complete
 cycle shall be established before any recursive edge executes; an isolated or
 overshooting candidate remains unproven.

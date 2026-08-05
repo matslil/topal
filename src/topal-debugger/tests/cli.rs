@@ -264,7 +264,7 @@ fn records_reversible_nat_recursion() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-FUNCTION-RECURSION-NAT-001"));
     assert!(stdout.contains("function.recursion.descended"));
-    assert!(stdout.contains("\n0\n"));
+    assert!(stdout.contains("\n2\n"));
 }
 
 #[test]
