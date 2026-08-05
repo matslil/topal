@@ -408,6 +408,49 @@ impl Session {
                     }
                     composing_literals = false;
                     if let Expression::Identifier(callable_span) = &items[index]
+                        && source.slice(*callable_span) == "byte-count"
+                        && let Value::String(text) = &result
+                    {
+                        let Some(encoding) = items.get(index + 1) else {
+                            return Err(diagnostic(
+                                source,
+                                "E-EXPECTED-OPERAND",
+                                Span::new(callable_span.end, callable_span.end),
+                                "expected an Encoding after byte-count",
+                            ));
+                        };
+                        let encoding_span = encoding.span();
+                        if !matches!(encoding, Expression::Identifier(name) if source.slice(*name) == "Utf8")
+                        {
+                            return Err(diagnostic(
+                                source,
+                                "E-NO-APPLICABLE-OVERLOAD",
+                                encoding_span,
+                                "the implemented String byte-count operation requires Utf8",
+                            ));
+                        }
+                        trace.record(TraceEvent {
+                            event: "operator.selected",
+                            rule: "TOPAL-TYPE-CALL-001",
+                            detail: "root.byte-count(String,Utf8)",
+                        });
+                        let byte_count = text.len();
+                        let detail = format!("bytes={byte_count}");
+                        trace.record(TraceEvent {
+                            event: "string.utf8-byte-count",
+                            rule: "TOPAL-STRING-UTF8-BYTE-COUNT-001",
+                            detail: &detail,
+                        });
+                        result = Value::Int(BigInt::from(byte_count));
+                        self.checkpoint(
+                            trace,
+                            Some(&result),
+                            Some(cover(items[0].span(), encoding_span)),
+                        );
+                        index += 2;
+                        continue;
+                    }
+                    if let Expression::Identifier(callable_span) = &items[index]
                         && source.slice(*callable_span) == "concat"
                         && let Value::String(left) = &result
                     {
@@ -1702,6 +1745,23 @@ mod tests {
                 .iter()
                 .any(|event| event.contains("TOPAL-STRING-ENTRY-COUNT-001"))
         );
+    }
+
+    #[test]
+    fn counts_prospective_utf8_bytes_without_normalizing() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("\"e\u{301}👩‍🔬\" byte-count Utf8\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "14");
+        assert!(trace.iter().any(|event| {
+            event.contains("TOPAL-STRING-UTF8-BYTE-COUNT-001") && event.contains("bytes=14")
+        }));
+
+        let error = Session::new()
+            .evaluate("\"text\" byte-count Utf16\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
     }
 
     #[test]

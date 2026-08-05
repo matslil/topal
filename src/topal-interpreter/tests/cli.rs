@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 4);
+    assert_eq!(examples.len(), 5);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -154,6 +154,21 @@ fn every_mode_counts_string_sequence_entries() {
     assert!(trace.contains("root.entry-count(String)"));
     assert!(trace.contains("TOPAL-STRING-ENTRY-COUNT-001"));
     assert!(trace.contains("characters=1"));
+}
+
+#[test]
+fn every_mode_counts_prospective_utf8_bytes() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "\"e\u{301}👩‍🔬\" byte-count Utf8\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"14\n");
+    }
+
+    let output = run(&["--test"], "\"é\" byte-count Utf8\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("root.byte-count(String,Utf8)"));
+    assert!(trace.contains("TOPAL-STRING-UTF8-BYTE-COUNT-001"));
+    assert!(trace.contains("bytes=2"));
 }
 
 #[test]
