@@ -521,9 +521,10 @@ reversible debugger history shall retain the selected `Nat` signature.
 
 ## TOPAL-INTP-SUBSET-060 — Proven decreasing Nat recursion
 
-All interpreter modes shall execute unit-step decreasing `Nat` recursion only
+All interpreter modes shall execute range-preserving decreasing `Nat` recursion only
 after proving `TOPAL-FUNCTION-RECURSION-NAT-001`. The proof shall require a
-nonnegative inclusive lower bound and preserve `Nat` at every recursive call.
+nonnegative inclusive lower bound and a positive literal step no greater than
+the bound plus one, preserving `Nat` at every recursive call.
 Test traces and reversible debugger history shall expose proof acceptance and
 each descent.
 
@@ -538,7 +539,7 @@ and reversible debugger history shall expose the proof and every descent.
 
 All interpreter modes shall execute a mutually decreasing `Nat` cycle only
 after proving every member under `TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001`.
-Every edge shall preserve `Nat` through a unit decrement toward a nonnegative
+Every edge shall preserve `Nat` through a bounded decrement toward a nonnegative
 bound. Test traces and reversible debugger history shall expose cycle proof and
 descent.
 
@@ -548,3 +549,9 @@ All interpreter modes shall execute a mutually increasing `Nat` cycle only
 after proving every member under
 `TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001`. Test traces and reversible
 debugger history shall expose completed cycle proof and every descent.
+
+## TOPAL-INTP-SUBSET-064 — Bound-preserving Nat decrement steps
+
+Direct and mutual decreasing `Nat` proofs shall accept a positive literal step
+exactly when it is no greater than the nonnegative bound plus one. Larger steps
+shall remain unproven because some admitted argument could cross below zero.

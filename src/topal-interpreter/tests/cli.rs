@@ -916,6 +916,28 @@ fn every_mode_executes_proven_nat_recursion() {
 }
 
 #[test]
+fn nat_recursion_accepts_only_bound_preserving_decrements() {
+    let safe = "count-down is fn (value : Nat) -> Nat\n  value\n    <= 2 then value\n    otherwise count-down (value - 3)\ncount-down 8\n";
+    let output = run(&["--test"], safe);
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"2\n");
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("TOPAL-FUNCTION-RECURSION-NAT-001")
+    );
+
+    let unsafe_step = safe.replace("value - 3", "value - 4");
+    let output = run(&[], &unsafe_step);
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-RECURSION-NOT-YET-PROVEN")
+    );
+}
+
+#[test]
 fn every_mode_executes_proven_increasing_nat_recursion() {
     let source = "advance is fn (value : Nat) -> Nat\n  value\n    >= 5 then value\n    otherwise advance (value + 2)\nadvance 0\n";
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
