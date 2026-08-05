@@ -304,6 +304,33 @@ impl Session {
             )),
             Expression::Application { items, span } => {
                 if items.len() == 2
+                    && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "empty?")
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(text) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-NO-APPLICABLE-OVERLOAD",
+                            operand_span,
+                            "empty? requires a String operand in the implemented subset",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.empty?(String)",
+                    });
+                    let value = Value::Boolean(text.is_empty());
+                    trace.record(TraceEvent {
+                        event: "string.empty.tested",
+                        rule: "TOPAL-STRING-EMPTY-PREDICATE-001",
+                        detail: if text.is_empty() { "true" } else { "false" },
+                    });
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(source.slice(*name), "character-count" | "entry-count")
                 {
@@ -1713,6 +1740,27 @@ mod tests {
             trace
                 .iter()
                 .any(|event| event.contains("TOPAL-STRING-EMPTY-001"))
+        );
+    }
+
+    #[test]
+    fn tests_plain_string_emptiness() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("empty? (empty String)\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "true");
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("TOPAL-STRING-EMPTY-PREDICATE-001"))
+        );
+        assert_eq!(
+            Session::new()
+                .evaluate("empty? \"Topal\"\n", &mut std::io::sink())
+                .unwrap()
+                .to_string(),
+            "false"
         );
     }
 

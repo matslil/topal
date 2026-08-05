@@ -4,6 +4,7 @@ message is text"Topal strings preserve "quotes",
 newlines, and {braces}."text
 flags is (true, false)
 empty-text is empty String
+empty-text? is empty? empty-text
 person is (
   name is "Ada",
   active is true
@@ -21,6 +22,7 @@ greeting-entry-count is entry-count greeting
   greeting-entry-count,
   flags,
   empty-text,
+  empty-text?,
   person,
   person-name,
   (),
