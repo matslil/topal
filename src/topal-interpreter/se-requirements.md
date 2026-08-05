@@ -299,3 +299,18 @@ All interpreter modes shall evaluate `text byte-count Utf8` for a plain
 nonnegative `Int` without changing the String value or normalizing its preserved
 sequence. Test mode shall record operation selection and the exact byte count
 as separate decisions. Other encodings remain explicitly unsupported.
+
+## TOPAL-INTP-SUBSET-033 — Explicit String NFC normalization
+
+All interpreter modes shall evaluate `text normalize NFC` for a plain `String`
+according to `TOPAL-STRING-NORMALIZE-NFC-001`, using the exact Unicode tables
+selected by the language context. The operation shall not affect the source
+binding or introduce implicit normalization elsewhere. Test mode shall record
+operation selection and whether normalization changed the preserved sequence.
+## TOPAL-INTP-SUBSET-032 — String emptiness predicate
+
+The shared frontend shall accept a single terminal `?` as part of a predicate
+identifier according to `TOPAL-SYN-LEX-001`. All interpreter modes shall
+evaluate `empty? text` for a plain `String` according to
+`TOPAL-STRING-EMPTY-PREDICATE-001`. Test mode shall record predicate selection
+and its Boolean result independently.

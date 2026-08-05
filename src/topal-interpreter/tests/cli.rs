@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 5);
+    assert_eq!(examples.len(), 6);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -130,6 +130,21 @@ fn test_mode_records_empty_string_construction() {
 }
 
 #[test]
+fn every_mode_tests_string_emptiness() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "empty? (empty String)\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"true\n");
+    }
+
+    let output = run(&["--test"], "empty? \"Topal\"\n");
+    assert_eq!(output.stdout, b"false\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("root.empty?(String)"));
+    assert!(trace.contains("TOPAL-STRING-EMPTY-PREDICATE-001"));
+}
+
+#[test]
 fn test_mode_records_string_character_count() {
     let output = run(&["--test"], "character-count \"a\u{301}👩‍🔬🇸🇪\"\n");
     assert!(output.status.success());
@@ -169,6 +184,21 @@ fn every_mode_counts_prospective_utf8_bytes() {
     assert!(trace.contains("root.byte-count(String,Utf8)"));
     assert!(trace.contains("TOPAL-STRING-UTF8-BYTE-COUNT-001"));
     assert!(trace.contains("bytes=2"));
+}
+
+#[test]
+fn every_mode_normalizes_strings_to_nfc_explicitly() {
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, "\"e\u{301}\" normalize NFC\n");
+        assert!(output.status.success());
+        assert_eq!(output.stdout, "\"é\"\n".as_bytes());
+    }
+
+    let output = run(&["--test"], "\"é\" normalize NFC\n");
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("root.normalize(String,NFC)"));
+    assert!(trace.contains("TOPAL-STRING-NORMALIZE-NFC-001"));
+    assert!(trace.contains("changed=false"));
 }
 
 #[test]
@@ -578,6 +608,21 @@ fn unbound_name_diagnostic_suggests_a_close_visible_binding() {
     assert!(diagnostic.contains("error[E-UNBOUND-NAME]"));
     assert!(diagnostic.contains("2 | anwser"));
     assert!(diagnostic.contains("= help: did you mean `answer`?"));
+}
+
+#[test]
+fn diagnostics_suggest_implemented_root_operations() {
+    let output = run(&[], "charcter-count \"Topal\"\n");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-UNBOUND-NAME]"));
+    assert!(diagnostic.contains("= help: did you mean `character-count`?"));
+
+    let output = run(&[], "\"a\" concatenate \"b\"\n");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-UNSUPPORTED-APPLICATION]"));
+    assert!(diagnostic.contains("= help: did you mean `concat`?"));
 }
 
 #[test]

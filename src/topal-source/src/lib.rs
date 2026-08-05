@@ -22,6 +22,14 @@ pub fn is_nfc(text: &str) -> bool {
     unicode_normalization::is_nfc(text)
 }
 
+/// Returns the canonical NFC transformation under the language context.
+#[must_use]
+pub fn normalize_nfc(text: &str) -> String {
+    use unicode_normalization::UnicodeNormalization as _;
+
+    text.nfc().collect()
+}
+
 #[must_use]
 pub fn is_identifier_start(character: char) -> bool {
     unicode_ident::is_xid_start(character)
@@ -163,6 +171,12 @@ mod tests {
         assert!(is_nfc("é"));
         assert!(!is_nfc("e\u{301}"));
         assert!(is_identifier_start('\u{1c89}'));
+    }
+
+    #[test]
+    fn normalizes_preserved_text_explicitly() {
+        assert_eq!(normalize_nfc("e\u{301}"), "é");
+        assert_eq!(normalize_nfc("é"), "é");
     }
 
     #[test]

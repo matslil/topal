@@ -31,7 +31,7 @@ Let `XID_Start` and `XID_Continue` be the Unicode 17.0.0 identifier properties
 fixed by `TOPAL-SYN-UNICODE-001`.
 
 ```ebnf
-identifier       ::= identifier-start identifier-continue* ;
+identifier       ::= identifier-start identifier-continue* [ "?" ] ;
 identifier-start ::= XID_Start | "_" ;
 identifier-continue ::= XID_Continue | "-" ;
 discard          ::= "_" ;
@@ -44,7 +44,9 @@ newline          ::= "\n" ;
 comment          ::= "#" { any-scalar-except-newline } ;
 ```
 
-`_` is always `discard`, never an identifier. A hyphen is permitted only
+The complete spelling `_` is always `discard`, never an identifier. A terminal
+`?` marks a predicate name and is part of its identifier token; it may occur
+only once and only at the end. A hyphen is permitted only
 between identifier continuation characters; leading, trailing, and repeated
 hyphens are invalid. Keywords are recognized from an identifier token by the
 grammar position. The scanner selects the longest declared symbol. No other

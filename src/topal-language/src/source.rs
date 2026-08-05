@@ -4,7 +4,7 @@ use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use topal_source::{SourceText, Span, character_count};
+use topal_source::{SourceText, Span, character_count, normalize_nfc};
 use topal_syntax::{CallableKind, Expression, Statement, lex, parse};
 
 use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
@@ -279,9 +279,11 @@ impl Session {
                 let name = source.slice(*span);
                 let value = self.bindings.get(name).cloned().ok_or_else(|| {
                     let error = diagnostic(source, "E-UNBOUND-NAME", *span, "name is not bound");
-                    closest_name(name, self.bindings.keys()).map_or(error.clone(), |candidate| {
-                        error.with_help(format!("did you mean `{candidate}`?"))
-                    })
+                    closest_name(name, self.bindings.keys())
+                        .or_else(|| closest_root_operation(name))
+                        .map_or(error.clone(), |candidate| {
+                            error.with_help(format!("did you mean `{candidate}`?"))
+                        })
                 })?;
                 trace.record(TraceEvent {
                     event: "binding.resolved",
@@ -303,6 +305,33 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if items.len() == 2
+                    && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "empty?")
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(text) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-NO-APPLICABLE-OVERLOAD",
+                            operand_span,
+                            "empty? requires a String operand in the implemented subset",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.empty?(String)",
+                    });
+                    let value = Value::Boolean(text.is_empty());
+                    trace.record(TraceEvent {
+                        event: "string.empty.tested",
+                        rule: "TOPAL-STRING-EMPTY-PREDICATE-001",
+                        detail: if text.is_empty() { "true" } else { "false" },
+                    });
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(source.slice(*name), "character-count" | "entry-count")
@@ -407,6 +436,53 @@ impl Session {
                         continue;
                     }
                     composing_literals = false;
+                    if let Expression::Identifier(callable_span) = &items[index]
+                        && source.slice(*callable_span) == "normalize"
+                        && let Value::String(text) = &result
+                    {
+                        let Some(form) = items.get(index + 1) else {
+                            return Err(diagnostic(
+                                source,
+                                "E-EXPECTED-OPERAND",
+                                Span::new(callable_span.end, callable_span.end),
+                                "expected a normalization form after normalize",
+                            ));
+                        };
+                        let form_span = form.span();
+                        if !matches!(form, Expression::Identifier(name) if source.slice(*name) == "NFC")
+                        {
+                            return Err(diagnostic(
+                                source,
+                                "E-NO-APPLICABLE-OVERLOAD",
+                                form_span,
+                                "the implemented String normalize operation requires NFC",
+                            ));
+                        }
+                        trace.record(TraceEvent {
+                            event: "operator.selected",
+                            rule: "TOPAL-TYPE-CALL-001",
+                            detail: "root.normalize(String,NFC)",
+                        });
+                        let normalized = normalize_nfc(text);
+                        let changed = normalized != *text;
+                        trace.record(TraceEvent {
+                            event: "string.normalized",
+                            rule: "TOPAL-STRING-NORMALIZE-NFC-001",
+                            detail: if changed {
+                                "changed=true"
+                            } else {
+                                "changed=false"
+                            },
+                        });
+                        result = Value::String(normalized);
+                        self.checkpoint(
+                            trace,
+                            Some(&result),
+                            Some(cover(items[0].span(), form_span)),
+                        );
+                        index += 2;
+                        continue;
+                    }
                     if let Expression::Identifier(callable_span) = &items[index]
                         && source.slice(*callable_span) == "byte-count"
                         && let Value::String(text) = &result
@@ -521,12 +597,19 @@ impl Session {
                         span: operator_span,
                     } = &items[index]
                     else {
-                        return Err(diagnostic(
+                        let mut error = diagnostic(
                             source,
                             "E-UNSUPPORTED-APPLICATION",
                             items[index].span(),
                             "the implemented subset requires a symbolic callable",
-                        ));
+                        );
+                        if let Expression::Identifier(name_span) = &items[index]
+                            && let Some(candidate) =
+                                closest_root_operation(source.slice(*name_span))
+                        {
+                            error = error.with_help(format!("did you mean `{candidate}`?"));
+                        }
+                        return Err(error);
                     };
                     let Some(right) = items.get(index + 1) else {
                         return Err(diagnostic(
@@ -1336,6 +1419,28 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
+const ROOT_OPERATIONS: [&str; 6] = [
+    "byte-count",
+    "character-count",
+    "concat",
+    "empty",
+    "entry-count",
+    "normalize",
+];
+
+fn closest_root_operation(name: &str) -> Option<&'static str> {
+    if name == "concatenate" {
+        return Some("concat");
+    }
+    let maximum = 2.max(name.chars().count() / 3);
+    ROOT_OPERATIONS
+        .into_iter()
+        .map(|candidate| (edit_distance(name, candidate), candidate))
+        .filter(|(distance, _)| *distance <= maximum)
+        .min()
+        .map(|(_, candidate)| candidate)
+}
+
 fn edit_distance(left: &str, right: &str) -> usize {
     let right = right.chars().collect::<Vec<_>>();
     let mut previous = (0..=right.len()).collect::<Vec<_>>();
@@ -1713,6 +1818,27 @@ mod tests {
     }
 
     #[test]
+    fn tests_plain_string_emptiness() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("empty? (empty String)\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "true");
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("TOPAL-STRING-EMPTY-PREDICATE-001"))
+        );
+        assert_eq!(
+            Session::new()
+                .evaluate("empty? \"Topal\"\n", &mut std::io::sink())
+                .unwrap()
+                .to_string(),
+            "false"
+        );
+    }
+
+    #[test]
     fn counts_unicode_user_perceived_characters() {
         let mut trace = Vec::new();
         let value = Session::new()
@@ -1756,6 +1882,23 @@ mod tests {
 
         let error = Session::new()
             .evaluate("\"text\" byte-count Utf16\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn normalizes_plain_strings_to_nfc_explicitly() {
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate("\"e\u{301}\" normalize NFC\n", &mut trace)
+            .unwrap();
+        assert_eq!(value.to_string(), "\"é\"");
+        assert!(trace.iter().any(|event| {
+            event.contains("TOPAL-STRING-NORMALIZE-NFC-001") && event.contains("changed=true")
+        }));
+
+        let error = Session::new()
+            .evaluate("\"text\" normalize NFD\n", &mut std::io::sink())
             .unwrap_err();
         assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
     }
@@ -1822,6 +1965,24 @@ mod tests {
     fn edit_distance_counts_unicode_scalars() {
         assert_eq!(edit_distance("räknare", "räknaren"), 1);
         assert_eq!(edit_distance("αβ", "βα"), 2);
+    }
+
+    #[test]
+    fn diagnostics_suggest_root_operations_and_the_concat_migration() {
+        let error = Session::new()
+            .evaluate("charcter-count \"Topal\"\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-UNBOUND-NAME");
+        assert_eq!(
+            error.help.as_deref(),
+            Some("did you mean `character-count`?")
+        );
+
+        let error = Session::new()
+            .evaluate("\"a\" concatenate \"b\"\n", &mut std::io::sink())
+            .unwrap_err();
+        assert_eq!(error.code, "E-UNSUPPORTED-APPLICATION");
+        assert_eq!(error.help.as_deref(), Some("did you mean `concat`?"));
     }
 
     #[test]
