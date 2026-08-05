@@ -83,6 +83,11 @@ pub enum DecisionMatcher {
         span: Span,
     },
     Identifier(Span),
+    Result {
+        error: bool,
+        binding: Span,
+        span: Span,
+    },
     Comparison {
         kind: CallableKind,
         operand: Expression,
@@ -419,7 +424,12 @@ impl Parser<'_> {
             })
             || rules
                 .iter()
-                .all(|rule| matches!(rule.matcher, DecisionMatcher::Identifier(_)));
+                .all(|rule| matches!(rule.matcher, DecisionMatcher::Identifier(_)))
+            || [false, true].into_iter().all(|error| {
+                rules.iter().any(|rule| {
+                    matches!(rule.matcher, DecisionMatcher::Result { error: found, .. } if found == error)
+                })
+            });
         if !complete {
             let end = rules
                 .last()
@@ -466,6 +476,31 @@ impl Parser<'_> {
                 DecisionMatcher::Otherwise(matcher_token.span),
                 self.expression()?,
             ),
+            TokenKind::Identifier
+                if matches!(self.source.slice(matcher_token.span), "Ok" | "Error") =>
+            {
+                let binding = self.take_nontrivia()?;
+                let separator = self.take_nontrivia()?;
+                if binding.kind != TokenKind::Identifier
+                    || separator.kind != TokenKind::Identifier
+                    || self.source.slice(separator.span) != "then"
+                {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-EXPECTED-RESULT-PATTERN",
+                        span: Span::new(matcher_token.span.start, separator.span.end),
+                        message: "expected `Ok name then` or `Error name then`",
+                    });
+                    return None;
+                }
+                (
+                    DecisionMatcher::Result {
+                        error: self.source.slice(matcher_token.span) == "Error",
+                        binding: binding.span,
+                        span: Span::new(matcher_token.span.start, binding.span.end),
+                    },
+                    self.expression()?,
+                )
+            }
             TokenKind::Identifier => {
                 let separator = self.take_nontrivia()?;
                 if separator.kind != TokenKind::Identifier
@@ -861,6 +896,7 @@ const fn matcher_span(matcher: &DecisionMatcher) -> Span {
     match matcher {
         DecisionMatcher::Boolean { span, .. }
         | DecisionMatcher::Identifier(span)
+        | DecisionMatcher::Result { span, .. }
         | DecisionMatcher::Comparison { span, .. }
         | DecisionMatcher::Otherwise(span) => *span,
     }

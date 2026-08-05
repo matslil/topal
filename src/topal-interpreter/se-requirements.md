@@ -620,3 +620,10 @@ All interpreter modes shall propagate an arithmetic Error through a compatible
 fallible function result without reconstructing it. Test traces and reversible
 debugger history shall distinguish initial construction from each propagation
 boundary and retain code and domain.
+
+## TOPAL-INTP-SUBSET-074 — Exhaustive Result decisions
+
+All interpreter modes shall execute exhaustive `Ok value` and `Error problem`
+decisions under `TOPAL-DECISION-RESULT-001`, bind only the selected payload,
+and delay the other action. Test traces and reversible debugger history shall
+expose matcher consideration, selection, and payload binding.
