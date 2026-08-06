@@ -1182,6 +1182,13 @@ impl Session {
                             self.static_context,
                         ));
                     };
+                    if matches!(argument, Value::CharacterGenerator(_)) {
+                        trace.record(TraceEvent {
+                            event: "generator.parameter.transferred",
+                            rule: "TOPAL-STRING-CHARACTERS-PARAMETER-001",
+                            detail: value_classifier(&argument),
+                        });
+                    }
                     let signature = function_signature(name, &function);
                     let recursion_rule =
                         recursion_rule_for_call(&self.call_stack, name, &signature, &function);
@@ -2157,16 +2164,15 @@ impl Execution {
                         "a non-final expression value cannot be discarded",
                     ));
                 }
-                (
-                    evaluate_expression_with_optional_context(
-                        &self.source,
-                        session,
-                        expression,
-                        self.return_classifier.as_deref(),
-                        trace,
-                    )?,
-                    expression.span(),
-                )
+                let value = evaluate_expression_with_optional_context(
+                    &self.source,
+                    session,
+                    expression,
+                    self.return_classifier.as_deref(),
+                    trace,
+                )?;
+                consume_generator_argument(&self.source, session, expression);
+                (value, expression.span())
             }
         };
         self.cursor += 1;
@@ -2203,6 +2209,7 @@ impl Execution {
         }
         let mut evaluated =
             evaluate_binding_initializer(&self.source, session, initializer, classifier, trace)?;
+        consume_generator_argument(&self.source, session, initializer);
         if let Some(classifier) = classifier {
             let classifier_text = self.source.slice(classifier);
             evaluated = narrow_rational_to_int(
@@ -2615,6 +2622,42 @@ fn consumed_generator_diagnostic(source: &SourceText, span: Span, name: &str) ->
         format!("generator `{name}` was already consumed"),
     )
     .with_help("construct a fresh generator before traversing it again")
+}
+
+fn consume_generator_argument(source: &SourceText, session: &mut Session, expression: &Expression) {
+    let Expression::Application { items, .. } = expression else {
+        return;
+    };
+    let [
+        Expression::Identifier(function),
+        Expression::Identifier(argument),
+    ] = items.as_slice()
+    else {
+        return;
+    };
+    let function_name = source.slice(*function);
+    let argument_name = source.slice(*argument);
+    let accepts_generator = session
+        .functions
+        .get(function_name)
+        .is_some_and(|candidates| {
+            candidates.iter().any(|candidate| {
+                matches!(
+                    candidate.parameters.as_slice(),
+                    [(_, classifier)] if classifier == "Generator Character Unit Unit"
+                )
+            })
+        });
+    if accepts_generator
+        && matches!(
+            session.bindings.get(argument_name),
+            Some(Value::CharacterGenerator(_))
+        )
+    {
+        session.bindings.remove(argument_name);
+        session.declared_names.remove(argument_name);
+        session.consumed_names.insert(argument_name.to_owned());
+    }
 }
 
 fn enum_alternatives(source: &SourceText, expression: &Expression) -> Option<Vec<(String, Span)>> {
@@ -7021,6 +7064,23 @@ fn reused_character_generator_reports_consumption() {
     assert_eq!(
         error.help.as_deref(),
         Some("construct a fresh generator before traversing it again")
+    );
+}
+
+#[test]
+fn generator_parameter_transfers_linear_continuation() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "consume is fn (generated : Generator Character Unit Unit) -> Unit\n  generated foreach { character }\n    _ is String character\ngenerated is characters \"Topal\"\nconsume generated\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.parameter.transferred"))
     );
 }
 

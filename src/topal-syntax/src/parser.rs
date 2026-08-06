@@ -1013,6 +1013,18 @@ impl Parser<'_> {
                 classifier.span = Span::new(classifier.span.start, separator.span.end);
                 separator = self.take_nontrivia()?;
             }
+            if classifier.kind == TokenKind::Identifier
+                && self.source.slice(classifier.span) == "Generator"
+                && separator.kind == TokenKind::Identifier
+            {
+                let resumed = self.take_nontrivia()?;
+                let returned = self.take_nontrivia()?;
+                if resumed.kind != TokenKind::Identifier || returned.kind != TokenKind::Identifier {
+                    return None;
+                }
+                classifier.span = Span::new(classifier.span.start, returned.span.end);
+                separator = self.take_nontrivia()?;
+            }
             if input.kind != TokenKind::Identifier
                 || colon.kind != TokenKind::Colon
                 || classifier.kind != TokenKind::Identifier
