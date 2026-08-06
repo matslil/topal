@@ -486,6 +486,18 @@ impl Parser<'_> {
     }
 
     fn function_result(&mut self, first: Token) -> Option<Span> {
+        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "Generator" {
+            let yielded = self.take_nontrivia()?;
+            let resumed = self.take_nontrivia()?;
+            let returned = self.take_nontrivia()?;
+            if [yielded, resumed, returned]
+                .iter()
+                .all(|token| token.kind == TokenKind::Identifier)
+            {
+                return Some(Span::new(first.span.start, returned.span.end));
+            }
+            return None;
+        }
         if first.kind == TokenKind::Identifier
             && matches!(self.source.slice(first.span), "Range" | "Optional")
         {

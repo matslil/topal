@@ -1036,3 +1036,10 @@ All tools shall accept `Generator Character Unit Unit` as the explicit
 classifier of `characters text` under `TOPAL-STRING-CHARACTERS-CLASSIFIER-001`.
 Classification shall preserve linear consumption, traces, LSP validation, and
 reversible debugger behavior in the updated commented example.
+
+## TOPAL-INTP-SUBSET-125 — String Character generator function results
+
+All interpreter modes shall return fresh `Generator Character Unit Unit` values
+from ordinary functions under `TOPAL-STRING-CHARACTERS-RESULT-001`. The caller
+shall receive one linearly consumable continuation. Traces, LSP validation, and
+reversible debugger history shall cover the commented example.

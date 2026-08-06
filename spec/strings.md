@@ -109,6 +109,13 @@ The classifier `Generator Character Unit Unit` accepts the value constructed by
 linear consumption behavior as an inferred binding. A value with a different
 yield, resume, or return classifier does not satisfy this classifier.
 
+### TOPAL-STRING-CHARACTERS-RESULT-001 — Generator function results
+
+`Generator Character Unit Unit` is a valid ordinary function result classifier.
+A function result may transfer the fresh continuation constructed by
+`characters text` to its caller. The caller receives one linear generator value
+which may be bound and consumed under `TOPAL-STRING-CHARACTERS-GENERATOR-001`.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count

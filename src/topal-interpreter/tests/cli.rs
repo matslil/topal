@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 72);
+    assert_eq!(examples.len(), 73);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2436,6 +2436,17 @@ fn every_mode_consumes_named_character_generator() {
     assert!(trace.contains("generator.started"));
     assert!(trace.contains("generator.consumed"));
     assert_eq!(trace.matches("generator.yielded").count(), 3);
+}
+
+#[test]
+fn every_mode_consumes_returned_character_generator() {
+    let source = include_str!("../../../examples/interpreter/string-character-generator-result.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("function.returned"));
+    assert!(trace.contains("generator.consumed"));
 }
 
 #[test]
