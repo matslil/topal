@@ -4,7 +4,7 @@ use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use topal_source::{SourceText, Span, character_count, normalize_nfc, normalize_nfd};
+use topal_source::{SourceText, Span, character_at, character_count, normalize_nfc, normalize_nfd};
 use topal_syntax::{
     CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, lex, parse,
 };
@@ -920,6 +920,35 @@ impl Session {
                         *span,
                         trace,
                     );
+                }
+                if let [text, Expression::Identifier(callable), index] = items.as_slice()
+                    && source.slice(*callable) == "character-at"
+                {
+                    let text_span = text.span();
+                    let index_span = index.span();
+                    let text = self.evaluate_expression(source, text, trace)?;
+                    let index = self.evaluate_expression(source, index, trace)?;
+                    let (Value::String(text), Value::Int(index)) = (text, index) else {
+                        return Err(diagnostic(
+                            source,
+                            "E-CHARACTER-AT-OPERANDS",
+                            cover(text_span, index_span),
+                            "character-at requires a String and an Int index",
+                        ));
+                    };
+                    let payload = usize::try_from(index)
+                        .ok()
+                        .and_then(|index| character_at(&text, index))
+                        .map(|character| Box::new(Value::String(character.to_owned())));
+                    trace.record(TraceEvent {
+                        event: "string.character-at",
+                        rule: "TOPAL-STRING-CHARACTER-AT-001",
+                        detail: if payload.is_some() { "Some" } else { "None" },
+                    });
+                    return Ok(Value::Optional {
+                        payload_classifier: "Character".to_owned(),
+                        payload,
+                    });
                 }
                 if let [left, Expression::Identifier(callable), right] = items.as_slice()
                     && source.slice(*callable) == "and"
@@ -6419,6 +6448,28 @@ fn optional_equality_uses_nominal_payload_identity() {
         .evaluate("(None Int) = (None String)\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
+}
+
+#[test]
+fn string_character_at_returns_optional_grapheme_clusters() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "text is \"a\u{301}👩‍🔬🇸🇪\"\n(text character-at 0, text character-at 1, text character-at 2, text character-at -1, text character-at 3)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(Some \"a\u{301}\", Some \"👩‍🔬\", Some \"🇸🇪\", None, None)"
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-STRING-CHARACTER-AT-001"))
+            .count(),
+        5
+    );
 }
 
 #[test]

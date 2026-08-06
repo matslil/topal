@@ -958,6 +958,25 @@ fn records_reversible_explicit_optional_construction() {
 }
 
 #[test]
+fn records_reversible_string_character_indexing() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}string-character-at.debug"),
+            &format!("{root}string-character-at.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-STRING-CHARACTER-AT-001"));
+    assert!(stdout.contains("string.character-at"));
+    assert!(stdout.contains("Some \"👩‍🔬\""));
+    assert!(stdout.contains("None, None"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
