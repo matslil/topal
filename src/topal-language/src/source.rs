@@ -1466,7 +1466,7 @@ impl Execution {
                 &self.source,
                 "E-UNSUPPORTED-RESULT-CLASSIFIER",
                 result,
-                "the implemented function subset requires a declared Enum, Boolean, Int, Nat, Rational, String, or Unit",
+                "the result classifier is not supported by this interpreter subset",
             ));
         }
         validate_parameter_names(&self.source, parameters)?;
@@ -1481,7 +1481,7 @@ impl Execution {
                         &self.source,
                         "E-UNSUPPORTED-PARAMETER-CLASSIFIER",
                         parameter.classifier,
-                        "the implemented function subset requires a declared Enum, Boolean, Int, Nat, Rational, String, or Unit",
+                        "the parameter classifier is not supported by this interpreter subset",
                     ));
                 }
                 Ok((
@@ -2166,6 +2166,8 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         (Value::Boolean(_), "Boolean")
         | (Value::Int(_), "Int")
         | (Value::Rational(_), "Rational")
+        | (Value::IntRange { .. }, "Range Int")
+        | (Value::RationalRange { .. }, "Range Rational")
         | (Value::String(_), "String")
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
@@ -2808,7 +2810,16 @@ fn is_positive_literal_step(
 fn supported_value_classifier(classifier: &str) -> bool {
     matches!(
         classifier,
-        "Boolean" | "Character" | "Comparison" | "Int" | "Nat" | "Rational" | "String" | "Unit"
+        "Boolean"
+            | "Character"
+            | "Comparison"
+            | "Int"
+            | "Nat"
+            | "Range Int"
+            | "Range Rational"
+            | "Rational"
+            | "String"
+            | "Unit"
     ) || tuple_classifiers(classifier)
         .is_some_and(|items| items.into_iter().all(supported_value_classifier))
 }
