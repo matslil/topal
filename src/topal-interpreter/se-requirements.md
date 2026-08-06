@@ -924,3 +924,11 @@ All interpreter modes shall accept `Optional T` parameters and results under
 `TOPAL-TYPE-OPTIONAL-BOUNDARY-001`, preserving nominal payload identity for both
 Some and None alternatives. Traces and reversible debugger history shall expose
 ordinary calls; LSP validation shall accept the updated commented example.
+
+## TOPAL-INTP-SUBSET-111 — Contextual None function results
+
+All interpreter modes shall infer bare `None` from an `Optional T` function
+result for both final expressions and explicit returns under
+`TOPAL-TYPE-OPTIONAL-CONTEXT-001`. Traces and reversible debugger history shall
+expose the same contextual construction rule; LSP validation shall accept the
+updated commented example.

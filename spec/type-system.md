@@ -96,6 +96,10 @@ classifier supplies `Optional T`. The constructed value retains that `T` as its
 nominal payload classifier. Without such context, bare `None` is not a universal
 value and shall be rejected as unresolved.
 
+The immediate expected classifier may come from a classified binding or an
+ordinary function result, including an explicit `return None`. Both contexts
+construct the same nominal absent value and emit the same conformance decision.
+
 ### TOPAL-TYPE-OPTIONAL-BOUNDARY-001 — Optional function boundaries
 
 `Optional T` is a valid ordinary parameter and result classifier. A call accepts
