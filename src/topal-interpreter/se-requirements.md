@@ -735,3 +735,11 @@ All interpreter modes shall implement `one Int` and `one Rational` under
 `TOPAL-NUM-ONE-001`, retaining the explicitly named domain. LSP completion,
 test traces, reversible debugger history, and the numeric-identity example
 shall expose both type-directed root selections.
+
+## TOPAL-INTP-SUBSET-088 — Exact three-way comparison
+
+All interpreter modes shall implement `<=>` for finite Int and Rational under
+`TOPAL-NUM-THREE-WAY-COMPARE-001`, including canonical mixed-domain conversion,
+and return nominal `Comparison` values. LSP highlighting, test traces,
+reversible debugger history, and a commented example shall expose all three
+alternatives and overload selection.
