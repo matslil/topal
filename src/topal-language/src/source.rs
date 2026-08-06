@@ -3119,6 +3119,7 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
         "E-UNREACHABLE-ERROR-CODE-PATTERN" => {
             Some("move qualified code patterns before the generic `Error problem` fallback")
         }
+        "E-UNREACHABLE-DECISION-RULE" => Some("move `otherwise` after every specific matcher"),
         _ => None,
     }
 }

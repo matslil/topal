@@ -463,6 +463,21 @@ mod tests {
     }
 
     #[test]
+    fn publishes_rule_after_otherwise_diagnostic() {
+        let mut server = Server::default();
+        let output = server.handle(&json!({
+            "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///fallback-order.t", "version": 1,
+                "text": "choose is fn (condition : Boolean) -> Int\n  condition\n    otherwise 0\n    true then 1"
+            }}
+        }));
+        let diagnostic = &output[0]["params"]["diagnostics"][0];
+        assert_eq!(diagnostic["code"], "E-UNREACHABLE-DECISION-RULE");
+        assert_eq!(diagnostic["range"]["start"]["line"], 3);
+    }
+
+    #[test]
     fn change_replaces_content_and_close_clears_diagnostics() {
         let mut server = Server::default();
         let _ = server.handle(&json!({
