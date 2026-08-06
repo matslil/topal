@@ -272,15 +272,10 @@ impl Parser<'_> {
                 .is_some_and(|token| token.kind == TokenKind::Colon)
         {
             self.take_nontrivia();
-            let mut classifier = self.take_nontrivia()?;
-            let mut separator = self.take_nontrivia()?;
-            if classifier.kind == TokenKind::Identifier
-                && matches!(self.source.slice(classifier.span), "Range" | "Optional")
-                && separator.kind == TokenKind::Identifier
-            {
-                classifier.span = Span::new(classifier.span.start, separator.span.end);
-                separator = self.take_nontrivia()?;
-            }
+            let classifier = self.take_nontrivia()?;
+            let separator = self.take_nontrivia()?;
+            let (classifier, separator) =
+                self.extended_binding_classifier(classifier, separator)?;
             if classifier.kind != TokenKind::Identifier
                 || separator.kind != TokenKind::Identifier
                 || self.source.slice(separator.span) != "is"
@@ -300,6 +295,32 @@ impl Parser<'_> {
         }
         self.cursor = checkpoint;
         self.expression().map(Statement::Expression)
+    }
+
+    fn extended_binding_classifier(
+        &mut self,
+        mut classifier: Token,
+        mut separator: Token,
+    ) -> Option<(Token, Token)> {
+        if classifier.kind == TokenKind::Identifier
+            && matches!(self.source.slice(classifier.span), "Range" | "Optional")
+            && separator.kind == TokenKind::Identifier
+        {
+            classifier.span = Span::new(classifier.span.start, separator.span.end);
+            separator = self.take_nontrivia()?;
+        } else if classifier.kind == TokenKind::Identifier
+            && self.source.slice(classifier.span) == "Generator"
+            && separator.kind == TokenKind::Identifier
+        {
+            let resume = self.take_nontrivia()?;
+            let returned = self.take_nontrivia()?;
+            if resume.kind != TokenKind::Identifier || returned.kind != TokenKind::Identifier {
+                return None;
+            }
+            classifier.span = Span::new(classifier.span.start, returned.span.end);
+            separator = self.take_nontrivia()?;
+        }
+        Some((classifier, separator))
     }
 
     fn foreach_separator_index(&self) -> Option<usize> {

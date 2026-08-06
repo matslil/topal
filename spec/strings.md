@@ -102,6 +102,13 @@ longer available afterward and cannot be consumed twice. Debugger history may
 snapshot prior generator state for reverse inspection without making a second
 source-level continuation.
 
+### TOPAL-STRING-CHARACTERS-CLASSIFIER-001 — Explicit generator classification
+
+The classifier `Generator Character Unit Unit` accepts the value constructed by
+`characters text`. An explicitly classified binding shall retain the same
+linear consumption behavior as an inferred binding. A value with a different
+yield, resume, or return classifier does not satisfy this classifier.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count

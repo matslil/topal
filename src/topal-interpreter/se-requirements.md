@@ -1029,3 +1029,10 @@ All interpreter modes shall bind `characters text` as
 under `TOPAL-STRING-CHARACTERS-GENERATOR-001`. Traces and reversible debugger
 history shall distinguish generator start from source-level consumption; LSP
 validation shall accept the commented example.
+
+## TOPAL-INTP-SUBSET-124 — Explicit String Character generator classification
+
+All tools shall accept `Generator Character Unit Unit` as the explicit
+classifier of `characters text` under `TOPAL-STRING-CHARACTERS-CLASSIFIER-001`.
+Classification shall preserve linear consumption, traces, LSP validation, and
+reversible debugger behavior in the updated commented example.
