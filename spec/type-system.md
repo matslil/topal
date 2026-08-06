@@ -115,6 +115,14 @@ a binding. A complete decision covers both alternatives or provides
 `otherwise`. Rules are considered and selected under the ordinary decision
 ordering, and only the selected action evaluates.
 
+### TOPAL-TYPE-OPTIONAL-EQUALITY-001 — Derived Optional equality
+
+`Optional T` provides equality exactly when `T` does. Within the same nominal
+Optional classifier, two None alternatives are equal, two Some alternatives
+compare their payloads under `T` equality, and different alternatives are
+unequal. Optional values with different payload classifiers have no shared
+Optional equality operation merely because both may display `None`.
+
 ### TOPAL-TYPE-EQUALITY-001 — Equality application
 
 If `T` provides canonical `Equality` evidence and `a:T`, `b:T`, then `a = b`

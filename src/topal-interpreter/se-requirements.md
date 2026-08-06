@@ -940,3 +940,12 @@ tables under `TOPAL-DECISION-OPTIONAL-001`, bind a present payload only in its
 selected branch, and reject incomplete tables. Traces and reversible debugger
 history shall expose rule consideration, selection, and payload binding; LSP
 validation shall accept the updated commented example.
+
+## TOPAL-INTP-SUBSET-113 — Derived Optional equality
+
+All interpreter modes shall execute equality and inequality for matching
+`Optional T` values when T provides equality under
+`TOPAL-TYPE-OPTIONAL-EQUALITY-001`. Some payloads shall compare recursively,
+None shall compare by its nominal Optional identity, and mismatched classifiers
+shall be rejected. Traces and reversible debugger history shall expose Optional
+equality; LSP validation shall accept the updated commented example.
