@@ -1217,6 +1217,23 @@ fn records_custom_generator_local_binding_reversibly() {
 }
 
 #[test]
+fn records_generator_return_before_yield_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-early-return.debug"),
+            &format!("{root}custom-generator-early-return.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(!stdout.contains("generator.yielded"));
+    assert!(stdout.contains("generator.returned"));
+}
+
+#[test]
 fn records_consumed_generator_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

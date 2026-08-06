@@ -42,3 +42,9 @@ resume with Unit after every action, and produce the generator's final Unit.
 An ordinary binding in a generator body shall be evaluated in the generator's
 local scope. Later yields may refer to that binding, and neither its name nor
 its value becomes visible in the caller's scope.
+
+### TOPAL-GENERATOR-EARLY-RETURN-001 — Return before first yield
+
+A generator may reach its declared final return without yielding. Applying it
+still produces a fresh linear generator value. Traversal shall invoke no action
+and shall produce the generator's final return value.
