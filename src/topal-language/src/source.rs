@@ -604,6 +604,53 @@ impl Session {
                     });
                     return Ok(Value::String(text));
                 }
+                if let [Expression::Identifier(callable), operand] = items.as_slice()
+                    && source.slice(*callable) == "absolute"
+                {
+                    let operand_span = operand.span();
+                    let value = self.evaluate_expression(source, operand, trace)?;
+                    let (value, selection, classifier) = match value {
+                        Value::Int(value) => (
+                            Value::Int(if value < BigInt::from(0) {
+                                -value
+                            } else {
+                                value
+                            }),
+                            "root.absolute(Int)",
+                            "Int",
+                        ),
+                        Value::Rational(value) => (
+                            Value::Rational(
+                                if value < BigRational::from_integer(BigInt::from(0)) {
+                                    -value
+                                } else {
+                                    value
+                                },
+                            ),
+                            "root.absolute(Rational)",
+                            "Rational",
+                        ),
+                        _ => {
+                            return Err(diagnostic(
+                                source,
+                                "E-NO-APPLICABLE-OVERLOAD",
+                                operand_span,
+                                "absolute requires an exact numeric operand",
+                            ));
+                        }
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: selection,
+                    });
+                    trace.record(TraceEvent {
+                        event: "evaluation.absolute",
+                        rule: "TOPAL-NUM-ABS-001",
+                        detail: classifier,
+                    });
+                    return Ok(value);
+                }
                 if items.len() == 3
                     && let Expression::Identifier(name_span) = items[1]
                     && !self.bindings.contains_key(source.slice(name_span))
@@ -3261,7 +3308,8 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 6] = [
+const ROOT_OPERATIONS: [&str; 7] = [
+    "absolute",
     "byte-count",
     "character-count",
     "concat",
@@ -4968,5 +5016,27 @@ fn int_modulo_is_euclidean_and_dynamic_zero_returns_error() {
             .filter(|event| event.contains("TOPAL-NUM-INT-QUOTIENT-MODULO-001"))
             .count(),
         2
+    );
+}
+
+#[test]
+fn exact_numeric_absolute_retains_operand_domain() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "(absolute -42, absolute 42, absolute -1.25, absolute 1.25)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(42, 42, Rational ( 5, 4 ), Rational ( 5, 4 ))"
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-NUM-ABS-001"))
+            .count(),
+        4
     );
 }

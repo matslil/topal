@@ -140,6 +140,11 @@ fn completion_items() -> Value {
         "isIncomplete": false,
         "items": [
             {
+                "label": "absolute",
+                "kind": 3,
+                "detail": "Int -> Int; Rational -> Rational"
+            },
+            {
                 "label": "byte-count",
                 "kind": 3,
                 "detail": "String, Utf8 -> Int"
@@ -371,6 +376,7 @@ mod tests {
         assert_eq!(
             labels,
             [
+                "absolute",
                 "byte-count",
                 "character-count",
                 "concat",
@@ -546,7 +552,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 50);
+        assert_eq!(examples.len(), 51);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {

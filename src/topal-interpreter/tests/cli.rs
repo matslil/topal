@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 50);
+    assert_eq!(examples.len(), 51);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2031,6 +2031,23 @@ fn every_mode_executes_euclidean_int_modulo() {
     assert!(trace.contains("root.%(Int,Int);division-by-zero"));
     assert!(trace.contains("TOPAL-NUM-INT-QUOTIENT-MODULO-001"));
     assert!(trace.contains("root./%(Int,Int);division-by-zero"));
+}
+
+#[test]
+fn every_mode_executes_exact_numeric_absolute() {
+    let source = include_str!("../../../examples/interpreter/exact-numeric-absolute.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(42, 42, Rational ( 5, 4 ), Rational ( 5, 4 ))\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("root.absolute(Int)"));
+    assert!(trace.contains("root.absolute(Rational)"));
 }
 
 #[test]
