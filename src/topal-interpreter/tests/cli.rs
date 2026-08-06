@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 53);
+    assert_eq!(examples.len(), 54);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2084,6 +2084,19 @@ fn every_mode_constructs_exact_numeric_zero() {
     assert!(trace.contains("root.zero(Rational)"));
     assert!(trace.contains("root.one(Int)"));
     assert!(trace.contains("root.one(Rational)"));
+}
+
+#[test]
+fn every_mode_executes_exact_three_way_comparison() {
+    let source = include_str!("../../../examples/interpreter/exact-three-way-comparison.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"(Less, Equal, Greater, Less)\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-NUM-THREE-WAY-COMPARE-001"));
+    assert!(trace.contains("Int->Rational:left"));
 }
 
 #[test]

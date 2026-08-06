@@ -2469,7 +2469,7 @@ fn is_positive_literal_step(
 fn supported_value_classifier(classifier: &str) -> bool {
     matches!(
         classifier,
-        "Boolean" | "Character" | "Int" | "Nat" | "Rational" | "String" | "Unit"
+        "Boolean" | "Character" | "Comparison" | "Int" | "Nat" | "Rational" | "String" | "Unit"
     ) || tuple_classifiers(classifier)
         .is_some_and(|items| items.into_iter().all(supported_value_classifier))
 }
@@ -2629,6 +2629,35 @@ fn apply_binary(
     let (span, left_span, right_span) = spans;
     if matches!(kind, CallableKind::Equal | CallableKind::NotEqual) {
         return apply_equality(source, kind, left, right, span, trace);
+    }
+    if kind == CallableKind::Compare {
+        let Some(ordering) = values_compare(left, right, trace) else {
+            return Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                "the operand types do not share an applicable TotalOrder",
+            ));
+        };
+        let alternative = match ordering {
+            Ordering::Less => "Less",
+            Ordering::Equal => "Equal",
+            Ordering::Greater => "Greater",
+        };
+        trace.record(TraceEvent {
+            event: "operator.selected",
+            rule: "TOPAL-TYPE-CALL-001",
+            detail: "root.<=>(TotalOrder,TotalOrder)",
+        });
+        trace.record(TraceEvent {
+            event: "comparison.result",
+            rule: "TOPAL-NUM-THREE-WAY-COMPARE-001",
+            detail: alternative,
+        });
+        return Ok(Value::Enum {
+            type_name: "Comparison".to_owned(),
+            alternative: alternative.to_owned(),
+        });
     }
     if matches!(
         kind,
@@ -2861,6 +2890,7 @@ fn apply_int_binary(
     match kind {
         CallableKind::Equal
         | CallableKind::NotEqual
+        | CallableKind::Compare
         | CallableKind::Less
         | CallableKind::Greater
         | CallableKind::LessEqual
@@ -3047,16 +3077,12 @@ fn apply_rational_binary(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     if matches!(kind, CallableKind::Modulo | CallableKind::QuotientModulo) {
-        return Err(diagnostic(
-            source,
-            "E-NO-APPLICABLE-OVERLOAD",
-            span,
-            "Euclidean modulo requires discrete Int operands",
-        ));
+        return Err(discrete_operand_diagnostic(source, span));
     }
     let (callable, event, rule, result) = match kind {
         CallableKind::Equal
         | CallableKind::NotEqual
+        | CallableKind::Compare
         | CallableKind::Less
         | CallableKind::Greater
         | CallableKind::LessEqual
@@ -3146,6 +3172,15 @@ fn apply_rational_binary(
         detail: "Rational",
     });
     Ok(Value::Rational(result))
+}
+
+fn discrete_operand_diagnostic(source: &SourceText, span: Span) -> Diagnostic {
+    diagnostic(
+        source,
+        "E-NO-APPLICABLE-OVERLOAD",
+        span,
+        "Euclidean modulo requires discrete Int operands",
+    )
 }
 
 fn apply_divide(
@@ -5196,5 +5231,26 @@ fn exact_numeric_zero_uses_explicit_domain() {
         trace
             .iter()
             .any(|event| event.contains("root.one(Rational)"))
+    );
+}
+
+#[test]
+fn exact_three_way_comparison_returns_nominal_alternatives() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate("(1 <=> 2, 2 <=> 2, 3 <=> 2, 1 <=> 1.5)\n", &mut trace)
+        .unwrap();
+    assert_eq!(value.to_string(), "(Less, Equal, Greater, Less)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-NUM-THREE-WAY-COMPARE-001"))
+            .count(),
+        4
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("Int->Rational:left"))
     );
 }

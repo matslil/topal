@@ -30,6 +30,7 @@ pub enum TokenKind {
     Less,
     Greater,
     LessEqual,
+    Compare,
     GreaterEqual,
     Plus,
     Minus,
@@ -125,6 +126,9 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
     }
     if rest.starts_with("!=") {
         return (TokenKind::NotEquals, 2);
+    }
+    if rest.starts_with("<=>") {
+        return (TokenKind::Compare, 3);
     }
     if rest.starts_with("<=") {
         return (TokenKind::LessEqual, 2);
@@ -509,6 +513,20 @@ mod tests {
                 TokenKind::Integer,
                 TokenKind::Whitespace,
                 TokenKind::SlashPercent,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_three_way_comparison_as_one_callable() {
+        assert_eq!(
+            kinds("1 <=> 2"),
+            vec![
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::Compare,
                 TokenKind::Whitespace,
                 TokenKind::Integer,
             ]

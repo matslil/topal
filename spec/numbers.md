@@ -258,6 +258,15 @@ then uses rational order. These predicates use ordinary left-to-right
 application and have no special chaining rule.
 This is the numeric realization of `TOPAL-TYPE-ORDERING-001`.
 
+### TOPAL-NUM-THREE-WAY-COMPARE-001 — Exact three-way comparison
+
+For finite Int and Rational operands, `<=>` selects their applicable exact
+`TotalOrder` and returns the nominal `Comparison` alternative `Less`, `Equal`,
+or `Greater`. Same-domain comparison uses mathematical order. Mixed Int and
+Rational comparison first applies the canonical lossless Int-to-Rational
+conversion. The operator evaluates each operand once and does not create a
+Boolean or apply chaining semantics.
+
 Other numeric domains and the remaining fixed callable names are outside this
 initial formal numeric subset until later rules define their applicable
 overloads. Their tokens remain reserved, and a conforming partial tool shall
