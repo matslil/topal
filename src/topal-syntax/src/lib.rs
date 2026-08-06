@@ -59,7 +59,7 @@ pub struct Token {
 pub struct SyntaxDiagnostic {
     pub code: &'static str,
     pub span: Span,
-    pub message: &'static str,
+    pub message: String,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -86,21 +86,21 @@ pub fn lex(source: &SourceText) -> Lexed {
             result.diagnostics.push(SyntaxDiagnostic {
                 code: "E-UNKNOWN-TOKEN",
                 span,
-                message: "character does not begin a token in design-0",
+                message: "character does not begin a token in design-0".into(),
             });
         }
         if kind == TokenKind::String && !string_is_terminated(source.slice(span)) {
             result.diagnostics.push(SyntaxDiagnostic {
                 code: "E-UNTERMINATED-STRING",
                 span,
-                message: "string literal has no matching closing delimiter",
+                message: "string literal has no matching closing delimiter".into(),
             });
         }
         if kind == TokenKind::Identifier && !is_nfc(source.slice(span)) {
             result.diagnostics.push(SyntaxDiagnostic {
                 code: "E-NON-NFC-TOKEN",
                 span,
-                message: "source token is not Unicode Normalization Form C",
+                message: "source token is not Unicode Normalization Form C".into(),
             });
         }
         if kind == TokenKind::String
@@ -109,7 +109,7 @@ pub fn lex(source: &SourceText) -> Lexed {
             result.diagnostics.push(SyntaxDiagnostic {
                 code: "E-NON-NFC-TOKEN",
                 span: tag_span,
-                message: "string literal tag is not Unicode Normalization Form C",
+                message: "string literal tag is not Unicode Normalization Form C".into(),
             });
         }
         offset += length;

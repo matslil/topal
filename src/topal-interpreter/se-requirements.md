@@ -661,3 +661,5 @@ All interpreter modes shall accept one `Ok` matcher plus all four qualified
 decision without a generic Error fallback. Missing alternatives remain an
 incomplete-decision diagnostic. Test traces and reversible debugger history
 shall expose the selected qualified code.
+The incomplete diagnostic shall list the missing qualified alternatives and
+offer both exhaustive patterns and a generic Error fallback as repairs.

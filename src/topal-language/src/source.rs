@@ -253,7 +253,7 @@ impl Session {
         let source = accepted_source(input, trace)?;
         let parsed = parse(&source, &lex(&source));
         if let Some(error) = parsed.diagnostics.first() {
-            return Err(diagnostic(&source, error.code, error.span, error.message));
+            return Err(diagnostic(&source, error.code, error.span, &error.message));
         }
         if parsed.statements.is_empty() {
             return Err(expected_statement(input));
@@ -3110,6 +3110,9 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
             Some("change the function result to `Result (T, Codes)`, or match the Error explicitly")
         }
         "E-RESULT-PROJECTION-OUTSIDE-FUNCTION" => Some("match the Result explicitly at top level"),
+        "E-INCOMPLETE-ERROR-CODE-DECISION" => {
+            Some("add each missing qualified code pattern, or add an `Error problem` fallback")
+        }
         _ => None,
     }
 }
