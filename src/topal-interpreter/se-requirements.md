@@ -1098,3 +1098,10 @@ under `TOPAL-GENERATOR-DECLARATION-001`: one Character input, one discarded
 Character yield, Unit resumption, and Unit return. Direct foreach shall consume
 the resulting linear generator. Traces, LSP highlighting and diagnostics, and
 reversible scripted debugger history shall cover a commented example.
+
+## TOPAL-INTP-SUBSET-133 — Multiple custom generator yields
+
+All interpreter modes shall execute multiple discarded Character yields in
+source order under `TOPAL-GENERATOR-FOREACH-001`. Test traces and reversible
+scripted-debugger history shall expose each yield and Unit resumption, while LSP
+validation shall accept the updated commented examples.

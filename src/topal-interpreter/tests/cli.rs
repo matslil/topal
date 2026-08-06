@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 77);
+    assert_eq!(examples.len(), 78);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2504,8 +2504,8 @@ fn every_mode_constructs_qualified_generator_error_code() {
 }
 
 #[test]
-fn every_mode_traverses_custom_single_yield_generator() {
-    let source = include_str!("../../../examples/interpreter/custom-single-yield-generator.t");
+fn every_mode_traverses_custom_multiple_yield_generator() {
+    let source = include_str!("../../../examples/interpreter/custom-multiple-yield-generator.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2520,7 +2520,9 @@ fn every_mode_traverses_custom_single_yield_generator() {
     assert!(trace.contains("TOPAL-GENERATOR-DECLARATION-001"));
     assert!(trace.contains("generator.declared"));
     assert!(trace.contains("generator.started"));
-    assert_eq!(trace.matches("generator.yielded").count(), 1);
+    assert_eq!(trace.matches("generator.yielded").count(), 2);
+    assert_eq!(trace.matches("generator.resumed").count(), 2);
+    assert!(trace.contains("TOPAL-GENERATOR-FOREACH-001"));
 }
 
 #[test]
