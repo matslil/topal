@@ -70,3 +70,6 @@ vocabularies, one `Ok` matcher plus exactly every qualified code alternative is
 also exhaustive without a generic Error fallback.
 Repeating one qualified code alternative is a diagnostic because every later
 occurrence is unreachable; duplicates never contribute to exhaustiveness.
+A generic `Error problem` matcher selects every remaining Error. Qualified
+Error-code matchers after it are unreachable and shall be diagnosed; specific
+code recovery rules therefore precede the generic fallback.
