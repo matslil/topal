@@ -31,6 +31,7 @@ pub enum TokenKind {
     Greater,
     LessEqual,
     Compare,
+    Range,
     GreaterEqual,
     Plus,
     Minus,
@@ -129,6 +130,9 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
     }
     if rest.starts_with("<=>") {
         return (TokenKind::Compare, 3);
+    }
+    if rest.starts_with("..") {
+        return (TokenKind::Range, 2);
     }
     if rest.starts_with("<=") {
         return (TokenKind::LessEqual, 2);
@@ -527,6 +531,20 @@ mod tests {
                 TokenKind::Integer,
                 TokenKind::Whitespace,
                 TokenKind::Compare,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_inclusive_range_as_one_callable() {
+        assert_eq!(
+            kinds("0 .. 10"),
+            vec![
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::Range,
                 TokenKind::Whitespace,
                 TokenKind::Integer,
             ]

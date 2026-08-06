@@ -822,3 +822,11 @@ as the total canonical embedding under `TOPAL-NUM-INT-RATIONAL-CONVERT-001`.
 The result shall have denominator one without a Result wrapper. Test traces and
 reversible debugger history shall expose explicit construction; LSP validation
 shall accept the updated commented Rational construction example.
+
+## TOPAL-INTP-SUBSET-098 — Inclusive Int ranges
+
+All interpreter modes shall construct `lower .. upper` as a closed Int range
+under `TOPAL-RANGE-INCLUSIVE-001`, including an empty value when bounds are
+reversed. Test traces and reversible debugger history shall distinguish
+nonempty and empty construction; LSP validation and highlighting shall accept
+the commented example.

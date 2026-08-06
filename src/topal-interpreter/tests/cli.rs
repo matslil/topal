@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 60);
+    assert_eq!(examples.len(), 61);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2227,6 +2227,20 @@ fn every_mode_constructs_dynamic_rationals() {
     let diagnostic = String::from_utf8(diagnostic.stderr).unwrap();
     assert!(diagnostic.contains("error[E-INDETERMINATE-RATIONAL]"));
     assert!(diagnostic.contains("help: use a nonzero denominator"));
+}
+
+#[test]
+fn every_mode_constructs_inclusive_int_ranges() {
+    let source = include_str!("../../../examples/interpreter/inclusive-int-ranges.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"(0 .. 10, 5 .. 5, 10 .. 0)\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("TOPAL-RANGE-INCLUSIVE-001").count(), 3);
+    assert!(trace.contains("\"detail\":\"nonempty\""));
+    assert!(trace.contains("\"detail\":\"empty\""));
 }
 
 #[test]
