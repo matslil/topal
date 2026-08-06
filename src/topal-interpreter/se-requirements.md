@@ -1105,3 +1105,11 @@ All interpreter modes shall execute multiple discarded Character yields in
 source order under `TOPAL-GENERATOR-FOREACH-001`. Test traces and reversible
 scripted-debugger history shall expose each yield and Unit resumption, while LSP
 validation shall accept the updated commented examples.
+
+## TOPAL-INTP-SUBSET-134 — Custom generator local bindings
+
+All interpreter modes shall evaluate ordinary local bindings between custom
+generator yields under `TOPAL-GENERATOR-LOCAL-BINDING-001`. Later yields shall
+observe those bindings without leaking them to the caller. LSP validation,
+formal traces, and reversible scripted-debugger history shall cover a commented
+example.
