@@ -1286,6 +1286,13 @@ impl Session {
                             detail: &detail,
                         });
                     }
+                    if matches!(value, Value::CharacterGenerator(_)) {
+                        trace.record(TraceEvent {
+                            event: "generator.function.returned",
+                            rule: "TOPAL-STRING-CHARACTERS-RESULT-001",
+                            detail: "Generator Character Unit Unit",
+                        });
+                    }
                     trace.record(TraceEvent {
                         event: "function.returned",
                         rule,
@@ -3365,6 +3372,7 @@ fn supported_value_classifier(classifier: &str) -> bool {
         "Boolean"
             | "Character"
             | "Comparison"
+            | "Generator Character Unit Unit"
             | "Int"
             | "Nat"
             | "Range Int"
@@ -6940,6 +6948,17 @@ fn character_generator_accepts_its_explicit_classifier() {
     let value = Session::new()
         .evaluate(
             "generated : Generator Character Unit Unit is characters \"Topal\"\ngenerated foreach { character }\n  String character\n",
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+}
+
+#[test]
+fn function_returns_fresh_character_generator() {
+    let value = Session::new()
+        .evaluate(
+            "generate is fn (text : String) -> Generator Character Unit Unit\n  characters text\ngenerated is generate \"Topal\"\ngenerated foreach { character }\n  String character\n",
             &mut Vec::new(),
         )
         .unwrap();
