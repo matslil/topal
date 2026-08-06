@@ -31,7 +31,10 @@ pub enum Value {
         payload_classifier: String,
         payload: Option<Box<Self>>,
     },
-    CharacterGenerator(Vec<String>),
+    CharacterGenerator {
+        generated: Vec<String>,
+        origin: String,
+    },
     String(String),
     Tuple(Vec<Self>),
     Record(Vec<(String, Self)>),
@@ -76,7 +79,9 @@ impl fmt::Display for Value {
                 ..
             } => write!(formatter, "Some {value}"),
             Self::Optional { payload: None, .. } => formatter.write_str("None"),
-            Self::CharacterGenerator(_) => formatter.write_str("<Generator Character Unit Unit>"),
+            Self::CharacterGenerator { .. } => {
+                formatter.write_str("<Generator Character Unit Unit>")
+            }
             Self::String(value) => formatter.write_str(&display_string(value)),
             Self::Tuple(items) => {
                 formatter.write_str("(")?;
@@ -719,8 +724,10 @@ impl Session {
                         rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
                         detail: "Generator Character Unit Unit",
                     });
-                    let value =
-                        Value::CharacterGenerator(characters(&text).map(str::to_owned).collect());
+                    let value = Value::CharacterGenerator {
+                        generated: characters(&text).map(str::to_owned).collect(),
+                        origin: "root.characters".to_owned(),
+                    };
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -1185,7 +1192,7 @@ impl Session {
                             self.static_context,
                         ));
                     };
-                    if matches!(argument, Value::CharacterGenerator(_)) {
+                    if matches!(argument, Value::CharacterGenerator { .. }) {
                         trace.record(TraceEvent {
                             event: "generator.parameter.transferred",
                             rule: "TOPAL-STRING-CHARACTERS-PARAMETER-001",
@@ -1309,7 +1316,7 @@ impl Session {
                             detail: &detail,
                         });
                     }
-                    if matches!(value, Value::CharacterGenerator(_)) {
+                    if matches!(value, Value::CharacterGenerator { .. }) {
                         trace.record(TraceEvent {
                             event: "generator.function.returned",
                             rule: "TOPAL-STRING-CHARACTERS-RESULT-001",
@@ -1853,7 +1860,7 @@ impl Execution {
                         diagnostic(&self.source, "E-UNBOUND-NAME", *name, "name is not bound")
                     }
                 })?;
-                let Value::CharacterGenerator(generated) = value else {
+                let Value::CharacterGenerator { generated, .. } = value else {
                     return Err(foreach_source_diagnostic(&self.source, source.span()));
                 };
                 session.declared_names.remove(name_text);
@@ -2657,7 +2664,7 @@ fn consume_generator_argument(source: &SourceText, session: &mut Session, expres
     if accepts_generator
         && matches!(
             session.bindings.get(argument_name),
-            Some(Value::CharacterGenerator(_))
+            Some(Value::CharacterGenerator { .. })
         )
     {
         session.bindings.remove(argument_name);
@@ -2667,21 +2674,30 @@ fn consume_generator_argument(source: &SourceText, session: &mut Session, expres
 }
 
 fn close_remaining_character_generators(session: &mut Session, trace: &mut impl TraceSink) {
-    let names = session
+    let generators = session
         .bindings
         .iter()
         .filter_map(|(name, value)| {
-            matches!(value, Value::CharacterGenerator(_)).then_some(name.clone())
+            let Value::CharacterGenerator { origin, .. } = value else {
+                return None;
+            };
+            Some((name.clone(), origin.clone()))
         })
         .collect::<Vec<_>>();
-    for name in names {
+    for (name, origin) in generators {
         session.bindings.remove(&name);
         session.declared_names.remove(&name);
         session.consumed_names.insert(name.clone());
+        let detail = format!("domain=root;code=generator-closed;generator={origin}");
+        trace.record(TraceEvent {
+            event: "generator.close.signaled",
+            rule: "TOPAL-GENERATOR-ERROR-CODE-001",
+            detail: &detail,
+        });
         trace.record(TraceEvent {
             event: "generator.closed",
             rule: "TOPAL-STRING-CHARACTERS-CLOSE-001",
-            detail: &name,
+            detail: &origin,
         });
     }
 }
@@ -2854,7 +2870,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::Rational(_), "Rational")
         | (Value::IntRange { .. }, "Range Int")
         | (Value::RationalRange { .. }, "Range Rational")
-        | (Value::CharacterGenerator(_), "Generator Character Unit Unit")
+        | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::String(_), "String")
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
@@ -3565,7 +3581,7 @@ const fn value_classifier(value: &Value) -> &'static str {
         Value::Rational(_) => "Rational",
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
-        Value::CharacterGenerator(_) => "Generator Character Unit Unit",
+        Value::CharacterGenerator { .. } => "Generator Character Unit Unit",
         Value::String(_) => "String",
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
@@ -4631,7 +4647,7 @@ fn apply_negate(
         | Value::IntRange { .. }
         | Value::RationalRange { .. }
         | Value::Optional { .. }
-        | Value::CharacterGenerator(_)
+        | Value::CharacterGenerator { .. }
         | Value::String(_)
         | Value::Tuple(_)
         | Value::Record(_)
@@ -7155,6 +7171,11 @@ fn abandoned_generator_parameter_closes_at_function_boundary() {
             .iter()
             .any(|event| event.contains("TOPAL-STRING-CHARACTERS-CLOSE-001"))
     );
+    assert!(trace.iter().any(|event| {
+        event.contains("TOPAL-GENERATOR-ERROR-CODE-001")
+            && event.contains("domain=root")
+            && event.contains("generator=root.characters")
+    }));
 }
 
 #[test]

@@ -1083,3 +1083,10 @@ All tools shall recognize `lang generator GeneratorErrorCode` and its initial
 that namespace distinct from compiler-derived `Error.domain`. Interpreter
 traces, LSP validation, and reversible debugger history shall cover the
 commented example.
+
+## TOPAL-INTP-SUBSET-131 — Generator close domain trace
+
+When the built-in Character generator handles abandonment in the root lexical
+namespace, formal traces and reversible debugger history shall report domain
+`root` and code `generator-closed`, while retaining `root.characters` as
+separate generator provenance. Handling shall still finish with Unit.

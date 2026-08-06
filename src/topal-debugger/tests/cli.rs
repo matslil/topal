@@ -1157,6 +1157,7 @@ fn records_reversible_abandoned_generator_close() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-STRING-CHARACTERS-CLOSE-001"));
     assert!(stdout.contains("generator.closed"));
+    assert!(stdout.contains("domain=root;code=generator-closed;generator=root.characters"));
 }
 
 #[test]
