@@ -998,6 +998,24 @@ fn records_reversible_universal_unicode_uppercase() {
 }
 
 #[test]
+fn records_reversible_universal_unicode_lowercase() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}string-lowercase.debug"),
+            &format!("{root}string-lowercase.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-STRING-LOWER-001"));
+    assert!(stdout.contains("string.lowercased"));
+    assert!(stdout.contains("\"i\u{307}ς\""));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

@@ -974,3 +974,11 @@ All interpreter modes shall execute `upper text` for plain String values under
 ambient locale. Traces and reversible debugger history shall expose overload
 selection and transformation; LSP completion and validation shall cover the
 commented example.
+
+## TOPAL-INTP-SUBSET-117 — Universal String lowercase
+
+All interpreter modes shall execute `lower text` for plain String values under
+`TOPAL-STRING-LOWER-001`, using deterministic Unicode default casing without
+ambient locale. Traces and reversible debugger history shall expose overload
+selection and transformation; LSP completion and validation shall cover the
+commented example.
