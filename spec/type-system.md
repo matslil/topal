@@ -80,6 +80,15 @@ applications group under `TOPAL-SYN-GRAMMAR-001`.
 operands are true. `a or b` is true exactly when at least one operand is true.
 `a xor b` is true exactly when the operands differ.
 
+### TOPAL-TYPE-OPTIONAL-CONSTRUCT-001 — Explicit Optional construction
+
+`Optional T` is the nominal sum of payload alternative `Some T` and unit
+alternative `None`. `Some value` evaluates `value` exactly once and infers
+`Optional T` from its classifier `T`. `None T` explicitly constructs the absent
+alternative of `Optional T`. The alternatives display as `Some value` and
+`None`; the payload classifier remains part of nominal identity even though it
+is omitted from the absent value's display.
+
 ### TOPAL-TYPE-EQUALITY-001 — Equality application
 
 If `T` provides canonical `Equality` evidence and `a:T`, `b:T`, then `a = b`
