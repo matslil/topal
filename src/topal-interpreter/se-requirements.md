@@ -684,3 +684,10 @@ the original String sequence. LSP validation and reversible debugger history
 shall cover the same commented examples.
 Failed classification shall report the observed user-perceived character count
 at the initializer and provide actionable one-character guidance.
+
+## TOPAL-INTP-SUBSET-081 — String construction from Character
+
+All interpreter modes shall implement `String character` under
+`TOPAL-STRING-FROM-CHARACTER-001`, preserving the Character's exact Unicode
+sequence. Test traces and reversible debugger history shall expose construction
+separately from literal evaluation and classification.

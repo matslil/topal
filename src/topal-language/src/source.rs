@@ -574,6 +574,36 @@ impl Session {
                 if let Some(value) = evaluate_arithmetic_error_code(source, items, trace) {
                     return Ok(value);
                 }
+                if let [Expression::Identifier(constructor), character] = items.as_slice()
+                    && source.slice(*constructor) == "String"
+                {
+                    let value = self.evaluate_expression(source, character, trace)?;
+                    let Value::String(text) = value else {
+                        return Err(diagnostic(
+                            source,
+                            "E-STRING-CONSTRUCTOR-CHARACTER",
+                            character.span(),
+                            "String construction requires a Character value",
+                        ));
+                    };
+                    let count = character_count(&text);
+                    if count != 1 {
+                        return Err(diagnostic(
+                            source,
+                            "E-STRING-CONSTRUCTOR-CHARACTER",
+                            character.span(),
+                            format!(
+                                "String construction requires one Character, but the operand contains {count}"
+                            ),
+                        ));
+                    }
+                    trace.record(TraceEvent {
+                        event: "string.from-character",
+                        rule: "TOPAL-STRING-FROM-CHARACTER-001",
+                        detail: "preserved",
+                    });
+                    return Ok(Value::String(text));
+                }
                 if items.len() == 3
                     && let Expression::Identifier(name_span) = items[1]
                     && !self.bindings.contains_key(source.slice(name_span))
@@ -3137,6 +3167,9 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
         "E-CHARACTER-CLASSIFIER" => {
             Some("use a String containing exactly one Unicode grapheme cluster")
         }
+        "E-STRING-CONSTRUCTOR-CHARACTER" => {
+            Some("classify a one-character String as Character before construction")
+        }
         _ => None,
     }
 }
@@ -4720,13 +4753,21 @@ fn classified_binding_rejects_error_propagation_from_infallible_function() {
 
 #[test]
 fn character_classifier_uses_pinned_grapheme_segmentation() {
+    let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            "identity is fn (value : Character) -> Character\n  value\ncomposed : Character is \"a\u{301}\"\n(identity \"🙂\", identity composed)\n",
-            &mut std::io::sink(),
+            "identity is fn (value : Character) -> Character\n  value\ncomposed : Character is \"a\u{301}\"\n(String (identity \"🙂\"), String composed)\n",
+            &mut trace,
         )
         .unwrap();
     assert_eq!(value.to_string(), "(\"🙂\", \"a\u{301}\")");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-STRING-FROM-CHARACTER-001"))
+            .count(),
+        2
+    );
 
     let error = Session::new()
         .evaluate("invalid : Character is \"ab\"\n", &mut std::io::sink())

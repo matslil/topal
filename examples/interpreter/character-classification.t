@@ -4,4 +4,5 @@
 identity is fn (value : Character) -> Character
   value
 composed : Character is "á"
-(identity "🙂", identity composed)
+# String construction forgets the Character constraint but preserves text.
+(String (identity "🙂"), String composed)
