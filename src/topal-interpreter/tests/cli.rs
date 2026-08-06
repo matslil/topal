@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 57);
+    assert_eq!(examples.len(), 58);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2157,6 +2157,30 @@ fn every_mode_executes_checked_int_construction() {
     assert!(trace.contains("Int->Int:identity"));
     assert!(trace.contains("Rational->Int:exact"));
     assert!(trace.contains("root.Int(Rational);not-representable"));
+}
+
+#[test]
+fn every_mode_executes_checked_nat_construction() {
+    let source = include_str!("../../../examples/interpreter/nat-checked-construction.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(7, 6, Error ( domain is root.Nat(Int), code is out-of-range ))\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("TOPAL-NUM-NAT-CONSTRUCT-001").count(), 3);
+    assert!(trace.contains("Int->Nat:nonnegative"));
+    assert!(trace.contains("root.Nat(Int);out-of-range"));
+
+    let diagnostic = run(&[], "Nat -1\n");
+    assert!(!diagnostic.status.success());
+    let diagnostic = String::from_utf8(diagnostic.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-NAT-OUT-OF-RANGE]"));
+    assert!(diagnostic.contains("help: use a provably nonnegative Int"));
 }
 
 #[test]

@@ -787,3 +787,12 @@ operands shall succeed; a closed fractional Rational shall be diagnosed and a
 dynamic fractional Rational shall return `not-representable`. Test traces and
 reversible debugger history shall expose construction decisions; LSP validation
 shall accept the commented example.
+
+## TOPAL-INTP-SUBSET-094 — Checked Nat constraint construction
+
+All interpreter modes shall execute prefix `Nat value` validation under
+`TOPAL-NUM-NAT-CONSTRUCT-001`. Nonnegative Int operands shall succeed, closed
+negative operands shall produce an actionable diagnostic, and dynamic negative
+operands shall return `out-of-range` from `root.Nat(Int)`. Test traces and
+reversible debugger history shall expose success and failure; LSP validation
+shall accept the commented example.
