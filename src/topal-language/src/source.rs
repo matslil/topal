@@ -2045,7 +2045,7 @@ impl Execution {
         }
         trace.record(TraceEvent {
             event: "generator.returned",
-            rule: traversal_rule,
+            rule: generator_return_rule(&origin, generated.is_empty(), traversal_rule),
             detail: "Unit",
         });
         Ok((Value::Unit, span))
@@ -2859,6 +2859,14 @@ fn discarded_yield_expression<'a>(
         return None;
     };
     (source.slice(*keyword) == "yield").then_some(yielded)
+}
+
+fn generator_return_rule(origin: &str, empty: bool, traversal_rule: &'static str) -> &'static str {
+    if origin != "root.characters" && empty {
+        "TOPAL-GENERATOR-EARLY-RETURN-001"
+    } else {
+        traversal_rule
+    }
 }
 
 fn foreach_source_diagnostic(source: &SourceText, span: Span) -> Diagnostic {
@@ -7506,6 +7514,11 @@ fn named_generator_can_return_before_first_yield() {
         trace
             .iter()
             .any(|event| event.contains("generator.returned"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-EARLY-RETURN-001"))
     );
 }
 

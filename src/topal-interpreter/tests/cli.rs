@@ -2549,6 +2549,7 @@ fn every_mode_traverses_generator_returning_before_yield() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert_eq!(trace.matches("generator.yielded").count(), 0);
     assert!(trace.contains("generator.returned"));
+    assert!(trace.contains("TOPAL-GENERATOR-EARLY-RETURN-001"));
 }
 
 #[test]
