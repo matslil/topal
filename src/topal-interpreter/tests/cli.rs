@@ -2092,11 +2092,16 @@ fn every_mode_executes_exact_three_way_comparison() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
-        assert!(output.stdout.ends_with(b"(Less, Equal, Greater, Less)\n"));
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(Less, Equal, Greater, Less, \"less\", \"equal\", \"greater\")\n")
+        );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-NUM-THREE-WAY-COMPARE-001"));
     assert!(trace.contains("Int->Rational:left"));
+    assert!(trace.contains("TOPAL-DECISION-ENUM-001"));
 }
 
 #[test]

@@ -51,6 +51,9 @@ matchers. The subject is evaluated once and the action whose alternative has
 the same nominal enum identity and label is selected in source order. Without
 `otherwise`, the matcher set shall equal the enum's declared alternative set;
 missing, foreign, or undeclared alternatives are diagnostics.
+The language-defined nominal `Comparison` enum is closed over `Less`, `Equal`,
+and `Greater` and follows the same exhaustive matching rule without requiring a
+source declaration.
 
 ### TOPAL-DECISION-RESULT-001 — Exhaustive Result matching
 
