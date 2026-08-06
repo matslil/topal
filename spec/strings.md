@@ -51,6 +51,13 @@ locale-independent default uppercase mapping under the language context's
 pinned Unicode data. It returns a plain `String`, may change the character
 count, and shall neither inspect ambient locale nor add normalization evidence.
 
+### TOPAL-STRING-LOWER-001 — Universal lowercase mapping
+
+For a plain `String` value `text`, `lower text` shall apply Unicode's complete,
+locale-independent default lowercase mapping under the language context's
+pinned Unicode data. It returns a plain `String`, may change the character
+count, and shall neither inspect ambient locale nor add normalization evidence.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count

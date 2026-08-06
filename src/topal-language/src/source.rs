@@ -5,7 +5,8 @@ use std::fmt::{self, Write as _};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_source::{
-    SourceText, Span, character_at, character_count, normalize_nfc, normalize_nfd, uppercase,
+    SourceText, Span, character_at, character_count, lowercase, normalize_nfc, normalize_nfd,
+    uppercase,
 };
 use topal_syntax::{
     CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, lex, parse,
@@ -1281,6 +1282,33 @@ impl Session {
                     trace.record(TraceEvent {
                         event: "string.uppercased",
                         rule: "TOPAL-STRING-UPPER-001",
+                        detail: "unicode-default",
+                    });
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "lower")
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(text) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-NO-APPLICABLE-OVERLOAD",
+                            operand_span,
+                            "lower requires a String operand in the implemented subset",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.lower(String)",
+                    });
+                    let value = Value::String(lowercase(&text));
+                    trace.record(TraceEvent {
+                        event: "string.lowercased",
+                        rule: "TOPAL-STRING-LOWER-001",
                         detail: "unicode-default",
                     });
                     self.checkpoint(trace, Some(&value), Some(*span));
@@ -4267,13 +4295,14 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 12] = [
+const ROOT_OPERATIONS: [&str; 13] = [
     "absolute",
     "byte-count",
     "character-count",
     "concat",
     "empty",
     "entry-count",
+    "lower",
     "normalize",
     "upper",
     "not",
@@ -6535,6 +6564,20 @@ fn upper_uses_locale_independent_unicode_mapping() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-STRING-UPPER-001"))
+    );
+}
+
+#[test]
+fn lower_uses_locale_independent_unicode_mapping() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate("lower \"İΣ\"\n", &mut trace)
+        .unwrap();
+    assert_eq!(value.to_string(), "\"i\u{307}ς\"");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-STRING-LOWER-001"))
     );
 }
 

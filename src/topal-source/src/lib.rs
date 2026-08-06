@@ -70,6 +70,12 @@ pub fn uppercase(text: &str) -> String {
     text.to_uppercase()
 }
 
+/// Applies Unicode's locale-independent default lowercase mapping.
+#[must_use]
+pub fn lowercase(text: &str) -> String {
+    text.to_lowercase()
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Span {
     pub start: usize,
@@ -207,6 +213,11 @@ mod tests {
     #[test]
     fn applies_default_unicode_uppercase_mapping() {
         assert_eq!(uppercase("Straße σς"), "STRASSE ΣΣ");
+    }
+
+    #[test]
+    fn applies_default_unicode_lowercase_mapping() {
+        assert_eq!(lowercase("İΣ"), "i̇ς");
     }
 
     #[test]
