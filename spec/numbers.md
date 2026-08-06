@@ -179,6 +179,16 @@ does not round or truncate. A closed Rational with any other denominator is a
 source diagnostic at the initializer. Dynamic narrowing requires separate
 validation and failure semantics and is not implied by this rule.
 
+### TOPAL-NUM-RATIONAL-INT-VALIDATE-001 — Dynamic exact Rational validation
+
+When an `Int`-classified binding in a function returning
+`Result ( Int, lang arithmetic ArithmeticErrorCode )` receives a dynamically
+obtained finite `Rational`, it shall validate the canonical denominator. A
+denominator of one produces the exact numerator as `Int`; any other denominator
+constructs `not-representable` with reporting domain `root.Int(Rational)` and
+source provenance at the binding initializer. The failed Result then propagates
+under `TOPAL-TYPE-RESULT-PROJECT-001`. Validation never rounds or truncates.
+
 ### TOPAL-NUM-DIVZERO-001 — Statically evident zero division
 
 An exact division whose divisor is statically proven zero is rejected with the

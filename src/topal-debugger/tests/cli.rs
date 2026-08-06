@@ -762,6 +762,27 @@ fn records_reversible_exact_rational_int_narrowing() {
 }
 
 #[test]
+fn records_reversible_dynamic_rational_int_validation() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}dynamic-rational-int-validation.debug"),
+            &format!("{root}dynamic-rational-int-validation.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-NUM-RATIONAL-INT-VALIDATE-001"));
+    assert!(stdout.contains("Rational->Int:validated"));
+    assert!(stdout.contains("root.Int(Rational);not-representable"));
+    assert!(
+        stdout.contains("(50, Error ( domain is root.Int(Rational), code is not-representable ))")
+    );
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

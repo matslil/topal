@@ -768,3 +768,13 @@ canonical denominator one to satisfy an explicitly Int-classified binding under
 source-located diagnostic with actionable help. Test traces and reversible
 debugger history shall expose the exact conversion; LSP validation shall accept
 the commented example.
+
+## TOPAL-INTP-SUBSET-092 — Dynamic Rational-to-Int validation
+
+All interpreter modes shall validate a dynamically obtained Rational at an
+Int-classified binding in a compatible arithmetic Result function under
+`TOPAL-NUM-RATIONAL-INT-VALIDATE-001`. Exact integers shall succeed without
+rounding; other finite rationals shall propagate `not-representable` with the
+compiler-derived `root.Int(Rational)` reporting domain. Test traces and
+reversible debugger history shall expose both outcomes; LSP validation shall
+accept the commented example.
