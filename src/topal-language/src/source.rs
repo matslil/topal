@@ -1637,11 +1637,12 @@ impl Execution {
         let mut evaluated = session.evaluate_expression(&self.source, initializer, trace)?;
         if let Some(classifier) = classifier {
             let classifier_text = self.source.slice(classifier);
-            evaluated = narrow_closed_rational_to_int(
+            evaluated = narrow_rational_to_int(
                 &self.source,
                 initializer,
                 evaluated,
                 classifier_text,
+                self.return_classifier.as_deref(),
                 trace,
             )?;
             if matches!(evaluated, Value::Error { .. }) {
@@ -1730,20 +1731,37 @@ fn expression_is_closed(expression: &Expression) -> bool {
     }
 }
 
-fn narrow_closed_rational_to_int(
+fn narrow_rational_to_int(
     source: &SourceText,
     initializer: &Expression,
     value: Value,
     classifier: &str,
+    return_classifier: Option<&str>,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
-    if classifier != "Int" || !expression_is_closed(initializer) {
+    if classifier != "Int" {
         return Ok(value);
     }
     let Value::Rational(value) = value else {
         return Ok(value);
     };
     if value.denom() != &BigInt::from(1) {
+        if !expression_is_closed(initializer)
+            && return_classifier.and_then(result_success_classifier) == Some("Int")
+        {
+            let position = source.position(initializer.span().start);
+            trace.record(TraceEvent {
+                event: "result.error.constructed",
+                rule: "TOPAL-NUM-RATIONAL-INT-VALIDATE-001",
+                detail: "root.Int(Rational);not-representable",
+            });
+            return Ok(Value::Error {
+                domain: "root.Int(Rational)".to_owned(),
+                code: "not-representable".to_owned(),
+                line: position.line,
+                column: position.column,
+            });
+        }
         return Err(diagnostic(
             source,
             "E-RATIONAL-NOT-EXACT-INT",
@@ -1756,8 +1774,16 @@ fn narrow_closed_rational_to_int(
     }
     trace.record(TraceEvent {
         event: "conversion.applied",
-        rule: "TOPAL-NUM-RATIONAL-INT-EXACT-001",
-        detail: "Rational->Int:exact",
+        rule: if expression_is_closed(initializer) {
+            "TOPAL-NUM-RATIONAL-INT-EXACT-001"
+        } else {
+            "TOPAL-NUM-RATIONAL-INT-VALIDATE-001"
+        },
+        detail: if expression_is_closed(initializer) {
+            "Rational->Int:exact"
+        } else {
+            "Rational->Int:validated"
+        },
     });
     Ok(Value::Int(value.numer().clone()))
 }
@@ -5375,4 +5401,27 @@ fn closed_exact_rational_narrows_to_int_without_rounding() {
         .unwrap_err();
     assert_eq!(error.code, "E-RATIONAL-NOT-EXACT-INT");
     assert!(error.message.contains("denominator 2"));
+}
+
+#[test]
+fn dynamic_rational_to_int_validation_returns_typed_result() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "halve is fn (value : Int) -> Result (Int, lang arithmetic ArithmeticErrorCode)\n  half : Int is value / 2\n  half\n(halve 100, halve 3)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(50, Error ( domain is root.Int(Rational), code is not-representable ))"
+    );
+    assert!(trace.iter().any(|event| {
+        event.contains("TOPAL-NUM-RATIONAL-INT-VALIDATE-001")
+            && event.contains("Rational->Int:validated")
+    }));
+    assert!(trace.iter().any(|event| {
+        event.contains("TOPAL-NUM-RATIONAL-INT-VALIDATE-001")
+            && event.contains("root.Int(Rational);not-representable")
+    }));
 }
