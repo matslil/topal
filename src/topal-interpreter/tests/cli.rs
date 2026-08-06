@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 63);
+    assert_eq!(examples.len(), 64);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2291,6 +2291,27 @@ fn every_mode_evaluates_boolean_not() {
     assert!(trace.contains("or:eager"));
     assert_eq!(trace.matches("root.xor(Boolean,Boolean)").count(), 4);
     assert!(trace.contains("xor:eager"));
+}
+
+#[test]
+fn every_mode_constructs_explicit_optional_values() {
+    let source = include_str!("../../../examples/interpreter/optional-values.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(Some 42, Some \"present\", None, None)\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(
+        trace.matches("TOPAL-TYPE-OPTIONAL-CONSTRUCT-001").count(),
+        4
+    );
+    assert!(trace.contains("optional.some.constructed"));
+    assert!(trace.contains("optional.none.constructed"));
 }
 
 #[test]

@@ -901,3 +901,11 @@ All interpreter modes shall execute `left xor right` for Boolean operands under
 to right and returning true exactly when they differ. Traces, LSP validation,
 and reversible debugger history shall cover the completed commented logical
 truth-table example.
+
+## TOPAL-INTP-SUBSET-108 — Explicit Optional construction
+
+All interpreter modes shall execute `Some value` and `None T` under
+`TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`, preserving the nominal payload classifier
+and displaying the approved constructor spellings. Some payloads shall evaluate
+exactly once. Traces, LSP validation, and reversible debugger history shall
+cover the commented example.

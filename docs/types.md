@@ -175,6 +175,18 @@ absence of additional information, including the result of a function called
 only for its effects and the payload of a sum alternative which carries no
 data.
 
+`Optional T` is the built-in nominal sum `Some T | None`. `Some value` infers
+the payload type and evaluates that payload exactly once. Bare `None` requires
+an expected `Optional T`; explicit absence without surrounding context is
+written `None T`. Optional decisions match `Some value` or `None` and are
+complete only when both alternatives are covered. Optional values display with
+those same constructor spellings.
+
+`Optional T` has equality exactly when `T` does. Two `None` values of the same
+Optional type are equal, two `Some` values compare their payloads, and different
+alternatives are unequal. Optional types with different payload types remain
+nominally distinct even though each contains an alternative displayed `None`.
+
 `String` represents semantic Unicode text. Its detailed value, character,
 normalization, indexing, and encoding model is defined in
 [strings](strings.md).

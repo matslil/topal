@@ -24,6 +24,10 @@ pub enum Value {
         lower: BigRational,
         upper: BigRational,
     },
+    Optional {
+        payload_classifier: String,
+        payload: Option<Box<Self>>,
+    },
     String(String),
     Tuple(Vec<Self>),
     Record(Vec<(String, Self)>),
@@ -63,6 +67,11 @@ impl fmt::Display for Value {
                 upper.numer(),
                 upper.denom()
             ),
+            Self::Optional {
+                payload: Some(value),
+                ..
+            } => write!(formatter, "Some {value}"),
+            Self::Optional { payload: None, .. } => formatter.write_str("None"),
             Self::String(value) => formatter.write_str(&display_string(value)),
             Self::Tuple(items) => {
                 formatter.write_str("(")?;
@@ -600,6 +609,38 @@ impl Session {
             Expression::Application { items, span } => {
                 if let Some(value) = evaluate_arithmetic_error_code(source, items, trace) {
                     return Ok(value);
+                }
+                if let [Expression::Identifier(constructor), payload] = items.as_slice()
+                    && source.slice(*constructor) == "Some"
+                {
+                    let value = self.evaluate_expression(source, payload, trace)?;
+                    let payload_classifier = value_classifier(&value).to_owned();
+                    trace.record(TraceEvent {
+                        event: "optional.some.constructed",
+                        rule: "TOPAL-TYPE-OPTIONAL-CONSTRUCT-001",
+                        detail: &payload_classifier,
+                    });
+                    return Ok(Value::Optional {
+                        payload_classifier,
+                        payload: Some(Box::new(value)),
+                    });
+                }
+                if let [
+                    Expression::Identifier(constructor),
+                    Expression::Identifier(domain),
+                ] = items.as_slice()
+                    && source.slice(*constructor) == "None"
+                {
+                    let payload_classifier = source.slice(*domain).to_owned();
+                    trace.record(TraceEvent {
+                        event: "optional.none.constructed",
+                        rule: "TOPAL-TYPE-OPTIONAL-CONSTRUCT-001",
+                        detail: &payload_classifier,
+                    });
+                    return Ok(Value::Optional {
+                        payload_classifier,
+                        payload: None,
+                    });
                 }
                 if let [Expression::Identifier(constructor), character] = items.as_slice()
                     && source.slice(*constructor) == "String"
@@ -2952,6 +2993,7 @@ const fn value_classifier(value: &Value) -> &'static str {
         Value::Int(_) => "Int",
         Value::Rational(_) => "Rational",
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
+        Value::Optional { .. } => "Optional",
         Value::String(_) => "String",
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
@@ -3995,6 +4037,7 @@ fn apply_negate(
         Value::Boolean(_)
         | Value::IntRange { .. }
         | Value::RationalRange { .. }
+        | Value::Optional { .. }
         | Value::String(_)
         | Value::Tuple(_)
         | Value::Record(_)
@@ -6123,6 +6166,25 @@ fn boolean_xor_implements_the_eager_truth_table() {
         trace
             .iter()
             .filter(|event| event.contains("xor:eager"))
+            .count(),
+        4
+    );
+}
+
+#[test]
+fn explicit_optional_constructors_preserve_payload_classifiers() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "(Some 42, Some \"present\", None Int, None String)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(Some 42, Some \"present\", None, None)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-TYPE-OPTIONAL-CONSTRUCT-001"))
             .count(),
         4
     );
