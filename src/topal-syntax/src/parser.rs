@@ -92,6 +92,11 @@ pub enum DecisionMatcher {
         binding: Span,
         span: Span,
     },
+    Optional {
+        some: bool,
+        binding: Option<Span>,
+        span: Span,
+    },
     ErrorCode {
         namespace: Span,
         vocabulary: Span,
@@ -507,6 +512,11 @@ impl Parser<'_> {
                     matches!(rule.matcher, DecisionMatcher::Result { error: found, .. } if found == error)
                 })
             })
+            || [false, true].into_iter().all(|some| {
+                rules.iter().any(|rule| {
+                    matches!(rule.matcher, DecisionMatcher::Optional { some: found, .. } if found == some)
+                })
+            })
             || self.complete_arithmetic_result(&rules);
         if !complete {
             let end = rules
@@ -699,23 +709,12 @@ impl Parser<'_> {
                     self.expression()?,
                 )
             }
-            TokenKind::Identifier => {
-                let separator = self.take_nontrivia()?;
-                if separator.kind != TokenKind::Identifier
-                    || self.source.slice(separator.span) != "then"
-                {
-                    self.diagnostics.push(SyntaxDiagnostic {
-                        code: "E-EXPECTED-THEN",
-                        span: separator.span,
-                        message: "expected `then` between the matcher and delayed action".into(),
-                    });
-                    return None;
-                }
-                (
-                    DecisionMatcher::Identifier(matcher_token.span),
-                    self.expression()?,
-                )
+            TokenKind::Identifier
+                if matches!(self.source.slice(matcher_token.span), "Some" | "None") =>
+            {
+                (self.optional_matcher(matcher_token)?, self.expression()?)
             }
+            TokenKind::Identifier => (self.identifier_matcher(matcher_token)?, self.expression()?),
             token_kind if comparison_callable(token_kind).is_some() => {
                 let kind = comparison_callable(token_kind).expect("checked comparison token");
                 let operand = self.expression_before_then(matcher_token.span)?;
@@ -744,6 +743,49 @@ impl Parser<'_> {
             action,
             span,
         })
+    }
+
+    fn optional_matcher(&mut self, constructor: Token) -> Option<DecisionMatcher> {
+        let some = self.source.slice(constructor.span) == "Some";
+        let binding = some.then(|| self.take_nontrivia()).flatten();
+        let separator = self.take_nontrivia()?;
+        let valid = separator.kind == TokenKind::Identifier
+            && self.source.slice(separator.span) == "then"
+            && binding.is_none_or(|binding| binding.kind == TokenKind::Identifier);
+        if !valid {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-OPTIONAL-PATTERN",
+                span: Span::new(constructor.span.start, separator.span.end),
+                message: if some {
+                    "expected `Some name then`"
+                } else {
+                    "expected `None then`"
+                }
+                .into(),
+            });
+            return None;
+        }
+        Some(DecisionMatcher::Optional {
+            some,
+            binding: binding.map(|binding| binding.span),
+            span: Span::new(
+                constructor.span.start,
+                binding.map_or(constructor.span.end, |binding| binding.span.end),
+            ),
+        })
+    }
+
+    fn identifier_matcher(&mut self, identifier: Token) -> Option<DecisionMatcher> {
+        let separator = self.take_nontrivia()?;
+        if separator.kind != TokenKind::Identifier || self.source.slice(separator.span) != "then" {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-THEN",
+                span: separator.span,
+                message: "expected `then` between the matcher and delayed action".into(),
+            });
+            return None;
+        }
+        Some(DecisionMatcher::Identifier(identifier.span))
     }
 
     fn error_code_matcher(&mut self, error: Span) -> Option<DecisionMatcher> {
@@ -1164,6 +1206,7 @@ const fn matcher_span(matcher: &DecisionMatcher) -> Span {
         DecisionMatcher::Boolean { span, .. }
         | DecisionMatcher::Identifier(span)
         | DecisionMatcher::Result { span, .. }
+        | DecisionMatcher::Optional { span, .. }
         | DecisionMatcher::ErrorCode { span, .. }
         | DecisionMatcher::Comparison { span, .. }
         | DecisionMatcher::Otherwise(span) => *span,
