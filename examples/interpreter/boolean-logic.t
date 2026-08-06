@@ -1,3 +1,3 @@
 #!/usr/bin/env topal
-# Demonstrates Boolean negation and the eager conjunction truth table.
-(not true, not false, true and true, true and false, false and true, false and false)
+# Demonstrates negation plus eager conjunction and disjunction truth tables.
+(not true, not false, true and true, true and false, false and true, false and false, true or true, true or false, false or true, false or false)

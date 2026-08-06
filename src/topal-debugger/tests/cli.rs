@@ -923,7 +923,9 @@ fn records_reversible_boolean_not() {
     assert!(stdout.contains("root.not(Boolean)"));
     assert!(stdout.contains("root.and(Boolean,Boolean)"));
     assert!(stdout.contains("and:eager"));
-    assert!(stdout.contains("(false, true, true, false, false, false)"));
+    assert!(stdout.contains("root.or(Boolean,Boolean)"));
+    assert!(stdout.contains("or:eager"));
+    assert!(stdout.contains("(false, true, true, false, false, false, true, true, true, false)"));
 }
 
 #[test]

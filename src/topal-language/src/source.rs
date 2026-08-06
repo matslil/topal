@@ -850,6 +850,31 @@ impl Session {
                     let right = self.evaluate_expression(source, right, trace)?;
                     return apply_and(source, left, right, *span, trace);
                 }
+                if let [left, Expression::Identifier(callable), right] = items.as_slice()
+                    && source.slice(*callable) == "or"
+                {
+                    let left = self.evaluate_expression(source, left, trace)?;
+                    let right = self.evaluate_expression(source, right, trace)?;
+                    let (Value::Boolean(left), Value::Boolean(right)) = (left, right) else {
+                        return Err(diagnostic(
+                            source,
+                            "E-BOOLEAN-OR-OPERANDS",
+                            *span,
+                            "or requires two Boolean operands; range union is a Predicate",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.or(Boolean,Boolean)",
+                    });
+                    trace.record(TraceEvent {
+                        event: "evaluation.logical",
+                        rule: "TOPAL-TYPE-BOOLEAN-LOGIC-001",
+                        detail: "or:eager",
+                    });
+                    return Ok(Value::Boolean(left || right));
+                }
                 if items.len() == 3
                     && let Expression::Identifier(name_span) = items[1]
                     && !self.bindings.contains_key(source.slice(name_span))
@@ -6035,6 +6060,25 @@ fn boolean_and_implements_the_eager_truth_table() {
         trace
             .iter()
             .filter(|event| event.contains("and:eager"))
+            .count(),
+        4
+    );
+}
+
+#[test]
+fn boolean_or_implements_the_eager_truth_table() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "(true or true, true or false, false or true, false or false)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(true, true, true, false)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("or:eager"))
             .count(),
         4
     );
