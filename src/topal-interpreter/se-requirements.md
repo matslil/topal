@@ -877,3 +877,11 @@ All interpreter modes shall execute `not value` for Boolean operands under
 `TOPAL-TYPE-BOOLEAN-LOGIC-001` without numeric coercion. Traces and reversible
 debugger history shall expose the selected root operation and logical decision;
 LSP validation shall accept the commented example.
+
+## TOPAL-INTP-SUBSET-105 — Eager Boolean conjunction
+
+All interpreter modes shall execute `left and right` for Boolean operands under
+`TOPAL-TYPE-BOOLEAN-LOGIC-001`, evaluating both operands exactly once from left
+to right without short-circuiting. Range intersection shall remain a distinct
+overload. Traces, LSP validation, and reversible debugger history shall cover
+the updated commented truth-table example.

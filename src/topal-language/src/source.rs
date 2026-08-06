@@ -848,7 +848,7 @@ impl Session {
                 {
                     let left = self.evaluate_expression(source, left, trace)?;
                     let right = self.evaluate_expression(source, right, trace)?;
-                    return apply_range_intersection(source, left, right, *span, trace);
+                    return apply_and(source, left, right, *span, trace);
                 }
                 if items.len() == 3
                     && let Expression::Identifier(name_span) = items[1]
@@ -3184,13 +3184,26 @@ fn apply_range_membership(
     Ok(Value::Boolean(accepted))
 }
 
-fn apply_range_intersection(
+fn apply_and(
     source: &SourceText,
     left: Value,
     right: Value,
     span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
+    if let (Value::Boolean(left), Value::Boolean(right)) = (&left, &right) {
+        trace.record(TraceEvent {
+            event: "operator.selected",
+            rule: "TOPAL-TYPE-CALL-001",
+            detail: "root.and(Boolean,Boolean)",
+        });
+        trace.record(TraceEvent {
+            event: "evaluation.logical",
+            rule: "TOPAL-TYPE-BOOLEAN-LOGIC-001",
+            detail: "and:eager",
+        });
+        return Ok(Value::Boolean(*left && *right));
+    }
     let result = match (left, right) {
         (
             Value::IntRange {
@@ -3223,7 +3236,7 @@ fn apply_range_intersection(
                 source,
                 "E-RANGE-INTERSECTION-OPERANDS",
                 span,
-                "range intersection requires ranges from the same endpoint domain",
+                "and requires two Booleans or ranges from the same endpoint domain",
             ));
         }
     };
@@ -6006,6 +6019,25 @@ fn boolean_not_is_eager_and_type_checked() {
         .evaluate("not 1\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-BOOLEAN-NOT-OPERAND");
+}
+
+#[test]
+fn boolean_and_implements_the_eager_truth_table() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "(true and true, true and false, false and true, false and false)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(true, false, false, false)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("and:eager"))
+            .count(),
+        4
+    );
 }
 
 #[test]

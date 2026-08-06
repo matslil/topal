@@ -2276,11 +2276,17 @@ fn every_mode_evaluates_boolean_not() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
-        assert!(output.stdout.ends_with(b"(false, true, true)\n"));
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(false, true, true, false, false, false)\n")
+        );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
-    assert_eq!(trace.matches("TOPAL-TYPE-BOOLEAN-LOGIC-001").count(), 4);
+    assert_eq!(trace.matches("TOPAL-TYPE-BOOLEAN-LOGIC-001").count(), 6);
     assert!(trace.contains("root.not(Boolean)"));
+    assert_eq!(trace.matches("root.and(Boolean,Boolean)").count(), 4);
+    assert!(trace.contains("and:eager"));
 }
 
 #[test]
