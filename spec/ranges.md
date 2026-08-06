@@ -30,3 +30,11 @@ range constructed from Rational endpoints, including mixed endpoints after
 canonical conversion, satisfies `Range Rational`. These classifiers are valid
 for bindings, function parameters, and function results; the range retains its
 ordered endpoint domain across an ordinary call.
+
+### TOPAL-RANGE-INTERSECTION-001 — Range conjunction
+
+For two ranges over the same supported ordered endpoint domain, `left and right`
+constructs their predicate intersection. Its lower bound is the greater lower
+bound and its upper bound is the lesser upper bound. Disjoint inputs therefore
+produce a reversed empty range rather than an error. Each operand is evaluated
+once, and the result retains the shared Range classifier.

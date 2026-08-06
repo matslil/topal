@@ -883,7 +883,8 @@ fn records_reversible_inclusive_int_ranges() {
     assert!(stdout.contains("TOPAL-RANGE-MEMBERSHIP-001"));
     assert!(stdout.contains("range.constructed"));
     assert!(stdout.contains("range.membership.tested"));
-    assert!(stdout.contains("(0 .. 10, true, false, false)"));
+    assert!(stdout.contains("TOPAL-RANGE-INTERSECTION-001"));
+    assert!(stdout.contains("(0 .. 10, 5 .. 10, 20 .. 10, true, false, false)"));
 }
 
 #[test]
@@ -902,6 +903,7 @@ fn records_reversible_rational_ranges() {
     assert!(stdout.contains("Int->Rational:left"));
     assert!(stdout.contains("Int->Rational:membership"));
     assert!(stdout.contains("Rational ( 0, 1 ) .. Rational ( 5, 2 )"));
+    assert!(stdout.contains("TOPAL-RANGE-INTERSECTION-001"));
 }
 
 #[test]
