@@ -620,6 +620,12 @@ impl Session {
                     let value = self.evaluate_expression(source, operand, trace)?;
                     return construct_int(source, operand, value, trace);
                 }
+                if let [Expression::Identifier(constructor), operand] = items.as_slice()
+                    && source.slice(*constructor) == "Nat"
+                {
+                    let value = self.evaluate_expression(source, operand, trace)?;
+                    return construct_nat(source, operand, value, trace);
+                }
                 if let [Expression::Identifier(callable), operand] = items.as_slice()
                     && source.slice(*callable) == "absolute"
                 {
@@ -1844,6 +1850,50 @@ fn construct_int(
     Ok(Value::Error {
         domain: "root.Int(Rational)".to_owned(),
         code: "not-representable".to_owned(),
+        line: position.line,
+        column: position.column,
+    })
+}
+
+fn construct_nat(
+    source: &SourceText,
+    operand: &Expression,
+    value: Value,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::Int(value) = value else {
+        return Err(diagnostic(
+            source,
+            "E-NAT-CONSTRUCTOR-OPERAND",
+            operand.span(),
+            "Nat construction requires an Int operand",
+        ));
+    };
+    if value >= BigInt::from(0) {
+        trace.record(TraceEvent {
+            event: "numeric.nat.constructed",
+            rule: "TOPAL-NUM-NAT-CONSTRUCT-001",
+            detail: "Int->Nat:nonnegative",
+        });
+        return Ok(Value::Int(value));
+    }
+    if expression_is_closed(operand) {
+        return Err(diagnostic(
+            source,
+            "E-NAT-OUT-OF-RANGE",
+            operand.span(),
+            "a negative Int is outside the Nat constraint",
+        ));
+    }
+    let position = source.position(operand.span().start);
+    trace.record(TraceEvent {
+        event: "result.error.constructed",
+        rule: "TOPAL-NUM-NAT-CONSTRUCT-001",
+        detail: "root.Nat(Int);out-of-range",
+    });
+    Ok(Value::Error {
+        domain: "root.Nat(Int)".to_owned(),
+        code: "out-of-range".to_owned(),
         line: position.line,
         column: position.column,
     })
@@ -3700,6 +3750,7 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
         "E-RATIONAL-NOT-EXACT-INT" => {
             Some("use an exactly divisible expression or keep the result classified as Rational")
         }
+        "E-NAT-OUT-OF-RANGE" => Some("use a provably nonnegative Int or handle dynamic validation"),
         _ => None,
     }
 }
@@ -5512,4 +5563,31 @@ fn checked_int_construction_is_exact_and_fallible() {
         .evaluate("Int 1.5\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-RATIONAL-NOT-EXACT-INT");
+}
+
+#[test]
+fn checked_nat_construction_validates_the_nonnegative_constraint() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "as-nat is fn (value : Int) -> Result (Nat, lang arithmetic ArithmeticErrorCode)\n  Nat value\n(Nat 7, as-nat 6, as-nat -1)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(7, 6, Error ( domain is root.Nat(Int), code is out-of-range ))"
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-NUM-NAT-CONSTRUCT-001"))
+            .count(),
+        3
+    );
+
+    let error = Session::new()
+        .evaluate("Nat -1\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-NAT-OUT-OF-RANGE");
 }

@@ -198,6 +198,15 @@ obtained one constructs `not-representable` with reporting domain
 `root.Int(Rational)`. Construction never rounds or truncates and exposes its
 success or structured failure in the test trace.
 
+### TOPAL-NUM-NAT-CONSTRUCT-001 — Checked Nat constraint construction
+
+Prefix application `Nat value` validates an `Int` against the nonnegative Nat
+constraint under `TOPAL-TYPE-CONSTRAINT-001`. A nonnegative operand is preserved
+with reusable Nat evidence. A closed negative operand is a source diagnostic; a
+dynamically obtained negative operand constructs `out-of-range` with reporting
+domain `root.Nat(Int)`. Construction does not clamp, wrap, or otherwise replace
+the exact integer value.
+
 ### TOPAL-NUM-DIVZERO-001 — Statically evident zero division
 
 An exact division whose divisor is statically proven zero is rejected with the

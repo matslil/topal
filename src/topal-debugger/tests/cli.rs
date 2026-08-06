@@ -806,6 +806,25 @@ fn records_reversible_checked_int_construction() {
 }
 
 #[test]
+fn records_reversible_checked_nat_construction() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}nat-checked-construction.debug"),
+            &format!("{root}nat-checked-construction.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-NUM-NAT-CONSTRUCT-001"));
+    assert!(stdout.contains("Int->Nat:nonnegative"));
+    assert!(stdout.contains("root.Nat(Int);out-of-range"));
+    assert!(stdout.contains("(7, 6, Error ( domain is root.Nat(Int), code is out-of-range ))"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
