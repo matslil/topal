@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 58);
+    assert_eq!(examples.len(), 59);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2181,6 +2181,28 @@ fn every_mode_executes_checked_nat_construction() {
     let diagnostic = String::from_utf8(diagnostic.stderr).unwrap();
     assert!(diagnostic.contains("error[E-NAT-OUT-OF-RANGE]"));
     assert!(diagnostic.contains("help: use a provably nonnegative Int"));
+}
+
+#[test]
+fn every_mode_constructs_canonical_rationals() {
+    let source = include_str!("../../../examples/interpreter/rational-exact-construction.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(Rational ( 1, 2 ), Rational ( -1, 2 ), Rational ( 0, 1 ))\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("TOPAL-NUM-RATIONAL-CONSTRUCT-001").count(), 3);
+
+    let diagnostic = run(&[], "Rational (1, 0)\n");
+    assert!(!diagnostic.status.success());
+    let diagnostic = String::from_utf8(diagnostic.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-DIVISION-BY-ZERO]"));
+    assert!(diagnostic.contains("help: use a divisor that is provably nonzero"));
 }
 
 #[test]

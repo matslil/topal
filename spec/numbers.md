@@ -83,6 +83,14 @@ divides both components by their greatest common divisor, and represents zero
 as `(0, 1)`. Canonical identity and equality depend on the mathematical ratio,
 not the source spelling or construction path.
 
+### TOPAL-NUM-RATIONAL-CONSTRUCT-001 — Closed finite Rational construction
+
+Prefix application `Rational (numerator, denominator)` with two statically
+closed finite `Int` components and a nonzero denominator constructs the
+canonical value required by `TOPAL-NUM-RATIONAL-001`. A statically zero
+denominator is diagnosed under `TOPAL-NUM-DIVZERO-001`. Dynamic component
+validation and its structured zero-denominator failure are outside this rule.
+
 ### TOPAL-NUM-RATIONAL-LITERAL-001 — Exact rational literals
 
 A syntactically valid fractional decimal or base-ten exponent literal constructs

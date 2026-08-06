@@ -626,6 +626,20 @@ impl Session {
                     let value = self.evaluate_expression(source, operand, trace)?;
                     return construct_nat(source, operand, value, trace);
                 }
+                if let [Expression::Identifier(constructor), operand] = items.as_slice()
+                    && source.slice(*constructor) == "Rational"
+                {
+                    if !expression_is_closed(operand) {
+                        return Err(diagnostic(
+                            source,
+                            "E-DYNAMIC-RATIONAL-CONSTRUCTION-UNSUPPORTED",
+                            operand.span(),
+                            "dynamic Rational component validation is not in this subset",
+                        ));
+                    }
+                    let value = self.evaluate_expression(source, operand, trace)?;
+                    return construct_closed_rational(source, operand, value, trace);
+                }
                 if let [Expression::Identifier(callable), operand] = items.as_slice()
                     && source.slice(*callable) == "absolute"
                 {
@@ -1897,6 +1911,45 @@ fn construct_nat(
         line: position.line,
         column: position.column,
     })
+}
+
+fn construct_closed_rational(
+    source: &SourceText,
+    operand: &Expression,
+    value: Value,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::Tuple(values) = value else {
+        return Err(diagnostic(
+            source,
+            "E-RATIONAL-CONSTRUCTOR-PRODUCT",
+            operand.span(),
+            "Rational construction requires a positional (numerator, denominator) product",
+        ));
+    };
+    let [Value::Int(numerator), Value::Int(denominator)] = values.as_slice() else {
+        return Err(diagnostic(
+            source,
+            "E-RATIONAL-CONSTRUCTOR-COMPONENTS",
+            operand.span(),
+            "Rational numerator and denominator must both be Int values",
+        ));
+    };
+    if denominator == &BigInt::from(0) {
+        return Err(diagnostic(
+            source,
+            "E-DIVISION-BY-ZERO",
+            operand.span(),
+            "a finite Rational constructor requires a nonzero denominator",
+        ));
+    }
+    let value = BigRational::new(numerator.clone(), denominator.clone());
+    trace.record(TraceEvent {
+        event: "numeric.rational.constructed",
+        rule: "TOPAL-NUM-RATIONAL-CONSTRUCT-001",
+        detail: "canonical",
+    });
+    Ok(Value::Rational(value))
 }
 
 const fn cover(first: Span, second: Span) -> Span {
@@ -5590,4 +5643,31 @@ fn checked_nat_construction_validates_the_nonnegative_constraint() {
         .evaluate("Nat -1\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-NAT-OUT-OF-RANGE");
+}
+
+#[test]
+fn closed_rational_construction_canonicalizes_components() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "(Rational (2, 4), Rational (2, -4), Rational (0, 5))\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(Rational ( 1, 2 ), Rational ( -1, 2 ), Rational ( 0, 1 ))"
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-NUM-RATIONAL-CONSTRUCT-001"))
+            .count(),
+        3
+    );
+
+    let error = Session::new()
+        .evaluate("Rational (1, 0)\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-DIVISION-BY-ZERO");
 }
