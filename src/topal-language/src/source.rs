@@ -5,8 +5,8 @@ use std::fmt::{self, Write as _};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_source::{
-    SourceText, Span, case_fold, character_at, character_count, lowercase, normalize_nfc,
-    normalize_nfd, uppercase,
+    SourceText, Span, canonically_equal, case_fold, character_at, character_count, lowercase,
+    normalize_nfc, normalize_nfd, uppercase,
 };
 use topal_syntax::{
     CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, lex, parse,
@@ -647,6 +647,39 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if let [left, Expression::Identifier(callable), right] = items.as_slice()
+                    && source.slice(*callable) == "canonically-equals"
+                {
+                    let left_span = left.span();
+                    let right_span = right.span();
+                    let left = self.evaluate_expression(source, left, trace)?;
+                    let right = self.evaluate_expression(source, right, trace)?;
+                    let (Value::String(left), Value::String(right)) = (left, right) else {
+                        return Err(diagnostic(
+                            source,
+                            "E-CANONICAL-EQUALITY-OPERANDS",
+                            cover(left_span, right_span),
+                            "canonically-equals requires two String operands",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.canonically-equals(String,String)",
+                    });
+                    let value = Value::Boolean(canonically_equal(&left, &right));
+                    trace.record(TraceEvent {
+                        event: "string.canonical-equality.compared",
+                        rule: "TOPAL-STRING-CANONICAL-EQUALITY-001",
+                        detail: if matches!(value, Value::Boolean(true)) {
+                            "equal"
+                        } else {
+                            "unequal"
+                        },
+                    });
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
                 if let Some(value) = evaluate_arithmetic_error_code(source, items, trace) {
                     return Ok(value);
                 }
@@ -4322,10 +4355,11 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 14] = [
+const ROOT_OPERATIONS: [&str; 15] = [
     "absolute",
     "byte-count",
     "case-fold",
+    "canonically-equals",
     "character-count",
     "concat",
     "empty",
@@ -6620,6 +6654,25 @@ fn case_fold_uses_full_locale_independent_unicode_mapping() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-STRING-CASE-FOLD-001"))
+    );
+}
+
+#[test]
+fn canonical_string_equality_preserves_exact_equality_distinction() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "composed is \"é\"\ndecomposed is \"e\u{301}\"\n(composed = decomposed, composed canonically-equals decomposed, composed canonically-equals \"e\")\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(false, true, false)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-STRING-CANONICAL-EQUALITY-001"))
+            .count(),
+        2
     );
 }
 

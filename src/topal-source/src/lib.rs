@@ -84,6 +84,14 @@ pub fn case_fold(text: &str) -> String {
     text.case_fold().collect()
 }
 
+/// Tests Unicode canonical equivalence without changing either input.
+#[must_use]
+pub fn canonically_equal(left: &str, right: &str) -> bool {
+    use unicode_normalization::UnicodeNormalization as _;
+
+    left.nfd().eq(right.nfd())
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Span {
     pub start: usize,
@@ -231,6 +239,12 @@ mod tests {
     #[test]
     fn applies_full_default_unicode_case_folding() {
         assert_eq!(case_fold("Straße Σς"), "strasse σσ");
+    }
+
+    #[test]
+    fn compares_canonical_unicode_equivalence() {
+        assert!(canonically_equal("é", "e\u{301}"));
+        assert!(!canonically_equal("é", "e"));
     }
 
     #[test]
