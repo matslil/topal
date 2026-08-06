@@ -669,6 +669,7 @@ impl Session {
                 {
                     let (value, selection, classifier) = match source.slice(*domain) {
                         "Int" => (Value::Int(BigInt::from(0)), "root.zero(Int)", "Int"),
+                        "Nat" => (Value::Int(BigInt::from(0)), "root.zero(Nat)", "Nat"),
                         "Rational" => (
                             Value::Rational(BigRational::from_integer(BigInt::from(0))),
                             "root.zero(Rational)",
@@ -703,6 +704,7 @@ impl Session {
                 {
                     let (value, selection, classifier) = match source.slice(*domain) {
                         "Int" => (Value::Int(BigInt::from(1)), "root.one(Int)", "Int"),
+                        "Nat" => (Value::Int(BigInt::from(1)), "root.one(Nat)", "Nat"),
                         "Rational" => (
                             Value::Rational(BigRational::from_integer(BigInt::from(1))),
                             "root.one(Rational)",
@@ -5234,13 +5236,13 @@ fn exact_numeric_zero_uses_explicit_domain() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            "(zero Int, zero Rational, one Int, one Rational)\n",
+            "(zero Int, zero Nat, zero Rational, one Int, one Nat, one Rational)\n",
             &mut trace,
         )
         .unwrap();
     assert_eq!(
         value.to_string(),
-        "(0, Rational ( 0, 1 ), 1, Rational ( 1, 1 ))"
+        "(0, 0, Rational ( 0, 1 ), 1, 1, Rational ( 1, 1 ))"
     );
     assert!(trace.iter().any(|event| event.contains("root.zero(Int)")));
     assert!(
@@ -5249,6 +5251,8 @@ fn exact_numeric_zero_uses_explicit_domain() {
             .any(|event| event.contains("root.zero(Rational)"))
     );
     assert!(trace.iter().any(|event| event.contains("root.one(Int)")));
+    assert!(trace.iter().any(|event| event.contains("root.zero(Nat)")));
+    assert!(trace.iter().any(|event| event.contains("root.one(Nat)")));
     assert!(
         trace
             .iter()

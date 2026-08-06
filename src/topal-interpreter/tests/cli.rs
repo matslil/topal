@@ -2076,13 +2076,15 @@ fn every_mode_constructs_exact_numeric_zero() {
         assert!(
             output
                 .stdout
-                .ends_with(b"(0, Rational ( 0, 1 ), 1, Rational ( 1, 1 ))\n")
+                .ends_with(b"(0, 0, Rational ( 0, 1 ), 1, 1, Rational ( 1, 1 ))\n")
         );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("root.zero(Int)"));
     assert!(trace.contains("root.zero(Rational)"));
     assert!(trace.contains("root.one(Int)"));
+    assert!(trace.contains("root.zero(Nat)"));
+    assert!(trace.contains("root.one(Nat)"));
     assert!(trace.contains("root.one(Rational)"));
 }
 
