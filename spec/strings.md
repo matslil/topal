@@ -132,6 +132,14 @@ linear continuation into the function scope; the caller binding is consumed.
 The callee may traverse the parameter with `foreach`, and no source-level copy
 of the continuation is created by argument evaluation or debugger history.
 
+### TOPAL-STRING-CHARACTERS-CLOSE-001 — Abandoned built-in traversal
+
+If a transferred `Generator Character Unit Unit` parameter leaves function
+scope without being traversed or returned, its continuation is abandoned and
+closed at that boundary. The built-in Character generator accepts the intrinsic
+close, yields no further values, returns Unit, and leaves the caller binding
+consumed. Traces and debugger history shall distinguish closure from exhaustion.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count

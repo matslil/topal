@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 74);
+    assert_eq!(examples.len(), 75);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2476,6 +2476,17 @@ fn every_mode_transfers_generator_parameter() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-STRING-CHARACTERS-PARAMETER-001"));
     assert!(trace.contains("generator.parameter.transferred"));
+}
+
+#[test]
+fn every_mode_closes_abandoned_generator_parameter() {
+    let source = include_str!("../../../examples/interpreter/string-character-generator-close.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-STRING-CHARACTERS-CLOSE-001"));
+    assert!(trace.contains("generator.closed"));
 }
 
 #[test]

@@ -1067,3 +1067,11 @@ binding into a matching ordinary function parameter under
 `TOPAL-STRING-CHARACTERS-PARAMETER-001`. The caller binding shall be consumed,
 and the callee may traverse the single continuation. Formal traces, LSP
 validation, and reversible debugger history shall cover the commented example.
+
+## TOPAL-INTP-SUBSET-129 — Abandoned String Character generator closure
+
+All interpreter modes shall close a transferred but unconsumed
+`Generator Character Unit Unit` parameter at function-scope exit under
+`TOPAL-STRING-CHARACTERS-CLOSE-001`. The caller binding shall remain consumed;
+formal traces and reversible debugger history shall distinguish close from
+ordinary exhaustion, and LSP validation shall accept the commented example.
