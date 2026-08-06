@@ -124,6 +124,14 @@ source use of that binding shall be rejected as an already-consumed generator,
 not resolved as an ordinary value or silently restarted. Diagnostics shall
 identify the consumed binding and may suggest constructing a fresh generator.
 
+### TOPAL-STRING-CHARACTERS-PARAMETER-001 — Generator parameter transfer
+
+`Generator Character Unit Unit` is a valid ordinary function parameter
+classifier. Passing a named generator binding to such a parameter transfers its
+linear continuation into the function scope; the caller binding is consumed.
+The callee may traverse the parameter with `foreach`, and no source-level copy
+of the continuation is created by argument evaluation or debugger history.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count

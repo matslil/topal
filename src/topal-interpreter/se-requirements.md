@@ -1059,3 +1059,11 @@ return Unit under `TOPAL-STRING-CHARACTERS-FOREACH-001`. Non-Unit results shall
 produce a source-located diagnostic rather than being silently discarded. The
 commented examples shall discard demonstration conversions explicitly; LSP and
 debugger validation shall accept the corrected examples.
+
+## TOPAL-INTP-SUBSET-128 — String Character generator parameters
+
+All interpreter modes shall transfer a named `Generator Character Unit Unit`
+binding into a matching ordinary function parameter under
+`TOPAL-STRING-CHARACTERS-PARAMETER-001`. The caller binding shall be consumed,
+and the callee may traverse the single continuation. Formal traces, LSP
+validation, and reversible debugger history shall cover the commented example.
