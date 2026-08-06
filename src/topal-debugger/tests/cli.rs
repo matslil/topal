@@ -1143,6 +1143,23 @@ fn records_reversible_generator_parameter_transfer() {
 }
 
 #[test]
+fn records_reversible_abandoned_generator_close() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}string-character-generator-close.debug"),
+            &format!("{root}string-character-generator-close.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-STRING-CHARACTERS-CLOSE-001"));
+    assert!(stdout.contains("generator.closed"));
+}
+
+#[test]
 fn records_consumed_generator_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

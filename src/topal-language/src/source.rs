@@ -1282,6 +1282,9 @@ impl Session {
                             ExecutionStep::Returned { value, span } => break (value, span),
                         }
                     };
+                    if function.result != "Generator Character Unit Unit" {
+                        close_remaining_character_generators(&mut function_scope, trace);
+                    }
                     if !value_has_classifier(&value, &function.result) {
                         return Err(diagnostic(
                             &function.source,
@@ -2657,6 +2660,26 @@ fn consume_generator_argument(source: &SourceText, session: &mut Session, expres
         session.bindings.remove(argument_name);
         session.declared_names.remove(argument_name);
         session.consumed_names.insert(argument_name.to_owned());
+    }
+}
+
+fn close_remaining_character_generators(session: &mut Session, trace: &mut impl TraceSink) {
+    let names = session
+        .bindings
+        .iter()
+        .filter_map(|(name, value)| {
+            matches!(value, Value::CharacterGenerator(_)).then_some(name.clone())
+        })
+        .collect::<Vec<_>>();
+    for name in names {
+        session.bindings.remove(&name);
+        session.declared_names.remove(&name);
+        session.consumed_names.insert(name.clone());
+        trace.record(TraceEvent {
+            event: "generator.closed",
+            rule: "TOPAL-STRING-CHARACTERS-CLOSE-001",
+            detail: &name,
+        });
     }
 }
 
@@ -7081,6 +7104,23 @@ fn generator_parameter_transfers_linear_continuation() {
         trace
             .iter()
             .any(|event| event.contains("generator.parameter.transferred"))
+    );
+}
+
+#[test]
+fn abandoned_generator_parameter_closes_at_function_boundary() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "ignore is fn (generated : Generator Character Unit Unit) -> Unit\n  ()\ngenerated is characters \"Topal\"\nignore generated\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-STRING-CHARACTERS-CLOSE-001"))
     );
 }
 
