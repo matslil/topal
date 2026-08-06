@@ -94,6 +94,13 @@ approximation or machine-width exponent is introduced.
 For finite `a : Rational`, prefix `-` selects the total, pure root overload
 `Rational -> Rational` and returns the canonical additive inverse of `a`.
 
+### TOPAL-NUM-ABS-001 — Finite exact absolute value
+
+For finite `a : Int` or `a : Rational`, `absolute a` selects the corresponding
+total, pure root overload and returns `a` when it is nonnegative or its exact
+additive inverse otherwise. The result retains the operand's numeric domain,
+does not convert or round, and cannot overflow.
+
 ### TOPAL-NUM-RAT-ADD-001 — Finite exact rational addition
 
 For finite `a, b : Rational`, binary `+` selects the total, pure root overload

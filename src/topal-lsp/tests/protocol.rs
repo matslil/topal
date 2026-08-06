@@ -73,6 +73,6 @@ fn stdio_transcript_initializes_publishes_and_shuts_down() {
         "E-UNKNOWN-TOKEN"
     );
     assert_eq!(messages[2]["id"], 3);
-    assert_eq!(messages[2]["result"]["items"][2]["label"], "concat");
+    assert_eq!(messages[2]["result"]["items"][3]["label"], "concat");
     assert_eq!(messages[3]["id"], 2);
 }

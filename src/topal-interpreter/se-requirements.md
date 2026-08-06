@@ -707,3 +707,10 @@ All interpreter modes shall implement `/%` for Int operands under
 `Result ((Int, Int), lang arithmetic ArithmeticErrorCode)`. Literal and dynamic
 zero handling, LSP highlighting, test traces, and reversible debugger history
 shall parallel `%` while retaining the distinct reporting overload.
+
+## TOPAL-INTP-SUBSET-084 — Exact numeric absolute value
+
+All interpreter modes shall implement `absolute` for finite Int and Rational
+under `TOPAL-NUM-ABS-001`, retaining the operand domain. LSP completion, test
+traces, reversible debugger history, and a commented example shall expose both
+overload selections.

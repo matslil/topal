@@ -667,6 +667,24 @@ fn records_reversible_int_euclidean_modulo() {
 }
 
 #[test]
+fn records_reversible_exact_numeric_absolute() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}exact-numeric-absolute.debug"),
+            &format!("{root}exact-numeric-absolute.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("root.absolute(Int)"));
+    assert!(stdout.contains("root.absolute(Rational)"));
+    assert!(stdout.contains("(42, 42, Rational ( 5, 4 ), Rational ( 5, 4 ))"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
