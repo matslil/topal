@@ -150,6 +150,11 @@ fn completion_items() -> Value {
                 "detail": "String, Utf8 -> Int"
             },
             {
+                "label": "canonically-equals",
+                "kind": 3,
+                "detail": "String, String -> Boolean"
+            },
+            {
                 "label": "case-fold",
                 "kind": 3,
                 "detail": "String -> String"
@@ -410,6 +415,7 @@ mod tests {
             [
                 "absolute",
                 "byte-count",
+                "canonically-equals",
                 "case-fold",
                 "character-count",
                 "concat",
@@ -590,7 +596,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 68);
+        assert_eq!(examples.len(), 69);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {

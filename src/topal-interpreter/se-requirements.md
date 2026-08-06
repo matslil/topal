@@ -990,3 +990,11 @@ under `TOPAL-STRING-CASE-FOLD-001`, using full deterministic Unicode default
 folding without ambient locale. Traces and reversible debugger history shall
 expose overload selection and transformation; LSP completion and validation
 shall cover the commented example.
+
+## TOPAL-INTP-SUBSET-119 — Canonical String equality
+
+All interpreter modes shall execute `left canonically-equals right` for plain
+String values under `TOPAL-STRING-CANONICAL-EQUALITY-001`, without changing
+exact `=` semantics or either operand. Traces and reversible debugger history
+shall expose overload selection and the comparison reason; LSP completion and
+validation shall cover the commented example.

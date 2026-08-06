@@ -66,6 +66,14 @@ pinned Unicode data. It returns a plain `String`, may expand characters, and
 shall neither inspect ambient locale nor add normalization evidence. This is a
 caseless-comparison basis and is not defined as lowercase conversion.
 
+### TOPAL-STRING-CANONICAL-EQUALITY-001 — Canonical equivalence
+
+For plain String values `left` and `right`, `left canonically-equals right`
+shall produce true exactly when their preserved Unicode scalar sequences are
+canonically equivalent under the language context's pinned Unicode data. It
+shall not mutate or normalize either operand. Ordinary String equality remains
+exact preserved-sequence equality and is unaffected by this operation.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count
