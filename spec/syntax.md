@@ -192,6 +192,10 @@ in one pattern denotes one identity and must match equal objects. Each `_`
 accepts exactly one required position, introduces no identity, and cannot be
 referenced. An unbound identifier is a static name-resolution error.
 
+`name : Classifier is expression` is a classified binding; the classifier is
+part of the binding's immediate context. `name is expression` remains an
+unclassified binding, and `_` cannot carry a classifier in this form.
+
 ### TOPAL-SYN-ORDER-001 — Declaration and overload order
 
 Declarations enter a lexical scope in source order. Overloads with one name are

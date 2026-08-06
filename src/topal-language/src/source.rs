@@ -189,6 +189,11 @@ pub enum ExecutionStep {
     Returned { value: Value, span: Span },
 }
 
+enum BindingOutcome {
+    Bound(Value, Span),
+    Returned(Value, Span),
+}
+
 impl Session {
     #[must_use]
     pub fn new() -> Self {
@@ -1316,31 +1321,16 @@ impl Execution {
     ) -> Result<ExecutionStep, Diagnostic> {
         let statement = &self.statements[self.cursor];
         let (value, span) = match statement {
-            Statement::Binding { name, value } => {
-                let name_text = self.source.slice(*name);
-                if session.declared_names.contains(name_text) {
-                    return Err(diagnostic(
-                        &self.source,
-                        "E-DUPLICATE-BINDING",
-                        *name,
-                        "name is already bound in this scope",
-                    ));
+            Statement::Binding {
+                name,
+                classifier,
+                value,
+            } => match self.execute_binding(session, trace, *name, *classifier, value)? {
+                BindingOutcome::Bound(value, span) => (value, span),
+                BindingOutcome::Returned(value, span) => {
+                    return Ok(ExecutionStep::Returned { value, span });
                 }
-                if let Some(declared) = declare_enum(&self.source, *name, value, session, trace)? {
-                    declared
-                } else {
-                    let evaluated = session.evaluate_expression(&self.source, value, trace)?;
-                    session.bindings.insert(name_text.to_owned(), evaluated);
-                    session.functions.remove(name_text);
-                    session.declared_names.insert(name_text.to_owned());
-                    trace.record(TraceEvent {
-                        event: "binding.created",
-                        rule: "TOPAL-SYN-BIND-001",
-                        detail: name_text,
-                    });
-                    (Value::Unit, cover(*name, value.span()))
-                }
-            }
+            },
             Statement::Function {
                 name,
                 is_static,
@@ -1414,6 +1404,74 @@ impl Execution {
             Ok(ExecutionStep::Advanced { value, span })
         }
     }
+
+    fn execute_binding(
+        &self,
+        session: &mut Session,
+        trace: &mut impl TraceSink,
+        name: Span,
+        classifier: Option<Span>,
+        initializer: &Expression,
+    ) -> Result<BindingOutcome, Diagnostic> {
+        let name_text = self.source.slice(name);
+        if session.declared_names.contains(name_text) {
+            return Err(diagnostic(
+                &self.source,
+                "E-DUPLICATE-BINDING",
+                name,
+                "name is already bound in this scope",
+            ));
+        }
+        if let Some((value, span)) = declare_enum(&self.source, name, initializer, session, trace)?
+        {
+            return Ok(BindingOutcome::Bound(value, span));
+        }
+        let evaluated = session.evaluate_expression(&self.source, initializer, trace)?;
+        if let Some(classifier) = classifier {
+            let classifier_text = self.source.slice(classifier);
+            if matches!(evaluated, Value::Error { .. }) {
+                if !self.return_allowed {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-RESULT-PROJECTION-OUTSIDE-FUNCTION",
+                        initializer.span(),
+                        "a failed Result cannot propagate from top-level execution",
+                    ));
+                }
+                trace.record(TraceEvent {
+                    event: "result.error.projected",
+                    rule: "TOPAL-TYPE-RESULT-PROJECT-001",
+                    detail: name_text,
+                });
+                return Ok(BindingOutcome::Returned(evaluated, initializer.span()));
+            }
+            if !value_has_classifier(&evaluated, classifier_text) {
+                return Err(diagnostic(
+                    &self.source,
+                    "E-BINDING-CLASSIFIER",
+                    initializer.span(),
+                    format!("initializer does not satisfy `{classifier_text}`"),
+                ));
+            }
+            trace.record(TraceEvent {
+                event: "result.success.projected",
+                rule: "TOPAL-TYPE-RESULT-PROJECT-001",
+                detail: name_text,
+            });
+        }
+        session.bindings.insert(name_text.to_owned(), evaluated);
+        session.functions.remove(name_text);
+        session.declared_names.insert(name_text.to_owned());
+        trace.record(TraceEvent {
+            event: "binding.created",
+            rule: "TOPAL-SYN-BIND-001",
+            detail: name_text,
+        });
+        Ok(BindingOutcome::Bound(
+            Value::Unit,
+            cover(name, initializer.span()),
+        ))
+    }
 }
 
 const fn cover(first: Span, second: Span) -> Span {
@@ -1425,7 +1483,7 @@ const fn cover(first: Span, second: Span) -> Span {
 
 fn statement_span(statement: &Statement) -> Span {
     match statement {
-        Statement::Binding { name, value } => cover(*name, value.span()),
+        Statement::Binding { name, value, .. } => cover(*name, value.span()),
         Statement::Function { span, .. } => *span,
         Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
@@ -4575,4 +4633,29 @@ fn qualified_error_code_pattern_selects_without_using_domain() {
     assert!(trace.iter().any(|event| {
         event.contains("error.code.matched") && event.contains("TOPAL-DECISION-ERROR-CODE-001")
     }));
+}
+
+#[test]
+fn classified_binding_projects_success_and_propagates_error() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\nproject is fn (denominator : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  quotient : Rational is 1.0 divide denominator\n  quotient + 1.0\n(project 2.0, project 0.0)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(Rational ( 3, 2 ), Error ( domain is root./(Rational,Rational), code is division-by-zero ))"
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("result.success.projected"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("result.error.projected"))
+    );
 }
