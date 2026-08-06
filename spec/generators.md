@@ -23,9 +23,16 @@ Yield`, `resumes Resume`, and `-> Return` clauses, shall introduce a callable
 resumable function with those four classifiers. Applying it binds the initial
 operand and produces a fresh linear `Generator Yield Resume Return` value.
 
-The first executable subset is conforming only in the root namespace, for one `Character` input, one
-discarded `_ is yield value`, and a final Unit expression, with `Character`,
-`Unit`, and `Unit` as the yield, resume, and return classifiers respectively.
-Its generator provenance is the declaration's qualified name. An intrinsic
-error raised while executing this root declaration has `Error.domain = root`;
-that domain is independent of the generator provenance.
+The first executable subset is conforming only in the root namespace, for one
+`Character` input, one or more discarded `_ is yield value` statements, and a
+final Unit expression, with `Character`, `Unit`, and `Unit` as the yield,
+resume, and return classifiers respectively. Its generator provenance is the
+declaration's qualified name. An intrinsic error raised while executing this
+root declaration has `Error.domain = root`; that domain is independent of the
+generator provenance.
+
+### TOPAL-GENERATOR-FOREACH-001 — Custom Unit-resumed traversal
+
+Direct foreach over a custom `Generator Character Unit Unit` shall observe its
+yields in source order, invoke the Unit-returning action once for each value,
+resume with Unit after every action, and produce the generator's final Unit.

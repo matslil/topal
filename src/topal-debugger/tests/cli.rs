@@ -1178,13 +1178,13 @@ fn records_reversible_generator_error_code_selection() {
 }
 
 #[test]
-fn records_custom_single_yield_generator_reversibly() {
+fn records_custom_multiple_yield_generator_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-single-yield-generator.debug"),
-            &format!("{root}custom-single-yield-generator.t"),
+            &format!("{root}custom-multiple-yield-generator.debug"),
+            &format!("{root}custom-multiple-yield-generator.t"),
         ])
         .output()
         .unwrap();
@@ -1194,6 +1194,8 @@ fn records_custom_single_yield_generator_reversibly() {
     assert!(stdout.contains("generator.declared"));
     assert!(stdout.contains("generator.started"));
     assert!(stdout.contains("generator.yielded"));
+    assert_eq!(stdout.matches("generator.yielded").count(), 2);
+    assert_eq!(stdout.matches("generator.resumed").count(), 2);
 }
 
 #[test]

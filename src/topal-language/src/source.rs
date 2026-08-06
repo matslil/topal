@@ -1211,35 +1211,36 @@ impl Session {
                     generator_scope
                         .bindings
                         .insert(generator.parameter.0.clone(), argument);
-                    let yielded_expression =
-                        discarded_yield_expression(&generator.source, &generator.body)
+                    let yielded_expressions =
+                        discarded_yield_expressions(&generator.source, &generator.body)
                             .expect("generator declarations validate their restricted body");
                     trace.record(TraceEvent {
                         event: "generator.started",
                         rule: "TOPAL-GENERATOR-DECLARATION-001",
                         detail: name,
                     });
-                    let yielded = generator_scope.evaluate_expression(
-                        &generator.source,
-                        yielded_expression,
-                        trace,
-                    )?;
-                    if !value_has_classifier(&yielded, "Character") {
-                        return Err(diagnostic(
+                    let mut generated = Vec::with_capacity(yielded_expressions.len());
+                    for yielded_expression in yielded_expressions {
+                        let yielded = generator_scope.evaluate_expression(
                             &generator.source,
-                            "E-GENERATOR-YIELD-TYPE",
-                            yielded_expression.span(),
-                            format!("generator `{name}` must yield `Character`"),
-                        ));
+                            yielded_expression,
+                            trace,
+                        )?;
+                        if !value_has_classifier(&yielded, "Character") {
+                            return Err(diagnostic(
+                                &generator.source,
+                                "E-GENERATOR-YIELD-TYPE",
+                                yielded_expression.span(),
+                                format!("generator `{name}` must yield `Character`"),
+                            ));
+                        }
+                        let Value::String(yielded) = yielded else {
+                            unreachable!("Character values use the String representation")
+                        };
+                        generated.push(yielded);
                     }
-                    let Value::String(yielded) = yielded else {
-                        unreachable!("Character values use the String representation")
-                    };
                     let origin = format!("root.{name}");
-                    let value = Value::CharacterGenerator {
-                        generated: vec![yielded],
-                        origin,
-                    };
+                    let value = Value::CharacterGenerator { generated, origin };
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -1937,7 +1938,7 @@ impl Execution {
         body: &[Statement],
         span: Span,
     ) -> Result<(Value, Span), Diagnostic> {
-        let generated = match source {
+        let (generated, origin) = match source {
             Expression::Identifier(name) => {
                 let name_text = self.source.slice(*name);
                 let value = session.bindings.remove(name_text).ok_or_else(|| {
@@ -1947,7 +1948,7 @@ impl Execution {
                         diagnostic(&self.source, "E-UNBOUND-NAME", *name, "name is not bound")
                     }
                 })?;
-                let Value::CharacterGenerator { generated, .. } = value else {
+                let Value::CharacterGenerator { generated, origin } = value else {
                     return Err(foreach_source_diagnostic(&self.source, source.span()));
                 };
                 session.declared_names.remove(name_text);
@@ -1957,7 +1958,7 @@ impl Execution {
                     rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
                     detail: name_text,
                 });
-                generated
+                (generated, origin)
             }
             Expression::Application { items, .. } => {
                 let [Expression::Identifier(operation), text] = items.as_slice() else {
@@ -1975,9 +1976,17 @@ impl Execution {
                         "characters requires a String operand",
                     ));
                 };
-                characters(&text_value).map(str::to_owned).collect()
+                (
+                    characters(&text_value).map(str::to_owned).collect(),
+                    "root.characters".to_owned(),
+                )
             }
             _ => return Err(foreach_source_diagnostic(&self.source, source.span())),
+        };
+        let traversal_rule = if origin == "root.characters" {
+            "TOPAL-STRING-CHARACTERS-FOREACH-001"
+        } else {
+            "TOPAL-GENERATOR-FOREACH-001"
         };
         let binding_name = self.source.slice(binding).to_owned();
         for character in &generated {
@@ -1988,7 +1997,7 @@ impl Execution {
             iteration.declared_names.insert(binding_name.clone());
             trace.record(TraceEvent {
                 event: "generator.yielded",
-                rule: "TOPAL-STRING-CHARACTERS-FOREACH-001",
+                rule: traversal_rule,
                 detail: character,
             });
             let mut body_execution = Self {
@@ -2016,13 +2025,13 @@ impl Execution {
             }
             trace.record(TraceEvent {
                 event: "generator.resumed",
-                rule: "TOPAL-STRING-CHARACTERS-FOREACH-001",
+                rule: traversal_rule,
                 detail: "Unit",
             });
         }
         trace.record(TraceEvent {
             event: "generator.returned",
-            rule: "TOPAL-STRING-CHARACTERS-FOREACH-001",
+            rule: traversal_rule,
             detail: "Unit",
         });
         Ok((Value::Unit, span))
@@ -2225,12 +2234,12 @@ impl Execution {
                 "the implemented generator subset requires `Character -> Generator Character Unit Unit`",
             ));
         }
-        if discarded_yield_expression(&self.source, body).is_none() {
+        if discarded_yield_expressions(&self.source, body).is_none() {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-BODY",
                 span,
-                "the implemented generator subset requires one `_ is yield value` followed by `()`",
+                "the implemented generator subset requires one or more `_ is yield value` statements followed by `()`",
             ));
         }
         session.generators.insert(
@@ -2804,24 +2813,37 @@ fn statement_span(statement: &Statement) -> Span {
     }
 }
 
-fn discarded_yield_expression<'a>(
+fn discarded_yield_expressions<'a>(
     source: &SourceText,
     body: &'a [Statement],
-) -> Option<&'a Expression> {
-    let [
-        Statement::Discard {
+) -> Option<Vec<&'a Expression>> {
+    if !matches!(
+        body.last(),
+        Some(Statement::Expression(Expression::Unit(_)))
+    ) {
+        return None;
+    }
+    let mut yielded_expressions = Vec::new();
+    for statement in &body[..body.len().saturating_sub(1)] {
+        let Statement::Discard {
             value: Expression::Application { items, .. },
             ..
-        },
-        Statement::Expression(Expression::Unit(_)),
-    ] = body
-    else {
+        } = statement
+        else {
+            return None;
+        };
+        let [Expression::Identifier(keyword), yielded] = items.as_slice() else {
+            return None;
+        };
+        if source.slice(*keyword) != "yield" {
+            return None;
+        }
+        yielded_expressions.push(yielded);
+    }
+    if yielded_expressions.is_empty() {
         return None;
-    };
-    let [Expression::Identifier(keyword), yielded] = items.as_slice() else {
-        return None;
-    };
-    (source.slice(*keyword) == "yield").then_some(yielded)
+    }
+    Some(yielded_expressions)
 }
 
 fn foreach_source_diagnostic(source: &SourceText, span: Span) -> Diagnostic {
@@ -7406,7 +7428,7 @@ fn named_single_yield_generator_is_traversable() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            "once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  ()\ngenerated is once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            "once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  _ is yield initial\n  ()\ngenerated is once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
             &mut trace,
         )
         .unwrap();
@@ -7426,7 +7448,7 @@ fn named_single_yield_generator_is_traversable() {
             .iter()
             .filter(|event| event.contains("generator.yielded"))
             .count(),
-        1
+        2
     );
 }
 
