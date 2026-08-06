@@ -68,3 +68,5 @@ case and bind the complete Error unchanged.
 When the statically recorded Result contract contains a closed set of code
 vocabularies, one `Ok` matcher plus exactly every qualified code alternative is
 also exhaustive without a generic Error fallback.
+Repeating one qualified code alternative is a diagnostic because every later
+occurrence is unreachable; duplicates never contribute to exhaustiveness.

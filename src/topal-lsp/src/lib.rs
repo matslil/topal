@@ -431,6 +431,22 @@ mod tests {
     }
 
     #[test]
+    fn publishes_duplicate_error_code_pattern_diagnostic() {
+        let mut server = Server::default();
+        let output = server.handle(&json!({
+            "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///duplicate-result.t", "version": 1,
+                "text": "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error ( code is lang arithmetic division-by-zero ) then \"first\"\n    Error ( code is lang arithmetic division-by-zero ) then \"second\"\n    Error problem then \"other\""
+            }}
+        }));
+        assert_eq!(
+            output[0]["params"]["diagnostics"][0]["code"],
+            "E-DUPLICATE-ERROR-CODE-PATTERN"
+        );
+    }
+
+    #[test]
     fn change_replaces_content_and_close_clears_diagnostics() {
         let mut server = Server::default();
         let _ = server.handle(&json!({

@@ -3113,6 +3113,9 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
         "E-INCOMPLETE-ERROR-CODE-DECISION" => {
             Some("add each missing qualified code pattern, or add an `Error problem` fallback")
         }
+        "E-DUPLICATE-ERROR-CODE-PATTERN" => {
+            Some("remove the later duplicate pattern or replace it with a missing alternative")
+        }
         _ => None,
     }
 }

@@ -447,6 +447,14 @@ impl Parser<'_> {
             self.cursor += 2;
             rules.push(self.decision_rule()?);
         }
+        if let Some((span, code)) = self.duplicate_arithmetic_code(&rules) {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-DUPLICATE-ERROR-CODE-PATTERN",
+                span,
+                message: format!("arithmetic error code `{code}` is matched more than once"),
+            });
+            return None;
+        }
         let complete = rules
             .iter()
             .any(|rule| matches!(&rule.matcher, DecisionMatcher::Otherwise(_)))
@@ -557,6 +565,24 @@ impl Parser<'_> {
         .into_iter()
         .filter(|code| !present.contains(code))
         .collect()
+    }
+
+    fn duplicate_arithmetic_code(&self, rules: &[DecisionRule]) -> Option<(Span, &str)> {
+        let mut seen = std::collections::BTreeSet::new();
+        rules.iter().find_map(|rule| match rule.matcher {
+            DecisionMatcher::ErrorCode {
+                namespace,
+                vocabulary,
+                code,
+                ..
+            } if self.source.slice(namespace) == "lang"
+                && self.source.slice(vocabulary) == "arithmetic" =>
+            {
+                let name = self.source.slice(code);
+                (!seen.insert(name)).then_some((code, name))
+            }
+            _ => None,
+        })
     }
 
     fn decision_rule(&mut self) -> Option<DecisionRule> {
@@ -1555,5 +1581,18 @@ mod tests {
         assert!(diagnostic.message.contains("out-of-range"));
         assert!(diagnostic.message.contains("not-representable"));
         assert!(diagnostic.message.contains("indeterminate"));
+    }
+
+    #[test]
+    fn duplicate_arithmetic_error_code_pattern_is_rejected() {
+        let source = SourceText::new(
+            "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error ( code is lang arithmetic division-by-zero ) then \"first\"\n    Error ( code is lang arithmetic division-by-zero ) then \"second\"\n    Error problem then \"other\"",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        let diagnostic = parsed.diagnostics.first().unwrap();
+        assert_eq!(diagnostic.code, "E-DUPLICATE-ERROR-CODE-PATTERN");
+        assert!(diagnostic.message.contains("division-by-zero"));
+        assert_eq!(source.slice(diagnostic.span), "division-by-zero");
     }
 }
