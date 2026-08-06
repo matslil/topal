@@ -169,7 +169,7 @@ pub struct Execution {
     source: SourceText,
     statements: Vec<Statement>,
     cursor: usize,
-    return_allowed: bool,
+    return_classifier: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -262,7 +262,7 @@ impl Session {
             source,
             statements: parsed.statements,
             cursor: 0,
-            return_allowed: false,
+            return_classifier: None,
         })
     }
 
@@ -712,7 +712,7 @@ impl Session {
                         source: function.source.clone(),
                         statements: function.body.clone(),
                         cursor: 0,
-                        return_allowed: true,
+                        return_classifier: Some(function.result.clone()),
                     };
                     let (value, result_span) = loop {
                         match body_execution.step(&mut function_scope, trace)? {
@@ -1360,7 +1360,7 @@ impl Execution {
                 (Value::Unit, cover(*span, value.span()))
             }
             Statement::Return { keyword, value } => {
-                if !self.return_allowed {
+                if self.return_classifier.is_none() {
                     return Err(diagnostic(
                         &self.source,
                         "E-RETURN-OUTSIDE-FUNCTION",
@@ -1430,12 +1430,22 @@ impl Execution {
         if let Some(classifier) = classifier {
             let classifier_text = self.source.slice(classifier);
             if matches!(evaluated, Value::Error { .. }) {
-                if !self.return_allowed {
+                let Some(return_classifier) = &self.return_classifier else {
                     return Err(diagnostic(
                         &self.source,
                         "E-RESULT-PROJECTION-OUTSIDE-FUNCTION",
                         initializer.span(),
                         "a failed Result cannot propagate from top-level execution",
+                    ));
+                };
+                if result_success_classifier(return_classifier).is_none() {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-RESULT-PROJECTION-INFALLIBLE",
+                        initializer.span(),
+                        format!(
+                            "cannot propagate a failed Result from a function returning `{return_classifier}`"
+                        ),
                     ));
                 }
                 trace.record(TraceEvent {
@@ -3096,6 +3106,10 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
         "E-MIXED-PRODUCT-FIELDS" => {
             Some("nest a tuple in a labeled field, or place a record inside a tuple")
         }
+        "E-RESULT-PROJECTION-INFALLIBLE" => {
+            Some("change the function result to `Result (T, Codes)`, or match the Error explicitly")
+        }
+        "E-RESULT-PROJECTION-OUTSIDE-FUNCTION" => Some("match the Result explicitly at top level"),
         _ => None,
     }
 }
@@ -4657,5 +4671,22 @@ fn classified_binding_projects_success_and_propagates_error() {
         trace
             .iter()
             .any(|event| event.contains("result.error.projected"))
+    );
+}
+
+#[test]
+fn classified_binding_rejects_error_propagation_from_infallible_function() {
+    let error = Session::new()
+        .evaluate(
+            "divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\nbad is fn (denominator : Rational) -> Rational\n  quotient : Rational is 1.0 divide denominator\n  quotient\nbad 0.0\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RESULT-PROJECTION-INFALLIBLE");
+    assert!(error.message.contains("returning `Rational`"));
+    assert!(
+        error
+            .help
+            .is_some_and(|help| help.contains("match the Error"))
     );
 }

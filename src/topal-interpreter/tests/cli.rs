@@ -1925,6 +1925,18 @@ fn every_mode_projects_result_through_classified_binding() {
 }
 
 #[test]
+fn infallible_projection_diagnostic_explains_available_repairs() {
+    let source = "divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\nbad is fn (denominator : Rational) -> Rational\n  quotient : Rational is 1.0 divide denominator\n  quotient\nbad 0.0\n";
+    let output = run(&[], source);
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-RESULT-PROJECTION-INFALLIBLE]"));
+    assert!(diagnostic.contains("cannot propagate a failed Result"));
+    assert!(diagnostic.contains("help: change the function result to `Result (T, Codes)`"));
+    assert!(diagnostic.contains("quotient : Rational is 1.0 divide denominator"));
+}
+
+#[test]
 fn all_modes_preserve_literal_string_contents() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, "text\"He said \"hello\". {value} \\n\"text\n");

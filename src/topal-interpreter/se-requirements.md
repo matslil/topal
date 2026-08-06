@@ -650,3 +650,6 @@ requires its successful classifier under `TOPAL-TYPE-RESULT-PROJECT-001`.
 Success shall create the binding; failure shall return the complete Error from
 the enclosing compatible fallible function without executing later statements.
 Test traces and reversible debugger history shall distinguish both paths.
+Failure projection from an infallible or top-level context shall produce a
+source-located diagnostic with actionable help rather than a later generic
+result-classifier mismatch.
