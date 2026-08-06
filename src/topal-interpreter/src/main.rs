@@ -136,6 +136,9 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
         if line.trim().is_empty() && pending.is_empty() {
             continue;
         }
+        if pending.is_empty() && line.trim_start().starts_with('#') {
+            continue;
+        }
         pending.push_str(&line);
         if line.chars().next().is_some_and(char::is_whitespace) && Session::awaits_dedent(&pending)
         {
@@ -153,6 +156,9 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
                         | "E-EXPECTED-RPAREN"
                         | "E-EXPECTED-FUNCTION-BODY"
                         | "E-EXPECTED-FOREACH-BODY"
+                        | "E-UNSUPPORTED-GENERATOR-HEADER"
+                        | "E-EXPECTED-INDENTED-GENERATOR-HEADER"
+                        | "E-EXPECTED-GENERATOR-BODY"
                         | "E-UNSUPPORTED-INCOMPLETE-DECISION"
                         | "E-INCOMPLETE-ERROR-CODE-DECISION"
                 ) => {}
