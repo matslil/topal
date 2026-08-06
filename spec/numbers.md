@@ -44,6 +44,8 @@ For finite `a : Int`, prefix `-` selects a total, pure root overload
 finite and cannot overflow. Adjacent `-a` numeric source is instead literal
 construction under `TOPAL-NUM-LITERAL-001`; both forms produce the same `Int`
 value but take distinct syntactic and semantic paths.
+The named application `negate a` selects the corresponding root operation and
+returns the same additive inverse while remaining separately traceable.
 
 ### TOPAL-NUM-NAT-001 — Nonnegative integer refinement
 
@@ -93,6 +95,8 @@ approximation or machine-width exponent is introduced.
 
 For finite `a : Rational`, prefix `-` selects the total, pure root overload
 `Rational -> Rational` and returns the canonical additive inverse of `a`.
+The named `negate a` operation returns the same canonical value through an
+ordinary named-application path.
 
 ### TOPAL-NUM-ABS-001 — Finite exact absolute value
 

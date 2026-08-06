@@ -685,6 +685,24 @@ fn records_reversible_exact_numeric_absolute() {
 }
 
 #[test]
+fn records_reversible_named_exact_numeric_negation() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}exact-numeric-negate.debug"),
+            &format!("{root}exact-numeric-negate.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("root.negate(Int)"));
+    assert!(stdout.contains("root.negate(Rational)"));
+    assert!(stdout.contains("(-42, 42, Rational ( -5, 4 ), Rational ( 5, 4 ))"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
