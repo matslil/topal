@@ -323,7 +323,9 @@ counts the same `Character` entries as `character-count text`.
 
 ## Traversal, indexing, and selection
 
-Character traversal produces a finite generator of `Character`:
+Character traversal has type `String -> Generator Character Unit Unit`: it
+produces a finite generator of `Character`, accepts `Unit` when resumed, and
+returns `Unit` after its last character:
 
 ```topal
 character-generator is characters text

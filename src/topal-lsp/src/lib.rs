@@ -449,6 +449,16 @@ mod tests {
             .find(|item| item["label"] == "normalize")
             .unwrap();
         assert_eq!(normalize["detail"], "String, NFC -> String");
+        let characters = output[0]["result"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|item| item["label"] == "characters")
+            .unwrap();
+        assert_eq!(
+            characters["detail"],
+            "String -> Generator Character Unit Unit"
+        );
         assert!(
             output[0]["result"]["items"]
                 .as_array()

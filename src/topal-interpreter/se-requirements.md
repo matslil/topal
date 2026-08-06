@@ -1006,3 +1006,10 @@ All interpreter modes shall execute `characters text collect String` under
 order and reconstructing the exact preserved text. Formal traces and reversible
 debugger history shall expose each yield and collection; LSP completion and
 validation shall cover the commented example.
+
+## TOPAL-INTP-SUBSET-121 — String Character generator signature
+
+All tools shall classify `characters text` as
+`Generator Character Unit Unit`: each yield is a complete Character, resumption
+accepts Unit, and normal exhaustion returns Unit. LSP completion and validation,
+formal traces, and reversible debugger history shall use the same signature.
