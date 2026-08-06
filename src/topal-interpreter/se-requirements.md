@@ -665,3 +665,5 @@ The incomplete diagnostic shall list the missing qualified alternatives and
 offer both exhaustive patterns and a generic Error fallback as repairs.
 Repeated qualified code patterns shall be diagnosed at the later occurrence
 with actionable help and shall never count toward exhaustiveness.
+Qualified code patterns after a generic Error matcher shall be diagnosed as
+unreachable with help describing the required specific-before-fallback order.

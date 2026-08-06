@@ -455,6 +455,14 @@ impl Parser<'_> {
             });
             return None;
         }
+        if let Some(span) = Self::error_code_after_fallback(&rules) {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-UNREACHABLE-ERROR-CODE-PATTERN",
+                span,
+                message: "qualified Error-code pattern is unreachable after `Error problem`".into(),
+            });
+            return None;
+        }
         let complete = rules
             .iter()
             .any(|rule| matches!(&rule.matcher, DecisionMatcher::Otherwise(_)))
@@ -583,6 +591,19 @@ impl Parser<'_> {
             }
             _ => None,
         })
+    }
+
+    fn error_code_after_fallback(rules: &[DecisionRule]) -> Option<Span> {
+        let fallback = rules
+            .iter()
+            .position(|rule| matches!(rule.matcher, DecisionMatcher::Result { error: true, .. }))?;
+        rules
+            .iter()
+            .skip(fallback + 1)
+            .find_map(|rule| match rule.matcher {
+                DecisionMatcher::ErrorCode { span, .. } => Some(span),
+                _ => None,
+            })
     }
 
     fn decision_rule(&mut self) -> Option<DecisionRule> {
@@ -1594,5 +1615,20 @@ mod tests {
         assert_eq!(diagnostic.code, "E-DUPLICATE-ERROR-CODE-PATTERN");
         assert!(diagnostic.message.contains("division-by-zero"));
         assert_eq!(source.slice(diagnostic.span), "division-by-zero");
+    }
+
+    #[test]
+    fn error_code_pattern_after_generic_fallback_is_rejected() {
+        let source = SourceText::new(
+            "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error problem then \"other\"\n    Error ( code is lang arithmetic division-by-zero ) then \"zero\"",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        let diagnostic = parsed.diagnostics.first().unwrap();
+        assert_eq!(diagnostic.code, "E-UNREACHABLE-ERROR-CODE-PATTERN");
+        assert_eq!(
+            source.slice(diagnostic.span),
+            "Error ( code is lang arithmetic division-by-zero )"
+        );
     }
 }

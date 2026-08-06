@@ -3116,6 +3116,9 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
         "E-DUPLICATE-ERROR-CODE-PATTERN" => {
             Some("remove the later duplicate pattern or replace it with a missing alternative")
         }
+        "E-UNREACHABLE-ERROR-CODE-PATTERN" => {
+            Some("move qualified code patterns before the generic `Error problem` fallback")
+        }
         _ => None,
     }
 }

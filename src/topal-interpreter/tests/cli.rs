@@ -1969,6 +1969,17 @@ fn duplicate_error_code_pattern_points_to_unreachable_case() {
 }
 
 #[test]
+fn error_code_pattern_after_fallback_has_ordering_help() {
+    let source = "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error problem then \"other\"\n    Error ( code is lang arithmetic division-by-zero ) then \"zero\"\n";
+    let output = run(&[], source);
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-UNREACHABLE-ERROR-CODE-PATTERN]"));
+    assert!(diagnostic.contains("unreachable after `Error problem`"));
+    assert!(diagnostic.contains("help: move qualified code patterns before"));
+}
+
+#[test]
 fn all_modes_preserve_literal_string_contents() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, "text\"He said \"hello\". {value} \\n\"text\n");
