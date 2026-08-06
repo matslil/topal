@@ -185,6 +185,11 @@ fn completion_items() -> Value {
                 "detail": "Int -> Int; Rational -> Rational"
             },
             {
+                "label": "one",
+                "kind": 3,
+                "detail": "Type -> Value"
+            },
+            {
                 "label": "zero",
                 "kind": 3,
                 "detail": "Type -> Value"
@@ -395,6 +400,7 @@ mod tests {
                 "entry-count",
                 "normalize",
                 "negate",
+                "one",
                 "zero"
             ]
         );

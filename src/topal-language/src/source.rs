@@ -685,6 +685,40 @@ impl Session {
                     });
                     return Ok(value);
                 }
+                if let [
+                    Expression::Identifier(callable),
+                    Expression::Identifier(domain),
+                ] = items.as_slice()
+                    && source.slice(*callable) == "one"
+                {
+                    let (value, selection, classifier) = match source.slice(*domain) {
+                        "Int" => (Value::Int(BigInt::from(1)), "root.one(Int)", "Int"),
+                        "Rational" => (
+                            Value::Rational(BigRational::from_integer(BigInt::from(1))),
+                            "root.one(Rational)",
+                            "Rational",
+                        ),
+                        _ => {
+                            return Err(diagnostic(
+                                source,
+                                "E-NO-APPLICABLE-OVERLOAD",
+                                *domain,
+                                "one requires a supported numeric type",
+                            ));
+                        }
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: selection,
+                    });
+                    trace.record(TraceEvent {
+                        event: "numeric.one.constructed",
+                        rule: "TOPAL-NUM-ONE-001",
+                        detail: classifier,
+                    });
+                    return Ok(value);
+                }
                 if let [Expression::Identifier(callable), operand] = items.as_slice()
                     && source.slice(*callable) == "negate"
                 {
@@ -3381,7 +3415,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 9] = [
+const ROOT_OPERATIONS: [&str; 10] = [
     "absolute",
     "byte-count",
     "character-count",
@@ -3390,6 +3424,7 @@ const ROOT_OPERATIONS: [&str; 9] = [
     "entry-count",
     "normalize",
     "negate",
+    "one",
     "zero",
 ];
 
@@ -5141,13 +5176,25 @@ fn named_numeric_negate_matches_exact_additive_inverse() {
 fn exact_numeric_zero_uses_explicit_domain() {
     let mut trace = Vec::new();
     let value = Session::new()
-        .evaluate("(zero Int, zero Rational)\n", &mut trace)
+        .evaluate(
+            "(zero Int, zero Rational, one Int, one Rational)\n",
+            &mut trace,
+        )
         .unwrap();
-    assert_eq!(value.to_string(), "(0, Rational ( 0, 1 ))");
+    assert_eq!(
+        value.to_string(),
+        "(0, Rational ( 0, 1 ), 1, Rational ( 1, 1 ))"
+    );
     assert!(trace.iter().any(|event| event.contains("root.zero(Int)")));
     assert!(
         trace
             .iter()
             .any(|event| event.contains("root.zero(Rational)"))
+    );
+    assert!(trace.iter().any(|event| event.contains("root.one(Int)")));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("root.one(Rational)"))
     );
 }
