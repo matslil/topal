@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 69);
+    assert_eq!(examples.len(), 70);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2395,6 +2395,19 @@ fn every_mode_compares_canonical_string_equivalence() {
         trace.matches("TOPAL-STRING-CANONICAL-EQUALITY-001").count(),
         2
     );
+}
+
+#[test]
+fn every_mode_collects_unicode_character_traversal() {
+    let source = include_str!("../../../examples/interpreter/string-character-traversal.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with("\"a\u{301}👩‍🔬🇸🇪\"\n".as_bytes()));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("generator.yielded").count(), 3);
+    assert!(trace.contains("TOPAL-STRING-CHARACTERS-COLLECT-001"));
 }
 
 #[test]

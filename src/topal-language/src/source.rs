@@ -5,8 +5,8 @@ use std::fmt::{self, Write as _};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_source::{
-    SourceText, Span, canonically_equal, case_fold, character_at, character_count, lowercase,
-    normalize_nfc, normalize_nfd, uppercase,
+    SourceText, Span, canonically_equal, case_fold, character_at, character_count, characters,
+    lowercase, normalize_nfc, normalize_nfd, uppercase,
 };
 use topal_syntax::{
     CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, lex, parse,
@@ -647,6 +647,49 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if let [
+                    Expression::Identifier(generator),
+                    text,
+                    Expression::Identifier(collector),
+                    Expression::Identifier(result),
+                ] = items.as_slice()
+                    && source.slice(*generator) == "characters"
+                    && source.slice(*collector) == "collect"
+                    && source.slice(*result) == "String"
+                {
+                    let text_span = text.span();
+                    let text = self.evaluate_expression(source, text, trace)?;
+                    let Value::String(text) = text else {
+                        return Err(diagnostic(
+                            source,
+                            "E-CHARACTERS-OPERAND",
+                            text_span,
+                            "characters requires a String operand",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.characters(String)",
+                    });
+                    let mut collected = String::new();
+                    for character in characters(&text) {
+                        trace.record(TraceEvent {
+                            event: "generator.yielded",
+                            rule: "TOPAL-STRING-CHARACTERS-COLLECT-001",
+                            detail: character,
+                        });
+                        collected.push_str(character);
+                    }
+                    trace.record(TraceEvent {
+                        event: "string.characters.collected",
+                        rule: "TOPAL-STRING-CHARACTERS-COLLECT-001",
+                        detail: "String",
+                    });
+                    let value = Value::String(collected);
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
                 if let [left, Expression::Identifier(callable), right] = items.as_slice()
                     && source.slice(*callable) == "canonically-equals"
                 {
@@ -4355,13 +4398,15 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 15] = [
+const ROOT_OPERATIONS: [&str; 17] = [
     "absolute",
     "byte-count",
     "case-fold",
     "canonically-equals",
+    "characters",
     "character-count",
     "concat",
+    "collect",
     "empty",
     "entry-count",
     "lower",
@@ -6673,6 +6718,27 @@ fn canonical_string_equality_preserves_exact_equality_distinction() {
             .filter(|event| event.contains("TOPAL-STRING-CANONICAL-EQUALITY-001"))
             .count(),
         2
+    );
+}
+
+#[test]
+fn character_traversal_collects_the_exact_preserved_string() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate("characters \"a\u{301}👩‍🔬🇸🇪\" collect String\n", &mut trace)
+        .unwrap();
+    assert_eq!(value.to_string(), "\"a\u{301}👩‍🔬🇸🇪\"");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("generator.yielded"))
+            .count(),
+        3
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-STRING-CHARACTERS-COLLECT-001"))
     );
 }
 
