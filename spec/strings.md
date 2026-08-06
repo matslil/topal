@@ -91,7 +91,8 @@ sequence. Empty input yields no Characters and collects to `empty String`.
 yielded Character in preserved order, with `character` scoped to that invocation.
 After each body returns Unit, traversal resumes with Unit. Exhaustion returns
 Unit, including for empty input. The binding does not escape the body and each
-yielded value retains the Character constraint.
+yielded value retains the Character constraint. A body producing a non-Unit
+value is rejected rather than silently discarded.
 
 ### TOPAL-STRING-CHARACTERS-GENERATOR-001 — Named linear traversal
 

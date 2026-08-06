@@ -1051,3 +1051,11 @@ All interpreter modes shall reject reuse of a consumed named generator under
 the binding and suggests constructing a fresh generator. Reversible debugger
 history shall retain the earlier consumption and the later failure; the
 commented failing debugger example shall remain executable as a scripted test.
+
+## TOPAL-INTP-SUBSET-127 — Unit-returning foreach actions
+
+All interpreter modes shall require a direct Character `foreach` action to
+return Unit under `TOPAL-STRING-CHARACTERS-FOREACH-001`. Non-Unit results shall
+produce a source-located diagnostic rather than being silently discarded. The
+commented examples shall discard demonstration conversions explicitly; LSP and
+debugger validation shall accept the corrected examples.

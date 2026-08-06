@@ -4,4 +4,4 @@
 # directions; debugger snapshots do not duplicate the continuation.
 generated : Generator Character Unit Unit is characters "á👩‍🔬🇸🇪"
 generated foreach { character }
-  String character
+  _ is String character

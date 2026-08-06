@@ -3,6 +3,6 @@
 # named linear generator twice. Construct a fresh generator for another pass.
 generated is characters "Topal"
 generated foreach { character }
-  String character
+  _ is String character
 generated foreach { character }
-  String character
+  _ is String character

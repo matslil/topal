@@ -2427,6 +2427,23 @@ fn every_mode_foreach_consumes_character_generator() {
 }
 
 #[test]
+fn every_mode_rejects_non_unit_foreach_action() {
+    let source = "characters \"Topal\" foreach { character }\n  String character\n\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        let rendered = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            rendered.contains("E-FOREACH-ACTION-RESULT"),
+            "{arguments:?}: {rendered}"
+        );
+    }
+}
+
+#[test]
 fn every_mode_consumes_named_character_generator() {
     let source = include_str!("../../../examples/interpreter/string-named-character-generator.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
