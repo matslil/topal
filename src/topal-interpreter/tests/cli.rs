@@ -2235,12 +2235,15 @@ fn every_mode_constructs_inclusive_int_ranges() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
-        assert!(output.stdout.ends_with(b"(0 .. 10, 5 .. 5, 10 .. 0)\n"));
+        assert!(output.stdout.ends_with(b"(0 .. 10, true, false, false)\n"));
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
-    assert_eq!(trace.matches("TOPAL-RANGE-INCLUSIVE-001").count(), 3);
+    assert_eq!(trace.matches("TOPAL-RANGE-INCLUSIVE-001").count(), 2);
+    assert_eq!(trace.matches("TOPAL-RANGE-MEMBERSHIP-001").count(), 3);
     assert!(trace.contains("\"detail\":\"nonempty\""));
     assert!(trace.contains("\"detail\":\"empty\""));
+    assert!(trace.contains("\"detail\":\"accepted\""));
+    assert!(trace.contains("\"detail\":\"rejected\""));
 }
 
 #[test]

@@ -830,3 +830,11 @@ under `TOPAL-RANGE-INCLUSIVE-001`, including an empty value when bounds are
 reversed. Test traces and reversible debugger history shall distinguish
 nonempty and empty construction; LSP validation and highlighting shall accept
 the commented example.
+
+## TOPAL-INTP-SUBSET-099 — Int range membership
+
+All interpreter modes shall execute both `value in interval` and
+`interval contains value` under `TOPAL-RANGE-MEMBERSHIP-001`, with equivalent
+Boolean results and rejection from empty ranges. Test traces and reversible
+debugger history shall expose accepted and rejected decisions; LSP validation
+shall accept the updated commented range example.
