@@ -703,6 +703,24 @@ fn records_reversible_named_exact_numeric_negation() {
 }
 
 #[test]
+fn records_reversible_exact_numeric_zero() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}exact-numeric-zero.debug"),
+            &format!("{root}exact-numeric-zero.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("root.zero(Int)"));
+    assert!(stdout.contains("root.zero(Rational)"));
+    assert!(stdout.contains("(0, Rational ( 0, 1 ))"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

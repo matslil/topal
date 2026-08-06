@@ -721,3 +721,10 @@ All interpreter modes shall implement `negate` for finite Int and Rational
 under `TOPAL-NUM-NEG-001` and `TOPAL-NUM-RAT-NEG-001`. Results shall equal
 prefix negation while traces distinguish named root overload selection. LSP
 completion and reversible debugger history shall cover both domains.
+
+## TOPAL-INTP-SUBSET-086 — Exact numeric zero construction
+
+All interpreter modes shall implement `zero Int` and `zero Rational` under
+`TOPAL-NUM-ZERO-001`, retaining the explicitly named domain. LSP completion,
+test traces, reversible debugger history, and a commented example shall expose
+both type-directed root selections.
