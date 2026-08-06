@@ -105,6 +105,14 @@ total, pure root overload and returns `a` when it is nonnegative or its exact
 additive inverse otherwise. The result retains the operand's numeric domain,
 does not convert or round, and cannot overflow.
 
+### TOPAL-NUM-ZERO-001 — Exact numeric zero construction
+
+`zero Int` and `zero Rational` shall select total, pure type-directed root
+operations and construct the unique additive identity of the named exact
+numeric domain. The Int result is exact integer zero; the Rational result is
+canonical rational zero. Construction shall not infer a domain from context or
+convert an already constructed value.
+
 ### TOPAL-NUM-RAT-ADD-001 — Finite exact rational addition
 
 For finite `a, b : Rational`, binary `+` selects the total, pure root overload

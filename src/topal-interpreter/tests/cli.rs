@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 52);
+    assert_eq!(examples.len(), 53);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2065,6 +2065,19 @@ fn every_mode_executes_named_exact_numeric_negation() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("root.negate(Int)"));
     assert!(trace.contains("root.negate(Rational)"));
+}
+
+#[test]
+fn every_mode_constructs_exact_numeric_zero() {
+    let source = include_str!("../../../examples/interpreter/exact-numeric-zero.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"(0, Rational ( 0, 1 ))\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("root.zero(Int)"));
+    assert!(trace.contains("root.zero(Rational)"));
 }
 
 #[test]

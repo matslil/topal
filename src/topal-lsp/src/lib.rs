@@ -183,6 +183,11 @@ fn completion_items() -> Value {
                 "label": "negate",
                 "kind": 3,
                 "detail": "Int -> Int; Rational -> Rational"
+            },
+            {
+                "label": "zero",
+                "kind": 3,
+                "detail": "Type -> Value"
             }
         ]
     })
@@ -389,7 +394,8 @@ mod tests {
                 "empty?",
                 "entry-count",
                 "normalize",
-                "negate"
+                "negate",
+                "zero"
             ]
         );
         let normalize = output[0]["result"]["items"]
@@ -558,7 +564,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 52);
+        assert_eq!(examples.len(), 53);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {
