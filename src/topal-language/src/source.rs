@@ -174,6 +174,7 @@ impl Diagnostic {
 pub struct Session {
     bindings: BTreeMap<String, Value>,
     functions: BTreeMap<String, Vec<UserFunction>>,
+    generators: BTreeMap<String, UserGenerator>,
     declared_names: BTreeSet<String>,
     consumed_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
@@ -192,6 +193,14 @@ struct UserFunction {
     bindings: BTreeMap<String, Value>,
     termination_rule: Option<&'static str>,
     recursion_target: Option<String>,
+}
+
+#[derive(Clone)]
+struct UserGenerator {
+    source: SourceText,
+    parameter: (String, String),
+    body: Vec<Statement>,
+    bindings: BTreeMap<String, Value>,
 }
 
 #[derive(Clone)]
@@ -219,6 +228,17 @@ struct FunctionDeclaration<'a> {
     span: Span,
 }
 
+#[derive(Clone, Copy)]
+struct GeneratorDeclaration<'a> {
+    name: Span,
+    parameters: &'a [FunctionParameter],
+    yielded: Span,
+    resumed: Span,
+    result: Span,
+    body: &'a [Statement],
+    span: Span,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ExecutionStep {
     Advanced { value: Value, span: Span },
@@ -237,8 +257,8 @@ impl Session {
         Self::default()
     }
 
-    /// Report whether a complete function declaration should await a dedented
-    /// line before an interactive session submits it.
+    /// Report whether a complete block statement should await a dedented line
+    /// before an interactive session submits it.
     #[must_use]
     pub fn awaits_dedent(input: &str) -> bool {
         let Ok(source) = SourceText::new(input) else {
@@ -248,7 +268,9 @@ impl Session {
         parsed.diagnostics.is_empty()
             && matches!(
                 parsed.statements.as_slice(),
-                [Statement::Function { .. } | Statement::Foreach { .. }]
+                [Statement::Function { .. }
+                    | Statement::Generator { .. }
+                    | Statement::Foreach { .. }]
             )
     }
 
@@ -320,6 +342,7 @@ impl Session {
         let mut session = Self {
             bindings: bindings.clone(),
             functions: BTreeMap::new(),
+            generators: BTreeMap::new(),
             declared_names: bindings.keys().cloned().collect(),
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
@@ -588,6 +611,7 @@ impl Session {
                     let mut branch = Self {
                         bindings: self.bindings.clone(),
                         functions: self.functions.clone(),
+                        generators: self.generators.clone(),
                         declared_names: self.declared_names.clone(),
                         consumed_names: self.consumed_names.clone(),
                         local_function_names: self.local_function_names.clone(),
@@ -1160,6 +1184,68 @@ impl Session {
                 if items.len() == 2
                     && let Expression::Identifier(name_span) = &items[0]
                     && !self.bindings.contains_key(source.slice(*name_span))
+                    && let Some(generator) = self.generators.get(source.slice(*name_span)).cloned()
+                {
+                    let name = source.slice(*name_span);
+                    let argument_span = items[1].span();
+                    let argument = self.evaluate_expression(source, &items[1], trace)?;
+                    if !value_has_classifier(&argument, &generator.parameter.1) {
+                        return Err(diagnostic(
+                            source,
+                            "E-NO-APPLICABLE-GENERATOR",
+                            argument_span,
+                            format!("generator `{name}` requires `{}`", generator.parameter.1),
+                        ));
+                    }
+                    let mut generator_scope = Self {
+                        bindings: generator.bindings,
+                        functions: self.functions.clone(),
+                        generators: self.generators.clone(),
+                        declared_names: BTreeSet::new(),
+                        consumed_names: BTreeSet::new(),
+                        local_function_names: BTreeSet::new(),
+                        enum_types: self.enum_types.clone(),
+                        call_stack: self.call_stack.clone(),
+                        static_context: false,
+                    };
+                    generator_scope
+                        .bindings
+                        .insert(generator.parameter.0.clone(), argument);
+                    let yielded_expression =
+                        discarded_yield_expression(&generator.source, &generator.body)
+                            .expect("generator declarations validate their restricted body");
+                    trace.record(TraceEvent {
+                        event: "generator.started",
+                        rule: "TOPAL-GENERATOR-DECLARATION-001",
+                        detail: name,
+                    });
+                    let yielded = generator_scope.evaluate_expression(
+                        &generator.source,
+                        yielded_expression,
+                        trace,
+                    )?;
+                    if !value_has_classifier(&yielded, "Character") {
+                        return Err(diagnostic(
+                            &generator.source,
+                            "E-GENERATOR-YIELD-TYPE",
+                            yielded_expression.span(),
+                            format!("generator `{name}` must yield `Character`"),
+                        ));
+                    }
+                    let Value::String(yielded) = yielded else {
+                        unreachable!("Character values use the String representation")
+                    };
+                    let origin = format!("root.{name}");
+                    let value = Value::CharacterGenerator {
+                        generated: vec![yielded],
+                        origin,
+                    };
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name_span) = &items[0]
+                    && !self.bindings.contains_key(source.slice(*name_span))
                     && let Some(candidates) = self.functions.get(source.slice(*name_span)).cloned()
                 {
                     let name = source.slice(*name_span);
@@ -1242,6 +1328,7 @@ impl Session {
                     let mut function_scope = Self {
                         bindings: function.bindings,
                         functions: self.functions.clone(),
+                        generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
@@ -2092,11 +2179,87 @@ impl Execution {
         Ok((Value::Unit, span))
     }
 
+    fn declare_generator(
+        &self,
+        session: &mut Session,
+        trace: &mut impl TraceSink,
+        declaration: GeneratorDeclaration<'_>,
+    ) -> Result<(Value, Span), Diagnostic> {
+        let GeneratorDeclaration {
+            name,
+            parameters,
+            yielded,
+            resumed,
+            result,
+            body,
+            span,
+        } = declaration;
+        if !session.call_stack.is_empty() {
+            return Err(diagnostic(
+                &self.source,
+                "E-UNSUPPORTED-GENERATOR-SCOPE",
+                name,
+                "the implemented generator subset requires a root-namespace declaration",
+            ));
+        }
+        let name_text = self.source.slice(name);
+        if session.declared_names.contains(name_text) {
+            return Err(diagnostic(
+                &self.source,
+                "E-DUPLICATE-BINDING",
+                name,
+                "name is already bound in this scope",
+            ));
+        }
+        let parameter = &parameters[0];
+        let parameter_classifier = self.source.slice(parameter.classifier);
+        if parameter_classifier != "Character"
+            || self.source.slice(yielded) != "Character"
+            || self.source.slice(resumed) != "Unit"
+            || self.source.slice(result) != "Unit"
+        {
+            return Err(diagnostic(
+                &self.source,
+                "E-UNSUPPORTED-GENERATOR-SIGNATURE",
+                span,
+                "the implemented generator subset requires `Character -> Generator Character Unit Unit`",
+            ));
+        }
+        if discarded_yield_expression(&self.source, body).is_none() {
+            return Err(diagnostic(
+                &self.source,
+                "E-UNSUPPORTED-GENERATOR-BODY",
+                span,
+                "the implemented generator subset requires one `_ is yield value` followed by `()`",
+            ));
+        }
+        session.generators.insert(
+            name_text.to_owned(),
+            UserGenerator {
+                source: self.source.clone(),
+                parameter: (
+                    self.source.slice(parameter.name).to_owned(),
+                    parameter_classifier.to_owned(),
+                ),
+                body: body.to_vec(),
+                bindings: session.bindings.clone(),
+            },
+        );
+        session.declared_names.insert(name_text.to_owned());
+        trace.record(TraceEvent {
+            event: "generator.declared",
+            rule: "TOPAL-GENERATOR-DECLARATION-001",
+            detail: name_text,
+        });
+        Ok((Value::Unit, span))
+    }
+
     /// Execute one source statement.
     ///
     /// # Errors
     ///
     /// Returns a name-resolution or evaluation diagnostic at the failing step.
+    #[allow(clippy::too_many_lines)] // Statement dispatch remains explicit and exhaustively typed.
     pub fn step(
         &mut self,
         session: &mut Session,
@@ -2128,6 +2291,27 @@ impl Execution {
                     name: *name,
                     is_static: *is_static,
                     parameters,
+                    result: *result,
+                    body,
+                    span: *span,
+                },
+            )?,
+            Statement::Generator {
+                name,
+                parameters,
+                yielded,
+                resumed,
+                result,
+                body,
+                span,
+            } => self.declare_generator(
+                session,
+                trace,
+                GeneratorDeclaration {
+                    name: *name,
+                    parameters,
+                    yielded: *yielded,
+                    resumed: *resumed,
                     result: *result,
                     body,
                     span: *span,
@@ -2611,11 +2795,33 @@ const fn cover(first: Span, second: Span) -> Span {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => cover(*name, value.span()),
-        Statement::Function { span, .. } | Statement::Foreach { span, .. } => *span,
+        Statement::Function { span, .. }
+        | Statement::Generator { span, .. }
+        | Statement::Foreach { span, .. } => *span,
         Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
         Statement::Expression(expression) => expression.span(),
     }
+}
+
+fn discarded_yield_expression<'a>(
+    source: &SourceText,
+    body: &'a [Statement],
+) -> Option<&'a Expression> {
+    let [
+        Statement::Discard {
+            value: Expression::Application { items, .. },
+            ..
+        },
+        Statement::Expression(Expression::Unit(_)),
+    ] = body
+    else {
+        return None;
+    };
+    let [Expression::Identifier(keyword), yielded] = items.as_slice() else {
+        return None;
+    };
+    (source.slice(*keyword) == "yield").then_some(yielded)
 }
 
 fn foreach_source_diagnostic(source: &SourceText, span: Span) -> Diagnostic {
@@ -7192,6 +7398,35 @@ fn generator_error_code_has_qualified_nominal_identity() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-GENERATOR-ERROR-CODE-001"))
+    );
+}
+
+#[test]
+fn named_single_yield_generator_is_traversable() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  ()\ngenerated is once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.declared"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.started"))
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("generator.yielded"))
+            .count(),
+        1
     );
 }
 

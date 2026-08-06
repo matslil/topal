@@ -133,6 +133,15 @@ pub enum Statement {
         body: Vec<Statement>,
         span: Span,
     },
+    Generator {
+        name: Span,
+        parameters: Vec<FunctionParameter>,
+        yielded: Span,
+        resumed: Span,
+        result: Span,
+        body: Vec<Statement>,
+        span: Span,
+    },
     Foreach {
         source: Expression,
         binding: Span,
@@ -239,11 +248,14 @@ impl Parser<'_> {
                 .take_nontrivia()
                 .expect("peeked token remains available");
             if first.kind == TokenKind::Identifier
-                && self.peek_nontrivia().is_some_and(|token| {
-                    token.kind == TokenKind::Identifier && self.source.slice(token.span) == "fn"
-                })
+                && let Some(declaration) = self.peek_nontrivia()
+                && declaration.kind == TokenKind::Identifier
             {
-                return self.function(first);
+                match self.source.slice(declaration.span) {
+                    "fn" => return self.function(first),
+                    "generator" => return self.generator(first),
+                    _ => {}
+                }
             }
             if let Some(value) = self.expression() {
                 return Some(if first.kind == TokenKind::Discard {
@@ -490,6 +502,117 @@ impl Parser<'_> {
             span: Span::new(name.span.start, body_end),
             body,
         })
+    }
+
+    fn generator(&mut self, name: Token) -> Option<Statement> {
+        let keyword = self.take_nontrivia()?;
+        let opening = self.take_nontrivia()?;
+        let (parameters, closing) = self.static_function_parameters(opening)?;
+        if parameters.len() != 1 {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-GENERATOR-OPERAND-COUNT",
+                span: Span::new(opening.span.start, closing.span.end),
+                message: "the implemented generator subset requires one initial operand".into(),
+            });
+            return None;
+        }
+        if self.source.slice(keyword.span) != "generator" || opening.kind != TokenKind::LeftParen {
+            return None;
+        }
+        let yielded = self.generator_header_clause("yields")?;
+        let resumed = self.generator_header_clause("resumes")?;
+        let result = self.generator_result_clause()?;
+        while self
+            .peek()
+            .is_some_and(|token| token.kind == TokenKind::Newline)
+        {
+            self.cursor += 1;
+        }
+        let Some(indent) = self.peek() else {
+            self.error_current(
+                "E-EXPECTED-GENERATOR-BODY",
+                "expected an indented generator body",
+            );
+            return None;
+        };
+        if indent.kind != TokenKind::Whitespace {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-INDENTED-BODY",
+                span: indent.span,
+                message: "generator body must be indented".into(),
+            });
+            return None;
+        }
+        let body = self.indented_function_body(indent.span.end - indent.span.start)?;
+        let body_end = statement_span(body.last().expect("generator body is nonempty")).end;
+        Some(Statement::Generator {
+            name: name.span,
+            parameters,
+            yielded,
+            resumed,
+            result,
+            body,
+            span: Span::new(name.span.start, body_end),
+        })
+    }
+
+    fn generator_header_clause(&mut self, expected: &'static str) -> Option<Span> {
+        self.expect_generator_header_newline()?;
+        let keyword = self.take_nontrivia()?;
+        let classifier = self.take_nontrivia()?;
+        if keyword.kind != TokenKind::Identifier
+            || self.source.slice(keyword.span) != expected
+            || classifier.kind != TokenKind::Identifier
+        {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-UNSUPPORTED-GENERATOR-HEADER",
+                span: Span::new(keyword.span.start, classifier.span.end),
+                message: format!("expected `{expected} Type` in the generator header"),
+            });
+            return None;
+        }
+        Some(classifier.span)
+    }
+
+    fn generator_result_clause(&mut self) -> Option<Span> {
+        self.expect_generator_header_newline()?;
+        let arrow = self.take_nontrivia()?;
+        let classifier = self.take_nontrivia()?;
+        if arrow.kind != TokenKind::Arrow || classifier.kind != TokenKind::Identifier {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-UNSUPPORTED-GENERATOR-HEADER",
+                span: Span::new(arrow.span.start, classifier.span.end),
+                message: "expected `-> Type` in the generator header".into(),
+            });
+            return None;
+        }
+        Some(classifier.span)
+    }
+
+    fn expect_generator_header_newline(&mut self) -> Option<()> {
+        if !self
+            .peek()
+            .is_some_and(|token| token.kind == TokenKind::Newline)
+        {
+            self.error_current(
+                "E-UNSUPPORTED-GENERATOR-HEADER",
+                "generator header clauses must start on separate indented lines",
+            );
+            return None;
+        }
+        self.cursor += 1;
+        if !self
+            .peek()
+            .is_some_and(|token| token.kind == TokenKind::Whitespace)
+        {
+            self.error_current(
+                "E-EXPECTED-INDENTED-GENERATOR-HEADER",
+                "generator header clauses must be indented",
+            );
+            return None;
+        }
+        self.cursor += 1;
+        Some(())
     }
 
     fn function_result(&mut self, first: Token) -> Option<Span> {
@@ -1330,6 +1453,7 @@ fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => Span::new(name.start, value.span().end),
         Statement::Function { span, .. }
+        | Statement::Generator { span, .. }
         | Statement::Foreach { span, .. }
         | Statement::Discard { span, .. } => *span,
         Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
@@ -1817,6 +1941,34 @@ mod tests {
         };
         assert_eq!(source.slice(name), "value");
         assert_eq!(source.slice(classifier.unwrap()), "Rational");
+    }
+
+    #[test]
+    fn parses_named_generator_declaration() {
+        let source = SourceText::new(
+            "once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  ()",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Generator {
+            name,
+            parameters,
+            yielded,
+            resumed,
+            result,
+            body,
+            ..
+        } = &parsed.statements[0]
+        else {
+            panic!("expected generator");
+        };
+        assert_eq!(source.slice(*name), "once");
+        assert_eq!(parameters.len(), 1);
+        assert_eq!(source.slice(*yielded), "Character");
+        assert_eq!(source.slice(*resumed), "Unit");
+        assert_eq!(source.slice(*result), "Unit");
+        assert_eq!(body.len(), 2);
     }
 
     #[test]

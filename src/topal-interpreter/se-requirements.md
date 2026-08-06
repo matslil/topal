@@ -1090,3 +1090,11 @@ When the built-in Character generator handles abandonment in the root lexical
 namespace, formal traces and reversible debugger history shall report domain
 `root` and code `generator-closed`, while retaining `root.characters` as
 separate generator provenance. Handling shall still finish with Unit.
+
+## TOPAL-INTP-SUBSET-132 — Named single-yield generators
+
+All interpreter modes shall declare and apply the first custom generator subset
+under `TOPAL-GENERATOR-DECLARATION-001`: one Character input, one discarded
+Character yield, Unit resumption, and Unit return. Direct foreach shall consume
+the resulting linear generator. Traces, LSP highlighting and diagnostics, and
+reversible scripted debugger history shall cover a commented example.

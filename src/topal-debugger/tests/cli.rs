@@ -1178,6 +1178,25 @@ fn records_reversible_generator_error_code_selection() {
 }
 
 #[test]
+fn records_custom_single_yield_generator_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-single-yield-generator.debug"),
+            &format!("{root}custom-single-yield-generator.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-GENERATOR-DECLARATION-001"));
+    assert!(stdout.contains("generator.declared"));
+    assert!(stdout.contains("generator.started"));
+    assert!(stdout.contains("generator.yielded"));
+}
+
+#[test]
 fn records_consumed_generator_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
