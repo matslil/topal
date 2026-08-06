@@ -85,6 +85,14 @@ that unchanged traversal with `collect String` concatenates every yielded
 Character in order and returns a plain String with exactly the original scalar
 sequence. Empty input yields no Characters and collects to `empty String`.
 
+### TOPAL-STRING-CHARACTERS-FOREACH-001 — Direct Character traversal
+
+`characters text foreach { character } body` shall invoke `body` once for each
+yielded Character in preserved order, with `character` scoped to that invocation.
+After each body returns Unit, traversal resumes with Unit. Exhaustion returns
+Unit, including for empty input. The binding does not escape the body and each
+yielded value retains the Character constraint.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count

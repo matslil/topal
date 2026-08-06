@@ -1779,6 +1779,90 @@ fn known_enum_alternatives(session: &Session, type_name: &str) -> Option<BTreeSe
 }
 
 impl Execution {
+    fn execute_foreach(
+        &self,
+        session: &mut Session,
+        trace: &mut impl TraceSink,
+        source: &Expression,
+        binding: Span,
+        body: &[Statement],
+        span: Span,
+    ) -> Result<(Value, Span), Diagnostic> {
+        let Expression::Application { items, .. } = source else {
+            return Err(foreach_source_diagnostic(&self.source, source.span()));
+        };
+        let [Expression::Identifier(operation), text] = items.as_slice() else {
+            return Err(foreach_source_diagnostic(&self.source, source.span()));
+        };
+        if self.source.slice(*operation) != "characters" {
+            return Err(foreach_source_diagnostic(&self.source, source.span()));
+        }
+        let text_value = session.evaluate_expression(&self.source, text, trace)?;
+        let Value::String(text_value) = text_value else {
+            return Err(diagnostic(
+                &self.source,
+                "E-CHARACTERS-OPERAND",
+                text.span(),
+                "characters requires a String operand",
+            ));
+        };
+        let binding_name = self.source.slice(binding).to_owned();
+        for character in characters(&text_value) {
+            let mut iteration = session.clone();
+            iteration
+                .bindings
+                .insert(binding_name.clone(), Value::String(character.to_owned()));
+            iteration.declared_names.insert(binding_name.clone());
+            trace.record(TraceEvent {
+                event: "generator.yielded",
+                rule: "TOPAL-STRING-CHARACTERS-FOREACH-001",
+                detail: character,
+            });
+            let mut body_execution = Self {
+                source: self.source.clone(),
+                statements: body.to_vec(),
+                cursor: 0,
+                return_classifier: None,
+            };
+            loop {
+                match body_execution.step(&mut iteration, trace)? {
+                    ExecutionStep::Advanced { .. } => {}
+                    ExecutionStep::Complete(_) => break,
+                    ExecutionStep::Returned { .. } => {
+                        unreachable!("foreach body has no function return context")
+                    }
+                }
+            }
+            trace.record(TraceEvent {
+                event: "generator.resumed",
+                rule: "TOPAL-STRING-CHARACTERS-FOREACH-001",
+                detail: "Unit",
+            });
+        }
+        trace.record(TraceEvent {
+            event: "generator.returned",
+            rule: "TOPAL-STRING-CHARACTERS-FOREACH-001",
+            detail: "Unit",
+        });
+        Ok((Value::Unit, span))
+    }
+
+    fn execute_discard(
+        &self,
+        session: &mut Session,
+        trace: &mut impl TraceSink,
+        span: Span,
+        value: &Expression,
+    ) -> Result<(Value, Span), Diagnostic> {
+        session.evaluate_expression(&self.source, value, trace)?;
+        trace.record(TraceEvent {
+            event: "binding.discarded",
+            rule: "TOPAL-SYN-BIND-001",
+            detail: "_",
+        });
+        Ok((Value::Unit, cover(span, value.span())))
+    }
+
     #[allow(clippy::too_many_lines)] // Declaration validation and trace setup stay auditable together.
     fn declare_function(
         &self,
@@ -1955,14 +2039,14 @@ impl Execution {
                     span: *span,
                 },
             )?,
+            Statement::Foreach {
+                source,
+                binding,
+                body,
+                span,
+            } => self.execute_foreach(session, trace, source, *binding, body, *span)?,
             Statement::Discard { span, value } => {
-                session.evaluate_expression(&self.source, value, trace)?;
-                trace.record(TraceEvent {
-                    event: "binding.discarded",
-                    rule: "TOPAL-SYN-BIND-001",
-                    detail: "_",
-                });
-                (Value::Unit, cover(*span, value.span()))
+                self.execute_discard(session, trace, *span, value)?
             }
             Statement::Return { keyword, value } => {
                 if self.return_classifier.is_none() {
@@ -2433,11 +2517,20 @@ const fn cover(first: Span, second: Span) -> Span {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => cover(*name, value.span()),
-        Statement::Function { span, .. } => *span,
+        Statement::Function { span, .. } | Statement::Foreach { span, .. } => *span,
         Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
         Statement::Expression(expression) => expression.span(),
     }
+}
+
+fn foreach_source_diagnostic(source: &SourceText, span: Span) -> Diagnostic {
+    diagnostic(
+        source,
+        "E-FOREACH-SOURCE",
+        span,
+        "the implemented foreach subset requires `characters text`",
+    )
 }
 
 fn enum_alternatives(source: &SourceText, expression: &Expression) -> Option<Vec<(String, Span)>> {
@@ -6739,6 +6832,37 @@ fn character_traversal_collects_the_exact_preserved_string() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-STRING-CHARACTERS-COLLECT-001"))
+    );
+}
+
+#[test]
+fn foreach_consumes_character_generator_with_unit() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "characters \"a\u{301}👩‍🔬🇸🇪\" foreach { character }\n  String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("generator.yielded"))
+            .count(),
+        3
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("generator.resumed"))
+            .count(),
+        3
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.returned") && event.contains("Unit"))
     );
 }
 

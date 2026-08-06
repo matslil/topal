@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 70);
+    assert_eq!(examples.len(), 71);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2408,6 +2408,22 @@ fn every_mode_collects_unicode_character_traversal() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert_eq!(trace.matches("generator.yielded").count(), 3);
     assert!(trace.contains("TOPAL-STRING-CHARACTERS-COLLECT-001"));
+}
+
+#[test]
+fn every_mode_foreach_consumes_character_generator() {
+    let source = include_str!("../../../examples/interpreter/string-character-foreach.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        if arguments.is_empty() {
+            assert!(output.stdout.ends_with(b"()\n"));
+        }
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("generator.yielded").count(), 3);
+    assert_eq!(trace.matches("generator.resumed").count(), 3);
+    assert!(trace.contains("TOPAL-STRING-CHARACTERS-FOREACH-001"));
 }
 
 #[test]

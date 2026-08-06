@@ -133,6 +133,12 @@ pub enum Statement {
         body: Vec<Statement>,
         span: Span,
     },
+    Foreach {
+        source: Expression,
+        binding: Span,
+        body: Vec<Statement>,
+        span: Span,
+    },
     Discard {
         span: Span,
         value: Expression,
@@ -188,6 +194,13 @@ struct Parser<'a> {
 
 impl Parser<'_> {
     fn statement(&mut self) -> Option<Statement> {
+        if self.foreach_separator_index().is_some() {
+            return self.foreach_statement();
+        }
+        self.ordinary_statement()
+    }
+
+    fn ordinary_statement(&mut self) -> Option<Statement> {
         let checkpoint = self.cursor;
         let first = self.take_nontrivia()?;
         if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "return" {
@@ -287,6 +300,75 @@ impl Parser<'_> {
         }
         self.cursor = checkpoint;
         self.expression().map(Statement::Expression)
+    }
+
+    fn foreach_separator_index(&self) -> Option<usize> {
+        self.tokens[self.cursor..]
+            .iter()
+            .position(|token| {
+                token.kind == TokenKind::Identifier && self.source.slice(token.span) == "foreach"
+            })
+            .map(|offset| self.cursor + offset)
+            .filter(|index| {
+                !self.tokens[self.cursor..*index]
+                    .iter()
+                    .any(|token| token.kind == TokenKind::Newline)
+            })
+    }
+
+    fn foreach_statement(&mut self) -> Option<Statement> {
+        let separator_index = self.foreach_separator_index()?;
+        let mut source_parser = Self {
+            source: self.source,
+            tokens: &self.tokens[self.cursor..separator_index],
+            cursor: 0,
+            delimiter_depth: 0,
+            diagnostics: Vec::new(),
+        };
+        let source_expression = source_parser.expression()?;
+        self.diagnostics.extend(source_parser.diagnostics);
+        self.cursor = separator_index + 1;
+        let opening = self.take_nontrivia()?;
+        let binding = self.take_nontrivia()?;
+        let closing = self.take_nontrivia()?;
+        if opening.kind != TokenKind::LeftBrace
+            || binding.kind != TokenKind::Identifier
+            || closing.kind != TokenKind::RightBrace
+        {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-FOREACH-BINDING",
+                span: Span::new(opening.span.start, closing.span.end),
+                message: "expected `source foreach { value }`".into(),
+            });
+            return None;
+        }
+        let newline = self.peek()?;
+        if newline.kind != TokenKind::Newline {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-FOREACH-BODY",
+                span: closing.span,
+                message: "expected an indented foreach body on the next line".into(),
+            });
+            return None;
+        }
+        self.cursor += 1;
+        let indent = self.peek()?;
+        if indent.kind != TokenKind::Whitespace {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-INDENTED-BODY",
+                span: indent.span,
+                message: "foreach body must be indented".into(),
+            });
+            return None;
+        }
+        let body = self.indented_function_body(indent.span.end - indent.span.start)?;
+        let end = statement_span(body.last().expect("foreach body is nonempty")).end;
+        Some(Statement::Foreach {
+            span: Span::new(source_expression.span().start, end),
+            source: source_expression,
+            binding: binding.span,
+            body,
+        })
     }
 
     fn function(&mut self, name: Token) -> Option<Statement> {
@@ -1195,7 +1277,9 @@ impl Parser<'_> {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => Span::new(name.start, value.span().end),
-        Statement::Function { span, .. } | Statement::Discard { span, .. } => *span,
+        Statement::Function { span, .. }
+        | Statement::Foreach { span, .. }
+        | Statement::Discard { span, .. } => *span,
         Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
         Statement::Expression(expression) => expression.span(),
     }
