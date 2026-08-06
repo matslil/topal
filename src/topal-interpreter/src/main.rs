@@ -152,6 +152,7 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
                     "E-UNTERMINATED-STRING"
                         | "E-EXPECTED-RPAREN"
                         | "E-EXPECTED-FUNCTION-BODY"
+                        | "E-EXPECTED-FOREACH-BODY"
                         | "E-UNSUPPORTED-INCOMPLETE-DECISION"
                         | "E-INCOMPLETE-ERROR-CODE-DECISION"
                 ) => {}

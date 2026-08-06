@@ -373,7 +373,14 @@ impl Parser<'_> {
             return None;
         }
         self.cursor += 1;
-        let indent = self.peek()?;
+        let Some(indent) = self.peek() else {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-FOREACH-BODY",
+                span: closing.span,
+                message: "expected an indented foreach body on the next line".into(),
+            });
+            return None;
+        };
         if indent.kind != TokenKind::Whitespace {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-INDENTED-BODY",

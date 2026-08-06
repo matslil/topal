@@ -241,7 +241,10 @@ impl Session {
         };
         let parsed = parse(&source, &lex(&source));
         parsed.diagnostics.is_empty()
-            && matches!(parsed.statements.as_slice(), [Statement::Function { .. }])
+            && matches!(
+                parsed.statements.as_slice(),
+                [Statement::Function { .. } | Statement::Foreach { .. }]
+            )
     }
 
     /// Evaluate one source unit and return its final value.
@@ -1890,7 +1893,15 @@ impl Execution {
             loop {
                 match body_execution.step(&mut iteration, trace)? {
                     ExecutionStep::Advanced { .. } => {}
-                    ExecutionStep::Complete(_) => break,
+                    ExecutionStep::Complete(Value::Unit) => break,
+                    ExecutionStep::Complete(_) => {
+                        return Err(diagnostic(
+                            &self.source,
+                            "E-FOREACH-ACTION-RESULT",
+                            statement_span(body.last().expect("foreach body is nonempty")),
+                            "foreach action must return Unit",
+                        ));
+                    }
                     ExecutionStep::Returned { .. } => {
                         unreachable!("foreach body has no function return context")
                     }
@@ -6917,7 +6928,7 @@ fn foreach_consumes_character_generator_with_unit() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            "characters \"a\u{301}👩‍🔬🇸🇪\" foreach { character }\n  String character\n",
+            "characters \"a\u{301}👩‍🔬🇸🇪\" foreach { character }\n  _ is String character\n",
             &mut trace,
         )
         .unwrap();
@@ -6944,11 +6955,22 @@ fn foreach_consumes_character_generator_with_unit() {
 }
 
 #[test]
+fn foreach_rejects_non_unit_action_result() {
+    let error = Session::new()
+        .evaluate(
+            "characters \"Topal\" foreach { character }\n  String character\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-FOREACH-ACTION-RESULT");
+}
+
+#[test]
 fn named_character_generator_is_consumed_linearly() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            "generated is characters \"a\u{301}👩‍🔬🇸🇪\"\ngenerated foreach { character }\n  String character\n",
+            "generated is characters \"a\u{301}👩‍🔬🇸🇪\"\ngenerated foreach { character }\n  _ is String character\n",
             &mut trace,
         )
         .unwrap();
@@ -6969,7 +6991,7 @@ fn named_character_generator_is_consumed_linearly() {
 fn character_generator_accepts_its_explicit_classifier() {
     let value = Session::new()
         .evaluate(
-            "generated : Generator Character Unit Unit is characters \"Topal\"\ngenerated foreach { character }\n  String character\n",
+            "generated : Generator Character Unit Unit is characters \"Topal\"\ngenerated foreach { character }\n  _ is String character\n",
             &mut Vec::new(),
         )
         .unwrap();
@@ -6980,7 +7002,7 @@ fn character_generator_accepts_its_explicit_classifier() {
 fn function_returns_fresh_character_generator() {
     let value = Session::new()
         .evaluate(
-            "generate is fn (text : String) -> Generator Character Unit Unit\n  characters text\ngenerated is generate \"Topal\"\ngenerated foreach { character }\n  String character\n",
+            "generate is fn (text : String) -> Generator Character Unit Unit\n  characters text\ngenerated is generate \"Topal\"\ngenerated foreach { character }\n  _ is String character\n",
             &mut Vec::new(),
         )
         .unwrap();
@@ -6991,7 +7013,7 @@ fn function_returns_fresh_character_generator() {
 fn reused_character_generator_reports_consumption() {
     let error = Session::new()
         .evaluate(
-            "generated is characters \"Topal\"\ngenerated foreach { character }\n  String character\ngenerated foreach { character }\n  String character\n",
+            "generated is characters \"Topal\"\ngenerated foreach { character }\n  _ is String character\ngenerated foreach { character }\n  _ is String character\n",
             &mut Vec::new(),
         )
         .unwrap_err();
