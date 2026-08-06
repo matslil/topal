@@ -887,6 +887,24 @@ fn records_reversible_inclusive_int_ranges() {
 }
 
 #[test]
+fn records_reversible_rational_ranges() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}rational-ranges.debug"),
+            &format!("{root}rational-ranges.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Int->Rational:left"));
+    assert!(stdout.contains("Int->Rational:membership"));
+    assert!(stdout.contains("Rational ( 0, 1 ) .. Rational ( 5, 2 )"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

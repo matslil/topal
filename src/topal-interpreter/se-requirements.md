@@ -838,3 +838,11 @@ All interpreter modes shall execute both `value in interval` and
 Boolean results and rejection from empty ranges. Test traces and reversible
 debugger history shall expose accepted and rejected decisions; LSP validation
 shall accept the updated commented range example.
+
+## TOPAL-INTP-SUBSET-100 — Rational ranges
+
+All interpreter modes shall construct and test closed Rational ranges under
+`TOPAL-RANGE-RATIONAL-001`, including mixed Int endpoints and Int membership via
+the canonical exact conversion. Test traces and reversible debugger history
+shall expose range and conversion decisions; LSP validation shall accept the
+commented example.

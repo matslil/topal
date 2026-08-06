@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 61);
+    assert_eq!(examples.len(), 62);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2244,6 +2244,24 @@ fn every_mode_constructs_inclusive_int_ranges() {
     assert!(trace.contains("\"detail\":\"empty\""));
     assert!(trace.contains("\"detail\":\"accepted\""));
     assert!(trace.contains("\"detail\":\"rejected\""));
+}
+
+#[test]
+fn every_mode_constructs_and_tests_rational_ranges() {
+    let source = include_str!("../../../examples/interpreter/rational-ranges.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(Rational ( 0, 1 ) .. Rational ( 5, 2 ), true, true, false)\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("Int->Rational:left"));
+    assert!(trace.contains("Int->Rational:membership"));
+    assert_eq!(trace.matches("TOPAL-RANGE-MEMBERSHIP-001").count(), 3);
 }
 
 #[test]
