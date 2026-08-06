@@ -974,6 +974,9 @@ fn records_reversible_string_character_indexing() {
     assert!(stdout.contains("string.character-at"));
     assert!(stdout.contains("Some \"👩‍🔬\""));
     assert!(stdout.contains("None, None"));
+    assert!(stdout.contains("TOPAL-DECISION-OPTIONAL-001"));
+    assert!(stdout.contains("TOPAL-STRING-FROM-CHARACTER-001"));
+    assert!(stdout.contains("\"👩‍🔬\", \"missing\""));
 }
 
 #[test]

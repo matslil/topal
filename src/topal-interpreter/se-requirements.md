@@ -957,3 +957,12 @@ All interpreter modes shall execute `text character-at index` under
 clusters as `Some Character` and negative or out-of-range indexes as None.
 Traces and reversible debugger history shall expose present and absent results;
 LSP validation shall accept the commented example.
+
+## TOPAL-INTP-SUBSET-115 — Consumption of indexed characters
+
+All interpreter modes shall pass the `Optional Character` produced by String
+indexing through ordinary function boundaries and exhaustive Optional
+decisions. A present payload shall retain its `Character` classifier for exact
+`String` construction; an absent result shall select the `None` action. Traces
+and reversible debugger history shall expose the indexing, decision, and
+construction rules, and LSP validation shall accept the commented example.

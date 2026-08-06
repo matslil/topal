@@ -6473,6 +6473,28 @@ fn string_character_at_returns_optional_grapheme_clusters() {
 }
 
 #[test]
+fn optional_decisions_consume_indexed_characters() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "describe is fn (candidate : Optional Character) -> String\n  candidate\n    Some character then String character\n    None then \"missing\"\n(describe (\"👩‍🔬\" character-at 0), describe (\"👩‍🔬\" character-at 1))\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(\"👩‍🔬\", \"missing\")");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-DECISION-OPTIONAL-001"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-STRING-FROM-CHARACTER-001"))
+    );
+}
+
+#[test]
 fn rational_ranges_use_exact_canonical_conversion() {
     let mut trace = Vec::new();
     let value = Session::new()
