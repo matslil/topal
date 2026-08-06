@@ -1456,6 +1456,19 @@ impl Execution {
                 return Ok(BindingOutcome::Returned(evaluated, initializer.span()));
             }
             if !value_has_classifier(&evaluated, classifier_text) {
+                if classifier_text == "Character"
+                    && let Value::String(text) = &evaluated
+                {
+                    let count = character_count(text);
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-CHARACTER-CLASSIFIER",
+                        initializer.span(),
+                        format!(
+                            "Character requires exactly one user-perceived character, but this String contains {count}"
+                        ),
+                    ));
+                }
                 return Err(diagnostic(
                     &self.source,
                     "E-BINDING-CLASSIFIER",
@@ -1625,6 +1638,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::Rational(_), "Rational")
         | (Value::String(_), "String")
         | (Value::Unit, "Unit") => true,
+        (Value::String(value), "Character") => character_count(value) == 1,
         (Value::Int(value), "Nat") => value >= &BigInt::from(0),
         (Value::Enum { type_name, .. }, classifier) => type_name == classifier,
         _ => false,
@@ -2243,7 +2257,7 @@ fn is_positive_literal_step(
 fn supported_value_classifier(classifier: &str) -> bool {
     matches!(
         classifier,
-        "Boolean" | "Int" | "Nat" | "Rational" | "String" | "Unit"
+        "Boolean" | "Character" | "Int" | "Nat" | "Rational" | "String" | "Unit"
     )
 }
 
@@ -3120,6 +3134,9 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
             Some("move qualified code patterns before the generic `Error problem` fallback")
         }
         "E-UNREACHABLE-DECISION-RULE" => Some("move `otherwise` after every specific matcher"),
+        "E-CHARACTER-CLASSIFIER" => {
+            Some("use a String containing exactly one Unicode grapheme cluster")
+        }
         _ => None,
     }
 }
@@ -4699,4 +4716,21 @@ fn classified_binding_rejects_error_propagation_from_infallible_function() {
             .help
             .is_some_and(|help| help.contains("match the Error"))
     );
+}
+
+#[test]
+fn character_classifier_uses_pinned_grapheme_segmentation() {
+    let value = Session::new()
+        .evaluate(
+            "identity is fn (value : Character) -> Character\n  value\ncomposed : Character is \"a\u{301}\"\n(identity \"🙂\", identity composed)\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(\"🙂\", \"a\u{301}\")");
+
+    let error = Session::new()
+        .evaluate("invalid : Character is \"ab\"\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-CHARACTER-CLASSIFIER");
+    assert!(error.message.contains("contains 2"));
 }

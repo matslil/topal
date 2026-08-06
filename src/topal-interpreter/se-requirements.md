@@ -674,3 +674,13 @@ The shared frontend used by every interpreter mode shall reject decision rules
 after `otherwise` as unreachable, point to the first unreachable matcher, and
 provide actionable ordering help. LSP diagnostics shall preserve the same code,
 message, and source range.
+
+## TOPAL-INTP-SUBSET-080 — Character classification
+
+All interpreter modes shall accept `Character` in classified bindings,
+function parameters, and results under `TOPAL-STRING-CHARACTER-CLASSIFIER-001`.
+Classification shall use the pinned Unicode character segmentation and retain
+the original String sequence. LSP validation and reversible debugger history
+shall cover the same commented examples.
+Failed classification shall report the observed user-perceived character count
+at the initializer and provide actionable one-character guidance.
