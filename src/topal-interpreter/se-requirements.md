@@ -966,3 +966,11 @@ decisions. A present payload shall retain its `Character` classifier for exact
 `String` construction; an absent result shall select the `None` action. Traces
 and reversible debugger history shall expose the indexing, decision, and
 construction rules, and LSP validation shall accept the commented example.
+
+## TOPAL-INTP-SUBSET-116 — Universal String uppercase
+
+All interpreter modes shall execute `upper text` for plain String values under
+`TOPAL-STRING-UPPER-001`, using deterministic Unicode default casing without
+ambient locale. Traces and reversible debugger history shall expose overload
+selection and transformation; LSP completion and validation shall cover the
+commented example.

@@ -4,7 +4,9 @@ use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use topal_source::{SourceText, Span, character_at, character_count, normalize_nfc, normalize_nfd};
+use topal_source::{
+    SourceText, Span, character_at, character_count, normalize_nfc, normalize_nfd, uppercase,
+};
 use topal_syntax::{
     CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, lex, parse,
 };
@@ -1254,6 +1256,33 @@ impl Session {
                         detail: &detail,
                     });
                     let value = Value::Int(BigInt::from(count));
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "upper")
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(text) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-NO-APPLICABLE-OVERLOAD",
+                            operand_span,
+                            "upper requires a String operand in the implemented subset",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.upper(String)",
+                    });
+                    let value = Value::String(uppercase(&text));
+                    trace.record(TraceEvent {
+                        event: "string.uppercased",
+                        rule: "TOPAL-STRING-UPPER-001",
+                        detail: "unicode-default",
+                    });
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -4238,7 +4267,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 11] = [
+const ROOT_OPERATIONS: [&str; 12] = [
     "absolute",
     "byte-count",
     "character-count",
@@ -4246,6 +4275,7 @@ const ROOT_OPERATIONS: [&str; 11] = [
     "empty",
     "entry-count",
     "normalize",
+    "upper",
     "not",
     "negate",
     "one",
@@ -6491,6 +6521,20 @@ fn optional_decisions_consume_indexed_characters() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-STRING-FROM-CHARACTER-001"))
+    );
+}
+
+#[test]
+fn upper_uses_locale_independent_unicode_mapping() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate("upper \"Straße σς\"\n", &mut trace)
+        .unwrap();
+    assert_eq!(value.to_string(), "\"STRASSE ΣΣ\"");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-STRING-UPPER-001"))
     );
 }
 
