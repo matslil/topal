@@ -691,3 +691,11 @@ All interpreter modes shall implement `String character` under
 `TOPAL-STRING-FROM-CHARACTER-001`, preserving the Character's exact Unicode
 sequence. Test traces and reversible debugger history shall expose construction
 separately from literal evaluation and classification.
+
+## TOPAL-INTP-SUBSET-082 — Euclidean Int modulo
+
+All interpreter modes shall implement `%` for Int operands under
+`TOPAL-NUM-INT-MODULO-001`, including negative operands. Literal zero shall be
+a source diagnostic; dynamic zero within an arithmetic Result contract shall
+construct a structured Error with the modulo overload domain. LSP highlighting
+and reversible debugger history shall expose the operator and decision trace.

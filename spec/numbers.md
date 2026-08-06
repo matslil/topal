@@ -151,6 +151,16 @@ conservatively reject division when it cannot establish the nonzero obligation;
 it shall not assume nonzero or produce an undefined value. Later dynamic-input
 rules may instead construct the typed `Result` required by the error model.
 
+### TOPAL-NUM-INT-MODULO-001 — Euclidean integer modulo
+
+For finite `a : Int` and finite nonzero `b : Int`, binary `%` returns the unique
+Euclidean remainder `r : Int` satisfying `a = b*q + r` for some integer `q` and
+`0 <= r < absolute b`. The sign of either operand does not change this range.
+A statically evident zero divisor is rejected under `TOPAL-NUM-DIVZERO-001`.
+A dynamically obtained zero constructs `division-by-zero` with reporting domain
+`root.%(Int,Int)` and separate divisor source provenance within a compatible
+arithmetic Result contract.
+
 ### TOPAL-NUM-DYNAMIC-DIVZERO-001 — Dynamic Rational zero division
 
 Within a function explicitly returning

@@ -319,6 +319,7 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
         | TokenKind::Minus
         | TokenKind::Star
         | TokenKind::Slash
+        | TokenKind::Percent
         | TokenKind::Caret => Some(5),
         TokenKind::Whitespace | TokenKind::Newline | TokenKind::Unknown => None,
     }
@@ -544,7 +545,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 49);
+        assert_eq!(examples.len(), 50);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {
