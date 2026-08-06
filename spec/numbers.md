@@ -182,6 +182,10 @@ is validation and returns the applicable typed `Result`. No implicit conversion
 chains are introduced. This realizes `TOPAL-REQ-MODEL-001`,
 `TOPAL-REQ-SAFE-001`, and `TOPAL-REQ-INTEROP-001`.
 
+Explicit prefix construction `Rational n` for `n : Int` exposes the same
+canonical embedding as an ordinary expression and produces `Rational (n, 1)`.
+It is total, exact, and does not construct a Result.
+
 ### TOPAL-NUM-DIV-001 — Finite exact integer division
 
 For finite `a : Int` and finite nonzero `b : Int`, binary `/` selects a total,
