@@ -917,3 +917,10 @@ All interpreter modes shall allow bare `None` in an immediately
 the nominal payload classifier, and continue rejecting uncontextual bare None.
 Traces, LSP validation, and reversible debugger history shall cover the updated
 commented example.
+
+## TOPAL-INTP-SUBSET-110 — Optional function boundaries
+
+All interpreter modes shall accept `Optional T` parameters and results under
+`TOPAL-TYPE-OPTIONAL-BOUNDARY-001`, preserving nominal payload identity for both
+Some and None alternatives. Traces and reversible debugger history shall expose
+ordinary calls; LSP validation shall accept the updated commented example.

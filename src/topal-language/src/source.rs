@@ -6248,6 +6248,25 @@ fn contextual_none_uses_the_binding_classifier() {
 }
 
 #[test]
+fn optional_values_cross_matching_function_boundaries() {
+    let value = Session::new()
+        .evaluate(
+            "preserve is fn (candidate : Optional Int) -> Optional Int\n  candidate\n(preserve (Some 7), preserve (None Int))\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(Some 7, None)");
+
+    let error = Session::new()
+        .evaluate(
+            "preserve is fn (candidate : Optional Int) -> Optional Int\n  candidate\npreserve (None String)\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-FUNCTION-ARGUMENT-TYPE");
+}
+
+#[test]
 fn rational_ranges_use_exact_canonical_conversion() {
     let mut trace = Vec::new();
     let value = Session::new()

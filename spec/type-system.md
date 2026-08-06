@@ -96,6 +96,13 @@ classifier supplies `Optional T`. The constructed value retains that `T` as its
 nominal payload classifier. Without such context, bare `None` is not a universal
 value and shall be rejected as unresolved.
 
+### TOPAL-TYPE-OPTIONAL-BOUNDARY-001 — Optional function boundaries
+
+`Optional T` is a valid ordinary parameter and result classifier. A call accepts
+exactly Optional values retaining the same nominal payload classifier `T`, and a
+function result shall retain that identity unchanged. Sharing the displayed
+alternative `None` does not make `Optional A` satisfy `Optional B`.
+
 ### TOPAL-TYPE-EQUALITY-001 — Equality application
 
 If `T` provides canonical `Equality` evidence and `a:T`, `b:T`, then `a = b`
