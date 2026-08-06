@@ -254,8 +254,16 @@ impl Parser<'_> {
                 .is_some_and(|token| token.kind == TokenKind::Colon)
         {
             self.take_nontrivia();
-            let classifier = self.take_nontrivia()?;
-            let separator = self.take_nontrivia()?;
+            let mut classifier = self.take_nontrivia()?;
+            let mut separator = self.take_nontrivia()?;
+            if classifier.kind == TokenKind::Identifier
+                && self.source.slice(classifier.span) == "Range"
+                && separator.kind == TokenKind::Identifier
+                && matches!(self.source.slice(separator.span), "Int" | "Rational")
+            {
+                classifier.span = Span::new(classifier.span.start, separator.span.end);
+                separator = self.take_nontrivia()?;
+            }
             if classifier.kind != TokenKind::Identifier
                 || separator.kind != TokenKind::Identifier
                 || self.source.slice(separator.span) != "is"
@@ -824,8 +832,16 @@ impl Parser<'_> {
                 break input;
             }
             let colon = self.take_nontrivia()?;
-            let classifier = self.take_nontrivia()?;
-            let separator = self.take_nontrivia()?;
+            let mut classifier = self.take_nontrivia()?;
+            let mut separator = self.take_nontrivia()?;
+            if classifier.kind == TokenKind::Identifier
+                && self.source.slice(classifier.span) == "Range"
+                && separator.kind == TokenKind::Identifier
+                && matches!(self.source.slice(separator.span), "Int" | "Rational")
+            {
+                classifier.span = Span::new(classifier.span.start, separator.span.end);
+                separator = self.take_nontrivia()?;
+            }
             if input.kind != TokenKind::Identifier
                 || colon.kind != TokenKind::Colon
                 || classifier.kind != TokenKind::Identifier

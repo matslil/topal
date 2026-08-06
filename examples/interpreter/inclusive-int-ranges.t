@@ -3,4 +3,6 @@
 # bounds construct an empty predicate rather than enumerating backward.
 interval is 0 .. 10
 empty-interval is 10 .. 0
-(interval, 5 in interval, interval contains 11, 5 in empty-interval)
+includes-five is fn (candidate : Range Int) -> Boolean
+  candidate contains 5
+(interval, includes-five interval, interval contains 11, includes-five empty-interval)

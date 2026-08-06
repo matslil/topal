@@ -22,3 +22,11 @@ Finite Rational endpoints construct a closed `Range Rational` with the same
 inclusive and empty-range semantics. Mixed Int and Rational endpoints first use
 the single canonical `Int`-to-`Rational` conversion. Membership accepts Rational
 values and canonically embedded Int values, compares exactly, and never rounds.
+
+### TOPAL-RANGE-CLASSIFIER-001 — Range domain classification
+
+An inclusive range constructed from Int endpoints satisfies `Range Int`. A
+range constructed from Rational endpoints, including mixed endpoints after
+canonical conversion, satisfies `Range Rational`. These classifiers are valid
+for bindings, function parameters, and function results; the range retains its
+ordered endpoint domain across an ordinary call.

@@ -846,3 +846,11 @@ All interpreter modes shall construct and test closed Rational ranges under
 the canonical exact conversion. Test traces and reversible debugger history
 shall expose range and conversion decisions; LSP validation shall accept the
 commented example.
+
+## TOPAL-INTP-SUBSET-101 — Range function classifiers
+
+All interpreter modes shall accept `Range Int` and `Range Rational` classifiers
+at ordinary function boundaries under `TOPAL-RANGE-CLASSIFIER-001`. Calls shall
+preserve the endpoint domain and support membership inside the callee. Test
+traces and reversible debugger history shall expose the calls; LSP validation
+shall accept the updated commented range examples.
