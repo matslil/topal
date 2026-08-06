@@ -2002,6 +2002,8 @@ fn every_mode_classifies_unicode_characters() {
                 .ends_with("(\"🙂\", \"a\u{301}\")\n".as_bytes())
         );
     }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("string.from-character").count(), 2);
 }
 
 #[test]

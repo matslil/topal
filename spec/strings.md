@@ -43,6 +43,13 @@ the complete original scalar sequence without normalization; the one character
 may contain multiple Unicode scalar values or encoded bytes. Empty strings and
 strings containing two or more characters shall fail classification.
 
+### TOPAL-STRING-FROM-CHARACTER-001 — String construction from Character
+
+`String character` shall accept a value classified as `Character` and return a
+plain `String` with exactly the same preserved Unicode scalar sequence. It shall
+not normalize, case-map, encode, or otherwise alter the character. A value not
+classified as one user-perceived character is not an applicable operand.
+
 ### TOPAL-STRING-ENTRY-COUNT-001 — String sequence entry count
 
 Because plain `String` provides `Sequence Character`, `entry-count text` shall
