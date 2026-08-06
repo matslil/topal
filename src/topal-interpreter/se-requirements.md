@@ -667,3 +667,10 @@ Repeated qualified code patterns shall be diagnosed at the later occurrence
 with actionable help and shall never count toward exhaustiveness.
 Qualified code patterns after a generic Error matcher shall be diagnosed as
 unreachable with help describing the required specific-before-fallback order.
+
+## TOPAL-INTP-SUBSET-079 — Decision fallback reachability
+
+The shared frontend used by every interpreter mode shall reject decision rules
+after `otherwise` as unreachable, point to the first unreachable matcher, and
+provide actionable ordering help. LSP diagnostics shall preserve the same code,
+message, and source range.

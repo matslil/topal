@@ -447,6 +447,14 @@ impl Parser<'_> {
             self.cursor += 2;
             rules.push(self.decision_rule()?);
         }
+        if let Some(span) = Self::rule_after_otherwise(&rules) {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-UNREACHABLE-DECISION-RULE",
+                span,
+                message: "decision rule is unreachable after `otherwise`".into(),
+            });
+            return None;
+        }
         if let Some((span, code)) = self.duplicate_arithmetic_code(&rules) {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-DUPLICATE-ERROR-CODE-PATTERN",
@@ -604,6 +612,15 @@ impl Parser<'_> {
                 DecisionMatcher::ErrorCode { span, .. } => Some(span),
                 _ => None,
             })
+    }
+
+    fn rule_after_otherwise(rules: &[DecisionRule]) -> Option<Span> {
+        let fallback = rules
+            .iter()
+            .position(|rule| matches!(rule.matcher, DecisionMatcher::Otherwise(_)))?;
+        rules
+            .get(fallback + 1)
+            .map(|rule| matcher_span(&rule.matcher))
     }
 
     fn decision_rule(&mut self) -> Option<DecisionRule> {
@@ -1630,5 +1647,17 @@ mod tests {
             source.slice(diagnostic.span),
             "Error ( code is lang arithmetic division-by-zero )"
         );
+    }
+
+    #[test]
+    fn rule_after_otherwise_is_rejected() {
+        let source = SourceText::new(
+            "choose is fn (condition : Boolean) -> Int\n  condition\n    otherwise 0\n    true then 1",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        let diagnostic = parsed.diagnostics.first().unwrap();
+        assert_eq!(diagnostic.code, "E-UNREACHABLE-DECISION-RULE");
+        assert_eq!(source.slice(diagnostic.span), "true");
     }
 }

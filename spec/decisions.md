@@ -40,6 +40,10 @@ Diagnostics for a missing `then` shall remain on the matcher rule and shall not
 consume a separator from a later rule. LSP semantic tokens shall classify
 `then` as a keyword independently of the operand expression it terminates.
 
+An `otherwise` matcher selects every subject not selected earlier. It shall be
+the final rule; every later matcher is unreachable and shall be diagnosed at
+that matcher.
+
 ### TOPAL-DECISION-ENUM-001 — Exhaustive enum alternative matching
 
 A decision over a nominal enum may use its payload-free alternative names as

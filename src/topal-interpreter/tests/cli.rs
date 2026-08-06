@@ -1980,6 +1980,17 @@ fn error_code_pattern_after_fallback_has_ordering_help() {
 }
 
 #[test]
+fn rule_after_otherwise_has_ordering_help() {
+    let source = "choose is fn (condition : Boolean) -> Int\n  condition\n    otherwise 0\n    true then 1\n";
+    let output = run(&[], source);
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-UNREACHABLE-DECISION-RULE]"));
+    assert!(diagnostic.contains("unreachable after `otherwise`"));
+    assert!(diagnostic.contains("help: move `otherwise` after every specific matcher"));
+}
+
+#[test]
 fn all_modes_preserve_literal_string_contents() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, "text\"He said \"hello\". {value} \\n\"text\n");
