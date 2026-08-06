@@ -6,4 +6,4 @@ preserve is fn (candidate : Range Int) -> Range Int
   candidate
 includes-five is fn (candidate : Range Int) -> Boolean
   candidate contains 5
-(preserve interval, includes-five interval, interval contains 11, includes-five empty-interval)
+(preserve interval, interval and (5 .. 15), interval and (20 .. 30), includes-five interval, interval contains 11, includes-five empty-interval)

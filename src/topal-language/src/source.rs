@@ -819,6 +819,13 @@ impl Session {
                         trace,
                     );
                 }
+                if let [left, Expression::Identifier(callable), right] = items.as_slice()
+                    && source.slice(*callable) == "and"
+                {
+                    let left = self.evaluate_expression(source, left, trace)?;
+                    let right = self.evaluate_expression(source, right, trace)?;
+                    return apply_range_intersection(source, left, right, *span, trace);
+                }
                 if items.len() == 3
                     && let Expression::Identifier(name_span) = items[1]
                     && !self.bindings.contains_key(source.slice(name_span))
@@ -3151,6 +3158,57 @@ fn apply_range_membership(
         detail: if accepted { "accepted" } else { "rejected" },
     });
     Ok(Value::Boolean(accepted))
+}
+
+fn apply_range_intersection(
+    source: &SourceText,
+    left: Value,
+    right: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let result = match (left, right) {
+        (
+            Value::IntRange {
+                lower: left_lower,
+                upper: left_upper,
+            },
+            Value::IntRange {
+                lower: right_lower,
+                upper: right_upper,
+            },
+        ) => Value::IntRange {
+            lower: left_lower.max(right_lower),
+            upper: left_upper.min(right_upper),
+        },
+        (
+            Value::RationalRange {
+                lower: left_lower,
+                upper: left_upper,
+            },
+            Value::RationalRange {
+                lower: right_lower,
+                upper: right_upper,
+            },
+        ) => Value::RationalRange {
+            lower: left_lower.max(right_lower),
+            upper: left_upper.min(right_upper),
+        },
+        _ => {
+            return Err(diagnostic(
+                source,
+                "E-RANGE-INTERSECTION-OPERANDS",
+                span,
+                "range intersection requires ranges from the same endpoint domain",
+            ));
+        }
+    };
+    trace.record(TraceEvent {
+        event: "range.intersection.constructed",
+        rule: "TOPAL-RANGE-INTERSECTION-001",
+        detail: "conjunction",
+    });
+    Ok(result)
 }
 
 fn apply_comparison(

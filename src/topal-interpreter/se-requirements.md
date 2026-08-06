@@ -862,3 +862,11 @@ function result classifiers under `TOPAL-RANGE-CLASSIFIER-001`. Returned ranges
 shall retain their endpoint domain and remain usable for membership. Parser,
 LSP, trace, and reversible debugger coverage shall exercise both domains in the
 updated commented examples.
+
+## TOPAL-INTP-SUBSET-103 — Range intersection
+
+All interpreter modes shall execute `left and right` for matching Int or
+Rational range domains under `TOPAL-RANGE-INTERSECTION-001`. Overlapping inputs
+shall narrow both bounds and disjoint inputs shall produce an empty range. Test
+traces and reversible debugger history shall expose intersection construction;
+LSP validation shall accept the updated commented examples.
