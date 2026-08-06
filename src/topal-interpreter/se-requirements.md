@@ -909,3 +909,11 @@ All interpreter modes shall execute `Some value` and `None T` under
 and displaying the approved constructor spellings. Some payloads shall evaluate
 exactly once. Traces, LSP validation, and reversible debugger history shall
 cover the commented example.
+
+## TOPAL-INTP-SUBSET-109 — Contextual None bindings
+
+All interpreter modes shall allow bare `None` in an immediately
+`Optional T`-classified binding under `TOPAL-TYPE-OPTIONAL-CONTEXT-001`, retain
+the nominal payload classifier, and continue rejecting uncontextual bare None.
+Traces, LSP validation, and reversible debugger history shall cover the updated
+commented example.
