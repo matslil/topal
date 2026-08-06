@@ -805,6 +805,30 @@ impl Session {
                     });
                     return Ok(value);
                 }
+                if let [Expression::Identifier(callable), operand] = items.as_slice()
+                    && source.slice(*callable) == "not"
+                {
+                    let value = self.evaluate_expression(source, operand, trace)?;
+                    let Value::Boolean(value) = value else {
+                        return Err(diagnostic(
+                            source,
+                            "E-BOOLEAN-NOT-OPERAND",
+                            operand.span(),
+                            "not requires a Boolean operand",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.not(Boolean)",
+                    });
+                    trace.record(TraceEvent {
+                        event: "evaluation.logical",
+                        rule: "TOPAL-TYPE-BOOLEAN-LOGIC-001",
+                        detail: "not",
+                    });
+                    return Ok(Value::Boolean(!value));
+                }
                 if let [left, Expression::Identifier(callable), right] = items.as_slice()
                     && matches!(source.slice(*callable), "in" | "contains")
                 {
@@ -3954,7 +3978,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 10] = [
+const ROOT_OPERATIONS: [&str; 11] = [
     "absolute",
     "byte-count",
     "character-count",
@@ -3962,6 +3986,7 @@ const ROOT_OPERATIONS: [&str; 10] = [
     "empty",
     "entry-count",
     "normalize",
+    "not",
     "negate",
     "one",
     "zero",
@@ -5961,6 +5986,26 @@ fn inclusive_int_ranges_preserve_bounds_and_allow_empty_ranges() {
             .count(),
         3
     );
+}
+
+#[test]
+fn boolean_not_is_eager_and_type_checked() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate("(not true, not false, not (not true))\n", &mut trace)
+        .unwrap();
+    assert_eq!(value.to_string(), "(false, true, true)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-TYPE-BOOLEAN-LOGIC-001"))
+            .count(),
+        4
+    );
+    let error = Session::new()
+        .evaluate("not 1\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-BOOLEAN-NOT-OPERAND");
 }
 
 #[test]
