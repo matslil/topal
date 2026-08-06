@@ -462,7 +462,8 @@ impl Parser<'_> {
                 rules.iter().any(|rule| {
                     matches!(rule.matcher, DecisionMatcher::Result { error: found, .. } if found == error)
                 })
-            });
+            })
+            || self.complete_arithmetic_result(&rules);
         if !complete {
             let end = rules
                 .last()
@@ -480,6 +481,38 @@ impl Parser<'_> {
             subject: Box::new(subject),
             rules,
         })
+    }
+
+    fn complete_arithmetic_result(&self, rules: &[DecisionRule]) -> bool {
+        let has_ok = rules
+            .iter()
+            .any(|rule| matches!(rule.matcher, DecisionMatcher::Result { error: false, .. }));
+        let codes = rules
+            .iter()
+            .filter_map(|rule| match rule.matcher {
+                DecisionMatcher::ErrorCode {
+                    namespace,
+                    vocabulary,
+                    code,
+                    ..
+                } if self.source.slice(namespace) == "lang"
+                    && self.source.slice(vocabulary) == "arithmetic" =>
+                {
+                    Some(self.source.slice(code))
+                }
+                _ => None,
+            })
+            .collect::<std::collections::BTreeSet<_>>();
+        has_ok
+            && codes
+                == [
+                    "out-of-range",
+                    "not-representable",
+                    "division-by-zero",
+                    "indeterminate",
+                ]
+                .into_iter()
+                .collect()
     }
 
     fn decision_rule(&mut self) -> Option<DecisionRule> {
@@ -1451,5 +1484,15 @@ mod tests {
         };
         assert_eq!(source.slice(name), "value");
         assert_eq!(source.slice(classifier.unwrap()), "Rational");
+    }
+
+    #[test]
+    fn accepts_complete_closed_arithmetic_error_code_set() {
+        let source = SourceText::new(
+            "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error ( code is lang arithmetic out-of-range ) then \"range\"\n    Error ( code is lang arithmetic not-representable ) then \"representation\"\n    Error ( code is lang arithmetic division-by-zero ) then \"zero\"\n    Error ( code is lang arithmetic indeterminate ) then \"indeterminate\"",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     }
 }

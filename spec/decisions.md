@@ -64,3 +64,7 @@ identity and alternative stored in `Error.code`; it does not compare or derive
 `Error.domain`. Code identifiers shall remain qualified rather than becoming
 global bindings. A later `Error problem` rule may provide the remaining Error
 case and bind the complete Error unchanged.
+
+When the statically recorded Result contract contains a closed set of code
+vocabularies, one `Ok` matcher plus exactly every qualified code alternative is
+also exhaustive without a generic Error fallback.
