@@ -35,6 +35,7 @@ pub enum TokenKind {
     Minus,
     Star,
     Slash,
+    Percent,
     Caret,
     Unknown,
 }
@@ -156,6 +157,7 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         '-' => (TokenKind::Minus, 1),
         '*' => (TokenKind::Star, 1),
         '/' => (TokenKind::Slash, 1),
+        '%' => (TokenKind::Percent, 1),
         '^' => (TokenKind::Caret, 1),
         c if c.is_ascii_digit() => take_number(rest),
         '_' if rest.len() == 1
@@ -479,6 +481,20 @@ mod tests {
         assert_eq!(lexed.tokens[3].kind, TokenKind::Unknown);
         assert_eq!(source.slice(lexed.tokens[5].span), "_?");
         assert_eq!(lexed.tokens[5].kind, TokenKind::Identifier);
+    }
+
+    #[test]
+    fn tokenizes_percent_as_modulo_callable() {
+        assert_eq!(
+            kinds("17 % 5"),
+            vec![
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::Percent,
+                TokenKind::Whitespace,
+                TokenKind::Integer
+            ]
+        );
     }
 
     #[test]

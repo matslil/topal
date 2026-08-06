@@ -42,6 +42,7 @@ pub enum CallableKind {
     Minus,
     Multiply,
     Divide,
+    Modulo,
     Power,
 }
 
@@ -921,6 +922,10 @@ impl Parser<'_> {
             }),
             TokenKind::Slash => Some(Expression::Callable {
                 kind: CallableKind::Divide,
+                span: token.span,
+            }),
+            TokenKind::Percent => Some(Expression::Callable {
+                kind: CallableKind::Modulo,
                 span: token.span,
             }),
             TokenKind::Caret => Some(Expression::Callable {

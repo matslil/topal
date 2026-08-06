@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 49);
+    assert_eq!(examples.len(), 50);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -553,7 +553,7 @@ fn interactive_mode_evaluates_each_input() {
 
 #[test]
 fn interactive_mode_recovers_after_diagnostic() {
-    let output = run(&["--interactive"], "1 % 2\n2\n");
+    let output = run(&["--interactive"], "1 & 2\n2\n");
     assert!(output.status.success());
     assert_eq!(output.stdout, b"2\n");
     assert!(
@@ -585,7 +585,7 @@ fn test_mode_emits_stable_decisions() {
 
 #[test]
 fn unsupported_syntax_is_explicit() {
-    let output = run(&[], "1 % 2\n");
+    let output = run(&[], "1 & 2\n");
     assert!(!output.status.success());
     assert!(
         String::from_utf8(output.stderr)
@@ -2014,6 +2014,21 @@ fn character_classifier_diagnostic_reports_observed_count() {
     assert!(diagnostic.contains("error[E-CHARACTER-CLASSIFIER]"));
     assert!(diagnostic.contains("this String contains 2"));
     assert!(diagnostic.contains("help: use a String containing exactly one Unicode grapheme"));
+}
+
+#[test]
+fn every_mode_executes_euclidean_int_modulo() {
+    let source = include_str!("../../../examples/interpreter/int-euclidean-modulo.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(
+            b"(2, 3, 2, Error ( domain is root.%(Int,Int), code is division-by-zero ))\n"
+        ));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-NUM-INT-MODULO-001"));
+    assert!(trace.contains("root.%(Int,Int);division-by-zero"));
 }
 
 #[test]

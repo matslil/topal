@@ -2724,8 +2724,69 @@ fn apply_int_binary(
             Ok(Value::Int(left * right))
         }
         CallableKind::Divide => apply_divide(source, left, right, right_span, trace),
+        CallableKind::Modulo => apply_modulo(source, left, right, right_span, trace),
         CallableKind::Power => apply_power(source, left, right, right_span, trace),
     }
+}
+
+fn apply_modulo(
+    source: &SourceText,
+    left: BigInt,
+    right: BigInt,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if right == BigInt::from(0) {
+        trace.record(TraceEvent {
+            event: "obligation.refuted",
+            rule: "TOPAL-NUM-DIVZERO-001",
+            detail: "divisor.nonzero",
+        });
+        if parse_integer(source.slice(right_span)).is_none() {
+            let position = source.position(right_span.start);
+            trace.record(TraceEvent {
+                event: "result.error.constructed",
+                rule: "TOPAL-TYPE-RESULT-001",
+                detail: "root.%(Int,Int);division-by-zero",
+            });
+            return Ok(Value::Error {
+                domain: "root.%(Int,Int)".to_owned(),
+                code: "division-by-zero".to_owned(),
+                line: position.line,
+                column: position.column,
+            });
+        }
+        return Err(diagnostic(
+            source,
+            "E-DIVISION-BY-ZERO",
+            right_span,
+            "statically evident modulo by zero",
+        ));
+    }
+    trace.record(TraceEvent {
+        event: "obligation.proved",
+        rule: "TOPAL-NUM-DIVZERO-001",
+        detail: "divisor.nonzero",
+    });
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: "root.%(Int,Int)",
+    });
+    let mut remainder = left % &right;
+    if remainder < BigInt::from(0) {
+        remainder += if right < BigInt::from(0) {
+            -right
+        } else {
+            right
+        };
+    }
+    trace.record(TraceEvent {
+        event: "evaluation.modulo",
+        rule: "TOPAL-NUM-INT-MODULO-001",
+        detail: "Euclidean",
+    });
+    Ok(Value::Int(remainder))
 }
 
 fn apply_rational_binary(
@@ -2737,6 +2798,14 @@ fn apply_rational_binary(
     right_span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
+    if kind == CallableKind::Modulo {
+        return Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            span,
+            "Euclidean modulo requires discrete Int operands",
+        ));
+    }
     let (callable, event, rule, result) = match kind {
         CallableKind::Equal
         | CallableKind::NotEqual
@@ -2764,6 +2833,7 @@ fn apply_rational_binary(
             "TOPAL-NUM-RAT-MUL-001",
             left * right,
         ),
+        CallableKind::Modulo => unreachable!("modulo is rejected before Rational dispatch"),
         CallableKind::Divide => {
             if right.numer() == &BigInt::from(0) {
                 trace.record(TraceEvent {
@@ -4774,4 +4844,26 @@ fn character_classifier_uses_pinned_grapheme_segmentation() {
         .unwrap_err();
     assert_eq!(error.code, "E-CHARACTER-CLASSIFIER");
     assert!(error.message.contains("contains 2"));
+}
+
+#[test]
+fn int_modulo_is_euclidean_and_dynamic_zero_returns_error() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "modulo is fn (left : Int, right : Int) -> Result (Int, lang arithmetic ArithmeticErrorCode)\n  left % right\n(17 % 5, -17 % 5, 17 % -5, 17 modulo 0)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(2, 3, 2, Error ( domain is root.%(Int,Int), code is division-by-zero ))"
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-NUM-INT-MODULO-001"))
+            .count(),
+        3
+    );
 }
