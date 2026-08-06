@@ -68,6 +68,18 @@ value implicitly converts to or from a numeric value. The reserved literal
 `true` evaluates to the first value and `false` to the second without name
 resolution.
 
+### TOPAL-TYPE-BOOLEAN-LOGIC-001 — Eager logical application
+
+The fixed Boolean applications are `not value`, `left and right`, `left or
+right`, and `left xor right`. They accept only Boolean operands and never apply
+numeric conversion. Every supplied operand evaluates exactly once from left to
+right; `and` and `or` are not short-circuit control forms. Binary logical
+applications group under `TOPAL-SYN-GRAMMAR-001`.
+
+`not a` returns the opposite Boolean value. `a and b` is true exactly when both
+operands are true. `a or b` is true exactly when at least one operand is true.
+`a xor b` is true exactly when the operands differ.
+
 ### TOPAL-TYPE-EQUALITY-001 — Equality application
 
 If `T` provides canonical `Equality` evidence and `a:T`, `b:T`, then `a = b`

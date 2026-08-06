@@ -870,3 +870,10 @@ Rational range domains under `TOPAL-RANGE-INTERSECTION-001`. Overlapping inputs
 shall narrow both bounds and disjoint inputs shall produce an empty range. Test
 traces and reversible debugger history shall expose intersection construction;
 LSP validation shall accept the updated commented examples.
+
+## TOPAL-INTP-SUBSET-104 — Boolean negation
+
+All interpreter modes shall execute `not value` for Boolean operands under
+`TOPAL-TYPE-BOOLEAN-LOGIC-001` without numeric coercion. Traces and reversible
+debugger history shall expose the selected root operation and logical decision;
+LSP validation shall accept the commented example.

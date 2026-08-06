@@ -162,6 +162,14 @@ coerce to or from numeric values. The spellings `true` and `false` are reserved
 literals rather than names supplied by a prelude. They cannot be rebound or
 shadowed.
 
+The fixed logical vocabulary is `not value`, `left and right`, `left or right`,
+and `left xor right`. These are ordinary eager applications: operands evaluate
+once from left to right, without short-circuit control flow, and the binary
+forms associate according to the ordinary application grammar. `and` may also
+select range intersection. Applying `or` to ranges produces a general predicate
+unless convexity proves that the union remains a range; that does not change the
+Boolean overload. Logical operations never coerce numbers to Boolean.
+
 `Unit` is the type with exactly one value, written `()`. It represents the
 absence of additional information, including the result of a function called
 only for its effects and the payload of a sum alternative which carries no
