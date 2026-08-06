@@ -663,3 +663,5 @@ incomplete-decision diagnostic. Test traces and reversible debugger history
 shall expose the selected qualified code.
 The incomplete diagnostic shall list the missing qualified alternatives and
 offer both exhaustive patterns and a generic Error fallback as repairs.
+Repeated qualified code patterns shall be diagnosed at the later occurrence
+with actionable help and shall never count toward exhaustiveness.

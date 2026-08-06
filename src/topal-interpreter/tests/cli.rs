@@ -1958,6 +1958,17 @@ fn incomplete_error_code_decision_reports_missing_alternatives() {
 }
 
 #[test]
+fn duplicate_error_code_pattern_points_to_unreachable_case() {
+    let source = "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error ( code is lang arithmetic division-by-zero ) then \"first\"\n    Error ( code is lang arithmetic division-by-zero ) then \"second\"\n    Error problem then \"other\"\n";
+    let output = run(&[], source);
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-DUPLICATE-ERROR-CODE-PATTERN]"));
+    assert!(diagnostic.contains("matched more than once"));
+    assert!(diagnostic.contains("help: remove the later duplicate pattern"));
+}
+
+#[test]
 fn all_modes_preserve_literal_string_contents() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, "text\"He said \"hello\". {value} \\n\"text\n");
