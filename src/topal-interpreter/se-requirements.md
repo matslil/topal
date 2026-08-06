@@ -1043,3 +1043,11 @@ All interpreter modes shall return fresh `Generator Character Unit Unit` values
 from ordinary functions under `TOPAL-STRING-CHARACTERS-RESULT-001`. The caller
 shall receive one linearly consumable continuation. Traces, LSP validation, and
 reversible debugger history shall cover the commented example.
+
+## TOPAL-INTP-SUBSET-126 — Consumed generator diagnostics
+
+All interpreter modes shall reject reuse of a consumed named generator under
+`TOPAL-STRING-CHARACTERS-LINEAR-001` with a source-located diagnostic that names
+the binding and suggests constructing a fresh generator. Reversible debugger
+history shall retain the earlier consumption and the later failure; the
+commented failing debugger example shall remain executable as a scripted test.

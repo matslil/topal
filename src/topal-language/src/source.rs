@@ -170,6 +170,7 @@ pub struct Session {
     bindings: BTreeMap<String, Value>,
     functions: BTreeMap<String, Vec<UserFunction>>,
     declared_names: BTreeSet<String>,
+    consumed_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
     call_stack: Vec<ActiveCall>,
@@ -312,6 +313,7 @@ impl Session {
             bindings: bindings.clone(),
             functions: BTreeMap::new(),
             declared_names: bindings.keys().cloned().collect(),
+            consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: BTreeMap::new(),
             call_stack: Vec::new(),
@@ -579,6 +581,7 @@ impl Session {
                         bindings: self.bindings.clone(),
                         functions: self.functions.clone(),
                         declared_names: self.declared_names.clone(),
+                        consumed_names: self.consumed_names.clone(),
                         local_function_names: self.local_function_names.clone(),
                         enum_types: self.enum_types.clone(),
                         call_stack: self.call_stack.clone(),
@@ -621,6 +624,9 @@ impl Session {
             Expression::String(span) => evaluate_string_literal(source, *span, trace),
             Expression::Identifier(span) => {
                 let name = source.slice(*span);
+                if self.consumed_names.contains(name) {
+                    return Err(consumed_generator_diagnostic(source, *span, name));
+                }
                 let value = self.bindings.get(name).cloned().ok_or_else(|| {
                     let error = diagnostic(source, "E-UNBOUND-NAME", *span, "name is not bound");
                     closest_name(name, self.bindings.keys())
@@ -1217,6 +1223,7 @@ impl Session {
                         bindings: function.bindings,
                         functions: self.functions.clone(),
                         declared_names: BTreeSet::new(),
+                        consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
                         call_stack: self.call_stack.clone(),
@@ -1824,12 +1831,17 @@ impl Execution {
             Expression::Identifier(name) => {
                 let name_text = self.source.slice(*name);
                 let value = session.bindings.remove(name_text).ok_or_else(|| {
-                    diagnostic(&self.source, "E-UNBOUND-NAME", *name, "name is not bound")
+                    if session.consumed_names.contains(name_text) {
+                        consumed_generator_diagnostic(&self.source, *name, name_text)
+                    } else {
+                        diagnostic(&self.source, "E-UNBOUND-NAME", *name, "name is not bound")
+                    }
                 })?;
                 let Value::CharacterGenerator(generated) = value else {
                     return Err(foreach_source_diagnostic(&self.source, source.span()));
                 };
                 session.declared_names.remove(name_text);
+                session.consumed_names.insert(name_text.to_owned());
                 trace.record(TraceEvent {
                     event: "generator.consumed",
                     rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
@@ -2582,6 +2594,16 @@ fn foreach_source_diagnostic(source: &SourceText, span: Span) -> Diagnostic {
         span,
         "the implemented foreach subset requires `characters text`",
     )
+}
+
+fn consumed_generator_diagnostic(source: &SourceText, span: Span, name: &str) -> Diagnostic {
+    diagnostic(
+        source,
+        "E-GENERATOR-CONSUMED",
+        span,
+        format!("generator `{name}` was already consumed"),
+    )
+    .with_help("construct a fresh generator before traversing it again")
 }
 
 fn enum_alternatives(source: &SourceText, expression: &Expression) -> Option<Vec<(String, Span)>> {
@@ -6963,6 +6985,21 @@ fn function_returns_fresh_character_generator() {
         )
         .unwrap();
     assert_eq!(value, Value::Unit);
+}
+
+#[test]
+fn reused_character_generator_reports_consumption() {
+    let error = Session::new()
+        .evaluate(
+            "generated is characters \"Topal\"\ngenerated foreach { character }\n  String character\ngenerated foreach { character }\n  String character\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-GENERATOR-CONSUMED");
+    assert_eq!(
+        error.help.as_deref(),
+        Some("construct a fresh generator before traversing it again")
+    );
 }
 
 #[test]
