@@ -1211,33 +1211,47 @@ impl Session {
                     generator_scope
                         .bindings
                         .insert(generator.parameter.0.clone(), argument);
-                    let yielded_expressions =
-                        discarded_yield_expressions(&generator.source, &generator.body)
-                            .expect("generator declarations validate their restricted body");
                     trace.record(TraceEvent {
                         event: "generator.started",
                         rule: "TOPAL-GENERATOR-DECLARATION-001",
                         detail: name,
                     });
-                    let mut generated = Vec::with_capacity(yielded_expressions.len());
-                    for yielded_expression in yielded_expressions {
-                        let yielded = generator_scope.evaluate_expression(
-                            &generator.source,
-                            yielded_expression,
-                            trace,
-                        )?;
-                        if !value_has_classifier(&yielded, "Character") {
-                            return Err(diagnostic(
+                    let mut generated = Vec::new();
+                    for statement in &generator.body[..generator.body.len() - 1] {
+                        if let Some(yielded_expression) =
+                            discarded_yield_expression(&generator.source, statement)
+                        {
+                            let yielded = generator_scope.evaluate_expression(
                                 &generator.source,
-                                "E-GENERATOR-YIELD-TYPE",
-                                yielded_expression.span(),
-                                format!("generator `{name}` must yield `Character`"),
-                            ));
+                                yielded_expression,
+                                trace,
+                            )?;
+                            if !value_has_classifier(&yielded, "Character") {
+                                return Err(diagnostic(
+                                    &generator.source,
+                                    "E-GENERATOR-YIELD-TYPE",
+                                    yielded_expression.span(),
+                                    format!("generator `{name}` must yield `Character`"),
+                                ));
+                            }
+                            let Value::String(yielded) = yielded else {
+                                unreachable!("Character values use the String representation")
+                            };
+                            generated.push(yielded);
+                        } else {
+                            let mut execution = Execution {
+                                source: generator.source.clone(),
+                                statements: vec![statement.clone()],
+                                cursor: 0,
+                                return_classifier: None,
+                            };
+                            match execution.step(&mut generator_scope, trace)? {
+                                ExecutionStep::Advanced { .. } | ExecutionStep::Complete(_) => {}
+                                ExecutionStep::Returned { .. } => {
+                                    unreachable!("generator setup bindings cannot return")
+                                }
+                            }
                         }
-                        let Value::String(yielded) = yielded else {
-                            unreachable!("Character values use the String representation")
-                        };
-                        generated.push(yielded);
                     }
                     let origin = format!("root.{name}");
                     let value = Value::CharacterGenerator { generated, origin };
@@ -2234,12 +2248,12 @@ impl Execution {
                 "the implemented generator subset requires `Character -> Generator Character Unit Unit`",
             ));
         }
-        if discarded_yield_expressions(&self.source, body).is_none() {
+        if !supported_generator_body(&self.source, body) {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-BODY",
                 span,
-                "the implemented generator subset requires one or more `_ is yield value` statements followed by `()`",
+                "the implemented generator subset requires local bindings and one or more `_ is yield value` statements followed by `()`",
             ));
         }
         session.generators.insert(
@@ -2813,37 +2827,39 @@ fn statement_span(statement: &Statement) -> Span {
     }
 }
 
-fn discarded_yield_expressions<'a>(
-    source: &SourceText,
-    body: &'a [Statement],
-) -> Option<Vec<&'a Expression>> {
+fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
     if !matches!(
         body.last(),
         Some(Statement::Expression(Expression::Unit(_)))
     ) {
-        return None;
+        return false;
     }
-    let mut yielded_expressions = Vec::new();
+    let mut yield_count = 0;
     for statement in &body[..body.len().saturating_sub(1)] {
-        let Statement::Discard {
-            value: Expression::Application { items, .. },
-            ..
-        } = statement
-        else {
-            return None;
-        };
-        let [Expression::Identifier(keyword), yielded] = items.as_slice() else {
-            return None;
-        };
-        if source.slice(*keyword) != "yield" {
-            return None;
+        if discarded_yield_expression(source, statement).is_some() {
+            yield_count += 1;
+        } else if !matches!(statement, Statement::Binding { .. }) {
+            return false;
         }
-        yielded_expressions.push(yielded);
     }
-    if yielded_expressions.is_empty() {
+    yield_count > 0
+}
+
+fn discarded_yield_expression<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+) -> Option<&'a Expression> {
+    let Statement::Discard {
+        value: Expression::Application { items, .. },
+        ..
+    } = statement
+    else {
         return None;
-    }
-    Some(yielded_expressions)
+    };
+    let [Expression::Identifier(keyword), yielded] = items.as_slice() else {
+        return None;
+    };
+    (source.slice(*keyword) == "yield").then_some(yielded)
 }
 
 fn foreach_source_diagnostic(source: &SourceText, span: Span) -> Diagnostic {
@@ -7449,6 +7465,26 @@ fn named_single_yield_generator_is_traversable() {
             .filter(|event| event.contains("generator.yielded"))
             .count(),
         2
+    );
+}
+
+#[test]
+fn named_generator_yield_reads_local_binding() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "copy-once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  copy : Character is initial\n  _ is yield copy\n  ()\ngenerated is copy-once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert!(trace.iter().any(|event| event.contains("binding.created")));
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("generator.yielded"))
+            .count(),
+        1
     );
 }
 

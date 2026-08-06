@@ -36,3 +36,9 @@ generator provenance.
 Direct foreach over a custom `Generator Character Unit Unit` shall observe its
 yields in source order, invoke the Unit-returning action once for each value,
 resume with Unit after every action, and produce the generator's final Unit.
+
+### TOPAL-GENERATOR-LOCAL-BINDING-001 — Generator-local state
+
+An ordinary binding in a generator body shall be evaluated in the generator's
+local scope. Later yields may refer to that binding, and neither its name nor
+its value becomes visible in the caller's scope.
