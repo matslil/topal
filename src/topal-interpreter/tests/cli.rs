@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 56);
+    assert_eq!(examples.len(), 57);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2140,6 +2140,23 @@ fn every_mode_validates_dynamic_rational_to_int() {
     assert!(trace.contains("Rational->Int:validated"));
     assert!(trace.contains("root.Int(Rational);not-representable"));
     assert!(trace.contains("result.error.projected"));
+}
+
+#[test]
+fn every_mode_executes_checked_int_construction() {
+    let source = include_str!("../../../examples/interpreter/int-checked-construction.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(
+            b"(7, 6, Error ( domain is root.Int(Rational), code is not-representable ))\n"
+        ));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("TOPAL-NUM-INT-CONSTRUCT-001").count(), 3);
+    assert!(trace.contains("Int->Int:identity"));
+    assert!(trace.contains("Rational->Int:exact"));
+    assert!(trace.contains("root.Int(Rational);not-representable"));
 }
 
 #[test]

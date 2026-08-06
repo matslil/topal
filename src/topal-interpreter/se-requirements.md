@@ -778,3 +778,12 @@ rounding; other finite rationals shall propagate `not-representable` with the
 compiler-derived `root.Int(Rational)` reporting domain. Test traces and
 reversible debugger history shall expose both outcomes; LSP validation shall
 accept the commented example.
+
+## TOPAL-INTP-SUBSET-093 — Exact checked Int construction
+
+All interpreter modes shall execute prefix `Int value` checked construction
+under `TOPAL-NUM-INT-CONSTRUCT-001`. Int identity and exactly integral Rational
+operands shall succeed; a closed fractional Rational shall be diagnosed and a
+dynamic fractional Rational shall return `not-representable`. Test traces and
+reversible debugger history shall expose construction decisions; LSP validation
+shall accept the commented example.
