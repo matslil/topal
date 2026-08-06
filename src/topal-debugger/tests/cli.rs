@@ -1016,6 +1016,24 @@ fn records_reversible_universal_unicode_lowercase() {
 }
 
 #[test]
+fn records_reversible_full_unicode_case_folding() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}string-case-fold.debug"),
+            &format!("{root}string-case-fold.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-STRING-CASE-FOLD-001"));
+    assert!(stdout.contains("string.case-folded"));
+    assert!(stdout.contains("\"strasse σσ\""));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

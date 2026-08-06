@@ -76,6 +76,14 @@ pub fn lowercase(text: &str) -> String {
     text.to_lowercase()
 }
 
+/// Applies Unicode's full, locale-independent default case folding.
+#[must_use]
+pub fn case_fold(text: &str) -> String {
+    use unicode_casefold::UnicodeCaseFold as _;
+
+    text.case_fold().collect()
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Span {
     pub start: usize,
@@ -218,6 +226,11 @@ mod tests {
     #[test]
     fn applies_default_unicode_lowercase_mapping() {
         assert_eq!(lowercase("İΣ"), "i̇ς");
+    }
+
+    #[test]
+    fn applies_full_default_unicode_case_folding() {
+        assert_eq!(case_fold("Straße Σς"), "strasse σσ");
     }
 
     #[test]

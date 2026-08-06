@@ -58,6 +58,14 @@ locale-independent default lowercase mapping under the language context's
 pinned Unicode data. It returns a plain `String`, may change the character
 count, and shall neither inspect ambient locale nor add normalization evidence.
 
+### TOPAL-STRING-CASE-FOLD-001 — Universal full case folding
+
+For a plain `String` value `text`, `case-fold text` shall apply Unicode's full,
+locale-independent default case-folding mapping under the language context's
+pinned Unicode data. It returns a plain `String`, may expand characters, and
+shall neither inspect ambient locale nor add normalization evidence. This is a
+caseless-comparison basis and is not defined as lowercase conversion.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count
