@@ -15,3 +15,10 @@ For `value : Int` and `interval : Range Int`, both `value in interval` and
 range accepts the value exactly when `lower <= value` and `value <= upper`.
 Consequently every value is rejected by a reversed, empty range. Each operand
 is evaluated once.
+
+### TOPAL-RANGE-RATIONAL-001 — Rational range construction and membership
+
+Finite Rational endpoints construct a closed `Range Rational` with the same
+inclusive and empty-range semantics. Mixed Int and Rational endpoints first use
+the single canonical `Int`-to-`Rational` conversion. Membership accepts Rational
+values and canonically embedded Int values, compares exactly, and never rounds.

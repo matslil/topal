@@ -20,6 +20,10 @@ pub enum Value {
         lower: BigInt,
         upper: BigInt,
     },
+    RationalRange {
+        lower: BigRational,
+        upper: BigRational,
+    },
     String(String),
     Tuple(Vec<Self>),
     Record(Vec<(String, Self)>),
@@ -51,6 +55,14 @@ impl fmt::Display for Value {
                 )
             }
             Self::IntRange { lower, upper } => write!(formatter, "{lower} .. {upper}"),
+            Self::RationalRange { lower, upper } => write!(
+                formatter,
+                "Rational ( {}, {} ) .. Rational ( {}, {} )",
+                lower.numer(),
+                lower.denom(),
+                upper.numer(),
+                upper.denom()
+            ),
             Self::String(value) => formatter.write_str(&display_string(value)),
             Self::Tuple(items) => {
                 formatter.write_str("(")?;
@@ -2847,7 +2859,7 @@ const fn value_classifier(value: &Value) -> &'static str {
         Value::Boolean(_) => "Boolean",
         Value::Int(_) => "Int",
         Value::Rational(_) => "Rational",
-        Value::IntRange { .. } => "Range",
+        Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::String(_) => "String",
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
@@ -3049,20 +3061,42 @@ fn apply_range(
     span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
-    let (Value::Int(lower), Value::Int(upper)) = (left, right) else {
-        return Err(diagnostic(
-            source,
-            "E-RANGE-ENDPOINTS",
-            span,
-            "the implemented range subset requires two Int endpoints",
-        ));
+    let (range, nonempty) = match (left, right) {
+        (Value::Int(lower), Value::Int(upper)) => {
+            let nonempty = lower <= upper;
+            (Value::IntRange { lower, upper }, nonempty)
+        }
+        (Value::Rational(lower), Value::Rational(upper)) => {
+            let nonempty = lower <= upper;
+            (Value::RationalRange { lower, upper }, nonempty)
+        }
+        (Value::Int(lower), Value::Rational(upper)) => {
+            trace_conversion(trace, "Int->Rational:left");
+            let lower = BigRational::from_integer(lower);
+            let nonempty = lower <= upper;
+            (Value::RationalRange { lower, upper }, nonempty)
+        }
+        (Value::Rational(lower), Value::Int(upper)) => {
+            trace_conversion(trace, "Int->Rational:right");
+            let upper = BigRational::from_integer(upper);
+            let nonempty = lower <= upper;
+            (Value::RationalRange { lower, upper }, nonempty)
+        }
+        _ => {
+            return Err(diagnostic(
+                source,
+                "E-RANGE-ENDPOINTS",
+                span,
+                "range endpoints require finite Int or Rational values",
+            ));
+        }
     };
     trace.record(TraceEvent {
         event: "range.constructed",
         rule: "TOPAL-RANGE-INCLUSIVE-001",
-        detail: if lower <= upper { "nonempty" } else { "empty" },
+        detail: if nonempty { "nonempty" } else { "empty" },
     });
-    Ok(Value::IntRange { lower, upper })
+    Ok(range)
 }
 
 fn apply_range_membership(
@@ -3075,8 +3109,19 @@ fn apply_range_membership(
 ) -> Result<Value, Diagnostic> {
     let operands = match (callable, left, right) {
         ("in", Value::Int(value), Value::IntRange { lower, upper })
-        | ("contains", Value::IntRange { lower, upper }, Value::Int(value)) => {
+        | ("contains", Value::IntRange { lower, upper }, Value::Int(value)) => Some((
+            BigRational::from_integer(value),
+            BigRational::from_integer(lower),
+            BigRational::from_integer(upper),
+        )),
+        ("in", Value::Rational(value), Value::RationalRange { lower, upper })
+        | ("contains", Value::RationalRange { lower, upper }, Value::Rational(value)) => {
             Some((value, lower, upper))
+        }
+        ("in", Value::Int(value), Value::RationalRange { lower, upper })
+        | ("contains", Value::RationalRange { lower, upper }, Value::Int(value)) => {
+            trace_conversion(trace, "Int->Rational:membership");
+            Some((BigRational::from_integer(value), lower, upper))
         }
         _ => None,
     };
@@ -3085,7 +3130,7 @@ fn apply_range_membership(
             source,
             "E-RANGE-MEMBERSHIP-OPERANDS",
             span,
-            "Int range membership requires one Int and one Range Int",
+            "range membership requires compatible exact numeric operands",
         ));
     };
     let accepted = lower <= value && value <= upper;
@@ -3793,6 +3838,7 @@ fn apply_negate(
         }
         Value::Boolean(_)
         | Value::IntRange { .. }
+        | Value::RationalRange { .. }
         | Value::String(_)
         | Value::Tuple(_)
         | Value::Record(_)
@@ -5845,5 +5891,27 @@ fn inclusive_int_ranges_preserve_bounds_and_allow_empty_ranges() {
             .filter(|event| event.contains("TOPAL-RANGE-MEMBERSHIP-001"))
             .count(),
         3
+    );
+}
+
+#[test]
+fn rational_ranges_use_exact_canonical_conversion() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate("interval is 0 .. 2.5\n(interval, 1.5 in interval, interval contains 2, 3 in interval)\n", &mut trace)
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(Rational ( 0, 1 ) .. Rational ( 5, 2 ), true, true, false)"
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("Int->Rational:left"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("Int->Rational:membership"))
     );
 }
