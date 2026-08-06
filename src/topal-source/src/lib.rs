@@ -56,6 +56,14 @@ pub fn character_count(text: &str) -> usize {
     text.graphemes(true).count()
 }
 
+/// Selects one extended grapheme cluster under the language context.
+#[must_use]
+pub fn character_at(text: &str, index: usize) -> Option<&str> {
+    use unicode_segmentation::UnicodeSegmentation as _;
+
+    text.graphemes(true).nth(index)
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Span {
     pub start: usize,
@@ -179,6 +187,15 @@ mod tests {
         assert!(is_nfc("é"));
         assert!(!is_nfc("e\u{301}"));
         assert!(is_identifier_start('\u{1c89}'));
+    }
+
+    #[test]
+    fn selects_extended_grapheme_clusters() {
+        let text = "a\u{301}👩‍🔬🇸🇪";
+        assert_eq!(character_at(text, 0), Some("a\u{301}"));
+        assert_eq!(character_at(text, 1), Some("👩‍🔬"));
+        assert_eq!(character_at(text, 2), Some("🇸🇪"));
+        assert_eq!(character_at(text, 3), None);
     }
 
     #[test]

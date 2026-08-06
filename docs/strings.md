@@ -344,6 +344,10 @@ index:
 text character-at index
 ```
 
+The unchecked index is an `Int` counted from zero in user-perceived characters.
+A negative index or one at or beyond `character-count text` returns `None`;
+otherwise the result is `Some Character`. It never indexes bytes or code points.
+
 Finding a character may require scanning from a known boundary; Topal does not
 promise constant-time access merely because the operation accepts an index.
 Repeated access can use an index tied to the particular string:

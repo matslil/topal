@@ -35,6 +35,15 @@ the preserved Unicode sequence under the language context's pinned Unicode
 segmentation data. Empty text has count zero. Canonically equivalent sequences
 shall be segmented as preserved rather than normalized before counting.
 
+### TOPAL-STRING-CHARACTER-AT-001 — Optional character indexing
+
+For `text : String` and unchecked `index : Int`, `text character-at index`
+counts extended grapheme clusters from zero under the same pinned segmentation
+as `TOPAL-STRING-CHARACTER-COUNT-001`. A valid index returns `Some Character`
+containing the complete preserved cluster. A negative index or one no less than
+the character count returns `None` of `Optional Character`. The operation does
+not normalize or index encoded bytes or Unicode scalar values.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count

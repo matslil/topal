@@ -949,3 +949,11 @@ All interpreter modes shall execute equality and inequality for matching
 None shall compare by its nominal Optional identity, and mismatched classifiers
 shall be rejected. Traces and reversible debugger history shall expose Optional
 equality; LSP validation shall accept the updated commented example.
+
+## TOPAL-INTP-SUBSET-114 — Optional String character indexing
+
+All interpreter modes shall execute `text character-at index` under
+`TOPAL-STRING-CHARACTER-AT-001`, returning complete pinned-Unicode grapheme
+clusters as `Some Character` and negative or out-of-range indexes as None.
+Traces and reversible debugger history shall expose present and absent results;
+LSP validation shall accept the commented example.

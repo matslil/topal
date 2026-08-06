@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 64);
+    assert_eq!(examples.len(), 65);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2319,6 +2319,24 @@ fn every_mode_constructs_explicit_optional_values() {
     assert_eq!(trace.matches("TOPAL-DECISION-OPTIONAL-001").count(), 6);
     assert!(trace.contains("optional.payload.bound"));
     assert_eq!(trace.matches("TOPAL-TYPE-OPTIONAL-EQUALITY-001").count(), 4);
+}
+
+#[test]
+fn every_mode_indexes_user_perceived_string_characters() {
+    let source = include_str!("../../../examples/interpreter/string-character-at.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output.stdout.ends_with(
+                "(Some \"a\u{301}\", Some \"👩‍🔬\", Some \"🇸🇪\", None, None)\n".as_bytes()
+            )
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("TOPAL-STRING-CHARACTER-AT-001").count(), 5);
+    assert!(trace.contains("\"detail\":\"Some\""));
+    assert!(trace.contains("\"detail\":\"None\""));
 }
 
 #[test]
