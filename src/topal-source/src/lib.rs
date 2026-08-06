@@ -92,6 +92,13 @@ pub fn canonically_equal(left: &str, right: &str) -> bool {
     left.nfd().eq(right.nfd())
 }
 
+/// Traverses the preserved text as extended grapheme clusters.
+pub fn characters(text: &str) -> impl Iterator<Item = &str> {
+    use unicode_segmentation::UnicodeSegmentation as _;
+
+    text.graphemes(true)
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Span {
     pub start: usize,
@@ -245,6 +252,14 @@ mod tests {
     fn compares_canonical_unicode_equivalence() {
         assert!(canonically_equal("é", "e\u{301}"));
         assert!(!canonically_equal("é", "e"));
+    }
+
+    #[test]
+    fn traverses_extended_grapheme_clusters_in_order() {
+        assert_eq!(
+            characters("a\u{301}👩‍🔬🇸🇪").collect::<Vec<_>>(),
+            ["a\u{301}", "👩‍🔬", "🇸🇪"]
+        );
     }
 
     #[test]

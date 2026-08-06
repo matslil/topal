@@ -165,6 +165,16 @@ fn completion_items() -> Value {
                 "detail": "String -> Int"
             },
             {
+                "label": "characters",
+                "kind": 3,
+                "detail": "String -> Generator Character Unit Unit"
+            },
+            {
+                "label": "collect",
+                "kind": 3,
+                "detail": "Generator Character Unit Unit, String -> String"
+            },
+            {
                 "label": "concat",
                 "kind": 3,
                 "detail": "String, String -> String"
@@ -418,6 +428,8 @@ mod tests {
                 "canonically-equals",
                 "case-fold",
                 "character-count",
+                "characters",
+                "collect",
                 "concat",
                 "empty",
                 "empty?",
@@ -596,7 +608,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 69);
+        assert_eq!(examples.len(), 70);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {

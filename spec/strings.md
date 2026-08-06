@@ -74,6 +74,15 @@ canonically equivalent under the language context's pinned Unicode data. It
 shall not mutate or normalize either operand. Ordinary String equality remains
 exact preserved-sequence equality and is unaffected by this operation.
 
+### TOPAL-STRING-CHARACTERS-COLLECT-001 — Character traversal collection
+
+For a plain String `text`, `characters text` traverses its preserved sequence
+as a finite, ordered, Unit-resumed generator of complete extended grapheme
+clusters under the same pinned segmentation as character counting. Collecting
+that unchanged traversal with `collect String` concatenates every yielded
+Character in order and returns a plain String with exactly the original scalar
+sequence. Empty input yields no Characters and collects to `empty String`.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count

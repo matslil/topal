@@ -998,3 +998,11 @@ String values under `TOPAL-STRING-CANONICAL-EQUALITY-001`, without changing
 exact `=` semantics or either operand. Traces and reversible debugger history
 shall expose overload selection and the comparison reason; LSP completion and
 validation shall cover the commented example.
+
+## TOPAL-INTP-SUBSET-120 — String Character traversal collection
+
+All interpreter modes shall execute `characters text collect String` under
+`TOPAL-STRING-CHARACTERS-COLLECT-001`, yielding complete grapheme clusters in
+order and reconstructing the exact preserved text. Formal traces and reversible
+debugger history shall expose each yield and collection; LSP completion and
+validation shall cover the commented example.
