@@ -2189,14 +2189,13 @@ fn every_mode_constructs_canonical_rationals() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
-        assert!(
-            output
-                .stdout
-                .ends_with(b"(Rational ( 1, 2 ), Rational ( -1, 2 ), Rational ( 0, 1 ))\n")
-        );
+        assert!(output.stdout.ends_with(
+            b"(Rational ( 7, 1 ), Rational ( 1, 2 ), Rational ( -1, 2 ), Rational ( 0, 1 ))\n"
+        ));
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert_eq!(trace.matches("TOPAL-NUM-RATIONAL-CONSTRUCT-001").count(), 3);
+    assert!(trace.contains("Int->Rational:explicit"));
 
     let diagnostic = run(&[], "Rational (1, 0)\n");
     assert!(!diagnostic.status.success());

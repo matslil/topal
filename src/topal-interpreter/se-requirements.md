@@ -814,3 +814,11 @@ canonical values; directionless zero shall return `division-by-zero` for a
 nonzero numerator and `indeterminate` for zero. Both failures shall use
 `root.Rational(Int,Int)`. Test traces and reversible debugger history shall
 expose every outcome; LSP validation shall accept the commented example.
+
+## TOPAL-INTP-SUBSET-097 — Explicit Rational construction from Int
+
+All interpreter modes shall execute prefix `Rational value` for an Int operand
+as the total canonical embedding under `TOPAL-NUM-INT-RATIONAL-CONVERT-001`.
+The result shall have denominator one without a Result wrapper. Test traces and
+reversible debugger history shall expose explicit construction; LSP validation
+shall accept the updated commented Rational construction example.

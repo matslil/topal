@@ -1911,6 +1911,14 @@ fn construct_rational(
     value: Value,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
+    if let Value::Int(value) = value {
+        trace.record(TraceEvent {
+            event: "numeric.rational.constructed",
+            rule: "TOPAL-NUM-INT-RATIONAL-CONVERT-001",
+            detail: "Int->Rational:explicit",
+        });
+        return Ok(Value::Rational(BigRational::from_integer(value)));
+    }
     let Value::Tuple(values) = value else {
         return Err(diagnostic(
             source,
@@ -5682,13 +5690,13 @@ fn closed_rational_construction_canonicalizes_components() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            "(Rational (2, 4), Rational (2, -4), Rational (0, 5))\n",
+            "(Rational 7, Rational (2, 4), Rational (2, -4), Rational (0, 5))\n",
             &mut trace,
         )
         .unwrap();
     assert_eq!(
         value.to_string(),
-        "(Rational ( 1, 2 ), Rational ( -1, 2 ), Rational ( 0, 1 ))"
+        "(Rational ( 7, 1 ), Rational ( 1, 2 ), Rational ( -1, 2 ), Rational ( 0, 1 ))"
     );
     assert_eq!(
         trace
@@ -5697,6 +5705,10 @@ fn closed_rational_construction_canonicalizes_components() {
             .count(),
         3
     );
+    assert!(trace.iter().any(|event| {
+        event.contains("TOPAL-NUM-INT-RATIONAL-CONVERT-001")
+            && event.contains("Int->Rational:explicit")
+    }));
 
     let error = Session::new()
         .evaluate("Rational (1, 0)\n", &mut std::io::sink())

@@ -839,7 +839,12 @@ fn records_reversible_canonical_rational_construction() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-NUM-RATIONAL-CONSTRUCT-001"));
     assert!(stdout.contains("numeric.rational.constructed"));
-    assert!(stdout.contains("(Rational ( 1, 2 ), Rational ( -1, 2 ), Rational ( 0, 1 ))"));
+    assert!(stdout.contains("Int->Rational:explicit"));
+    assert!(
+        stdout.contains(
+            "(Rational ( 7, 1 ), Rational ( 1, 2 ), Rational ( -1, 2 ), Rational ( 0, 1 ))"
+        )
+    );
 }
 
 #[test]
