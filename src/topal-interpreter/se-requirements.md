@@ -1113,3 +1113,10 @@ generator yields under `TOPAL-GENERATOR-LOCAL-BINDING-001`. Later yields shall
 observe those bindings without leaking them to the caller. LSP validation,
 formal traces, and reversible scripted-debugger history shall cover a commented
 example.
+
+## TOPAL-INTP-SUBSET-135 — Generator return before first yield
+
+All interpreter modes shall support a custom generator that reaches its final
+Unit before yielding under `TOPAL-GENERATOR-EARLY-RETURN-001`. Direct foreach
+shall run no action and return Unit. Formal traces, LSP validation, and
+reversible scripted-debugger history shall cover a commented example.

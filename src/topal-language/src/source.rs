@@ -2253,7 +2253,7 @@ impl Execution {
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-BODY",
                 span,
-                "the implemented generator subset requires local bindings and one or more `_ is yield value` statements followed by `()`",
+                "the implemented generator subset requires local bindings or `_ is yield value` statements followed by `()`",
             ));
         }
         session.generators.insert(
@@ -2834,15 +2834,14 @@ fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
     ) {
         return false;
     }
-    let mut yield_count = 0;
     for statement in &body[..body.len().saturating_sub(1)] {
-        if discarded_yield_expression(source, statement).is_some() {
-            yield_count += 1;
-        } else if !matches!(statement, Statement::Binding { .. }) {
+        if discarded_yield_expression(source, statement).is_none()
+            && !matches!(statement, Statement::Binding { .. })
+        {
             return false;
         }
     }
-    yield_count > 0
+    true
 }
 
 fn discarded_yield_expression<'a>(
@@ -7485,6 +7484,28 @@ fn named_generator_yield_reads_local_binding() {
             .filter(|event| event.contains("generator.yielded"))
             .count(),
         1
+    );
+}
+
+#[test]
+fn named_generator_can_return_before_first_yield() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "nothing is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  ()\ngenerated is nothing \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert!(
+        !trace
+            .iter()
+            .any(|event| event.contains("generator.yielded"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.returned"))
     );
 }
 
