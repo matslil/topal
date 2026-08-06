@@ -76,9 +76,11 @@ exact preserved-sequence equality and is unaffected by this operation.
 
 ### TOPAL-STRING-CHARACTERS-COLLECT-001 — Character traversal collection
 
-For a plain String `text`, `characters text` traverses its preserved sequence
-as a finite, ordered, Unit-resumed generator of complete extended grapheme
-clusters under the same pinned segmentation as character counting. Collecting
+For a plain String `text`, `characters text` has classifier
+`Generator Character Unit Unit` and traverses its preserved sequence as a
+finite, ordered generator of complete extended grapheme clusters under the same
+pinned segmentation as character counting. Each continuation accepts `Unit`;
+after its last yield the generator returns `Unit`. Collecting
 that unchanged traversal with `collect String` concatenates every yielded
 Character in order and returns a plain String with exactly the original scalar
 sequence. Empty input yields no Characters and collects to `empty String`.
