@@ -2279,16 +2279,18 @@ fn every_mode_evaluates_boolean_not() {
         assert!(
             output
                 .stdout
-                .ends_with(b"(false, true, true, false, false, false, true, true, true, false)\n")
+                .ends_with(b"(false, true, true, false, false, false, true, true, true, false, false, true, true, false)\n")
         );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
-    assert_eq!(trace.matches("TOPAL-TYPE-BOOLEAN-LOGIC-001").count(), 10);
+    assert_eq!(trace.matches("TOPAL-TYPE-BOOLEAN-LOGIC-001").count(), 14);
     assert!(trace.contains("root.not(Boolean)"));
     assert_eq!(trace.matches("root.and(Boolean,Boolean)").count(), 4);
     assert!(trace.contains("and:eager"));
     assert_eq!(trace.matches("root.or(Boolean,Boolean)").count(), 4);
     assert!(trace.contains("or:eager"));
+    assert_eq!(trace.matches("root.xor(Boolean,Boolean)").count(), 4);
+    assert!(trace.contains("xor:eager"));
 }
 
 #[test]
