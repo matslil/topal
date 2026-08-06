@@ -982,3 +982,11 @@ All interpreter modes shall execute `lower text` for plain String values under
 ambient locale. Traces and reversible debugger history shall expose overload
 selection and transformation; LSP completion and validation shall cover the
 commented example.
+
+## TOPAL-INTP-SUBSET-118 — Universal String case folding
+
+All interpreter modes shall execute `case-fold text` for plain String values
+under `TOPAL-STRING-CASE-FOLD-001`, using full deterministic Unicode default
+folding without ambient locale. Traces and reversible debugger history shall
+expose overload selection and transformation; LSP completion and validation
+shall cover the commented example.

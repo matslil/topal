@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 67);
+    assert_eq!(examples.len(), 68);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2366,6 +2366,19 @@ fn every_mode_applies_universal_unicode_lowercase() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("root.lower(String)"));
     assert!(trace.contains("TOPAL-STRING-LOWER-001"));
+}
+
+#[test]
+fn every_mode_applies_full_universal_unicode_case_folding() {
+    let source = include_str!("../../../examples/interpreter/string-case-fold.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with("\"strasse σσ\"\n".as_bytes()));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("root.case-fold(String)"));
+    assert!(trace.contains("TOPAL-STRING-CASE-FOLD-001"));
 }
 
 #[test]

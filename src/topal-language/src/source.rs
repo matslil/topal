@@ -5,8 +5,8 @@ use std::fmt::{self, Write as _};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_source::{
-    SourceText, Span, character_at, character_count, lowercase, normalize_nfc, normalize_nfd,
-    uppercase,
+    SourceText, Span, case_fold, character_at, character_count, lowercase, normalize_nfc,
+    normalize_nfd, uppercase,
 };
 use topal_syntax::{
     CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, lex, parse,
@@ -1310,6 +1310,33 @@ impl Session {
                         event: "string.lowercased",
                         rule: "TOPAL-STRING-LOWER-001",
                         detail: "unicode-default",
+                    });
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "case-fold")
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(text) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-NO-APPLICABLE-OVERLOAD",
+                            operand_span,
+                            "case-fold requires a String operand in the implemented subset",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.case-fold(String)",
+                    });
+                    let value = Value::String(case_fold(&text));
+                    trace.record(TraceEvent {
+                        event: "string.case-folded",
+                        rule: "TOPAL-STRING-CASE-FOLD-001",
+                        detail: "unicode-default-full",
                     });
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
@@ -4295,9 +4322,10 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 13] = [
+const ROOT_OPERATIONS: [&str; 14] = [
     "absolute",
     "byte-count",
+    "case-fold",
     "character-count",
     "concat",
     "empty",
@@ -6578,6 +6606,20 @@ fn lower_uses_locale_independent_unicode_mapping() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-STRING-LOWER-001"))
+    );
+}
+
+#[test]
+fn case_fold_uses_full_locale_independent_unicode_mapping() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate("case-fold \"Straße Σς\"\n", &mut trace)
+        .unwrap();
+    assert_eq!(value.to_string(), "\"strasse σσ\"");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-STRING-CASE-FOLD-001"))
     );
 }
 
