@@ -796,3 +796,12 @@ negative operands shall produce an actionable diagnostic, and dynamic negative
 operands shall return `out-of-range` from `root.Nat(Int)`. Test traces and
 reversible debugger history shall expose success and failure; LSP validation
 shall accept the commented example.
+
+## TOPAL-INTP-SUBSET-095 — Closed finite Rational construction
+
+All interpreter modes shall execute `Rational (numerator, denominator)` for
+closed finite Int components under `TOPAL-NUM-RATIONAL-CONSTRUCT-001` and expose
+canonical sign, greatest-common-divisor, and zero normalization. A closed zero
+denominator shall produce an actionable diagnostic. Test traces and reversible
+debugger history shall expose construction; LSP validation shall accept the
+commented example.
