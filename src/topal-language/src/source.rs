@@ -1748,7 +1748,13 @@ impl Execution {
                     ));
                 }
                 let span = cover(*keyword, value.span());
-                let value = session.evaluate_expression(&self.source, value, trace)?;
+                let value = evaluate_expression_with_optional_context(
+                    &self.source,
+                    session,
+                    value,
+                    self.return_classifier.as_deref(),
+                    trace,
+                )?;
                 trace.record(TraceEvent {
                     event: "function.return.explicit",
                     rule: "TOPAL-FUNCTION-RETURN-001",
@@ -1768,7 +1774,13 @@ impl Execution {
                     ));
                 }
                 (
-                    session.evaluate_expression(&self.source, expression, trace)?,
+                    evaluate_expression_with_optional_context(
+                        &self.source,
+                        session,
+                        expression,
+                        self.return_classifier.as_deref(),
+                        trace,
+                    )?,
                     expression.span(),
                 )
             }
@@ -1892,14 +1904,29 @@ fn evaluate_binding_initializer(
     classifier: Option<Span>,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
-    let contextual_none = classifier
-        .map(|classifier| source.slice(classifier))
+    evaluate_expression_with_optional_context(
+        source,
+        session,
+        initializer,
+        classifier.map(|classifier| source.slice(classifier)),
+        trace,
+    )
+}
+
+fn evaluate_expression_with_optional_context(
+    source: &SourceText,
+    session: &mut Session,
+    expression: &Expression,
+    expected_classifier: Option<&str>,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let contextual_none = expected_classifier
         .and_then(optional_payload_classifier)
-        .filter(|_| {
-            matches!(initializer, Expression::Identifier(span) if source.slice(*span) == "None")
-        });
+        .filter(
+            |_| matches!(expression, Expression::Identifier(span) if source.slice(*span) == "None"),
+        );
     let Some(payload_classifier) = contextual_none else {
-        return session.evaluate_expression(source, initializer, trace);
+        return session.evaluate_expression(source, expression, trace);
     };
     trace.record(TraceEvent {
         event: "optional.none.constructed",
@@ -6264,6 +6291,25 @@ fn optional_values_cross_matching_function_boundaries() {
         )
         .unwrap_err();
     assert_eq!(error.code, "E-FUNCTION-ARGUMENT-TYPE");
+}
+
+#[test]
+fn contextual_none_uses_function_result_classifiers() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "implicit is fn () -> Optional Int\n  None\nexplicit is fn () -> Optional String\n  return None\n(implicit (), explicit ())\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(None, None)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-TYPE-OPTIONAL-CONTEXT-001"))
+            .count(),
+        2
+    );
 }
 
 #[test]
