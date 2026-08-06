@@ -379,6 +379,15 @@ impl Parser<'_> {
     }
 
     fn function_result(&mut self, first: Token) -> Option<Span> {
+        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "Range" {
+            let domain = self.take_nontrivia()?;
+            if domain.kind == TokenKind::Identifier
+                && matches!(self.source.slice(domain.span), "Int" | "Rational")
+            {
+                return Some(Span::new(first.span.start, domain.span.end));
+            }
+            return None;
+        }
         if first.kind != TokenKind::Identifier || self.source.slice(first.span) != "Result" {
             return Some(first.span);
         }

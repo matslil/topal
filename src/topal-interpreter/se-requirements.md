@@ -854,3 +854,11 @@ at ordinary function boundaries under `TOPAL-RANGE-CLASSIFIER-001`. Calls shall
 preserve the endpoint domain and support membership inside the callee. Test
 traces and reversible debugger history shall expose the calls; LSP validation
 shall accept the updated commented range examples.
+
+## TOPAL-INTP-SUBSET-102 — Range function results
+
+All interpreter modes shall accept `Range Int` and `Range Rational` as ordinary
+function result classifiers under `TOPAL-RANGE-CLASSIFIER-001`. Returned ranges
+shall retain their endpoint domain and remain usable for membership. Parser,
+LSP, trace, and reversible debugger coverage shall exercise both domains in the
+updated commented examples.
