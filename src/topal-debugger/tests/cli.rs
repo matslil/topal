@@ -980,6 +980,24 @@ fn records_reversible_string_character_indexing() {
 }
 
 #[test]
+fn records_reversible_universal_unicode_uppercase() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}string-uppercase.debug"),
+            &format!("{root}string-uppercase.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-STRING-UPPER-001"));
+    assert!(stdout.contains("string.uppercased"));
+    assert!(stdout.contains("\"STRASSE ΣΣ\""));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

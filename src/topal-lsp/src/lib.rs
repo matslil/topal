@@ -180,6 +180,11 @@ fn completion_items() -> Value {
                 "detail": "String, NFC -> String"
             },
             {
+                "label": "upper",
+                "kind": 3,
+                "detail": "String -> String"
+            },
+            {
                 "label": "negate",
                 "kind": 3,
                 "detail": "Int -> Int; Rational -> Rational"
@@ -401,6 +406,7 @@ mod tests {
                 "empty?",
                 "entry-count",
                 "normalize",
+                "upper",
                 "negate",
                 "one",
                 "zero"
@@ -572,7 +578,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 65);
+        assert_eq!(examples.len(), 66);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {

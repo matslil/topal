@@ -64,6 +64,12 @@ pub fn character_at(text: &str, index: usize) -> Option<&str> {
     text.graphemes(true).nth(index)
 }
 
+/// Applies Unicode's locale-independent default uppercase mapping.
+#[must_use]
+pub fn uppercase(text: &str) -> String {
+    text.to_uppercase()
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Span {
     pub start: usize,
@@ -196,6 +202,11 @@ mod tests {
         assert_eq!(character_at(text, 1), Some("👩‍🔬"));
         assert_eq!(character_at(text, 2), Some("🇸🇪"));
         assert_eq!(character_at(text, 3), None);
+    }
+
+    #[test]
+    fn applies_default_unicode_uppercase_mapping() {
+        assert_eq!(uppercase("Straße σς"), "STRASSE ΣΣ");
     }
 
     #[test]

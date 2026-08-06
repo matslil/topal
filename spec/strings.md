@@ -44,6 +44,13 @@ containing the complete preserved cluster. A negative index or one no less than
 the character count returns `None` of `Optional Character`. The operation does
 not normalize or index encoded bytes or Unicode scalar values.
 
+### TOPAL-STRING-UPPER-001 — Universal uppercase mapping
+
+For a plain `String` value `text`, `upper text` shall apply Unicode's complete,
+locale-independent default uppercase mapping under the language context's
+pinned Unicode data. It returns a plain `String`, may change the character
+count, and shall neither inspect ambient locale nor add normalization evidence.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count

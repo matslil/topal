@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 65);
+    assert_eq!(examples.len(), 66);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2340,6 +2340,19 @@ fn every_mode_indexes_user_perceived_string_characters() {
     assert!(trace.contains("\"detail\":\"None\""));
     assert!(trace.contains("TOPAL-DECISION-OPTIONAL-001"));
     assert!(trace.contains("TOPAL-STRING-FROM-CHARACTER-001"));
+}
+
+#[test]
+fn every_mode_applies_universal_unicode_uppercase() {
+    let source = include_str!("../../../examples/interpreter/string-uppercase.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with("\"STRASSE ΣΣ\"\n".as_bytes()));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("root.upper(String)"));
+    assert!(trace.contains("TOPAL-STRING-UPPER-001"));
 }
 
 #[test]
