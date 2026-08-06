@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 75);
+    assert_eq!(examples.len(), 76);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2487,6 +2487,19 @@ fn every_mode_closes_abandoned_generator_parameter() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-STRING-CHARACTERS-CLOSE-001"));
     assert!(trace.contains("generator.closed"));
+}
+
+#[test]
+fn every_mode_constructs_qualified_generator_error_code() {
+    let source = include_str!("../../../examples/interpreter/generator-error-codes.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"(generator-closed, true)\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-ERROR-CODE-001"));
+    assert!(trace.contains("namespace.member.selected"));
 }
 
 #[test]

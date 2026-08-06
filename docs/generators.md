@@ -55,7 +55,11 @@ evaluates successfully to that response and binds it to `response`.
 Every `yield` has the effective type
 `Result ( Resume, GeneratorErrorCode )`, where `Resume` is the declared
 `resumes` type. Its language-defined generator error vocabulary contains
-`generator-closed`. A consumer which abandons the continuation resumes the
+`generator-closed`. The nominal vocabulary is qualified
+`lang generator GeneratorErrorCode`; this namespace identifies the code type,
+while `Error.domain` is the lexical namespace in which the generator error
+occurs. The generator identity and exact `yield` position remain separate trace
+and source provenance. A consumer which abandons the continuation resumes the
 suspended `yield` with that error:
 
 ```topal

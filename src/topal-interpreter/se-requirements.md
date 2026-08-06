@@ -1075,3 +1075,11 @@ All interpreter modes shall close a transferred but unconsumed
 `TOPAL-STRING-CHARACTERS-CLOSE-001`. The caller binding shall remain consumed;
 formal traces and reversible debugger history shall distinguish close from
 ordinary exhaustion, and LSP validation shall accept the commented example.
+
+## TOPAL-INTP-SUBSET-130 — Generator error-code vocabulary
+
+All tools shall recognize `lang generator GeneratorErrorCode` and its initial
+`generator-closed` alternative under `TOPAL-GENERATOR-ERROR-CODE-001`, keeping
+that namespace distinct from compiler-derived `Error.domain`. Interpreter
+traces, LSP validation, and reversible debugger history shall cover the
+commented example.
