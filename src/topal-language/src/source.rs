@@ -793,6 +793,20 @@ impl Session {
                     });
                     return Ok(value);
                 }
+                if let [left, Expression::Identifier(callable), right] = items.as_slice()
+                    && matches!(source.slice(*callable), "in" | "contains")
+                {
+                    let left = self.evaluate_expression(source, left, trace)?;
+                    let right = self.evaluate_expression(source, right, trace)?;
+                    return apply_range_membership(
+                        source,
+                        source.slice(*callable),
+                        left,
+                        right,
+                        *span,
+                        trace,
+                    );
+                }
                 if items.len() == 3
                     && let Expression::Identifier(name_span) = items[1]
                     && !self.bindings.contains_key(source.slice(name_span))
@@ -3049,6 +3063,38 @@ fn apply_range(
         detail: if lower <= upper { "nonempty" } else { "empty" },
     });
     Ok(Value::IntRange { lower, upper })
+}
+
+fn apply_range_membership(
+    source: &SourceText,
+    callable: &str,
+    left: Value,
+    right: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let operands = match (callable, left, right) {
+        ("in", Value::Int(value), Value::IntRange { lower, upper })
+        | ("contains", Value::IntRange { lower, upper }, Value::Int(value)) => {
+            Some((value, lower, upper))
+        }
+        _ => None,
+    };
+    let Some((value, lower, upper)) = operands else {
+        return Err(diagnostic(
+            source,
+            "E-RANGE-MEMBERSHIP-OPERANDS",
+            span,
+            "Int range membership requires one Int and one Range Int",
+        ));
+    };
+    let accepted = lower <= value && value <= upper;
+    trace.record(TraceEvent {
+        event: "range.membership.tested",
+        rule: "TOPAL-RANGE-MEMBERSHIP-001",
+        detail: if accepted { "accepted" } else { "rejected" },
+    });
+    Ok(Value::Boolean(accepted))
 }
 
 fn apply_comparison(
@@ -5782,15 +5828,22 @@ fn dynamic_rational_construction_distinguishes_zero_failures() {
 fn inclusive_int_ranges_preserve_bounds_and_allow_empty_ranges() {
     let mut trace = Vec::new();
     let value = Session::new()
-        .evaluate("(0 .. 10, 5 .. 5, 10 .. 0)\n", &mut trace)
+        .evaluate("interval is 0 .. 10\nempty-interval is 10 .. 0\n(interval, 5 in interval, interval contains 11, 5 in empty-interval)\n", &mut trace)
         .unwrap();
-    assert_eq!(value.to_string(), "(0 .. 10, 5 .. 5, 10 .. 0)");
+    assert_eq!(value.to_string(), "(0 .. 10, true, false, false)");
     assert_eq!(
         trace
             .iter()
             .filter(|event| event.contains("TOPAL-RANGE-INCLUSIVE-001"))
             .count(),
-        3
+        2
     );
     assert!(trace.iter().any(|event| event.contains("empty")));
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-RANGE-MEMBERSHIP-001"))
+            .count(),
+        3
+    );
 }
