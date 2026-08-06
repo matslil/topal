@@ -390,7 +390,7 @@ impl Session {
                             "enum alternative matchers require an Enum subject",
                         ));
                     };
-                    if self.enum_types.get(type_name) != Some(&enum_matchers) {
+                    if known_enum_alternatives(self, type_name).as_ref() != Some(&enum_matchers) {
                         return Err(diagnostic(
                             source,
                             "E-INCOMPLETE-DECISION",
@@ -427,15 +427,25 @@ impl Session {
                         }
                         DecisionMatcher::Identifier(matcher) => {
                             let name = source.slice(*matcher);
-                            let Some(candidate) = self.bindings.get(name).cloned() else {
-                                return Err(diagnostic(
-                                    source,
-                                    "E-UNBOUND-NAME",
-                                    *matcher,
-                                    format!("enum matcher `{name}` is not declared"),
-                                ));
-                            };
-                            values_equal(subject.clone(), candidate, trace).unwrap_or(false)
+                            if let Value::Enum {
+                                type_name,
+                                alternative,
+                            } = &subject
+                                && type_name == "Comparison"
+                                && matches!(name, "Less" | "Equal" | "Greater")
+                            {
+                                alternative == name
+                            } else {
+                                let Some(candidate) = self.bindings.get(name).cloned() else {
+                                    return Err(diagnostic(
+                                        source,
+                                        "E-UNBOUND-NAME",
+                                        *matcher,
+                                        format!("enum matcher `{name}` is not declared"),
+                                    ));
+                                };
+                                values_equal(subject.clone(), candidate, trace).unwrap_or(false)
+                            }
                         }
                         DecisionMatcher::Result { error, .. } => {
                             *error == matches!(subject, Value::Error { .. })
@@ -1355,6 +1365,18 @@ impl Session {
         });
         Ok(Value::Record(values))
     }
+}
+
+fn known_enum_alternatives(session: &Session, type_name: &str) -> Option<BTreeSet<String>> {
+    if type_name == "Comparison" {
+        return Some(
+            ["Less", "Equal", "Greater"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
+        );
+    }
+    session.enum_types.get(type_name).cloned()
 }
 
 impl Execution {
@@ -5238,15 +5260,26 @@ fn exact_numeric_zero_uses_explicit_domain() {
 fn exact_three_way_comparison_returns_nominal_alternatives() {
     let mut trace = Vec::new();
     let value = Session::new()
-        .evaluate("(1 <=> 2, 2 <=> 2, 3 <=> 2, 1 <=> 1.5)\n", &mut trace)
+        .evaluate("describe is fn (value : Comparison) -> String\n  value\n    Less then \"less\"\n    Equal then \"equal\"\n    Greater then \"greater\"\n(1 <=> 2, 2 <=> 2, 3 <=> 2, 1 <=> 1.5, describe (1 <=> 2), describe (2 <=> 2), describe (3 <=> 2))\n", &mut trace)
         .unwrap();
-    assert_eq!(value.to_string(), "(Less, Equal, Greater, Less)");
+    assert_eq!(
+        value.to_string(),
+        "(Less, Equal, Greater, Less, \"less\", \"equal\", \"greater\")"
+    );
     assert_eq!(
         trace
             .iter()
             .filter(|event| event.contains("TOPAL-NUM-THREE-WAY-COMPARE-001"))
             .count(),
-        4
+        7
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("decision.rule.selected"))
+            .filter(|event| event.contains("TOPAL-DECISION-ENUM-001"))
+            .count(),
+        3
     );
     assert!(
         trace

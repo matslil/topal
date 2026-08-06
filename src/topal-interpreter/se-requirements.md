@@ -743,3 +743,11 @@ All interpreter modes shall implement `<=>` for finite Int and Rational under
 and return nominal `Comparison` values. LSP highlighting, test traces,
 reversible debugger history, and a commented example shall expose all three
 alternatives and overload selection.
+
+## TOPAL-INTP-SUBSET-089 — Exhaustive Comparison decisions
+
+All interpreter modes shall execute exhaustive `Less`, `Equal`, and `Greater`
+decisions over the built-in nominal `Comparison` enum under
+`TOPAL-DECISION-ENUM-001`. The alternatives shall not require a source Enum
+declaration. Test traces and reversible debugger history shall expose matcher
+consideration and selection; LSP validation shall accept the example.

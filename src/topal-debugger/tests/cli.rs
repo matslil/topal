@@ -737,7 +737,8 @@ fn records_reversible_exact_three_way_comparison() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-NUM-THREE-WAY-COMPARE-001"));
     assert!(stdout.contains("Int->Rational:left"));
-    assert!(stdout.contains("(Less, Equal, Greater, Less)"));
+    assert!(stdout.contains("TOPAL-DECISION-ENUM-001"));
+    assert!(stdout.contains("(Less, Equal, Greater, Less, \"less\", \"equal\", \"greater\")"));
 }
 
 #[test]
