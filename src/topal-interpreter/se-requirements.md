@@ -805,3 +805,12 @@ canonical sign, greatest-common-divisor, and zero normalization. A closed zero
 denominator shall produce an actionable diagnostic. Test traces and reversible
 debugger history shall expose construction; LSP validation shall accept the
 commented example.
+
+## TOPAL-INTP-SUBSET-096 — Dynamic Rational construction
+
+All interpreter modes shall execute dynamic finite Rational construction under
+`TOPAL-NUM-RATIONAL-CONSTRUCT-DYNAMIC-001`. Nonzero denominators shall produce
+canonical values; directionless zero shall return `division-by-zero` for a
+nonzero numerator and `indeterminate` for zero. Both failures shall use
+`root.Rational(Int,Int)`. Test traces and reversible debugger history shall
+expose every outcome; LSP validation shall accept the commented example.

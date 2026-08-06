@@ -629,16 +629,8 @@ impl Session {
                 if let [Expression::Identifier(constructor), operand] = items.as_slice()
                     && source.slice(*constructor) == "Rational"
                 {
-                    if !expression_is_closed(operand) {
-                        return Err(diagnostic(
-                            source,
-                            "E-DYNAMIC-RATIONAL-CONSTRUCTION-UNSUPPORTED",
-                            operand.span(),
-                            "dynamic Rational component validation is not in this subset",
-                        ));
-                    }
                     let value = self.evaluate_expression(source, operand, trace)?;
-                    return construct_closed_rational(source, operand, value, trace);
+                    return construct_rational(source, operand, value, trace);
                 }
                 if let [Expression::Identifier(callable), operand] = items.as_slice()
                     && source.slice(*callable) == "absolute"
@@ -1913,7 +1905,7 @@ fn construct_nat(
     })
 }
 
-fn construct_closed_rational(
+fn construct_rational(
     source: &SourceText,
     operand: &Expression,
     value: Value,
@@ -1936,18 +1928,55 @@ fn construct_closed_rational(
         ));
     };
     if denominator == &BigInt::from(0) {
-        return Err(diagnostic(
-            source,
-            "E-DIVISION-BY-ZERO",
-            operand.span(),
-            "a finite Rational constructor requires a nonzero denominator",
-        ));
+        let code = if numerator == &BigInt::from(0) {
+            "indeterminate"
+        } else {
+            "division-by-zero"
+        };
+        if expression_is_closed(operand) {
+            let (diagnostic_code, message) = if code == "indeterminate" {
+                (
+                    "E-INDETERMINATE-RATIONAL",
+                    "Rational (0, 0) does not determine one numeric value",
+                )
+            } else {
+                (
+                    "E-DIVISION-BY-ZERO",
+                    "a finite Rational constructor requires a nonzero denominator",
+                )
+            };
+            return Err(diagnostic(source, diagnostic_code, operand.span(), message));
+        }
+        let position = source.position(operand.span().start);
+        trace.record(TraceEvent {
+            event: "result.error.constructed",
+            rule: "TOPAL-NUM-RATIONAL-CONSTRUCT-DYNAMIC-001",
+            detail: if code == "indeterminate" {
+                "root.Rational(Int,Int);indeterminate"
+            } else {
+                "root.Rational(Int,Int);division-by-zero"
+            },
+        });
+        return Ok(Value::Error {
+            domain: "root.Rational(Int,Int)".to_owned(),
+            code: code.to_owned(),
+            line: position.line,
+            column: position.column,
+        });
     }
     let value = BigRational::new(numerator.clone(), denominator.clone());
     trace.record(TraceEvent {
         event: "numeric.rational.constructed",
-        rule: "TOPAL-NUM-RATIONAL-CONSTRUCT-001",
-        detail: "canonical",
+        rule: if expression_is_closed(operand) {
+            "TOPAL-NUM-RATIONAL-CONSTRUCT-001"
+        } else {
+            "TOPAL-NUM-RATIONAL-CONSTRUCT-DYNAMIC-001"
+        },
+        detail: if expression_is_closed(operand) {
+            "canonical"
+        } else {
+            "canonical:validated"
+        },
     });
     Ok(Value::Rational(value))
 }
@@ -3804,6 +3833,9 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
             Some("use an exactly divisible expression or keep the result classified as Rational")
         }
         "E-NAT-OUT-OF-RANGE" => Some("use a provably nonnegative Int or handle dynamic validation"),
+        "E-INDETERMINATE-RATIONAL" => {
+            Some("use a nonzero denominator or handle dynamic Rational construction")
+        }
         _ => None,
     }
 }
@@ -5670,4 +5702,31 @@ fn closed_rational_construction_canonicalizes_components() {
         .evaluate("Rational (1, 0)\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-DIVISION-BY-ZERO");
+}
+
+#[test]
+fn dynamic_rational_construction_distinguishes_zero_failures() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "ratio is fn (numerator : Int, denominator : Int) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  Rational (numerator, denominator)\n(1 ratio 2, 1 ratio 0, 0 ratio 0)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(Rational ( 1, 2 ), Error ( domain is root.Rational(Int,Int), code is division-by-zero ), Error ( domain is root.Rational(Int,Int), code is indeterminate ))"
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-NUM-RATIONAL-CONSTRUCT-DYNAMIC-001"))
+            .count(),
+        3
+    );
+
+    let error = Session::new()
+        .evaluate("Rational (0, 0)\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-INDETERMINATE-RATIONAL");
 }
