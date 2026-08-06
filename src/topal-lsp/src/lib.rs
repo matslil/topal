@@ -224,7 +224,7 @@ fn syntax_diagnostic(source: &SourceText, diagnostic: &SyntaxDiagnostic) -> Valu
         source.as_str(),
         diagnostic.span,
         diagnostic.code,
-        diagnostic.message,
+        &diagnostic.message,
     )
 }
 
@@ -408,6 +408,26 @@ mod tests {
         let diagnostic = &output[0]["params"]["diagnostics"][0];
         assert_eq!(diagnostic["code"], "E-UNKNOWN-TOKEN");
         assert_eq!(diagnostic["range"]["start"]["character"], 3);
+    }
+
+    #[test]
+    fn publishes_missing_error_code_alternatives() {
+        let mut server = Server::default();
+        let output = server.handle(&json!({
+            "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///result.t", "version": 1,
+                "text": "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error ( code is lang arithmetic division-by-zero ) then \"zero\""
+            }}
+        }));
+        let diagnostic = &output[0]["params"]["diagnostics"][0];
+        assert_eq!(diagnostic["code"], "E-INCOMPLETE-ERROR-CODE-DECISION");
+        assert!(
+            diagnostic["message"]
+                .as_str()
+                .unwrap()
+                .contains("not-representable")
+        );
     }
 
     #[test]

@@ -186,7 +186,7 @@ impl Parser<'_> {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-EXPECTED-RETURN-VALUE",
                     span: Span::new(first.span.end, first.span.end),
-                    message: "expected an expression after `return`",
+                    message: "expected an expression after `return`".into(),
                 });
                 return None;
             };
@@ -203,7 +203,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-RESERVED-BOOLEAN-LITERAL",
                 span: first.span,
-                message: "a Boolean literal cannot introduce a binding",
+                message: "a Boolean literal cannot introduce a binding".into(),
             });
             self.skip_to_newline();
             return None;
@@ -240,7 +240,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-EXPRESSION",
                 span: Span::new(separator.span.end, separator.span.end),
-                message: "expected a binding initializer",
+                message: "expected a binding initializer".into(),
             });
             return None;
         }
@@ -259,7 +259,7 @@ impl Parser<'_> {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-EXPECTED-CLASSIFIED-BINDING",
                     span: Span::new(first.span.start, separator.span.end),
-                    message: "expected `name : Classifier is expression`",
+                    message: "expected `name : Classifier is expression`".into(),
                 });
                 return None;
             }
@@ -288,7 +288,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-FUNCTION-OPERAND-COUNT",
                 span: Span::new(opening.span.start, closing.span.end),
-                message: "a function has at most two syntactic operands; package additional values explicitly",
+                message: "a function has at most two syntactic operands; package additional values explicitly".into(),
             });
             self.skip_to_newline();
             return None;
@@ -305,7 +305,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-UNSUPPORTED-FUNCTION-HEADER",
                 span: Span::new(function.span.start, result.end),
-                message: "the implemented function subset requires `fn static ( name : Type, ... ) -> ResultType`",
+                message: "the implemented function subset requires `fn static ( name : Type, ... ) -> ResultType`".into(),
             });
             self.skip_to_newline();
             return None;
@@ -317,7 +317,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-FUNCTION-BODY",
                 span: Span::new(result.end, result.end),
-                message: "expected an indented function body on the next line",
+                message: "expected an indented function body on the next line".into(),
             });
             return None;
         }
@@ -326,7 +326,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-FUNCTION-BODY",
                 span: Span::new(result.end, result.end),
-                message: "expected an indented function body on the next line",
+                message: "expected an indented function body on the next line".into(),
             });
             return None;
         };
@@ -334,7 +334,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-INDENTED-BODY",
                 span: indent.span,
-                message: "function body must be indented",
+                message: "function body must be indented".into(),
             });
             return None;
         }
@@ -352,7 +352,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-FUNCTION-BODY",
                 span: Span::new(body_end, body_end),
-                message: "expected a final expression producing the function result",
+                message: "expected a final expression producing the function result".into(),
             });
             return None;
         }
@@ -414,7 +414,7 @@ impl Parser<'_> {
                     self.diagnostics.push(SyntaxDiagnostic {
                         code: "E-DECISION-SUBJECT",
                         span: indent.span,
-                        message: "a decision table must follow a subject expression",
+                        message: "a decision table must follow a subject expression".into(),
                     });
                     return None;
                 };
@@ -468,10 +468,26 @@ impl Parser<'_> {
             let end = rules
                 .last()
                 .map_or(subject.span().end, |rule| rule.span.end);
+            let missing_codes = self.missing_arithmetic_codes(&rules);
+            let (code, message) = if missing_codes.len() < 4 {
+                (
+                    "E-INCOMPLETE-ERROR-CODE-DECISION",
+                    format!(
+                        "decision is missing arithmetic error code alternatives: {}",
+                        missing_codes.join(", ")
+                    ),
+                )
+            } else {
+                (
+                    "E-UNSUPPORTED-INCOMPLETE-DECISION",
+                    "the implemented decision subset requires complete Boolean cases or `otherwise`"
+                        .to_owned(),
+                )
+            };
             self.diagnostics.push(SyntaxDiagnostic {
-                code: "E-UNSUPPORTED-INCOMPLETE-DECISION",
+                code,
                 span: Span::new(subject.span().start, end),
-                message: "the implemented decision subset requires complete Boolean cases or `otherwise`",
+                message,
             });
             return None;
         }
@@ -515,6 +531,34 @@ impl Parser<'_> {
                 .collect()
     }
 
+    fn missing_arithmetic_codes(&self, rules: &[DecisionRule]) -> Vec<&'static str> {
+        let present = rules
+            .iter()
+            .filter_map(|rule| match rule.matcher {
+                DecisionMatcher::ErrorCode {
+                    namespace,
+                    vocabulary,
+                    code,
+                    ..
+                } if self.source.slice(namespace) == "lang"
+                    && self.source.slice(vocabulary) == "arithmetic" =>
+                {
+                    Some(self.source.slice(code))
+                }
+                _ => None,
+            })
+            .collect::<std::collections::BTreeSet<_>>();
+        [
+            "out-of-range",
+            "not-representable",
+            "division-by-zero",
+            "indeterminate",
+        ]
+        .into_iter()
+        .filter(|code| !present.contains(code))
+        .collect()
+    }
+
     fn decision_rule(&mut self) -> Option<DecisionRule> {
         let matcher_token = self.take_nontrivia()?;
         let (matcher, action) = match matcher_token.kind {
@@ -526,7 +570,7 @@ impl Parser<'_> {
                     self.diagnostics.push(SyntaxDiagnostic {
                         code: "E-EXPECTED-THEN",
                         span: separator.span,
-                        message: "expected `then` between the matcher and delayed action",
+                        message: "expected `then` between the matcher and delayed action".into(),
                     });
                     return None;
                 }
@@ -558,7 +602,7 @@ impl Parser<'_> {
                     self.diagnostics.push(SyntaxDiagnostic {
                         code: "E-EXPECTED-RESULT-PATTERN",
                         span: Span::new(matcher_token.span.start, separator.span.end),
-                        message: "expected `Ok name then` or `Error name then`",
+                        message: "expected `Ok name then` or `Error name then`".into(),
                     });
                     return None;
                 }
@@ -579,7 +623,7 @@ impl Parser<'_> {
                     self.diagnostics.push(SyntaxDiagnostic {
                         code: "E-EXPECTED-THEN",
                         span: separator.span,
-                        message: "expected `then` between the matcher and delayed action",
+                        message: "expected `then` between the matcher and delayed action".into(),
                     });
                     return None;
                 }
@@ -605,7 +649,7 @@ impl Parser<'_> {
                 self.diagnostics.push(SyntaxDiagnostic {
                         code: "E-UNSUPPORTED-DECISION-MATCHER",
                         span: matcher_token.span,
-                        message: "the implemented decision subset accepts Boolean literals, comparisons, or `otherwise`",
+                        message: "the implemented decision subset accepts Boolean literals, comparisons, or `otherwise`".into(),
                     });
                 return None;
             }
@@ -642,7 +686,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-ERROR-CODE-PATTERN",
                 span: Span::new(error.start, separator.span.end),
-                message: "expected `Error ( code is namespace vocabulary code ) then`",
+                message: "expected `Error ( code is namespace vocabulary code ) then`".into(),
             });
             return None;
         }
@@ -673,7 +717,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-THEN",
                 span: Span::new(matcher_span.end, matcher_span.end),
-                message: "expected `then` between the matcher and delayed action",
+                message: "expected `then` between the matcher and delayed action".into(),
             });
             return None;
         };
@@ -722,7 +766,9 @@ impl Parser<'_> {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-UNSUPPORTED-FUNCTION-HEADER",
                     span: Span::new(opening.span.start, separator.span.end),
-                    message: "function parameters must have the form `name : Type`, separated by commas",
+                    message:
+                        "function parameters must have the form `name : Type`, separated by commas"
+                            .into(),
                 });
                 self.skip_to_newline();
                 return None;
@@ -827,7 +873,8 @@ impl Parser<'_> {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-EXPECTED-EXPRESSION",
                     span: token.span,
-                    message: "expected a literal, name, callable, or parenthesized expression",
+                    message: "expected a literal, name, callable, or parenthesized expression"
+                        .into(),
                 });
                 None
             }
@@ -851,7 +898,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-RPAREN",
                 span: Span::new(opening.span.end, opening.span.end),
-                message: "expected expression and closing parenthesis",
+                message: "expected expression and closing parenthesis".into(),
             });
             return None;
         };
@@ -879,7 +926,7 @@ impl Parser<'_> {
                     self.diagnostics.push(SyntaxDiagnostic {
                         code: "E-EXPECTED-RPAREN",
                         span: Span::new(opening.span.end, opening.span.end),
-                        message: "expected product field or closing parenthesis",
+                        message: "expected product field or closing parenthesis".into(),
                     });
                     return None;
                 };
@@ -891,7 +938,7 @@ impl Parser<'_> {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-RPAREN",
                 span: Span::new(opening.span.end, opening.span.end),
-                message: "expected closing parenthesis",
+                message: "expected closing parenthesis".into(),
             });
         }
         if product {
@@ -903,7 +950,7 @@ impl Parser<'_> {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-MIXED-PRODUCT-FIELDS",
                     span: mixed.label.unwrap_or_else(|| mixed.value.span()),
-                    message: "a product cannot mix positional and labeled fields",
+                    message: "a product cannot mix positional and labeled fields".into(),
                 });
             }
             Some(Expression::Product {
@@ -982,7 +1029,7 @@ impl Parser<'_> {
         self.diagnostics.push(SyntaxDiagnostic {
             code,
             span,
-            message,
+            message: message.to_owned(),
         });
     }
 
@@ -1494,5 +1541,19 @@ mod tests {
         .unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
+    fn incomplete_arithmetic_error_decision_lists_missing_codes() {
+        let source = SourceText::new(
+            "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error ( code is lang arithmetic division-by-zero ) then \"zero\"",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        let diagnostic = parsed.diagnostics.first().unwrap();
+        assert_eq!(diagnostic.code, "E-INCOMPLETE-ERROR-CODE-DECISION");
+        assert!(diagnostic.message.contains("out-of-range"));
+        assert!(diagnostic.message.contains("not-representable"));
+        assert!(diagnostic.message.contains("indeterminate"));
     }
 }

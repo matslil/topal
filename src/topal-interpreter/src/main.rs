@@ -153,6 +153,7 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
                         | "E-EXPECTED-RPAREN"
                         | "E-EXPECTED-FUNCTION-BODY"
                         | "E-UNSUPPORTED-INCOMPLETE-DECISION"
+                        | "E-INCOMPLETE-ERROR-CODE-DECISION"
                 ) => {}
             Err(error) => {
                 eprintln!("{}", error.render("<interactive>"));

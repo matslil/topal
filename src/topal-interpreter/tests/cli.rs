@@ -1947,6 +1947,17 @@ fn every_mode_accepts_exhaustive_arithmetic_code_decision() {
 }
 
 #[test]
+fn incomplete_error_code_decision_reports_missing_alternatives() {
+    let source = "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error ( code is lang arithmetic division-by-zero ) then \"zero\"\n";
+    let output = run(&[], source);
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-INCOMPLETE-ERROR-CODE-DECISION]"));
+    assert!(diagnostic.contains("out-of-range, not-representable, indeterminate"));
+    assert!(diagnostic.contains("help: add each missing qualified code pattern"));
+}
+
+#[test]
 fn all_modes_preserve_literal_string_contents() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, "text\"He said \"hello\". {value} \\n\"text\n");
