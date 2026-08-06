@@ -257,9 +257,8 @@ impl Parser<'_> {
             let mut classifier = self.take_nontrivia()?;
             let mut separator = self.take_nontrivia()?;
             if classifier.kind == TokenKind::Identifier
-                && self.source.slice(classifier.span) == "Range"
+                && matches!(self.source.slice(classifier.span), "Range" | "Optional")
                 && separator.kind == TokenKind::Identifier
-                && matches!(self.source.slice(separator.span), "Int" | "Rational")
             {
                 classifier.span = Span::new(classifier.span.start, separator.span.end);
                 separator = self.take_nontrivia()?;
@@ -379,11 +378,11 @@ impl Parser<'_> {
     }
 
     fn function_result(&mut self, first: Token) -> Option<Span> {
-        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "Range" {
+        if first.kind == TokenKind::Identifier
+            && matches!(self.source.slice(first.span), "Range" | "Optional")
+        {
             let domain = self.take_nontrivia()?;
-            if domain.kind == TokenKind::Identifier
-                && matches!(self.source.slice(domain.span), "Int" | "Rational")
-            {
+            if domain.kind == TokenKind::Identifier {
                 return Some(Span::new(first.span.start, domain.span.end));
             }
             return None;
@@ -844,9 +843,8 @@ impl Parser<'_> {
             let mut classifier = self.take_nontrivia()?;
             let mut separator = self.take_nontrivia()?;
             if classifier.kind == TokenKind::Identifier
-                && self.source.slice(classifier.span) == "Range"
+                && matches!(self.source.slice(classifier.span), "Range" | "Optional")
                 && separator.kind == TokenKind::Identifier
-                && matches!(self.source.slice(separator.span), "Int" | "Rational")
             {
                 classifier.span = Span::new(classifier.span.start, separator.span.end);
                 separator = self.take_nontrivia()?;

@@ -1805,7 +1805,8 @@ impl Execution {
         {
             return Ok(BindingOutcome::Bound(value, span));
         }
-        let mut evaluated = session.evaluate_expression(&self.source, initializer, trace)?;
+        let mut evaluated =
+            evaluate_binding_initializer(&self.source, session, initializer, classifier, trace)?;
         if let Some(classifier) = classifier {
             let classifier_text = self.source.slice(classifier);
             evaluated = narrow_rational_to_int(
@@ -1882,6 +1883,33 @@ impl Execution {
             cover(name, initializer.span()),
         ))
     }
+}
+
+fn evaluate_binding_initializer(
+    source: &SourceText,
+    session: &mut Session,
+    initializer: &Expression,
+    classifier: Option<Span>,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let contextual_none = classifier
+        .map(|classifier| source.slice(classifier))
+        .and_then(optional_payload_classifier)
+        .filter(|_| {
+            matches!(initializer, Expression::Identifier(span) if source.slice(*span) == "None")
+        });
+    let Some(payload_classifier) = contextual_none else {
+        return session.evaluate_expression(source, initializer, trace);
+    };
+    trace.record(TraceEvent {
+        event: "optional.none.constructed",
+        rule: "TOPAL-TYPE-OPTIONAL-CONTEXT-001",
+        detail: payload_classifier,
+    });
+    Ok(Value::Optional {
+        payload_classifier: payload_classifier.to_owned(),
+        payload: None,
+    })
 }
 
 fn expression_is_closed(expression: &Expression) -> bool {
@@ -2273,6 +2301,13 @@ fn declare_enum(
 }
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
+    if let Value::Optional {
+        payload_classifier, ..
+    } = value
+        && let Some(expected) = optional_payload_classifier(classifier)
+    {
+        return payload_classifier == expected;
+    }
     if let Some(success) = result_success_classifier(classifier) {
         return matches!(value, Value::Error { code, .. } if is_arithmetic_error_code(code))
             || value_has_classifier(value, success);
@@ -2317,6 +2352,10 @@ fn result_success_classifier(classifier: &str) -> Option<&str> {
     let (success, errors) = (&contents[..comma], &contents[comma + 1..]);
     let errors = errors.split_whitespace().collect::<Vec<_>>().join(" ");
     (errors == "lang arithmetic ArithmeticErrorCode").then(|| success.trim())
+}
+
+fn optional_payload_classifier(classifier: &str) -> Option<&str> {
+    classifier.trim().strip_prefix("Optional ").map(str::trim)
 }
 
 fn tuple_classifiers(classifier: &str) -> Option<Vec<&str>> {
@@ -2942,8 +2981,9 @@ fn supported_value_classifier(classifier: &str) -> bool {
             | "Rational"
             | "String"
             | "Unit"
-    ) || tuple_classifiers(classifier)
-        .is_some_and(|items| items.into_iter().all(supported_value_classifier))
+    ) || optional_payload_classifier(classifier).is_some_and(supported_value_classifier)
+        || tuple_classifiers(classifier)
+            .is_some_and(|items| items.into_iter().all(supported_value_classifier))
 }
 
 fn accepted_source(input: &str, trace: &mut impl TraceSink) -> Result<SourceText, Diagnostic> {
@@ -6188,6 +6228,23 @@ fn explicit_optional_constructors_preserve_payload_classifiers() {
             .count(),
         4
     );
+}
+
+#[test]
+fn contextual_none_uses_the_binding_classifier() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate("missing : Optional Int is None\nmissing\n", &mut trace)
+        .unwrap();
+    assert_eq!(value.to_string(), "None");
+    assert!(trace.iter().any(|event| {
+        event.contains("TOPAL-TYPE-OPTIONAL-CONTEXT-001") && event.contains("Int")
+    }));
+
+    let error = Session::new()
+        .evaluate("None\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-UNBOUND-NAME");
 }
 
 #[test]

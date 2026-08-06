@@ -89,6 +89,13 @@ alternative of `Optional T`. The alternatives display as `Some value` and
 `None`; the payload classifier remains part of nominal identity even though it
 is omitted from the absent value's display.
 
+### TOPAL-TYPE-OPTIONAL-CONTEXT-001 — Contextual absent construction
+
+Bare `None` constructs the absent alternative only when an immediate expected
+classifier supplies `Optional T`. The constructed value retains that `T` as its
+nominal payload classifier. Without such context, bare `None` is not a universal
+value and shall be rejected as unresolved.
+
 ### TOPAL-TYPE-EQUALITY-001 — Equality application
 
 If `T` provides canonical `Equality` evidence and `a:T`, `b:T`, then `a = b`
