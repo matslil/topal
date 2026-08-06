@@ -91,6 +91,19 @@ canonical value required by `TOPAL-NUM-RATIONAL-001`. A statically zero
 denominator is diagnosed under `TOPAL-NUM-DIVZERO-001`. Dynamic component
 validation and its structured zero-denominator failure are outside this rule.
 
+### TOPAL-NUM-RATIONAL-CONSTRUCT-DYNAMIC-001 — Dynamic Rational construction
+
+Prefix application `Rational (numerator, denominator)` with dynamically
+obtained finite `Int` components returns
+`Result ( Rational, lang arithmetic ArithmeticErrorCode )`. A nonzero
+denominator produces the canonical finite value under
+`TOPAL-NUM-RATIONAL-001`. A directionless zero denominator constructs
+`division-by-zero` when the numerator is nonzero and `indeterminate` when it is
+zero. Both failures use reporting domain `root.Rational(Int,Int)` and source
+provenance at the constructor product. Statically evident failures are source
+diagnostics. This constructor never produces infinity without separate
+directional-zero evidence.
+
 ### TOPAL-NUM-RATIONAL-LITERAL-001 — Exact rational literals
 
 A syntactically valid fractional decimal or base-ten exponent literal constructs

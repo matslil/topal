@@ -274,6 +274,15 @@ integers; the type additionally contains signed infinities:
 Rational ( 1 , 3 )
 ```
 
+This constructor denotes a finite ratio and requires a nonzero denominator.
+With dynamic components it returns
+`Result ( Rational, lang arithmetic ArithmeticErrorCode )`. Directionless zero
+with a nonzero numerator reports `division-by-zero`; `(0, 0)` reports
+`indeterminate`. Both failures use the compiler-derived reporting domain
+`root.Rational(Int,Int)`. Statically evident failures are diagnostics.
+Directional-zero evidence may support infinite construction separately; the
+ordinary directionless-zero constructor never produces an infinity.
+
 Finite addition and multiplication are exact, associative, and commutative.
 Numerators and denominators may grow and therefore consume increasing
 resources. Operations involving infinities follow the common rules below and

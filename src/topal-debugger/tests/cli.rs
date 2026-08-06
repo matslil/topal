@@ -843,6 +843,25 @@ fn records_reversible_canonical_rational_construction() {
 }
 
 #[test]
+fn records_reversible_dynamic_rational_construction() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}dynamic-rational-construction.debug"),
+            &format!("{root}dynamic-rational-construction.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-NUM-RATIONAL-CONSTRUCT-DYNAMIC-001"));
+    assert!(stdout.contains("root.Rational(Int,Int);division-by-zero"));
+    assert!(stdout.contains("root.Rational(Int,Int);indeterminate"));
+    assert!(stdout.contains("Rational ( 1, 2 )"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 59);
+    assert_eq!(examples.len(), 60);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2203,6 +2203,31 @@ fn every_mode_constructs_canonical_rationals() {
     let diagnostic = String::from_utf8(diagnostic.stderr).unwrap();
     assert!(diagnostic.contains("error[E-DIVISION-BY-ZERO]"));
     assert!(diagnostic.contains("help: use a divisor that is provably nonzero"));
+}
+
+#[test]
+fn every_mode_constructs_dynamic_rationals() {
+    let source = include_str!("../../../examples/interpreter/dynamic-rational-construction.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"(Rational ( 1, 2 ), Error ( domain is root.Rational(Int,Int), code is division-by-zero ), Error ( domain is root.Rational(Int,Int), code is indeterminate ))\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(
+        trace
+            .matches("TOPAL-NUM-RATIONAL-CONSTRUCT-DYNAMIC-001")
+            .count(),
+        3
+    );
+    assert!(trace.contains("root.Rational(Int,Int);division-by-zero"));
+    assert!(trace.contains("root.Rational(Int,Int);indeterminate"));
+
+    let diagnostic = run(&[], "Rational (0, 0)\n");
+    assert!(!diagnostic.status.success());
+    let diagnostic = String::from_utf8(diagnostic.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-INDETERMINATE-RATIONAL]"));
+    assert!(diagnostic.contains("help: use a nonzero denominator"));
 }
 
 #[test]
