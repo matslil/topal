@@ -189,6 +189,15 @@ constructs `not-representable` with reporting domain `root.Int(Rational)` and
 source provenance at the binding initializer. The failed Result then propagates
 under `TOPAL-TYPE-RESULT-PROJECT-001`. Validation never rounds or truncates.
 
+### TOPAL-NUM-INT-CONSTRUCT-001 — Exact checked Int construction
+
+Prefix application `Int value` performs exact checked construction. An `Int`
+operand is preserved. A finite `Rational (n, 1)` produces `n : Int`. A closed
+Rational with another denominator is a source diagnostic; a dynamically
+obtained one constructs `not-representable` with reporting domain
+`root.Int(Rational)`. Construction never rounds or truncates and exposes its
+success or structured failure in the test trace.
+
 ### TOPAL-NUM-DIVZERO-001 — Statically evident zero division
 
 An exact division whose divisor is statically proven zero is rejected with the

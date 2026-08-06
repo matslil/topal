@@ -614,6 +614,12 @@ impl Session {
                     });
                     return Ok(Value::String(text));
                 }
+                if let [Expression::Identifier(constructor), operand] = items.as_slice()
+                    && source.slice(*constructor) == "Int"
+                {
+                    let value = self.evaluate_expression(source, operand, trace)?;
+                    return construct_int(source, operand, value, trace);
+                }
                 if let [Expression::Identifier(callable), operand] = items.as_slice()
                     && source.slice(*callable) == "absolute"
                 {
@@ -1786,6 +1792,61 @@ fn narrow_rational_to_int(
         },
     });
     Ok(Value::Int(value.numer().clone()))
+}
+
+fn construct_int(
+    source: &SourceText,
+    operand: &Expression,
+    value: Value,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::Rational(value) = value else {
+        if matches!(value, Value::Int(_)) {
+            trace.record(TraceEvent {
+                event: "numeric.int.constructed",
+                rule: "TOPAL-NUM-INT-CONSTRUCT-001",
+                detail: "Int->Int:identity",
+            });
+            return Ok(value);
+        }
+        return Err(diagnostic(
+            source,
+            "E-INT-CONSTRUCTOR-OPERAND",
+            operand.span(),
+            "Int construction requires an exact numeric operand",
+        ));
+    };
+    if value.denom() == &BigInt::from(1) {
+        trace.record(TraceEvent {
+            event: "numeric.int.constructed",
+            rule: "TOPAL-NUM-INT-CONSTRUCT-001",
+            detail: "Rational->Int:exact",
+        });
+        return Ok(Value::Int(value.numer().clone()));
+    }
+    if expression_is_closed(operand) {
+        return Err(diagnostic(
+            source,
+            "E-RATIONAL-NOT-EXACT-INT",
+            operand.span(),
+            format!(
+                "exact Rational operand has denominator {}, so Int cannot represent it",
+                value.denom()
+            ),
+        ));
+    }
+    let position = source.position(operand.span().start);
+    trace.record(TraceEvent {
+        event: "result.error.constructed",
+        rule: "TOPAL-NUM-INT-CONSTRUCT-001",
+        detail: "root.Int(Rational);not-representable",
+    });
+    Ok(Value::Error {
+        domain: "root.Int(Rational)".to_owned(),
+        code: "not-representable".to_owned(),
+        line: position.line,
+        column: position.column,
+    })
 }
 
 const fn cover(first: Span, second: Span) -> Span {
@@ -5424,4 +5485,31 @@ fn dynamic_rational_to_int_validation_returns_typed_result() {
         event.contains("TOPAL-NUM-RATIONAL-INT-VALIDATE-001")
             && event.contains("root.Int(Rational);not-representable")
     }));
+}
+
+#[test]
+fn checked_int_construction_is_exact_and_fallible() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "as-int is fn (value : Rational) -> Result (Int, lang arithmetic ArithmeticErrorCode)\n  Int value\n(Int 7, as-int 6.0, as-int 1.5)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(7, 6, Error ( domain is root.Int(Rational), code is not-representable ))"
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-NUM-INT-CONSTRUCT-001"))
+            .count(),
+        3
+    );
+
+    let error = Session::new()
+        .evaluate("Int 1.5\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-RATIONAL-NOT-EXACT-INT");
 }
