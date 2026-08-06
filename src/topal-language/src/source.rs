@@ -1634,9 +1634,16 @@ impl Execution {
         {
             return Ok(BindingOutcome::Bound(value, span));
         }
-        let evaluated = session.evaluate_expression(&self.source, initializer, trace)?;
+        let mut evaluated = session.evaluate_expression(&self.source, initializer, trace)?;
         if let Some(classifier) = classifier {
             let classifier_text = self.source.slice(classifier);
+            evaluated = narrow_closed_rational_to_int(
+                &self.source,
+                initializer,
+                evaluated,
+                classifier_text,
+                trace,
+            )?;
             if matches!(evaluated, Value::Error { .. }) {
                 let Some(return_classifier) = &self.return_classifier else {
                     return Err(diagnostic(
@@ -1703,6 +1710,56 @@ impl Execution {
             cover(name, initializer.span()),
         ))
     }
+}
+
+fn expression_is_closed(expression: &Expression) -> bool {
+    match expression {
+        Expression::Unit(_)
+        | Expression::Boolean(_)
+        | Expression::Integer(_)
+        | Expression::Rational(_)
+        | Expression::String(_)
+        | Expression::Callable { .. } => true,
+        Expression::Product { fields, .. } => fields
+            .iter()
+            .all(|field| expression_is_closed(&field.value)),
+        Expression::Application { items, .. } => items.iter().all(expression_is_closed),
+        Expression::DecisionTable { .. } | Expression::Identifier(_) | Expression::Discard(_) => {
+            false
+        }
+    }
+}
+
+fn narrow_closed_rational_to_int(
+    source: &SourceText,
+    initializer: &Expression,
+    value: Value,
+    classifier: &str,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if classifier != "Int" || !expression_is_closed(initializer) {
+        return Ok(value);
+    }
+    let Value::Rational(value) = value else {
+        return Ok(value);
+    };
+    if value.denom() != &BigInt::from(1) {
+        return Err(diagnostic(
+            source,
+            "E-RATIONAL-NOT-EXACT-INT",
+            initializer.span(),
+            format!(
+                "exact Rational result has denominator {}, so it cannot satisfy Int",
+                value.denom()
+            ),
+        ));
+    }
+    trace.record(TraceEvent {
+        event: "conversion.applied",
+        rule: "TOPAL-NUM-RATIONAL-INT-EXACT-001",
+        detail: "Rational->Int:exact",
+    });
+    Ok(Value::Int(value.numer().clone()))
 }
 
 const fn cover(first: Span, second: Span) -> Span {
@@ -3553,6 +3610,9 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
         "E-STRING-CONSTRUCTOR-CHARACTER" => {
             Some("classify a one-character String as Character before construction")
         }
+        "E-RATIONAL-NOT-EXACT-INT" => {
+            Some("use an exactly divisible expression or keep the result classified as Rational")
+        }
         _ => None,
     }
 }
@@ -5290,4 +5350,29 @@ fn exact_three_way_comparison_returns_nominal_alternatives() {
             .iter()
             .any(|event| event.contains("Int->Rational:left"))
     );
+}
+
+#[test]
+fn closed_exact_rational_narrows_to_int_without_rounding() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "fifty : Int is 100 / 2\nnegative-three : Int is -9 / 3\n(fifty, negative-three)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(50, -3)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-NUM-RATIONAL-INT-EXACT-001"))
+            .count(),
+        2
+    );
+
+    let error = Session::new()
+        .evaluate("half : Int is 1 / 2\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-RATIONAL-NOT-EXACT-INT");
+    assert!(error.message.contains("denominator 2"));
 }

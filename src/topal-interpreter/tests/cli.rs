@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 54);
+    assert_eq!(examples.len(), 55);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2104,6 +2104,25 @@ fn every_mode_executes_exact_three_way_comparison() {
     assert!(trace.contains("TOPAL-NUM-THREE-WAY-COMPARE-001"));
     assert!(trace.contains("Int->Rational:left"));
     assert!(trace.contains("TOPAL-DECISION-ENUM-001"));
+}
+
+#[test]
+fn every_mode_narrows_closed_exact_rational_to_int() {
+    let source = include_str!("../../../examples/interpreter/exact-rational-int-narrowing.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"(50, -3)\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("TOPAL-NUM-RATIONAL-INT-EXACT-001").count(), 2);
+
+    let diagnostic = run(&[], "half : Int is 1 / 2\n");
+    assert!(!diagnostic.status.success());
+    let diagnostic = String::from_utf8(diagnostic.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-RATIONAL-NOT-EXACT-INT]"));
+    assert!(diagnostic.contains("denominator 2"));
+    assert!(diagnostic.contains("help: use an exactly divisible expression"));
 }
 
 #[test]

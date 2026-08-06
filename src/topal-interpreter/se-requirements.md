@@ -759,3 +759,12 @@ refinement under `TOPAL-NUM-ZERO-001` and `TOPAL-NUM-ONE-001`. Results shall be
 exact nonnegative Int values satisfying Nat, while traces retain Nat-specific
 root selection. LSP validation and reversible debugger history shall cover the
 updated commented identity example.
+
+## TOPAL-INTP-SUBSET-091 — Closed exact Rational-to-Int narrowing
+
+All interpreter modes shall allow a statically closed Rational result with
+canonical denominator one to satisfy an explicitly Int-classified binding under
+`TOPAL-NUM-RATIONAL-INT-EXACT-001`. Non-integral closed results shall produce a
+source-located diagnostic with actionable help. Test traces and reversible
+debugger history shall expose the exact conversion; LSP validation shall accept
+the commented example.

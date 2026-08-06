@@ -170,6 +170,15 @@ implicitly returns the operand type, including when the denominator reduces to
 one. This realizes `TOPAL-REQ-SAFE-001`, `TOPAL-REQ-DETERMINISM-001`, and
 `TOPAL-REQ-INTEROP-001`.
 
+### TOPAL-NUM-RATIONAL-INT-EXACT-001 — Closed exact Rational narrowing
+
+When a statically closed exact expression produces canonical `Rational (n, 1)`
+and its immediate classified binding requires `Int`, the value shall satisfy
+that context as exact integer `n`. The conversion is lossless and traceable; it
+does not round or truncate. A closed Rational with any other denominator is a
+source diagnostic at the initializer. Dynamic narrowing requires separate
+validation and failure semantics and is not implied by this rule.
+
 ### TOPAL-NUM-DIVZERO-001 — Statically evident zero division
 
 An exact division whose divisor is statically proven zero is rejected with the
