@@ -2715,6 +2715,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::Rational(_), "Rational")
         | (Value::IntRange { .. }, "Range Int")
         | (Value::RationalRange { .. }, "Range Rational")
+        | (Value::CharacterGenerator(_), "Generator Character Unit Unit")
         | (Value::String(_), "String")
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
@@ -6932,6 +6933,17 @@ fn named_character_generator_is_consumed_linearly() {
             .iter()
             .any(|event| event.contains("generator.consumed"))
     );
+}
+
+#[test]
+fn character_generator_accepts_its_explicit_classifier() {
+    let value = Session::new()
+        .evaluate(
+            "generated : Generator Character Unit Unit is characters \"Topal\"\ngenerated foreach { character }\n  String character\n",
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
 }
 
 #[test]
