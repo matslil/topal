@@ -223,7 +223,11 @@ while other queued and new requests receive `task-terminated`, then returns
 or cleanup failure uses that retained result instead.
 
 A `yield` expression similarly adds `generator-closed`, from Topal's stable
-generator error domain, to its declared resume value. This code is supplied
+`lang generator GeneratorErrorCode` vocabulary, to its declared resume value.
+The code namespace is distinct from `Error.domain`, which is the lexical
+namespace where the generator error occurs. Generator identity and the exact
+yield position are retained separately as trace and source provenance. This
+code is supplied
 only when the consumer abandons the linear continuation. Generator code may
 match it to perform deliberate shutdown work. If it reaches the generator
 boundary, the runtime consumes it as closure rather than exposing it as a final

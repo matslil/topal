@@ -760,6 +760,9 @@ impl Session {
                 if let Some(value) = evaluate_arithmetic_error_code(source, items, trace) {
                     return Ok(value);
                 }
+                if let Some(value) = evaluate_generator_error_code(source, items, trace) {
+                    return Ok(value);
+                }
                 if let [Expression::Identifier(constructor), payload] = items.as_slice()
                     && source.slice(*constructor) == "Some"
                 {
@@ -2742,6 +2745,36 @@ fn evaluate_arithmetic_error_code(
     Some(Value::Enum {
         type_name: "lang arithmetic ArithmeticErrorCode".to_owned(),
         alternative: code.to_owned(),
+    })
+}
+
+fn evaluate_generator_error_code(
+    source: &SourceText,
+    items: &[Expression],
+    trace: &mut impl TraceSink,
+) -> Option<Value> {
+    let [
+        Expression::Identifier(lang),
+        Expression::Identifier(generator),
+        Expression::Identifier(code),
+    ] = items
+    else {
+        return None;
+    };
+    if source.slice(*lang) != "lang"
+        || source.slice(*generator) != "generator"
+        || source.slice(*code) != "generator-closed"
+    {
+        return None;
+    }
+    trace.record(TraceEvent {
+        event: "namespace.member.selected",
+        rule: "TOPAL-GENERATOR-ERROR-CODE-001",
+        detail: "generator-closed",
+    });
+    Some(Value::Enum {
+        type_name: "lang generator GeneratorErrorCode".to_owned(),
+        alternative: "generator-closed".to_owned(),
     })
 }
 
@@ -7121,6 +7154,23 @@ fn abandoned_generator_parameter_closes_at_function_boundary() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-STRING-CHARACTERS-CLOSE-001"))
+    );
+}
+
+#[test]
+fn generator_error_code_has_qualified_nominal_identity() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "code is lang generator generator-closed\n(code, code = (lang generator generator-closed))\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(generator-closed, true)");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-ERROR-CODE-001"))
     );
 }
 
