@@ -3584,6 +3584,27 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
                 alternative: right,
             },
         ) if left_type == right_type => Some(left == right),
+        (
+            Value::Optional {
+                payload_classifier: left_classifier,
+                payload: left,
+            },
+            Value::Optional {
+                payload_classifier: right_classifier,
+                payload: right,
+            },
+        ) if left_classifier == right_classifier => {
+            trace.record(TraceEvent {
+                event: "equality.optional",
+                rule: "TOPAL-TYPE-OPTIONAL-EQUALITY-001",
+                detail: &left_classifier,
+            });
+            match (left, right) {
+                (None, None) => Some(true),
+                (Some(left), Some(right)) => values_equal(*left, *right, trace),
+                _ => Some(false),
+            }
+        }
         (Value::Unit, Value::Unit) => Some(true),
         (Value::Tuple(left), Value::Tuple(right)) if left.len() == right.len() => left
             .into_iter()
@@ -6374,6 +6395,30 @@ fn optional_decisions_bind_only_present_payloads() {
             .count(),
         1
     );
+}
+
+#[test]
+fn optional_equality_uses_nominal_payload_identity() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "((None Int) = (None Int), (Some 7) = (Some 7), (Some 7) = (None Int), (Some 7) != (Some 8))\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(true, true, false, true)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-TYPE-OPTIONAL-EQUALITY-001"))
+            .count(),
+        4
+    );
+
+    let error = Session::new()
+        .evaluate("(None Int) = (None String)\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
 }
 
 #[test]

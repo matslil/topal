@@ -2302,13 +2302,13 @@ fn every_mode_constructs_explicit_optional_values() {
         assert!(
             output
                 .stdout
-                .ends_with(b"(Some 42, Some \"present\", None, None, None, Some 7, None, None, \"present\", \"absent\")\n")
+                .ends_with(b"(Some 42, Some \"present\", None, None, None, Some 7, None, None, \"present\", \"absent\", true, true, false, true)\n")
         );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert_eq!(
         trace.matches("TOPAL-TYPE-OPTIONAL-CONSTRUCT-001").count(),
-        7
+        15
     );
     assert!(trace.contains("optional.some.constructed"));
     assert!(trace.contains("optional.none.constructed"));
@@ -2318,6 +2318,7 @@ fn every_mode_constructs_explicit_optional_values() {
     assert_eq!(trace.matches("TOPAL-TYPE-OPTIONAL-CONTEXT-001").count(), 2);
     assert_eq!(trace.matches("TOPAL-DECISION-OPTIONAL-001").count(), 6);
     assert!(trace.contains("optional.payload.bound"));
+    assert_eq!(trace.matches("TOPAL-TYPE-OPTIONAL-EQUALITY-001").count(), 4);
 }
 
 #[test]
