@@ -35,6 +35,7 @@ pub enum TokenKind {
     Minus,
     Star,
     Slash,
+    SlashPercent,
     Percent,
     Caret,
     Unknown,
@@ -133,6 +134,9 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
     }
     if rest.starts_with("->") {
         return (TokenKind::Arrow, 2);
+    }
+    if rest.starts_with("/%") {
+        return (TokenKind::SlashPercent, 2);
     }
     let first = rest.chars().next().expect("nonempty source");
     match first {
@@ -493,6 +497,20 @@ mod tests {
                 TokenKind::Percent,
                 TokenKind::Whitespace,
                 TokenKind::Integer
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_slash_percent_as_one_callable() {
+        assert_eq!(
+            kinds("17 /% 5"),
+            vec![
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::SlashPercent,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
             ]
         );
     }

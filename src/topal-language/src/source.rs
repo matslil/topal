@@ -1662,6 +1662,13 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         return matches!(value, Value::Error { code, .. } if is_arithmetic_error_code(code))
             || value_has_classifier(value, success);
     }
+    if let (Value::Tuple(values), Some(classifiers)) = (value, tuple_classifiers(classifier)) {
+        return values.len() == classifiers.len()
+            && values
+                .iter()
+                .zip(classifiers)
+                .all(|(value, classifier)| value_has_classifier(value, classifier));
+    }
     match (value, classifier) {
         (Value::Boolean(_), "Boolean")
         | (Value::Int(_), "Int")
@@ -1689,9 +1696,30 @@ fn result_success_classifier(classifier: &str) -> Option<&str> {
         .trim()
         .strip_prefix('(')?
         .strip_suffix(')')?;
-    let (success, errors) = contents.split_once(',')?;
+    let comma = top_level_comma(contents)?;
+    let (success, errors) = (&contents[..comma], &contents[comma + 1..]);
     let errors = errors.split_whitespace().collect::<Vec<_>>().join(" ");
     (errors == "lang arithmetic ArithmeticErrorCode").then(|| success.trim())
+}
+
+fn tuple_classifiers(classifier: &str) -> Option<Vec<&str>> {
+    let contents = classifier.trim().strip_prefix('(')?.strip_suffix(')')?;
+    let classifiers = contents.split(',').map(str::trim).collect::<Vec<_>>();
+    (classifiers.len() > 1 && classifiers.iter().all(|item| !item.is_empty()))
+        .then_some(classifiers)
+}
+
+fn top_level_comma(text: &str) -> Option<usize> {
+    let mut depth = 0_usize;
+    for (offset, character) in text.char_indices() {
+        match character {
+            '(' => depth += 1,
+            ')' => depth = depth.checked_sub(1)?,
+            ',' if depth == 0 => return Some(offset),
+            _ => {}
+        }
+    }
+    None
 }
 
 const fn function_rule(is_static: bool, parameter_count: usize) -> &'static str {
@@ -2288,7 +2316,8 @@ fn supported_value_classifier(classifier: &str) -> bool {
     matches!(
         classifier,
         "Boolean" | "Character" | "Int" | "Nat" | "Rational" | "String" | "Unit"
-    )
+    ) || tuple_classifiers(classifier)
+        .is_some_and(|items| items.into_iter().all(supported_value_classifier))
 }
 
 fn accepted_source(input: &str, trace: &mut impl TraceSink) -> Result<SourceText, Diagnostic> {
@@ -2724,7 +2753,10 @@ fn apply_int_binary(
             Ok(Value::Int(left * right))
         }
         CallableKind::Divide => apply_divide(source, left, right, right_span, trace),
-        CallableKind::Modulo => apply_modulo(source, left, right, right_span, trace),
+        CallableKind::QuotientModulo => {
+            apply_quotient_modulo(source, left, right, right_span, trace)
+        }
+        CallableKind::Modulo => apply_modulo(source, left, &right, right_span, trace),
         CallableKind::Power => apply_power(source, left, right, right_span, trace),
     }
 }
@@ -2732,11 +2764,11 @@ fn apply_int_binary(
 fn apply_modulo(
     source: &SourceText,
     left: BigInt,
-    right: BigInt,
+    right: &BigInt,
     right_span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
-    if right == BigInt::from(0) {
+    if right == &BigInt::from(0) {
         trace.record(TraceEvent {
             event: "obligation.refuted",
             rule: "TOPAL-NUM-DIVZERO-001",
@@ -2773,20 +2805,82 @@ fn apply_modulo(
         rule: "TOPAL-TYPE-CALL-001",
         detail: "root.%(Int,Int)",
     });
-    let mut remainder = left % &right;
-    if remainder < BigInt::from(0) {
-        remainder += if right < BigInt::from(0) {
-            -right
-        } else {
-            right
-        };
-    }
+    let remainder = euclidean_remainder(left, right);
     trace.record(TraceEvent {
         event: "evaluation.modulo",
         rule: "TOPAL-NUM-INT-MODULO-001",
         detail: "Euclidean",
     });
     Ok(Value::Int(remainder))
+}
+
+fn apply_quotient_modulo(
+    source: &SourceText,
+    left: BigInt,
+    right: BigInt,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if right == BigInt::from(0) {
+        trace.record(TraceEvent {
+            event: "obligation.refuted",
+            rule: "TOPAL-NUM-DIVZERO-001",
+            detail: "divisor.nonzero",
+        });
+        if parse_integer(source.slice(right_span)).is_none() {
+            let position = source.position(right_span.start);
+            trace.record(TraceEvent {
+                event: "result.error.constructed",
+                rule: "TOPAL-TYPE-RESULT-001",
+                detail: "root./%(Int,Int);division-by-zero",
+            });
+            return Ok(Value::Error {
+                domain: "root./%(Int,Int)".to_owned(),
+                code: "division-by-zero".to_owned(),
+                line: position.line,
+                column: position.column,
+            });
+        }
+        return Err(diagnostic(
+            source,
+            "E-DIVISION-BY-ZERO",
+            right_span,
+            "statically evident quotient/modulo by zero",
+        ));
+    }
+    trace.record(TraceEvent {
+        event: "obligation.proved",
+        rule: "TOPAL-NUM-DIVZERO-001",
+        detail: "divisor.nonzero",
+    });
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: "root./%(Int,Int)",
+    });
+    let remainder = euclidean_remainder(left.clone(), &right);
+    let quotient = (left - &remainder) / right;
+    trace.record(TraceEvent {
+        event: "evaluation.quotient-modulo",
+        rule: "TOPAL-NUM-INT-QUOTIENT-MODULO-001",
+        detail: "Euclidean",
+    });
+    Ok(Value::Tuple(vec![
+        Value::Int(quotient),
+        Value::Int(remainder),
+    ]))
+}
+
+fn euclidean_remainder(left: BigInt, right: &BigInt) -> BigInt {
+    let mut remainder = left % right;
+    if remainder < BigInt::from(0) {
+        remainder += if right < &BigInt::from(0) {
+            -right
+        } else {
+            right.clone()
+        };
+    }
+    remainder
 }
 
 fn apply_rational_binary(
@@ -2798,7 +2892,7 @@ fn apply_rational_binary(
     right_span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
-    if kind == CallableKind::Modulo {
+    if matches!(kind, CallableKind::Modulo | CallableKind::QuotientModulo) {
         return Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",
@@ -2833,7 +2927,9 @@ fn apply_rational_binary(
             "TOPAL-NUM-RAT-MUL-001",
             left * right,
         ),
-        CallableKind::Modulo => unreachable!("modulo is rejected before Rational dispatch"),
+        CallableKind::Modulo | CallableKind::QuotientModulo => {
+            unreachable!("discrete operations are rejected before Rational dispatch")
+        }
         CallableKind::Divide => {
             if right.numer() == &BigInt::from(0) {
                 trace.record(TraceEvent {
@@ -4851,13 +4947,13 @@ fn int_modulo_is_euclidean_and_dynamic_zero_returns_error() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            "modulo is fn (left : Int, right : Int) -> Result (Int, lang arithmetic ArithmeticErrorCode)\n  left % right\n(17 % 5, -17 % 5, 17 % -5, 17 modulo 0)\n",
+            "modulo is fn (left : Int, right : Int) -> Result (Int, lang arithmetic ArithmeticErrorCode)\n  left % right\nquotient-modulo is fn (left : Int, right : Int) -> Result ((Int, Int), lang arithmetic ArithmeticErrorCode)\n  left /% right\n(17 % 5, -17 % 5, 17 % -5, -17 /% 5, 17 /% -5, 17 modulo 0, 17 quotient-modulo 0)\n",
             &mut trace,
         )
         .unwrap();
     assert_eq!(
         value.to_string(),
-        "(2, 3, 2, Error ( domain is root.%(Int,Int), code is division-by-zero ))"
+        "(2, 3, 2, (-4, 3), (-3, 2), Error ( domain is root.%(Int,Int), code is division-by-zero ), Error ( domain is root./%(Int,Int), code is division-by-zero ))"
     );
     assert_eq!(
         trace
@@ -4865,5 +4961,12 @@ fn int_modulo_is_euclidean_and_dynamic_zero_returns_error() {
             .filter(|event| event.contains("TOPAL-NUM-INT-MODULO-001"))
             .count(),
         3
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-NUM-INT-QUOTIENT-MODULO-001"))
+            .count(),
+        2
     );
 }

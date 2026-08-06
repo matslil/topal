@@ -319,6 +319,7 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
         | TokenKind::Minus
         | TokenKind::Star
         | TokenKind::Slash
+        | TokenKind::SlashPercent
         | TokenKind::Percent
         | TokenKind::Caret => Some(5),
         TokenKind::Whitespace | TokenKind::Newline | TokenKind::Unknown => None,
