@@ -653,3 +653,11 @@ Test traces and reversible debugger history shall distinguish both paths.
 Failure projection from an infallible or top-level context shall produce a
 source-located diagnostic with actionable help rather than a later generic
 result-classifier mismatch.
+
+## TOPAL-INTP-SUBSET-078 — Exhaustive arithmetic-code decisions
+
+All interpreter modes shall accept one `Ok` matcher plus all four qualified
+`lang arithmetic ArithmeticErrorCode` alternatives as an exhaustive Result
+decision without a generic Error fallback. Missing alternatives remain an
+incomplete-decision diagnostic. Test traces and reversible debugger history
+shall expose the selected qualified code.

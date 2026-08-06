@@ -611,6 +611,24 @@ fn records_reversible_result_success_projection() {
 }
 
 #[test]
+fn records_reversible_exhaustive_error_code_decision() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}exhaustive-error-code-decisions.debug"),
+            &format!("{root}exhaustive-error-code-decisions.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-DECISION-ERROR-CODE-001"));
+    assert!(stdout.contains("error.code.matched"));
+    assert!(stdout.contains("(\"ok\", \"zero\")"));
+}
+
+#[test]
 fn records_reversible_nested_function_call_order() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

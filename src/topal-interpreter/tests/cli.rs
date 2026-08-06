@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 47);
+    assert_eq!(examples.len(), 48);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1934,6 +1934,16 @@ fn infallible_projection_diagnostic_explains_available_repairs() {
     assert!(diagnostic.contains("cannot propagate a failed Result"));
     assert!(diagnostic.contains("help: change the function result to `Result (T, Codes)`"));
     assert!(diagnostic.contains("quotient : Rational is 1.0 divide denominator"));
+}
+
+#[test]
+fn every_mode_accepts_exhaustive_arithmetic_code_decision() {
+    let source = include_str!("../../../examples/interpreter/exhaustive-error-code-decisions.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"(\"ok\", \"zero\")\n"));
+    }
 }
 
 #[test]
