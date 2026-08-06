@@ -875,6 +875,31 @@ impl Session {
                     });
                     return Ok(Value::Boolean(left || right));
                 }
+                if let [left, Expression::Identifier(callable), right] = items.as_slice()
+                    && source.slice(*callable) == "xor"
+                {
+                    let left = self.evaluate_expression(source, left, trace)?;
+                    let right = self.evaluate_expression(source, right, trace)?;
+                    let (Value::Boolean(left), Value::Boolean(right)) = (left, right) else {
+                        return Err(diagnostic(
+                            source,
+                            "E-BOOLEAN-XOR-OPERANDS",
+                            *span,
+                            "xor requires two Boolean operands",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: "root.xor(Boolean,Boolean)",
+                    });
+                    trace.record(TraceEvent {
+                        event: "evaluation.logical",
+                        rule: "TOPAL-TYPE-BOOLEAN-LOGIC-001",
+                        detail: "xor:eager",
+                    });
+                    return Ok(Value::Boolean(left != right));
+                }
                 if items.len() == 3
                     && let Expression::Identifier(name_span) = items[1]
                     && !self.bindings.contains_key(source.slice(name_span))
@@ -6079,6 +6104,25 @@ fn boolean_or_implements_the_eager_truth_table() {
         trace
             .iter()
             .filter(|event| event.contains("or:eager"))
+            .count(),
+        4
+    );
+}
+
+#[test]
+fn boolean_xor_implements_the_eager_truth_table() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "(true xor true, true xor false, false xor true, false xor false)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(false, true, true, false)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("xor:eager"))
             .count(),
         4
     );

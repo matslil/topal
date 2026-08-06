@@ -893,3 +893,11 @@ All interpreter modes shall execute `left or right` for Boolean operands under
 to right without short-circuiting. Range operands shall not be mistaken for a
 Range-returning overload. Traces, LSP validation, and reversible debugger
 history shall cover the updated commented truth-table example.
+
+## TOPAL-INTP-SUBSET-107 — Eager Boolean exclusive disjunction
+
+All interpreter modes shall execute `left xor right` for Boolean operands under
+`TOPAL-TYPE-BOOLEAN-LOGIC-001`, evaluating both operands exactly once from left
+to right and returning true exactly when they differ. Traces, LSP validation,
+and reversible debugger history shall cover the completed commented logical
+truth-table example.
