@@ -1013,3 +1013,11 @@ All tools shall classify `characters text` as
 `Generator Character Unit Unit`: each yield is a complete Character, resumption
 accepts Unit, and normal exhaustion returns Unit. LSP completion and validation,
 formal traces, and reversible debugger history shall use the same signature.
+
+## TOPAL-INTP-SUBSET-122 — Direct String Character foreach
+
+All interpreter modes shall consume `characters text` with direct `foreach`
+under `TOPAL-STRING-CHARACTERS-FOREACH-001`, binding each Character in order,
+resuming with Unit, and returning Unit on exhaustion. Formal traces and the
+reversible debugger shall expose yields, resumptions, and final return; LSP
+validation shall accept the commented example.
