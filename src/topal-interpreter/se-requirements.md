@@ -728,3 +728,10 @@ All interpreter modes shall implement `zero Int` and `zero Rational` under
 `TOPAL-NUM-ZERO-001`, retaining the explicitly named domain. LSP completion,
 test traces, reversible debugger history, and a commented example shall expose
 both type-directed root selections.
+
+## TOPAL-INTP-SUBSET-087 — Exact numeric one construction
+
+All interpreter modes shall implement `one Int` and `one Rational` under
+`TOPAL-NUM-ONE-001`, retaining the explicitly named domain. LSP completion,
+test traces, reversible debugger history, and the numeric-identity example
+shall expose both type-directed root selections.

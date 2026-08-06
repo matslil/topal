@@ -717,7 +717,9 @@ fn records_reversible_exact_numeric_zero() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("root.zero(Int)"));
     assert!(stdout.contains("root.zero(Rational)"));
-    assert!(stdout.contains("(0, Rational ( 0, 1 ))"));
+    assert!(stdout.contains("root.one(Int)"));
+    assert!(stdout.contains("root.one(Rational)"));
+    assert!(stdout.contains("(0, Rational ( 0, 1 ), 1, Rational ( 1, 1 ))"));
 }
 
 #[test]
