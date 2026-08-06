@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 48);
+    assert_eq!(examples.len(), 49);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1988,6 +1988,30 @@ fn rule_after_otherwise_has_ordering_help() {
     assert!(diagnostic.contains("error[E-UNREACHABLE-DECISION-RULE]"));
     assert!(diagnostic.contains("unreachable after `otherwise`"));
     assert!(diagnostic.contains("help: move `otherwise` after every specific matcher"));
+}
+
+#[test]
+fn every_mode_classifies_unicode_characters() {
+    let source = include_str!("../../../examples/interpreter/character-classification.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with("(\"🙂\", \"a\u{301}\")\n".as_bytes())
+        );
+    }
+}
+
+#[test]
+fn character_classifier_diagnostic_reports_observed_count() {
+    let output = run(&[], "invalid : Character is \"ab\"\n");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-CHARACTER-CLASSIFIER]"));
+    assert!(diagnostic.contains("this String contains 2"));
+    assert!(diagnostic.contains("help: use a String containing exactly one Unicode grapheme"));
 }
 
 #[test]

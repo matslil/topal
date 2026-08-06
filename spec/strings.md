@@ -35,6 +35,14 @@ the preserved Unicode sequence under the language context's pinned Unicode
 segmentation data. Empty text has count zero. Canonically equivalent sequences
 shall be segmented as preserved rather than normalized before counting.
 
+### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
+
+`Character` shall classify exactly those preserved `String` values whose count
+under `TOPAL-STRING-CHARACTER-COUNT-001` is one. Classification shall retain
+the complete original scalar sequence without normalization; the one character
+may contain multiple Unicode scalar values or encoded bytes. Empty strings and
+strings containing two or more characters shall fail classification.
+
 ### TOPAL-STRING-ENTRY-COUNT-001 — String sequence entry count
 
 Because plain `String` provides `Sequence Character`, `entry-count text` shall
