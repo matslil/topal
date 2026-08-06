@@ -2487,6 +2487,7 @@ fn every_mode_closes_abandoned_generator_parameter() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-STRING-CHARACTERS-CLOSE-001"));
     assert!(trace.contains("generator.closed"));
+    assert!(trace.contains("domain=root;code=generator-closed;generator=root.characters"));
 }
 
 #[test]
