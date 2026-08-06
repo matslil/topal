@@ -31,6 +31,7 @@ pub enum Value {
         payload_classifier: String,
         payload: Option<Box<Self>>,
     },
+    CharacterGenerator(Vec<String>),
     String(String),
     Tuple(Vec<Self>),
     Record(Vec<(String, Self)>),
@@ -75,6 +76,7 @@ impl fmt::Display for Value {
                 ..
             } => write!(formatter, "Some {value}"),
             Self::Optional { payload: None, .. } => formatter.write_str("None"),
+            Self::CharacterGenerator(_) => formatter.write_str("<Generator Character Unit Unit>"),
             Self::String(value) => formatter.write_str(&display_string(value)),
             Self::Tuple(items) => {
                 formatter.write_str("(")?;
@@ -687,6 +689,29 @@ impl Session {
                         detail: "String",
                     });
                     let value = Value::String(collected);
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if let [Expression::Identifier(generator), text] = items.as_slice()
+                    && source.slice(*generator) == "characters"
+                {
+                    let text_span = text.span();
+                    let text = self.evaluate_expression(source, text, trace)?;
+                    let Value::String(text) = text else {
+                        return Err(diagnostic(
+                            source,
+                            "E-CHARACTERS-OPERAND",
+                            text_span,
+                            "characters requires a String operand",
+                        ));
+                    };
+                    trace.record(TraceEvent {
+                        event: "generator.started",
+                        rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
+                        detail: "Generator Character Unit Unit",
+                    });
+                    let value =
+                        Value::CharacterGenerator(characters(&text).map(str::to_owned).collect());
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -1788,26 +1813,45 @@ impl Execution {
         body: &[Statement],
         span: Span,
     ) -> Result<(Value, Span), Diagnostic> {
-        let Expression::Application { items, .. } = source else {
-            return Err(foreach_source_diagnostic(&self.source, source.span()));
-        };
-        let [Expression::Identifier(operation), text] = items.as_slice() else {
-            return Err(foreach_source_diagnostic(&self.source, source.span()));
-        };
-        if self.source.slice(*operation) != "characters" {
-            return Err(foreach_source_diagnostic(&self.source, source.span()));
-        }
-        let text_value = session.evaluate_expression(&self.source, text, trace)?;
-        let Value::String(text_value) = text_value else {
-            return Err(diagnostic(
-                &self.source,
-                "E-CHARACTERS-OPERAND",
-                text.span(),
-                "characters requires a String operand",
-            ));
+        let generated = match source {
+            Expression::Identifier(name) => {
+                let name_text = self.source.slice(*name);
+                let value = session.bindings.remove(name_text).ok_or_else(|| {
+                    diagnostic(&self.source, "E-UNBOUND-NAME", *name, "name is not bound")
+                })?;
+                let Value::CharacterGenerator(generated) = value else {
+                    return Err(foreach_source_diagnostic(&self.source, source.span()));
+                };
+                session.declared_names.remove(name_text);
+                trace.record(TraceEvent {
+                    event: "generator.consumed",
+                    rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
+                    detail: name_text,
+                });
+                generated
+            }
+            Expression::Application { items, .. } => {
+                let [Expression::Identifier(operation), text] = items.as_slice() else {
+                    return Err(foreach_source_diagnostic(&self.source, source.span()));
+                };
+                if self.source.slice(*operation) != "characters" {
+                    return Err(foreach_source_diagnostic(&self.source, source.span()));
+                }
+                let text_value = session.evaluate_expression(&self.source, text, trace)?;
+                let Value::String(text_value) = text_value else {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-CHARACTERS-OPERAND",
+                        text.span(),
+                        "characters requires a String operand",
+                    ));
+                };
+                characters(&text_value).map(str::to_owned).collect()
+            }
+            _ => return Err(foreach_source_diagnostic(&self.source, source.span())),
         };
         let binding_name = self.source.slice(binding).to_owned();
-        for character in characters(&text_value) {
+        for character in &generated {
             let mut iteration = session.clone();
             iteration
                 .bindings
@@ -3380,6 +3424,7 @@ const fn value_classifier(value: &Value) -> &'static str {
         Value::Rational(_) => "Rational",
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
+        Value::CharacterGenerator(_) => "Generator Character Unit Unit",
         Value::String(_) => "String",
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
@@ -4445,6 +4490,7 @@ fn apply_negate(
         | Value::IntRange { .. }
         | Value::RationalRange { .. }
         | Value::Optional { .. }
+        | Value::CharacterGenerator(_)
         | Value::String(_)
         | Value::Tuple(_)
         | Value::Record(_)
@@ -6863,6 +6909,28 @@ fn foreach_consumes_character_generator_with_unit() {
         trace
             .iter()
             .any(|event| event.contains("generator.returned") && event.contains("Unit"))
+    );
+}
+
+#[test]
+fn named_character_generator_is_consumed_linearly() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "generated is characters \"a\u{301}👩‍🔬🇸🇪\"\ngenerated foreach { character }\n  String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.started"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.consumed"))
     );
 }
 

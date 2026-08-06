@@ -1021,3 +1021,11 @@ under `TOPAL-STRING-CHARACTERS-FOREACH-001`, binding each Character in order,
 resuming with Unit, and returning Unit on exhaustion. Formal traces and the
 reversible debugger shall expose yields, resumptions, and final return; LSP
 validation shall accept the commented example.
+
+## TOPAL-INTP-SUBSET-123 — Named linear String Character generator
+
+All interpreter modes shall bind `characters text` as
+`Generator Character Unit Unit` and consume the binding linearly with `foreach`
+under `TOPAL-STRING-CHARACTERS-GENERATOR-001`. Traces and reversible debugger
+history shall distinguish generator start from source-level consumption; LSP
+validation shall accept the commented example.

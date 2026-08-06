@@ -93,6 +93,15 @@ After each body returns Unit, traversal resumes with Unit. Exhaustion returns
 Unit, including for empty input. The binding does not escape the body and each
 yielded value retains the Character constraint.
 
+### TOPAL-STRING-CHARACTERS-GENERATOR-001 — Named linear traversal
+
+`characters text` may be bound as a value classified
+`Generator Character Unit Unit`. Consuming that binding with `foreach` transfers
+its linear continuation into the traversal; the same source binding is no
+longer available afterward and cannot be consumed twice. Debugger history may
+snapshot prior generator state for reverse inspection without making a second
+source-level continuation.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count
