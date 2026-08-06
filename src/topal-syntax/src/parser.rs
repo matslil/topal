@@ -38,6 +38,7 @@ pub enum CallableKind {
     Greater,
     LessEqual,
     Compare,
+    Range,
     GreaterEqual,
     Plus,
     Minus,
@@ -908,6 +909,10 @@ impl Parser<'_> {
             }),
             TokenKind::Compare => Some(Expression::Callable {
                 kind: CallableKind::Compare,
+                span: token.span,
+            }),
+            TokenKind::Range => Some(Expression::Callable {
+                kind: CallableKind::Range,
                 span: token.span,
             }),
             TokenKind::GreaterEqual => Some(Expression::Callable {

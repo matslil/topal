@@ -16,6 +16,10 @@ pub enum Value {
     Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
+    IntRange {
+        lower: BigInt,
+        upper: BigInt,
+    },
     String(String),
     Tuple(Vec<Self>),
     Record(Vec<(String, Self)>),
@@ -46,6 +50,7 @@ impl fmt::Display for Value {
                     value.denom()
                 )
             }
+            Self::IntRange { lower, upper } => write!(formatter, "{lower} .. {upper}"),
             Self::String(value) => formatter.write_str(&display_string(value)),
             Self::Tuple(items) => {
                 formatter.write_str("(")?;
@@ -2828,6 +2833,7 @@ const fn value_classifier(value: &Value) -> &'static str {
         Value::Boolean(_) => "Boolean",
         Value::Int(_) => "Int",
         Value::Rational(_) => "Rational",
+        Value::IntRange { .. } => "Range",
         Value::String(_) => "String",
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
@@ -2967,6 +2973,9 @@ fn apply_binary(
             alternative: alternative.to_owned(),
         });
     }
+    if kind == CallableKind::Range {
+        return apply_range(source, left, right, span, trace);
+    }
     if matches!(
         kind,
         CallableKind::Less
@@ -3017,6 +3026,29 @@ fn apply_binary(
             "the implemented subset requires operands from one exact numeric domain",
         )),
     }
+}
+
+fn apply_range(
+    source: &SourceText,
+    left: Value,
+    right: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let (Value::Int(lower), Value::Int(upper)) = (left, right) else {
+        return Err(diagnostic(
+            source,
+            "E-RANGE-ENDPOINTS",
+            span,
+            "the implemented range subset requires two Int endpoints",
+        ));
+    };
+    trace.record(TraceEvent {
+        event: "range.constructed",
+        rule: "TOPAL-RANGE-INCLUSIVE-001",
+        detail: if lower <= upper { "nonempty" } else { "empty" },
+    });
+    Ok(Value::IntRange { lower, upper })
 }
 
 fn apply_comparison(
@@ -3205,6 +3237,7 @@ fn apply_int_binary(
         | CallableKind::GreaterEqual => {
             unreachable!("comparison is dispatched before numeric operations")
         }
+        CallableKind::Range => unreachable!("range is dispatched before numeric operations"),
         CallableKind::Plus => {
             trace.record(TraceEvent {
                 event: "operator.selected",
@@ -3397,6 +3430,7 @@ fn apply_rational_binary(
         | CallableKind::GreaterEqual => {
             unreachable!("comparison is dispatched before numeric operations")
         }
+        CallableKind::Range => unreachable!("range is dispatched before numeric operations"),
         CallableKind::Plus => (
             "root.+(Rational,Rational)",
             "evaluation.add",
@@ -3712,6 +3746,7 @@ fn apply_negate(
             Ok(Value::Rational(-operand))
         }
         Value::Boolean(_)
+        | Value::IntRange { .. }
         | Value::String(_)
         | Value::Tuple(_)
         | Value::Record(_)
@@ -5741,4 +5776,21 @@ fn dynamic_rational_construction_distinguishes_zero_failures() {
         .evaluate("Rational (0, 0)\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-INDETERMINATE-RATIONAL");
+}
+
+#[test]
+fn inclusive_int_ranges_preserve_bounds_and_allow_empty_ranges() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate("(0 .. 10, 5 .. 5, 10 .. 0)\n", &mut trace)
+        .unwrap();
+    assert_eq!(value.to_string(), "(0 .. 10, 5 .. 5, 10 .. 0)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("TOPAL-RANGE-INCLUSIVE-001"))
+            .count(),
+        3
+    );
+    assert!(trace.iter().any(|event| event.contains("empty")));
 }
