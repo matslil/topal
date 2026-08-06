@@ -116,6 +116,13 @@ A function result may transfer the fresh continuation constructed by
 `characters text` to its caller. The caller receives one linear generator value
 which may be bound and consumed under `TOPAL-STRING-CHARACTERS-GENERATOR-001`.
 
+### TOPAL-STRING-CHARACTERS-LINEAR-001 — Consumed generator rejection
+
+After a named generator continuation is transferred into a consumer, any later
+source use of that binding shall be rejected as an already-consumed generator,
+not resolved as an ordinary value or silently restarted. Diagnostics shall
+identify the consumed binding and may suggest constructing a fresh generator.
+
 ### TOPAL-STRING-CHARACTER-CLASSIFIER-001 — Character constraint
 
 `Character` shall classify exactly those preserved `String` values whose count

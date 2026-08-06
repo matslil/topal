@@ -2450,6 +2450,17 @@ fn every_mode_consumes_returned_character_generator() {
 }
 
 #[test]
+fn script_mode_explains_consumed_generator_reuse() {
+    let source = include_str!("../../../examples/debugger/generator-consumed.t");
+    let output = run(&[], source);
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-GENERATOR-CONSUMED]"));
+    assert!(diagnostic.contains("generator `generated` was already consumed"));
+    assert!(diagnostic.contains("construct a fresh generator"));
+}
+
+#[test]
 fn all_modes_preserve_literal_string_contents() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, "text\"He said \"hello\". {value} \\n\"text\n");
