@@ -949,7 +949,11 @@ fn records_reversible_explicit_optional_construction() {
     assert!(stdout.contains("TOPAL-TYPE-OPTIONAL-CONTEXT-001"));
     assert!(stdout.contains("preserve"));
     assert!(stdout.contains("absent"));
-    assert!(stdout.contains("(Some 42, Some \"present\", None, None, None, Some 7, None, None)"));
+    assert!(stdout.contains("TOPAL-DECISION-OPTIONAL-001"));
+    assert!(stdout.contains("optional.payload.bound"));
+    assert!(stdout.contains(
+        "(Some 42, Some \"present\", None, None, None, Some 7, None, None, \"present\", \"absent\")"
+    ));
 }
 
 #[test]

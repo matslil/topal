@@ -107,6 +107,14 @@ exactly Optional values retaining the same nominal payload classifier `T`, and a
 function result shall retain that identity unchanged. Sharing the displayed
 alternative `None` does not make `Optional A` satisfy `Optional B`.
 
+### TOPAL-DECISION-OPTIONAL-001 — Exhaustive Optional decisions
+
+An Optional decision matches `Some name` against the present alternative and
+binds its payload once as `name`; `None` matches the absent alternative without
+a binding. A complete decision covers both alternatives or provides
+`otherwise`. Rules are considered and selected under the ordinary decision
+ordering, and only the selected action evaluates.
+
 ### TOPAL-TYPE-EQUALITY-001 — Equality application
 
 If `T` provides canonical `Equality` evidence and `a:T`, `b:T`, then `a = b`

@@ -160,7 +160,7 @@ impl Diagnostic {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Session {
     bindings: BTreeMap<String, Value>,
     functions: BTreeMap<String, Vec<UserFunction>>,
@@ -403,6 +403,9 @@ impl Session {
                         DecisionMatcher::Result { .. } | DecisionMatcher::ErrorCode { .. }
                     )
                 });
+                let has_optional_matchers = rules
+                    .iter()
+                    .any(|rule| matches!(rule.matcher, DecisionMatcher::Optional { .. }));
                 if !enum_matchers.is_empty()
                     && !rules
                         .iter()
@@ -425,7 +428,9 @@ impl Session {
                         ));
                     }
                 }
-                let decision_rule = if has_result_matchers {
+                let decision_rule = if has_optional_matchers {
+                    "TOPAL-DECISION-OPTIONAL-001"
+                } else if has_result_matchers {
                     "TOPAL-DECISION-RESULT-001"
                 } else if !enum_matchers.is_empty() {
                     "TOPAL-DECISION-ENUM-001"
@@ -475,6 +480,17 @@ impl Session {
                         }
                         DecisionMatcher::Result { error, .. } => {
                             *error == matches!(subject, Value::Error { .. })
+                        }
+                        DecisionMatcher::Optional { some, .. } => {
+                            let Value::Optional { payload, .. } = &subject else {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-DECISION-SUBJECT-TYPE",
+                                    subject_span,
+                                    "Optional matchers require an Optional subject",
+                                ));
+                            };
+                            *some == payload.is_some()
                         }
                         DecisionMatcher::ErrorCode {
                             namespace,
@@ -567,6 +583,27 @@ impl Session {
                     trace.record(TraceEvent {
                         event: "result.payload.bound",
                         rule: "TOPAL-DECISION-RESULT-001",
+                        detail: name,
+                    });
+                    branch.evaluate_expression(source, &selected_rule.action, trace)
+                } else if let DecisionMatcher::Optional {
+                    binding: Some(binding),
+                    ..
+                } = selected_rule.matcher
+                {
+                    let Value::Optional {
+                        payload: Some(payload),
+                        ..
+                    } = subject
+                    else {
+                        unreachable!("Some matcher selected only for a present payload")
+                    };
+                    let name = source.slice(binding);
+                    let mut branch = self.clone();
+                    branch.bindings.insert(name.to_owned(), *payload);
+                    trace.record(TraceEvent {
+                        event: "optional.payload.bound",
+                        rule: "TOPAL-DECISION-OPTIONAL-001",
                         detail: name,
                     });
                     branch.evaluate_expression(source, &selected_rule.action, trace)
@@ -6309,6 +6346,33 @@ fn contextual_none_uses_function_result_classifiers() {
             .filter(|event| event.contains("TOPAL-TYPE-OPTIONAL-CONTEXT-001"))
             .count(),
         2
+    );
+}
+
+#[test]
+fn optional_decisions_bind_only_present_payloads() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "describe is fn (candidate : Optional Int) -> String\n  candidate\n    Some payload then \"present\"\n    None then \"absent\"\n(describe (Some 7), describe (None Int))\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(\"present\", \"absent\")");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("decision.rule.selected"))
+            .filter(|event| event.contains("TOPAL-DECISION-OPTIONAL-001"))
+            .count(),
+        2
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("optional.payload.bound"))
+            .count(),
+        1
     );
 }
 

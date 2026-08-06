@@ -932,3 +932,11 @@ result for both final expressions and explicit returns under
 `TOPAL-TYPE-OPTIONAL-CONTEXT-001`. Traces and reversible debugger history shall
 expose the same contextual construction rule; LSP validation shall accept the
 updated commented example.
+
+## TOPAL-INTP-SUBSET-112 — Exhaustive Optional decisions
+
+All interpreter modes shall execute complete `Some payload` and `None` decision
+tables under `TOPAL-DECISION-OPTIONAL-001`, bind a present payload only in its
+selected branch, and reject incomplete tables. Traces and reversible debugger
+history shall expose rule consideration, selection, and payload binding; LSP
+validation shall accept the updated commented example.
