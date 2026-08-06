@@ -651,6 +651,45 @@ impl Session {
                     });
                     return Ok(value);
                 }
+                if let [Expression::Identifier(callable), operand] = items.as_slice()
+                    && source.slice(*callable) == "negate"
+                {
+                    let operand_span = operand.span();
+                    let value = self.evaluate_expression(source, operand, trace)?;
+                    let (value, selection, classifier, rule) = match value {
+                        Value::Int(value) => (
+                            Value::Int(-value),
+                            "root.negate(Int)",
+                            "Int",
+                            "TOPAL-NUM-NEG-001",
+                        ),
+                        Value::Rational(value) => (
+                            Value::Rational(-value),
+                            "root.negate(Rational)",
+                            "Rational",
+                            "TOPAL-NUM-RAT-NEG-001",
+                        ),
+                        _ => {
+                            return Err(diagnostic(
+                                source,
+                                "E-NO-APPLICABLE-OVERLOAD",
+                                operand_span,
+                                "negate requires an exact numeric operand",
+                            ));
+                        }
+                    };
+                    trace.record(TraceEvent {
+                        event: "operator.selected",
+                        rule: "TOPAL-TYPE-CALL-001",
+                        detail: selection,
+                    });
+                    trace.record(TraceEvent {
+                        event: "evaluation.negate",
+                        rule,
+                        detail: classifier,
+                    });
+                    return Ok(value);
+                }
                 if items.len() == 3
                     && let Expression::Identifier(name_span) = items[1]
                     && !self.bindings.contains_key(source.slice(name_span))
@@ -3308,7 +3347,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 7] = [
+const ROOT_OPERATIONS: [&str; 8] = [
     "absolute",
     "byte-count",
     "character-count",
@@ -3316,6 +3355,7 @@ const ROOT_OPERATIONS: [&str; 7] = [
     "empty",
     "entry-count",
     "normalize",
+    "negate",
 ];
 
 fn closest_root_operation(name: &str) -> Option<&'static str> {
@@ -5038,5 +5078,26 @@ fn exact_numeric_absolute_retains_operand_domain() {
             .filter(|event| event.contains("TOPAL-NUM-ABS-001"))
             .count(),
         4
+    );
+}
+
+#[test]
+fn named_numeric_negate_matches_exact_additive_inverse() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "(negate 42, negate -42, negate 1.25, negate -1.25)\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(-42, 42, Rational ( -5, 4 ), Rational ( 5, 4 ))"
+    );
+    assert!(trace.iter().any(|event| event.contains("root.negate(Int)")));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("root.negate(Rational)"))
     );
 }

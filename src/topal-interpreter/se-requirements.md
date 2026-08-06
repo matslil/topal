@@ -714,3 +714,10 @@ All interpreter modes shall implement `absolute` for finite Int and Rational
 under `TOPAL-NUM-ABS-001`, retaining the operand domain. LSP completion, test
 traces, reversible debugger history, and a commented example shall expose both
 overload selections.
+
+## TOPAL-INTP-SUBSET-085 — Named exact numeric negation
+
+All interpreter modes shall implement `negate` for finite Int and Rational
+under `TOPAL-NUM-NEG-001` and `TOPAL-NUM-RAT-NEG-001`. Results shall equal
+prefix negation while traces distinguish named root overload selection. LSP
+completion and reversible debugger history shall cover both domains.
