@@ -921,7 +921,9 @@ fn records_reversible_boolean_not() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-TYPE-BOOLEAN-LOGIC-001"));
     assert!(stdout.contains("root.not(Boolean)"));
-    assert!(stdout.contains("(false, true, true)"));
+    assert!(stdout.contains("root.and(Boolean,Boolean)"));
+    assert!(stdout.contains("and:eager"));
+    assert!(stdout.contains("(false, true, true, false, false, false)"));
 }
 
 #[test]
