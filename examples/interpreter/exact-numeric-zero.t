@@ -1,4 +1,4 @@
 #!/usr/bin/env topal
 # Demonstrates type-directed construction of the additive and multiplicative
 # identities for each currently implemented exact numeric domain.
-(zero Int, zero Rational, one Int, one Rational)
+(zero Int, zero Nat, zero Rational, one Int, one Nat, one Rational)

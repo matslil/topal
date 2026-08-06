@@ -751,3 +751,11 @@ decisions over the built-in nominal `Comparison` enum under
 `TOPAL-DECISION-ENUM-001`. The alternatives shall not require a source Enum
 declaration. Test traces and reversible debugger history shall expose matcher
 consideration and selection; LSP validation shall accept the example.
+
+## TOPAL-INTP-SUBSET-090 — Nat numeric identities
+
+All interpreter modes shall extend `zero` and `one` to the supported Nat
+refinement under `TOPAL-NUM-ZERO-001` and `TOPAL-NUM-ONE-001`. Results shall be
+exact nonnegative Int values satisfying Nat, while traces retain Nat-specific
+root selection. LSP validation and reversible debugger history shall cover the
+updated commented identity example.

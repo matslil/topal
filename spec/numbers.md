@@ -107,17 +107,17 @@ does not convert or round, and cannot overflow.
 
 ### TOPAL-NUM-ZERO-001 — Exact numeric zero construction
 
-`zero Int` and `zero Rational` shall select total, pure type-directed root
+`zero Int`, `zero Nat`, and `zero Rational` shall select total, pure type-directed root
 operations and construct the unique additive identity of the named exact
-numeric domain. The Int result is exact integer zero; the Rational result is
+numeric domain. The Int and Nat results are exact integer zero; the Rational result is
 canonical rational zero. Construction shall not infer a domain from context or
 convert an already constructed value.
 
 ### TOPAL-NUM-ONE-001 — Exact numeric one construction
 
-`one Int` and `one Rational` shall select total, pure type-directed root
+`one Int`, `one Nat`, and `one Rational` shall select total, pure type-directed root
 operations and construct the unique multiplicative identity of the named exact
-numeric domain. The Int result is exact integer one; the Rational result is
+numeric domain. The Int and Nat results are exact integer one; the Rational result is
 canonical rational one. Construction shall not infer a domain from context or
 convert an already constructed value.
 

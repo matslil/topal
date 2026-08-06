@@ -718,8 +718,10 @@ fn records_reversible_exact_numeric_zero() {
     assert!(stdout.contains("root.zero(Int)"));
     assert!(stdout.contains("root.zero(Rational)"));
     assert!(stdout.contains("root.one(Int)"));
+    assert!(stdout.contains("root.zero(Nat)"));
+    assert!(stdout.contains("root.one(Nat)"));
     assert!(stdout.contains("root.one(Rational)"));
-    assert!(stdout.contains("(0, Rational ( 0, 1 ), 1, Rational ( 1, 1 ))"));
+    assert!(stdout.contains("(0, 0, Rational ( 0, 1 ), 1, 1, Rational ( 1, 1 ))"));
 }
 
 #[test]
