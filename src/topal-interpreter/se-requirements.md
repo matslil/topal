@@ -699,3 +699,11 @@ All interpreter modes shall implement `%` for Int operands under
 a source diagnostic; dynamic zero within an arithmetic Result contract shall
 construct a structured Error with the modulo overload domain. LSP highlighting
 and reversible debugger history shall expose the operator and decision trace.
+
+## TOPAL-INTP-SUBSET-083 — Euclidean Int quotient and modulo
+
+All interpreter modes shall implement `/%` for Int operands under
+`TOPAL-NUM-INT-QUOTIENT-MODULO-001` and classify its product success through
+`Result ((Int, Int), lang arithmetic ArithmeticErrorCode)`. Literal and dynamic
+zero handling, LSP highlighting, test traces, and reversible debugger history
+shall parallel `%` while retaining the distinct reporting overload.

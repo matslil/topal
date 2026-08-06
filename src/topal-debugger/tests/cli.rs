@@ -660,8 +660,10 @@ fn records_reversible_int_euclidean_modulo() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-NUM-INT-MODULO-001"));
+    assert!(stdout.contains("TOPAL-NUM-INT-QUOTIENT-MODULO-001"));
     assert!(stdout.contains("root.%(Int,Int);division-by-zero"));
     assert!(stdout.contains("Error ( domain is root.%(Int,Int), code is division-by-zero )"));
+    assert!(stdout.contains("Error ( domain is root./%(Int,Int), code is division-by-zero )"));
 }
 
 #[test]

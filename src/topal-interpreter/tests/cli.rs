@@ -2023,12 +2023,14 @@ fn every_mode_executes_euclidean_int_modulo() {
         let output = run(arguments, source);
         assert!(output.status.success());
         assert!(output.stdout.ends_with(
-            b"(2, 3, 2, Error ( domain is root.%(Int,Int), code is division-by-zero ))\n"
+            b"(2, 3, 2, (-4, 3), (-3, 2), Error ( domain is root.%(Int,Int), code is division-by-zero ), Error ( domain is root./%(Int,Int), code is division-by-zero ))\n"
         ));
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-NUM-INT-MODULO-001"));
     assert!(trace.contains("root.%(Int,Int);division-by-zero"));
+    assert!(trace.contains("TOPAL-NUM-INT-QUOTIENT-MODULO-001"));
+    assert!(trace.contains("root./%(Int,Int);division-by-zero"));
 }
 
 #[test]

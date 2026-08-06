@@ -161,6 +161,15 @@ A dynamically obtained zero constructs `division-by-zero` with reporting domain
 `root.%(Int,Int)` and separate divisor source provenance within a compatible
 arithmetic Result contract.
 
+### TOPAL-NUM-INT-QUOTIENT-MODULO-001 — Euclidean integer quotient and modulo
+
+For finite `a : Int` and finite nonzero `b : Int`, binary `/%` returns the
+product `(q, r) : (Int, Int)` uniquely satisfying `a = b*q + r` and
+`0 <= r < absolute b`. Its remainder equals `a % b` under
+`TOPAL-NUM-INT-MODULO-001`. Literal and dynamic zero divisors follow the same
+diagnostic and structured Error rules, with dynamic reporting domain
+`root./%(Int,Int)`.
+
 ### TOPAL-NUM-DYNAMIC-DIVZERO-001 — Dynamic Rational zero division
 
 Within a function explicitly returning
