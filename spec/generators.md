@@ -54,3 +54,25 @@ and shall produce the generator's final return value.
 The generator's final return classifier is independent of its yield classifier.
 For `Generator Character Unit Character`, direct foreach shall invoke its action
 for each yielded Character and then produce the distinct final Character.
+
+### TOPAL-GENERATOR-SUSPEND-001 — Yield suspension ordering
+
+Starting a generator shall execute only through its first yield or final return.
+After a yield, statements following that yield shall not execute until the
+consumer resumes the continuation. Each subsequent resumption repeats this
+ordering through the next yield or final return.
+
+### TOPAL-GENERATOR-RESUME-BINDING-001 — Successful resume binding
+
+For a generator declaring `resumes Unit`, a successful foreach resumption shall
+make Unit available as the successful value of the suspended yield expression.
+A binding introduced by `name is yield value` becomes visible in the generator
+scope only after that resumption and may supply the final Unit return.
+
+### TOPAL-GENERATOR-CLOSE-001 — Abandoned custom continuation
+
+Leaving a scope that owns a suspended custom generator shall consume and close
+that continuation. The close signal's `Error.domain` shall be the lexical
+namespace where closure occurs; the generator's qualified declaration identity
+shall remain separate provenance. For the implemented root subset the domain is
+`root`, independently of provenance such as `root.pause-once`.

@@ -40,6 +40,17 @@ pub enum Value {
         returned: String,
         origin: String,
     },
+    SuspendedCharacterGenerator {
+        source: SourceText,
+        body: Vec<Statement>,
+        cursor: usize,
+        bindings: BTreeMap<String, Self>,
+        pending_yield: Option<String>,
+        resume_binding: Option<String>,
+        returned: Option<Box<Self>>,
+        return_classifier: String,
+        origin: String,
+    },
     String(String),
     Tuple(Vec<Self>),
     Record(Vec<(String, Self)>),
@@ -90,6 +101,9 @@ impl fmt::Display for Value {
             Self::CharacterReturningGenerator { .. } => {
                 formatter.write_str("<Generator Character Unit Character>")
             }
+            Self::SuspendedCharacterGenerator {
+                return_classifier, ..
+            } => write!(formatter, "<Generator Character Unit {return_classifier}>"),
             Self::String(value) => formatter.write_str(&display_string(value)),
             Self::Tuple(items) => {
                 formatter.write_str("(")?;
@@ -1225,72 +1239,33 @@ impl Session {
                         rule: "TOPAL-GENERATOR-DECLARATION-001",
                         detail: name,
                     });
-                    let mut generated = Vec::new();
-                    for statement in &generator.body[..generator.body.len() - 1] {
-                        if let Some(yielded_expression) =
-                            discarded_yield_expression(&generator.source, statement)
-                        {
-                            let yielded = generator_scope.evaluate_expression(
-                                &generator.source,
-                                yielded_expression,
-                                trace,
-                            )?;
-                            if !value_has_classifier(&yielded, "Character") {
-                                return Err(diagnostic(
-                                    &generator.source,
-                                    "E-GENERATOR-YIELD-TYPE",
-                                    yielded_expression.span(),
-                                    format!("generator `{name}` must yield `Character`"),
-                                ));
-                            }
-                            let Value::String(yielded) = yielded else {
-                                unreachable!("Character values use the String representation")
-                            };
-                            generated.push(yielded);
-                        } else {
-                            let mut execution = Execution {
-                                source: generator.source.clone(),
-                                statements: vec![statement.clone()],
-                                cursor: 0,
-                                return_classifier: None,
-                            };
-                            match execution.step(&mut generator_scope, trace)? {
-                                ExecutionStep::Advanced { .. } | ExecutionStep::Complete(_) => {}
-                                ExecutionStep::Returned { .. } => {
-                                    unreachable!("generator setup bindings cannot return")
-                                }
-                            }
-                        }
-                    }
-                    let Some(Statement::Expression(returned_expression)) = generator.body.last()
-                    else {
-                        unreachable!("generator declarations validate their final expression")
-                    };
-                    let returned = generator_scope.evaluate_expression(
+                    let mut cursor = 0;
+                    let mut pending_yield = None;
+                    let mut resume_binding = None;
+                    let mut returned = None;
+                    advance_custom_generator(
                         &generator.source,
-                        returned_expression,
+                        &generator.body,
+                        &mut cursor,
+                        &mut generator_scope,
+                        &mut pending_yield,
+                        &mut resume_binding,
+                        &mut returned,
+                        &generator.result,
+                        name,
                         trace,
                     )?;
-                    if !value_has_classifier(&returned, &generator.result) {
-                        return Err(diagnostic(
-                            &generator.source,
-                            "E-GENERATOR-RETURN-TYPE",
-                            returned_expression.span(),
-                            format!("generator `{name}` must return `{}`", generator.result),
-                        ));
-                    }
                     let origin = format!("root.{name}");
-                    let value = if generator.result == "Unit" {
-                        Value::CharacterGenerator { generated, origin }
-                    } else {
-                        let Value::String(returned) = returned else {
-                            unreachable!("Character values use the String representation")
-                        };
-                        Value::CharacterReturningGenerator {
-                            generated,
-                            returned,
-                            origin,
-                        }
+                    let value = Value::SuspendedCharacterGenerator {
+                        source: generator.source,
+                        body: generator.body,
+                        cursor,
+                        bindings: generator_scope.bindings,
+                        pending_yield,
+                        resume_binding,
+                        returned: returned.map(Box::new),
+                        return_classifier: generator.result,
+                        origin,
                     };
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
@@ -1334,6 +1309,7 @@ impl Session {
                         argument,
                         Value::CharacterGenerator { .. }
                             | Value::CharacterReturningGenerator { .. }
+                            | Value::SuspendedCharacterGenerator { .. }
                     ) {
                         trace.record(TraceEvent {
                             event: "generator.parameter.transferred",
@@ -1463,6 +1439,7 @@ impl Session {
                         value,
                         Value::CharacterGenerator { .. }
                             | Value::CharacterReturningGenerator { .. }
+                            | Value::SuspendedCharacterGenerator { .. }
                     ) {
                         trace.record(TraceEvent {
                             event: "generator.function.returned",
@@ -2008,6 +1985,17 @@ impl Execution {
                         diagnostic(&self.source, "E-UNBOUND-NAME", *name, "name is not bound")
                     }
                 })?;
+                if let Value::SuspendedCharacterGenerator { .. } = value {
+                    session.declared_names.remove(name_text);
+                    session.consumed_names.insert(name_text.to_owned());
+                    trace.record(TraceEvent {
+                        event: "generator.consumed",
+                        rule: "TOPAL-GENERATOR-DECLARATION-001",
+                        detail: name_text,
+                    });
+                    return self
+                        .execute_suspended_foreach(session, trace, value, binding, body, span);
+                }
                 let (generated, origin, returned, returned_classifier) = match value {
                     Value::CharacterGenerator { generated, origin } => {
                         (generated, origin, Value::Unit, "Unit")
@@ -2110,6 +2098,113 @@ impl Execution {
             detail: returned_classifier,
         });
         Ok((returned, span))
+    }
+
+    fn execute_suspended_foreach(
+        &self,
+        session: &Session,
+        trace: &mut impl TraceSink,
+        mut generator: Value,
+        binding: Span,
+        body: &[Statement],
+        span: Span,
+    ) -> Result<(Value, Span), Diagnostic> {
+        let Value::SuspendedCharacterGenerator {
+            source,
+            body: generator_body,
+            ref mut cursor,
+            ref mut bindings,
+            ref mut pending_yield,
+            ref mut resume_binding,
+            ref mut returned,
+            return_classifier,
+            origin,
+        } = generator
+        else {
+            unreachable!("caller selects a suspended generator")
+        };
+        let binding_name = self.source.slice(binding).to_owned();
+        let mut yielded_any = pending_yield.is_some();
+        loop {
+            if let Some(character) = pending_yield.take() {
+                yielded_any = true;
+                trace.record(TraceEvent {
+                    event: "generator.yielded",
+                    rule: "TOPAL-GENERATOR-FOREACH-001",
+                    detail: &character,
+                });
+                let mut iteration = session.clone();
+                iteration
+                    .bindings
+                    .insert(binding_name.clone(), Value::String(character));
+                iteration.declared_names.insert(binding_name.clone());
+                let mut action = Self {
+                    source: self.source.clone(),
+                    statements: body.to_vec(),
+                    cursor: 0,
+                    return_classifier: None,
+                };
+                loop {
+                    match action.step(&mut iteration, trace)? {
+                        ExecutionStep::Advanced { .. } => {}
+                        ExecutionStep::Complete(Value::Unit) => break,
+                        ExecutionStep::Complete(_) => {
+                            return Err(diagnostic(
+                                &self.source,
+                                "E-FOREACH-ACTION-RESULT",
+                                statement_span(body.last().expect("foreach body is nonempty")),
+                                "foreach action must return Unit",
+                            ));
+                        }
+                        ExecutionStep::Returned { .. } => unreachable!("foreach cannot return"),
+                    }
+                }
+                trace.record(TraceEvent {
+                    event: "generator.resumed",
+                    rule: "TOPAL-GENERATOR-FOREACH-001",
+                    detail: "Unit",
+                });
+                let mut scope = session.clone();
+                scope.bindings = std::mem::take(bindings);
+                if let Some(name) = resume_binding.take() {
+                    scope.bindings.insert(name.clone(), Value::Unit);
+                    scope.declared_names.insert(name.clone());
+                    trace.record(TraceEvent {
+                        event: "generator.resume.bound",
+                        rule: "TOPAL-GENERATOR-RESUME-BINDING-001",
+                        detail: &name,
+                    });
+                }
+                let mut next_returned = returned.take().map(|value| *value);
+                advance_custom_generator(
+                    &source,
+                    &generator_body,
+                    cursor,
+                    &mut scope,
+                    pending_yield,
+                    resume_binding,
+                    &mut next_returned,
+                    &return_classifier,
+                    origin.rsplit('.').next().unwrap_or(&origin),
+                    trace,
+                )?;
+                *bindings = scope.bindings;
+                *returned = next_returned.map(Box::new);
+                continue;
+            }
+            let value = returned.take().map_or(Value::Unit, |value| *value);
+            trace.record(TraceEvent {
+                event: "generator.returned",
+                rule: generator_return_rule(
+                    &origin,
+                    !yielded_any,
+                    &return_classifier,
+                    "TOPAL-GENERATOR-FOREACH-001",
+                ),
+                detail: &return_classifier,
+            });
+            return Ok((value, span));
+        }
     }
 
     fn execute_discard(
@@ -2895,7 +2990,7 @@ fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
         return false;
     }
     for statement in &body[..body.len().saturating_sub(1)] {
-        if discarded_yield_expression(source, statement).is_none()
+        if yielded_statement(source, statement).is_none()
             && !matches!(statement, Statement::Binding { .. })
         {
             return false;
@@ -2919,6 +3014,92 @@ fn discarded_yield_expression<'a>(
         return None;
     };
     (source.slice(*keyword) == "yield").then_some(yielded)
+}
+
+fn yielded_statement<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+) -> Option<(Option<Span>, &'a Expression)> {
+    if let Some(expression) = discarded_yield_expression(source, statement) {
+        return Some((None, expression));
+    }
+    let Statement::Binding {
+        name,
+        value: Expression::Application { items, .. },
+        ..
+    } = statement
+    else {
+        return None;
+    };
+    let [Expression::Identifier(keyword), yielded] = items.as_slice() else {
+        return None;
+    };
+    (source.slice(*keyword) == "yield").then_some((Some(*name), yielded))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn advance_custom_generator(
+    source: &SourceText,
+    body: &[Statement],
+    cursor: &mut usize,
+    scope: &mut Session,
+    pending_yield: &mut Option<String>,
+    resume_binding: &mut Option<String>,
+    returned: &mut Option<Value>,
+    return_classifier: &str,
+    name: &str,
+    trace: &mut impl TraceSink,
+) -> Result<(), Diagnostic> {
+    while *cursor < body.len() {
+        let statement = &body[*cursor];
+        *cursor += 1;
+        if let Some((binding, expression)) = yielded_statement(source, statement) {
+            let value = scope.evaluate_expression(source, expression, trace)?;
+            if !value_has_classifier(&value, "Character") {
+                return Err(diagnostic(
+                    source,
+                    "E-GENERATOR-YIELD-TYPE",
+                    expression.span(),
+                    format!("generator `{name}` must yield `Character`"),
+                ));
+            }
+            let Value::String(value) = value else {
+                unreachable!("Character values use the String representation")
+            };
+            *pending_yield = Some(value);
+            *resume_binding = binding.map(|span| source.slice(span).to_owned());
+            trace.record(TraceEvent {
+                event: "generator.suspended",
+                rule: "TOPAL-GENERATOR-SUSPEND-001",
+                detail: name,
+            });
+            return Ok(());
+        }
+        if let Statement::Expression(expression) = statement {
+            let value = scope.evaluate_expression(source, expression, trace)?;
+            if !value_has_classifier(&value, return_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-GENERATOR-RETURN-TYPE",
+                    expression.span(),
+                    format!("generator `{name}` must return `{return_classifier}`"),
+                ));
+            }
+            *returned = Some(value);
+            return Ok(());
+        }
+        let mut execution = Execution {
+            source: source.clone(),
+            statements: vec![statement.clone()],
+            cursor: 0,
+            return_classifier: None,
+        };
+        match execution.step(scope, trace)? {
+            ExecutionStep::Advanced { .. } | ExecutionStep::Complete(_) => {}
+            ExecutionStep::Returned { .. } => unreachable!("generator bindings cannot return"),
+        }
+    }
+    Ok(())
 }
 
 fn generator_return_rule(
@@ -2982,7 +3163,11 @@ fn consume_generator_argument(source: &SourceText, session: &mut Session, expres
     if accepts_generator
         && matches!(
             session.bindings.get(argument_name),
-            Some(Value::CharacterGenerator { .. } | Value::CharacterReturningGenerator { .. })
+            Some(
+                Value::CharacterGenerator { .. }
+                    | Value::CharacterReturningGenerator { .. }
+                    | Value::SuspendedCharacterGenerator { .. }
+            )
         )
     {
         session.bindings.remove(argument_name);
@@ -2997,7 +3182,8 @@ fn close_remaining_character_generators(session: &mut Session, trace: &mut impl 
         .iter()
         .filter_map(|(name, value)| match value {
             Value::CharacterGenerator { origin, .. }
-            | Value::CharacterReturningGenerator { origin, .. } => {
+            | Value::CharacterReturningGenerator { origin, .. }
+            | Value::SuspendedCharacterGenerator { origin, .. } => {
                 Some((name.clone(), origin.clone()))
             }
             _ => None,
@@ -3015,7 +3201,11 @@ fn close_remaining_character_generators(session: &mut Session, trace: &mut impl 
         });
         trace.record(TraceEvent {
             event: "generator.closed",
-            rule: "TOPAL-STRING-CHARACTERS-CLOSE-001",
+            rule: if origin == "root.characters" {
+                "TOPAL-STRING-CHARACTERS-CLOSE-001"
+            } else {
+                "TOPAL-GENERATOR-CLOSE-001"
+            },
             detail: &origin,
         });
     }
@@ -3165,6 +3355,14 @@ fn declare_enum(
 }
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
+    if let Value::SuspendedCharacterGenerator {
+        return_classifier, ..
+    } = value
+    {
+        return (return_classifier == "Unit" && classifier == "Generator Character Unit Unit")
+            || (return_classifier == "Character"
+                && classifier == "Generator Character Unit Character");
+    }
     if let Value::Optional {
         payload_classifier, ..
     } = value
@@ -3895,15 +4093,20 @@ fn record_result(trace: &mut impl TraceSink, value: &Value) {
     });
 }
 
-const fn value_classifier(value: &Value) -> &'static str {
+fn value_classifier(value: &Value) -> &'static str {
     match value {
         Value::Boolean(_) => "Boolean",
         Value::Int(_) => "Int",
         Value::Rational(_) => "Rational",
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
-        Value::CharacterGenerator { .. } => "Generator Character Unit Unit",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
+        Value::SuspendedCharacterGenerator {
+            return_classifier, ..
+        } if return_classifier == "Character" => "Generator Character Unit Character",
+        Value::CharacterGenerator { .. } | Value::SuspendedCharacterGenerator { .. } => {
+            "Generator Character Unit Unit"
+        }
         Value::String(_) => "String",
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
@@ -4971,6 +5174,7 @@ fn apply_negate(
         | Value::Optional { .. }
         | Value::CharacterGenerator { .. }
         | Value::CharacterReturningGenerator { .. }
+        | Value::SuspendedCharacterGenerator { .. }
         | Value::String(_)
         | Value::Tuple(_)
         | Value::Record(_)
@@ -7608,6 +7812,74 @@ fn named_generator_returns_character_after_yields() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-GENERATOR-FINAL-RETURN-001"))
+    );
+}
+
+#[test]
+fn custom_generator_defers_post_yield_binding_until_resume() {
+    let mut trace = Vec::new();
+    Session::new()
+        .evaluate(
+            "pause-twice is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  copy : Character is initial\n  _ is yield copy\n  ()\ngenerated is pause-twice \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    let resumed = trace
+        .iter()
+        .position(|event| event.contains("generator.resumed"))
+        .unwrap();
+    let local = trace
+        .iter()
+        .position(|event| event.contains("binding.created") && event.contains("copy"))
+        .unwrap();
+    let second_suspend = trace
+        .iter()
+        .rposition(|event| event.contains("generator.suspended"))
+        .unwrap();
+    assert!(resumed < local && local < second_suspend);
+}
+
+#[test]
+fn custom_generator_binds_unit_resume_after_yield() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "bind-resume is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  resumed is yield initial\n  resumed\ngenerated is bind-resume \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    let resumed = trace
+        .iter()
+        .position(|event| event.contains("generator.resumed"))
+        .unwrap();
+    let bound = trace
+        .iter()
+        .position(|event| event.contains("generator.resume.bound"))
+        .unwrap();
+    let resolved = trace
+        .iter()
+        .rposition(|event| event.contains("binding.resolved") && event.contains("resumed"))
+        .unwrap();
+    assert!(resumed < bound && bound < resolved);
+}
+
+#[test]
+fn abandoned_custom_generator_keeps_domain_separate_from_provenance() {
+    let mut trace = Vec::new();
+    Session::new()
+        .evaluate(
+            "pause-once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  ()\nabandon is fn ( initial : Character ) -> Unit\n  generated is pause-once initial\n  ()\nabandon \"T\"\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert!(trace.iter().any(|event| {
+        event.contains("domain=root;code=generator-closed;generator=root.pause-once")
+    }));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-CLOSE-001"))
     );
 }
 

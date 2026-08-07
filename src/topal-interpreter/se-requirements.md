@@ -1129,3 +1129,27 @@ Character` under `TOPAL-GENERATOR-FINAL-RETURN-001`. Direct foreach shall
 consume every yield and produce the separately evaluated final Character.
 Formal traces, LSP validation, and reversible scripted-debugger history shall
 cover a commented example.
+
+## TOPAL-INTP-SUBSET-139 — Abandoned custom generator trace
+
+When function exit abandons a suspended custom generator, all interpreter modes
+shall close it under `TOPAL-GENERATOR-CLOSE-001`. Formal traces shall report
+lexical domain `root` and code `generator-closed`, retaining the qualified
+custom generator name only as separate provenance. LSP validation and reversible
+scripted-debugger history shall cover a commented example.
+
+## TOPAL-INTP-SUBSET-137 — Custom generator suspension
+
+All interpreter modes shall suspend custom execution at each yield under
+`TOPAL-GENERATOR-SUSPEND-001`. A binding following a yield shall be evaluated
+only after foreach records its Unit resumption and before the next suspension.
+Formal traces, LSP validation, and reversible scripted-debugger history shall
+verify that ordering with a commented example.
+
+## TOPAL-INTP-SUBSET-138 — Unit resume-result binding
+
+All interpreter modes shall bind a successful Unit resumption from `name is
+yield value` under `TOPAL-GENERATOR-RESUME-BINDING-001`. The binding shall not
+exist while suspended and shall be available to subsequent generator execution.
+Formal traces, LSP validation, and reversible scripted-debugger history shall
+cover a commented example.
