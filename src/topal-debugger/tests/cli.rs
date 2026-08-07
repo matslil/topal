@@ -1231,6 +1231,7 @@ fn records_generator_return_before_yield_reversibly() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(!stdout.contains("generator.yielded"));
     assert!(stdout.contains("generator.returned"));
+    assert!(stdout.contains("TOPAL-GENERATOR-EARLY-RETURN-001"));
 }
 
 #[test]

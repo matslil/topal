@@ -1119,4 +1119,5 @@ example.
 All interpreter modes shall support a custom generator that reaches its final
 Unit before yielding under `TOPAL-GENERATOR-EARLY-RETURN-001`. Direct foreach
 shall run no action and return Unit. Formal traces, LSP validation, and
-reversible scripted-debugger history shall cover a commented example.
+reversible scripted-debugger history shall identify the final transition with
+`TOPAL-GENERATOR-EARLY-RETURN-001` and cover a commented example.
