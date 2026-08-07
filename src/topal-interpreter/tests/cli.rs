@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 81);
+    assert_eq!(examples.len(), 82);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2563,6 +2563,22 @@ fn every_mode_observes_distinct_generator_final_character() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-GENERATOR-FINAL-RETURN-001"));
     assert!(trace.contains("generator.returned") && trace.contains("Character"));
+}
+
+#[test]
+fn every_mode_suspends_custom_generator_between_yields() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-suspension.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("generator.suspended").count(), 2);
+    let resumed = trace.find("generator.resumed").unwrap();
+    let local = trace
+        .find("\"event\":\"binding.created\",\"rule\":\"TOPAL-SYN-BIND-001\",\"detail\":\"copy\"")
+        .unwrap();
+    let second_suspend = trace.rfind("generator.suspended").unwrap();
+    assert!(resumed < local && local < second_suspend);
 }
 
 #[test]
