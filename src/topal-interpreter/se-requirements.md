@@ -1130,6 +1130,14 @@ consume every yield and produce the separately evaluated final Character.
 Formal traces, LSP validation, and reversible scripted-debugger history shall
 cover a commented example.
 
+## TOPAL-INTP-SUBSET-139 — Abandoned custom generator trace
+
+When function exit abandons a suspended custom generator, all interpreter modes
+shall close it under `TOPAL-GENERATOR-CLOSE-001`. Formal traces shall report
+lexical domain `root` and code `generator-closed`, retaining the qualified
+custom generator name only as separate provenance. LSP validation and reversible
+scripted-debugger history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-137 — Custom generator suspension
 
 All interpreter modes shall suspend custom execution at each yield under

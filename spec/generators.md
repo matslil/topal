@@ -68,3 +68,11 @@ For a generator declaring `resumes Unit`, a successful foreach resumption shall
 make Unit available as the successful value of the suspended yield expression.
 A binding introduced by `name is yield value` becomes visible in the generator
 scope only after that resumption and may supply the final Unit return.
+
+### TOPAL-GENERATOR-CLOSE-001 — Abandoned custom continuation
+
+Leaving a scope that owns a suspended custom generator shall consume and close
+that continuation. The close signal's `Error.domain` shall be the lexical
+namespace where closure occurs; the generator's qualified declaration identity
+shall remain separate provenance. For the implemented root subset the domain is
+`root`, independently of provenance such as `root.pause-once`.
