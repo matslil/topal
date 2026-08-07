@@ -1121,3 +1121,11 @@ Unit before yielding under `TOPAL-GENERATOR-EARLY-RETURN-001`. Direct foreach
 shall run no action and return Unit. Formal traces, LSP validation, and
 reversible scripted-debugger history shall identify the final transition with
 `TOPAL-GENERATOR-EARLY-RETURN-001` and cover a commented example.
+
+## TOPAL-INTP-SUBSET-136 — Distinct generator final Character
+
+All interpreter modes shall execute a custom `Generator Character Unit
+Character` under `TOPAL-GENERATOR-FINAL-RETURN-001`. Direct foreach shall
+consume every yield and produce the separately evaluated final Character.
+Formal traces, LSP validation, and reversible scripted-debugger history shall
+cover a commented example.

@@ -35,6 +35,11 @@ pub enum Value {
         generated: Vec<String>,
         origin: String,
     },
+    CharacterReturningGenerator {
+        generated: Vec<String>,
+        returned: String,
+        origin: String,
+    },
     String(String),
     Tuple(Vec<Self>),
     Record(Vec<(String, Self)>),
@@ -81,6 +86,9 @@ impl fmt::Display for Value {
             Self::Optional { payload: None, .. } => formatter.write_str("None"),
             Self::CharacterGenerator { .. } => {
                 formatter.write_str("<Generator Character Unit Unit>")
+            }
+            Self::CharacterReturningGenerator { .. } => {
+                formatter.write_str("<Generator Character Unit Character>")
             }
             Self::String(value) => formatter.write_str(&display_string(value)),
             Self::Tuple(items) => {
@@ -199,6 +207,7 @@ struct UserFunction {
 struct UserGenerator {
     source: SourceText,
     parameter: (String, String),
+    result: String,
     body: Vec<Statement>,
     bindings: BTreeMap<String, Value>,
 }
@@ -1253,8 +1262,36 @@ impl Session {
                             }
                         }
                     }
+                    let Some(Statement::Expression(returned_expression)) = generator.body.last()
+                    else {
+                        unreachable!("generator declarations validate their final expression")
+                    };
+                    let returned = generator_scope.evaluate_expression(
+                        &generator.source,
+                        returned_expression,
+                        trace,
+                    )?;
+                    if !value_has_classifier(&returned, &generator.result) {
+                        return Err(diagnostic(
+                            &generator.source,
+                            "E-GENERATOR-RETURN-TYPE",
+                            returned_expression.span(),
+                            format!("generator `{name}` must return `{}`", generator.result),
+                        ));
+                    }
                     let origin = format!("root.{name}");
-                    let value = Value::CharacterGenerator { generated, origin };
+                    let value = if generator.result == "Unit" {
+                        Value::CharacterGenerator { generated, origin }
+                    } else {
+                        let Value::String(returned) = returned else {
+                            unreachable!("Character values use the String representation")
+                        };
+                        Value::CharacterReturningGenerator {
+                            generated,
+                            returned,
+                            origin,
+                        }
+                    };
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -1293,7 +1330,11 @@ impl Session {
                             self.static_context,
                         ));
                     };
-                    if matches!(argument, Value::CharacterGenerator { .. }) {
+                    if matches!(
+                        argument,
+                        Value::CharacterGenerator { .. }
+                            | Value::CharacterReturningGenerator { .. }
+                    ) {
                         trace.record(TraceEvent {
                             event: "generator.parameter.transferred",
                             rule: "TOPAL-STRING-CHARACTERS-PARAMETER-001",
@@ -1394,7 +1435,7 @@ impl Session {
                             ExecutionStep::Returned { value, span } => break (value, span),
                         }
                     };
-                    if function.result != "Generator Character Unit Unit" {
+                    if !function.result.starts_with("Generator Character Unit ") {
                         close_remaining_character_generators(&mut function_scope, trace);
                     }
                     if !value_has_classifier(&value, &function.result) {
@@ -1418,11 +1459,15 @@ impl Session {
                             detail: &detail,
                         });
                     }
-                    if matches!(value, Value::CharacterGenerator { .. }) {
+                    if matches!(
+                        value,
+                        Value::CharacterGenerator { .. }
+                            | Value::CharacterReturningGenerator { .. }
+                    ) {
                         trace.record(TraceEvent {
                             event: "generator.function.returned",
                             rule: "TOPAL-STRING-CHARACTERS-RESULT-001",
-                            detail: "Generator Character Unit Unit",
+                            detail: value_classifier(&value),
                         });
                     }
                     trace.record(TraceEvent {
@@ -1943,6 +1988,7 @@ fn known_enum_alternatives(session: &Session, type_name: &str) -> Option<BTreeSe
 }
 
 impl Execution {
+    #[allow(clippy::too_many_lines)] // Traversal keeps consumption, action, resume, and return auditable together.
     fn execute_foreach(
         &self,
         session: &mut Session,
@@ -1952,7 +1998,7 @@ impl Execution {
         body: &[Statement],
         span: Span,
     ) -> Result<(Value, Span), Diagnostic> {
-        let (generated, origin) = match source {
+        let (generated, origin, returned, returned_classifier) = match source {
             Expression::Identifier(name) => {
                 let name_text = self.source.slice(*name);
                 let value = session.bindings.remove(name_text).ok_or_else(|| {
@@ -1962,8 +2008,16 @@ impl Execution {
                         diagnostic(&self.source, "E-UNBOUND-NAME", *name, "name is not bound")
                     }
                 })?;
-                let Value::CharacterGenerator { generated, origin } = value else {
-                    return Err(foreach_source_diagnostic(&self.source, source.span()));
+                let (generated, origin, returned, returned_classifier) = match value {
+                    Value::CharacterGenerator { generated, origin } => {
+                        (generated, origin, Value::Unit, "Unit")
+                    }
+                    Value::CharacterReturningGenerator {
+                        generated,
+                        returned,
+                        origin,
+                    } => (generated, origin, Value::String(returned), "Character"),
+                    _ => return Err(foreach_source_diagnostic(&self.source, source.span())),
                 };
                 session.declared_names.remove(name_text);
                 session.consumed_names.insert(name_text.to_owned());
@@ -1972,7 +2026,7 @@ impl Execution {
                     rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
                     detail: name_text,
                 });
-                (generated, origin)
+                (generated, origin, returned, returned_classifier)
             }
             Expression::Application { items, .. } => {
                 let [Expression::Identifier(operation), text] = items.as_slice() else {
@@ -1993,6 +2047,8 @@ impl Execution {
                 (
                     characters(&text_value).map(str::to_owned).collect(),
                     "root.characters".to_owned(),
+                    Value::Unit,
+                    "Unit",
                 )
             }
             _ => return Err(foreach_source_diagnostic(&self.source, source.span())),
@@ -2045,10 +2101,15 @@ impl Execution {
         }
         trace.record(TraceEvent {
             event: "generator.returned",
-            rule: generator_return_rule(&origin, generated.is_empty(), traversal_rule),
-            detail: "Unit",
+            rule: generator_return_rule(
+                &origin,
+                generated.is_empty(),
+                returned_classifier,
+                traversal_rule,
+            ),
+            detail: returned_classifier,
         });
-        Ok((Value::Unit, span))
+        Ok((returned, span))
     }
 
     fn execute_discard(
@@ -2236,16 +2297,17 @@ impl Execution {
         }
         let parameter = &parameters[0];
         let parameter_classifier = self.source.slice(parameter.classifier);
+        let result_classifier = self.source.slice(result);
         if parameter_classifier != "Character"
             || self.source.slice(yielded) != "Character"
             || self.source.slice(resumed) != "Unit"
-            || self.source.slice(result) != "Unit"
+            || !matches!(result_classifier, "Unit" | "Character")
         {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-SIGNATURE",
                 span,
-                "the implemented generator subset requires `Character -> Generator Character Unit Unit`",
+                "the implemented generator subset requires Character input/yield, Unit resume, and Unit or Character return",
             ));
         }
         if !supported_generator_body(&self.source, body) {
@@ -2264,6 +2326,7 @@ impl Execution {
                     self.source.slice(parameter.name).to_owned(),
                     parameter_classifier.to_owned(),
                 ),
+                result: result_classifier.to_owned(),
                 body: body.to_vec(),
                 bindings: session.bindings.clone(),
             },
@@ -2828,10 +2891,7 @@ fn statement_span(statement: &Statement) -> Span {
 }
 
 fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
-    if !matches!(
-        body.last(),
-        Some(Statement::Expression(Expression::Unit(_)))
-    ) {
+    if !matches!(body.last(), Some(Statement::Expression(_))) {
         return false;
     }
     for statement in &body[..body.len().saturating_sub(1)] {
@@ -2861,8 +2921,15 @@ fn discarded_yield_expression<'a>(
     (source.slice(*keyword) == "yield").then_some(yielded)
 }
 
-fn generator_return_rule(origin: &str, empty: bool, traversal_rule: &'static str) -> &'static str {
-    if origin != "root.characters" && empty {
+fn generator_return_rule(
+    origin: &str,
+    empty: bool,
+    returned: &str,
+    traversal_rule: &'static str,
+) -> &'static str {
+    if origin != "root.characters" && returned != "Unit" {
+        "TOPAL-GENERATOR-FINAL-RETURN-001"
+    } else if origin != "root.characters" && empty {
         "TOPAL-GENERATOR-EARLY-RETURN-001"
     } else {
         traversal_rule
@@ -2908,14 +2975,14 @@ fn consume_generator_argument(source: &SourceText, session: &mut Session, expres
             candidates.iter().any(|candidate| {
                 matches!(
                     candidate.parameters.as_slice(),
-                    [(_, classifier)] if classifier == "Generator Character Unit Unit"
+                    [(_, classifier)] if classifier.starts_with("Generator Character Unit ")
                 )
             })
         });
     if accepts_generator
         && matches!(
             session.bindings.get(argument_name),
-            Some(Value::CharacterGenerator { .. })
+            Some(Value::CharacterGenerator { .. } | Value::CharacterReturningGenerator { .. })
         )
     {
         session.bindings.remove(argument_name);
@@ -2928,11 +2995,12 @@ fn close_remaining_character_generators(session: &mut Session, trace: &mut impl 
     let generators = session
         .bindings
         .iter()
-        .filter_map(|(name, value)| {
-            let Value::CharacterGenerator { origin, .. } = value else {
-                return None;
-            };
-            Some((name.clone(), origin.clone()))
+        .filter_map(|(name, value)| match value {
+            Value::CharacterGenerator { origin, .. }
+            | Value::CharacterReturningGenerator { origin, .. } => {
+                Some((name.clone(), origin.clone()))
+            }
+            _ => None,
         })
         .collect::<Vec<_>>();
     for (name, origin) in generators {
@@ -3122,6 +3190,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::IntRange { .. }, "Range Int")
         | (Value::RationalRange { .. }, "Range Rational")
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
+        | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
@@ -3772,6 +3841,7 @@ fn supported_value_classifier(classifier: &str) -> bool {
             | "Character"
             | "Comparison"
             | "Generator Character Unit Unit"
+            | "Generator Character Unit Character"
             | "Int"
             | "Nat"
             | "Range Int"
@@ -3833,6 +3903,7 @@ const fn value_classifier(value: &Value) -> &'static str {
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::CharacterGenerator { .. } => "Generator Character Unit Unit",
+        Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
         Value::String(_) => "String",
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
@@ -4899,6 +4970,7 @@ fn apply_negate(
         | Value::RationalRange { .. }
         | Value::Optional { .. }
         | Value::CharacterGenerator { .. }
+        | Value::CharacterReturningGenerator { .. }
         | Value::String(_)
         | Value::Tuple(_)
         | Value::Record(_)
@@ -7519,6 +7591,23 @@ fn named_generator_can_return_before_first_yield() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-GENERATOR-EARLY-RETURN-001"))
+    );
+}
+
+#[test]
+fn named_generator_returns_character_after_yields() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "yield-then-return is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Character\n\n  _ is yield initial\n  \"R\"\ngenerated is yield-then-return \"Y\"\ngenerated foreach { character }\n  _ is String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("R".into()));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-FINAL-RETURN-001"))
     );
 }
 
