@@ -61,3 +61,10 @@ Starting a generator shall execute only through its first yield or final return.
 After a yield, statements following that yield shall not execute until the
 consumer resumes the continuation. Each subsequent resumption repeats this
 ordering through the next yield or final return.
+
+### TOPAL-GENERATOR-RESUME-BINDING-001 — Successful resume binding
+
+For a generator declaring `resumes Unit`, a successful foreach resumption shall
+make Unit available as the successful value of the suspended yield expression.
+A binding introduced by `name is yield value` becomes visible in the generator
+scope only after that resumption and may supply the final Unit return.

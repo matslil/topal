@@ -1137,3 +1137,11 @@ All interpreter modes shall suspend custom execution at each yield under
 only after foreach records its Unit resumption and before the next suspension.
 Formal traces, LSP validation, and reversible scripted-debugger history shall
 verify that ordering with a commented example.
+
+## TOPAL-INTP-SUBSET-138 — Unit resume-result binding
+
+All interpreter modes shall bind a successful Unit resumption from `name is
+yield value` under `TOPAL-GENERATOR-RESUME-BINDING-001`. The binding shall not
+exist while suspended and shall be available to subsequent generator execution.
+Formal traces, LSP validation, and reversible scripted-debugger history shall
+cover a commented example.
