@@ -48,3 +48,9 @@ its value becomes visible in the caller's scope.
 A generator may reach its declared final return without yielding. Applying it
 still produces a fresh linear generator value. Traversal shall invoke no action
 and shall produce the generator's final return value.
+
+### TOPAL-GENERATOR-FINAL-RETURN-001 — Distinct final value
+
+The generator's final return classifier is independent of its yield classifier.
+For `Generator Character Unit Character`, direct foreach shall invoke its action
+for each yielded Character and then produce the distinct final Character.

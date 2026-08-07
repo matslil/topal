@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 80);
+    assert_eq!(examples.len(), 81);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2550,6 +2550,19 @@ fn every_mode_traverses_generator_returning_before_yield() {
     assert_eq!(trace.matches("generator.yielded").count(), 0);
     assert!(trace.contains("generator.returned"));
     assert!(trace.contains("TOPAL-GENERATOR-EARLY-RETURN-001"));
+}
+
+#[test]
+fn every_mode_observes_distinct_generator_final_character() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-final-character.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"\"R\"\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-FINAL-RETURN-001"));
+    assert!(trace.contains("generator.returned") && trace.contains("Character"));
 }
 
 #[test]
