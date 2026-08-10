@@ -24,12 +24,16 @@ resumable function with those four classifiers. Applying it binds the initial
 operand and produces a fresh linear `Generator Yield Resume Return` value.
 
 The first executable subset is conforming only in the root namespace, for one
-`Character` input, one or more discarded `_ is yield value` statements, and a
+`Character` or `String` input, one or more discarded `_ is yield value` statements, and a
 final Unit expression, with `Character`, `Unit`, and `Unit` as the yield,
 resume, and return classifiers respectively. Its generator provenance is the
 declaration's qualified name. An intrinsic error raised while executing this
 root declaration has `Error.domain = root`; that domain is independent of the
 generator provenance.
+
+The initial input classifier is independent of the three Generator directions.
+A generator may therefore accept `String` while yielding `Character`, resuming
+with Unit, and returning Unit.
 
 ### TOPAL-GENERATOR-FOREACH-001 — Custom Unit-resumed traversal
 

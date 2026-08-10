@@ -2409,7 +2409,7 @@ impl Execution {
         let parameter = &parameters[0];
         let parameter_classifier = self.source.slice(parameter.classifier);
         let result_classifier = self.source.slice(result);
-        if parameter_classifier != "Character"
+        if !matches!(parameter_classifier, "Character" | "String")
             || self.source.slice(yielded) != "Character"
             || self.source.slice(resumed) != "Unit"
             || !matches!(result_classifier, "Unit" | "Character")
@@ -2418,7 +2418,7 @@ impl Execution {
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-SIGNATURE",
                 span,
-                "the implemented generator subset requires Character input/yield, Unit resume, and Unit or Character return",
+                "the implemented generator subset requires Character or String input, Character yield, Unit resume, and Unit or Character return",
             ));
         }
         if !supported_generator_body(&self.source, body) {
@@ -8120,6 +8120,28 @@ fn function_result_preserves_generator_final_character() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-GENERATOR-FINAL-RETURN-001"))
+    );
+}
+
+#[test]
+fn custom_generator_accepts_string_initial_input() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "from-text is generator ( initial : String )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  initial-is-empty : Boolean is empty? initial\n  _ is yield \"T\"\n  ()\ngenerated is from-text \"Topal\"\ngenerated foreach { character }\n  _ is String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("root.empty?(String)"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.suspended"))
     );
 }
 
