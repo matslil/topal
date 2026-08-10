@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 82);
+    assert_eq!(examples.len(), 83);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2579,6 +2579,20 @@ fn every_mode_suspends_custom_generator_between_yields() {
         .unwrap();
     let second_suspend = trace.rfind("generator.suspended").unwrap();
     assert!(resumed < local && local < second_suspend);
+}
+
+#[test]
+fn every_mode_binds_successful_unit_resumption() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-resume-binding.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-RESUME-BINDING-001"));
+    let resumed = trace.find("generator.resumed").unwrap();
+    let bound = trace.find("generator.resume.bound").unwrap();
+    let resolved = trace.rfind("\"detail\":\"resumed\"").unwrap();
+    assert!(resumed < bound && bound < resolved);
 }
 
 #[test]

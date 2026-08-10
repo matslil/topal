@@ -46,6 +46,7 @@ pub enum Value {
         cursor: usize,
         bindings: BTreeMap<String, Self>,
         pending_yield: Option<String>,
+        resume_binding: Option<String>,
         returned: Option<Box<Self>>,
         return_classifier: String,
         origin: String,
@@ -1240,6 +1241,7 @@ impl Session {
                     });
                     let mut cursor = 0;
                     let mut pending_yield = None;
+                    let mut resume_binding = None;
                     let mut returned = None;
                     advance_custom_generator(
                         &generator.source,
@@ -1247,6 +1249,7 @@ impl Session {
                         &mut cursor,
                         &mut generator_scope,
                         &mut pending_yield,
+                        &mut resume_binding,
                         &mut returned,
                         &generator.result,
                         name,
@@ -1259,6 +1262,7 @@ impl Session {
                         cursor,
                         bindings: generator_scope.bindings,
                         pending_yield,
+                        resume_binding,
                         returned: returned.map(Box::new),
                         return_classifier: generator.result,
                         origin,
@@ -2111,6 +2115,7 @@ impl Execution {
             ref mut cursor,
             ref mut bindings,
             ref mut pending_yield,
+            ref mut resume_binding,
             ref mut returned,
             return_classifier,
             origin,
@@ -2161,6 +2166,15 @@ impl Execution {
                 });
                 let mut scope = session.clone();
                 scope.bindings = std::mem::take(bindings);
+                if let Some(name) = resume_binding.take() {
+                    scope.bindings.insert(name.clone(), Value::Unit);
+                    scope.declared_names.insert(name.clone());
+                    trace.record(TraceEvent {
+                        event: "generator.resume.bound",
+                        rule: "TOPAL-GENERATOR-RESUME-BINDING-001",
+                        detail: &name,
+                    });
+                }
                 let mut next_returned = returned.take().map(|value| *value);
                 advance_custom_generator(
                     &source,
@@ -2168,6 +2182,7 @@ impl Execution {
                     cursor,
                     &mut scope,
                     pending_yield,
+                    resume_binding,
                     &mut next_returned,
                     &return_classifier,
                     origin.rsplit('.').next().unwrap_or(&origin),
@@ -2975,7 +2990,7 @@ fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
         return false;
     }
     for statement in &body[..body.len().saturating_sub(1)] {
-        if discarded_yield_expression(source, statement).is_none()
+        if yielded_statement(source, statement).is_none()
             && !matches!(statement, Statement::Binding { .. })
         {
             return false;
@@ -3001,6 +3016,27 @@ fn discarded_yield_expression<'a>(
     (source.slice(*keyword) == "yield").then_some(yielded)
 }
 
+fn yielded_statement<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+) -> Option<(Option<Span>, &'a Expression)> {
+    if let Some(expression) = discarded_yield_expression(source, statement) {
+        return Some((None, expression));
+    }
+    let Statement::Binding {
+        name,
+        value: Expression::Application { items, .. },
+        ..
+    } = statement
+    else {
+        return None;
+    };
+    let [Expression::Identifier(keyword), yielded] = items.as_slice() else {
+        return None;
+    };
+    (source.slice(*keyword) == "yield").then_some((Some(*name), yielded))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn advance_custom_generator(
     source: &SourceText,
@@ -3008,6 +3044,7 @@ fn advance_custom_generator(
     cursor: &mut usize,
     scope: &mut Session,
     pending_yield: &mut Option<String>,
+    resume_binding: &mut Option<String>,
     returned: &mut Option<Value>,
     return_classifier: &str,
     name: &str,
@@ -3016,7 +3053,7 @@ fn advance_custom_generator(
     while *cursor < body.len() {
         let statement = &body[*cursor];
         *cursor += 1;
-        if let Some(expression) = discarded_yield_expression(source, statement) {
+        if let Some((binding, expression)) = yielded_statement(source, statement) {
             let value = scope.evaluate_expression(source, expression, trace)?;
             if !value_has_classifier(&value, "Character") {
                 return Err(diagnostic(
@@ -3030,6 +3067,7 @@ fn advance_custom_generator(
                 unreachable!("Character values use the String representation")
             };
             *pending_yield = Some(value);
+            *resume_binding = binding.map(|span| source.slice(span).to_owned());
             trace.record(TraceEvent {
                 event: "generator.suspended",
                 rule: "TOPAL-GENERATOR-SUSPEND-001",
@@ -7795,6 +7833,31 @@ fn custom_generator_defers_post_yield_binding_until_resume() {
         .rposition(|event| event.contains("generator.suspended"))
         .unwrap();
     assert!(resumed < local && local < second_suspend);
+}
+
+#[test]
+fn custom_generator_binds_unit_resume_after_yield() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "bind-resume is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  resumed is yield initial\n  resumed\ngenerated is bind-resume \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    let resumed = trace
+        .iter()
+        .position(|event| event.contains("generator.resumed"))
+        .unwrap();
+    let bound = trace
+        .iter()
+        .position(|event| event.contains("generator.resume.bound"))
+        .unwrap();
+    let resolved = trace
+        .iter()
+        .rposition(|event| event.contains("binding.resolved") && event.contains("resumed"))
+        .unwrap();
+    assert!(resumed < bound && bound < resolved);
 }
 
 #[test]
