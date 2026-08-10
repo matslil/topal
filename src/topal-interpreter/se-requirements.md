@@ -1146,6 +1146,14 @@ Error decision rule to final Unit. The Error domain shall be `root`; generator
 identity shall remain separate provenance. Formal traces, LSP validation, and
 reversible scripted-debugger history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-141 — Yield-after-close diagnostic
+
+All interpreter modes shall reject a custom generator that attempts another
+yield after its suspended result receives `generator-closed`. The diagnostic
+shall be source-located as `E-GENERATOR-YIELD-AFTER-CLOSE`. LSP syntax
+validation and reversible scripted-debugger history shall cover the commented
+failing example.
+
 ## TOPAL-INTP-SUBSET-137 — Custom generator suspension
 
 All interpreter modes shall suspend custom execution at each yield under

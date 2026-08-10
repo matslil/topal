@@ -663,4 +663,11 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn accepts_yield_after_close_diagnostic_example_syntax() {
+        let source =
+            include_str!("../../../examples/debugger/custom-generator-yield-after-close.t");
+        assert!(diagnostics(source).is_empty());
+    }
 }

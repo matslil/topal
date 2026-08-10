@@ -7980,6 +7980,18 @@ fn abandoned_custom_generator_handles_close_result() {
 }
 
 #[test]
+fn custom_generator_cannot_yield_after_close_result() {
+    let error = Session::new()
+        .evaluate(
+            "invalid-close is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  resume-result is yield initial\n  _ is yield initial\n  ()\nabandon is fn ( initial : Character ) -> Unit\n  generated is invalid-close initial\n  ()\nabandon \"T\"\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-GENERATOR-YIELD-AFTER-CLOSE");
+    assert!(error.message.contains("cannot yield again"));
+}
+
+#[test]
 fn rational_ranges_use_exact_canonical_conversion() {
     let mut trace = Vec::new();
     let value = Session::new()
