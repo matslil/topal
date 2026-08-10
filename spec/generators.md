@@ -91,3 +91,10 @@ A Result decision may match the intrinsic close error specifically with
 `Error ( code is lang generator generator-closed )`. This matches the nominal
 code published by `lang generator`; it does not match by `Error.domain` or by
 generator provenance.
+
+### TOPAL-GENERATOR-FUNCTION-RESULT-001 — Returning a continuation
+
+An ordinary function whose result classifier is a Generator may return a live
+custom continuation. Function exit shall transfer that continuation without
+closing it. The caller receives the same suspended local state and becomes its
+single owner.
