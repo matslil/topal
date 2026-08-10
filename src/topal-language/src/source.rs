@@ -3201,7 +3201,11 @@ fn close_remaining_character_generators(session: &mut Session, trace: &mut impl 
         });
         trace.record(TraceEvent {
             event: "generator.closed",
-            rule: "TOPAL-STRING-CHARACTERS-CLOSE-001",
+            rule: if origin == "root.characters" {
+                "TOPAL-STRING-CHARACTERS-CLOSE-001"
+            } else {
+                "TOPAL-GENERATOR-CLOSE-001"
+            },
             detail: &origin,
         });
     }
@@ -7858,6 +7862,25 @@ fn custom_generator_binds_unit_resume_after_yield() {
         .rposition(|event| event.contains("binding.resolved") && event.contains("resumed"))
         .unwrap();
     assert!(resumed < bound && bound < resolved);
+}
+
+#[test]
+fn abandoned_custom_generator_keeps_domain_separate_from_provenance() {
+    let mut trace = Vec::new();
+    Session::new()
+        .evaluate(
+            "pause-once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  ()\nabandon is fn ( initial : Character ) -> Unit\n  generated is pause-once initial\n  ()\nabandon \"T\"\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert!(trace.iter().any(|event| {
+        event.contains("domain=root;code=generator-closed;generator=root.pause-once")
+    }));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-CLOSE-001"))
+    );
 }
 
 #[test]
