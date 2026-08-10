@@ -1132,6 +1132,15 @@ distinct final Character as the function result. Formal traces shall combine
 `TOPAL-GENERATOR-FINAL-RETURN-001`; LSP validation and reversible
 scripted-debugger history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-147 — Character-returning generator function result
+
+All interpreter modes shall return a suspended `Generator Character Unit
+Character` from an ordinary function without closing it, then let the caller
+traverse its yields and receive its final Character. Formal traces shall combine
+`TOPAL-GENERATOR-FUNCTION-RESULT-001` and
+`TOPAL-GENERATOR-FINAL-RETURN-001`; LSP validation and reversible
+scripted-debugger history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-135 — Generator return before first yield
 
 All interpreter modes shall support a custom generator that reaches its final
