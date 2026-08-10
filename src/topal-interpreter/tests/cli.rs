@@ -2620,6 +2620,21 @@ fn every_mode_runs_custom_generator_close_handler() {
 }
 
 #[test]
+fn every_mode_rejects_yield_after_custom_close() {
+    let source = include_str!("../../../examples/debugger/custom-generator-yield-after-close.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        let rendered = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(rendered.contains("E-GENERATOR-YIELD-AFTER-CLOSE"));
+        assert!(rendered.contains("cannot yield again after observing"));
+    }
+}
+
+#[test]
 fn script_mode_explains_consumed_generator_reuse() {
     let source = include_str!("../../../examples/debugger/generator-consumed.t");
     let output = run(&[], source);
