@@ -84,3 +84,10 @@ receive `Error(domain = lexical-namespace, code = generator-closed)`. Execution
 shall continue after the yield so the generator may select an Error decision
 rule and finish deliberate shutdown work. A path that observes this close error
 shall not yield again.
+
+### TOPAL-GENERATOR-CLOSE-CODE-PATTERN-001 — Qualified close pattern
+
+A Result decision may match the intrinsic close error specifically with
+`Error ( code is lang generator generator-closed )`. This matches the nominal
+code published by `lang generator`; it does not match by `Error.domain` or by
+generator provenance.

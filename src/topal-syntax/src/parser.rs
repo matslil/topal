@@ -2009,6 +2009,16 @@ mod tests {
     }
 
     #[test]
+    fn parses_qualified_generator_error_code_pattern() {
+        let source = SourceText::new(
+            "handle is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  result is yield initial\n  result\n    Error ( code is lang generator generator-closed ) then ()\n    Error problem then ()\n    Ok resumed then ()",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
     fn error_code_pattern_after_generic_fallback_is_rejected() {
         let source = SourceText::new(
             "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error problem then \"other\"\n    Error ( code is lang arithmetic division-by-zero ) then \"zero\"",

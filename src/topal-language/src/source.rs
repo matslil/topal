@@ -563,18 +563,26 @@ impl Session {
                             let vocabulary = source.slice(*vocabulary);
                             let code_span = *code;
                             let code = source.slice(code_span);
-                            if namespace != "lang"
-                                || vocabulary != "arithmetic"
-                                || !is_arithmetic_error_code(code)
-                            {
+                            let known = namespace == "lang"
+                                && ((vocabulary == "arithmetic" && is_arithmetic_error_code(code))
+                                    || (vocabulary == "generator" && code == "generator-closed"));
+                            if !known {
                                 return Err(diagnostic(
                                     source,
                                     "E-UNKNOWN-ERROR-CODE",
                                     code_span,
-                                    "the implemented error-code pattern requires a code published by `lang arithmetic`",
+                                    "the error-code pattern requires a code published by the qualified language namespace",
                                 ));
                             }
-                            matches!(&subject, Value::Error { code: subject_code, .. } if subject_code == code)
+                            let matched = matches!(&subject, Value::Error { code: subject_code, .. } if subject_code == code);
+                            if vocabulary == "generator" && matched {
+                                trace.record(TraceEvent {
+                                    event: "generator.error.code.matched",
+                                    rule: "TOPAL-GENERATOR-CLOSE-CODE-PATTERN-001",
+                                    detail: code,
+                                });
+                            }
+                            matched
                         }
                         DecisionMatcher::Comparison {
                             kind,
@@ -7971,6 +7979,27 @@ fn abandoned_custom_generator_handles_close_result() {
         trace
             .iter()
             .any(|event| event.contains("generator.close.bound"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| { event.contains("decision.rule.selected") && event.contains("rule=0") })
+    );
+}
+
+#[test]
+fn custom_generator_matches_qualified_close_code() {
+    let mut trace = Vec::new();
+    Session::new()
+        .evaluate(
+            "handle-code is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  result is yield initial\n  result\n    Error ( code is lang generator generator-closed ) then ()\n    Error problem then ()\n    Ok resumed then ()\nabandon is fn ( initial : Character ) -> Unit\n  generated is handle-code initial\n  ()\nabandon \"T\"\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-CLOSE-CODE-PATTERN-001"))
     );
     assert!(
         trace
