@@ -1393,6 +1393,24 @@ fn records_unconsumed_custom_generator_parameter_close_reversibly() {
 }
 
 #[test]
+fn records_character_returning_generator_parameter_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-character-return-parameter.debug"),
+            &format!("{root}custom-generator-character-return-parameter.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-GENERATOR-FUNCTION-PARAMETER-001"));
+    assert!(stdout.contains("TOPAL-GENERATOR-FINAL-RETURN-001"));
+    assert!(stdout.contains("\"R\""));
+}
+
+#[test]
 fn records_yield_after_custom_close_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

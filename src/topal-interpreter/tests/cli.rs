@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 89);
+    assert_eq!(examples.len(), 90);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2667,6 +2667,20 @@ fn every_mode_closes_unconsumed_custom_generator_parameter() {
     assert!(trace.contains("TOPAL-GENERATOR-FUNCTION-PARAMETER-001"));
     assert!(trace.contains("TOPAL-GENERATOR-CLOSE-001"));
     assert!(trace.contains("domain=root;code=generator-closed;generator=root.pause-once"));
+}
+
+#[test]
+fn every_mode_transfers_character_returning_generator_parameter() {
+    let source =
+        include_str!("../../../examples/interpreter/custom-generator-character-return-parameter.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"\"R\"\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-FUNCTION-PARAMETER-001"));
+    assert!(trace.contains("TOPAL-GENERATOR-FINAL-RETURN-001"));
 }
 
 #[test]

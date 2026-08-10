@@ -8080,6 +8080,28 @@ fn function_closes_unconsumed_custom_generator_parameter() {
 }
 
 #[test]
+fn function_parameter_preserves_generator_final_character() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "yield-return is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Character\n\n  _ is yield initial\n  \"R\"\nconsume is fn ( generated : Generator Character Unit Character ) -> Character\n  generated foreach { character }\n    _ is String character\ngenerated is yield-return \"Y\"\nconsume generated\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("R".into()));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-FUNCTION-PARAMETER-001"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-FINAL-RETURN-001"))
+    );
+}
+
+#[test]
 fn custom_generator_cannot_yield_after_close_result() {
     let error = Session::new()
         .evaluate(
