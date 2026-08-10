@@ -76,3 +76,11 @@ that continuation. The close signal's `Error.domain` shall be the lexical
 namespace where closure occurs; the generator's qualified declaration identity
 shall remain separate provenance. For the implemented root subset the domain is
 `root`, independently of provenance such as `root.pause-once`.
+
+### TOPAL-GENERATOR-CLOSE-HANDLER-001 — Close-result handling
+
+When abandonment closes a yield whose result is bound, that binding shall
+receive `Error(domain = lexical-namespace, code = generator-closed)`. Execution
+shall continue after the yield so the generator may select an Error decision
+rule and finish deliberate shutdown work. A path that observes this close error
+shall not yield again.

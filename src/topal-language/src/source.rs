@@ -1412,7 +1412,7 @@ impl Session {
                         }
                     };
                     if !function.result.starts_with("Generator Character Unit ") {
-                        close_remaining_character_generators(&mut function_scope, trace);
+                        close_remaining_character_generators(&mut function_scope, trace)?;
                     }
                     if !value_has_classifier(&value, &function.result) {
                         return Err(diagnostic(
@@ -3176,29 +3176,102 @@ fn consume_generator_argument(source: &SourceText, session: &mut Session, expres
     }
 }
 
-fn close_remaining_character_generators(session: &mut Session, trace: &mut impl TraceSink) {
+#[allow(clippy::too_many_lines)] // Close delivery, handler execution, and trace order stay auditable together.
+fn close_remaining_character_generators(
+    session: &mut Session,
+    trace: &mut impl TraceSink,
+) -> Result<(), Diagnostic> {
     let generators = session
         .bindings
         .iter()
-        .filter_map(|(name, value)| match value {
-            Value::CharacterGenerator { origin, .. }
-            | Value::CharacterReturningGenerator { origin, .. }
-            | Value::SuspendedCharacterGenerator { origin, .. } => {
-                Some((name.clone(), origin.clone()))
-            }
-            _ => None,
+        .filter(|(_, value)| {
+            matches!(
+                value,
+                Value::CharacterGenerator { .. }
+                    | Value::CharacterReturningGenerator { .. }
+                    | Value::SuspendedCharacterGenerator { .. }
+            )
         })
+        .map(|(name, _)| name.clone())
         .collect::<Vec<_>>();
-    for (name, origin) in generators {
-        session.bindings.remove(&name);
+    for name in generators {
+        let value = session
+            .bindings
+            .remove(&name)
+            .expect("collected binding exists");
         session.declared_names.remove(&name);
         session.consumed_names.insert(name.clone());
+        let origin = match &value {
+            Value::CharacterGenerator { origin, .. }
+            | Value::CharacterReturningGenerator { origin, .. }
+            | Value::SuspendedCharacterGenerator { origin, .. } => origin.clone(),
+            _ => unreachable!("only generators were collected"),
+        };
         let detail = format!("domain=root;code=generator-closed;generator={origin}");
         trace.record(TraceEvent {
             event: "generator.close.signaled",
             rule: "TOPAL-GENERATOR-ERROR-CODE-001",
             detail: &detail,
         });
+        if let Value::SuspendedCharacterGenerator {
+            source,
+            body,
+            mut cursor,
+            bindings,
+            pending_yield: _,
+            resume_binding,
+            returned,
+            return_classifier,
+            ..
+        } = value
+            && let Some(resume_binding) = resume_binding
+        {
+            let mut pending_yield = None;
+            let yield_span = body
+                .get(cursor.saturating_sub(1))
+                .map_or(Span::new(0, 0), statement_span);
+            let position = source.position(yield_span.start);
+            let mut scope = session.clone();
+            scope.bindings = bindings;
+            scope.bindings.insert(
+                resume_binding.clone(),
+                Value::Error {
+                    domain: "root".into(),
+                    code: "generator-closed".into(),
+                    line: position.line,
+                    column: position.column,
+                },
+            );
+            scope.declared_names.insert(resume_binding.clone());
+            trace.record(TraceEvent {
+                event: "generator.close.bound",
+                rule: "TOPAL-GENERATOR-CLOSE-HANDLER-001",
+                detail: &resume_binding,
+            });
+            let mut handled_return = returned.map(|value| *value);
+            let mut next_resume_binding = None;
+            advance_custom_generator(
+                &source,
+                &body,
+                &mut cursor,
+                &mut scope,
+                &mut pending_yield,
+                &mut next_resume_binding,
+                &mut handled_return,
+                &return_classifier,
+                origin.rsplit('.').next().unwrap_or(&origin),
+                trace,
+            )?;
+            if pending_yield.is_some() {
+                return Err(diagnostic(
+                    &source,
+                    "E-GENERATOR-YIELD-AFTER-CLOSE",
+                    body.get(cursor.saturating_sub(1))
+                        .map_or(yield_span, statement_span),
+                    "a generator cannot yield again after observing `generator-closed`",
+                ));
+            }
+        }
         trace.record(TraceEvent {
             event: "generator.closed",
             rule: if origin == "root.characters" {
@@ -3209,6 +3282,7 @@ fn close_remaining_character_generators(session: &mut Session, trace: &mut impl 
             detail: &origin,
         });
     }
+    Ok(())
 }
 
 fn enum_alternatives(source: &SourceText, expression: &Expression) -> Option<Vec<(String, Span)>> {
@@ -7880,6 +7954,28 @@ fn abandoned_custom_generator_keeps_domain_separate_from_provenance() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-GENERATOR-CLOSE-001"))
+    );
+}
+
+#[test]
+fn abandoned_custom_generator_handles_close_result() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "handle-close is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  resume-result is yield initial\n  resume-result\n    Error problem then ()\n    Ok resumed then ()\nabandon is fn ( initial : Character ) -> Unit\n  generated is handle-close initial\n  ()\nabandon \"T\"\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.close.bound"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| { event.contains("decision.rule.selected") && event.contains("rule=0") })
     );
 }
 
