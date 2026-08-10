@@ -1321,7 +1321,11 @@ impl Session {
                     ) {
                         trace.record(TraceEvent {
                             event: "generator.parameter.transferred",
-                            rule: "TOPAL-STRING-CHARACTERS-PARAMETER-001",
+                            rule: if matches!(argument, Value::SuspendedCharacterGenerator { .. }) {
+                                "TOPAL-GENERATOR-FUNCTION-PARAMETER-001"
+                            } else {
+                                "TOPAL-STRING-CHARACTERS-PARAMETER-001"
+                            },
                             detail: value_classifier(&argument),
                         });
                     }
@@ -8031,6 +8035,30 @@ fn function_transfers_custom_generator_result_to_caller() {
         !trace.iter().any(|event| {
             event.contains("generator.closed") && event.contains("root.pause-once")
         })
+    );
+}
+
+#[test]
+fn function_parameter_receives_custom_generator_ownership() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "pause-once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  ()\nconsume is fn ( generated : Generator Character Unit Unit ) -> Unit\n  generated foreach { character }\n    _ is String character\ngenerated is pause-once \"T\"\nconsume generated\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-FUNCTION-PARAMETER-001"))
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("generator.yielded"))
+            .count(),
+        1
     );
 }
 

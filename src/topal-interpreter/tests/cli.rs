@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 87);
+    assert_eq!(examples.len(), 88);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2642,6 +2642,19 @@ fn every_mode_consumes_custom_generator_returned_by_function() {
     assert!(trace.contains("TOPAL-GENERATOR-FUNCTION-RESULT-001"));
     assert!(trace.contains("generator.function.returned"));
     assert!(trace.contains("generator.yielded"));
+}
+
+#[test]
+fn every_mode_transfers_custom_generator_function_parameter() {
+    let source =
+        include_str!("../../../examples/interpreter/custom-generator-function-parameter.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-FUNCTION-PARAMETER-001"));
+    assert!(trace.contains("generator.parameter.transferred"));
+    assert_eq!(trace.matches("generator.yielded").count(), 1);
 }
 
 #[test]

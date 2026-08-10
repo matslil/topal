@@ -1138,6 +1138,15 @@ lexical domain `root` and code `generator-closed`, retaining the qualified
 custom generator name only as separate provenance. LSP validation and reversible
 scripted-debugger history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-144 — Custom generator function parameter
+
+All interpreter modes shall transfer a suspended custom `Generator Character
+Unit Unit` into an ordinary function parameter under
+`TOPAL-GENERATOR-FUNCTION-PARAMETER-001`. The caller binding shall be consumed,
+and the callee shall traverse the same continuation once. Formal traces, LSP
+validation, and reversible scripted-debugger history shall cover a commented
+example.
+
 ## TOPAL-INTP-SUBSET-140 — Custom generator close handler
 
 All interpreter modes shall deliver `generator-closed` to a suspended custom
