@@ -1129,3 +1129,11 @@ Character` under `TOPAL-GENERATOR-FINAL-RETURN-001`. Direct foreach shall
 consume every yield and produce the separately evaluated final Character.
 Formal traces, LSP validation, and reversible scripted-debugger history shall
 cover a commented example.
+
+## TOPAL-INTP-SUBSET-137 — Custom generator suspension
+
+All interpreter modes shall suspend custom execution at each yield under
+`TOPAL-GENERATOR-SUSPEND-001`. A binding following a yield shall be evaluated
+only after foreach records its Unit resumption and before the next suspension.
+Formal traces, LSP validation, and reversible scripted-debugger history shall
+verify that ordering with a commented example.

@@ -54,3 +54,10 @@ and shall produce the generator's final return value.
 The generator's final return classifier is independent of its yield classifier.
 For `Generator Character Unit Character`, direct foreach shall invoke its action
 for each yielded Character and then produce the distinct final Character.
+
+### TOPAL-GENERATOR-SUSPEND-001 — Yield suspension ordering
+
+Starting a generator shall execute only through its first yield or final return.
+After a yield, statements following that yield shall not execute until the
+consumer resumes the continuation. Each subsequent resumption repeats this
+ordering through the next yield or final return.
