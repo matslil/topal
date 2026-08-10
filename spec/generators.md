@@ -98,3 +98,10 @@ An ordinary function whose result classifier is a Generator may return a live
 custom continuation. Function exit shall transfer that continuation without
 closing it. The caller receives the same suspended local state and becomes its
 single owner.
+
+### TOPAL-GENERATOR-FUNCTION-PARAMETER-001 — Transferring a continuation
+
+Passing a custom Generator as an ordinary function argument shall transfer its
+single ownership into the matching parameter. The caller binding is consumed;
+the callee receives the same suspended state and may traverse it or allow its
+scope to close it.
