@@ -1451,7 +1451,11 @@ impl Session {
                     ) {
                         trace.record(TraceEvent {
                             event: "generator.function.returned",
-                            rule: "TOPAL-STRING-CHARACTERS-RESULT-001",
+                            rule: if matches!(value, Value::SuspendedCharacterGenerator { .. }) {
+                                "TOPAL-GENERATOR-FUNCTION-RESULT-001"
+                            } else {
+                                "TOPAL-STRING-CHARACTERS-RESULT-001"
+                            },
                             detail: value_classifier(&value),
                         });
                     }
@@ -8005,6 +8009,28 @@ fn custom_generator_matches_qualified_close_code() {
         trace
             .iter()
             .any(|event| { event.contains("decision.rule.selected") && event.contains("rule=0") })
+    );
+}
+
+#[test]
+fn function_transfers_custom_generator_result_to_caller() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "pause-once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  ()\nmake is fn ( initial : Character ) -> Generator Character Unit Unit\n  pause-once initial\ngenerated is make \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-FUNCTION-RESULT-001"))
+    );
+    assert!(
+        !trace.iter().any(|event| {
+            event.contains("generator.closed") && event.contains("root.pause-once")
+        })
     );
 }
 

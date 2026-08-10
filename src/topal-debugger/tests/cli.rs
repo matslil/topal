@@ -1339,6 +1339,24 @@ fn records_qualified_generator_close_code_match_reversibly() {
 }
 
 #[test]
+fn records_custom_generator_function_result_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-function-result.debug"),
+            &format!("{root}custom-generator-function-result.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-GENERATOR-FUNCTION-RESULT-001"));
+    assert!(stdout.contains("generator.function.returned"));
+    assert!(stdout.contains("generator.yielded"));
+}
+
+#[test]
 fn records_yield_after_custom_close_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

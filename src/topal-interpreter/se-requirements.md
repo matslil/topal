@@ -1162,6 +1162,14 @@ yield receives the intrinsic close Error. Formal traces, LSP validation, and
 reversible scripted-debugger history shall cover a commented example with
 specific, generic Error, and Ok rules.
 
+## TOPAL-INTP-SUBSET-143 — Custom generator function result
+
+All interpreter modes shall return a suspended custom `Generator Character Unit
+Unit` from an ordinary function under `TOPAL-GENERATOR-FUNCTION-RESULT-001`
+without closing it at function exit. The caller shall receive and consume the
+single continuation. Formal traces, LSP validation, and reversible
+scripted-debugger history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-137 — Custom generator suspension
 
 All interpreter modes shall suspend custom execution at each yield under
