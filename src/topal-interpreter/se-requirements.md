@@ -1154,6 +1154,14 @@ shall be source-located as `E-GENERATOR-YIELD-AFTER-CLOSE`. LSP syntax
 validation and reversible scripted-debugger history shall cover the commented
 failing example.
 
+## TOPAL-INTP-SUBSET-142 — Qualified generator close-code pattern
+
+All interpreter modes shall select `Error ( code is lang generator
+generator-closed )` under `TOPAL-GENERATOR-CLOSE-CODE-PATTERN-001` when a custom
+yield receives the intrinsic close Error. Formal traces, LSP validation, and
+reversible scripted-debugger history shall cover a commented example with
+specific, generic Error, and Ok rules.
+
 ## TOPAL-INTP-SUBSET-137 — Custom generator suspension
 
 All interpreter modes shall suspend custom execution at each yield under
