@@ -1114,6 +1114,15 @@ observe those bindings without leaking them to the caller. LSP validation,
 formal traces, and reversible scripted-debugger history shall cover a commented
 example.
 
+## TOPAL-INTP-SUBSET-145 — Unconsumed custom generator parameter closure
+
+When a function does not consume its transferred custom Generator parameter,
+all interpreter modes shall close that suspended continuation at function exit
+under `TOPAL-GENERATOR-CLOSE-001`. The caller binding shall remain consumed;
+formal traces shall retain lexical root domain separately from custom generator
+provenance. LSP validation and reversible scripted-debugger history shall cover
+a commented example.
+
 ## TOPAL-INTP-SUBSET-135 — Generator return before first yield
 
 All interpreter modes shall support a custom generator that reaches its final

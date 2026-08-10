@@ -8063,6 +8063,23 @@ fn function_parameter_receives_custom_generator_ownership() {
 }
 
 #[test]
+fn function_closes_unconsumed_custom_generator_parameter() {
+    let mut trace = Vec::new();
+    Session::new()
+        .evaluate(
+            "pause-once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  ()\nignore is fn ( generated : Generator Character Unit Unit ) -> Unit\n  ()\ngenerated is pause-once \"T\"\nignore generated\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert!(trace.iter().any(|event| {
+        event.contains("TOPAL-GENERATOR-CLOSE-001") && event.contains("root.pause-once")
+    }));
+    assert!(trace.iter().any(|event| {
+        event.contains("domain=root;code=generator-closed;generator=root.pause-once")
+    }));
+}
+
+#[test]
 fn custom_generator_cannot_yield_after_close_result() {
     let error = Session::new()
         .evaluate(
