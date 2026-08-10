@@ -1138,6 +1138,14 @@ lexical domain `root` and code `generator-closed`, retaining the qualified
 custom generator name only as separate provenance. LSP validation and reversible
 scripted-debugger history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-140 — Custom generator close handler
+
+All interpreter modes shall deliver `generator-closed` to a suspended custom
+yield-result binding under `TOPAL-GENERATOR-CLOSE-HANDLER-001` and execute its
+Error decision rule to final Unit. The Error domain shall be `root`; generator
+identity shall remain separate provenance. Formal traces, LSP validation, and
+reversible scripted-debugger history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-137 — Custom generator suspension
 
 All interpreter modes shall suspend custom execution at each yield under

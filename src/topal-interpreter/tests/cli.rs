@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 84);
+    assert_eq!(examples.len(), 85);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2604,6 +2604,19 @@ fn every_mode_closes_abandoned_custom_generator() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-GENERATOR-CLOSE-001"));
     assert!(trace.contains("domain=root;code=generator-closed;generator=root.pause-once"));
+}
+
+#[test]
+fn every_mode_runs_custom_generator_close_handler() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-close-handler.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-CLOSE-HANDLER-001"));
+    assert!(trace.contains("generator.close.bound"));
+    assert!(trace.contains("domain=root;code=generator-closed;generator=root.handle-close"));
+    assert!(trace.contains("decision.rule.selected"));
 }
 
 #[test]
