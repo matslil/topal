@@ -2438,7 +2438,7 @@ impl Execution {
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-BODY",
                 span,
-                "the implemented generator subset requires local bindings or `_ is yield value` statements followed by `()`",
+                "the implemented generator subset requires bindings, discarded computations, or yield statements followed by a final expression",
             ));
         }
         session.generators.insert(
@@ -3026,7 +3026,10 @@ fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
     }
     for statement in &body[..body.len().saturating_sub(1)] {
         if yielded_statement(source, statement).is_none()
-            && !matches!(statement, Statement::Binding { .. })
+            && !matches!(
+                statement,
+                Statement::Binding { .. } | Statement::Discard { .. }
+            )
         {
             return false;
         }
@@ -8235,6 +8238,32 @@ fn custom_generator_returns_distinct_string() {
             .iter()
             .any(|event| event.contains("TOPAL-GENERATOR-FINAL-RETURN-001"))
     );
+}
+
+#[test]
+fn custom_generator_executes_discard_after_resume() {
+    let mut trace = Vec::new();
+    Session::new()
+        .evaluate(
+            "inspect-between is generator ( initial : String )\n  yields String\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  _ is empty? initial\n  _ is yield \"\"\n  ()\ngenerated is inspect-between \"Topal\"\ngenerated foreach { text }\n  _ is empty? text\n",
+            &mut trace,
+        )
+        .unwrap();
+    let resumed = trace
+        .iter()
+        .position(|event| event.contains("generator.resumed"))
+        .unwrap();
+    let tested = trace
+        .iter()
+        .enumerate()
+        .skip(resumed + 1)
+        .find_map(|(index, event)| event.contains("string.empty.tested").then_some(index))
+        .unwrap();
+    let suspended = trace
+        .iter()
+        .rposition(|event| event.contains("generator.suspended"))
+        .unwrap();
+    assert!(resumed < tested && tested < suspended);
 }
 
 #[test]

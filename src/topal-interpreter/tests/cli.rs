@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 94);
+    assert_eq!(examples.len(), 95);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2731,6 +2731,20 @@ fn every_mode_observes_distinct_generator_final_string() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("Generator String Unit String"));
     assert!(trace.contains("TOPAL-GENERATOR-FINAL-RETURN-001"));
+}
+
+#[test]
+fn every_mode_executes_discarded_computation_between_yields() {
+    let source =
+        include_str!("../../../examples/interpreter/custom-generator-discard-between-yields.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    let resumed = trace.find("generator.resumed").unwrap();
+    let tested = resumed + trace[resumed..].find("string.empty.tested").unwrap();
+    let suspended = trace.rfind("generator.suspended").unwrap();
+    assert!(resumed < tested && tested < suspended);
 }
 
 #[test]
