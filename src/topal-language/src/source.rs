@@ -2420,19 +2420,21 @@ impl Execution {
         let parameter_classifier = self.source.slice(parameter.classifier);
         let yield_classifier = self.source.slice(yielded);
         let result_classifier = self.source.slice(result);
-        if !matches!(parameter_classifier, "Boolean" | "Character" | "String")
-            || !matches!(yield_classifier, "Boolean" | "Character" | "String")
+        if !matches!(
+            parameter_classifier,
+            "Boolean" | "Character" | "Int" | "String"
+        ) || !matches!(yield_classifier, "Boolean" | "Character" | "Int" | "String")
             || self.source.slice(resumed) != "Unit"
             || !matches!(
                 result_classifier,
-                "Unit" | "Boolean" | "Character" | "String"
+                "Unit" | "Boolean" | "Character" | "Int" | "String"
             )
         {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-SIGNATURE",
                 span,
-                "the implemented generator subset requires Boolean, Character, or String input/yield, Unit resume, and Unit, Boolean, Character, or String return",
+                "the implemented generator subset requires Boolean, Character, Int, or String input/yield, Unit resume, and Unit, Boolean, Character, Int, or String return",
             ));
         }
         if !supported_generator_body(&self.source, body) {
@@ -8322,6 +8324,12 @@ fn custom_generator_transfers_boolean_values() {
             .iter()
             .any(|event| event.contains("Generator Boolean Unit Boolean"))
     );
+}
+
+#[test]
+fn custom_generator_preserves_int_values() {
+    let value = Session::new().evaluate("next is generator ( initial : Int )\n  yields Int\n  resumes Unit\n  -> Int\n\n  _ is yield initial\n  initial + 1\ngenerated is next 999999999999999999999999999999\ngenerated foreach { value }\n  _ is value + 1\n", &mut Vec::new()).unwrap();
+    assert_eq!(value.to_string(), "1000000000000000000000000000000");
 }
 
 #[test]

@@ -1154,6 +1154,13 @@ shall bind each Boolean yield to its action and produce the distinct final
 Boolean. Formal traces, LSP validation, and reversible scripted-debugger
 history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-155 — Int custom generator values
+
+All interpreter modes shall support arbitrary-precision Int custom-generator
+input, yield, and final-return directions. Suspension and resumption shall
+preserve the numeric value without narrowing. Formal traces, LSP validation,
+and reversible scripted-debugger history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
