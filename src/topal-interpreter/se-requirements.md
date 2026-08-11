@@ -1171,6 +1171,14 @@ All interpreter modes shall accept a String initial parameter for a custom
 and suspend at its Character yield. Formal traces, LSP validation, and
 reversible scripted-debugger history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-151 — Discarded generator-body computations
+
+All interpreter modes shall execute an ordinary discarded computation between
+custom generator yields under `TOPAL-GENERATOR-BODY-STATEMENT-001`. Formal
+traces shall place it after the preceding Unit resumption and before the next
+suspension. LSP validation and reversible scripted-debugger history shall cover
+a commented example.
+
 ## TOPAL-INTP-SUBSET-149 — Custom String yields
 
 All interpreter modes shall execute and traverse a custom `Generator String

@@ -43,6 +43,12 @@ The final return may also be String. Traversing `Generator String Unit String`
 shall deliver every yielded String and then produce the separately evaluated
 final String.
 
+### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
+
+A generator continuation may execute ordinary binding and discarded-computation
+statements between yields. Statements following a yield execute only after its
+next successful resumption and before the next yield or final return.
+
 ### TOPAL-GENERATOR-FOREACH-001 — Custom Unit-resumed traversal
 
 Direct foreach over a custom `Generator Character Unit Unit` shall observe its
