@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 91);
+    assert_eq!(examples.len(), 92);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2695,6 +2695,17 @@ fn every_mode_consumes_character_returning_generator_function_result() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-GENERATOR-FUNCTION-RESULT-001"));
     assert!(trace.contains("TOPAL-GENERATOR-FINAL-RETURN-001"));
+}
+
+#[test]
+fn every_mode_starts_custom_generator_with_string_input() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-string-input.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("root.empty?(String)"));
+    assert!(trace.contains("generator.suspended"));
 }
 
 #[test]

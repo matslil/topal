@@ -1157,6 +1157,13 @@ consume every yield and produce the separately evaluated final Character.
 Formal traces, LSP validation, and reversible scripted-debugger history shall
 cover a commented example.
 
+## TOPAL-INTP-SUBSET-148 — String initial input for custom generator
+
+All interpreter modes shall accept a String initial parameter for a custom
+`Generator Character Unit Unit`, evaluate String operations in its local scope,
+and suspend at its Character yield. Formal traces, LSP validation, and
+reversible scripted-debugger history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-139 — Abandoned custom generator trace
 
 When function exit abandons a suspended custom generator, all interpreter modes
