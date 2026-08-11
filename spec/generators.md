@@ -39,6 +39,10 @@ The yield classifier is likewise independent. A custom `Generator String Unit
 Unit` may suspend with complete String values; direct foreach binds each String
 to its action parameter and resumes with Unit.
 
+The final return may also be String. Traversing `Generator String Unit String`
+shall deliver every yielded String and then produce the separately evaluated
+final String.
+
 ### TOPAL-GENERATOR-FOREACH-001 — Custom Unit-resumed traversal
 
 Direct foreach over a custom `Generator Character Unit Unit` shall observe its
