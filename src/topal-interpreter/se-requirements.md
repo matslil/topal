@@ -1130,6 +1130,14 @@ formal traces shall retain lexical root domain separately from custom generator
 provenance. LSP validation and reversible scripted-debugger history shall cover
 a commented example.
 
+## TOPAL-INTP-SUBSET-152 — Explicit custom generator return
+
+All interpreter modes shall execute `return value` inside a custom generator
+under `TOPAL-GENERATOR-EXPLICIT-RETURN-001`, including return before the first
+yield. The returned value shall satisfy the declared final classifier and become
+the foreach result. LSP validation and reversible scripted-debugger history
+shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

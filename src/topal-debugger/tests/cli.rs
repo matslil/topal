@@ -1498,6 +1498,24 @@ fn records_discarded_computation_between_yields_reversibly() {
 }
 
 #[test]
+fn records_explicit_generator_return_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-explicit-return.debug"),
+            &format!("{root}custom-generator-explicit-return.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-GENERATOR-EXPLICIT-RETURN-001"));
+    assert!(!stdout.contains("generator.yielded"));
+    assert!(stdout.contains("\"done\""));
+}
+
+#[test]
 fn records_yield_after_custom_close_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
