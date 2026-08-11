@@ -35,6 +35,10 @@ The initial input classifier is independent of the three Generator directions.
 A generator may therefore accept `String` while yielding `Character`, resuming
 with Unit, and returning Unit.
 
+The yield classifier is likewise independent. A custom `Generator String Unit
+Unit` may suspend with complete String values; direct foreach binds each String
+to its action parameter and resumes with Unit.
+
 ### TOPAL-GENERATOR-FOREACH-001 — Custom Unit-resumed traversal
 
 Direct foreach over a custom `Generator Character Unit Unit` shall observe its

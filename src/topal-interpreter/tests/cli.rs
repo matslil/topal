@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 92);
+    assert_eq!(examples.len(), 93);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2706,6 +2706,18 @@ fn every_mode_starts_custom_generator_with_string_input() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("root.empty?(String)"));
     assert!(trace.contains("generator.suspended"));
+}
+
+#[test]
+fn every_mode_traverses_custom_string_yields() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-string-yield.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("Generator String Unit Unit"));
+    assert_eq!(trace.matches("generator.yielded").count(), 2);
+    assert_eq!(trace.matches("generator.resumed").count(), 2);
 }
 
 #[test]
