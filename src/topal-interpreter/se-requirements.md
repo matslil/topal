@@ -1146,6 +1146,14 @@ the generator, and then expose the declared final value under
 `TOPAL-GENERATOR-EXPLICIT-RETURN-001`. LSP validation and reversible scripted-
 debugger history shall cover a commented example and its trace ordering.
 
+## TOPAL-INTP-SUBSET-154 — Boolean custom generator values
+
+All interpreter modes shall support Boolean custom-generator input, yield, and
+final-return directions under `TOPAL-GENERATOR-DECLARATION-001`. Direct foreach
+shall bind each Boolean yield to its action and produce the distinct final
+Boolean. Formal traces, LSP validation, and reversible scripted-debugger
+history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

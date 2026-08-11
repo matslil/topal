@@ -1535,6 +1535,24 @@ fn records_explicit_return_after_generator_resumption_reversibly() {
 }
 
 #[test]
+fn records_boolean_generator_values_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-boolean-values.debug"),
+            &format!("{root}custom-generator-boolean-values.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Generator Boolean Unit Boolean"));
+    assert!(stdout.contains("generator.suspended"));
+    assert!(stdout.contains("false"));
+}
+
+#[test]
 fn records_yield_after_custom_close_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
