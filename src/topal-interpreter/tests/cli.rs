@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 97);
+    assert_eq!(examples.len(), 98);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2774,6 +2774,20 @@ fn every_mode_returns_explicitly_after_generator_resumption() {
     let resumed = trace.find("generator.resumed").unwrap();
     let returned = trace.find("generator.return.explicit").unwrap();
     assert!(resumed < returned);
+}
+
+#[test]
+fn every_mode_traverses_boolean_generator_values() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-boolean-values.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"false\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("Generator Boolean Unit Boolean"));
+    assert!(trace.contains("generator.yielded") && trace.contains("Boolean"));
+    assert!(trace.contains("TOPAL-GENERATOR-FINAL-RETURN-001"));
 }
 
 #[test]

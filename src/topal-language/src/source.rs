@@ -45,7 +45,7 @@ pub enum Value {
         body: Vec<Statement>,
         cursor: usize,
         bindings: BTreeMap<String, Self>,
-        pending_yield: Option<String>,
+        pending_yield: Option<Box<Self>>,
         resume_binding: Option<String>,
         returned: Option<Box<Self>>,
         yield_classifier: String,
@@ -2152,17 +2152,16 @@ impl Execution {
         let binding_name = self.source.slice(binding).to_owned();
         let mut yielded_any = pending_yield.is_some();
         loop {
-            if let Some(character) = pending_yield.take() {
+            if let Some(yielded) = pending_yield.take() {
                 yielded_any = true;
+                let detail = yielded.to_string();
                 trace.record(TraceEvent {
                     event: "generator.yielded",
                     rule: "TOPAL-GENERATOR-FOREACH-001",
-                    detail: &character,
+                    detail: &detail,
                 });
                 let mut iteration = session.clone();
-                iteration
-                    .bindings
-                    .insert(binding_name.clone(), Value::String(character));
+                iteration.bindings.insert(binding_name.clone(), *yielded);
                 iteration.declared_names.insert(binding_name.clone());
                 let mut action = Self {
                     source: self.source.clone(),
@@ -2421,16 +2420,19 @@ impl Execution {
         let parameter_classifier = self.source.slice(parameter.classifier);
         let yield_classifier = self.source.slice(yielded);
         let result_classifier = self.source.slice(result);
-        if !matches!(parameter_classifier, "Character" | "String")
-            || !matches!(yield_classifier, "Character" | "String")
+        if !matches!(parameter_classifier, "Boolean" | "Character" | "String")
+            || !matches!(yield_classifier, "Boolean" | "Character" | "String")
             || self.source.slice(resumed) != "Unit"
-            || !matches!(result_classifier, "Unit" | "Character" | "String")
+            || !matches!(
+                result_classifier,
+                "Unit" | "Boolean" | "Character" | "String"
+            )
         {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-SIGNATURE",
                 span,
-                "the implemented generator subset requires Character or String input/yield, Unit resume, and Unit, Character, or String return",
+                "the implemented generator subset requires Boolean, Character, or String input/yield, Unit resume, and Unit, Boolean, Character, or String return",
             ));
         }
         if !supported_generator_body(&self.source, body) {
@@ -3084,7 +3086,7 @@ fn advance_custom_generator(
     body: &[Statement],
     cursor: &mut usize,
     scope: &mut Session,
-    pending_yield: &mut Option<String>,
+    pending_yield: &mut Option<Box<Value>>,
     resume_binding: &mut Option<String>,
     returned: &mut Option<Value>,
     yield_classifier: &str,
@@ -3105,10 +3107,7 @@ fn advance_custom_generator(
                     format!("generator `{name}` must yield `{yield_classifier}`"),
                 ));
             }
-            let Value::String(value) = value else {
-                unreachable!("Character and String values use the String representation")
-            };
-            *pending_yield = Some(value);
+            *pending_yield = Some(Box::new(value));
             *resume_binding = binding.map(|span| source.slice(span).to_owned());
             trace.record(TraceEvent {
                 event: "generator.suspended",
@@ -8306,6 +8305,23 @@ fn custom_generator_returns_explicitly_after_resuming() {
         .position(|event| event.contains("generator.return.explicit"))
         .unwrap();
     assert!(resumed < returned);
+}
+
+#[test]
+fn custom_generator_transfers_boolean_values() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "invert is generator ( initial : Boolean )\n  yields Boolean\n  resumes Unit\n  -> Boolean\n\n  _ is yield initial\n  not initial\ngenerated is invert true\ngenerated foreach { value }\n  _ is not value\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Boolean(false));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("Generator Boolean Unit Boolean"))
+    );
 }
 
 #[test]
