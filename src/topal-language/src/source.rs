@@ -48,6 +48,7 @@ pub enum Value {
         pending_yield: Option<String>,
         resume_binding: Option<String>,
         returned: Option<Box<Self>>,
+        yield_classifier: String,
         return_classifier: String,
         origin: String,
     },
@@ -102,8 +103,13 @@ impl fmt::Display for Value {
                 formatter.write_str("<Generator Character Unit Character>")
             }
             Self::SuspendedCharacterGenerator {
-                return_classifier, ..
-            } => write!(formatter, "<Generator Character Unit {return_classifier}>"),
+                yield_classifier,
+                return_classifier,
+                ..
+            } => write!(
+                formatter,
+                "<Generator {yield_classifier} Unit {return_classifier}>"
+            ),
             Self::String(value) => formatter.write_str(&display_string(value)),
             Self::Tuple(items) => {
                 formatter.write_str("(")?;
@@ -221,6 +227,7 @@ struct UserFunction {
 struct UserGenerator {
     source: SourceText,
     parameter: (String, String),
+    yielded: String,
     result: String,
     body: Vec<Statement>,
     bindings: BTreeMap<String, Value>,
@@ -1259,6 +1266,7 @@ impl Session {
                         &mut pending_yield,
                         &mut resume_binding,
                         &mut returned,
+                        &generator.yielded,
                         &generator.result,
                         name,
                         trace,
@@ -1272,6 +1280,7 @@ impl Session {
                         pending_yield,
                         resume_binding,
                         returned: returned.map(Box::new),
+                        yield_classifier: generator.yielded,
                         return_classifier: generator.result,
                         origin,
                     };
@@ -1423,7 +1432,7 @@ impl Session {
                             ExecutionStep::Returned { value, span } => break (value, span),
                         }
                     };
-                    if !function.result.starts_with("Generator Character Unit ") {
+                    if !function.result.starts_with("Generator ") {
                         close_remaining_character_generators(&mut function_scope, trace)?;
                     }
                     if !value_has_classifier(&value, &function.result) {
@@ -2133,6 +2142,7 @@ impl Execution {
             ref mut pending_yield,
             ref mut resume_binding,
             ref mut returned,
+            yield_classifier,
             return_classifier,
             origin,
         } = generator
@@ -2200,6 +2210,7 @@ impl Execution {
                     pending_yield,
                     resume_binding,
                     &mut next_returned,
+                    &yield_classifier,
                     &return_classifier,
                     origin.rsplit('.').next().unwrap_or(&origin),
                     trace,
@@ -2408,9 +2419,10 @@ impl Execution {
         }
         let parameter = &parameters[0];
         let parameter_classifier = self.source.slice(parameter.classifier);
+        let yield_classifier = self.source.slice(yielded);
         let result_classifier = self.source.slice(result);
         if !matches!(parameter_classifier, "Character" | "String")
-            || self.source.slice(yielded) != "Character"
+            || !matches!(yield_classifier, "Character" | "String")
             || self.source.slice(resumed) != "Unit"
             || !matches!(result_classifier, "Unit" | "Character")
         {
@@ -2418,7 +2430,7 @@ impl Execution {
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-SIGNATURE",
                 span,
-                "the implemented generator subset requires Character or String input, Character yield, Unit resume, and Unit or Character return",
+                "the implemented generator subset requires Character or String input/yield, Unit resume, and Unit or Character return",
             ));
         }
         if !supported_generator_body(&self.source, body) {
@@ -2437,6 +2449,7 @@ impl Execution {
                     self.source.slice(parameter.name).to_owned(),
                     parameter_classifier.to_owned(),
                 ),
+                yielded: yield_classifier.to_owned(),
                 result: result_classifier.to_owned(),
                 body: body.to_vec(),
                 bindings: session.bindings.clone(),
@@ -2447,6 +2460,12 @@ impl Execution {
             event: "generator.declared",
             rule: "TOPAL-GENERATOR-DECLARATION-001",
             detail: name_text,
+        });
+        let classifier = format!("Generator {yield_classifier} Unit {result_classifier}");
+        trace.record(TraceEvent {
+            event: "generator.classified",
+            rule: "TOPAL-GENERATOR-DECLARATION-001",
+            detail: &classifier,
         });
         Ok((Value::Unit, span))
     }
@@ -3062,6 +3081,7 @@ fn advance_custom_generator(
     pending_yield: &mut Option<String>,
     resume_binding: &mut Option<String>,
     returned: &mut Option<Value>,
+    yield_classifier: &str,
     return_classifier: &str,
     name: &str,
     trace: &mut impl TraceSink,
@@ -3071,16 +3091,16 @@ fn advance_custom_generator(
         *cursor += 1;
         if let Some((binding, expression)) = yielded_statement(source, statement) {
             let value = scope.evaluate_expression(source, expression, trace)?;
-            if !value_has_classifier(&value, "Character") {
+            if !value_has_classifier(&value, yield_classifier) {
                 return Err(diagnostic(
                     source,
                     "E-GENERATOR-YIELD-TYPE",
                     expression.span(),
-                    format!("generator `{name}` must yield `Character`"),
+                    format!("generator `{name}` must yield `{yield_classifier}`"),
                 ));
             }
             let Value::String(value) = value else {
-                unreachable!("Character values use the String representation")
+                unreachable!("Character and String values use the String representation")
             };
             *pending_yield = Some(value);
             *resume_binding = binding.map(|span| source.slice(span).to_owned());
@@ -3172,7 +3192,7 @@ fn consume_generator_argument(source: &SourceText, session: &mut Session, expres
             candidates.iter().any(|candidate| {
                 matches!(
                     candidate.parameters.as_slice(),
-                    [(_, classifier)] if classifier.starts_with("Generator Character Unit ")
+                    [(_, classifier)] if classifier.starts_with("Generator ")
                 )
             })
         });
@@ -3238,6 +3258,7 @@ fn close_remaining_character_generators(
             resume_binding,
             returned,
             return_classifier,
+            yield_classifier,
             ..
         } = value
             && let Some(resume_binding) = resume_binding
@@ -3274,6 +3295,7 @@ fn close_remaining_character_generators(
                 &mut pending_yield,
                 &mut next_resume_binding,
                 &mut handled_return,
+                &yield_classifier,
                 &return_classifier,
                 origin.rsplit('.').next().unwrap_or(&origin),
                 trace,
@@ -3446,12 +3468,12 @@ fn declare_enum(
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
     if let Value::SuspendedCharacterGenerator {
-        return_classifier, ..
+        yield_classifier,
+        return_classifier,
+        ..
     } = value
     {
-        return (return_classifier == "Unit" && classifier == "Generator Character Unit Unit")
-            || (return_classifier == "Character"
-                && classifier == "Generator Character Unit Character");
+        return classifier == format!("Generator {yield_classifier} Unit {return_classifier}");
     }
     if let Value::Optional {
         payload_classifier, ..
@@ -4130,6 +4152,8 @@ fn supported_value_classifier(classifier: &str) -> bool {
             | "Comparison"
             | "Generator Character Unit Unit"
             | "Generator Character Unit Character"
+            | "Generator String Unit Unit"
+            | "Generator String Unit Character"
             | "Int"
             | "Nat"
             | "Range Int"
@@ -4191,6 +4215,16 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
+        Value::SuspendedCharacterGenerator {
+            yield_classifier,
+            return_classifier,
+            ..
+        } if yield_classifier == "String" && return_classifier == "Character" => {
+            "Generator String Unit Character"
+        }
+        Value::SuspendedCharacterGenerator {
+            yield_classifier, ..
+        } if yield_classifier == "String" => "Generator String Unit Unit",
         Value::SuspendedCharacterGenerator {
             return_classifier, ..
         } if return_classifier == "Character" => "Generator Character Unit Character",
@@ -8142,6 +8176,30 @@ fn custom_generator_accepts_string_initial_input() {
         trace
             .iter()
             .any(|event| event.contains("generator.suspended"))
+    );
+}
+
+#[test]
+fn custom_generator_yields_strings() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "texts is generator ( initial : String )\n  yields String\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  _ is yield \"\"\n  ()\ngenerated is texts \"Topal\"\ngenerated foreach { text }\n  _ is empty? text\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::Unit);
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("generator.yielded"))
+            .count(),
+        2
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("Generator String Unit Unit"))
     );
 }
 

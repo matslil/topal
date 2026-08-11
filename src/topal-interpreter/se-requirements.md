@@ -1164,6 +1164,14 @@ All interpreter modes shall accept a String initial parameter for a custom
 and suspend at its Character yield. Formal traces, LSP validation, and
 reversible scripted-debugger history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-149 — Custom String yields
+
+All interpreter modes shall execute and traverse a custom `Generator String
+Unit Unit`. Each yielded String shall reach the foreach action unchanged, and
+each successful action shall resume the continuation with Unit. Formal traces,
+LSP validation, and reversible scripted-debugger history shall cover a commented
+example.
+
 ## TOPAL-INTP-SUBSET-139 — Abandoned custom generator trace
 
 When function exit abandons a suspended custom generator, all interpreter modes
