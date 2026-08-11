@@ -1138,6 +1138,14 @@ yield. The returned value shall satisfy the declared final classifier and become
 the foreach result. LSP validation and reversible scripted-debugger history
 shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-153 — Explicit return after generator resumption
+
+All interpreter modes shall preserve custom generator continuation state when
+an explicit return follows a yield. Traversal shall invoke the action, resume
+the generator, and then expose the declared final value under
+`TOPAL-GENERATOR-EXPLICIT-RETURN-001`. LSP validation and reversible scripted-
+debugger history shall cover a commented example and its trace ordering.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

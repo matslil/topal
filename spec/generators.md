@@ -53,7 +53,8 @@ next successful resumption and before the next yield or final return.
 
 `return value` in a generator shall finish that generator with its declared
 final return classifier. It may occur before the first yield; traversal then
-invokes no action and produces the returned value directly.
+invokes no action and produces the returned value directly. After a yield, the
+generator shall first resume and then evaluate the explicit return.
 
 ### TOPAL-GENERATOR-FOREACH-001 — Custom Unit-resumed traversal
 
