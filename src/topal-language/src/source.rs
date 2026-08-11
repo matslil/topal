@@ -8102,6 +8102,28 @@ fn function_parameter_preserves_generator_final_character() {
 }
 
 #[test]
+fn function_result_preserves_generator_final_character() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "yield-return is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Character\n\n  _ is yield initial\n  \"R\"\nmake is fn ( initial : Character ) -> Generator Character Unit Character\n  yield-return initial\ngenerated is make \"Y\"\ngenerated foreach { character }\n  _ is String character\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("R".into()));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-FUNCTION-RESULT-001"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-FINAL-RETURN-001"))
+    );
+}
+
+#[test]
 fn custom_generator_cannot_yield_after_close_result() {
     let error = Session::new()
         .evaluate(
