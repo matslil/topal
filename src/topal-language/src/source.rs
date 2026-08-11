@@ -8288,6 +8288,27 @@ fn custom_generator_returns_explicitly_before_yielding() {
 }
 
 #[test]
+fn custom_generator_returns_explicitly_after_resuming() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "finish is generator ( initial : String )\n  yields String\n  resumes Unit\n  -> String\n\n  _ is yield initial\n  return \"done\"\ngenerated is finish \"item\"\ngenerated foreach { text }\n  _ is empty? text\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("done".into()));
+    let resumed = trace
+        .iter()
+        .position(|event| event.contains("generator.resumed"))
+        .unwrap();
+    let returned = trace
+        .iter()
+        .position(|event| event.contains("generator.return.explicit"))
+        .unwrap();
+    assert!(resumed < returned);
+}
+
+#[test]
 fn custom_generator_executes_discard_after_resume() {
     let mut trace = Vec::new();
     Session::new()

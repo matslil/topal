@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 96);
+    assert_eq!(examples.len(), 97);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2758,6 +2758,22 @@ fn every_mode_executes_explicit_generator_return() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-GENERATOR-EXPLICIT-RETURN-001"));
     assert_eq!(trace.matches("generator.yielded").count(), 0);
+}
+
+#[test]
+fn every_mode_returns_explicitly_after_generator_resumption() {
+    let source =
+        include_str!("../../../examples/interpreter/custom-generator-return-after-yield.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"\"done\"\n"));
+    }
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    let resumed = trace.find("generator.resumed").unwrap();
+    let returned = trace.find("generator.return.explicit").unwrap();
+    assert!(resumed < returned);
 }
 
 #[test]
