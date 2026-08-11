@@ -1972,6 +1972,20 @@ mod tests {
     }
 
     #[test]
+    fn parses_explicit_generator_return() {
+        let source = SourceText::new(
+            "done is generator ( initial : String )\n  yields String\n  resumes Unit\n  -> String\n\n  return \"done\"",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Generator { body, .. } = &parsed.statements[0] else {
+            panic!("expected generator");
+        };
+        assert!(matches!(body.as_slice(), [Statement::Return { .. }]));
+    }
+
+    #[test]
     fn accepts_complete_closed_arithmetic_error_code_set() {
         let source = SourceText::new(
             "describe is fn (attempt : Result) -> String\n  attempt\n    Ok value then \"ok\"\n    Error ( code is lang arithmetic out-of-range ) then \"range\"\n    Error ( code is lang arithmetic not-representable ) then \"representation\"\n    Error ( code is lang arithmetic division-by-zero ) then \"zero\"\n    Error ( code is lang arithmetic indeterminate ) then \"indeterminate\"",

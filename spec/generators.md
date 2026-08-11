@@ -49,6 +49,12 @@ A generator continuation may execute ordinary binding and discarded-computation
 statements between yields. Statements following a yield execute only after its
 next successful resumption and before the next yield or final return.
 
+### TOPAL-GENERATOR-EXPLICIT-RETURN-001 — Explicit generator return
+
+`return value` in a generator shall finish that generator with its declared
+final return classifier. It may occur before the first yield; traversal then
+invokes no action and produces the returned value directly.
+
 ### TOPAL-GENERATOR-FOREACH-001 — Custom Unit-resumed traversal
 
 Direct foreach over a custom `Generator Character Unit Unit` shall observe its

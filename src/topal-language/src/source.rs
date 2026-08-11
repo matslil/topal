@@ -3021,14 +3021,17 @@ fn statement_span(statement: &Statement) -> Span {
 }
 
 fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
-    if !matches!(body.last(), Some(Statement::Expression(_))) {
+    if !matches!(
+        body.last(),
+        Some(Statement::Expression(_) | Statement::Return { .. })
+    ) {
         return false;
     }
     for statement in &body[..body.len().saturating_sub(1)] {
         if yielded_statement(source, statement).is_none()
             && !matches!(
                 statement,
-                Statement::Binding { .. } | Statement::Discard { .. }
+                Statement::Binding { .. } | Statement::Discard { .. } | Statement::Return { .. }
             )
         {
             return false;
@@ -3125,6 +3128,28 @@ fn advance_custom_generator(
                 ));
             }
             *returned = Some(value);
+            return Ok(());
+        }
+        if let Statement::Return {
+            value: expression, ..
+        } = statement
+        {
+            let value = scope.evaluate_expression(source, expression, trace)?;
+            if !value_has_classifier(&value, return_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-GENERATOR-RETURN-TYPE",
+                    expression.span(),
+                    format!("generator `{name}` must return `{return_classifier}`"),
+                ));
+            }
+            trace.record(TraceEvent {
+                event: "generator.return.explicit",
+                rule: "TOPAL-GENERATOR-EXPLICIT-RETURN-001",
+                detail: return_classifier,
+            });
+            *returned = Some(value);
+            *cursor = body.len();
             return Ok(());
         }
         let mut execution = Execution {
@@ -8237,6 +8262,28 @@ fn custom_generator_returns_distinct_string() {
         trace
             .iter()
             .any(|event| event.contains("TOPAL-GENERATOR-FINAL-RETURN-001"))
+    );
+}
+
+#[test]
+fn custom_generator_returns_explicitly_before_yielding() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "done is generator ( initial : String )\n  yields String\n  resumes Unit\n  -> String\n\n  return \"done\"\ngenerated is done \"unused\"\ngenerated foreach { text }\n  _ is empty? text\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("done".into()));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-EXPLICIT-RETURN-001"))
+    );
+    assert!(
+        !trace
+            .iter()
+            .any(|event| event.contains("generator.yielded"))
     );
 }
 
