@@ -1114,6 +1114,13 @@ observe those bindings without leaking them to the caller. LSP validation,
 formal traces, and reversible scripted-debugger history shall cover a commented
 example.
 
+## TOPAL-INTP-SUBSET-150 — Distinct final String from generator
+
+All interpreter modes shall traverse `Generator String Unit String`, preserving
+each yielded String and producing its distinct final String under
+`TOPAL-GENERATOR-FINAL-RETURN-001`. Formal traces, LSP validation, and reversible
+scripted-debugger history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-145 — Unconsumed custom generator parameter closure
 
 When a function does not consume its transferred custom Generator parameter,

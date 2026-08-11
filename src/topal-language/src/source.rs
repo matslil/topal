@@ -2424,13 +2424,13 @@ impl Execution {
         if !matches!(parameter_classifier, "Character" | "String")
             || !matches!(yield_classifier, "Character" | "String")
             || self.source.slice(resumed) != "Unit"
-            || !matches!(result_classifier, "Unit" | "Character")
+            || !matches!(result_classifier, "Unit" | "Character" | "String")
         {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-SIGNATURE",
                 span,
-                "the implemented generator subset requires Character or String input/yield, Unit resume, and Unit or Character return",
+                "the implemented generator subset requires Character or String input/yield, Unit resume, and Unit, Character, or String return",
             ));
         }
         if !supported_generator_body(&self.source, body) {
@@ -4154,6 +4154,8 @@ fn supported_value_classifier(classifier: &str) -> bool {
             | "Generator Character Unit Character"
             | "Generator String Unit Unit"
             | "Generator String Unit Character"
+            | "Generator String Unit String"
+            | "Generator Character Unit String"
             | "Int"
             | "Nat"
             | "Range Int"
@@ -4219,12 +4221,22 @@ fn value_classifier(value: &Value) -> &'static str {
             yield_classifier,
             return_classifier,
             ..
+        } if yield_classifier == "String" && return_classifier == "String" => {
+            "Generator String Unit String"
+        }
+        Value::SuspendedCharacterGenerator {
+            yield_classifier,
+            return_classifier,
+            ..
         } if yield_classifier == "String" && return_classifier == "Character" => {
             "Generator String Unit Character"
         }
         Value::SuspendedCharacterGenerator {
             yield_classifier, ..
         } if yield_classifier == "String" => "Generator String Unit Unit",
+        Value::SuspendedCharacterGenerator {
+            return_classifier, ..
+        } if return_classifier == "String" => "Generator Character Unit String",
         Value::SuspendedCharacterGenerator {
             return_classifier, ..
         } if return_classifier == "Character" => "Generator Character Unit Character",
@@ -8200,6 +8212,28 @@ fn custom_generator_yields_strings() {
         trace
             .iter()
             .any(|event| event.contains("Generator String Unit Unit"))
+    );
+}
+
+#[test]
+fn custom_generator_returns_distinct_string() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "text-result is generator ( initial : String )\n  yields String\n  resumes Unit\n  -> String\n\n  _ is yield initial\n  \"done\"\ngenerated is text-result \"item\"\ngenerated foreach { text }\n  _ is empty? text\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("done".into()));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("Generator String Unit String"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-GENERATOR-FINAL-RETURN-001"))
     );
 }
 
