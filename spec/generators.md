@@ -24,9 +24,9 @@ resumable function with those four classifiers. Applying it binds the initial
 operand and produces a fresh linear `Generator Yield Resume Return` value.
 
 The first executable subset is conforming only in the root namespace, for one
-`Boolean`, `Character`, or `String` input, one or more discarded `_ is yield
+`Boolean`, `Character`, `Int`, or `String` input, one or more discarded `_ is yield
 value` statements, and a final expression. Yield and return classifiers may be
-`Boolean`, `Character`, or `String`; Unit is additionally a valid return
+`Boolean`, `Character`, `Int`, or `String`; Unit is additionally a valid return
 classifier, and the resume classifier is Unit. Its generator provenance is the
 declaration's qualified name. An intrinsic error raised while executing this
 root declaration has `Error.domain = root`; that domain is independent of the
@@ -47,6 +47,9 @@ final String.
 Boolean input, yield, and final-return directions behave identically. In
 particular, traversal of `Generator Boolean Unit Boolean` shall bind each
 yielded Boolean to the action and produce the distinct final Boolean.
+
+Int is likewise supported independently in all three value directions and
+retains its arbitrary-precision runtime representation across suspension.
 
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 

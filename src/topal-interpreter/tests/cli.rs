@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 98);
+    assert_eq!(examples.len(), 99);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2788,6 +2788,20 @@ fn every_mode_traverses_boolean_generator_values() {
     assert!(trace.contains("Generator Boolean Unit Boolean"));
     assert!(trace.contains("generator.yielded") && trace.contains("Boolean"));
     assert!(trace.contains("TOPAL-GENERATOR-FINAL-RETURN-001"));
+}
+
+#[test]
+fn every_mode_traverses_arbitrary_precision_int_generator_values() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-int-values.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"1000000000000000000000000000000\n")
+        );
+    }
 }
 
 #[test]
