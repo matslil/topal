@@ -1296,6 +1296,16 @@ rejected. Diagnostics shall report the found argument classifier and available
 signatures. Syntax, LSP, formal traces, reversible debugger history, and a
 commented example shall cover unary and binary overloads.
 
+## TOPAL-INTP-SUBSET-173 — Foreach final-result binding
+
+All interpreter modes shall support binding the distinct final return of direct
+generator foreach under `TOPAL-GENERATOR-FOREACH-RESULT-001`. The binding shall
+be created after traversal completes and remain available to later statements.
+An explicit result classifier shall be validated before binding and mismatch
+diagnostics shall report expected and structurally found classifiers.
+Syntax, LSP, formal traces, reversible debugger history, and the overload
+example shall cover two differently classified final results.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

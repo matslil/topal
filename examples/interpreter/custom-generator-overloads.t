@@ -4,10 +4,10 @@
 select is generator ( value : Int )
   yields Int
   resumes Unit
-  -> Unit
+  -> String
 
   _ is yield value
-  ()
+  "unary"
 
 select is generator ( value : Int, suffix : String )
   yields String
@@ -19,8 +19,9 @@ select is generator ( value : Int, suffix : String )
   "binary"
 
 unary-generated is select 7
-unary-generated foreach { value }
+unary-result : String is unary-generated foreach { value }
   _ is value + 1
 binary-generated is select (7, "item")
-binary-generated foreach { value }
+binary-result : String is binary-generated foreach { value }
   _ is empty? value
+(unary-result, binary-result)

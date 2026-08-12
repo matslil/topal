@@ -143,6 +143,7 @@ pub enum Statement {
         span: Span,
     },
     Foreach {
+        result: Option<(Span, Option<Span>)>,
         source: Expression,
         binding: Span,
         body: Vec<Statement>,
@@ -351,9 +352,36 @@ impl Parser<'_> {
 
     fn foreach_statement(&mut self) -> Option<Statement> {
         let separator_index = self.foreach_separator_index()?;
+        let mut source_start = self.cursor;
+        let mut result = None;
+        let nontrivia = self.tokens[self.cursor..separator_index]
+            .iter()
+            .enumerate()
+            .filter(|(_, token)| !token.kind.is_trivia())
+            .collect::<Vec<_>>();
+        if let Some((_, first)) = nontrivia.first()
+            && first.kind == TokenKind::Identifier
+            && let Some((is_position, (is_offset, _))) =
+                nontrivia.iter().enumerate().find(|(_, (_, token))| {
+                    token.kind == TokenKind::Identifier && self.source.slice(token.span) == "is"
+                })
+        {
+            let classifier = if is_position == 1 {
+                None
+            } else if is_position >= 3 && nontrivia[1].1.kind == TokenKind::Colon {
+                Some(Span::new(
+                    nontrivia[2].1.span.start,
+                    nontrivia[is_position - 1].1.span.end,
+                ))
+            } else {
+                return None;
+            };
+            result = Some((first.span, classifier));
+            source_start = self.cursor + is_offset + 1;
+        }
         let mut source_parser = Self {
             source: self.source,
-            tokens: &self.tokens[self.cursor..separator_index],
+            tokens: &self.tokens[source_start..separator_index],
             cursor: 0,
             delimiter_depth: 0,
             diagnostics: Vec::new(),
@@ -403,8 +431,10 @@ impl Parser<'_> {
         }
         let body = self.indented_function_body(indent.span.end - indent.span.start)?;
         let end = statement_span(body.last().expect("foreach body is nonempty")).end;
+        let start = result.map_or(source_expression.span().start, |(name, _)| name.start);
         Some(Statement::Foreach {
-            span: Span::new(source_expression.span().start, end),
+            span: Span::new(start, end),
+            result,
             source: source_expression,
             binding: binding.span,
             body,
@@ -2094,6 +2124,42 @@ mod tests {
         assert_eq!(parameters.len(), 2);
         assert_eq!(source.slice(parameters[0].classifier), "Int");
         assert_eq!(source.slice(parameters[1].classifier), "String");
+    }
+
+    #[test]
+    fn parses_foreach_result_binding() {
+        let source =
+            SourceText::new("result is generated foreach { value }\n  _ is value + 1").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Foreach {
+            result,
+            source: generator,
+            ..
+        } = &parsed.statements[0]
+        else {
+            panic!("expected foreach");
+        };
+        assert_eq!(source.slice(result.unwrap().0), "result");
+        assert_eq!(source.slice(generator.span()), "generated");
+    }
+
+    #[test]
+    fn parses_classified_foreach_result_binding() {
+        let source =
+            SourceText::new("result : String is generated foreach { value }\n  _ is value + 1")
+                .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Foreach {
+            result: Some((name, Some(classifier))),
+            ..
+        } = &parsed.statements[0]
+        else {
+            panic!("expected classified foreach result");
+        };
+        assert_eq!(source.slice(*name), "result");
+        assert_eq!(source.slice(*classifier), "String");
     }
 
     #[test]

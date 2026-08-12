@@ -1869,7 +1869,8 @@ fn records_generator_overload_selection_reversibly() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert_eq!(stdout.matches("generator.selected").count(), 2);
     assert!(stdout.contains("Int, String"));
-    assert!(stdout.contains("\"binary\""));
+    assert_eq!(stdout.matches("generator.foreach.result.bound").count(), 2);
+    assert!(stdout.contains("(\"unary\", \"binary\")"));
 }
 
 #[test]

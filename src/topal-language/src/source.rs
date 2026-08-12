@@ -2589,11 +2589,51 @@ impl Execution {
                 },
             )?,
             Statement::Foreach {
+                result,
                 source,
                 binding,
                 body,
                 span,
-            } => self.execute_foreach(session, trace, source, *binding, body, *span)?,
+            } => {
+                let (value, span) =
+                    self.execute_foreach(session, trace, source, *binding, body, *span)?;
+                if let Some((result, classifier)) = result {
+                    let name = self.source.slice(*result);
+                    if session.declared_names.contains(name) {
+                        return Err(diagnostic(
+                            &self.source,
+                            "E-DUPLICATE-BINDING",
+                            *result,
+                            "name is already bound in this scope",
+                        ));
+                    }
+                    if let Some(classifier) = classifier {
+                        let expected = self.source.slice(*classifier);
+                        if !value_has_classifier(&value, expected) {
+                            let found = structural_value_classifier(&value);
+                            return Err(diagnostic(
+                                &self.source,
+                                "E-FOREACH-RESULT-CLASSIFIER",
+                                *classifier,
+                                format!(
+                                    "foreach returned `{found}`, but binding `{name}` requires `{expected}`"
+                                ),
+                            )
+                            .with_help(format!(
+                                "use classifier `{found}` here or traverse a generator returning `{expected}`"
+                            )));
+                        }
+                    }
+                    session.bindings.insert(name.to_owned(), value.clone());
+                    session.declared_names.insert(name.to_owned());
+                    trace.record(TraceEvent {
+                        event: "generator.foreach.result.bound",
+                        rule: "TOPAL-GENERATOR-FOREACH-RESULT-001",
+                        detail: name,
+                    });
+                }
+                (value, span)
+            }
             Statement::Discard { span, value } => {
                 self.execute_discard(session, trace, *span, value)?
             }
@@ -8786,7 +8826,7 @@ fn custom_generator_selects_unary_and_binary_overloads() {
             &mut trace,
         )
         .unwrap();
-    assert_eq!(value, Value::String("binary".into()));
+    assert_eq!(value.to_string(), "(\"unary\", \"binary\")");
     assert_eq!(
         trace
             .iter()
@@ -8819,6 +8859,30 @@ fn generator_overload_error_lists_available_inputs() {
     assert_eq!(error.code, "E-NO-APPLICABLE-GENERATOR");
     assert!(error.message.contains("Boolean"));
     assert!(error.help.as_deref().unwrap().contains("Int"));
+}
+
+#[test]
+fn foreach_result_binding_is_available_to_later_statements() {
+    let value = Session::new()
+        .evaluate(
+            "once is generator ( initial : Int )\n  yields Int\n  resumes Unit\n  -> String\n\n  _ is yield initial\n  \"done\"\ngenerated is once 7\nresult is generated foreach { value }\n  _ is value + 1\nempty? result\n",
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(value, Value::Boolean(false));
+}
+
+#[test]
+fn classified_foreach_result_reports_mismatch() {
+    let error = Session::new()
+        .evaluate(
+            "once is generator ( initial : Int )\n  yields Int\n  resumes Unit\n  -> String\n\n  _ is yield initial\n  \"done\"\ngenerated is once 7\nresult : Int is generated foreach { value }\n  _ is value + 1\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-FOREACH-RESULT-CLASSIFIER");
+    assert!(error.message.contains("returned `String`"));
+    assert!(error.message.contains("requires `Int`"));
 }
 
 #[test]

@@ -3006,11 +3006,12 @@ fn every_mode_selects_generator_overloads() {
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
-        assert!(output.stdout.ends_with(b"\"binary\"\n"));
+        assert!(output.stdout.ends_with(b"(\"unary\", \"binary\")\n"));
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("generator.selected"));
     assert!(trace.contains("generator.argument.bound"));
+    assert_eq!(trace.matches("generator.foreach.result.bound").count(), 2);
     assert!(trace.contains("Int, String"));
 }
 

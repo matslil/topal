@@ -127,6 +127,15 @@ Direct foreach over a custom `Generator Character Unit Unit` shall observe its
 yields in source order, invoke the Unit-returning action once for each value,
 resume with Unit after every action, and produce the generator's final Unit.
 
+### TOPAL-GENERATOR-FOREACH-RESULT-001 — Traversal result binding
+
+`result is generator-value foreach { value } action` shall consume the
+generator, bind its distinct final return to `result`, and make that binding
+visible to subsequent statements in the same scope. The binding occurs only
+after the final generator return and shall not change yield-action ordering.
+The classified form `result : Return is ...` shall validate the final value
+against `Return` before introducing the binding.
+
 ### TOPAL-GENERATOR-LOCAL-BINDING-001 — Generator-local state
 
 An ordinary binding in a generator body shall be evaluated in the generator's
