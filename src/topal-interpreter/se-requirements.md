@@ -1259,6 +1259,15 @@ and final-return boundaries. The shared classifier validation used by ordinary
 functions and generators shall preserve the nominal enum identity. LSP, formal
 trace, and reversible debugger coverage shall use a commented example.
 
+## TOPAL-INTP-SUBSET-169 — Generator final decisions and diagnostics
+
+All interpreter modes shall evaluate a final decision table after generator
+resumption and use its selected action as the final return. Formal trace and
+reversible debugger history shall expose resumption, decision selection, and
+return in order. Generator yield and return mismatches shall report both the
+expected and structurally found classifiers with actionable help. LSP and a
+commented example shall cover the valid form.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
