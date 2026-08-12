@@ -643,6 +643,12 @@ impl Parser<'_> {
             return None;
         }
         if self.source.slice(first.span) == "Result" {
+            if !self
+                .peek_nontrivia()
+                .is_some_and(|token| token.kind == TokenKind::LeftParen)
+            {
+                return Some(first.span);
+            }
             let opening = self.take_nontrivia()?;
             if opening.kind != TokenKind::LeftParen {
                 return None;
@@ -661,25 +667,14 @@ impl Parser<'_> {
             return Some(Span::new(first.span.start, end));
         }
         if matches!(self.source.slice(first.span), "Optional" | "Range") {
-            let payload = self.take_nontrivia()?;
-            if payload.kind == TokenKind::LeftParen {
-                let mut depth = 1_usize;
-                let mut end = payload.span.end;
-                while depth > 0 {
-                    let token = self.take_nontrivia()?;
-                    match token.kind {
-                        TokenKind::LeftParen => depth += 1,
-                        TokenKind::RightParen => depth -= 1,
-                        _ => {}
-                    }
-                    end = token.span.end;
-                }
-                return Some(Span::new(first.span.start, end));
-            }
-            if payload.kind != TokenKind::Identifier {
-                return None;
-            }
-            return Some(Span::new(first.span.start, payload.span.end));
+            let payload = self.generator_classifier()?;
+            return Some(Span::new(first.span.start, payload.end));
+        }
+        if self.source.slice(first.span) == "Generator" {
+            let _yielded = self.generator_classifier()?;
+            let _resumed = self.generator_classifier()?;
+            let returned = self.generator_classifier()?;
+            return Some(Span::new(first.span.start, returned.end));
         }
         Some(first.span)
     }
@@ -711,12 +706,6 @@ impl Parser<'_> {
     }
 
     fn function_result(&mut self, first: Token) -> Option<Span> {
-        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "Generator" {
-            let _yielded = self.generator_classifier()?;
-            let _resumed = self.generator_classifier()?;
-            let returned = self.generator_classifier()?;
-            return Some(Span::new(first.span.start, returned.end));
-        }
         self.classifier_from_first(first)
     }
 
@@ -1190,77 +1179,15 @@ impl Parser<'_> {
                 break input;
             }
             let colon = self.take_nontrivia()?;
-            let mut classifier = self.take_nontrivia()?;
-            let mut separator = self.take_nontrivia()?;
-            if classifier.kind == TokenKind::LeftParen {
-                let mut depth = 1_usize;
-                while depth > 0 {
-                    match separator.kind {
-                        TokenKind::LeftParen => depth += 1,
-                        TokenKind::RightParen => depth -= 1,
-                        _ => {}
-                    }
-                    classifier.span = Span::new(classifier.span.start, separator.span.end);
-                    if depth > 0 {
-                        separator = self.take_nontrivia()?;
-                    }
-                }
-                separator = self.take_nontrivia()?;
-                classifier.kind = TokenKind::Identifier;
-            }
-            if classifier.kind == TokenKind::Identifier
-                && self.source.slice(classifier.span) == "Result"
-                && separator.kind == TokenKind::LeftParen
-            {
-                let mut depth = 1_usize;
-                classifier.span = Span::new(classifier.span.start, separator.span.end);
-                while depth > 0 {
-                    separator = self.take_nontrivia()?;
-                    match separator.kind {
-                        TokenKind::LeftParen => depth += 1,
-                        TokenKind::RightParen => depth -= 1,
-                        _ => {}
-                    }
-                    classifier.span = Span::new(classifier.span.start, separator.span.end);
-                }
-                separator = self.take_nontrivia()?;
-            }
-            if classifier.kind == TokenKind::Identifier
-                && matches!(self.source.slice(classifier.span), "Range" | "Optional")
-                && separator.kind == TokenKind::Identifier
-            {
-                classifier.span = Span::new(classifier.span.start, separator.span.end);
-                separator = self.take_nontrivia()?;
-            }
-            if classifier.kind == TokenKind::Identifier
-                && matches!(self.source.slice(classifier.span), "Range" | "Optional")
-                && separator.kind == TokenKind::LeftParen
-            {
-                let mut depth = 1_usize;
-                classifier.span = Span::new(classifier.span.start, separator.span.end);
-                while depth > 0 {
-                    separator = self.take_nontrivia()?;
-                    match separator.kind {
-                        TokenKind::LeftParen => depth += 1,
-                        TokenKind::RightParen => depth -= 1,
-                        _ => {}
-                    }
-                    classifier.span = Span::new(classifier.span.start, separator.span.end);
-                }
-                separator = self.take_nontrivia()?;
-            }
-            if classifier.kind == TokenKind::Identifier
-                && self.source.slice(classifier.span) == "Generator"
-            {
-                let _yielded = self.classifier_from_first(separator)?;
-                let _resumed = self.generator_classifier()?;
-                let returned = self.generator_classifier()?;
-                classifier.span = Span::new(classifier.span.start, returned.end);
-                separator = self.take_nontrivia()?;
-            }
+            let classifier_start = self.take_nontrivia()?;
+            let classifier = self.classifier_from_first(classifier_start)?;
+            let separator = self.take_nontrivia()?;
             if input.kind != TokenKind::Identifier
                 || colon.kind != TokenKind::Colon
-                || classifier.kind != TokenKind::Identifier
+                || !matches!(
+                    classifier_start.kind,
+                    TokenKind::Identifier | TokenKind::LeftParen
+                )
                 || !matches!(separator.kind, TokenKind::Comma | TokenKind::RightParen)
             {
                 self.diagnostics.push(SyntaxDiagnostic {
@@ -1275,7 +1202,7 @@ impl Parser<'_> {
             }
             parameters.push(FunctionParameter {
                 name: input.span,
-                classifier: classifier.span,
+                classifier,
             });
             if separator.kind == TokenKind::RightParen {
                 break separator;
@@ -2202,6 +2129,16 @@ mod tests {
     fn parses_compound_generator_function_classifiers() {
         let source = SourceText::new(include_str!(
             "../../../examples/interpreter/custom-generator-compound-function-boundaries.t"
+        ))
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
+    fn parses_nested_generator_function_classifiers() {
+        let source = SourceText::new(include_str!(
+            "../../../examples/interpreter/custom-generator-nested-function-boundaries.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));

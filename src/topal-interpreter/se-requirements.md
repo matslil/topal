@@ -1325,6 +1325,14 @@ structure through suspension, function ownership transfer, traversal, and
 final-result binding. Syntax, LSP, formal traces, reversible debugger history,
 and a commented example shall cover the feature.
 
+## TOPAL-INTP-SUBSET-176 — Nested generator function classifiers
+
+All interpreter modes shall parse, validate, and transfer generator values whose
+yield and return directions recursively compose supported `Optional`, product,
+and `Result` classifiers. The parser shall preserve constructor boundaries when
+whitespace occurs inside a direction classifier. Syntax, LSP, formal traces,
+reversible debugger history, and a commented example shall cover the feature.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
