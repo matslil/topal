@@ -82,6 +82,10 @@ The language-defined nominal `Comparison` enum may cross every generator value
 direction while retaining its identity and `Less`, `Equal`, or `Greater`
 alternative.
 
+Supported generator classifiers compose recursively. For example,
+`Optional (Int, String)` preserves both the Optional alternative and the
+positional product's component order and classifiers across suspension.
+
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 
 A generator continuation may execute ordinary binding and discarded-computation

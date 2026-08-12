@@ -625,6 +625,20 @@ impl Parser<'_> {
         }
         if matches!(self.source.slice(first.span), "Optional" | "Range") {
             let payload = self.take_nontrivia()?;
+            if payload.kind == TokenKind::LeftParen {
+                let mut depth = 1_usize;
+                let mut end = payload.span.end;
+                while depth > 0 {
+                    let token = self.take_nontrivia()?;
+                    match token.kind {
+                        TokenKind::LeftParen => depth += 1,
+                        TokenKind::RightParen => depth -= 1,
+                        _ => {}
+                    }
+                    end = token.span.end;
+                }
+                return Some(Span::new(first.span.start, end));
+            }
             if payload.kind != TokenKind::Identifier {
                 return None;
             }
@@ -1160,6 +1174,7 @@ impl Parser<'_> {
         parsed
     }
 
+    #[allow(clippy::too_many_lines)] // Classifier forms are parsed explicitly for precise spans.
     fn static_function_parameters_inner(
         &mut self,
         opening: Token,
@@ -1211,6 +1226,23 @@ impl Parser<'_> {
                 && separator.kind == TokenKind::Identifier
             {
                 classifier.span = Span::new(classifier.span.start, separator.span.end);
+                separator = self.take_nontrivia()?;
+            }
+            if classifier.kind == TokenKind::Identifier
+                && matches!(self.source.slice(classifier.span), "Range" | "Optional")
+                && separator.kind == TokenKind::LeftParen
+            {
+                let mut depth = 1_usize;
+                classifier.span = Span::new(classifier.span.start, separator.span.end);
+                while depth > 0 {
+                    separator = self.take_nontrivia()?;
+                    match separator.kind {
+                        TokenKind::LeftParen => depth += 1,
+                        TokenKind::RightParen => depth -= 1,
+                        _ => {}
+                    }
+                    classifier.span = Span::new(classifier.span.start, separator.span.end);
+                }
                 separator = self.take_nontrivia()?;
             }
             if classifier.kind == TokenKind::Identifier
@@ -2107,6 +2139,16 @@ mod tests {
     fn parses_result_generator_classifiers() {
         let source = SourceText::new(include_str!(
             "../../../examples/interpreter/custom-generator-result-values.t"
+        ))
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
+    fn parses_nested_optional_generator_classifiers() {
+        let source = SourceText::new(include_str!(
+            "../../../examples/interpreter/custom-generator-nested-optional-values.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));
