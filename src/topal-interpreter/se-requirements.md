@@ -1388,6 +1388,14 @@ supported product or another List through construction, function boundaries,
 equality, and projection. LSP, formal traces, reversible debugger history, and
 a commented example shall cover nested Lists of positional products.
 
+## TOPAL-INTP-SUBSET-184 — List containment laws
+
+All interpreter modes shall distinguish `contains-entry`, consecutive
+`contains-sequence`, and gap-permitting ordered `contains-subsequence` for Lists.
+Classifier and equality failures shall be source-located. LSP, formal traces,
+reversible debugger history, and a commented example shall cover true and false
+outcomes for all three laws.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

@@ -1868,7 +1868,12 @@ impl Session {
                     if let Expression::Identifier(callable_span) = &items[index]
                         && matches!(
                             source.slice(*callable_span),
-                            "prepend" | "append" | "concat"
+                            "prepend"
+                                | "append"
+                                | "concat"
+                                | "contains-entry"
+                                | "contains-sequence"
+                                | "contains-subsequence"
                         )
                         && matches!(result, Value::List { .. })
                     {
@@ -5597,6 +5602,17 @@ fn apply_list_operation(
     else {
         unreachable!("List operation is dispatched only for a List left operand")
     };
+    if operation.starts_with("contains-") {
+        return apply_list_containment(
+            source,
+            operation,
+            &element_classifier,
+            &entries,
+            right,
+            right_span,
+            trace,
+        );
+    }
     match operation {
         "prepend" | "append" => {
             if !value_has_classifier(&right, &element_classifier) {
@@ -5671,6 +5687,121 @@ fn apply_list_operation(
         element_classifier,
         entries,
     })
+}
+
+fn apply_list_containment(
+    source: &SourceText,
+    operation: &str,
+    element_classifier: &str,
+    entries: &[Value],
+    right: Value,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let contained = if operation == "contains-entry" {
+        if !value_has_classifier(&right, element_classifier) {
+            let found = structural_value_classifier(&right);
+            return Err(diagnostic(
+                source,
+                "E-LIST-CONTAINMENT-CLASSIFIER",
+                right_span,
+                format!("contains-entry requires `{element_classifier}`, found `{found}`"),
+            ));
+        }
+        entries.iter().try_fold(false, |found, entry| {
+            values_equal(entry.clone(), right.clone(), trace).map(|equal| found || equal)
+        })
+    } else {
+        let Value::List {
+            element_classifier: right_classifier,
+            entries: pattern,
+        } = right
+        else {
+            return Err(diagnostic(
+                source,
+                "E-LIST-CONTAINMENT-OPERAND",
+                right_span,
+                format!("{operation} requires another List"),
+            ));
+        };
+        if right_classifier != element_classifier {
+            return Err(diagnostic(
+                source,
+                "E-LIST-CONTAINMENT-CLASSIFIER",
+                right_span,
+                format!("{operation} requires `List {element_classifier}`, found `List {right_classifier}`"),
+            ));
+        }
+        if operation == "contains-sequence" {
+            contains_consecutive(entries, &pattern, trace)
+        } else {
+            contains_ordered_subsequence(entries, &pattern, trace)
+        }
+    }
+    .ok_or_else(|| {
+        diagnostic(
+            source,
+            "E-LIST-CONTAINMENT-EQUALITY",
+            right_span,
+            format!("`{element_classifier}` does not provide equality required by {operation}"),
+        )
+    })?;
+    let classifier = format!("List {element_classifier}");
+    let selection = format!("root.{operation}({classifier})");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &selection,
+    });
+    let rule = match operation {
+        "contains-entry" => "TOPAL-LIST-CONTAINS-ENTRY-001",
+        "contains-sequence" => "TOPAL-LIST-CONTAINS-SEQUENCE-001",
+        "contains-subsequence" => "TOPAL-LIST-CONTAINS-SUBSEQUENCE-001",
+        _ => unreachable!("known List containment operation"),
+    };
+    trace.record(TraceEvent {
+        event: "list.containment.tested",
+        rule,
+        detail: if contained { "true" } else { "false" },
+    });
+    Ok(Value::Boolean(contained))
+}
+
+fn contains_consecutive(
+    entries: &[Value],
+    pattern: &[Value],
+    trace: &mut impl TraceSink,
+) -> Option<bool> {
+    if pattern.is_empty() {
+        return Some(true);
+    }
+    entries
+        .windows(pattern.len())
+        .try_fold(false, |found, window| {
+            window
+                .iter()
+                .zip(pattern)
+                .try_fold(true, |equal, (left, right)| {
+                    values_equal(left.clone(), right.clone(), trace).map(|item| equal && item)
+                })
+                .map(|equal| found || equal)
+        })
+}
+
+fn contains_ordered_subsequence(
+    entries: &[Value],
+    pattern: &[Value],
+    trace: &mut impl TraceSink,
+) -> Option<bool> {
+    let mut matched = 0;
+    for entry in entries {
+        if let Some(expected) = pattern.get(matched)
+            && values_equal(entry.clone(), expected.clone(), trace)?
+        {
+            matched += 1;
+        }
+    }
+    Some(matched == pattern.len())
 }
 
 fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<bool> {
@@ -9778,6 +9909,37 @@ fn recursive_list_classifiers_cross_function_boundaries() {
         value.to_string(),
         "(Some Entry ( (7, \"seven\"), Empty ), 1, true)"
     );
+}
+
+#[test]
+fn list_containment_distinguishes_entry_sequence_and_subsequence() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/list-containment.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(true, false, true, true, false, false)");
+    for rule in [
+        "TOPAL-LIST-CONTAINS-ENTRY-001",
+        "TOPAL-LIST-CONTAINS-SEQUENCE-001",
+        "TOPAL-LIST-CONTAINS-SUBSEQUENCE-001",
+    ] {
+        assert!(trace.iter().any(|event| event.contains(rule)), "{rule}");
+    }
+}
+
+#[test]
+fn list_containment_requires_compatible_classifiers() {
+    let error = Session::new()
+        .evaluate(
+            "numbers : List Int is one 1\ntexts : List String is one \"one\"\nnumbers contains-sequence texts\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-LIST-CONTAINMENT-CLASSIFIER");
+    assert!(error.message.contains("List String"));
 }
 
 #[test]
