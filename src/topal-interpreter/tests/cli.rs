@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 114);
+    assert_eq!(examples.len(), 115);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2983,6 +2983,21 @@ fn every_mode_retains_generator_local_function() {
     let resumed = trace.find("generator.resumed").unwrap();
     let entered = trace.rfind("function.entered").unwrap();
     assert!(declared_enum < resumed && resumed < entered);
+}
+
+#[test]
+fn every_mode_restores_generator_local_close_handler() {
+    let source =
+        include_str!("../../../examples/interpreter/custom-generator-local-close-handler.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    let close_bound = trace.find("generator.close.bound").unwrap();
+    let entered = trace.rfind("function.entered").unwrap();
+    let closed = trace.find("generator.closed").unwrap();
+    assert!(close_bound < entered && entered < closed);
+    assert!(trace.contains("domain=root;code=generator-closed;generator=root.handle-close"));
 }
 
 #[test]

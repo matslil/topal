@@ -1277,6 +1277,15 @@ shall not escape to the consumer scope. The shared continuation snapshot used
 by the scripted debugger shall retain this state reversibly. LSP, formal trace,
 and commented examples shall cover the feature.
 
+## TOPAL-INTP-SUBSET-171 — Local declarations during generator close
+
+All interpreter modes shall restore continuation-local enum and function state
+when abandonment delivers `generator-closed`. A matching close-result action
+may call the retained function with a retained nominal alternative before the
+generator finishes. Formal traces and reversible debugger history shall expose
+close binding, decision selection, local call, and completion in order. LSP and
+commented examples shall cover the feature.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
