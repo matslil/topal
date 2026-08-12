@@ -1359,6 +1359,7 @@ impl Session {
                             | Value::CharacterReturningGenerator { .. }
                             | Value::SuspendedGenerator { .. }
                     ) {
+                        let classifier = structural_value_classifier(&argument);
                         trace.record(TraceEvent {
                             event: "generator.parameter.transferred",
                             rule: if matches!(argument, Value::SuspendedGenerator { .. }) {
@@ -1366,7 +1367,7 @@ impl Session {
                             } else {
                                 "TOPAL-STRING-CHARACTERS-PARAMETER-001"
                             },
-                            detail: value_classifier(&argument),
+                            detail: &classifier,
                         });
                     }
                     let signature = function_signature(name, &function);
@@ -1493,6 +1494,7 @@ impl Session {
                             | Value::CharacterReturningGenerator { .. }
                             | Value::SuspendedGenerator { .. }
                     ) {
+                        let classifier = structural_value_classifier(&value);
                         trace.record(TraceEvent {
                             event: "generator.function.returned",
                             rule: if matches!(value, Value::SuspendedGenerator { .. }) {
@@ -1500,7 +1502,7 @@ impl Session {
                             } else {
                                 "TOPAL-STRING-CHARACTERS-RESULT-001"
                             },
-                            detail: value_classifier(&value),
+                            detail: &classifier,
                         });
                     }
                     trace.record(TraceEvent {
@@ -2654,10 +2656,11 @@ impl Execution {
                     self.return_classifier.as_deref(),
                     trace,
                 )?;
+                let classifier = structural_value_classifier(&value);
                 trace.record(TraceEvent {
                     event: "function.return.explicit",
                     rule: "TOPAL-FUNCTION-RETURN-001",
-                    detail: value_classifier(&value),
+                    detail: &classifier,
                 });
                 session.checkpoint(trace, Some(&value), Some(span));
                 self.cursor = self.statements.len();
@@ -4509,10 +4512,11 @@ fn expected_statement(input: &str) -> Diagnostic {
 }
 
 fn record_result(trace: &mut impl TraceSink, value: &Value) {
+    let classifier = structural_value_classifier(value);
     trace.record(TraceEvent {
         event: "evaluation.result",
         rule: "TOPAL-SYN-GRAMMAR-001",
-        detail: value_classifier(value),
+        detail: &classifier,
     });
 }
 
@@ -4573,6 +4577,11 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::Optional {
             payload_classifier, ..
         } => format!("Optional {payload_classifier}"),
+        Value::SuspendedGenerator {
+            yield_classifier,
+            return_classifier,
+            ..
+        } => format!("Generator {yield_classifier} Unit {return_classifier}"),
         Value::Enum { type_name, .. } => type_name.clone(),
         _ => value_classifier(value).to_owned(),
     }
@@ -8988,15 +8997,23 @@ fn compound_generator_crosses_function_boundaries() {
 
 #[test]
 fn nested_generator_crosses_function_boundaries() {
+    let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
             include_str!(
                 "../../../examples/interpreter/custom-generator-nested-function-boundaries.t"
             ),
-            &mut Vec::new(),
+            &mut trace,
         )
         .unwrap();
     assert_eq!(value.to_string(), "(8, \"done\")");
+    let classifier = "Generator Optional (Int, String) Unit Result ((Int, String), lang arithmetic ArithmeticErrorCode)";
+    assert!(trace.iter().any(|event| {
+        event.contains("generator.function.returned") && event.contains(classifier)
+    }));
+    assert!(trace.iter().any(|event| {
+        event.contains("generator.parameter.transferred") && event.contains(classifier)
+    }));
 }
 
 #[test]

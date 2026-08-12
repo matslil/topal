@@ -3058,9 +3058,13 @@ fn every_mode_transfers_nested_generator_function_boundaries() {
         assert!(output.stdout.ends_with(b"(8, \"done\")\n"));
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
-    assert!(trace.contains("Generator Optional (Int, String) Unit Result"));
-    assert!(trace.contains("generator.function.returned"));
-    assert!(trace.contains("generator.parameter.transferred"));
+    let classifier = "Generator Optional (Int, String) Unit Result ((Int, String), lang arithmetic ArithmeticErrorCode)";
+    assert!(trace.contains(&format!(
+        "\"event\":\"generator.function.returned\",\"rule\":\"TOPAL-GENERATOR-FUNCTION-RESULT-001\",\"detail\":\"{classifier}\""
+    )));
+    assert!(trace.contains(&format!(
+        "\"event\":\"generator.parameter.transferred\",\"rule\":\"TOPAL-GENERATOR-FUNCTION-PARAMETER-001\",\"detail\":\"{classifier}\""
+    )));
 }
 
 #[test]
