@@ -98,6 +98,12 @@ A generator continuation may execute ordinary binding and discarded-computation
 statements between yields. Statements following a yield execute only after its
 next successful resumption and before the next yield or final return.
 
+### TOPAL-GENERATOR-FINAL-DECISION-001 — Decision-based final return
+
+A final decision table in a generator body shall evaluate after the preceding
+yield is resumed. Exactly one selected action becomes the generator's final
+return and shall satisfy the declared return classifier.
+
 ### TOPAL-GENERATOR-EXPLICIT-RETURN-001 — Explicit generator return
 
 `return value` in a generator shall finish that generator with its declared

@@ -40,7 +40,7 @@ pub enum Value {
         returned: String,
         origin: String,
     },
-    SuspendedCharacterGenerator {
+    SuspendedGenerator {
         source: SourceText,
         body: Vec<Statement>,
         cursor: usize,
@@ -102,7 +102,7 @@ impl fmt::Display for Value {
             Self::CharacterReturningGenerator { .. } => {
                 formatter.write_str("<Generator Character Unit Character>")
             }
-            Self::SuspendedCharacterGenerator {
+            Self::SuspendedGenerator {
                 yield_classifier,
                 return_classifier,
                 ..
@@ -1269,7 +1269,7 @@ impl Session {
                         trace,
                     )?;
                     let origin = format!("root.{name}");
-                    let value = Value::SuspendedCharacterGenerator {
+                    let value = Value::SuspendedGenerator {
                         source: generator.source,
                         body: generator.body,
                         cursor,
@@ -1323,11 +1323,11 @@ impl Session {
                         argument,
                         Value::CharacterGenerator { .. }
                             | Value::CharacterReturningGenerator { .. }
-                            | Value::SuspendedCharacterGenerator { .. }
+                            | Value::SuspendedGenerator { .. }
                     ) {
                         trace.record(TraceEvent {
                             event: "generator.parameter.transferred",
-                            rule: if matches!(argument, Value::SuspendedCharacterGenerator { .. }) {
+                            rule: if matches!(argument, Value::SuspendedGenerator { .. }) {
                                 "TOPAL-GENERATOR-FUNCTION-PARAMETER-001"
                             } else {
                                 "TOPAL-STRING-CHARACTERS-PARAMETER-001"
@@ -1457,11 +1457,11 @@ impl Session {
                         value,
                         Value::CharacterGenerator { .. }
                             | Value::CharacterReturningGenerator { .. }
-                            | Value::SuspendedCharacterGenerator { .. }
+                            | Value::SuspendedGenerator { .. }
                     ) {
                         trace.record(TraceEvent {
                             event: "generator.function.returned",
-                            rule: if matches!(value, Value::SuspendedCharacterGenerator { .. }) {
+                            rule: if matches!(value, Value::SuspendedGenerator { .. }) {
                                 "TOPAL-GENERATOR-FUNCTION-RESULT-001"
                             } else {
                                 "TOPAL-STRING-CHARACTERS-RESULT-001"
@@ -2007,7 +2007,7 @@ impl Execution {
                         diagnostic(&self.source, "E-UNBOUND-NAME", *name, "name is not bound")
                     }
                 })?;
-                if let Value::SuspendedCharacterGenerator { .. } = value {
+                if let Value::SuspendedGenerator { .. } = value {
                     session.declared_names.remove(name_text);
                     session.consumed_names.insert(name_text.to_owned());
                     trace.record(TraceEvent {
@@ -2131,7 +2131,7 @@ impl Execution {
         body: &[Statement],
         span: Span,
     ) -> Result<(Value, Span), Diagnostic> {
-        let Value::SuspendedCharacterGenerator {
+        let Value::SuspendedGenerator {
             source,
             body: generator_body,
             ref mut cursor,
@@ -3089,11 +3089,14 @@ fn advance_custom_generator(
         if let Some((binding, expression)) = yielded_statement(source, statement) {
             let value = scope.evaluate_expression(source, expression, trace)?;
             if !value_has_classifier(&value, yield_classifier) {
-                return Err(diagnostic(
+                return Err(generator_classifier_diagnostic(
                     source,
                     "E-GENERATOR-YIELD-TYPE",
                     expression.span(),
-                    format!("generator `{name}` must yield `{yield_classifier}`"),
+                    name,
+                    "yielded",
+                    yield_classifier,
+                    &value,
                 ));
             }
             *pending_yield = Some(Box::new(value));
@@ -3108,11 +3111,14 @@ fn advance_custom_generator(
         if let Statement::Expression(expression) = statement {
             let value = scope.evaluate_expression(source, expression, trace)?;
             if !value_has_classifier(&value, return_classifier) {
-                return Err(diagnostic(
+                return Err(generator_classifier_diagnostic(
                     source,
                     "E-GENERATOR-RETURN-TYPE",
                     expression.span(),
-                    format!("generator `{name}` must return `{return_classifier}`"),
+                    name,
+                    "returned",
+                    return_classifier,
+                    &value,
                 ));
             }
             *returned = Some(value);
@@ -3124,11 +3130,14 @@ fn advance_custom_generator(
         {
             let value = scope.evaluate_expression(source, expression, trace)?;
             if !value_has_classifier(&value, return_classifier) {
-                return Err(diagnostic(
+                return Err(generator_classifier_diagnostic(
                     source,
                     "E-GENERATOR-RETURN-TYPE",
                     expression.span(),
-                    format!("generator `{name}` must return `{return_classifier}`"),
+                    name,
+                    "returned",
+                    return_classifier,
+                    &value,
                 ));
             }
             trace.record(TraceEvent {
@@ -3218,7 +3227,7 @@ fn consume_generator_argument(source: &SourceText, session: &mut Session, expres
             Some(
                 Value::CharacterGenerator { .. }
                     | Value::CharacterReturningGenerator { .. }
-                    | Value::SuspendedCharacterGenerator { .. }
+                    | Value::SuspendedGenerator { .. }
             )
         )
     {
@@ -3241,7 +3250,7 @@ fn close_remaining_character_generators(
                 value,
                 Value::CharacterGenerator { .. }
                     | Value::CharacterReturningGenerator { .. }
-                    | Value::SuspendedCharacterGenerator { .. }
+                    | Value::SuspendedGenerator { .. }
             )
         })
         .map(|(name, _)| name.clone())
@@ -3256,7 +3265,7 @@ fn close_remaining_character_generators(
         let origin = match &value {
             Value::CharacterGenerator { origin, .. }
             | Value::CharacterReturningGenerator { origin, .. }
-            | Value::SuspendedCharacterGenerator { origin, .. } => origin.clone(),
+            | Value::SuspendedGenerator { origin, .. } => origin.clone(),
             _ => unreachable!("only generators were collected"),
         };
         let detail = format!("domain=root;code=generator-closed;generator={origin}");
@@ -3265,7 +3274,7 @@ fn close_remaining_character_generators(
             rule: "TOPAL-GENERATOR-ERROR-CODE-001",
             detail: &detail,
         });
-        if let Value::SuspendedCharacterGenerator {
+        if let Value::SuspendedGenerator {
             source,
             body,
             mut cursor,
@@ -3483,7 +3492,7 @@ fn declare_enum(
 }
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
-    if let Value::SuspendedCharacterGenerator {
+    if let Value::SuspendedGenerator {
         yield_classifier,
         return_classifier,
         ..
@@ -4288,30 +4297,30 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
-        Value::SuspendedCharacterGenerator {
+        Value::SuspendedGenerator {
             yield_classifier,
             return_classifier,
             ..
         } if yield_classifier == "String" && return_classifier == "String" => {
             "Generator String Unit String"
         }
-        Value::SuspendedCharacterGenerator {
+        Value::SuspendedGenerator {
             yield_classifier,
             return_classifier,
             ..
         } if yield_classifier == "String" && return_classifier == "Character" => {
             "Generator String Unit Character"
         }
-        Value::SuspendedCharacterGenerator {
+        Value::SuspendedGenerator {
             yield_classifier, ..
         } if yield_classifier == "String" => "Generator String Unit Unit",
-        Value::SuspendedCharacterGenerator {
+        Value::SuspendedGenerator {
             return_classifier, ..
         } if return_classifier == "String" => "Generator Character Unit String",
-        Value::SuspendedCharacterGenerator {
+        Value::SuspendedGenerator {
             return_classifier, ..
         } if return_classifier == "Character" => "Generator Character Unit Character",
-        Value::CharacterGenerator { .. } | Value::SuspendedCharacterGenerator { .. } => {
+        Value::CharacterGenerator { .. } | Value::SuspendedGenerator { .. } => {
             "Generator Character Unit Unit"
         }
         Value::String(_) => "String",
@@ -4340,6 +4349,27 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::Enum { type_name, .. } => type_name.clone(),
         _ => value_classifier(value).to_owned(),
     }
+}
+
+fn generator_classifier_diagnostic(
+    source: &SourceText,
+    code: &'static str,
+    span: Span,
+    name: &str,
+    action: &str,
+    expected: &str,
+    value: &Value,
+) -> Diagnostic {
+    let found = structural_value_classifier(value);
+    diagnostic(
+        source,
+        code,
+        span,
+        format!("generator `{name}` {action} `{found}`, but its declaration requires `{expected}`"),
+    )
+    .with_help(format!(
+        "produce `{expected}` here or change the generator's declared classifier from `{expected}`"
+    ))
 }
 
 fn classifier_expression(source: &SourceText, expression: &Expression) -> Option<String> {
@@ -5418,7 +5448,7 @@ fn apply_negate(
         | Value::Optional { .. }
         | Value::CharacterGenerator { .. }
         | Value::CharacterReturningGenerator { .. }
-        | Value::SuspendedCharacterGenerator { .. }
+        | Value::SuspendedGenerator { .. }
         | Value::String(_)
         | Value::Tuple(_)
         | Value::Record(_)
@@ -8534,6 +8564,45 @@ fn custom_generators_preserve_recursive_nominal_classifiers() {
         )
         .unwrap();
     assert_eq!(value.to_string(), "(Some Second, Second)");
+}
+
+#[test]
+fn custom_generator_selects_final_decision_after_resuming() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/custom-generator-final-decision.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("accepted".into()));
+    let resumed = trace
+        .iter()
+        .position(|event| event.contains("generator.resumed"))
+        .unwrap();
+    let selected = trace
+        .iter()
+        .position(|event| event.contains("decision.rule.selected"))
+        .unwrap();
+    let returned = trace
+        .iter()
+        .position(|event| event.contains("generator.returned"))
+        .unwrap();
+    assert!(resumed < selected && selected < returned);
+}
+
+#[test]
+fn generator_return_mismatch_reports_expected_and_found_classifiers() {
+    let error = Session::new()
+        .evaluate(
+            "invalid is generator ( initial : Boolean )\n  yields Boolean\n  resumes Unit\n  -> String\n\n  _ is yield initial\n  42\ngenerated is invalid true\ngenerated foreach { value }\n  _ is not value\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-GENERATOR-RETURN-TYPE");
+    assert!(error.message.contains("returned `Int`"));
+    assert!(error.message.contains("requires `String`"));
+    assert!(error.help.as_deref().unwrap().contains("produce `String`"));
 }
 
 #[test]

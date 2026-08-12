@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 112);
+    assert_eq!(examples.len(), 113);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2943,6 +2943,31 @@ fn every_mode_traverses_recursive_nominal_generator_values() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("Optional Choice"));
     assert!(trace.contains("Result (Choice, lang arithmetic ArithmeticErrorCode)"));
+}
+
+#[test]
+fn every_mode_selects_generator_final_decision() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-final-decision.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"\"accepted\"\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    let resumed = trace.find("generator.resumed").unwrap();
+    let selected = trace.find("decision.rule.selected").unwrap();
+    let returned = trace.find("generator.returned").unwrap();
+    assert!(resumed < selected && selected < returned);
+}
+
+#[test]
+fn generator_classifier_error_is_actionable_in_script_mode() {
+    let source = "invalid is generator ( initial : Boolean )\n  yields Boolean\n  resumes Unit\n  -> String\n\n  _ is yield initial\n  42\ngenerated is invalid true\ngenerated foreach { value }\n  _ is not value\n";
+    let output = run(&[], source);
+    assert!(!output.status.success());
+    let error = String::from_utf8(output.stderr).unwrap();
+    assert!(error.contains("returned `Int`, but its declaration requires `String`"));
+    assert!(error.contains("help: produce `String` here"));
 }
 
 #[test]
