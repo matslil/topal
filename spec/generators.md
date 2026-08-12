@@ -130,6 +130,9 @@ scope, remain callable after suspension and resumption, and disappear when the
 continuation completes or closes. Its declaration and calls shall not introduce
 the function name into the consumer's scope.
 
+Delivery of `generator-closed` shall restore the same local declaration state,
+so a close-result handler may call a retained local function before completion.
+
 ### TOPAL-GENERATOR-LOCAL-ENUM-001 — Continuation-local nominal types
 
 An enum declared in a generator body shall retain its nominal identity and

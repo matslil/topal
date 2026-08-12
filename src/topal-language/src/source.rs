@@ -8667,6 +8667,30 @@ fn custom_generator_retains_local_function_across_resumption() {
 }
 
 #[test]
+fn custom_generator_restores_local_declarations_during_close() {
+    let mut trace = Vec::new();
+    Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/custom-generator-local-close-handler.t"),
+            &mut trace,
+        )
+        .unwrap();
+    let close_bound = trace
+        .iter()
+        .position(|event| event.contains("generator.close.bound"))
+        .unwrap();
+    let entered = trace
+        .iter()
+        .rposition(|event| event.contains("function.entered"))
+        .unwrap();
+    let closed = trace
+        .iter()
+        .position(|event| event.contains("generator.closed"))
+        .unwrap();
+    assert!(close_bound < entered && entered < closed);
+}
+
+#[test]
 fn custom_generator_executes_discard_after_resume() {
     let mut trace = Vec::new();
     Session::new()

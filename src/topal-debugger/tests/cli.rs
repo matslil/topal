@@ -1835,6 +1835,26 @@ fn records_generator_local_function_reversibly() {
 }
 
 #[test]
+fn records_generator_local_close_handler_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-local-close-handler.debug"),
+            &format!("{root}custom-generator-local-close-handler.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let close_bound = stdout.find("generator.close.bound").unwrap();
+    let entered = stdout.rfind("function.entered").unwrap();
+    let closed = stdout.find("generator.closed").unwrap();
+    assert!(close_bound < entered && entered < closed);
+    assert!(stdout.contains("CloseChoice"));
+}
+
+#[test]
 fn records_yield_after_custom_close_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
