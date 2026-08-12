@@ -1161,6 +1161,14 @@ input, yield, and final-return directions. Suspension and resumption shall
 preserve the numeric value without narrowing. Formal traces, LSP validation,
 and reversible scripted-debugger history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-156 — Rational custom generator values
+
+All interpreter modes shall support exact Rational custom-generator input,
+yield, and final-return directions. Suspension shall preserve the canonical
+numeric value without conversion through a finite representation. Formal
+traces, LSP validation, and reversible scripted-debugger history shall cover a
+commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

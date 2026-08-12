@@ -2422,19 +2422,21 @@ impl Execution {
         let result_classifier = self.source.slice(result);
         if !matches!(
             parameter_classifier,
-            "Boolean" | "Character" | "Int" | "String"
-        ) || !matches!(yield_classifier, "Boolean" | "Character" | "Int" | "String")
-            || self.source.slice(resumed) != "Unit"
+            "Boolean" | "Character" | "Int" | "Rational" | "String"
+        ) || !matches!(
+            yield_classifier,
+            "Boolean" | "Character" | "Int" | "Rational" | "String"
+        ) || self.source.slice(resumed) != "Unit"
             || !matches!(
                 result_classifier,
-                "Unit" | "Boolean" | "Character" | "Int" | "String"
+                "Unit" | "Boolean" | "Character" | "Int" | "Rational" | "String"
             )
         {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-SIGNATURE",
                 span,
-                "the implemented generator subset requires Boolean, Character, Int, or String input/yield, Unit resume, and Unit, Boolean, Character, Int, or String return",
+                "the implemented generator subset requires Boolean, Character, Int, Rational, or String input/yield, Unit resume, and Unit, Boolean, Character, Int, Rational, or String return",
             ));
         }
         if !supported_generator_body(&self.source, body) {
@@ -8330,6 +8332,12 @@ fn custom_generator_transfers_boolean_values() {
 fn custom_generator_preserves_int_values() {
     let value = Session::new().evaluate("next is generator ( initial : Int )\n  yields Int\n  resumes Unit\n  -> Int\n\n  _ is yield initial\n  initial + 1\ngenerated is next 999999999999999999999999999999\ngenerated foreach { value }\n  _ is value + 1\n", &mut Vec::new()).unwrap();
     assert_eq!(value.to_string(), "1000000000000000000000000000000");
+}
+
+#[test]
+fn custom_generator_preserves_rational_values() {
+    let value = Session::new().evaluate("next is generator ( initial : Rational )\n  yields Rational\n  resumes Unit\n  -> Rational\n\n  _ is yield initial\n  initial + (Rational (1, 3))\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (1, 3))\n", &mut Vec::new()).unwrap();
+    assert_eq!(value.to_string(), "Rational ( 2, 3 )");
 }
 
 #[test]
