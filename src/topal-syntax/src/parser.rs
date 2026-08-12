@@ -20,6 +20,11 @@ pub enum Expression {
     String(Span),
     Identifier(Span),
     Discard(Span),
+    AnonymousFunction {
+        parameters: Vec<Span>,
+        body: Box<Self>,
+        span: Span,
+    },
     Callable {
         kind: CallableKind,
         span: Span,
@@ -63,6 +68,7 @@ impl Expression {
             | Self::Callable { span, .. }
             | Self::Product { span, .. }
             | Self::DecisionTable { span, .. }
+            | Self::AnonymousFunction { span, .. }
             | Self::Application { span, .. } => *span,
         }
     }
@@ -1347,6 +1353,7 @@ impl Parser<'_> {
                 self.delimiter_depth -= 1;
                 expression
             }
+            TokenKind::LeftBrace => self.anonymous_function(token),
             _ => {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-EXPECTED-EXPRESSION",
@@ -1355,6 +1362,67 @@ impl Parser<'_> {
                         .into(),
                 });
                 None
+            }
+        }
+    }
+
+    fn anonymous_function(&mut self, opening: Token) -> Option<Expression> {
+        let mut parameters = Vec::new();
+        loop {
+            let token = self.take_nontrivia()?;
+            if token.kind == TokenKind::RightBrace {
+                if parameters.is_empty() {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-EMPTY-ANONYMOUS-FUNCTION-PATTERN",
+                        span: Span::new(opening.span.start, token.span.end),
+                        message:
+                            "an inferred anonymous function requires at least one parameter pattern"
+                                .into(),
+                    });
+                    return None;
+                }
+                let Some(body) = self.expression() else {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-EXPECTED-ANONYMOUS-FUNCTION-BODY",
+                        span: token.span,
+                        message: "expected an anonymous-function body after the parameter pattern"
+                            .into(),
+                    });
+                    return None;
+                };
+                let span = Span::new(opening.span.start, body.span().end);
+                return Some(Expression::AnonymousFunction {
+                    parameters,
+                    body: Box::new(body),
+                    span,
+                });
+            }
+            if token.kind != TokenKind::Identifier {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-EXPECTED-ANONYMOUS-FUNCTION-PARAMETER",
+                    span: token.span,
+                    message: "expected a parameter name or closing brace".into(),
+                });
+                return None;
+            }
+            parameters.push(token.span);
+            let Some(separator) = self.peek_nontrivia() else {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-EXPECTED-RBRACE",
+                    span: token.span,
+                    message: "expected `}` after anonymous-function parameters".into(),
+                });
+                return None;
+            };
+            if separator.kind == TokenKind::Comma {
+                self.take_nontrivia();
+            } else if separator.kind != TokenKind::RightBrace {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-EXPECTED-ANONYMOUS-FUNCTION-SEPARATOR",
+                    span: separator.span,
+                    message: "expected `,` or `}` after anonymous-function parameter".into(),
+                });
+                return None;
             }
         }
     }
@@ -2288,6 +2356,16 @@ mod tests {
     fn parses_recursive_list_classifiers() {
         let source =
             SourceText::new(include_str!("../../../examples/interpreter/nested-lists.t")).unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
+    fn parses_contextual_anonymous_list_functions() {
+        let source = SourceText::new(include_str!(
+            "../../../examples/interpreter/anonymous-list-functions.t"
+        ))
+        .unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     }

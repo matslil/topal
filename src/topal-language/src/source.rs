@@ -35,6 +35,7 @@ pub enum Value {
         element_classifier: String,
         entries: Vec<Self>,
     },
+    AnonymousFunction(Box<AnonymousFunction>),
     CharacterGenerator {
         generated: Vec<String>,
         origin: String,
@@ -82,6 +83,14 @@ pub struct GeneratorScopeState {
     enum_types: BTreeMap<String, BTreeSet<String>>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AnonymousFunction {
+    source: SourceText,
+    parameters: Vec<String>,
+    body: Box<Expression>,
+    bindings: BTreeMap<String, Value>,
+}
+
 impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -118,6 +127,9 @@ impl fmt::Display for Value {
                     formatter.write_str(" )")?;
                 }
                 Ok(())
+            }
+            Self::AnonymousFunction(function) => {
+                write!(formatter, "<anonymous fn/{}>", function.parameters.len())
             }
             Self::CharacterGenerator { .. } => {
                 formatter.write_str("<Generator Character Unit Unit>")
@@ -449,30 +461,7 @@ impl Session {
                 Ok(Value::Unit)
             }
             Expression::Product { fields, span } => {
-                let labeled = fields.iter().filter(|field| field.label.is_some()).count();
-                if labeled != 0 && labeled != fields.len() {
-                    return Err(diagnostic(
-                        source,
-                        "E-UNSUPPORTED-MIXED-PRODUCT",
-                        *span,
-                        "mixed positional and labeled product fields are not yet implemented",
-                    ));
-                }
-                if labeled == 0 {
-                    let values = fields
-                        .iter()
-                        .map(|field| self.evaluate_expression(source, &field.value, trace))
-                        .collect::<Result<Vec<_>, _>>()?;
-                    let detail = format!("fields={}", values.len());
-                    trace.record(TraceEvent {
-                        event: "product.tuple",
-                        rule: "TOPAL-TYPE-PRODUCT-001",
-                        detail: &detail,
-                    });
-                    Ok(Value::Tuple(values))
-                } else {
-                    self.evaluate_record(source, fields, trace)
-                }
+                self.evaluate_product(source, fields, *span, trace)
             }
             Expression::DecisionTable {
                 subject,
@@ -799,6 +788,11 @@ impl Session {
                 *span,
                 "discard is valid only in a declaration or pattern",
             )),
+            Expression::AnonymousFunction {
+                parameters,
+                body,
+                span: _,
+            } => Ok(self.capture_anonymous_function(source, parameters, body, trace)),
             Expression::Callable { span, .. } => Err(diagnostic(
                 source,
                 "E-UNSUPPORTED-CALLABLE-VALUE",
@@ -806,6 +800,13 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if matches!(
+                    items.as_slice(),
+                    [_, Expression::Identifier(operation), ..]
+                        if matches!(source.slice(*operation), "map" | "select" | "fold")
+                ) {
+                    return self.evaluate_list_higher_order(source, items, *span, trace);
+                }
                 if let [
                     Expression::Identifier(generator),
                     text,
@@ -2083,6 +2084,250 @@ impl Session {
         });
         Ok(Value::Record(values))
     }
+
+    fn evaluate_product(
+        &self,
+        source: &SourceText,
+        fields: &[topal_syntax::ProductField],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let labeled = fields.iter().filter(|field| field.label.is_some()).count();
+        if labeled != 0 && labeled != fields.len() {
+            return Err(diagnostic(
+                source,
+                "E-UNSUPPORTED-MIXED-PRODUCT",
+                span,
+                "mixed positional and labeled product fields are not yet implemented",
+            ));
+        }
+        if labeled == 0 {
+            let values = fields
+                .iter()
+                .map(|field| self.evaluate_expression(source, &field.value, trace))
+                .collect::<Result<Vec<_>, _>>()?;
+            let detail = format!("fields={}", values.len());
+            trace.record(TraceEvent {
+                event: "product.tuple",
+                rule: "TOPAL-TYPE-PRODUCT-001",
+                detail: &detail,
+            });
+            Ok(Value::Tuple(values))
+        } else {
+            self.evaluate_record(source, fields, trace)
+        }
+    }
+
+    fn invoke_anonymous_function(
+        &self,
+        function: &Value,
+        arguments: Vec<Value>,
+        call_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Value::AnonymousFunction(function) = function else {
+            unreachable!("anonymous invocation is dispatched only for an anonymous function")
+        };
+        let AnonymousFunction {
+            source,
+            parameters,
+            body,
+            bindings,
+        } = function.as_ref();
+        if parameters.len() != arguments.len() {
+            return Err(diagnostic(
+                source,
+                "E-ANONYMOUS-FUNCTION-ARITY",
+                call_span,
+                format!(
+                    "anonymous function expects {} arguments, found {}",
+                    parameters.len(),
+                    arguments.len()
+                ),
+            ));
+        }
+        let mut invocation = self.clone();
+        invocation.bindings = bindings.clone();
+        for (parameter, argument) in parameters.iter().zip(arguments) {
+            invocation.bindings.insert(parameter.clone(), argument);
+        }
+        let detail = format!("arguments={}", parameters.len());
+        trace.record(TraceEvent {
+            event: "function.anonymous.called",
+            rule: "TOPAL-FUNCTION-ANONYMOUS-001",
+            detail: &detail,
+        });
+        invocation.evaluate_expression(source, body, trace)
+    }
+
+    fn capture_anonymous_function(
+        &self,
+        source: &SourceText,
+        parameters: &[Span],
+        body: &Expression,
+        trace: &mut impl TraceSink,
+    ) -> Value {
+        let parameters = parameters
+            .iter()
+            .map(|parameter| source.slice(*parameter).to_owned())
+            .collect::<Vec<_>>();
+        let detail = format!("parameters={}", parameters.len());
+        trace.record(TraceEvent {
+            event: "function.anonymous.captured",
+            rule: "TOPAL-FUNCTION-ANONYMOUS-001",
+            detail: &detail,
+        });
+        Value::AnonymousFunction(Box::new(AnonymousFunction {
+            source: source.clone(),
+            parameters,
+            body: Box::new(body.clone()),
+            bindings: self.bindings.clone(),
+        }))
+    }
+
+    #[allow(clippy::too_many_lines)] // Collection laws remain explicit in one isolated frame.
+    fn evaluate_list_higher_order(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if let [collection, Expression::Identifier(operation_span), function] = items
+            && matches!(source.slice(*operation_span), "map" | "select")
+        {
+            return (|| {
+                let collection_span = collection.span();
+                let collection = self.evaluate_expression(source, collection, trace)?;
+                let Value::List {
+                    element_classifier,
+                    entries,
+                } = collection
+                else {
+                    return Err(diagnostic(
+                        source,
+                        "E-COLLECTION-OPERATION-SOURCE",
+                        collection_span,
+                        format!(
+                            "{} requires a homogeneous collection",
+                            source.slice(*operation_span)
+                        ),
+                    ));
+                };
+                let function_span = function.span();
+                let function = self.evaluate_expression(source, function, trace)?;
+                let operation = source.slice(*operation_span);
+                let mut output = Vec::new();
+                for entry in entries {
+                    let input = entry.clone();
+                    let transformed =
+                        self.invoke_anonymous_function(&function, vec![entry], span, trace)?;
+                    if operation == "select" {
+                        let Value::Boolean(retain) = transformed else {
+                            return Err(diagnostic(
+                                source,
+                                "E-SELECT-PREDICATE-RESULT",
+                                function_span,
+                                "select predicate must return Boolean",
+                            ));
+                        };
+                        if retain {
+                            output.push(input);
+                        }
+                    } else {
+                        output.push(transformed);
+                    }
+                }
+                let output_classifier = if operation == "select" || output.is_empty() {
+                    element_classifier
+                } else {
+                    let classifier = structural_value_classifier(&output[0]);
+                    if output
+                        .iter()
+                        .any(|value| structural_value_classifier(value) != classifier)
+                    {
+                        return Err(diagnostic(
+                            source,
+                            "E-MAP-RESULT-CLASSIFIER",
+                            function_span,
+                            "map transformation returned values with different classifiers",
+                        ));
+                    }
+                    classifier
+                };
+                let selection = format!("root.{operation}(List {output_classifier})");
+                trace.record(TraceEvent {
+                    event: "operator.selected",
+                    rule: "TOPAL-TYPE-CALL-001",
+                    detail: &selection,
+                });
+                trace.record(TraceEvent {
+                    event: if operation == "map" {
+                        "list.mapped"
+                    } else {
+                        "list.selected"
+                    },
+                    rule: if operation == "map" {
+                        "TOPAL-COLLECTION-MAP-001"
+                    } else {
+                        "TOPAL-COLLECTION-SELECT-001"
+                    },
+                    detail: &output_classifier,
+                });
+                let result = Value::List {
+                    element_classifier: output_classifier,
+                    entries: output,
+                };
+                self.checkpoint(trace, Some(&result), Some(span));
+                Ok(result)
+            })();
+        }
+        if let [
+            collection,
+            Expression::Identifier(operation),
+            initial,
+            function,
+        ] = items
+            && source.slice(*operation) == "fold"
+        {
+            return (|| {
+                let collection_span = collection.span();
+                let collection = self.evaluate_expression(source, collection, trace)?;
+                let Value::List { entries, .. } = collection else {
+                    return Err(diagnostic(
+                        source,
+                        "E-COLLECTION-OPERATION-SOURCE",
+                        collection_span,
+                        "fold requires an ordered homogeneous collection",
+                    ));
+                };
+                let mut state = self.evaluate_expression(source, initial, trace)?;
+                let expected = structural_value_classifier(&state);
+                let function_span = function.span();
+                let function = self.evaluate_expression(source, function, trace)?;
+                for entry in entries {
+                    state =
+                        self.invoke_anonymous_function(&function, vec![state, entry], span, trace)?;
+                    if !value_has_classifier(&state, &expected) {
+                        return Err(diagnostic(
+                            source,
+                            "E-FOLD-STATE-CLASSIFIER",
+                            function_span,
+                            format!("fold step must preserve state classifier `{expected}`"),
+                        ));
+                    }
+                }
+                trace.record(TraceEvent {
+                    event: "list.folded",
+                    rule: "TOPAL-COLLECTION-FOLD-001",
+                    detail: &expected,
+                });
+                self.checkpoint(trace, Some(&state), Some(span));
+                Ok(state)
+            })();
+        }
+        unreachable!("higher-order List operation is preselected by its application shape")
+    }
 }
 
 fn known_enum_alternatives(session: &Session, type_name: &str) -> Option<BTreeSet<String>> {
@@ -3010,6 +3255,7 @@ fn expression_is_closed(expression: &Expression) -> bool {
             .iter()
             .all(|field| expression_is_closed(&field.value)),
         Expression::Application { items, .. } => items.iter().all(expression_is_closed),
+        Expression::AnonymousFunction { body, .. } => expression_is_closed(body),
         Expression::DecisionTable { .. } | Expression::Identifier(_) | Expression::Discard(_) => {
             false
         }
@@ -4704,6 +4950,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
+        Value::AnonymousFunction(_) => "Function",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
         Value::SuspendedGenerator {
             yield_classifier,
@@ -6538,6 +6785,7 @@ fn apply_negate(
         | Value::RationalRange { .. }
         | Value::Optional { .. }
         | Value::List { .. }
+        | Value::AnonymousFunction(_)
         | Value::CharacterGenerator { .. }
         | Value::CharacterReturningGenerator { .. }
         | Value::SuspendedGenerator { .. }

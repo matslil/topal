@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 124);
+    assert_eq!(examples.len(), 125);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3256,4 +3256,19 @@ fn every_mode_removes_list_values_by_explicit_law() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-LIST-REMOVE-FIRST-001"));
     assert!(trace.contains("TOPAL-LIST-REMOVE-ALL-001"));
+}
+
+#[test]
+fn every_mode_executes_contextual_anonymous_list_functions() {
+    let source = include_str!("../../../examples/interpreter/anonymous-list-functions.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains(
+            "(Entry ( 2, Entry ( 4, Entry ( 6, Empty ) ) ), Entry ( 2, Entry ( 3, Empty ) ), 6)"
+        ));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
+    assert!(trace.contains("TOPAL-COLLECTION-FOLD-001"));
 }

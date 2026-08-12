@@ -1532,3 +1532,11 @@ yield value` under `TOPAL-GENERATOR-RESUME-BINDING-001`. The binding shall not
 exist while suspended and shall be available to subsequent generator execution.
 Formal traces, LSP validation, and reversible scripted-debugger history shall
 cover a commented example.
+## TOPAL-INTP-SUBSET-187 — Contextual anonymous List functions
+
+All interpreter modes shall execute inferred anonymous functions used directly
+by List `map`, `select`, and `fold`, including immutable lexical capture, under
+`TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-COLLECTION-MAP-001`,
+`TOPAL-COLLECTION-SELECT-001`, and `TOPAL-COLLECTION-FOLD-001`. Formal traces,
+LSP validation, and reversible scripted-debugger history shall cover commented
+examples.

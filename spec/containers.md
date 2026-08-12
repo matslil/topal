@@ -105,3 +105,20 @@ If none is equal, it shall preserve the List unchanged.
 `list remove-all value` shall remove every entry equal to `value`. Both removal
 operations shall preserve the relative order of retained entries, preserve the
 element classifier, and require equality for that classifier.
+
+### TOPAL-COLLECTION-MAP-001 — Ordered List transformation
+
+`list map transformation` shall call the contextual unary transformation once
+for each entry in List order and return the transformed results in that order.
+
+### TOPAL-COLLECTION-SELECT-001 — Ordered List selection
+
+`list select predicate` shall call the contextual unary Boolean predicate once
+for each entry in List order and retain exactly the entries for which it returns
+true, without changing their relative order.
+
+### TOPAL-COLLECTION-FOLD-001 — Left ordered List fold
+
+`list fold initial step` shall call the contextual binary step in List order,
+passing the preceding state and current entry. The empty List result is
+`initial`; otherwise the final step result is returned.
