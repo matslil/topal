@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 122);
+    assert_eq!(examples.len(), 123);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3220,4 +3220,22 @@ fn every_mode_preserves_recursive_list_classifiers() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("List List (Int, String)"));
     assert!(trace.contains("TOPAL-TYPE-LIST-EQUALITY-001"));
+}
+
+#[test]
+fn every_mode_distinguishes_list_containment_laws() {
+    let source = include_str!("../../../examples/interpreter/list-containment.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(true, false, true, true, false, false)\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-LIST-CONTAINS-ENTRY-001"));
+    assert!(trace.contains("TOPAL-LIST-CONTAINS-SEQUENCE-001"));
+    assert!(trace.contains("TOPAL-LIST-CONTAINS-SUBSEQUENCE-001"));
 }

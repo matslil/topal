@@ -74,3 +74,18 @@ for a nonempty List, where `tail` contains every entry after the first in order.
 `List T` shall accept recursively supported element classifiers, including
 products and another `List U`. Construction, function boundaries, equality,
 and projections shall preserve every nested classifier and entry order.
+
+### TOPAL-LIST-CONTAINS-ENTRY-001 — List entry containment
+
+`list contains-entry value` shall be true exactly when an equal entry occurs.
+
+### TOPAL-LIST-CONTAINS-SEQUENCE-001 — Consecutive List containment
+
+`list contains-sequence pattern` shall be true exactly when every pattern entry
+occurs consecutively and in order. The empty pattern is contained.
+
+### TOPAL-LIST-CONTAINS-SUBSEQUENCE-001 — Ordered List subsequence containment
+
+`list contains-subsequence pattern` shall preserve pattern order while allowing
+gaps between matched entries. The empty pattern is contained. All three
+containment operations require equality for the element classifier.

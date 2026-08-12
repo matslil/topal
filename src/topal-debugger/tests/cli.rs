@@ -2545,3 +2545,22 @@ fn records_recursive_list_classifiers_reversibly() {
     assert!(stdout.contains("List List (Int, String)"));
     assert!(stdout.contains("Some Entry ( (7, \"seven\"), Empty )"));
 }
+
+#[test]
+fn records_list_containment_laws_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}list-containment.debug"),
+            &format!("{root}list-containment.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-LIST-CONTAINS-ENTRY-001"));
+    assert!(stdout.contains("TOPAL-LIST-CONTAINS-SEQUENCE-001"));
+    assert!(stdout.contains("TOPAL-LIST-CONTAINS-SUBSEQUENCE-001"));
+    assert!(stdout.contains("(true, false, true, true, false, false)"));
+}
