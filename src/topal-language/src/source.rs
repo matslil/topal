@@ -45,6 +45,7 @@ pub enum Value {
         body: Vec<Statement>,
         cursor: usize,
         bindings: BTreeMap<String, Self>,
+        scope_state: Box<GeneratorScopeState>,
         pending_yield: Option<Box<Self>>,
         resume_binding: Option<String>,
         returned: Option<Box<Self>>,
@@ -67,6 +68,14 @@ pub enum Value {
         column: usize,
     },
     Unit,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct GeneratorScopeState {
+    functions: BTreeMap<String, Vec<UserFunction>>,
+    declared_names: BTreeSet<String>,
+    local_function_names: BTreeSet<String>,
+    enum_types: BTreeMap<String, BTreeSet<String>>,
 }
 
 impl fmt::Display for Value {
@@ -211,7 +220,7 @@ pub struct Session {
     static_context: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct UserFunction {
     source: SourceText,
     is_static: bool,
@@ -223,7 +232,7 @@ struct UserFunction {
     recursion_target: Option<String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct UserGenerator {
     source: SourceText,
     parameter: (String, String),
@@ -233,7 +242,7 @@ struct UserGenerator {
     bindings: BTreeMap<String, Value>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct ActiveCall {
     name: String,
     signature: String,
@@ -1246,6 +1255,9 @@ impl Session {
                     generator_scope
                         .bindings
                         .insert(generator.parameter.0.clone(), argument);
+                    generator_scope
+                        .declared_names
+                        .insert(generator.parameter.0.clone());
                     trace.record(TraceEvent {
                         event: "generator.started",
                         rule: "TOPAL-GENERATOR-DECLARATION-001",
@@ -1274,6 +1286,12 @@ impl Session {
                         body: generator.body,
                         cursor,
                         bindings: generator_scope.bindings,
+                        scope_state: Box::new(GeneratorScopeState {
+                            functions: generator_scope.functions,
+                            declared_names: generator_scope.declared_names,
+                            local_function_names: generator_scope.local_function_names,
+                            enum_types: generator_scope.enum_types,
+                        }),
                         pending_yield,
                         resume_binding,
                         returned: returned.map(Box::new),
@@ -2122,6 +2140,7 @@ impl Execution {
         Ok((returned, span))
     }
 
+    #[allow(clippy::too_many_lines)] // State restoration and suspension order remain explicit and auditable.
     fn execute_suspended_foreach(
         &self,
         session: &Session,
@@ -2136,6 +2155,7 @@ impl Execution {
             body: generator_body,
             ref mut cursor,
             ref mut bindings,
+            ref mut scope_state,
             ref mut pending_yield,
             ref mut resume_binding,
             ref mut returned,
@@ -2188,6 +2208,10 @@ impl Execution {
                 });
                 let mut scope = session.clone();
                 scope.bindings = std::mem::take(bindings);
+                scope.functions = std::mem::take(&mut scope_state.functions);
+                scope.declared_names = std::mem::take(&mut scope_state.declared_names);
+                scope.local_function_names = std::mem::take(&mut scope_state.local_function_names);
+                scope.enum_types = std::mem::take(&mut scope_state.enum_types);
                 if let Some(name) = resume_binding.take() {
                     scope.bindings.insert(name.clone(), Value::Unit);
                     scope.declared_names.insert(name.clone());
@@ -2212,6 +2236,10 @@ impl Execution {
                     trace,
                 )?;
                 *bindings = scope.bindings;
+                scope_state.functions = scope.functions;
+                scope_state.declared_names = scope.declared_names;
+                scope_state.local_function_names = scope.local_function_names;
+                scope_state.enum_types = scope.enum_types;
                 *returned = next_returned.map(Box::new);
                 continue;
             }
@@ -3022,7 +3050,10 @@ fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
         if yielded_statement(source, statement).is_none()
             && !matches!(
                 statement,
-                Statement::Binding { .. } | Statement::Discard { .. } | Statement::Return { .. }
+                Statement::Binding { .. }
+                    | Statement::Discard { .. }
+                    | Statement::Function { .. }
+                    | Statement::Return { .. }
             )
         {
             return false;
@@ -3279,6 +3310,7 @@ fn close_remaining_character_generators(
             body,
             mut cursor,
             bindings,
+            scope_state,
             pending_yield: _,
             resume_binding,
             returned,
@@ -3295,6 +3327,10 @@ fn close_remaining_character_generators(
             let position = source.position(yield_span.start);
             let mut scope = session.clone();
             scope.bindings = bindings;
+            scope.functions = scope_state.functions;
+            scope.declared_names = scope_state.declared_names;
+            scope.local_function_names = scope_state.local_function_names;
+            scope.enum_types = scope_state.enum_types;
             scope.bindings.insert(
                 resume_binding.clone(),
                 Value::Error {
@@ -8603,6 +8639,31 @@ fn generator_return_mismatch_reports_expected_and_found_classifiers() {
     assert!(error.message.contains("returned `Int`"));
     assert!(error.message.contains("requires `String`"));
     assert!(error.help.as_deref().unwrap().contains("produce `String`"));
+}
+
+#[test]
+fn custom_generator_retains_local_function_across_resumption() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/custom-generator-local-function.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("accepted".into()));
+    let declared_enum = trace
+        .iter()
+        .position(|event| event.contains("enum.declared") && event.contains("Choice"))
+        .unwrap();
+    let resumed = trace
+        .iter()
+        .position(|event| event.contains("generator.resumed"))
+        .unwrap();
+    let called = trace
+        .iter()
+        .rposition(|event| event.contains("function.entered"))
+        .unwrap();
+    assert!(declared_enum < resumed && resumed < called);
 }
 
 #[test]
