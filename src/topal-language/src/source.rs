@@ -762,26 +762,7 @@ impl Session {
             Expression::Integer(span) => evaluate_integer_literal(source, *span, trace),
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
             Expression::String(span) => evaluate_string_literal(source, *span, trace),
-            Expression::Identifier(span) => {
-                let name = source.slice(*span);
-                if self.consumed_names.contains(name) {
-                    return Err(consumed_generator_diagnostic(source, *span, name));
-                }
-                let value = self.bindings.get(name).cloned().ok_or_else(|| {
-                    let error = diagnostic(source, "E-UNBOUND-NAME", *span, "name is not bound");
-                    closest_name(name, self.bindings.keys())
-                        .or_else(|| closest_root_operation(name))
-                        .map_or(error.clone(), |candidate| {
-                            error.with_help(format!("did you mean `{candidate}`?"))
-                        })
-                })?;
-                trace.record(TraceEvent {
-                    event: "binding.resolved",
-                    rule: "TOPAL-SYN-BIND-001",
-                    detail: name,
-                });
-                Ok(value)
-            }
+            Expression::Identifier(span) => self.resolve_identifier(source, *span, trace),
             Expression::Discard(span) => Err(diagnostic(
                 source,
                 "E-DISCARD-VALUE",
@@ -802,8 +783,23 @@ impl Session {
             Expression::Application { items, span } => {
                 if matches!(
                     items.as_slice(),
+                    [Expression::Identifier(operation), ..]
+                        if matches!(source.slice(*operation), "unzip" | "collect")
+                ) || matches!(
+                    items.as_slice(),
                     [_, Expression::Identifier(operation), ..]
-                        if matches!(source.slice(*operation), "map" | "select" | "fold")
+                        if matches!(source.slice(*operation), "zip-longest" | "collect")
+                ) {
+                    return self.evaluate_list_materialization(source, items, *span, trace);
+                }
+                if matches!(
+                    items.as_slice(),
+                    [_, Expression::Identifier(operation), Expression::AnonymousFunction { .. }]
+                        if matches!(source.slice(*operation), "map" | "select" | "remove-indexes" | "remove-values")
+                ) || matches!(
+                    items.as_slice(),
+                    [_, Expression::Identifier(operation), _, Expression::AnonymousFunction { .. }]
+                        if source.slice(*operation) == "fold"
                 ) {
                     return self.evaluate_list_higher_order(source, items, *span, trace);
                 }
@@ -1875,6 +1871,29 @@ impl Session {
                         continue;
                     }
                     if let Expression::Identifier(callable_span) = &items[index]
+                        && source.slice(*callable_span) == "entries"
+                        && matches!(result, Value::List { .. })
+                    {
+                        result = apply_list_entries_view(result, trace);
+                        index += 1;
+                        continue;
+                    }
+                    if let Expression::Identifier(callable_span) = &items[index]
+                        && source.slice(*callable_span) == "insert-at"
+                        && let Value::List { .. } = result
+                    {
+                        result = self.evaluate_list_insert_at(
+                            source,
+                            result,
+                            items.get(index + 1),
+                            items.get(index + 2),
+                            *callable_span,
+                            trace,
+                        )?;
+                        index += 3;
+                        continue;
+                    }
+                    if let Expression::Identifier(callable_span) = &items[index]
                         && matches!(
                             source.slice(*callable_span),
                             "prepend"
@@ -1883,6 +1902,13 @@ impl Session {
                                 | "contains-entry"
                                 | "contains-sequence"
                                 | "contains-subsequence"
+                                | "split-at"
+                                | "take"
+                                | "drop"
+                                | "remove"
+                                | "remove-indexes"
+                                | "zip-exact"
+                                | "zip-shortest"
                                 | "remove-first"
                                 | "remove-all"
                         )
@@ -1898,9 +1924,16 @@ impl Session {
                             ));
                         };
                         let right_span = right.span();
+                        let right_is_closed = expression_is_closed(right);
                         let right = self.evaluate_expression(source, right, trace)?;
                         result = apply_list_operation(
-                            source, operation, result, right, right_span, trace,
+                            source,
+                            operation,
+                            result,
+                            right,
+                            right_span,
+                            right_is_closed,
+                            trace,
                         )?;
                         self.checkpoint(
                             trace,
@@ -2118,6 +2151,32 @@ impl Session {
         }
     }
 
+    fn resolve_identifier(
+        &self,
+        source: &SourceText,
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let name = source.slice(span);
+        if self.consumed_names.contains(name) {
+            return Err(consumed_generator_diagnostic(source, span, name));
+        }
+        let value = self.bindings.get(name).cloned().ok_or_else(|| {
+            let error = diagnostic(source, "E-UNBOUND-NAME", span, "name is not bound");
+            closest_name(name, self.bindings.keys())
+                .or_else(|| closest_root_operation(name))
+                .map_or(error.clone(), |candidate| {
+                    error.with_help(format!("did you mean `{candidate}`?"))
+                })
+        })?;
+        trace.record(TraceEvent {
+            event: "binding.resolved",
+            rule: "TOPAL-SYN-BIND-001",
+            detail: name,
+        });
+        Ok(value)
+    }
+
     fn invoke_anonymous_function(
         &self,
         function: &Value,
@@ -2185,6 +2244,44 @@ impl Session {
         }))
     }
 
+    fn evaluate_list_insert_at(
+        &self,
+        source: &SourceText,
+        list: Value,
+        boundary: Option<&Expression>,
+        inserted: Option<&Expression>,
+        operation_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Some(boundary) = boundary else {
+            return Err(diagnostic(
+                source,
+                "E-EXPECTED-OPERAND",
+                operation_span,
+                "expected a boundary after insert-at",
+            ));
+        };
+        let Some(inserted) = inserted else {
+            return Err(diagnostic(
+                source,
+                "E-EXPECTED-OPERAND",
+                boundary.span(),
+                "expected a value or List after the insertion boundary",
+            ));
+        };
+        let boundary_value = self.evaluate_expression(source, boundary, trace)?;
+        let inserted_value = self.evaluate_expression(source, inserted, trace)?;
+        apply_list_insert_at(
+            source,
+            list,
+            boundary_value,
+            boundary.span(),
+            inserted_value,
+            inserted.span(),
+            trace,
+        )
+    }
+
     #[allow(clippy::too_many_lines)] // Collection laws remain explicit in one isolated frame.
     fn evaluate_list_higher_order(
         &self,
@@ -2194,7 +2291,10 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         if let [collection, Expression::Identifier(operation_span), function] = items
-            && matches!(source.slice(*operation_span), "map" | "select")
+            && matches!(
+                source.slice(*operation_span),
+                "map" | "select" | "remove-indexes" | "remove-values"
+            )
         {
             return (|| {
                 let collection_span = collection.span();
@@ -2218,27 +2318,32 @@ impl Session {
                 let function = self.evaluate_expression(source, function, trace)?;
                 let operation = source.slice(*operation_span);
                 let mut output = Vec::new();
-                for entry in entries {
+                for (index, entry) in entries.into_iter().enumerate() {
                     let input = entry.clone();
+                    let argument = if operation == "remove-indexes" {
+                        Value::Int(BigInt::from(index))
+                    } else {
+                        entry
+                    };
                     let transformed =
-                        self.invoke_anonymous_function(&function, vec![entry], span, trace)?;
-                    if operation == "select" {
+                        self.invoke_anonymous_function(&function, vec![argument], span, trace)?;
+                    if matches!(operation, "select" | "remove-indexes" | "remove-values") {
                         let Value::Boolean(retain) = transformed else {
                             return Err(diagnostic(
                                 source,
                                 "E-SELECT-PREDICATE-RESULT",
                                 function_span,
-                                "select predicate must return Boolean",
+                                format!("{operation} predicate must return Boolean"),
                             ));
                         };
-                        if retain {
+                        if retain == (operation == "select") {
                             output.push(input);
                         }
                     } else {
                         output.push(transformed);
                     }
                 }
-                let output_classifier = if operation == "select" || output.is_empty() {
+                let output_classifier = if operation != "map" || output.is_empty() {
                     element_classifier
                 } else {
                     let classifier = structural_value_classifier(&output[0]);
@@ -2262,15 +2367,17 @@ impl Session {
                     detail: &selection,
                 });
                 trace.record(TraceEvent {
-                    event: if operation == "map" {
-                        "list.mapped"
-                    } else {
-                        "list.selected"
+                    event: match operation {
+                        "map" => "list.mapped",
+                        "select" => "list.selected",
+                        _ => "list.entries.removed",
                     },
-                    rule: if operation == "map" {
-                        "TOPAL-COLLECTION-MAP-001"
-                    } else {
-                        "TOPAL-COLLECTION-SELECT-001"
+                    rule: match operation {
+                        "map" => "TOPAL-COLLECTION-MAP-001",
+                        "select" => "TOPAL-COLLECTION-SELECT-001",
+                        "remove-indexes" => "TOPAL-LIST-REMOVE-INDEXES-001",
+                        "remove-values" => "TOPAL-LIST-REMOVE-VALUES-001",
+                        _ => unreachable!("known higher-order List operation"),
                     },
                     detail: &output_classifier,
                 });
@@ -2328,6 +2435,94 @@ impl Session {
         }
         unreachable!("higher-order List operation is preselected by its application shape")
     }
+
+    fn evaluate_list_materialization(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if let [Expression::Identifier(operation), pairs] = items
+            && source.slice(*operation) == "unzip"
+        {
+            let pairs_span = pairs.span();
+            let pairs = self.evaluate_expression(source, pairs, trace)?;
+            return apply_list_unzip(source, pairs, pairs_span, trace);
+        }
+        if let [Expression::Identifier(operation), collection] = items
+            && source.slice(*operation) == "collect"
+        {
+            let value = self.evaluate_expression(source, collection, trace)?;
+            if matches!(value, Value::List { .. }) {
+                trace.record(TraceEvent {
+                    event: "list.collected",
+                    rule: "TOPAL-COLLECTION-COLLECT-LIST-001",
+                    detail: "List",
+                });
+                return Ok(value);
+            }
+            return Err(diagnostic(
+                source,
+                "E-COLLECT-SOURCE",
+                collection.span(),
+                "unary collect requires a finite homogeneous traversal",
+            ));
+        }
+        if let [
+            collection,
+            Expression::Identifier(operation),
+            Expression::Identifier(target),
+        ] = items
+            && source.slice(*operation) == "collect"
+            && source.slice(*target) == "String"
+        {
+            let value = self.evaluate_expression(source, collection, trace)?;
+            let Value::List { entries, .. } = value else {
+                return Err(diagnostic(
+                    source,
+                    "E-COLLECT-SOURCE",
+                    collection.span(),
+                    "String collection requires a finite List of Character or String entries",
+                ));
+            };
+            let mut text = String::new();
+            for entry in entries {
+                let Value::String(fragment) = entry else {
+                    return Err(diagnostic(
+                        source,
+                        "E-COLLECT-STRING-ENTRY",
+                        collection.span(),
+                        "String collection requires Character or String entries",
+                    ));
+                };
+                text.push_str(&fragment);
+            }
+            trace.record(TraceEvent {
+                event: "string.collected",
+                rule: "TOPAL-COLLECTION-COLLECT-STRING-001",
+                detail: "String",
+            });
+            return Ok(Value::String(text));
+        }
+        if let [
+            left_with_default,
+            Expression::Identifier(operation),
+            right_with_default,
+        ] = items
+            && source.slice(*operation) == "zip-longest"
+        {
+            let left = self.evaluate_expression(source, left_with_default, trace)?;
+            let right = self.evaluate_expression(source, right_with_default, trace)?;
+            return apply_list_zip_longest(source, left, right, span, trace);
+        }
+        Err(diagnostic(
+            source,
+            "E-UNSUPPORTED-COLLECTION-APPLICATION",
+            span,
+            "unsupported collection materialization form",
+        ))
+    }
 }
 
 fn known_enum_alternatives(session: &Session, type_name: &str) -> Option<BTreeSet<String>> {
@@ -2375,23 +2570,47 @@ impl Execution {
                         .execute_suspended_foreach(session, trace, value, binding, body, span);
                 }
                 let (generated, origin, returned, returned_classifier) = match value {
-                    Value::CharacterGenerator { generated, origin } => {
-                        (generated, origin, Value::Unit, "Unit")
-                    }
+                    Value::CharacterGenerator { generated, origin } => (
+                        generated.into_iter().map(Value::String).collect(),
+                        origin,
+                        Value::Unit,
+                        "Unit",
+                    ),
                     Value::CharacterReturningGenerator {
                         generated,
                         returned,
                         origin,
-                    } => (generated, origin, Value::String(returned), "Character"),
+                    } => (
+                        generated.into_iter().map(Value::String).collect(),
+                        origin,
+                        Value::String(returned),
+                        "Character",
+                    ),
+                    Value::List {
+                        element_classifier,
+                        entries,
+                    } => {
+                        session.bindings.insert(
+                            name_text.to_owned(),
+                            Value::List {
+                                element_classifier,
+                                entries: entries.clone(),
+                            },
+                        );
+                        session.declared_names.insert(name_text.to_owned());
+                        (entries, "root.List".into(), Value::Unit, "Unit")
+                    }
                     _ => return Err(foreach_source_diagnostic(&self.source, source.span())),
                 };
-                session.declared_names.remove(name_text);
-                session.consumed_names.insert(name_text.to_owned());
-                trace.record(TraceEvent {
-                    event: "generator.consumed",
-                    rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
-                    detail: name_text,
-                });
+                if origin != "root.List" {
+                    session.declared_names.remove(name_text);
+                    session.consumed_names.insert(name_text.to_owned());
+                    trace.record(TraceEvent {
+                        event: "generator.consumed",
+                        rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
+                        detail: name_text,
+                    });
+                }
                 (generated, origin, returned, returned_classifier)
             }
             Expression::Application { items, .. } => {
@@ -2411,7 +2630,9 @@ impl Execution {
                     ));
                 };
                 (
-                    characters(&text_value).map(str::to_owned).collect(),
+                    characters(&text_value)
+                        .map(|character| Value::String(character.to_owned()))
+                        .collect(),
                     "root.characters".to_owned(),
                     Value::Unit,
                     "Unit",
@@ -2421,20 +2642,22 @@ impl Execution {
         };
         let traversal_rule = if origin == "root.characters" {
             "TOPAL-STRING-CHARACTERS-FOREACH-001"
+        } else if origin == "root.List" {
+            "TOPAL-COLLECTION-FOREACH-001"
         } else {
             "TOPAL-GENERATOR-FOREACH-001"
         };
         let binding_name = self.source.slice(binding).to_owned();
-        for character in &generated {
+        for entry in &generated {
             let mut iteration = session.clone();
             iteration
                 .bindings
-                .insert(binding_name.clone(), Value::String(character.to_owned()));
+                .insert(binding_name.clone(), entry.clone());
             iteration.declared_names.insert(binding_name.clone());
             trace.record(TraceEvent {
                 event: "generator.yielded",
                 rule: traversal_rule,
-                detail: character,
+                detail: &entry.to_string(),
             });
             let mut body_execution = Self {
                 source: self.source.clone(),
@@ -5873,6 +6096,7 @@ fn apply_list_operation(
     left: Value,
     right: Value,
     right_span: Span,
+    right_is_closed: bool,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let Value::List {
@@ -5900,6 +6124,32 @@ fn apply_list_operation(
             element_classifier,
             entries,
             &right,
+            right_span,
+            trace,
+        );
+    }
+    if matches!(
+        operation,
+        "split-at" | "take" | "drop" | "remove" | "remove-indexes"
+    ) {
+        return apply_list_index_operation(
+            source,
+            operation,
+            element_classifier,
+            entries,
+            right,
+            right_span,
+            right_is_closed,
+            trace,
+        );
+    }
+    if matches!(operation, "zip-exact" | "zip-shortest") {
+        return apply_list_zip(
+            source,
+            operation,
+            &element_classifier,
+            entries,
+            right,
             right_span,
             trace,
         );
@@ -5976,6 +6226,484 @@ fn apply_list_operation(
     });
     Ok(Value::List {
         element_classifier,
+        entries,
+    })
+}
+
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Bounds, source evidence, and trace context remain explicit.
+fn apply_list_index_operation(
+    source: &SourceText,
+    operation: &str,
+    element_classifier: String,
+    mut entries: Vec<Value>,
+    operand: Value,
+    operand_span: Span,
+    operand_is_closed: bool,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if operation == "remove-indexes"
+        && let Value::IntRange { lower, upper } = operand
+    {
+        let Ok(lower) = usize::try_from(lower) else {
+            return list_boundary_failure(
+                source,
+                operation,
+                operand_span,
+                operand_is_closed,
+                trace,
+            );
+        };
+        let Ok(upper) = usize::try_from(upper) else {
+            return list_boundary_failure(
+                source,
+                operation,
+                operand_span,
+                operand_is_closed,
+                trace,
+            );
+        };
+        if lower > upper || upper >= entries.len() {
+            return list_boundary_failure(
+                source,
+                operation,
+                operand_span,
+                operand_is_closed,
+                trace,
+            );
+        }
+        entries.drain(lower..=upper);
+        trace.record(TraceEvent {
+            event: "list.entries.removed",
+            rule: "TOPAL-LIST-REMOVE-INDEXES-001",
+            detail: &format!("lower={lower};upper={upper}"),
+        });
+        return Ok(Value::List {
+            element_classifier,
+            entries,
+        });
+    }
+    let Value::Int(index) = operand else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-INDEX-CLASSIFIER",
+            operand_span,
+            format!("{operation} requires a Nat operand"),
+        ));
+    };
+    let Ok(index) = usize::try_from(index) else {
+        return list_boundary_failure(source, operation, operand_span, operand_is_closed, trace);
+    };
+    let valid = if operation == "remove" {
+        index < entries.len()
+    } else {
+        index <= entries.len()
+    };
+    if !valid {
+        return list_boundary_failure(source, operation, operand_span, operand_is_closed, trace);
+    }
+    let classifier = format!("List {element_classifier}");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &format!("root.{operation}({classifier},Nat)"),
+    });
+    let value = match operation {
+        "split-at" => {
+            let suffix = entries.split_off(index);
+            Value::Tuple(vec![
+                Value::List {
+                    element_classifier: element_classifier.clone(),
+                    entries,
+                },
+                Value::List {
+                    element_classifier,
+                    entries: suffix,
+                },
+            ])
+        }
+        "take" => {
+            entries.truncate(index);
+            Value::List {
+                element_classifier,
+                entries,
+            }
+        }
+        "drop" => Value::List {
+            element_classifier,
+            entries: entries.split_off(index),
+        },
+        "remove" => {
+            entries.remove(index);
+            Value::List {
+                element_classifier,
+                entries,
+            }
+        }
+        _ => unreachable!("known indexed List operation"),
+    };
+    trace.record(TraceEvent {
+        event: "list.region.selected",
+        rule: match operation {
+            "split-at" => "TOPAL-LIST-SPLIT-AT-001",
+            "take" => "TOPAL-LIST-TAKE-001",
+            "drop" => "TOPAL-LIST-DROP-001",
+            "remove" => "TOPAL-LIST-REMOVE-INDEX-001",
+            _ => unreachable!("known indexed List operation"),
+        },
+        detail: &format!("index={index}"),
+    });
+    Ok(value)
+}
+
+fn apply_list_insert_at(
+    source: &SourceText,
+    list: Value,
+    boundary: Value,
+    boundary_span: Span,
+    inserted: Value,
+    inserted_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List {
+        element_classifier,
+        mut entries,
+    } = list
+    else {
+        unreachable!("insert-at is dispatched only for List")
+    };
+    let Value::Int(boundary) = boundary else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-BOUNDARY-CLASSIFIER",
+            boundary_span,
+            "insert-at boundary must be Nat",
+        ));
+    };
+    let Ok(boundary) = usize::try_from(boundary) else {
+        return Ok(list_boundary_error(
+            source,
+            "insert-at",
+            boundary_span,
+            trace,
+        ));
+    };
+    if boundary > entries.len() {
+        return Ok(list_boundary_error(
+            source,
+            "insert-at",
+            boundary_span,
+            trace,
+        ));
+    }
+    let inserted_entries = match inserted {
+        Value::List {
+            element_classifier: classifier,
+            entries,
+        } => {
+            if classifier != element_classifier {
+                return Err(diagnostic(
+                    source,
+                    "E-LIST-INSERT-CLASSIFIER",
+                    inserted_span,
+                    format!("cannot insert `List {classifier}` into `List {element_classifier}`"),
+                ));
+            }
+            entries
+        }
+        value if value_has_classifier(&value, &element_classifier) => vec![value],
+        value => {
+            return Err(diagnostic(
+                source,
+                "E-LIST-INSERT-CLASSIFIER",
+                inserted_span,
+                format!(
+                    "insert-at requires `{element_classifier}` or `List {element_classifier}`, found `{}`",
+                    structural_value_classifier(&value)
+                ),
+            ));
+        }
+    };
+    let inserted_count = inserted_entries.len();
+    entries.splice(boundary..boundary, inserted_entries);
+    trace.record(TraceEvent {
+        event: "list.inserted",
+        rule: "TOPAL-LIST-INSERT-AT-001",
+        detail: &format!("boundary={boundary};count={inserted_count}"),
+    });
+    Ok(Value::List {
+        element_classifier,
+        entries,
+    })
+}
+
+fn apply_list_entries_view(list: Value, trace: &mut impl TraceSink) -> Value {
+    let Value::List {
+        element_classifier,
+        entries,
+    } = list
+    else {
+        unreachable!("entries view is dispatched only for List")
+    };
+    let entry_classifier = format!("IndexedEntry {element_classifier}");
+    let entries = entries
+        .into_iter()
+        .enumerate()
+        .map(|(index, value)| {
+            Value::Record(vec![
+                ("index".into(), Value::Int(BigInt::from(index))),
+                ("value".into(), value),
+            ])
+        })
+        .collect();
+    trace.record(TraceEvent {
+        event: "list.entries.viewed",
+        rule: "TOPAL-COLLECTION-ENTRIES-001",
+        detail: &entry_classifier,
+    });
+    Value::List {
+        element_classifier: entry_classifier,
+        entries,
+    }
+}
+
+fn list_boundary_error(
+    source: &SourceText,
+    operation: &str,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Value {
+    let position = source.position(span.start);
+    trace.record(TraceEvent {
+        event: "list.boundary.rejected",
+        rule: "TOPAL-LIST-BOUNDARY-CHECK-001",
+        detail: operation,
+    });
+    Value::Error {
+        domain: if operation.starts_with("zip-") {
+            format!("root.{operation}(List,List)")
+        } else {
+            format!("root.{operation}(List,Nat)")
+        },
+        code: "out-of-range".into(),
+        line: position.line,
+        column: position.column,
+    }
+}
+
+fn list_boundary_failure(
+    source: &SourceText,
+    operation: &str,
+    span: Span,
+    operand_is_closed: bool,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if operand_is_closed {
+        return Err(diagnostic(
+            source,
+            "E-LIST-BOUNDARY-OUT-OF-RANGE",
+            span,
+            format!("{operation} operand is outside the List's valid bounds"),
+        )
+        .with_help(
+            "use a boundary no greater than the entry count, or an existing index for remove",
+        ));
+    }
+    Ok(list_boundary_error(source, operation, span, trace))
+}
+
+fn apply_list_zip(
+    source: &SourceText,
+    operation: &str,
+    left_classifier: &str,
+    left: Vec<Value>,
+    right: Value,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List {
+        element_classifier: right_classifier,
+        entries: right,
+    } = right
+    else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-OPERAND",
+            right_span,
+            format!("{operation} requires another List"),
+        ));
+    };
+    if operation == "zip-exact" && left.len() != right.len() {
+        return Ok(list_boundary_error(source, operation, right_span, trace));
+    }
+    let entries = left
+        .into_iter()
+        .zip(right)
+        .map(|(left, right)| Value::Tuple(vec![left, right]))
+        .collect();
+    let pair_classifier = format!("({left_classifier}, {right_classifier})");
+    trace.record(TraceEvent {
+        event: "list.zipped",
+        rule: if operation == "zip-exact" {
+            "TOPAL-LIST-ZIP-EXACT-001"
+        } else {
+            "TOPAL-LIST-ZIP-SHORTEST-001"
+        },
+        detail: operation,
+    });
+    Ok(Value::List {
+        element_classifier: pair_classifier,
+        entries,
+    })
+}
+
+fn apply_list_unzip(
+    source: &SourceText,
+    pairs: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List { entries, .. } = pairs else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-UNZIP-SOURCE",
+            span,
+            "unzip requires a List of two-field products",
+        ));
+    };
+    let mut left = Vec::with_capacity(entries.len());
+    let mut right = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let Value::Tuple(mut fields) = entry else {
+            return Err(diagnostic(
+                source,
+                "E-LIST-UNZIP-ENTRY",
+                span,
+                "unzip requires every List entry to be a two-field product",
+            ));
+        };
+        if fields.len() != 2 {
+            return Err(diagnostic(
+                source,
+                "E-LIST-UNZIP-ENTRY",
+                span,
+                "unzip requires every List entry to contain exactly two fields",
+            ));
+        }
+        right.push(fields.pop().expect("two fields"));
+        left.push(fields.pop().expect("two fields"));
+    }
+    let left_classifier = left
+        .first()
+        .map_or_else(|| "Object".into(), structural_value_classifier);
+    let right_classifier = right
+        .first()
+        .map_or_else(|| "Object".into(), structural_value_classifier);
+    trace.record(TraceEvent {
+        event: "list.unzipped",
+        rule: "TOPAL-LIST-UNZIP-001",
+        detail: &format!("count={}", left.len()),
+    });
+    Ok(Value::Tuple(vec![
+        Value::List {
+            element_classifier: left_classifier,
+            entries: left,
+        },
+        Value::List {
+            element_classifier: right_classifier,
+            entries: right,
+        },
+    ]))
+}
+
+fn apply_list_zip_longest(
+    source: &SourceText,
+    left: Value,
+    right: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::Tuple(mut left_fields) = left else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-LEFT",
+            span,
+            "zip-longest left operand must be `(List, default)`",
+        ));
+    };
+    let Value::Tuple(mut right_fields) = right else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-RIGHT",
+            span,
+            "zip-longest right operand must be `(List, default)`",
+        ));
+    };
+    if left_fields.len() != 2 || right_fields.len() != 2 {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-OPERAND",
+            span,
+            "zip-longest operands must each contain a List and its default",
+        ));
+    }
+    let left_default = left_fields.pop().expect("two fields");
+    let right_default = right_fields.pop().expect("two fields");
+    let Value::List {
+        element_classifier: left_classifier,
+        entries: left_entries,
+    } = left_fields.pop().expect("two fields")
+    else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-LEFT",
+            span,
+            "first left field must be a List",
+        ));
+    };
+    let Value::List {
+        element_classifier: right_classifier,
+        entries: right_entries,
+    } = right_fields.pop().expect("two fields")
+    else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-RIGHT",
+            span,
+            "first right field must be a List",
+        ));
+    };
+    if !value_has_classifier(&left_default, &left_classifier)
+        || !value_has_classifier(&right_default, &right_classifier)
+    {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-DEFAULT",
+            span,
+            "each zip-longest default must match its List element classifier",
+        ));
+    }
+    let count = left_entries.len().max(right_entries.len());
+    let entries = (0..count)
+        .map(|index| {
+            Value::Tuple(vec![
+                left_entries
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(|| left_default.clone()),
+                right_entries
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(|| right_default.clone()),
+            ])
+        })
+        .collect();
+    trace.record(TraceEvent {
+        event: "list.zipped",
+        rule: "TOPAL-LIST-ZIP-LONGEST-001",
+        detail: &format!("count={count}"),
+    });
+    Ok(Value::List {
+        element_classifier: format!("({left_classifier}, {right_classifier})"),
         entries,
     })
 }

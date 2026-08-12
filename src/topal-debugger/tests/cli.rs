@@ -2599,3 +2599,20 @@ fn records_contextual_anonymous_list_functions_reversibly() {
     assert!(stdout.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
     assert!(stdout.contains("Entry ( 2, Entry ( 4, Entry ( 6"));
 }
+
+#[test]
+fn records_list_sequence_operations_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}list-sequence-operations.debug"),
+            &format!("{root}list-sequence-operations.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-LIST-INSERT-AT-001"));
+    assert!(stdout.contains("TOPAL-COLLECTION-ENTRIES-001"));
+}

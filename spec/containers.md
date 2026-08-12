@@ -122,3 +122,88 @@ true, without changing their relative order.
 `list fold initial step` shall call the contextual binary step in List order,
 passing the preceding state and current entry. The empty List result is
 `initial`; otherwise the final step result is returned.
+
+### TOPAL-LIST-BOUNDARY-CHECK-001 — Checked List positions
+
+List boundaries range from zero through the entry count; List indexes range
+from zero through one less than the entry count. A statically invalid position
+shall be diagnosed. An unchecked invalid runtime Nat shall return `out-of-range`
+from the lexical operation domain rather than clamp or partially modify a List.
+
+### TOPAL-LIST-INSERT-AT-001 — Boundary insertion
+
+`list insert-at boundary inserted` shall insert either one conforming value or
+every entry of a same-classifier List before the entry at `boundary`, preserving
+the relative order of both existing and inserted entries.
+
+### TOPAL-LIST-SPLIT-AT-001 — Boundary split
+
+`list split-at boundary` shall return a product containing the prefix before
+the boundary and the suffix beginning there, preserving every entry exactly.
+
+### TOPAL-LIST-TAKE-001 — Checked prefix
+
+`list take count` shall return the first `count` entries and use the same
+validity rule as `split-at`.
+
+### TOPAL-LIST-DROP-001 — Checked suffix
+
+`list drop count` shall return every entry after the first `count` entries and
+use the same validity rule as `split-at`.
+
+### TOPAL-LIST-REMOVE-INDEX-001 — Checked indexed removal
+
+`list remove index` shall remove exactly the entry at a valid index and preserve
+the relative order of all other entries.
+
+### TOPAL-LIST-REMOVE-INDEXES-001 — Predicate and range index removal
+
+`list remove-indexes predicate` shall remove exactly indexes for which the
+predicate returns true. The range form shall remove every included index and
+shall reject a range extending outside the List.
+
+### TOPAL-LIST-REMOVE-VALUES-001 — Predicate value removal
+
+`list remove-values predicate` shall remove exactly entries for which the
+predicate returns true while preserving the relative order of retained entries.
+
+### TOPAL-LIST-ZIP-EXACT-001 — Equal-size zip
+
+`left zip-exact right` shall pair entries at equal indexes. Unequal unchecked
+runtime sizes shall return `out-of-range` from the lexical operation domain.
+
+### TOPAL-LIST-ZIP-SHORTEST-001 — Truncating zip
+
+`left zip-shortest right` shall pair entries through the shorter List's final
+index and explicitly discard every unmatched suffix entry.
+
+### TOPAL-LIST-ZIP-LONGEST-001 — Default-extending zip
+
+`(left, left-default) zip-longest (right, right-default)` shall pair through the
+longer List's final index and use only the corresponding conforming default for
+each missing entry.
+
+### TOPAL-LIST-UNZIP-001 — Pair sequence decomposition
+
+`unzip pairs` shall return two Lists containing respectively the first and
+second field at every index, preserving the input entry count in both.
+
+### TOPAL-COLLECTION-FOREACH-001 — Finite List traversal
+
+List `foreach` shall call its Unit action once per entry in List order, return
+Unit, and leave the immutable source List available afterward.
+
+### TOPAL-COLLECTION-ENTRIES-001 — Indexed List entry view
+
+`list entries` shall return one `IndexedEntry T` record per List entry in order,
+with zero-based `index` and unchanged `value` fields.
+
+### TOPAL-COLLECTION-COLLECT-LIST-001 — List materialization
+
+Unary `collect` over a finite List traversal shall materialize the same ordered
+entries as a List without changing their classifier or multiplicity.
+
+### TOPAL-COLLECTION-COLLECT-STRING-001 — Text materialization
+
+`fragments collect String` shall concatenate Character or String Unicode
+content in traversal order and return the resulting String.

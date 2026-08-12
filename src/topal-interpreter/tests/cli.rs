@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 125);
+    assert_eq!(examples.len(), 126);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3271,4 +3271,37 @@ fn every_mode_executes_contextual_anonymous_list_functions() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
     assert!(trace.contains("TOPAL-COLLECTION-FOLD-001"));
+}
+
+#[test]
+fn every_mode_executes_complete_list_sequence_operations() {
+    let source = include_str!("../../../examples/interpreter/list-sequence-operations.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("domain is root.zip-exact(List,List)"));
+        assert!(stdout.contains("\"Topal\""));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for rule in [
+        "TOPAL-LIST-INSERT-AT-001",
+        "TOPAL-LIST-SPLIT-AT-001",
+        "TOPAL-LIST-REMOVE-INDEXES-001",
+        "TOPAL-LIST-ZIP-LONGEST-001",
+        "TOPAL-LIST-UNZIP-001",
+        "TOPAL-COLLECTION-FOREACH-001",
+        "TOPAL-COLLECTION-COLLECT-STRING-001",
+    ] {
+        assert!(trace.contains(rule), "missing {rule}");
+    }
+}
+
+#[test]
+fn closed_invalid_list_boundary_has_source_help() {
+    let output = run(&[], "values : List Int is one 1\nvalues take 2\n");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("E-LIST-BOUNDARY-OUT-OF-RANGE"));
+    assert!(stderr.contains("use a boundary no greater"));
 }

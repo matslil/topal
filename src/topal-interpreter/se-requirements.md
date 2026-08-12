@@ -1540,3 +1540,13 @@ by List `map`, `select`, and `fold`, including immutable lexical capture, under
 `TOPAL-COLLECTION-SELECT-001`, and `TOPAL-COLLECTION-FOLD-001`. Formal traces,
 LSP validation, and reversible scripted-debugger history shall cover commented
 examples.
+## TOPAL-INTP-SUBSET-188 — Complete ordered List sequence operations
+
+All interpreter modes shall implement checked indexed insertion, regions and
+removal; explicit zip policies and unzip; List traversal, predicate removal,
+entry views, and List/String collection according to `TOPAL-LIST-*` and
+`TOPAL-COLLECTION-*` rules in `spec/containers.md`. Invalid closed positions
+shall be source diagnostics, while invalid unchecked runtime positions shall be
+formal `out-of-range` Results whose domain identifies the lexical operation.
+LSP validation and reversible scripted-debugger history shall cover commented
+examples.
