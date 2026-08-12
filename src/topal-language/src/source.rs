@@ -1882,6 +1882,8 @@ impl Session {
                                 | "contains-entry"
                                 | "contains-sequence"
                                 | "contains-subsequence"
+                                | "remove-first"
+                                | "remove-all"
                         )
                         && matches!(result, Value::List { .. })
                     {
@@ -5617,6 +5619,7 @@ fn apply_list_reverse(value: &mut Value, trace: &mut impl TraceSink) {
     });
 }
 
+#[allow(clippy::too_many_lines)] // Keep ordered List operation dispatch together.
 fn apply_list_operation(
     source: &SourceText,
     operation: &str,
@@ -5639,6 +5642,17 @@ fn apply_list_operation(
             &element_classifier,
             &entries,
             right,
+            right_span,
+            trace,
+        );
+    }
+    if matches!(operation, "remove-first" | "remove-all") {
+        return apply_list_value_removal(
+            source,
+            operation,
+            element_classifier,
+            entries,
+            &right,
             right_span,
             trace,
         );
@@ -5716,6 +5730,71 @@ fn apply_list_operation(
     Ok(Value::List {
         element_classifier,
         entries,
+    })
+}
+
+fn apply_list_value_removal(
+    source: &SourceText,
+    operation: &str,
+    element_classifier: String,
+    entries: Vec<Value>,
+    target: &Value,
+    target_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if !value_has_classifier(target, &element_classifier) {
+        let found = structural_value_classifier(target);
+        return Err(diagnostic(
+            source,
+            "E-LIST-REMOVAL-CLASSIFIER",
+            target_span,
+            format!("{operation} requires `{element_classifier}`, found `{found}`"),
+        ));
+    }
+    let mut removed = false;
+    let mut retained = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let equal = values_equal(entry.clone(), target.clone(), trace).ok_or_else(|| {
+            diagnostic(
+                source,
+                "E-LIST-REMOVAL-EQUALITY",
+                target_span,
+                format!("`{element_classifier}` does not provide equality required by {operation}"),
+            )
+        })?;
+        if equal && (operation == "remove-all" || !removed) {
+            removed = true;
+        } else {
+            retained.push(entry);
+        }
+    }
+    let classifier = format!("List {element_classifier}");
+    let selection = format!("root.{operation}({classifier})");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &selection,
+    });
+    trace.record(TraceEvent {
+        event: if operation == "remove-first" {
+            "list.first.removed"
+        } else {
+            "list.all.removed"
+        },
+        rule: if operation == "remove-first" {
+            "TOPAL-LIST-REMOVE-FIRST-001"
+        } else {
+            "TOPAL-LIST-REMOVE-ALL-001"
+        },
+        detail: if removed {
+            "removed=true"
+        } else {
+            "removed=false"
+        },
+    });
+    Ok(Value::List {
+        element_classifier,
+        entries: retained,
     })
 }
 
@@ -9972,6 +10051,43 @@ fn list_containment_requires_compatible_classifiers() {
         .unwrap_err();
     assert_eq!(error.code, "E-LIST-CONTAINMENT-CLASSIFIER");
     assert!(error.message.contains("List String"));
+}
+
+#[test]
+fn list_value_removal_preserves_retained_order() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/list-removal.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert!(
+        value
+            .to_string()
+            .contains("Entry ( 1, Entry ( 3, Entry ( 2")
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-LIST-REMOVE-FIRST-001"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("TOPAL-LIST-REMOVE-ALL-001"))
+    );
+}
+
+#[test]
+fn list_value_removal_rejects_wrong_classifier() {
+    let error = Session::new()
+        .evaluate(
+            "values : List Int is one 1\nvalues remove-first \"1\"\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-LIST-REMOVAL-CLASSIFIER");
 }
 
 #[test]
