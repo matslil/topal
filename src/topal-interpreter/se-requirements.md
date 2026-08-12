@@ -1566,3 +1566,12 @@ and payload-free enum-like alternatives under `TOPAL-TYPE-PRODUCT-001`,
 `TOPAL-TYPE-UNION-001`, `TOPAL-TYPE-VARIANT-001`, and
 `TOPAL-DECISION-UNION-001`. Formal traces, LSP validation, and reversible
 scripted-debugger history shall cover commented examples.
+## TOPAL-INTP-SUBSET-191 — Constraints, conversions, equality, and ordering
+
+All interpreter modes shall construct named constraints, validate closed and
+dynamic values, retain successful evidence, forget evidence losslessly to the
+base type, and derive base equality and ordering under
+`TOPAL-TYPE-CONSTRAINT-001` and `TOPAL-TYPE-CONSTRAINT-VALIDATE-001`. Existing
+nominal Enum, Union, and Variant identities shall remain distinct. Formal
+traces, Rust-style rejection diagnostics, LSP validation, and reversible
+scripted-debugger history shall cover commented examples.

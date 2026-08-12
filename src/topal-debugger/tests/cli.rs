@@ -2650,3 +2650,20 @@ fn records_payload_union_decisions_reversibly() {
     assert!(stdout.contains("TOPAL-TYPE-UNION-001"));
     assert!(stdout.contains("TOPAL-DECISION-UNION-001"));
 }
+
+#[test]
+fn records_constraint_evidence_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}constraints-and-derived-capabilities.debug"),
+            &format!("{root}constraints-and-derived-capabilities.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-TYPE-CONSTRAINT-VALIDATE-001"));
+    assert!(stdout.contains("constraint->base"));
+}

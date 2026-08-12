@@ -67,6 +67,24 @@ A complete sum decision shall select exactly the active labeled or positional
 alternative. Payload bindings exist only while evaluating the selected action;
 payload-free alternatives bind nothing.
 
+### TOPAL-TYPE-CONSTRAINT-001 — Named constraint construction
+
+`Name is Base constraint { value } predicate` shall construct one constraint
+identity over `Base`. Its inferred anonymous predicate shall be pure in the
+implemented subset and return Boolean for every conforming Base input.
+
+### TOPAL-TYPE-CONSTRAINT-VALIDATE-001 — Constraint evidence
+
+Applying a statically known constraint to a conforming Base value shall evaluate
+its predicate exactly once. Success shall return the unchanged Base value with
+evidence for that named constraint. A closed rejected value shall be diagnosed;
+an unchecked dynamic rejection shall return `out-of-range` from the lexical
+constraint-application domain.
+
+Forgetting constraint evidence is an implicit lossless conversion to Base. The
+refined value derives exactly the canonical equality and ordering of Base; no
+second constraint-owned interpretation is introduced.
+
 ### TOPAL-TYPE-ENUM-001 — Nominal payload-free enum values
 
 A declaration `Name is Enum ( A₁, …, Aₙ )` introduces one nominal enum type and

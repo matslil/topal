@@ -83,6 +83,12 @@ pub enum Value {
         alternative: String,
     },
     Union(Box<UnionValue>),
+    Constraint(Box<ConstraintValue>),
+    Refined {
+        constraint: String,
+        base_classifier: String,
+        value: Box<Self>,
+    },
     ErrorDomain(String),
     Error {
         domain: String,
@@ -117,6 +123,13 @@ pub struct UnionValue {
     alternative: String,
     payload_classifier: Option<String>,
     payload: Option<Box<Value>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstraintValue {
+    name: Option<String>,
+    base_classifier: String,
+    predicate: Value,
 }
 
 impl fmt::Display for Value {
@@ -228,6 +241,15 @@ impl fmt::Display for Value {
                 union.payload.as_deref().expect("present payload")
             ),
             Self::Union(union) => formatter.write_str(&union.alternative),
+            Self::Constraint(constraint) => write!(
+                formatter,
+                "<Constraint {}>",
+                constraint
+                    .name
+                    .as_deref()
+                    .unwrap_or(&constraint.base_classifier)
+            ),
+            Self::Refined { value, .. } => write!(formatter, "{value}"),
             Self::ErrorDomain(domain) => formatter.write_str(domain),
             Self::Error { domain, code, .. } => {
                 write!(formatter, "Error ( domain is {domain}, code is {code} )")
@@ -904,6 +926,12 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if Self::is_constraint_definition(source, items) {
+                    return self.construct_constraint(source, items, trace);
+                }
+                if self.is_constraint_application(source, items) {
+                    return self.apply_constraint(source, items, *span, trace);
+                }
                 if self.application_is_union_constructor(source, items) {
                     return self.construct_union_application(source, items, *span, trace);
                 }
@@ -2287,6 +2315,122 @@ impl Session {
             )
     }
 
+    fn is_constraint_definition(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(
+            items,
+            [Expression::Identifier(_), Expression::Identifier(operation), Expression::AnonymousFunction { .. }]
+                if source.slice(*operation) == "constraint"
+        )
+    }
+
+    fn construct_constraint(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(base), _, predicate] = items else {
+            unreachable!("preselected constraint definition")
+        };
+        let base_classifier = source.slice(*base);
+        if !matches!(
+            base_classifier,
+            "Boolean" | "Int" | "Nat" | "Rational" | "String"
+        ) {
+            return Err(diagnostic(
+                source,
+                "E-CONSTRAINT-BASE",
+                *base,
+                "constraint base must be a supported value classifier",
+            ));
+        }
+        let predicate = self.evaluate_expression(source, predicate, trace)?;
+        trace.record(TraceEvent {
+            event: "constraint.constructed",
+            rule: "TOPAL-TYPE-CONSTRAINT-001",
+            detail: base_classifier,
+        });
+        Ok(Value::Constraint(Box::new(ConstraintValue {
+            name: None,
+            base_classifier: base_classifier.into(),
+            predicate,
+        })))
+    }
+
+    fn is_constraint_application(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _] if matches!(self.bindings.get(source.slice(*name)), Some(Value::Constraint(_))))
+    }
+
+    fn apply_constraint(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(name_span), operand] = items else {
+            unreachable!("preselected constraint application")
+        };
+        let name = source.slice(*name_span);
+        let Value::Constraint(constraint) = self.bindings.get(name).expect("known constraint")
+        else {
+            unreachable!("preselected constraint value")
+        };
+        let value = self.evaluate_expression(source, operand, trace)?;
+        if !value_has_classifier(&value, &constraint.base_classifier) {
+            return Err(diagnostic(
+                source,
+                "E-CONSTRAINT-OPERAND",
+                operand.span(),
+                format!(
+                    "constraint `{name}` requires `{}`",
+                    constraint.base_classifier
+                ),
+            ));
+        }
+        let decision = self.invoke_anonymous_function(
+            &constraint.predicate,
+            vec![value.clone()],
+            span,
+            trace,
+        )?;
+        let Value::Boolean(accepted) = decision else {
+            return Err(diagnostic(
+                source,
+                "E-CONSTRAINT-PREDICATE-RESULT",
+                operand.span(),
+                "constraint predicate must return Boolean",
+            ));
+        };
+        trace.record(TraceEvent {
+            event: "constraint.validated",
+            rule: "TOPAL-TYPE-CONSTRAINT-VALIDATE-001",
+            detail: if accepted { "accepted" } else { "rejected" },
+        });
+        if accepted {
+            return Ok(Value::Refined {
+                constraint: name.into(),
+                base_classifier: constraint.base_classifier.clone(),
+                value: Box::new(value),
+            });
+        }
+        if expression_is_closed(operand) {
+            return Err(diagnostic(
+                source,
+                "E-CONSTRAINT-REJECTED",
+                operand.span(),
+                format!("value does not satisfy constraint `{name}`"),
+            ));
+        }
+        let position = source.position(operand.span().start);
+        Ok(Value::Error {
+            domain: format!("root.{name}({})", constraint.base_classifier),
+            code: "out-of-range".into(),
+            line: position.line,
+            column: position.column,
+        })
+    }
+
     fn is_characters_application(source: &SourceText, items: &[Expression]) -> bool {
         matches!(items.first(), Some(Expression::Identifier(operation)) if source.slice(*operation) == "characters")
     }
@@ -3666,6 +3810,9 @@ impl Execution {
                 detail: name_text,
             });
         }
+        if let Value::Constraint(constraint) = &mut evaluated {
+            constraint.name = Some(name_text.to_owned());
+        }
         session.bindings.insert(name_text.to_owned(), evaluated);
         session.functions.remove(name_text);
         session.declared_names.insert(name_text.to_owned());
@@ -4678,6 +4825,15 @@ fn declare_variant(
 }
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
+    if let Value::Refined {
+        constraint,
+        base_classifier,
+        value,
+    } = value
+    {
+        return classifier == constraint
+            || (classifier == base_classifier && value_has_classifier(value, base_classifier));
+    }
     if let Value::SuspendedGenerator {
         yield_classifier,
         return_classifier,
@@ -5656,6 +5812,8 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Record(_) => "Record",
         Value::Enum { .. } => "Enum",
         Value::Union(_) => "Union",
+        Value::Constraint(_) => "Constraint",
+        Value::Refined { .. } => "Refined",
         Value::ErrorDomain(_) => "ErrorDomain",
         Value::Error { .. } => "Error",
         Value::Unit => "Unit",
@@ -5702,6 +5860,8 @@ fn structural_value_classifier(value: &Value) -> String {
         } => format!("Generator {yield_classifier} Unit {return_classifier}"),
         Value::Enum { type_name, .. } => type_name.clone(),
         Value::Union(union) => union.type_name.clone(),
+        Value::Constraint(constraint) => format!("Constraint {}", constraint.base_classifier),
+        Value::Refined { constraint, .. } => constraint.clone(),
         _ => value_classifier(value).to_owned(),
     }
 }
@@ -5843,6 +6003,8 @@ fn apply_binary(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let (span, left_span, right_span) = spans;
+    let left = forget_refinement(left, trace, "constraint->base:left");
+    let right = forget_refinement(right, trace, "constraint->base:right");
     if matches!(kind, CallableKind::Equal | CallableKind::NotEqual) {
         return apply_equality(source, kind, left, right, span, trace);
     }
@@ -5927,6 +6089,15 @@ fn apply_binary(
             span,
             "the implemented subset requires operands from one exact numeric domain",
         )),
+    }
+}
+
+fn forget_refinement(value: Value, trace: &mut impl TraceSink, detail: &'static str) -> Value {
+    if let Value::Refined { value, .. } = value {
+        trace_conversion(trace, detail);
+        *value
+    } else {
+        value
     }
 }
 
@@ -6137,6 +6308,8 @@ fn apply_comparison(
 
 fn values_compare(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<Ordering> {
     match (left, right) {
+        (Value::Refined { value, .. }, right) => values_compare(*value, right, trace),
+        (left, Value::Refined { value, .. }) => values_compare(left, *value, trace),
         (Value::Int(left), Value::Int(right)) => Some(left.cmp(&right)),
         (Value::Rational(left), Value::Rational(right)) => Some(left.cmp(&right)),
         (Value::Int(left), Value::Rational(right)) => {
@@ -7553,8 +7726,23 @@ fn contains_ordered_subsequence(
     Some(matched == pattern.len())
 }
 
+#[allow(clippy::too_many_lines)] // Every recursively derived equality remains explicit.
 fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<bool> {
     match (left, right) {
+        (
+            Value::Refined {
+                constraint: left_constraint,
+                value: left,
+                ..
+            },
+            Value::Refined {
+                constraint: right_constraint,
+                value: right,
+                ..
+            },
+        ) if left_constraint == right_constraint => values_equal(*left, *right, trace),
+        (Value::Refined { value, .. }, right) => values_equal(*value, right, trace),
+        (left, Value::Refined { value, .. }) => values_equal(left, *value, trace),
         (Value::Boolean(left), Value::Boolean(right)) => Some(left == right),
         (Value::Int(left), Value::Int(right)) => Some(left == right),
         (Value::Rational(left), Value::Rational(right)) => Some(left == right),
@@ -8200,6 +8388,8 @@ fn apply_negate(
         | Value::Record(_)
         | Value::Enum { .. }
         | Value::Union(_)
+        | Value::Constraint(_)
+        | Value::Refined { .. }
         | Value::ErrorDomain(_)
         | Value::Error { .. }
         | Value::Unit => Err(diagnostic(

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 128);
+    assert_eq!(examples.len(), 129);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3345,4 +3345,35 @@ fn every_mode_executes_recursive_products_variants_and_unions() {
     assert!(trace.contains("TOPAL-TYPE-UNION-001"));
     assert!(trace.contains("TOPAL-TYPE-VARIANT-001"));
     assert!(trace.contains("TOPAL-DECISION-UNION-001"));
+}
+
+#[test]
+fn every_mode_validates_constraints_and_derives_base_capabilities() {
+    let source =
+        include_str!("../../../examples/interpreter/constraints-and-derived-capabilities.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("(3, true, true, 5"));
+        assert!(stdout.contains("domain is root.Positive(Int)"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-CONSTRAINT-001"));
+    assert!(trace.contains("TOPAL-TYPE-CONSTRAINT-VALIDATE-001"));
+    assert!(trace.contains("constraint->base"));
+}
+
+#[test]
+fn closed_constraint_rejection_has_source_help() {
+    let output = run(
+        &[],
+        "Positive is Int constraint { value } value > 0\nPositive 0\n",
+    );
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-CONSTRAINT-REJECTED")
+    );
 }
