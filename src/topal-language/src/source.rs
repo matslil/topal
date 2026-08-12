@@ -1597,6 +1597,9 @@ impl Session {
                 if is_list_uncons(source, items) {
                     return evaluate_list_uncons(source, self, items, *span, trace);
                 }
+                if is_list_projection(source, items) {
+                    return evaluate_list_projection(source, self, items, *span, trace);
+                }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(source.slice(*name), "character-count" | "entry-count")
@@ -5444,6 +5447,81 @@ fn apply_list_uncons(
     })
 }
 
+fn is_list_projection(source: &SourceText, items: &[Expression]) -> bool {
+    matches!(items, [Expression::Identifier(name), _]
+        if matches!(source.slice(*name), "first" | "rest"))
+}
+
+fn evaluate_list_projection(
+    source: &SourceText,
+    session: &Session,
+    items: &[Expression],
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let [Expression::Identifier(operation), operand] = items else {
+        unreachable!("List projection expression shape checked")
+    };
+    let operation = source.slice(*operation);
+    let operand_span = operand.span();
+    let operand = session.evaluate_expression(source, operand, trace)?;
+    let Value::List {
+        element_classifier,
+        mut entries,
+    } = operand
+    else {
+        return Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            operand_span,
+            format!("{operation} requires a List operand"),
+        ));
+    };
+    let (payload_classifier, payload) = if operation == "first" {
+        (
+            element_classifier.clone(),
+            (!entries.is_empty()).then(|| Box::new(entries.remove(0))),
+        )
+    } else {
+        let payload_classifier = format!("List {element_classifier}");
+        let payload = if entries.is_empty() {
+            None
+        } else {
+            entries.remove(0);
+            Some(Box::new(Value::List {
+                element_classifier: element_classifier.clone(),
+                entries,
+            }))
+        };
+        (payload_classifier, payload)
+    };
+    let selection = format!("root.{operation}(List {element_classifier})");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &selection,
+    });
+    trace.record(TraceEvent {
+        event: if operation == "first" {
+            "list.first"
+        } else {
+            "list.rest"
+        },
+        rule: if operation == "first" {
+            "TOPAL-LIST-FIRST-001"
+        } else {
+            "TOPAL-LIST-REST-001"
+        },
+        detail: if payload.is_some() { "Some" } else { "None" },
+    });
+    let value = Value::Optional {
+        payload_classifier,
+        payload,
+    };
+    session.checkpoint(trace, Some(&value), Some(span));
+    Ok(value)
+}
+
 fn apply_count(
     source: &SourceText,
     operation: &str,
@@ -6269,7 +6347,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 18] = [
+const ROOT_OPERATIONS: [&str; 20] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -6280,6 +6358,7 @@ const ROOT_OPERATIONS: [&str; 18] = [
     "collect",
     "empty",
     "entry-count",
+    "first",
     "lower",
     "normalize",
     "upper",
@@ -6287,6 +6366,7 @@ const ROOT_OPERATIONS: [&str; 18] = [
     "not",
     "negate",
     "one",
+    "rest",
     "zero",
 ];
 
@@ -9646,7 +9726,7 @@ fn lists_construct_compare_and_decompose() {
         .unwrap();
     assert_eq!(
         value.to_string(),
-        "(Some 6, 5, false, true, true, Some (6, Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) )))"
+        "(Some 6, Some 6, Some Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) ), None, None, 5, false, true, true, Some (6, Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) )))"
     );
     assert!(
         trace
@@ -9668,8 +9748,21 @@ fn lists_construct_compare_and_decompose() {
         "list.empty.constructed",
         "list.singleton.constructed",
         "list.uncons",
+        "list.first",
+        "list.rest",
     ] {
         assert!(trace.iter().any(|record| record.contains(event)), "{event}");
+    }
+}
+
+#[test]
+fn first_and_rest_reject_non_lists() {
+    for operation in ["first", "rest"] {
+        let error = Session::new()
+            .evaluate(&format!("{operation} 7\n"), &mut Vec::new())
+            .unwrap_err();
+        assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
+        assert!(error.message.contains("requires a List"));
     }
 }
 

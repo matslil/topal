@@ -1373,6 +1373,14 @@ an empty `List T`, and `Some (first, rest)` for a nonempty List while preserving
 entry order and the `List T` classifier. LSP, formal traces, reversible debugger
 history, diagnostics, and the commented List example shall cover the operation.
 
+## TOPAL-INTP-SUBSET-182 — Total List first and rest
+
+All interpreter modes shall return `Optional T` from `first List T` and
+`Optional (List T)` from `rest List T`, producing None on Empty and preserving
+the first value or ordered tail on Entry. LSP, formal traces, reversible
+debugger history, diagnostics, and the commented List example shall cover both
+projections.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
