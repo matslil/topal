@@ -508,11 +508,11 @@ impl Parser<'_> {
         let keyword = self.take_nontrivia()?;
         let opening = self.take_nontrivia()?;
         let (parameters, closing) = self.static_function_parameters(opening)?;
-        if parameters.len() != 1 {
+        if parameters.is_empty() {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-GENERATOR-OPERAND-COUNT",
                 span: Span::new(opening.span.start, closing.span.end),
-                message: "the implemented generator subset requires one initial operand".into(),
+                message: "a generator requires at least one initial operand".into(),
             });
             return None;
         }
@@ -2078,6 +2078,22 @@ mod tests {
         assert_eq!(source.slice(*resumed), "Unit");
         assert_eq!(source.slice(*result), "Unit");
         assert_eq!(body.len(), 2);
+    }
+
+    #[test]
+    fn parses_multi_input_generator_declaration() {
+        let source = SourceText::new(
+            "select is generator ( value : Int, suffix : String )\n  yields String\n  resumes Unit\n  -> String\n\n  _ is yield suffix\n  \"done\"",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Generator { parameters, .. } = &parsed.statements[0] else {
+            panic!("expected generator");
+        };
+        assert_eq!(parameters.len(), 2);
+        assert_eq!(source.slice(parameters[0].classifier), "Int");
+        assert_eq!(source.slice(parameters[1].classifier), "String");
     }
 
     #[test]

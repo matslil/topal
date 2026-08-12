@@ -1286,6 +1286,16 @@ generator finishes. Formal traces and reversible debugger history shall expose
 close binding, decision selection, local call, and completion in order. LSP and
 commented examples shall cover the feature.
 
+## TOPAL-INTP-SUBSET-172 — Multi-input generator overloads
+
+All interpreter modes shall declare, select, and apply generator overloads with
+one or more initial operands under `TOPAL-GENERATOR-OVERLOAD-001`. Positional
+product arguments shall bind in declaration order, selection shall be based on
+the complete input classifier sequence, and duplicate signatures shall be
+rejected. Diagnostics shall report the found argument classifier and available
+signatures. Syntax, LSP, formal traces, reversible debugger history, and a
+commented example shall cover unary and binary overloads.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

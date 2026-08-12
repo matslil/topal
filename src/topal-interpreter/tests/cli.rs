@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 115);
+    assert_eq!(examples.len(), 116);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2998,6 +2998,20 @@ fn every_mode_restores_generator_local_close_handler() {
     let closed = trace.find("generator.closed").unwrap();
     assert!(close_bound < entered && entered < closed);
     assert!(trace.contains("domain=root;code=generator-closed;generator=root.handle-close"));
+}
+
+#[test]
+fn every_mode_selects_generator_overloads() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-overloads.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"\"binary\"\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("generator.selected"));
+    assert!(trace.contains("generator.argument.bound"));
+    assert!(trace.contains("Int, String"));
 }
 
 #[test]

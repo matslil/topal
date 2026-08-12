@@ -1855,6 +1855,24 @@ fn records_generator_local_close_handler_reversibly() {
 }
 
 #[test]
+fn records_generator_overload_selection_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-overloads.debug"),
+            &format!("{root}custom-generator-overloads.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(stdout.matches("generator.selected").count(), 2);
+    assert!(stdout.contains("Int, String"));
+    assert!(stdout.contains("\"binary\""));
+}
+
+#[test]
 fn records_yield_after_custom_close_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

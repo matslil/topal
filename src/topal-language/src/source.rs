@@ -211,7 +211,7 @@ impl Diagnostic {
 pub struct Session {
     bindings: BTreeMap<String, Value>,
     functions: BTreeMap<String, Vec<UserFunction>>,
-    generators: BTreeMap<String, UserGenerator>,
+    generators: BTreeMap<String, Vec<UserGenerator>>,
     declared_names: BTreeSet<String>,
     consumed_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
@@ -235,7 +235,7 @@ struct UserFunction {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct UserGenerator {
     source: SourceText,
-    parameter: (String, String),
+    parameters: Vec<(String, String)>,
     yielded: String,
     result: String,
     body: Vec<Statement>,
@@ -1228,19 +1228,24 @@ impl Session {
                 if items.len() == 2
                     && let Expression::Identifier(name_span) = &items[0]
                     && !self.bindings.contains_key(source.slice(*name_span))
-                    && let Some(generator) = self.generators.get(source.slice(*name_span)).cloned()
+                    && let Some(candidates) = self.generators.get(source.slice(*name_span)).cloned()
                 {
                     let name = source.slice(*name_span);
                     let argument_span = items[1].span();
                     let argument = self.evaluate_expression(source, &items[1], trace)?;
-                    if !value_has_classifier(&argument, &generator.parameter.1) {
-                        return Err(diagnostic(
+                    let Some(generator) = candidates
+                        .iter()
+                        .find(|candidate| function_accepts(&candidate.parameters, &argument))
+                        .cloned()
+                    else {
+                        return Err(no_applicable_generator(
                             source,
-                            "E-NO-APPLICABLE-GENERATOR",
+                            name,
                             argument_span,
-                            format!("generator `{name}` requires `{}`", generator.parameter.1),
+                            &argument,
+                            &candidates,
                         ));
-                    }
+                    };
                     let mut generator_scope = Self {
                         bindings: generator.bindings,
                         functions: self.functions.clone(),
@@ -1252,12 +1257,23 @@ impl Session {
                         call_stack: self.call_stack.clone(),
                         static_context: false,
                     };
-                    generator_scope
-                        .bindings
-                        .insert(generator.parameter.0.clone(), argument);
-                    generator_scope
-                        .declared_names
-                        .insert(generator.parameter.0.clone());
+                    bind_generator_arguments(
+                        &mut generator_scope,
+                        &generator.parameters,
+                        argument,
+                        trace,
+                    );
+                    let signature = generator
+                        .parameters
+                        .iter()
+                        .map(|(_, classifier)| classifier.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    trace.record(TraceEvent {
+                        event: "generator.selected",
+                        rule: "TOPAL-GENERATOR-OVERLOAD-001",
+                        detail: &signature,
+                    });
                     trace.record(TraceEvent {
                         event: "generator.started",
                         rule: "TOPAL-GENERATOR-DECLARATION-001",
@@ -2428,7 +2444,8 @@ impl Execution {
             ));
         }
         let name_text = self.source.slice(name);
-        if session.declared_names.contains(name_text) {
+        if session.declared_names.contains(name_text) && !session.generators.contains_key(name_text)
+        {
             return Err(diagnostic(
                 &self.source,
                 "E-DUPLICATE-BINDING",
@@ -2436,12 +2453,21 @@ impl Execution {
                 "name is already bound in this scope",
             ));
         }
-        let parameter = &parameters[0];
-        let parameter_classifier = self.source.slice(parameter.classifier);
+        validate_parameter_names(&self.source, parameters)?;
+        let parameters = parameters
+            .iter()
+            .map(|parameter| {
+                (
+                    self.source.slice(parameter.name).to_owned(),
+                    self.source.slice(parameter.classifier).to_owned(),
+                )
+            })
+            .collect::<Vec<_>>();
         let yield_classifier = self.source.slice(yielded);
         let result_classifier = self.source.slice(result);
-        if !supported_generator_value_classifier(parameter_classifier, &session.enum_types)
-            || !supported_generator_value_classifier(yield_classifier, &session.enum_types)
+        if !parameters.iter().all(|(_, classifier)| {
+            supported_generator_value_classifier(classifier, &session.enum_types)
+        }) || !supported_generator_value_classifier(yield_classifier, &session.enum_types)
             || self.source.slice(resumed) != "Unit"
             || !supported_generator_value_classifier(result_classifier, &session.enum_types)
         {
@@ -2460,20 +2486,30 @@ impl Execution {
                 "the implemented generator subset requires bindings, discarded computations, or yield statements followed by a final expression",
             ));
         }
-        session.generators.insert(
-            name_text.to_owned(),
-            UserGenerator {
-                source: self.source.clone(),
-                parameter: (
-                    self.source.slice(parameter.name).to_owned(),
-                    parameter_classifier.to_owned(),
-                ),
-                yielded: yield_classifier.to_owned(),
-                result: result_classifier.to_owned(),
-                body: body.to_vec(),
-                bindings: session.bindings.clone(),
-            },
-        );
+        let overloads = session.generators.entry(name_text.to_owned()).or_default();
+        if overloads.iter().any(|candidate| {
+            candidate.parameters.len() == parameters.len()
+                && candidate
+                    .parameters
+                    .iter()
+                    .zip(&parameters)
+                    .all(|((_, left), (_, right))| left == right)
+        }) {
+            return Err(diagnostic(
+                &self.source,
+                "E-DUPLICATE-GENERATOR-OVERLOAD",
+                name,
+                format!("generator overload `{name_text}` has the same input classifiers"),
+            ));
+        }
+        overloads.push(UserGenerator {
+            source: self.source.clone(),
+            parameters,
+            yielded: yield_classifier.to_owned(),
+            result: result_classifier.to_owned(),
+            body: body.to_vec(),
+            bindings: session.bindings.clone(),
+        });
         session.declared_names.insert(name_text.to_owned());
         trace.record(TraceEvent {
             event: "generator.declared",
@@ -3710,6 +3746,57 @@ fn bind_function_arguments(
             detail: parameter,
         });
     }
+}
+
+fn bind_generator_arguments(
+    scope: &mut Session,
+    parameters: &[(String, String)],
+    argument: Value,
+    trace: &mut impl TraceSink,
+) {
+    let arguments = match (parameters, argument) {
+        ([_], argument) => vec![argument],
+        (_, Value::Tuple(arguments)) => arguments,
+        _ => unreachable!("selected generator overload has validated its argument"),
+    };
+    for ((parameter, _), argument) in parameters.iter().zip(arguments) {
+        scope.bindings.insert(parameter.clone(), argument);
+        scope.declared_names.insert(parameter.clone());
+        trace.record(TraceEvent {
+            event: "generator.argument.bound",
+            rule: "TOPAL-GENERATOR-OVERLOAD-001",
+            detail: parameter,
+        });
+    }
+}
+
+fn no_applicable_generator(
+    source: &SourceText,
+    name: &str,
+    argument_span: Span,
+    argument: &Value,
+    candidates: &[UserGenerator],
+) -> Diagnostic {
+    let found = structural_value_classifier(argument);
+    let expected = candidates
+        .iter()
+        .map(|candidate| {
+            candidate
+                .parameters
+                .iter()
+                .map(|(_, classifier)| classifier.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+        .collect::<Vec<_>>()
+        .join(" or ");
+    diagnostic(
+        source,
+        "E-NO-APPLICABLE-GENERATOR",
+        argument_span,
+        format!("no `{name}` generator overload accepts `{found}`"),
+    )
+    .with_help(format!("available input classifiers: {expected}"))
 }
 
 fn no_applicable_overload(
@@ -8688,6 +8775,50 @@ fn custom_generator_restores_local_declarations_during_close() {
         .position(|event| event.contains("generator.closed"))
         .unwrap();
     assert!(close_bound < entered && entered < closed);
+}
+
+#[test]
+fn custom_generator_selects_unary_and_binary_overloads() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/custom-generator-overloads.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("binary".into()));
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("generator.selected"))
+            .count(),
+        2
+    );
+    assert!(trace.iter().any(|event| event.contains("Int, String")));
+}
+
+#[test]
+fn duplicate_generator_input_signature_is_rejected() {
+    let error = Session::new()
+        .evaluate(
+            "same is generator ( value : Int )\n  yields Int\n  resumes Unit\n  -> Unit\n\n  _ is yield value\n  ()\nsame is generator ( other : Int )\n  yields String\n  resumes Unit\n  -> String\n\n  _ is yield \"duplicate\"\n  \"duplicate\"\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-DUPLICATE-GENERATOR-OVERLOAD");
+}
+
+#[test]
+fn generator_overload_error_lists_available_inputs() {
+    let error = Session::new()
+        .evaluate(
+            "select is generator ( value : Int )\n  yields Int\n  resumes Unit\n  -> Unit\n\n  _ is yield value\n  ()\ngenerated is select true\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-NO-APPLICABLE-GENERATOR");
+    assert!(error.message.contains("Boolean"));
+    assert!(error.help.as_deref().unwrap().contains("Int"));
 }
 
 #[test]
