@@ -2283,4 +2283,12 @@ mod tests {
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     }
+
+    #[test]
+    fn parses_recursive_list_classifiers() {
+        let source =
+            SourceText::new(include_str!("../../../examples/interpreter/nested-lists.t")).unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
 }

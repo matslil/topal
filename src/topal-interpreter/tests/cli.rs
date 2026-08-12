@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 121);
+    assert_eq!(examples.len(), 122);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3203,4 +3203,21 @@ fn script_mode_explains_invalid_list_entries() {
     assert!(diagnostic.contains("error[E-LIST-ENTRY-CLASSIFIER]"));
     assert!(diagnostic.contains("this list requires `Int`"));
     assert!(diagnostic.contains("use a `Int` value"));
+}
+
+#[test]
+fn every_mode_preserves_recursive_list_classifiers() {
+    let source = include_str!("../../../examples/interpreter/nested-lists.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(Some Entry ( (7, \"seven\"), Empty ), 1, true)\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("List List (Int, String)"));
+    assert!(trace.contains("TOPAL-TYPE-LIST-EQUALITY-001"));
 }

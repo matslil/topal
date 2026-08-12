@@ -68,3 +68,9 @@ nonempty List, where `value` is its first entry.
 
 `rest list` shall return `None (List T)` for an empty `List T` and `Some tail`
 for a nonempty List, where `tail` contains every entry after the first in order.
+
+### TOPAL-TYPE-LIST-RECURSIVE-001 — Recursive List classifiers
+
+`List T` shall accept recursively supported element classifiers, including
+products and another `List U`. Construction, function boundaries, equality,
+and projections shall preserve every nested classifier and entry order.
