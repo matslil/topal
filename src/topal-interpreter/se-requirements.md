@@ -1350,6 +1350,14 @@ changing List order or element classifiers, and shall report `entry-count` and
 source-located diagnostics. LSP, formal traces, reversible debugger history,
 and the commented List example shall cover every operation.
 
+## TOPAL-INTP-SUBSET-179 — Explicit empty and singleton Lists
+
+All interpreter modes shall construct `empty List T` without contextual type
+information and infer `List T` for `one value` from the value's structural
+classifier. Numeric `one Type` overloads shall remain unchanged. LSP, formal
+traces, reversible debugger history, and the commented List example shall cover
+both constructors.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

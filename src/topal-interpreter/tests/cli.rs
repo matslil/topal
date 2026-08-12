@@ -3169,6 +3169,8 @@ fn every_mode_constructs_compares_and_decomposes_lists() {
     assert!(trace.contains("TOPAL-LIST-CONCAT-001"));
     assert!(trace.contains("TOPAL-LIST-ENTRY-COUNT-001"));
     assert!(trace.contains("TOPAL-LIST-EMPTY-PREDICATE-001"));
+    assert!(trace.contains("TOPAL-LIST-EMPTY-001"));
+    assert!(trace.contains("TOPAL-LIST-ONE-001"));
 }
 
 #[test]
