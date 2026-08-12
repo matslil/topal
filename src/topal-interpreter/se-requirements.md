@@ -1244,6 +1244,13 @@ yield, and final-return boundaries. LSP, formal trace, and reversible debugger
 coverage shall verify product structure and exact component values using a
 commented example.
 
+## TOPAL-INTP-SUBSET-167 — Absent nested Optional values
+
+All interpreter modes shall construct `None (A, B)` with its complete
+positional-product payload classifier and transfer it through supported custom-
+generator boundaries. LSP, formal trace, and reversible debugger coverage shall
+use a commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

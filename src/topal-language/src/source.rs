@@ -847,13 +847,10 @@ impl Session {
                         payload: Some(Box::new(value)),
                     });
                 }
-                if let [
-                    Expression::Identifier(constructor),
-                    Expression::Identifier(domain),
-                ] = items.as_slice()
+                if let [Expression::Identifier(constructor), domain] = items.as_slice()
                     && source.slice(*constructor) == "None"
+                    && let Some(payload_classifier) = classifier_expression(source, domain)
                 {
-                    let payload_classifier = source.slice(*domain).to_owned();
                     trace.record(TraceEvent {
                         event: "optional.none.constructed",
                         rule: "TOPAL-TYPE-OPTIONAL-CONSTRUCT-001",
@@ -4314,6 +4311,25 @@ fn structural_value_classifier(value: &Value) -> String {
         } => format!("Optional {payload_classifier}"),
         Value::Enum { type_name, .. } => type_name.clone(),
         _ => value_classifier(value).to_owned(),
+    }
+}
+
+fn classifier_expression(source: &SourceText, expression: &Expression) -> Option<String> {
+    match expression {
+        Expression::Identifier(span) => Some(source.slice(*span).to_owned()),
+        Expression::Product { fields, .. }
+            if fields.len() > 1 && fields.iter().all(|field| field.label.is_none()) =>
+        {
+            Some(format!(
+                "({})",
+                fields
+                    .iter()
+                    .map(|field| classifier_expression(source, &field.value))
+                    .collect::<Option<Vec<_>>>()?
+                    .join(", ")
+            ))
+        }
+        _ => None,
     }
 }
 
@@ -8464,6 +8480,19 @@ fn custom_generator_preserves_nested_result_product() {
         )
         .unwrap();
     assert_eq!(value.to_string(), "(8, \"done\")");
+}
+
+#[test]
+fn custom_generator_preserves_nested_absent_optional() {
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/custom-generator-nested-none-values.t"),
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert!(
+        matches!(value, Value::Optional { ref payload_classifier, payload: None } if payload_classifier == "(Int, String)")
+    );
 }
 
 #[test]
