@@ -2183,6 +2183,16 @@ mod tests {
     }
 
     #[test]
+    fn parses_list_generator_function_classifiers() {
+        let source = SourceText::new(include_str!(
+            "../../../examples/interpreter/custom-generator-list-values.t"
+        ))
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
     fn parses_nested_optional_generator_classifiers() {
         let source = SourceText::new(include_str!(
             "../../../examples/interpreter/custom-generator-nested-optional-values.t"

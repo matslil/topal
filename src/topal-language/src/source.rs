@@ -3816,6 +3816,8 @@ fn supported_generator_value_classifier(
     ) || enum_types.contains_key(classifier)
         || optional_payload_classifier(classifier)
             .is_some_and(|payload| supported_generator_value_classifier(payload, enum_types))
+        || list_element_classifier(classifier)
+            .is_some_and(|element| supported_generator_value_classifier(element, enum_types))
         || tuple_classifiers(classifier).is_some_and(|items| {
             items
                 .into_iter()
@@ -4601,7 +4603,7 @@ fn take_classifier(text: &str) -> Option<(&str, &str)> {
         return Some((&text[..end], &text[end..]));
     }
     let arity = match head {
-        "Optional" | "Range" => 1,
+        "Optional" | "Range" | "List" => 1,
         "Generator" => 3,
         _ => 0,
     };
@@ -9477,6 +9479,26 @@ fn nested_generator_crosses_function_boundaries() {
     }));
     assert!(trace.iter().any(|event| {
         event.contains("generator.parameter.transferred") && event.contains(classifier)
+    }));
+}
+
+#[test]
+fn list_generator_crosses_function_boundaries() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/custom-generator-list-values.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "Entry ( 7, Entry ( 9, Empty ) )");
+    assert!(trace.iter().any(|event| {
+        event.contains("generator.function.returned")
+            && event.contains("Generator List Int Unit List Int")
+    }));
+    assert!(trace.iter().any(|event| {
+        event.contains("generator.parameter.transferred")
+            && event.contains("Generator List Int Unit List Int")
     }));
 }
 

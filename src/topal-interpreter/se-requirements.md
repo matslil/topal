@@ -1358,6 +1358,14 @@ classifier. Numeric `one Type` overloads shall remain unchanged. LSP, formal
 traces, reversible debugger history, and the commented List example shall cover
 both constructors.
 
+## TOPAL-INTP-SUBSET-180 — List generator values
+
+All interpreter modes shall preserve `List T` values across custom generator
+input, yield, suspension, final return, and ordinary function continuation
+transfers when `T` is supported. Formal traces shall retain the exact
+`Generator List T Unit List T` classifier. LSP, reversible debugger history,
+and a commented example shall cover the feature.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
