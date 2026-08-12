@@ -55,6 +55,10 @@ the same input, yield, suspension, and final-return boundaries.
 Unit may be used as an input or yield when only the continuation boundary is
 significant and no payload is needed.
 
+An `Optional T` whose payload classifier is supported may cross each generator
+value direction. Its `Some` or `None` alternative and nominal payload
+classifier shall remain intact across suspension.
+
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 
 A generator continuation may execute ordinary binding and discarded-computation

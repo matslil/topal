@@ -1176,6 +1176,14 @@ classifier. Foreach shall invoke its action for each yielded Unit and resume the
 continuation with Unit. LSP validation and reversible scripted-debugger history
 shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-158 — Optional custom generator values
+
+All interpreter modes shall support Optional values as custom-generator input,
+yield, and final return when their payload classifier is supported. Suspension
+shall preserve both the alternative and nominal payload classifier. Formal
+traces, LSP validation, and reversible scripted-debugger history shall cover a
+commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

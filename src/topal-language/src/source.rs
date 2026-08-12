@@ -2420,23 +2420,16 @@ impl Execution {
         let parameter_classifier = self.source.slice(parameter.classifier);
         let yield_classifier = self.source.slice(yielded);
         let result_classifier = self.source.slice(result);
-        if !matches!(
-            parameter_classifier,
-            "Unit" | "Boolean" | "Character" | "Int" | "Rational" | "String"
-        ) || !matches!(
-            yield_classifier,
-            "Unit" | "Boolean" | "Character" | "Int" | "Rational" | "String"
-        ) || self.source.slice(resumed) != "Unit"
-            || !matches!(
-                result_classifier,
-                "Unit" | "Boolean" | "Character" | "Int" | "Rational" | "String"
-            )
+        if !supported_generator_value_classifier(parameter_classifier)
+            || !supported_generator_value_classifier(yield_classifier)
+            || self.source.slice(resumed) != "Unit"
+            || !supported_generator_value_classifier(result_classifier)
         {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-SIGNATURE",
                 span,
-                "the implemented generator subset requires Unit, Boolean, Character, Int, Rational, or String input/yield, Unit resume, and Unit, Boolean, Character, Int, Rational, or String return",
+                "the implemented generator subset requires supported scalar or Optional input/yield/return classifiers and Unit resume",
             ));
         }
         if !supported_generator_body(&self.source, body) {
@@ -3539,6 +3532,18 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         (Value::Enum { type_name, .. }, classifier) => type_name == classifier,
         _ => false,
     }
+}
+
+fn supported_generator_value_classifier(classifier: &str) -> bool {
+    matches!(
+        classifier,
+        "Unit" | "Boolean" | "Character" | "Int" | "Rational" | "String"
+    ) || optional_payload_classifier(classifier).is_some_and(|payload| {
+        matches!(
+            payload,
+            "Unit" | "Boolean" | "Character" | "Int" | "Rational" | "String"
+        )
+    })
 }
 
 fn is_arithmetic_error_code(code: &str) -> bool {
@@ -8349,6 +8354,18 @@ fn custom_generator_transfers_unit_values() {
         trace
             .iter()
             .any(|event| event.contains("Generator Unit Unit Unit"))
+    );
+}
+
+#[test]
+fn custom_generator_preserves_optional_values() {
+    let mut trace = Vec::new();
+    let value = Session::new().evaluate("optional is generator ( initial : Optional Int )\n  yields Optional Int\n  resumes Unit\n  -> Optional Int\n\n  _ is yield initial\n  None Int\ngenerated is optional (Some 7)\ngenerated foreach { candidate }\n  _ is candidate = (Some 7)\n", &mut trace).unwrap();
+    assert_eq!(value.to_string(), "None");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("Generator Optional Int Unit Optional Int"))
     );
 }
 
