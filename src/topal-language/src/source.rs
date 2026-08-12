@@ -36,6 +36,23 @@ pub enum Value {
         entries: Vec<Self>,
     },
     AnonymousFunction(Box<AnonymousFunction>),
+    Array {
+        element_classifier: String,
+        entries: Vec<Self>,
+    },
+    Set {
+        element_classifier: String,
+        entries: Vec<Self>,
+    },
+    Bag {
+        element_classifier: String,
+        entries: Vec<(Self, usize)>,
+    },
+    Map {
+        key_classifier: String,
+        value_classifier: String,
+        entries: Vec<(Self, Self)>,
+    },
     CharacterGenerator {
         generated: Vec<String>,
         origin: String,
@@ -92,6 +109,7 @@ pub struct AnonymousFunction {
 }
 
 impl fmt::Display for Value {
+    #[allow(clippy::too_many_lines)] // Every runtime value keeps an explicit stable source representation.
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Boolean(value) => value.fmt(formatter),
@@ -130,6 +148,28 @@ impl fmt::Display for Value {
             }
             Self::AnonymousFunction(function) => {
                 write!(formatter, "<anonymous fn/{}>", function.parameters.len())
+            }
+            Self::Array { entries, .. } => display_collection(formatter, "Array", entries),
+            Self::Set { entries, .. } => display_collection(formatter, "Set", entries),
+            Self::Bag { entries, .. } => {
+                formatter.write_str("Bag (")?;
+                for (index, (value, count)) in entries.iter().enumerate() {
+                    if index != 0 {
+                        formatter.write_str(", ")?;
+                    }
+                    write!(formatter, "({value}, {count})")?;
+                }
+                formatter.write_str(")")
+            }
+            Self::Map { entries, .. } => {
+                formatter.write_str("Map (")?;
+                for (index, (key, value)) in entries.iter().enumerate() {
+                    if index != 0 {
+                        formatter.write_str(", ")?;
+                    }
+                    write!(formatter, "({key}, {value})")?;
+                }
+                formatter.write_str(")")
             }
             Self::CharacterGenerator { .. } => {
                 formatter.write_str("<Generator Character Unit Unit>")
@@ -177,6 +217,21 @@ impl fmt::Display for Value {
             Self::Unit => formatter.write_str("()"),
         }
     }
+}
+
+fn display_collection(
+    formatter: &mut fmt::Formatter<'_>,
+    kind: &str,
+    entries: &[Value],
+) -> fmt::Result {
+    write!(formatter, "{kind} (")?;
+    for (index, entry) in entries.iter().enumerate() {
+        if index != 0 {
+            formatter.write_str(", ")?;
+        }
+        write!(formatter, "{entry}")?;
+    }
+    formatter.write_str(")")
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -784,7 +839,7 @@ impl Session {
                 if matches!(
                     items.as_slice(),
                     [Expression::Identifier(operation), ..]
-                        if matches!(source.slice(*operation), "unzip" | "collect")
+                        if matches!(source.slice(*operation), "unzip" | "collect" | "collect-set" | "collect-bag" | "collect-map")
                 ) || matches!(
                     items.as_slice(),
                     [_, Expression::Identifier(operation), ..]
@@ -2436,6 +2491,7 @@ impl Session {
         unreachable!("higher-order List operation is preselected by its application shape")
     }
 
+    #[allow(clippy::too_many_lines)] // Collector spellings and their distinct laws remain auditable together.
     fn evaluate_list_materialization(
         &self,
         source: &SourceText,
@@ -2475,9 +2531,39 @@ impl Session {
             Expression::Identifier(target),
         ] = items
             && source.slice(*operation) == "collect"
-            && source.slice(*target) == "String"
         {
             let value = self.evaluate_expression(source, collection, trace)?;
+            if source.slice(*target) == "Array" {
+                let Value::List {
+                    element_classifier,
+                    entries,
+                } = value
+                else {
+                    return Err(diagnostic(
+                        source,
+                        "E-COLLECT-ARRAY-SOURCE",
+                        collection.span(),
+                        "Array collection requires a finite List",
+                    ));
+                };
+                trace.record(TraceEvent {
+                    event: "array.collected",
+                    rule: "TOPAL-ARRAY-COLLECT-001",
+                    detail: &format!("count={}", entries.len()),
+                });
+                return Ok(Value::Array {
+                    element_classifier,
+                    entries,
+                });
+            }
+            if source.slice(*target) != "String" {
+                return Err(diagnostic(
+                    source,
+                    "E-COLLECT-TARGET",
+                    *target,
+                    "implemented collectors are Array and String",
+                ));
+            }
             let Value::List { entries, .. } = value else {
                 return Err(diagnostic(
                     source,
@@ -2504,6 +2590,36 @@ impl Session {
                 detail: "String",
             });
             return Ok(Value::String(text));
+        }
+        if let [Expression::Identifier(operation), collection] = items
+            && matches!(source.slice(*operation), "collect-set" | "collect-bag")
+        {
+            let value = self.evaluate_expression(source, collection, trace)?;
+            return collect_unordered(
+                source,
+                source.slice(*operation),
+                value,
+                collection.span(),
+                trace,
+            );
+        }
+        if let [
+            Expression::Identifier(operation),
+            collection,
+            Expression::Identifier(resolving),
+            Expression::Identifier(policy),
+        ] = items
+            && source.slice(*operation) == "collect-map"
+            && source.slice(*resolving) == "resolving"
+        {
+            let value = self.evaluate_expression(source, collection, trace)?;
+            return collect_map(
+                source,
+                value,
+                source.slice(*policy),
+                collection.span(),
+                trace,
+            );
         }
         if let [
             left_with_default,
@@ -5174,6 +5290,10 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
         Value::AnonymousFunction(_) => "Function",
+        Value::Array { .. } => "Array",
+        Value::Set { .. } => "Set",
+        Value::Bag { .. } => "Bag",
+        Value::Map { .. } => "Map",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
         Value::SuspendedGenerator {
             yield_classifier,
@@ -5229,6 +5349,21 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::List {
             element_classifier, ..
         } => format!("List {element_classifier}"),
+        Value::Array {
+            element_classifier,
+            entries,
+        } => format!("Array {} {element_classifier}", entries.len()),
+        Value::Set {
+            element_classifier, ..
+        } => format!("Set {element_classifier}"),
+        Value::Bag {
+            element_classifier, ..
+        } => format!("Bag {element_classifier}"),
+        Value::Map {
+            key_classifier,
+            value_classifier,
+            ..
+        } => format!("Map ({key_classifier}, {value_classifier})"),
         Value::SuspendedGenerator {
             yield_classifier,
             return_classifier,
@@ -5839,6 +5974,24 @@ fn apply_empty_predicate(
             "list.empty.tested",
             "TOPAL-LIST-EMPTY-PREDICATE-001",
         ),
+        Value::Array { entries, .. } | Value::Set { entries, .. } => (
+            entries.is_empty(),
+            "Collection".into(),
+            "collection.empty.tested",
+            "TOPAL-COLLECTION-EMPTY-PREDICATE-001",
+        ),
+        Value::Bag { entries, .. } => (
+            entries.is_empty(),
+            "Collection".into(),
+            "collection.empty.tested",
+            "TOPAL-COLLECTION-EMPTY-PREDICATE-001",
+        ),
+        Value::Map { entries, .. } => (
+            entries.is_empty(),
+            "Collection".into(),
+            "collection.empty.tested",
+            "TOPAL-COLLECTION-EMPTY-PREDICATE-001",
+        ),
         value => {
             let found = structural_value_classifier(&value);
             return Err(diagnostic(
@@ -6037,6 +6190,26 @@ fn apply_count(
             format!("List {element_classifier}"),
             "list.entry-count",
             "TOPAL-LIST-ENTRY-COUNT-001",
+        ),
+        Value::Array { entries, .. } | Value::Set { entries, .. } if operation == "entry-count" => {
+            (
+                entries.len(),
+                "Collection".into(),
+                "collection.entry-count",
+                "TOPAL-COLLECTION-ENTRY-COUNT-001",
+            )
+        }
+        Value::Bag { entries, .. } if operation == "entry-count" => (
+            entries.iter().map(|(_, count)| count).sum(),
+            "Bag".into(),
+            "collection.entry-count",
+            "TOPAL-COLLECTION-ENTRY-COUNT-001",
+        ),
+        Value::Map { entries, .. } if operation == "entry-count" => (
+            entries.len(),
+            "Map".into(),
+            "collection.entry-count",
+            "TOPAL-COLLECTION-ENTRY-COUNT-001",
         ),
         value => {
             let found = structural_value_classifier(&value);
@@ -6705,6 +6878,166 @@ fn apply_list_zip_longest(
     Ok(Value::List {
         element_classifier: format!("({left_classifier}, {right_classifier})"),
         entries,
+    })
+}
+
+fn collect_unordered(
+    source: &SourceText,
+    operation: &str,
+    value: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List {
+        element_classifier,
+        entries,
+    } = value
+    else {
+        return Err(diagnostic(
+            source,
+            "E-UNORDERED-COLLECT-SOURCE",
+            span,
+            format!("{operation} requires a finite List"),
+        ));
+    };
+    let mut distinct: Vec<(Value, usize)> = Vec::new();
+    for entry in entries {
+        let mut found = None;
+        for (index, (candidate, _)) in distinct.iter().enumerate() {
+            if values_equal(candidate.clone(), entry.clone(), trace).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-UNORDERED-COLLECT-EQUALITY",
+                    span,
+                    format!("`{element_classifier}` must provide equality for {operation}"),
+                )
+            })? {
+                found = Some(index);
+                break;
+            }
+        }
+        if let Some(index) = found {
+            distinct[index].1 += 1;
+        } else {
+            distinct.push((entry, 1));
+        }
+    }
+    let count = distinct.len();
+    trace.record(TraceEvent {
+        event: if operation == "collect-set" {
+            "set.collected"
+        } else {
+            "bag.collected"
+        },
+        rule: if operation == "collect-set" {
+            "TOPAL-SET-COLLECT-001"
+        } else {
+            "TOPAL-BAG-COLLECT-001"
+        },
+        detail: &format!("distinct={count}"),
+    });
+    if operation == "collect-set" {
+        Ok(Value::Set {
+            element_classifier,
+            entries: distinct.into_iter().map(|(value, _)| value).collect(),
+        })
+    } else {
+        Ok(Value::Bag {
+            element_classifier,
+            entries: distinct,
+        })
+    }
+}
+
+fn collect_map(
+    source: &SourceText,
+    value: Value,
+    policy: &str,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if !matches!(policy, "reject" | "keep-first" | "keep-last") {
+        return Err(diagnostic(
+            source,
+            "E-MAP-COLLISION-POLICY",
+            span,
+            "collect-map policy must be reject, keep-first, or keep-last",
+        ));
+    }
+    let Value::List { entries, .. } = value else {
+        return Err(diagnostic(
+            source,
+            "E-MAP-COLLECT-SOURCE",
+            span,
+            "collect-map requires a List of key/value products",
+        ));
+    };
+    let mut mapping: Vec<(Value, Value)> = Vec::new();
+    for entry in entries {
+        let Value::Tuple(mut pair) = entry else {
+            return Err(diagnostic(
+                source,
+                "E-MAP-COLLECT-ENTRY",
+                span,
+                "collect-map entries must be two-field products",
+            ));
+        };
+        if pair.len() != 2 {
+            return Err(diagnostic(
+                source,
+                "E-MAP-COLLECT-ENTRY",
+                span,
+                "collect-map entries must have exactly two fields",
+            ));
+        }
+        let value = pair.pop().expect("two fields");
+        let key = pair.pop().expect("two fields");
+        let mut collision = None;
+        for (index, (candidate, _)) in mapping.iter().enumerate() {
+            if values_equal(candidate.clone(), key.clone(), trace).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-MAP-KEY-EQUALITY",
+                    span,
+                    "map keys must provide equality",
+                )
+            })? {
+                collision = Some(index);
+                break;
+            }
+        }
+        match (collision, policy) {
+            (Some(_), "reject") => {
+                return Err(diagnostic(
+                    source,
+                    "E-MAP-KEY-COLLISION",
+                    span,
+                    "collect-map encountered a duplicate key under reject policy",
+                ));
+            }
+            (Some(_), "keep-first") => {}
+            (Some(index), "keep-last") => mapping[index].1 = value,
+            (None, _) => mapping.push((key, value)),
+            _ => unreachable!("validated collision policy"),
+        }
+    }
+    let key_classifier = mapping.first().map_or_else(
+        || "Object".into(),
+        |(key, _)| structural_value_classifier(key),
+    );
+    let value_classifier = mapping.first().map_or_else(
+        || "Object".into(),
+        |(_, value)| structural_value_classifier(value),
+    );
+    trace.record(TraceEvent {
+        event: "map.collected",
+        rule: "TOPAL-MAP-COLLECT-001",
+        detail: policy,
+    });
+    Ok(Value::Map {
+        key_classifier,
+        value_classifier,
+        entries: mapping,
     })
 }
 
@@ -7514,6 +7847,10 @@ fn apply_negate(
         | Value::Optional { .. }
         | Value::List { .. }
         | Value::AnonymousFunction(_)
+        | Value::Array { .. }
+        | Value::Set { .. }
+        | Value::Bag { .. }
+        | Value::Map { .. }
         | Value::CharacterGenerator { .. }
         | Value::CharacterReturningGenerator { .. }
         | Value::SuspendedGenerator { .. }

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 126);
+    assert_eq!(examples.len(), 127);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3304,4 +3304,27 @@ fn closed_invalid_list_boundary_has_source_help() {
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(stderr.contains("E-LIST-BOUNDARY-OUT-OF-RANGE"));
     assert!(stderr.contains("use a boundary no greater"));
+}
+
+#[test]
+fn every_mode_collects_fundamental_containers() {
+    let source = include_str!("../../../examples/interpreter/fundamental-containers.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("Array (2, 1, 2)"));
+        assert!(stdout.contains("Set (2, 1)"));
+        assert!(stdout.contains("Bag ((2, 2), (1, 1))"));
+        assert!(stdout.contains("Map ((\"Ada\", 11), (\"Lin\", 8))"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for rule in [
+        "TOPAL-ARRAY-COLLECT-001",
+        "TOPAL-SET-COLLECT-001",
+        "TOPAL-BAG-COLLECT-001",
+        "TOPAL-MAP-COLLECT-001",
+    ] {
+        assert!(trace.contains(rule), "missing {rule}");
+    }
 }

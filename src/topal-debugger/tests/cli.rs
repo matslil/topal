@@ -2616,3 +2616,20 @@ fn records_list_sequence_operations_reversibly() {
     assert!(stdout.contains("TOPAL-LIST-INSERT-AT-001"));
     assert!(stdout.contains("TOPAL-COLLECTION-ENTRIES-001"));
 }
+
+#[test]
+fn records_fundamental_container_collection_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}fundamental-containers.debug"),
+            &format!("{root}fundamental-containers.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-ARRAY-COLLECT-001"));
+    assert!(stdout.contains("TOPAL-MAP-COLLECT-001"));
+}

@@ -207,3 +207,35 @@ entries as a List without changing their classifier or multiplicity.
 
 `fragments collect String` shall concatenate Character or String Unicode
 content in traversal order and return the resulting String.
+
+### TOPAL-ARRAY-COLLECT-001 — Fixed-count Array collection
+
+`source collect Array` over a finite List shall construct `Array N T`, where
+`N` is the exact source entry count, preserving order and multiplicity.
+
+### TOPAL-SET-COLLECT-001 — Unique unordered collection
+
+`collect-set source` shall retain one representative of each equality class of
+entries. Its observable Set value shall expose no ordering guarantee.
+
+### TOPAL-BAG-COLLECT-001 — Multiplicity collection
+
+`collect-bag source` shall retain each distinct value with its positive total
+occurrence count and shall expose no ordering guarantee.
+
+### TOPAL-MAP-COLLECT-001 — Explicit-collision Map collection
+
+`collect-map pairs resolving policy` shall construct a Map from two-field key
+and value products. `reject` diagnoses a duplicate key, `keep-first` retains its
+first value, and `keep-last` retains its final value. Key equality and uniform
+key/value classifiers are required.
+
+### TOPAL-COLLECTION-ENTRY-COUNT-001 — Fundamental collection count
+
+Array, Set, and Map entry count is their number of stored entries. Bag entry
+count is the sum of occurrence counts rather than its distinct-value count.
+
+### TOPAL-COLLECTION-EMPTY-PREDICATE-001 — Fundamental collection emptiness
+
+Array, Set, Bag, and Map `empty?` shall be true exactly when their entry count
+is zero.

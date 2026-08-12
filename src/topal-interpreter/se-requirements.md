@@ -1550,3 +1550,11 @@ shall be source diagnostics, while invalid unchecked runtime positions shall be
 formal `out-of-range` Results whose domain identifies the lexical operation.
 LSP validation and reversible scripted-debugger history shall cover commented
 examples.
+## TOPAL-INTP-SUBSET-189 — Fundamental Array, Set, Bag, and Map values
+
+All interpreter modes shall collect finite Lists into fixed-count Arrays,
+unique Sets, multiplicity-preserving Bags, and explicitly collision-resolved
+Maps under `TOPAL-ARRAY-COLLECT-001`, `TOPAL-SET-COLLECT-001`,
+`TOPAL-BAG-COLLECT-001`, and `TOPAL-MAP-COLLECT-001`. Counting, emptiness,
+formal traces, LSP validation, and reversible scripted-debugger history shall
+cover commented examples.
