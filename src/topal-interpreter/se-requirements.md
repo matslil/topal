@@ -1381,6 +1381,13 @@ the first value or ordered tail on Entry. LSP, formal traces, reversible
 debugger history, diagnostics, and the commented List example shall cover both
 projections.
 
+## TOPAL-INTP-SUBSET-183 — Recursive List classifiers
+
+All interpreter modes shall preserve Lists whose element classifier is a
+supported product or another List through construction, function boundaries,
+equality, and projection. LSP, formal traces, reversible debugger history, and
+a commented example shall cover nested Lists of positional products.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

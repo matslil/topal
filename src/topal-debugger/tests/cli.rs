@@ -2528,3 +2528,20 @@ fn records_list_construction_and_decomposition_reversibly() {
     assert!(stdout.contains("TOPAL-LIST-REST-001"));
     assert!(stdout.contains("Some (6, Entry ( 7"));
 }
+
+#[test]
+fn records_recursive_list_classifiers_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}nested-lists.debug"),
+            &format!("{root}nested-lists.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("List List (Int, String)"));
+    assert!(stdout.contains("Some Entry ( (7, \"seven\"), Empty )"));
+}

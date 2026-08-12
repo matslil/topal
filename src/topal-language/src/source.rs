@@ -9767,6 +9767,20 @@ fn first_and_rest_reject_non_lists() {
 }
 
 #[test]
+fn recursive_list_classifiers_cross_function_boundaries() {
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/nested-lists.t"),
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(
+        value.to_string(),
+        "(Some Entry ( (7, \"seven\"), Empty ), 1, true)"
+    );
+}
+
+#[test]
 fn uncons_is_total_for_empty_lists_and_rejects_other_values() {
     let value = Session::new()
         .evaluate("uncons (empty List Int)\n", &mut Vec::new())
