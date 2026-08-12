@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 108);
+    assert_eq!(examples.len(), 109);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2895,6 +2895,17 @@ fn every_mode_traverses_comparison_generator_values() {
         let output = run(arguments, source);
         assert!(output.status.success());
         assert!(output.stdout.ends_with(b"Greater\n"));
+    }
+}
+
+#[test]
+fn every_mode_traverses_nested_optional_generator_values() {
+    let source =
+        include_str!("../../../examples/interpreter/custom-generator-nested-optional-values.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"Some (8, \"done\")\n"));
     }
 }
 

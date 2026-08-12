@@ -836,7 +836,7 @@ impl Session {
                     && source.slice(*constructor) == "Some"
                 {
                     let value = self.evaluate_expression(source, payload, trace)?;
-                    let payload_classifier = value_classifier(&value).to_owned();
+                    let payload_classifier = structural_value_classifier(&value);
                     trace.record(TraceEvent {
                         event: "optional.some.constructed",
                         rule: "TOPAL-TYPE-OPTIONAL-CONSTRUCT-001",
@@ -3550,13 +3550,9 @@ fn supported_generator_value_classifier(classifier: &str) -> bool {
             | "String"
             | "Range Int"
             | "Range Rational"
-    ) || optional_payload_classifier(classifier).is_some_and(|payload| {
-        matches!(
-            payload,
-            "Unit" | "Boolean" | "Character" | "Int" | "Rational" | "String"
-        )
-    }) || tuple_classifiers(classifier)
-        .is_some_and(|items| items.into_iter().all(supported_generator_value_classifier))
+    ) || optional_payload_classifier(classifier).is_some_and(supported_generator_value_classifier)
+        || tuple_classifiers(classifier)
+            .is_some_and(|items| items.into_iter().all(supported_generator_value_classifier))
         || result_success_classifier(classifier).is_some_and(supported_generator_value_classifier)
 }
 
@@ -4300,6 +4296,24 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::ErrorDomain(_) => "ErrorDomain",
         Value::Error { .. } => "Error",
         Value::Unit => "Unit",
+    }
+}
+
+fn structural_value_classifier(value: &Value) -> String {
+    match value {
+        Value::Tuple(values) => format!(
+            "({})",
+            values
+                .iter()
+                .map(structural_value_classifier)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Value::Optional {
+            payload_classifier, ..
+        } => format!("Optional {payload_classifier}"),
+        Value::Enum { type_name, .. } => type_name.clone(),
+        _ => value_classifier(value).to_owned(),
     }
 }
 
@@ -8428,6 +8442,17 @@ fn custom_generator_returns_structured_result_error() {
 fn custom_generator_preserves_comparison_identity() {
     let value = Session::new().evaluate("order is generator ( initial : Comparison )\n  yields Comparison\n  resumes Unit\n  -> Comparison\n\n  _ is yield initial\n  3 <=> 2\ngenerated is order (1 <=> 2)\ngenerated foreach { comparison }\n  _ is comparison = (1 <=> 2)\n", &mut Vec::new()).unwrap();
     assert_eq!(value.to_string(), "Greater");
+}
+
+#[test]
+fn custom_generator_preserves_nested_optional_product() {
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/custom-generator-nested-optional-values.t"),
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "Some (8, \"done\")");
 }
 
 #[test]
