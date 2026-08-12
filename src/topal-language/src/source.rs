@@ -951,6 +951,9 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if Self::is_range_selection(source, items) {
+                    return self.evaluate_range_selection(source, items, *span, trace);
+                }
                 if self.is_explicit_modulo(source, items) {
                     return self.apply_explicit_modulo(source, items, trace);
                 }
@@ -2388,6 +2391,106 @@ impl Session {
                 if source.slice(*operation) == "modulo"
                     && matches!(self.bindings.get(source.slice(*type_name)), Some(Value::ModularType(_)))
         )
+    }
+
+    fn is_range_selection(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(
+            items,
+            [_, Expression::Identifier(operation), selector]
+                if matches!(source.slice(*operation), "select" | "select-index")
+                    && !matches!(selector, Expression::AnonymousFunction { .. })
+        )
+    }
+
+    fn evaluate_range_selection(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [collection, Expression::Identifier(operation), selector] = items else {
+            unreachable!("preselected range selection")
+        };
+        let collection_value = self.evaluate_expression(source, collection, trace)?;
+        let selector_value = self.evaluate_expression(source, selector, trace)?;
+        let Value::IntRange { lower, upper } = selector_value else {
+            return Err(diagnostic(
+                source,
+                "E-SELECTION-RANGE",
+                selector.span(),
+                "range selection requires Range Int",
+            ));
+        };
+        let operation = source.slice(*operation);
+        let result = match collection_value {
+            Value::List {
+                element_classifier,
+                entries,
+            } if operation == "select-index" => {
+                let entries = entries
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(index, _)| {
+                        let index = BigInt::from(*index);
+                        index >= lower && index <= upper
+                    })
+                    .map(|(_, value)| value)
+                    .collect();
+                Value::List {
+                    element_classifier,
+                    entries,
+                }
+            }
+            Value::List {
+                element_classifier,
+                entries,
+            } if operation == "select" => {
+                let entries = entries
+                    .into_iter()
+                    .filter(|value| {
+                        matches!(value, Value::Int(candidate) if candidate >= &lower && candidate <= &upper)
+                    })
+                    .collect();
+                Value::List {
+                    element_classifier,
+                    entries,
+                }
+            }
+            Value::String(text) if operation == "select-index" => {
+                let selected = characters(&text)
+                    .enumerate()
+                    .filter(|(index, _)| {
+                        let index = BigInt::from(*index);
+                        index >= lower && index <= upper
+                    })
+                    .map(|(_, character)| character)
+                    .collect::<String>();
+                Value::String(selected)
+            }
+            value => {
+                return Err(diagnostic(
+                    source,
+                    "E-SELECTION-SOURCE",
+                    collection.span(),
+                    format!(
+                        "{operation} range has no overload for `{}`",
+                        structural_value_classifier(&value)
+                    ),
+                ));
+            }
+        };
+        trace.record(TraceEvent {
+            event: "collection.range.selected",
+            rule: if operation == "select-index" {
+                "TOPAL-RANGE-INDEX-SELECTION-001"
+            } else {
+                "TOPAL-RANGE-VALUE-SELECTION-001"
+            },
+            detail: operation,
+        });
+        self.checkpoint(trace, Some(&result), Some(span));
+        Ok(result)
     }
 
     fn apply_explicit_modulo(

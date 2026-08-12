@@ -1592,3 +1592,12 @@ closed-range diagnostics, LSP validation, and reversible scripted-debugger
 history shall cover commented examples. Numeric families lacking approved
 source construction syntax remain documented in the PR rather than receiving
 an implementation-invented spelling.
+## TOPAL-INTP-SUBSET-194 — Range selection and slicing evidence
+
+All interpreter modes shall use Range Int as a convex value or zero-based index
+predicate over Lists and as a Character-index predicate over String under
+`TOPAL-RANGE-VALUE-SELECTION-001` and `TOPAL-RANGE-INDEX-SELECTION-001`.
+Observable values shall preserve source kind, order, and multiplicity; formal
+traces shall retain selection provenance without exposing representation. LSP
+validation and reversible scripted-debugger history shall cover commented
+examples.

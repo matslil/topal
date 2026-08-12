@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 131);
+    assert_eq!(examples.len(), 132);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3424,4 +3424,19 @@ fn closed_modular_construction_rejection_is_source_located() {
             .unwrap()
             .contains("E-MODULAR-OUT-OF-RANGE")
     );
+}
+
+#[test]
+fn every_mode_selects_values_and_indexes_by_range() {
+    let source = include_str!("../../../examples/interpreter/range-selection.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains(
+            "(Entry ( 2, Entry ( 4, Entry ( 3, Empty ) ) ), Entry ( 2, Entry ( 4, Entry ( 7, Empty ) ) ), \"opa\")"
+        ));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-RANGE-VALUE-SELECTION-001"));
+    assert!(trace.contains("TOPAL-RANGE-INDEX-SELECTION-001"));
 }
