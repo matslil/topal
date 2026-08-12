@@ -2526,6 +2526,7 @@ fn records_list_construction_and_decomposition_reversibly() {
     assert!(stdout.contains("TOPAL-LIST-UNCONS-001"));
     assert!(stdout.contains("TOPAL-LIST-FIRST-001"));
     assert!(stdout.contains("TOPAL-LIST-REST-001"));
+    assert!(stdout.contains("TOPAL-LIST-REVERSE-001"));
     assert!(stdout.contains("Some (6, Entry ( 7"));
 }
 

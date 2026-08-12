@@ -89,3 +89,8 @@ occurs consecutively and in order. The empty pattern is contained.
 `list contains-subsequence pattern` shall preserve pattern order while allowing
 gaps between matched entries. The empty pattern is contained. All three
 containment operations require equality for the element classifier.
+
+### TOPAL-LIST-REVERSE-001 — Immutable List reversal
+
+`list reverse` shall produce a List with the same element classifier, entry
+count, and multiplicities in exactly the opposite order.

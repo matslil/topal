@@ -1396,6 +1396,13 @@ Classifier and equality failures shall be source-located. LSP, formal traces,
 reversible debugger history, and a commented example shall cover true and false
 outcomes for all three laws.
 
+## TOPAL-INTP-SUBSET-185 — List reversal
+
+All interpreter modes shall reverse List order without changing its classifier,
+entry count, or multiplicity. Reversing twice shall reproduce an equal List.
+LSP, formal traces, reversible debugger history, and the commented List example
+shall cover the operation.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

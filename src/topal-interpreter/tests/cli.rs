@@ -3177,7 +3177,7 @@ fn every_mode_constructs_compares_and_decomposes_lists() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
-        assert!(output.stdout.ends_with(b"(Some 6, Some 6, Some Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) ), None, None, 5, false, true, true, Some (6, Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) )))\n"));
+        assert!(output.stdout.ends_with(b"(Some 6, Some 6, Some Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) ), None, None, 5, false, true, true, Some (6, Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) )), Some 10, true)\n"));
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-TYPE-LIST-CONSTRUCT-001"));
@@ -3193,6 +3193,7 @@ fn every_mode_constructs_compares_and_decomposes_lists() {
     assert!(trace.contains("TOPAL-LIST-UNCONS-001"));
     assert!(trace.contains("TOPAL-LIST-FIRST-001"));
     assert!(trace.contains("TOPAL-LIST-REST-001"));
+    assert!(trace.contains("TOPAL-LIST-REVERSE-001"));
 }
 
 #[test]
