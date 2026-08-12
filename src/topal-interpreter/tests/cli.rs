@@ -3158,12 +3158,17 @@ fn every_mode_constructs_compares_and_decomposes_lists() {
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
-        assert!(output.stdout.ends_with(b"(Some 7, true)\n"));
+        assert!(output.stdout.ends_with(b"(Some 6, 5, false, true, true)\n"));
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-TYPE-LIST-CONSTRUCT-001"));
     assert!(trace.contains("TOPAL-DECISION-LIST-001"));
     assert!(trace.contains("TOPAL-TYPE-LIST-EQUALITY-001"));
+    assert!(trace.contains("TOPAL-LIST-PREPEND-001"));
+    assert!(trace.contains("TOPAL-LIST-APPEND-001"));
+    assert!(trace.contains("TOPAL-LIST-CONCAT-001"));
+    assert!(trace.contains("TOPAL-LIST-ENTRY-COUNT-001"));
+    assert!(trace.contains("TOPAL-LIST-EMPTY-PREDICATE-001"));
 }
 
 #[test]

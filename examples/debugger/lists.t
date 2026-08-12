@@ -1,6 +1,6 @@
 #!/usr/bin/env topal-debug
-# Demonstrates reversible List construction, structural equality, and an
-# exhaustive Empty/Entry decision that binds the first value and remaining List.
+# Demonstrates reversible List construction, fundamental operations, structural
+# equality, and an exhaustive decision binding the first value and remaining List.
 first is fn ( values : List Int ) -> Optional Int
   values
     Empty then None Int
@@ -8,4 +8,9 @@ first is fn ( values : List Int ) -> Optional Int
 
 values : List Int is Entry ( 7, Entry ( 8, Empty ) )
 copy : List Int is Entry ( 7, Entry ( 8, Empty ) )
-(first values, values = copy)
+empty-values : List Int is Empty
+suffix : List Int is Entry ( 10, Empty )
+prepended is values prepend 6
+appended is prepended append 9
+combined is appended concat suffix
+(first combined, entry-count combined, empty? combined, empty? empty-values, values = copy)

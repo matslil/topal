@@ -1590,25 +1590,7 @@ impl Session {
                 {
                     let operand_span = items[1].span();
                     let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let Value::String(text) = operand else {
-                        return Err(diagnostic(
-                            source,
-                            "E-NO-APPLICABLE-OVERLOAD",
-                            operand_span,
-                            "empty? requires a String operand in the implemented subset",
-                        ));
-                    };
-                    trace.record(TraceEvent {
-                        event: "operator.selected",
-                        rule: "TOPAL-TYPE-CALL-001",
-                        detail: "root.empty?(String)",
-                    });
-                    let value = Value::Boolean(text.is_empty());
-                    trace.record(TraceEvent {
-                        event: "string.empty.tested",
-                        rule: "TOPAL-STRING-EMPTY-PREDICATE-001",
-                        detail: if text.is_empty() { "true" } else { "false" },
-                    });
+                    let value = apply_empty_predicate(source, operand, operand_span, trace)?;
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -1619,36 +1601,7 @@ impl Session {
                     let operation = source.slice(*name);
                     let operand_span = items[1].span();
                     let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let Value::String(text) = operand else {
-                        return Err(diagnostic(
-                            source,
-                            "E-NO-APPLICABLE-OVERLOAD",
-                            operand_span,
-                            format!("{operation} requires a String operand"),
-                        ));
-                    };
-                    let selection = format!("root.{operation}(String)");
-                    trace.record(TraceEvent {
-                        event: "operator.selected",
-                        rule: "TOPAL-TYPE-CALL-001",
-                        detail: &selection,
-                    });
-                    let count = character_count(&text);
-                    let detail = format!("characters={count}");
-                    trace.record(TraceEvent {
-                        event: if operation == "entry-count" {
-                            "string.entry-count"
-                        } else {
-                            "string.character-count"
-                        },
-                        rule: if operation == "entry-count" {
-                            "TOPAL-STRING-ENTRY-COUNT-001"
-                        } else {
-                            "TOPAL-STRING-CHARACTER-COUNT-001"
-                        },
-                        detail: &detail,
-                    });
-                    let value = Value::Int(BigInt::from(count));
+                    let value = apply_count(source, operation, operand, operand_span, trace)?;
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -1902,6 +1855,35 @@ impl Session {
                             trace,
                             Some(&result),
                             Some(cover(items[0].span(), encoding_span)),
+                        );
+                        index += 2;
+                        continue;
+                    }
+                    if let Expression::Identifier(callable_span) = &items[index]
+                        && matches!(
+                            source.slice(*callable_span),
+                            "prepend" | "append" | "concat"
+                        )
+                        && matches!(result, Value::List { .. })
+                    {
+                        let operation = source.slice(*callable_span);
+                        let Some(right) = items.get(index + 1) else {
+                            return Err(diagnostic(
+                                source,
+                                "E-EXPECTED-OPERAND",
+                                Span::new(callable_span.end, callable_span.end),
+                                format!("expected an operand after {operation}"),
+                            ));
+                        };
+                        let right_span = right.span();
+                        let right = self.evaluate_expression(source, right, trace)?;
+                        result = apply_list_operation(
+                            source, operation, result, right, right_span, trace,
+                        )?;
+                        self.checkpoint(
+                            trace,
+                            Some(&result),
+                            Some(cover(items[0].span(), right_span)),
                         );
                         index += 2;
                         continue;
@@ -5254,6 +5236,203 @@ fn apply_equality(
         detail: if equal { "true" } else { "false" },
     });
     Ok(Value::Boolean(equal))
+}
+
+fn apply_empty_predicate(
+    source: &SourceText,
+    operand: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let (is_empty, classifier, event, rule) = match operand {
+        Value::String(text) => (
+            text.is_empty(),
+            "String".to_owned(),
+            "string.empty.tested",
+            "TOPAL-STRING-EMPTY-PREDICATE-001",
+        ),
+        Value::List {
+            element_classifier,
+            entries,
+        } => (
+            entries.is_empty(),
+            format!("List {element_classifier}"),
+            "list.empty.tested",
+            "TOPAL-LIST-EMPTY-PREDICATE-001",
+        ),
+        value => {
+            let found = structural_value_classifier(&value);
+            return Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                format!("empty? requires a String or List operand, found `{found}`"),
+            ));
+        }
+    };
+    let selection = format!("root.empty?({classifier})");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &selection,
+    });
+    trace.record(TraceEvent {
+        event,
+        rule,
+        detail: if is_empty { "true" } else { "false" },
+    });
+    Ok(Value::Boolean(is_empty))
+}
+
+fn apply_count(
+    source: &SourceText,
+    operation: &str,
+    operand: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let (count, classifier, event, rule) = match operand {
+        Value::String(text) => (
+            character_count(&text),
+            "String".to_owned(),
+            if operation == "entry-count" {
+                "string.entry-count"
+            } else {
+                "string.character-count"
+            },
+            if operation == "entry-count" {
+                "TOPAL-STRING-ENTRY-COUNT-001"
+            } else {
+                "TOPAL-STRING-CHARACTER-COUNT-001"
+            },
+        ),
+        Value::List {
+            element_classifier,
+            entries,
+        } if operation == "entry-count" => (
+            entries.len(),
+            format!("List {element_classifier}"),
+            "list.entry-count",
+            "TOPAL-LIST-ENTRY-COUNT-001",
+        ),
+        value => {
+            let found = structural_value_classifier(&value);
+            return Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                format!("{operation} has no overload accepting `{found}`"),
+            ));
+        }
+    };
+    let selection = format!("root.{operation}({classifier})");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &selection,
+    });
+    let detail = if event.starts_with("string.") {
+        format!("characters={count}")
+    } else {
+        format!("entries={count}")
+    };
+    trace.record(TraceEvent {
+        event,
+        rule,
+        detail: &detail,
+    });
+    Ok(Value::Int(BigInt::from(count)))
+}
+
+fn apply_list_operation(
+    source: &SourceText,
+    operation: &str,
+    left: Value,
+    right: Value,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List {
+        element_classifier,
+        mut entries,
+    } = left
+    else {
+        unreachable!("List operation is dispatched only for a List left operand")
+    };
+    match operation {
+        "prepend" | "append" => {
+            if !value_has_classifier(&right, &element_classifier) {
+                let found = structural_value_classifier(&right);
+                return Err(diagnostic(
+                    source,
+                    "E-LIST-ENTRY-CLASSIFIER",
+                    right_span,
+                    format!(
+                        "{operation} received `{found}`, but this list requires `{element_classifier}`"
+                    ),
+                )
+                .with_help(format!("use a `{element_classifier}` value here")));
+            }
+            if operation == "prepend" {
+                entries.insert(0, right);
+            } else {
+                entries.push(right);
+            }
+        }
+        "concat" => {
+            let Value::List {
+                element_classifier: right_classifier,
+                entries: right_entries,
+            } = right
+            else {
+                return Err(diagnostic(
+                    source,
+                    "E-LIST-CONCAT-OPERAND",
+                    right_span,
+                    "List concat requires another List",
+                ));
+            };
+            if right_classifier != element_classifier {
+                return Err(diagnostic(
+                    source,
+                    "E-LIST-CONCAT-CLASSIFIER",
+                    right_span,
+                    format!(
+                        "cannot concatenate `List {right_classifier}` with `List {element_classifier}`"
+                    ),
+                )
+                .with_help("use Lists with the same element classifier"));
+            }
+            entries.extend(right_entries);
+        }
+        _ => unreachable!("known List operation"),
+    }
+    let classifier = format!("List {element_classifier}");
+    let selection = format!("root.{operation}({classifier})");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &selection,
+    });
+    trace.record(TraceEvent {
+        event: match operation {
+            "prepend" => "list.prepended",
+            "append" => "list.appended",
+            "concat" => "list.concatenated",
+            _ => unreachable!("known List operation"),
+        },
+        rule: match operation {
+            "prepend" => "TOPAL-LIST-PREPEND-001",
+            "append" => "TOPAL-LIST-APPEND-001",
+            "concat" => "TOPAL-LIST-CONCAT-001",
+            _ => unreachable!("known List operation"),
+        },
+        detail: &classifier,
+    });
+    Ok(Value::List {
+        element_classifier,
+        entries,
+    })
 }
 
 fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<bool> {
@@ -9284,7 +9463,7 @@ fn lists_construct_compare_and_decompose() {
             &mut trace,
         )
         .unwrap();
-    assert_eq!(value.to_string(), "(Some 7, true)");
+    assert_eq!(value.to_string(), "(Some 6, 5, false, true, true)");
     assert!(
         trace
             .iter()
@@ -9296,6 +9475,36 @@ fn lists_construct_compare_and_decompose() {
             .any(|event| event.contains("list.entry.decomposed"))
     );
     assert!(trace.iter().any(|event| event.contains("equality.list")));
+    for event in [
+        "list.prepended",
+        "list.appended",
+        "list.concatenated",
+        "list.entry-count",
+        "list.empty.tested",
+    ] {
+        assert!(trace.iter().any(|record| record.contains(event)), "{event}");
+    }
+}
+
+#[test]
+fn list_operations_reject_incompatible_classifiers() {
+    let entry = Session::new()
+        .evaluate(
+            "values : List Int is Empty\nvalues append \"bad\"\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(entry.code, "E-LIST-ENTRY-CLASSIFIER");
+    assert!(entry.message.contains("requires `Int`"));
+
+    let concat = Session::new()
+        .evaluate(
+            "numbers : List Int is Empty\ntexts : List String is Empty\nnumbers concat texts\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(concat.code, "E-LIST-CONCAT-CLASSIFIER");
+    assert!(concat.message.contains("List String"));
 }
 
 #[test]
