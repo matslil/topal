@@ -1594,6 +1594,9 @@ impl Session {
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
+                if is_list_uncons(source, items) {
+                    return evaluate_list_uncons(source, self, items, *span, trace);
+                }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(source.slice(*name), "character-count" | "entry-count")
@@ -5372,6 +5375,75 @@ fn apply_empty_predicate(
     Ok(Value::Boolean(is_empty))
 }
 
+fn is_list_uncons(source: &SourceText, items: &[Expression]) -> bool {
+    matches!(items, [Expression::Identifier(name), _] if source.slice(*name) == "uncons")
+}
+
+fn evaluate_list_uncons(
+    source: &SourceText,
+    session: &Session,
+    items: &[Expression],
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let [_, operand] = items else {
+        unreachable!("uncons expression shape checked")
+    };
+    let operand_span = operand.span();
+    let operand = session.evaluate_expression(source, operand, trace)?;
+    let value = apply_list_uncons(source, operand, operand_span, trace)?;
+    session.checkpoint(trace, Some(&value), Some(span));
+    Ok(value)
+}
+
+fn apply_list_uncons(
+    source: &SourceText,
+    operand: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List {
+        element_classifier,
+        mut entries,
+    } = operand
+    else {
+        return Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            span,
+            "uncons requires a List operand",
+        ));
+    };
+    let payload_classifier = format!("({element_classifier}, List {element_classifier})");
+    let payload = if entries.is_empty() {
+        None
+    } else {
+        let first = entries.remove(0);
+        Some(Box::new(Value::Tuple(vec![
+            first,
+            Value::List {
+                element_classifier: element_classifier.clone(),
+                entries,
+            },
+        ])))
+    };
+    let selection = format!("root.uncons(List {element_classifier})");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &selection,
+    });
+    trace.record(TraceEvent {
+        event: "list.uncons",
+        rule: "TOPAL-LIST-UNCONS-001",
+        detail: if payload.is_some() { "Some" } else { "None" },
+    });
+    Ok(Value::Optional {
+        payload_classifier,
+        payload,
+    })
+}
+
 fn apply_count(
     source: &SourceText,
     operation: &str,
@@ -6197,7 +6269,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 17] = [
+const ROOT_OPERATIONS: [&str; 18] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -6211,6 +6283,7 @@ const ROOT_OPERATIONS: [&str; 17] = [
     "lower",
     "normalize",
     "upper",
+    "uncons",
     "not",
     "negate",
     "one",
@@ -9571,7 +9644,10 @@ fn lists_construct_compare_and_decompose() {
             &mut trace,
         )
         .unwrap();
-    assert_eq!(value.to_string(), "(Some 6, 5, false, true, true)");
+    assert_eq!(
+        value.to_string(),
+        "(Some 6, 5, false, true, true, Some (6, Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) )))"
+    );
     assert!(
         trace
             .iter()
@@ -9591,9 +9667,24 @@ fn lists_construct_compare_and_decompose() {
         "list.empty.tested",
         "list.empty.constructed",
         "list.singleton.constructed",
+        "list.uncons",
     ] {
         assert!(trace.iter().any(|record| record.contains(event)), "{event}");
     }
+}
+
+#[test]
+fn uncons_is_total_for_empty_lists_and_rejects_other_values() {
+    let value = Session::new()
+        .evaluate("uncons (empty List Int)\n", &mut Vec::new())
+        .unwrap();
+    assert_eq!(value.to_string(), "None");
+
+    let error = Session::new()
+        .evaluate("uncons 7\n", &mut Vec::new())
+        .unwrap_err();
+    assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
+    assert!(error.message.contains("requires a List"));
 }
 
 #[test]

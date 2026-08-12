@@ -14,7 +14,7 @@ possible values:
 ```text
 Tuple ( A, B, C )   = A * B * C
 Variant ( A, B, C ) = A + B + C
-Option T            = Unit + T
+Optional T          = Unit + T
 Result ( T, Codes )             = T + Error
 ```
 
@@ -674,12 +674,12 @@ values
 The standard `uncons` function packages the same decision for composition:
 
 ```text
-uncons : List T -> Option ( T, List T )
+uncons : List T -> Optional ( T, List T )
 ```
 
 It returns no product for `Empty` and otherwise returns the first value and
 remaining list. `first` and `rest` are projections from successful `uncons` and
-therefore return `Option T` and `Option (List T)` unless non-emptiness evidence
+therefore return `Optional T` and `Optional (List T)` unless non-emptiness evidence
 is already available. There is no partial operation that silently fails on an
 empty list.
 
