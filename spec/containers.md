@@ -41,3 +41,14 @@ left entry followed by every right entry without removing duplicates.
 ### TOPAL-LIST-EMPTY-PREDICATE-001 — List emptiness
 
 `empty? list` shall be true exactly when the List has no entries.
+
+### TOPAL-LIST-EMPTY-001 — Explicit empty List construction
+
+`empty List T` shall construct an empty `List T` without requiring an enclosing
+expected classifier.
+
+### TOPAL-LIST-ONE-001 — Singleton List construction
+
+`one value` shall construct a one-entry List whose element classifier is the
+structural classifier of `value`. Numeric calls such as `one Int` retain their
+existing numeric overload.

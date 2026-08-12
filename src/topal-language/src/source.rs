@@ -1077,6 +1077,7 @@ impl Session {
                     Expression::Identifier(domain),
                 ] = items.as_slice()
                     && source.slice(*callable) == "one"
+                    && matches!(source.slice(*domain), "Int" | "Nat" | "Rational")
                 {
                     let (value, selection, classifier) = match source.slice(*domain) {
                         "Int" => (Value::Int(BigInt::from(1)), "root.one(Int)", "Int"),
@@ -1086,14 +1087,7 @@ impl Session {
                             "root.one(Rational)",
                             "Rational",
                         ),
-                        _ => {
-                            return Err(diagnostic(
-                                source,
-                                "E-NO-APPLICABLE-OVERLOAD",
-                                *domain,
-                                "one requires a supported numeric type",
-                            ));
-                        }
+                        _ => unreachable!("guarded numeric one domain"),
                     };
                     trace.record(TraceEvent {
                         event: "operator.selected",
@@ -1106,6 +1100,12 @@ impl Session {
                         detail: classifier,
                     });
                     return Ok(value);
+                }
+                if is_singleton_list_construction(source, items) {
+                    return evaluate_singleton_list(source, self, items, trace);
+                }
+                if is_explicit_empty_list_construction(source, items) {
+                    return evaluate_empty_list(source, items, trace);
                 }
                 if let [Expression::Identifier(callable), operand] = items.as_slice()
                     && source.slice(*callable) == "negate"
@@ -5236,6 +5236,92 @@ fn apply_equality(
         detail: if equal { "true" } else { "false" },
     });
     Ok(Value::Boolean(equal))
+}
+
+fn is_singleton_list_construction(source: &SourceText, items: &[Expression]) -> bool {
+    matches!(items, [Expression::Identifier(callable), _] if source.slice(*callable) == "one")
+}
+
+fn evaluate_singleton_list(
+    source: &SourceText,
+    session: &Session,
+    items: &[Expression],
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let [_, entry] = items else {
+        unreachable!("singleton construction shape checked")
+    };
+    let entry = session.evaluate_expression(source, entry, trace)?;
+    Ok(construct_singleton_list(entry, trace))
+}
+
+fn is_explicit_empty_list_construction(source: &SourceText, items: &[Expression]) -> bool {
+    matches!(items, [Expression::Identifier(empty), Expression::Identifier(list), _]
+        if source.slice(*empty) == "empty" && source.slice(*list) == "List")
+}
+
+fn evaluate_empty_list(
+    source: &SourceText,
+    items: &[Expression],
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let [
+        Expression::Identifier(empty),
+        Expression::Identifier(list),
+        element,
+    ] = items
+    else {
+        unreachable!("empty List construction shape checked")
+    };
+    debug_assert_eq!(source.slice(*empty), "empty");
+    debug_assert_eq!(source.slice(*list), "List");
+    let Some(element_classifier) = classifier_expression(source, element) else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ELEMENT-CLASSIFIER",
+            element.span(),
+            "empty List requires a supported element classifier",
+        ));
+    };
+    Ok(construct_empty_list(element_classifier, trace))
+}
+
+fn construct_singleton_list(entry: Value, trace: &mut impl TraceSink) -> Value {
+    let element_classifier = structural_value_classifier(&entry);
+    let selection = format!("root.one({element_classifier})");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &selection,
+    });
+    trace.record(TraceEvent {
+        event: "list.singleton.constructed",
+        rule: "TOPAL-LIST-ONE-001",
+        detail: &element_classifier,
+    });
+    Value::List {
+        element_classifier,
+        entries: vec![entry],
+    }
+}
+
+fn construct_empty_list(element_classifier: String, trace: &mut impl TraceSink) -> Value {
+    let classifier = format!("List {element_classifier}");
+    let selection = format!("root.empty({classifier})");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &selection,
+    });
+    trace.record(TraceEvent {
+        event: "list.empty.constructed",
+        rule: "TOPAL-LIST-EMPTY-001",
+        detail: &element_classifier,
+    });
+    Value::List {
+        element_classifier,
+        entries: Vec::new(),
+    }
 }
 
 fn apply_empty_predicate(
@@ -9481,9 +9567,22 @@ fn lists_construct_compare_and_decompose() {
         "list.concatenated",
         "list.entry-count",
         "list.empty.tested",
+        "list.empty.constructed",
+        "list.singleton.constructed",
     ] {
         assert!(trace.iter().any(|record| record.contains(event)), "{event}");
     }
+}
+
+#[test]
+fn explicit_empty_and_singleton_lists_preserve_numeric_one() {
+    let value = Session::new()
+        .evaluate(
+            "empty-values is empty List String\nsingleton is one \"Topal\"\n(empty-values, singleton, one Int)\n",
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(Empty, Entry ( \"Topal\", Empty ), 1)");
 }
 
 #[test]
