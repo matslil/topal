@@ -1236,6 +1236,14 @@ supported. Parser, LSP, formal trace, and reversible debugger coverage shall
 verify preservation of Optional and product structure using a commented
 example.
 
+## TOPAL-INTP-SUBSET-166 — Nested Result-product generator values
+
+All interpreter modes shall recursively validate an arithmetic Result whose
+success classifier is a supported positional product at custom-generator input,
+yield, and final-return boundaries. LSP, formal trace, and reversible debugger
+coverage shall verify product structure and exact component values using a
+commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

@@ -85,6 +85,8 @@ alternative.
 Supported generator classifiers compose recursively. For example,
 `Optional (Int, String)` preserves both the Optional alternative and the
 positional product's component order and classifiers across suspension.
+The same recursive rule permits a supported product as the success classifier
+of an arithmetic Result while retaining its structured error alternative.
 
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 

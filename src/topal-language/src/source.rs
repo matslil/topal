@@ -8456,6 +8456,17 @@ fn custom_generator_preserves_nested_optional_product() {
 }
 
 #[test]
+fn custom_generator_preserves_nested_result_product() {
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/custom-generator-nested-result-values.t"),
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(8, \"done\")");
+}
+
+#[test]
 fn custom_generator_executes_discard_after_resume() {
     let mut trace = Vec::new();
     Session::new()
