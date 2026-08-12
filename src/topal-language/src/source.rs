@@ -31,6 +31,10 @@ pub enum Value {
         payload_classifier: String,
         payload: Option<Box<Self>>,
     },
+    List {
+        element_classifier: String,
+        entries: Vec<Self>,
+    },
     CharacterGenerator {
         generated: Vec<String>,
         origin: String,
@@ -105,6 +109,16 @@ impl fmt::Display for Value {
                 ..
             } => write!(formatter, "Some {value}"),
             Self::Optional { payload: None, .. } => formatter.write_str("None"),
+            Self::List { entries, .. } => {
+                for entry in entries {
+                    write!(formatter, "Entry ( {entry}, ")?;
+                }
+                formatter.write_str("Empty")?;
+                for _ in entries {
+                    formatter.write_str(" )")?;
+                }
+                Ok(())
+            }
             Self::CharacterGenerator { .. } => {
                 formatter.write_str("<Generator Character Unit Unit>")
             }
@@ -483,6 +497,12 @@ impl Session {
                 let has_optional_matchers = rules
                     .iter()
                     .any(|rule| matches!(rule.matcher, DecisionMatcher::Optional { .. }));
+                let has_list_matchers = rules.iter().any(|rule| {
+                    matches!(
+                        rule.matcher,
+                        DecisionMatcher::ListEmpty(_) | DecisionMatcher::ListEntry { .. }
+                    )
+                });
                 if !enum_matchers.is_empty()
                     && !rules
                         .iter()
@@ -505,7 +525,9 @@ impl Session {
                         ));
                     }
                 }
-                let decision_rule = if has_optional_matchers {
+                let decision_rule = if has_list_matchers {
+                    "TOPAL-DECISION-LIST-001"
+                } else if has_optional_matchers {
                     "TOPAL-DECISION-OPTIONAL-001"
                 } else if has_result_matchers {
                     "TOPAL-DECISION-RESULT-001"
@@ -568,6 +590,28 @@ impl Session {
                                 ));
                             };
                             *some == payload.is_some()
+                        }
+                        DecisionMatcher::ListEmpty(_) => {
+                            let Value::List { entries, .. } = &subject else {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-DECISION-SUBJECT-TYPE",
+                                    subject_span,
+                                    "list matchers require a List subject",
+                                ));
+                            };
+                            entries.is_empty()
+                        }
+                        DecisionMatcher::ListEntry { .. } => {
+                            let Value::List { entries, .. } = &subject else {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-DECISION-SUBJECT-TYPE",
+                                    subject_span,
+                                    "list matchers require a List subject",
+                                ));
+                            };
+                            !entries.is_empty()
                         }
                         DecisionMatcher::ErrorCode {
                             namespace,
@@ -692,6 +736,34 @@ impl Session {
                         event: "optional.payload.bound",
                         rule: "TOPAL-DECISION-OPTIONAL-001",
                         detail: name,
+                    });
+                    branch.evaluate_expression(source, &selected_rule.action, trace)
+                } else if let DecisionMatcher::ListEntry { first, rest, .. } = selected_rule.matcher
+                {
+                    let Value::List {
+                        element_classifier,
+                        mut entries,
+                    } = subject
+                    else {
+                        unreachable!("Entry matcher selected only for a nonempty List")
+                    };
+                    let first_value = entries.remove(0);
+                    let first = source.slice(first);
+                    let rest = source.slice(rest);
+                    let mut branch = self.clone();
+                    branch.bindings.insert(first.to_owned(), first_value);
+                    branch.bindings.insert(
+                        rest.to_owned(),
+                        Value::List {
+                            element_classifier,
+                            entries,
+                        },
+                    );
+                    let detail = format!("first={first};rest={rest}");
+                    trace.record(TraceEvent {
+                        event: "list.entry.decomposed",
+                        rule: "TOPAL-DECISION-LIST-001",
+                        detail: &detail,
                     });
                     branch.evaluate_expression(source, &selected_rule.action, trace)
                 } else {
@@ -2822,6 +2894,12 @@ fn evaluate_expression_with_optional_context(
     expected_classifier: Option<&str>,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
+    if let Some(element_classifier) = expected_classifier.and_then(list_element_classifier)
+        && let Some(list) =
+            evaluate_list_expression(source, session, expression, element_classifier, trace)?
+    {
+        return Ok(list);
+    }
     let contextual_none = expected_classifier
         .and_then(optional_payload_classifier)
         .filter(
@@ -2839,6 +2917,82 @@ fn evaluate_expression_with_optional_context(
         payload_classifier: payload_classifier.to_owned(),
         payload: None,
     })
+}
+
+fn evaluate_list_expression(
+    source: &SourceText,
+    session: &mut Session,
+    expression: &Expression,
+    element_classifier: &str,
+    trace: &mut impl TraceSink,
+) -> Result<Option<Value>, Diagnostic> {
+    if matches!(expression, Expression::Identifier(span) if source.slice(*span) == "Empty") {
+        trace.record(TraceEvent {
+            event: "list.empty.constructed",
+            rule: "TOPAL-TYPE-LIST-CONSTRUCT-001",
+            detail: element_classifier,
+        });
+        return Ok(Some(Value::List {
+            element_classifier: element_classifier.to_owned(),
+            entries: Vec::new(),
+        }));
+    }
+    let Expression::Application { items, span } = expression else {
+        return Ok(None);
+    };
+    let [
+        Expression::Identifier(constructor),
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Ok(None);
+    };
+    if source.slice(*constructor) != "Entry" {
+        return Ok(None);
+    }
+    if fields.len() != 2 || fields.iter().any(|field| field.label.is_some()) {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ENTRY-SHAPE",
+            *span,
+            "Entry requires exactly `(value, remaining-list)`",
+        )
+        .with_help("write `Entry ( value, remaining-list )`"));
+    }
+    let entry = session.evaluate_expression(source, &fields[0].value, trace)?;
+    if !value_has_classifier(&entry, element_classifier) {
+        let found = structural_value_classifier(&entry);
+        return Err(diagnostic(
+            source,
+            "E-LIST-ENTRY-CLASSIFIER",
+            fields[0].value.span(),
+            format!(
+                "list entry has classifier `{found}`, but this list requires `{element_classifier}`"
+            ),
+        )
+        .with_help(format!("use a `{element_classifier}` value for this entry")));
+    }
+    let Some(Value::List { mut entries, .. }) =
+        evaluate_list_expression(source, session, &fields[1].value, element_classifier, trace)?
+    else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-REMAINDER",
+            fields[1].value.span(),
+            "Entry requires another List as its remaining value",
+        )
+        .with_help("end the constructor chain with `Empty`"));
+    };
+    entries.insert(0, entry);
+    trace.record(TraceEvent {
+        event: "list.entry.constructed",
+        rule: "TOPAL-TYPE-LIST-CONSTRUCT-001",
+        detail: element_classifier,
+    });
+    Ok(Some(Value::List {
+        element_classifier: element_classifier.to_owned(),
+        entries,
+    }))
 }
 
 fn expression_is_closed(expression: &Expression) -> bool {
@@ -3622,6 +3776,17 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
     {
         return payload_classifier == expected;
     }
+    if let Value::List {
+        element_classifier,
+        entries,
+    } = value
+        && let Some(expected) = list_element_classifier(classifier)
+    {
+        return element_classifier == expected
+            && entries
+                .iter()
+                .all(|entry| value_has_classifier(entry, expected));
+    }
     if let Some(success) = result_success_classifier(classifier) {
         return matches!(value, Value::Error { code, .. } if is_arithmetic_error_code(code))
             || value_has_classifier(value, success);
@@ -3700,6 +3865,10 @@ fn result_success_classifier(classifier: &str) -> Option<&str> {
 
 fn optional_payload_classifier(classifier: &str) -> Option<&str> {
     classifier.trim().strip_prefix("Optional ").map(str::trim)
+}
+
+fn list_element_classifier(classifier: &str) -> Option<&str> {
+    classifier.trim().strip_prefix("List ").map(str::trim)
 }
 
 fn tuple_classifiers(classifier: &str) -> Option<Vec<&str>> {
@@ -4410,6 +4579,8 @@ fn supported_value_classifier(
         })
         || optional_payload_classifier(classifier)
             .is_some_and(|payload| supported_value_classifier(payload, enum_types))
+        || list_element_classifier(classifier)
+            .is_some_and(|element| supported_value_classifier(element, enum_types))
         || tuple_classifiers(classifier).is_some_and(|items| {
             items
                 .into_iter()
@@ -4527,6 +4698,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Rational(_) => "Rational",
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
+        Value::List { .. } => "List",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
         Value::SuspendedGenerator {
             yield_classifier,
@@ -4579,6 +4751,9 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::Optional {
             payload_classifier, ..
         } => format!("Optional {payload_classifier}"),
+        Value::List {
+            element_classifier, ..
+        } => format!("List {element_classifier}"),
         Value::SuspendedGenerator {
             yield_classifier,
             return_classifier,
@@ -5095,6 +5270,27 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
             Some(left == BigRational::from_integer(right))
         }
         (Value::String(left), Value::String(right)) => Some(left == right),
+        (
+            Value::List {
+                element_classifier: left_classifier,
+                entries: left,
+            },
+            Value::List {
+                element_classifier: right_classifier,
+                entries: right,
+            },
+        ) if left_classifier == right_classifier && left.len() == right.len() => {
+            trace.record(TraceEvent {
+                event: "equality.list",
+                rule: "TOPAL-TYPE-LIST-EQUALITY-001",
+                detail: &left_classifier,
+            });
+            left.into_iter()
+                .zip(right)
+                .try_fold(true, |equal, (left, right)| {
+                    values_equal(left, right, trace).map(|entry_equal| equal && entry_equal)
+                })
+        }
         (
             Value::Enum {
                 type_name: left_type,
@@ -5684,6 +5880,7 @@ fn apply_negate(
         | Value::IntRange { .. }
         | Value::RationalRange { .. }
         | Value::Optional { .. }
+        | Value::List { .. }
         | Value::CharacterGenerator { .. }
         | Value::CharacterReturningGenerator { .. }
         | Value::SuspendedGenerator { .. }
@@ -9076,4 +9273,49 @@ fn rational_ranges_use_exact_canonical_conversion() {
             .iter()
             .any(|event| event.contains("Int->Rational:membership"))
     );
+}
+
+#[test]
+fn lists_construct_compare_and_decompose() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/lists.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(Some 7, true)");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("list.entry.constructed"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("list.entry.decomposed"))
+    );
+    assert!(trace.iter().any(|event| event.contains("equality.list")));
+}
+
+#[test]
+fn list_entry_classifier_mismatch_is_precise() {
+    let error = Session::new()
+        .evaluate(
+            "values : List Int is Entry ( \"bad\", Empty )\n",
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-LIST-ENTRY-CLASSIFIER");
+    assert!(error.message.contains("requires `Int`"));
+    assert!(error.help.unwrap().contains("use a `Int` value"));
+}
+
+#[test]
+fn list_remainder_must_be_a_list() {
+    let error = Session::new()
+        .evaluate("values : List Int is Entry ( 7, 8 )\n", &mut Vec::new())
+        .unwrap_err();
+    assert_eq!(error.code, "E-LIST-REMAINDER");
+    assert!(error.help.unwrap().contains("Empty"));
 }

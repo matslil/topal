@@ -2485,3 +2485,21 @@ fn reports_debuggee_diagnostics_with_its_source_name() {
             .contains("cannot read missing-topal-debugger-example.t")
     );
 }
+
+#[test]
+fn records_list_construction_and_decomposition_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}lists.debug"),
+            &format!("{root}lists.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-TYPE-LIST-CONSTRUCT-001"));
+    assert!(stdout.contains("TOPAL-DECISION-LIST-001"));
+    assert!(stdout.contains("(Some 7, true)"));
+}
