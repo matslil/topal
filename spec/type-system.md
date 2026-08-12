@@ -89,6 +89,9 @@ alternative of `Optional T`. The alternatives display as `Some value` and
 `None`; the payload classifier remains part of nominal identity even though it
 is omitted from the absent value's display.
 
+When `T` is a positional product classifier, `None (A, B)` shall retain the
+complete structural payload classifier even though no payload value exists.
+
 ### TOPAL-TYPE-OPTIONAL-CONTEXT-001 — Contextual absent construction
 
 Bare `None` constructs the absent alternative only when an immediate expected

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 110);
+    assert_eq!(examples.len(), 111);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2917,6 +2917,17 @@ fn every_mode_traverses_nested_result_generator_values() {
         let output = run(arguments, source);
         assert!(output.status.success());
         assert!(output.stdout.ends_with(b"(8, \"done\")\n"));
+    }
+}
+
+#[test]
+fn every_mode_traverses_nested_absent_optional_values() {
+    let source =
+        include_str!("../../../examples/interpreter/custom-generator-nested-none-values.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"None\n"));
     }
 }
 
