@@ -1558,3 +1558,11 @@ Maps under `TOPAL-ARRAY-COLLECT-001`, `TOPAL-SET-COLLECT-001`,
 `TOPAL-BAG-COLLECT-001`, and `TOPAL-MAP-COLLECT-001`. Counting, emptiness,
 formal traces, LSP validation, and reversible scripted-debugger history shall
 cover commented examples.
+## TOPAL-INTP-SUBSET-190 — Recursive products and general sums
+
+All interpreter modes shall construct and recursively classify nested tuples
+and records, positional Variants, labeled Unions, payload-bearing alternatives,
+and payload-free enum-like alternatives under `TOPAL-TYPE-PRODUCT-001`,
+`TOPAL-TYPE-UNION-001`, `TOPAL-TYPE-VARIANT-001`, and
+`TOPAL-DECISION-UNION-001`. Formal traces, LSP validation, and reversible
+scripted-debugger history shall cover commented examples.

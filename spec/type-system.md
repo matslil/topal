@@ -46,6 +46,27 @@ visible fields but neither captures nor reconstructs them.
 `Union{Cᵢ:Tᵢ}` carries exactly one labeled tag and payload. An enum is a nominal
 union whose payloads are all `Unit`.
 
+### TOPAL-TYPE-UNION-001 — Nominal labeled sums with payloads
+
+`Name is Union` followed by indented `Alternative` or
+`Alternative : Classifier` declarations shall introduce one nominal labeled
+sum. A payload-free constructor carries Unit. A payload constructor shall accept
+exactly one conforming value, including an ordinary recursive product. Matching
+shall select only the active alternative and bind its complete payload once.
+
+### TOPAL-TYPE-VARIANT-001 — Positional sums
+
+`Name is Variant (T₀, …, Tₙ)` shall introduce a nominal positional sum.
+`Name at i value` shall require a valid zero-based alternative index and a value
+classified by `Tᵢ`. The same `Name at i binding` shape shall match and bind that
+payload. Repeated classifiers remain distinct alternatives.
+
+### TOPAL-DECISION-UNION-001 — Sum decision selection
+
+A complete sum decision shall select exactly the active labeled or positional
+alternative. Payload bindings exist only while evaluating the selected action;
+payload-free alternatives bind nothing.
+
 ### TOPAL-TYPE-ENUM-001 — Nominal payload-free enum values
 
 A declaration `Name is Enum ( A₁, …, Aₙ )` introduces one nominal enum type and

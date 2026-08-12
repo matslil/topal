@@ -2633,3 +2633,20 @@ fn records_fundamental_container_collection_reversibly() {
     assert!(stdout.contains("TOPAL-ARRAY-COLLECT-001"));
     assert!(stdout.contains("TOPAL-MAP-COLLECT-001"));
 }
+
+#[test]
+fn records_payload_union_decisions_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}unions-and-recursive-products.debug"),
+            &format!("{root}unions-and-recursive-products.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-TYPE-UNION-001"));
+    assert!(stdout.contains("TOPAL-DECISION-UNION-001"));
+}

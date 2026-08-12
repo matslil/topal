@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 127);
+    assert_eq!(examples.len(), 128);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3327,4 +3327,22 @@ fn every_mode_collects_fundamental_containers() {
     ] {
         assert!(trace.contains(rule), "missing {rule}");
     }
+}
+
+#[test]
+fn every_mode_executes_recursive_products_variants_and_unions() {
+    let source = include_str!("../../../examples/interpreter/unions-and-recursive-products.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("((10, (20, 30)), (0, (0, 0)), \"text\", \"number\")")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-UNION-001"));
+    assert!(trace.contains("TOPAL-TYPE-VARIANT-001"));
+    assert!(trace.contains("TOPAL-DECISION-UNION-001"));
 }

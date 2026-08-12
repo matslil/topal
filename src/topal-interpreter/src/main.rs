@@ -159,6 +159,7 @@ fn interactive(source: Option<&str>) -> Result<(), String> {
                         | "E-UNSUPPORTED-GENERATOR-HEADER"
                         | "E-EXPECTED-INDENTED-GENERATOR-HEADER"
                         | "E-EXPECTED-GENERATOR-BODY"
+                        | "E-EMPTY-UNION"
                         | "E-UNSUPPORTED-INCOMPLETE-DECISION"
                         | "E-INCOMPLETE-ERROR-CODE-DECISION"
                 ) => {}

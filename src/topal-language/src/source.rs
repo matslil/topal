@@ -82,6 +82,7 @@ pub enum Value {
         type_name: String,
         alternative: String,
     },
+    Union(Box<UnionValue>),
     ErrorDomain(String),
     Error {
         domain: String,
@@ -93,11 +94,13 @@ pub enum Value {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[allow(clippy::box_collection)] // Keep recursive evaluator state below the tested stack-frame ceiling.
 pub struct GeneratorScopeState {
     functions: BTreeMap<String, Vec<UserFunction>>,
     declared_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
+    union_types: Box<BTreeMap<String, BTreeMap<String, Option<String>>>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -106,6 +109,14 @@ pub struct AnonymousFunction {
     parameters: Vec<String>,
     body: Box<Expression>,
     bindings: BTreeMap<String, Value>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnionValue {
+    type_name: String,
+    alternative: String,
+    payload_classifier: Option<String>,
+    payload: Option<Box<Value>>,
 }
 
 impl fmt::Display for Value {
@@ -210,6 +221,13 @@ impl fmt::Display for Value {
                 formatter.write_str(")")
             }
             Self::Enum { alternative, .. } => formatter.write_str(alternative),
+            Self::Union(union) if union.payload.is_some() => write!(
+                formatter,
+                "{} {}",
+                union.alternative,
+                union.payload.as_deref().expect("present payload")
+            ),
+            Self::Union(union) => formatter.write_str(&union.alternative),
             Self::ErrorDomain(domain) => formatter.write_str(domain),
             Self::Error { domain, code, .. } => {
                 write!(formatter, "Error ( domain is {domain}, code is {code} )")
@@ -289,6 +307,7 @@ impl Diagnostic {
 }
 
 #[derive(Clone, Default)]
+#[allow(clippy::box_collection)] // Keep recursive evaluator state below the tested stack-frame ceiling.
 pub struct Session {
     bindings: BTreeMap<String, Value>,
     functions: BTreeMap<String, Vec<UserFunction>>,
@@ -297,6 +316,7 @@ pub struct Session {
     consumed_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
+    union_types: Box<BTreeMap<String, BTreeMap<String, Option<String>>>>,
     call_stack: Vec<ActiveCall>,
     static_context: bool,
 }
@@ -390,6 +410,7 @@ impl Session {
                 parsed.statements.as_slice(),
                 [Statement::Function { .. }
                     | Statement::Generator { .. }
+                    | Statement::Union { .. }
                     | Statement::Foreach { .. }]
             )
     }
@@ -467,6 +488,7 @@ impl Session {
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: BTreeMap::new(),
+            union_types: Box::new(BTreeMap::new()),
             call_stack: Vec::new(),
             static_context: false,
         };
@@ -547,7 +569,14 @@ impl Session {
                         DecisionMatcher::ListEmpty(_) | DecisionMatcher::ListEntry { .. }
                     )
                 });
+                let has_union_matchers = rules.iter().any(|rule| {
+                    matches!(
+                        rule.matcher,
+                        DecisionMatcher::Union { .. } | DecisionMatcher::Variant { .. }
+                    )
+                });
                 if !enum_matchers.is_empty()
+                    && !has_union_matchers
                     && !rules
                         .iter()
                         .any(|rule| matches!(rule.matcher, DecisionMatcher::Otherwise(_)))
@@ -569,7 +598,9 @@ impl Session {
                         ));
                     }
                 }
-                let decision_rule = if has_list_matchers {
+                let decision_rule = if has_union_matchers {
+                    "TOPAL-DECISION-UNION-001"
+                } else if has_list_matchers {
                     "TOPAL-DECISION-LIST-001"
                 } else if has_optional_matchers {
                     "TOPAL-DECISION-OPTIONAL-001"
@@ -620,6 +651,26 @@ impl Session {
                                 };
                                 values_equal(subject.clone(), candidate, trace).unwrap_or(false)
                             }
+                        }
+                        DecisionMatcher::Union { alternative, .. } => {
+                            matches!(
+                                &subject,
+                                Value::Union(union)
+                                    if union.payload.is_some()
+                                        && union.alternative == source.slice(*alternative)
+                            )
+                        }
+                        DecisionMatcher::Variant {
+                            type_name, index, ..
+                        } => {
+                            let alternative = format!("at {}", source.slice(*index));
+                            matches!(
+                                &subject,
+                                Value::Union(union)
+                                    if union.payload.is_some()
+                                        && union.type_name == source.slice(*type_name)
+                                        && union.alternative == alternative
+                            )
                         }
                         DecisionMatcher::Result { error, .. } => {
                             *error == matches!(subject, Value::Error { .. })
@@ -751,6 +802,7 @@ impl Session {
                         consumed_names: self.consumed_names.clone(),
                         local_function_names: self.local_function_names.clone(),
                         enum_types: self.enum_types.clone(),
+                        union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: self.static_context,
                     };
@@ -810,6 +862,22 @@ impl Session {
                         detail: &detail,
                     });
                     branch.evaluate_expression(source, &selected_rule.action, trace)
+                } else if let DecisionMatcher::Union { binding, .. } = selected_rule.matcher {
+                    self.evaluate_union_decision_action(
+                        source,
+                        subject,
+                        binding,
+                        &selected_rule.action,
+                        trace,
+                    )
+                } else if let DecisionMatcher::Variant { binding, .. } = selected_rule.matcher {
+                    self.evaluate_union_decision_action(
+                        source,
+                        subject,
+                        binding,
+                        &selected_rule.action,
+                        trace,
+                    )
                 } else {
                     self.evaluate_expression(source, &selected_rule.action, trace)
                 }
@@ -836,6 +904,9 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if self.application_is_union_constructor(source, items) {
+                    return self.construct_union_application(source, items, *span, trace);
+                }
                 if matches!(
                     items.as_slice(),
                     [Expression::Identifier(operation), ..]
@@ -858,73 +929,8 @@ impl Session {
                 ) {
                     return self.evaluate_list_higher_order(source, items, *span, trace);
                 }
-                if let [
-                    Expression::Identifier(generator),
-                    text,
-                    Expression::Identifier(collector),
-                    Expression::Identifier(result),
-                ] = items.as_slice()
-                    && source.slice(*generator) == "characters"
-                    && source.slice(*collector) == "collect"
-                    && source.slice(*result) == "String"
-                {
-                    let text_span = text.span();
-                    let text = self.evaluate_expression(source, text, trace)?;
-                    let Value::String(text) = text else {
-                        return Err(diagnostic(
-                            source,
-                            "E-CHARACTERS-OPERAND",
-                            text_span,
-                            "characters requires a String operand",
-                        ));
-                    };
-                    trace.record(TraceEvent {
-                        event: "operator.selected",
-                        rule: "TOPAL-TYPE-CALL-001",
-                        detail: "root.characters(String)",
-                    });
-                    let mut collected = String::new();
-                    for character in characters(&text) {
-                        trace.record(TraceEvent {
-                            event: "generator.yielded",
-                            rule: "TOPAL-STRING-CHARACTERS-COLLECT-001",
-                            detail: character,
-                        });
-                        collected.push_str(character);
-                    }
-                    trace.record(TraceEvent {
-                        event: "string.characters.collected",
-                        rule: "TOPAL-STRING-CHARACTERS-COLLECT-001",
-                        detail: "String",
-                    });
-                    let value = Value::String(collected);
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
-                }
-                if let [Expression::Identifier(generator), text] = items.as_slice()
-                    && source.slice(*generator) == "characters"
-                {
-                    let text_span = text.span();
-                    let text = self.evaluate_expression(source, text, trace)?;
-                    let Value::String(text) = text else {
-                        return Err(diagnostic(
-                            source,
-                            "E-CHARACTERS-OPERAND",
-                            text_span,
-                            "characters requires a String operand",
-                        ));
-                    };
-                    trace.record(TraceEvent {
-                        event: "generator.started",
-                        rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
-                        detail: "Generator Character Unit Unit",
-                    });
-                    let value = Value::CharacterGenerator {
-                        generated: characters(&text).map(str::to_owned).collect(),
-                        origin: "root.characters".to_owned(),
-                    };
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
+                if Self::is_characters_application(source, items) {
+                    return self.evaluate_characters_application(source, items, *span, trace);
                 }
                 if let [left, Expression::Identifier(callable), right] = items.as_slice()
                     && source.slice(*callable) == "canonically-equals"
@@ -1378,6 +1384,7 @@ impl Session {
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
+                        union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: false,
                     };
@@ -1431,6 +1438,7 @@ impl Session {
                             declared_names: generator_scope.declared_names,
                             local_function_names: generator_scope.local_function_names,
                             enum_types: generator_scope.enum_types,
+                            union_types: generator_scope.union_types,
                         }),
                         pending_yield,
                         resume_binding,
@@ -1542,6 +1550,7 @@ impl Session {
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
+                        union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: function.is_static,
                     };
@@ -2230,6 +2239,206 @@ impl Session {
             detail: name,
         });
         Ok(value)
+    }
+
+    fn evaluate_union_decision_action(
+        &self,
+        source: &SourceText,
+        subject: Value,
+        binding: Span,
+        action: &Expression,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Value::Union(mut union) = subject else {
+            unreachable!("payload Union matcher selected only for a payload alternative")
+        };
+        let payload = union
+            .payload
+            .take()
+            .expect("payload matcher selected a present payload");
+        let name = source.slice(binding);
+        let mut branch = self.clone();
+        branch.bindings.insert(name.to_owned(), *payload);
+        trace.record(TraceEvent {
+            event: "union.payload.bound",
+            rule: "TOPAL-DECISION-UNION-001",
+            detail: name,
+        });
+        branch.evaluate_expression(source, action, trace)
+    }
+
+    fn union_constructor(&self, name: &str) -> Option<(&str, &str)> {
+        self.union_types
+            .iter()
+            .find_map(|(type_name, alternatives)| {
+                alternatives
+                    .get(name)
+                    .and_then(|classifier| classifier.as_deref())
+                    .map(|classifier| (type_name.as_str(), classifier))
+            })
+    }
+
+    fn application_is_union_constructor(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(constructor), _] if self.union_constructor(source.slice(*constructor)).is_some())
+            || matches!(
+                items,
+                [Expression::Identifier(type_name), Expression::Identifier(at), Expression::Integer(_), _]
+                    if source.slice(*at) == "at" && self.union_types.contains_key(source.slice(*type_name))
+            )
+    }
+
+    fn is_characters_application(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items.first(), Some(Expression::Identifier(operation)) if source.slice(*operation) == "characters")
+    }
+
+    fn evaluate_characters_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let text = items.get(1).expect("characters application has text");
+        let text_span = text.span();
+        let text = self.evaluate_expression(source, text, trace)?;
+        let Value::String(text) = text else {
+            return Err(diagnostic(
+                source,
+                "E-CHARACTERS-OPERAND",
+                text_span,
+                "characters requires a String operand",
+            ));
+        };
+        let value = if items.len() == 4 {
+            trace.record(TraceEvent {
+                event: "operator.selected",
+                rule: "TOPAL-TYPE-CALL-001",
+                detail: "root.characters(String)",
+            });
+            let mut collected = String::new();
+            for character in characters(&text) {
+                trace.record(TraceEvent {
+                    event: "generator.yielded",
+                    rule: "TOPAL-STRING-CHARACTERS-COLLECT-001",
+                    detail: character,
+                });
+                collected.push_str(character);
+            }
+            trace.record(TraceEvent {
+                event: "string.characters.collected",
+                rule: "TOPAL-STRING-CHARACTERS-COLLECT-001",
+                detail: "String",
+            });
+            Value::String(collected)
+        } else {
+            trace.record(TraceEvent {
+                event: "generator.started",
+                rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
+                detail: "Generator Character Unit Unit",
+            });
+            Value::CharacterGenerator {
+                generated: characters(&text).map(str::to_owned).collect(),
+                origin: "root.characters".to_owned(),
+            }
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
+    }
+
+    fn construct_union_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if let [Expression::Identifier(constructor), payload] = items {
+            return self.construct_union(source, *constructor, payload, span, trace);
+        }
+        let [
+            Expression::Identifier(type_name),
+            _,
+            Expression::Integer(index),
+            payload,
+        ] = items
+        else {
+            unreachable!("preselected positional Variant constructor application")
+        };
+        let index_text = source.slice(*index);
+        let key = format!("at {index_text}");
+        let type_text = source.slice(*type_name);
+        let classifier = self
+            .union_types
+            .get(type_text)
+            .and_then(|alternatives| alternatives.get(&key))
+            .and_then(Option::as_deref)
+            .ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-VARIANT-INDEX",
+                    *index,
+                    "Variant alternative index is outside its declared bounds",
+                )
+            })?;
+        let value = self.evaluate_expression(source, payload, trace)?;
+        if !value_has_classifier(&value, classifier) {
+            return Err(diagnostic(
+                source,
+                "E-VARIANT-PAYLOAD-CLASSIFIER",
+                payload.span(),
+                format!("Variant alternative {index_text} requires `{classifier}`"),
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "variant.constructed",
+            rule: "TOPAL-TYPE-VARIANT-001",
+            detail: index_text,
+        });
+        Ok(Value::Union(Box::new(UnionValue {
+            type_name: type_text.into(),
+            alternative: key,
+            payload_classifier: Some(classifier.into()),
+            payload: Some(Box::new(value)),
+        })))
+    }
+
+    fn construct_union(
+        &self,
+        source: &SourceText,
+        constructor: Span,
+        payload: &Expression,
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let name = source.slice(constructor);
+        let (type_name, classifier) = self
+            .union_constructor(name)
+            .expect("preselected payload Union constructor");
+        let value = self.evaluate_expression(source, payload, trace)?;
+        if !value_has_classifier(&value, classifier) {
+            return Err(diagnostic(
+                source,
+                "E-UNION-PAYLOAD-CLASSIFIER",
+                payload.span(),
+                format!(
+                    "Union constructor `{name}` requires `{classifier}`, found `{}`",
+                    structural_value_classifier(&value)
+                ),
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "union.constructed",
+            rule: "TOPAL-TYPE-UNION-001",
+            detail: name,
+        });
+        let result = Value::Union(Box::new(UnionValue {
+            type_name: type_name.to_owned(),
+            alternative: name.to_owned(),
+            payload_classifier: Some(classifier.to_owned()),
+            payload: Some(Box::new(value)),
+        }));
+        self.checkpoint(trace, Some(&result), Some(span));
+        Ok(result)
     }
 
     fn invoke_anonymous_function(
@@ -2978,7 +3187,9 @@ impl Execution {
             ));
         }
         let result_text = self.source.slice(result);
-        if !supported_value_classifier(result_text, &session.enum_types) {
+        if !supported_value_classifier(result_text, &session.enum_types)
+            && !session.union_types.contains_key(result_text)
+        {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-RESULT-CLASSIFIER",
@@ -2991,7 +3202,9 @@ impl Execution {
             .iter()
             .map(|parameter| {
                 let classifier = self.source.slice(parameter.classifier);
-                if !supported_value_classifier(classifier, &session.enum_types) {
+                if !supported_value_classifier(classifier, &session.enum_types)
+                    && !session.union_types.contains_key(classifier)
+                {
                     return Err(diagnostic(
                         &self.source,
                         "E-UNSUPPORTED-PARAMETER-CLASSIFIER",
@@ -3249,6 +3462,11 @@ impl Execution {
                     span: *span,
                 },
             )?,
+            Statement::Union {
+                name,
+                alternatives,
+                span,
+            } => declare_union(&self.source, session, *name, alternatives, *span, trace)?,
             Statement::Foreach {
                 result,
                 source,
@@ -3374,6 +3592,11 @@ impl Execution {
             ));
         }
         if let Some((value, span)) = declare_enum(&self.source, name, initializer, session, trace)?
+        {
+            return Ok(BindingOutcome::Bound(value, span));
+        }
+        if let Some((value, span)) =
+            declare_variant(&self.source, name, initializer, session, trace)
         {
             return Ok(BindingOutcome::Bound(value, span));
         }
@@ -3853,6 +4076,7 @@ fn statement_span(statement: &Statement) -> Span {
         Statement::Binding { name, value, .. } => cover(*name, value.span()),
         Statement::Function { span, .. }
         | Statement::Generator { span, .. }
+        | Statement::Union { span, .. }
         | Statement::Foreach { span, .. } => *span,
         Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
@@ -4233,6 +4457,32 @@ fn enum_alternatives(source: &SourceText, expression: &Expression) -> Option<Vec
         .collect()
 }
 
+fn variant_alternatives(source: &SourceText, expression: &Expression) -> Option<Vec<String>> {
+    let Expression::Application { items, .. } = expression else {
+        return None;
+    };
+    let [
+        Expression::Identifier(constructor),
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    if source.slice(*constructor) != "Variant" {
+        return None;
+    }
+    fields
+        .iter()
+        .map(|field| {
+            field
+                .label
+                .is_none()
+                .then(|| classifier_expression(source, &field.value))
+                .flatten()
+        })
+        .collect()
+}
+
 fn evaluate_arithmetic_error_code(
     source: &SourceText,
     items: &[Expression],
@@ -4348,6 +4598,85 @@ fn declare_enum(
     Ok(Some((Value::Unit, cover(name, expression.span()))))
 }
 
+fn declare_union(
+    source: &SourceText,
+    session: &mut Session,
+    name: Span,
+    alternatives: &[topal_syntax::UnionAlternative],
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<(Value, Span), Diagnostic> {
+    let type_name = source.slice(name);
+    if session.declared_names.contains(type_name) {
+        return Err(diagnostic(
+            source,
+            "E-DUPLICATE-UNION",
+            name,
+            "name is already declared",
+        ));
+    }
+    let mut declared = BTreeMap::new();
+    for alternative in alternatives {
+        let alternative_name = source.slice(alternative.name);
+        if declared.contains_key(alternative_name) {
+            return Err(diagnostic(
+                source,
+                "E-DUPLICATE-UNION-ALTERNATIVE",
+                alternative.name,
+                "Union alternative occurs more than once",
+            ));
+        }
+        let classifier = alternative
+            .classifier
+            .map(|classifier| source.slice(classifier).to_owned());
+        declared.insert(alternative_name.to_owned(), classifier.clone());
+        if classifier.is_none() {
+            session.bindings.insert(
+                alternative_name.to_owned(),
+                Value::Union(Box::new(UnionValue {
+                    type_name: type_name.to_owned(),
+                    alternative: alternative_name.to_owned(),
+                    payload_classifier: None,
+                    payload: None,
+                })),
+            );
+        }
+        session.declared_names.insert(alternative_name.to_owned());
+    }
+    session.union_types.insert(type_name.to_owned(), declared);
+    session.declared_names.insert(type_name.to_owned());
+    trace.record(TraceEvent {
+        event: "union.declared",
+        rule: "TOPAL-TYPE-UNION-001",
+        detail: type_name,
+    });
+    Ok((Value::Unit, span))
+}
+
+fn declare_variant(
+    source: &SourceText,
+    name: Span,
+    expression: &Expression,
+    session: &mut Session,
+    trace: &mut impl TraceSink,
+) -> Option<(Value, Span)> {
+    let alternatives = variant_alternatives(source, expression)?;
+    let type_name = source.slice(name);
+    let declared = alternatives
+        .into_iter()
+        .enumerate()
+        .map(|(index, classifier)| (format!("at {index}"), Some(classifier)))
+        .collect();
+    session.union_types.insert(type_name.to_owned(), declared);
+    session.declared_names.insert(type_name.to_owned());
+    trace.record(TraceEvent {
+        event: "variant.declared",
+        rule: "TOPAL-TYPE-VARIANT-001",
+        detail: type_name,
+    });
+    Some((Value::Unit, expression.span()))
+}
+
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
     if let Value::SuspendedGenerator {
         yield_classifier,
@@ -4399,6 +4728,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         (Value::String(value), "Character") => character_count(value) == 1,
         (Value::Int(value), "Nat") => value >= &BigInt::from(0),
         (Value::Enum { type_name, .. }, classifier) => type_name == classifier,
+        (Value::Union(union), classifier) => union.type_name == classifier,
         _ => false,
     }
 }
@@ -5325,6 +5655,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
         Value::Enum { .. } => "Enum",
+        Value::Union(_) => "Union",
         Value::ErrorDomain(_) => "ErrorDomain",
         Value::Error { .. } => "Error",
         Value::Unit => "Unit",
@@ -5370,6 +5701,7 @@ fn structural_value_classifier(value: &Value) -> String {
             ..
         } => format!("Generator {yield_classifier} Unit {return_classifier}"),
         Value::Enum { type_name, .. } => type_name.clone(),
+        Value::Union(union) => union.type_name.clone(),
         _ => value_classifier(value).to_owned(),
     }
 }
@@ -7266,6 +7598,15 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
                 alternative: right,
             },
         ) if left_type == right_type => Some(left == right),
+        (Value::Union(left), Value::Union(right))
+            if left.type_name == right.type_name && left.alternative == right.alternative =>
+        {
+            match (left.payload, right.payload) {
+                (None, None) => Some(true),
+                (Some(left), Some(right)) => values_equal(*left, *right, trace),
+                _ => Some(false),
+            }
+        }
         (
             Value::Optional {
                 payload_classifier: left_classifier,
@@ -7858,6 +8199,7 @@ fn apply_negate(
         | Value::Tuple(_)
         | Value::Record(_)
         | Value::Enum { .. }
+        | Value::Union(_)
         | Value::ErrorDomain(_)
         | Value::Error { .. }
         | Value::Unit => Err(diagnostic(

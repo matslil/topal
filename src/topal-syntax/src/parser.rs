@@ -87,12 +87,29 @@ pub struct FunctionParameter {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnionAlternative {
+    pub name: Span,
+    pub classifier: Option<Span>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DecisionMatcher {
     Boolean {
         value: bool,
         span: Span,
     },
     Identifier(Span),
+    Union {
+        alternative: Span,
+        binding: Span,
+        span: Span,
+    },
+    Variant {
+        type_name: Span,
+        index: Span,
+        binding: Span,
+        span: Span,
+    },
     Result {
         error: bool,
         binding: Span,
@@ -152,6 +169,11 @@ pub enum Statement {
         resumed: Span,
         result: Span,
         body: Vec<Statement>,
+        span: Span,
+    },
+    Union {
+        name: Span,
+        alternatives: Vec<UnionAlternative>,
         span: Span,
     },
     Foreach {
@@ -267,6 +289,7 @@ impl Parser<'_> {
                 match self.source.slice(declaration.span) {
                     "fn" => return self.function(first),
                     "generator" => return self.generator(first),
+                    "Union" => return self.union(first),
                     _ => {}
                 }
             }
@@ -524,6 +547,73 @@ impl Parser<'_> {
         })
     }
 
+    fn union(&mut self, name: Token) -> Option<Statement> {
+        let union = self.take_nontrivia()?;
+        let newline = self.peek()?;
+        if newline.kind != TokenKind::Newline {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-UNION-ALTERNATIVES",
+                span: union.span,
+                message: "Union alternatives must begin on following indented lines".into(),
+            });
+            return None;
+        }
+        self.cursor += 1;
+        let mut alternatives = Vec::new();
+        let mut end = union.span.end;
+        while let Some(indent) = self.peek() {
+            if indent.kind != TokenKind::Whitespace {
+                break;
+            }
+            self.cursor += 1;
+            let alternative = self.take_nontrivia()?;
+            if alternative.kind != TokenKind::Identifier {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-EXPECTED-UNION-ALTERNATIVE",
+                    span: alternative.span,
+                    message: "expected a Union alternative name".into(),
+                });
+                return None;
+            }
+            let classifier = if self
+                .peek_nontrivia()
+                .is_some_and(|token| token.kind == TokenKind::Colon)
+            {
+                self.take_nontrivia();
+                let first = self.take_nontrivia()?;
+                Some(self.classifier_from_first(first)?)
+            } else {
+                None
+            };
+            end = classifier.map_or(alternative.span.end, |span| span.end);
+            alternatives.push(UnionAlternative {
+                name: alternative.span,
+                classifier,
+            });
+            if self
+                .peek()
+                .is_some_and(|token| token.kind == TokenKind::Newline)
+            {
+                self.cursor += 1;
+            } else {
+                break;
+            }
+        }
+        if alternatives.is_empty() {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EMPTY-UNION",
+                span: union.span,
+                message: "a Union requires at least one alternative".into(),
+            });
+            return None;
+        }
+        Some(Statement::Union {
+            name: name.span,
+            alternatives,
+            span: Span::new(name.span.start, end),
+        })
+    }
+
     fn generator(&mut self, name: Token) -> Option<Statement> {
         let keyword = self.take_nontrivia()?;
         let opening = self.take_nontrivia()?;
@@ -741,6 +831,7 @@ impl Parser<'_> {
         Some(body)
     }
 
+    #[allow(clippy::too_many_lines)] // Completeness and reachability checks stay adjacent to parsing.
     fn decision_table(&mut self, subject: Expression, rule_indent: usize) -> Option<Expression> {
         let mut rules = Vec::new();
         while self
@@ -789,7 +880,14 @@ impl Parser<'_> {
             })
             || rules
                 .iter()
-                .all(|rule| matches!(rule.matcher, DecisionMatcher::Identifier(_)))
+                .all(|rule| {
+                    matches!(
+                        rule.matcher,
+                        DecisionMatcher::Identifier(_)
+                            | DecisionMatcher::Union { .. }
+                            | DecisionMatcher::Variant { .. }
+                    )
+                })
             || [false, true].into_iter().all(|error| {
                 rules.iter().any(|rule| {
                     matches!(rule.matcher, DecisionMatcher::Result { error: found, .. } if found == error)
@@ -942,6 +1040,7 @@ impl Parser<'_> {
             .map(|rule| matcher_span(&rule.matcher))
     }
 
+    #[allow(clippy::too_many_lines)] // Matcher-specific diagnostics remain explicit and source-located.
     fn decision_rule(&mut self) -> Option<DecisionRule> {
         let matcher_token = self.take_nontrivia()?;
         let (matcher, action) = match matcher_token.kind {
@@ -1008,6 +1107,13 @@ impl Parser<'_> {
             }
             TokenKind::Identifier if self.source.slice(matcher_token.span) == "Entry" => {
                 (self.list_entry_matcher(matcher_token)?, self.expression()?)
+            }
+            TokenKind::Identifier
+                if self.peek_nontrivia().is_some_and(|token| {
+                    token.kind == TokenKind::Identifier && self.source.slice(token.span) == "at"
+                }) =>
+            {
+                (self.variant_matcher(matcher_token)?, self.expression()?)
             }
             TokenKind::Identifier => (self.identifier_matcher(matcher_token)?, self.expression()?),
             token_kind if comparison_callable(token_kind).is_some() => {
@@ -1114,6 +1220,16 @@ impl Parser<'_> {
 
     fn identifier_matcher(&mut self, identifier: Token) -> Option<DecisionMatcher> {
         let separator = self.take_nontrivia()?;
+        if separator.kind == TokenKind::Identifier && self.source.slice(separator.span) != "then" {
+            let then = self.take_nontrivia()?;
+            if then.kind == TokenKind::Identifier && self.source.slice(then.span) == "then" {
+                return Some(DecisionMatcher::Union {
+                    alternative: identifier.span,
+                    binding: separator.span,
+                    span: Span::new(identifier.span.start, separator.span.end),
+                });
+            }
+        }
         if separator.kind != TokenKind::Identifier || self.source.slice(separator.span) != "then" {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-EXPECTED-THEN",
@@ -1123,6 +1239,31 @@ impl Parser<'_> {
             return None;
         }
         Some(DecisionMatcher::Identifier(identifier.span))
+    }
+
+    fn variant_matcher(&mut self, type_name: Token) -> Option<DecisionMatcher> {
+        self.take_nontrivia();
+        let index = self.take_nontrivia()?;
+        let binding = self.take_nontrivia()?;
+        let then = self.take_nontrivia()?;
+        if index.kind != TokenKind::Integer
+            || binding.kind != TokenKind::Identifier
+            || then.kind != TokenKind::Identifier
+            || self.source.slice(then.span) != "then"
+        {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-VARIANT-PATTERN",
+                span: Span::new(type_name.span.start, then.span.end),
+                message: "expected `Type at index binding then`".into(),
+            });
+            return None;
+        }
+        Some(DecisionMatcher::Variant {
+            type_name: type_name.span,
+            index: index.span,
+            binding: binding.span,
+            span: Span::new(type_name.span.start, binding.span.end),
+        })
     }
 
     fn error_code_matcher(&mut self, error: Span) -> Option<DecisionMatcher> {
@@ -1594,6 +1735,7 @@ fn statement_span(statement: &Statement) -> Span {
         Statement::Binding { name, value, .. } => Span::new(name.start, value.span().end),
         Statement::Function { span, .. }
         | Statement::Generator { span, .. }
+        | Statement::Union { span, .. }
         | Statement::Foreach { span, .. }
         | Statement::Discard { span, .. } => *span,
         Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
@@ -1605,6 +1747,8 @@ const fn matcher_span(matcher: &DecisionMatcher) -> Span {
     match matcher {
         DecisionMatcher::Boolean { span, .. }
         | DecisionMatcher::Identifier(span)
+        | DecisionMatcher::Union { span, .. }
+        | DecisionMatcher::Variant { span, .. }
         | DecisionMatcher::Result { span, .. }
         | DecisionMatcher::Optional { span, .. }
         | DecisionMatcher::ListEmpty(span)
@@ -2364,6 +2508,16 @@ mod tests {
     fn parses_contextual_anonymous_list_functions() {
         let source = SourceText::new(include_str!(
             "../../../examples/interpreter/anonymous-list-functions.t"
+        ))
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
+    fn parses_payload_unions_and_positional_variants() {
+        let source = SourceText::new(include_str!(
+            "../../../examples/interpreter/unions-and-recursive-products.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));
