@@ -63,6 +63,9 @@ Exact `Range Int` and `Range Rational` values may likewise cross generator
 boundaries. Their inclusive endpoints and canonical empty state shall remain
 unchanged by suspension.
 
+A value classified as `Nat` may cross the same boundaries while retaining the
+nonnegative constraint represented by its Int value.
+
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 
 A generator continuation may execute ordinary binding and discarded-computation
