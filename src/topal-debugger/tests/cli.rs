@@ -1604,6 +1604,24 @@ fn records_unit_generator_values_reversibly() {
 }
 
 #[test]
+fn records_optional_generator_values_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-optional-values.debug"),
+            &format!("{root}custom-generator-optional-values.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Generator Optional Int Unit Optional Int"));
+    assert!(stdout.contains("Some 7"));
+    assert!(stdout.contains("None"));
+}
+
+#[test]
 fn records_yield_after_custom_close_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

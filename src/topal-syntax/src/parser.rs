@@ -559,34 +559,46 @@ impl Parser<'_> {
     fn generator_header_clause(&mut self, expected: &'static str) -> Option<Span> {
         self.expect_generator_header_newline()?;
         let keyword = self.take_nontrivia()?;
-        let classifier = self.take_nontrivia()?;
-        if keyword.kind != TokenKind::Identifier
-            || self.source.slice(keyword.span) != expected
-            || classifier.kind != TokenKind::Identifier
-        {
+        let classifier = self.generator_classifier()?;
+        if keyword.kind != TokenKind::Identifier || self.source.slice(keyword.span) != expected {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-UNSUPPORTED-GENERATOR-HEADER",
-                span: Span::new(keyword.span.start, classifier.span.end),
+                span: Span::new(keyword.span.start, classifier.end),
                 message: format!("expected `{expected} Type` in the generator header"),
             });
             return None;
         }
-        Some(classifier.span)
+        Some(classifier)
     }
 
     fn generator_result_clause(&mut self) -> Option<Span> {
         self.expect_generator_header_newline()?;
         let arrow = self.take_nontrivia()?;
-        let classifier = self.take_nontrivia()?;
-        if arrow.kind != TokenKind::Arrow || classifier.kind != TokenKind::Identifier {
+        let classifier = self.generator_classifier()?;
+        if arrow.kind != TokenKind::Arrow {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-UNSUPPORTED-GENERATOR-HEADER",
-                span: Span::new(arrow.span.start, classifier.span.end),
+                span: Span::new(arrow.span.start, classifier.end),
                 message: "expected `-> Type` in the generator header".into(),
             });
             return None;
         }
-        Some(classifier.span)
+        Some(classifier)
+    }
+
+    fn generator_classifier(&mut self) -> Option<Span> {
+        let first = self.take_nontrivia()?;
+        if first.kind != TokenKind::Identifier {
+            return None;
+        }
+        if matches!(self.source.slice(first.span), "Optional" | "Range") {
+            let payload = self.take_nontrivia()?;
+            if payload.kind != TokenKind::Identifier {
+                return None;
+            }
+            return Some(Span::new(first.span.start, payload.span.end));
+        }
+        Some(first.span)
     }
 
     fn expect_generator_header_newline(&mut self) -> Option<()> {
@@ -1983,6 +1995,28 @@ mod tests {
             panic!("expected generator");
         };
         assert!(matches!(body.as_slice(), [Statement::Return { .. }]));
+    }
+
+    #[test]
+    fn parses_optional_generator_classifiers() {
+        let source = SourceText::new(
+            "optional is generator ( initial : Optional Int )\n  yields Optional Int\n  resumes Unit\n  -> Optional Int\n\n  _ is yield initial\n  None Int",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Generator {
+            parameters,
+            yielded,
+            result,
+            ..
+        } = &parsed.statements[0]
+        else {
+            panic!("expected generator");
+        };
+        assert_eq!(source.slice(parameters[0].classifier), "Optional Int");
+        assert_eq!(source.slice(*yielded), "Optional Int");
+        assert_eq!(source.slice(*result), "Optional Int");
     }
 
     #[test]
