@@ -2268,6 +2268,10 @@ fn every_mode_constructs_and_tests_rational_ranges() {
     assert!(trace.contains("Int->Rational:membership"));
     assert_eq!(trace.matches("TOPAL-RANGE-MEMBERSHIP-001").count(), 3);
     assert!(trace.contains("TOPAL-RANGE-INTERSECTION-001"));
+    assert!(
+        trace
+            .contains("\"detail\":\"(Range Rational, Range Rational, Boolean, Boolean, Boolean)\"")
+    );
 }
 
 #[test]
@@ -2846,6 +2850,10 @@ fn every_mode_traverses_range_generator_values() {
         assert!(output.status.success());
         assert!(output.stdout.ends_with(b"5 .. 10\n"));
     }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains(
+        "\"event\":\"evaluation.result\",\"rule\":\"TOPAL-SYN-GRAMMAR-001\",\"detail\":\"Range Int\""
+    ));
 }
 
 #[test]

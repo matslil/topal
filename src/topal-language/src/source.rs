@@ -4566,6 +4566,8 @@ fn value_classifier(value: &Value) -> &'static str {
 
 fn structural_value_classifier(value: &Value) -> String {
     match value {
+        Value::IntRange { .. } => "Range Int".into(),
+        Value::RationalRange { .. } => "Range Rational".into(),
         Value::Tuple(values) => format!(
             "({})",
             values
