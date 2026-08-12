@@ -89,6 +89,13 @@ pub enum Value {
         base_classifier: String,
         value: Box<Self>,
     },
+    ModularType(Box<ModularType>),
+    Modular {
+        type_name: String,
+        lower: BigInt,
+        upper: BigInt,
+        value: BigInt,
+    },
     ErrorDomain(String),
     Error {
         domain: String,
@@ -130,6 +137,14 @@ pub struct ConstraintValue {
     name: Option<String>,
     base_classifier: String,
     predicate: Value,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ModularType {
+    name: Option<String>,
+    signed: bool,
+    lower: BigInt,
+    upper: BigInt,
 }
 
 impl fmt::Display for Value {
@@ -250,6 +265,16 @@ impl fmt::Display for Value {
                     .unwrap_or(&constraint.base_classifier)
             ),
             Self::Refined { value, .. } => write!(formatter, "{value}"),
+            Self::ModularType(kind) => write!(
+                formatter,
+                "<{} {} .. {}>",
+                if kind.signed { "ModInt" } else { "ModNat" },
+                kind.lower,
+                kind.upper
+            ),
+            Self::Modular {
+                type_name, value, ..
+            } => write!(formatter, "{type_name} {value}"),
             Self::ErrorDomain(domain) => formatter.write_str(domain),
             Self::Error { domain, code, .. } => {
                 write!(formatter, "Error ( domain is {domain}, code is {code} )")
@@ -926,6 +951,15 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if self.is_explicit_modulo(source, items) {
+                    return self.apply_explicit_modulo(source, items, trace);
+                }
+                if Self::is_modular_type_definition(source, items) {
+                    return self.construct_modular_type(source, items, trace);
+                }
+                if self.is_modular_construction(source, items) {
+                    return self.construct_modular_value(source, items, *span, trace);
+                }
                 if Self::is_constraint_definition(source, items) {
                     return self.construct_constraint(source, items, trace);
                 }
@@ -2343,6 +2377,155 @@ impl Session {
         )
     }
 
+    fn is_modular_type_definition(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(kind), _] if matches!(source.slice(*kind), "ModNat" | "ModInt"))
+    }
+
+    fn is_explicit_modulo(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(
+            items,
+            [_, Expression::Identifier(operation), Expression::Identifier(type_name)]
+                if source.slice(*operation) == "modulo"
+                    && matches!(self.bindings.get(source.slice(*type_name)), Some(Value::ModularType(_)))
+        )
+    }
+
+    fn apply_explicit_modulo(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [operand, _, Expression::Identifier(type_name)] = items else {
+            unreachable!("preselected explicit modular reduction")
+        };
+        let operand_value = self.evaluate_expression(source, operand, trace)?;
+        let Value::Int(value) = operand_value else {
+            return Err(diagnostic(
+                source,
+                "E-MODULO-OPERAND",
+                operand.span(),
+                "explicit modulo construction requires Int",
+            ));
+        };
+        let name = source.slice(*type_name);
+        let Value::ModularType(kind) = self.bindings.get(name).expect("known modular type") else {
+            unreachable!("preselected modular type")
+        };
+        let value = reduce_modular(value, &kind.lower, &kind.upper);
+        trace.record(TraceEvent {
+            event: "numeric.modular.reduced",
+            rule: "TOPAL-NUM-MODULAR-REDUCE-001",
+            detail: name,
+        });
+        Ok(Value::Modular {
+            type_name: name.into(),
+            lower: kind.lower.clone(),
+            upper: kind.upper.clone(),
+            value,
+        })
+    }
+
+    fn construct_modular_type(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(kind), range] = items else {
+            unreachable!("preselected modular type definition")
+        };
+        let signed = source.slice(*kind) == "ModInt";
+        let range_value = self.evaluate_expression(source, range, trace)?;
+        let Value::IntRange { lower, upper } = range_value else {
+            return Err(diagnostic(
+                source,
+                "E-MODULAR-RANGE",
+                range.span(),
+                "ModNat and ModInt require a finite Int range",
+            ));
+        };
+        if lower > BigInt::from(0)
+            || upper < BigInt::from(0)
+            || (!signed && lower != BigInt::from(0))
+        {
+            return Err(diagnostic(
+                source,
+                "E-MODULAR-RANGE",
+                range.span(),
+                "modular range must contain zero and ModNat must begin at zero",
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "numeric.modular.type.constructed",
+            rule: "TOPAL-NUM-MODULAR-TYPE-001",
+            detail: source.slice(*kind),
+        });
+        Ok(Value::ModularType(Box::new(ModularType {
+            name: None,
+            signed,
+            lower,
+            upper,
+        })))
+    }
+
+    fn is_modular_construction(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _] if matches!(self.bindings.get(source.slice(*name)), Some(Value::ModularType(_))))
+    }
+
+    fn construct_modular_value(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        _span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(name_span), operand] = items else {
+            unreachable!("preselected modular construction")
+        };
+        let name = source.slice(*name_span);
+        let Value::ModularType(kind) = self.bindings.get(name).expect("known modular type") else {
+            unreachable!("preselected modular type")
+        };
+        let operand_value = self.evaluate_expression(source, operand, trace)?;
+        let Value::Int(value) = operand_value else {
+            return Err(diagnostic(
+                source,
+                "E-MODULAR-CONSTRUCTION-OPERAND",
+                operand.span(),
+                "modular construction requires Int",
+            ));
+        };
+        if value < kind.lower || value > kind.upper {
+            if expression_is_closed(operand) {
+                return Err(diagnostic(
+                    source,
+                    "E-MODULAR-OUT-OF-RANGE",
+                    operand.span(),
+                    format!("value is outside `{name}` canonical range"),
+                ));
+            }
+            let position = source.position(operand.span().start);
+            return Ok(Value::Error {
+                domain: format!("root.{name}(Int)"),
+                code: "out-of-range".into(),
+                line: position.line,
+                column: position.column,
+            });
+        }
+        trace.record(TraceEvent {
+            event: "numeric.modular.constructed",
+            rule: "TOPAL-NUM-MODULAR-CONSTRUCT-001",
+            detail: name,
+        });
+        Ok(Value::Modular {
+            type_name: name.into(),
+            lower: kind.lower.clone(),
+            upper: kind.upper.clone(),
+            value,
+        })
+    }
+
     fn construct_constraint(
         &self,
         source: &SourceText,
@@ -3738,6 +3921,7 @@ impl Execution {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Declaration specializations remain ordered before ordinary projection.
     fn execute_binding(
         &self,
         session: &mut Session,
@@ -3832,6 +4016,9 @@ impl Execution {
         }
         if let Value::Constraint(constraint) = &mut evaluated {
             constraint.name = Some(name_text.to_owned());
+        }
+        if let Value::ModularType(kind) = &mut evaluated {
+            kind.name = Some(name_text.to_owned());
         }
         session.bindings.insert(name_text.to_owned(), evaluated);
         session.functions.remove(name_text);
@@ -4903,7 +5090,9 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
         (Value::Int(value), "Nat") => value >= &BigInt::from(0),
-        (Value::Enum { type_name, .. }, classifier) => type_name == classifier,
+        (Value::Enum { type_name, .. } | Value::Modular { type_name, .. }, classifier) => {
+            type_name == classifier
+        }
         (Value::Union(union), classifier) => union.type_name == classifier,
         _ => false,
     }
@@ -5834,6 +6023,8 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Union(_) => "Union",
         Value::Constraint(_) => "Constraint",
         Value::Refined { .. } => "Refined",
+        Value::ModularType(_) => "Type",
+        Value::Modular { .. } => "Modular",
         Value::ErrorDomain(_) => "ErrorDomain",
         Value::Error { .. } => "Error",
         Value::Unit => "Unit",
@@ -5878,10 +6069,11 @@ fn structural_value_classifier(value: &Value) -> String {
             return_classifier,
             ..
         } => format!("Generator {yield_classifier} Unit {return_classifier}"),
-        Value::Enum { type_name, .. } => type_name.clone(),
+        Value::Enum { type_name, .. } | Value::Modular { type_name, .. } => type_name.clone(),
         Value::Union(union) => union.type_name.clone(),
         Value::Constraint(constraint) => format!("Constraint {}", constraint.base_classifier),
         Value::Refined { constraint, .. } => constraint.clone(),
+        Value::ModularType(kind) => kind.name.clone().unwrap_or_else(|| "Type".into()),
         _ => value_classifier(value).to_owned(),
     }
 }
@@ -6014,6 +6206,7 @@ fn display_string(value: &str) -> String {
     format!("{tag}\"{value}\"{tag}")
 }
 
+#[allow(clippy::too_many_lines)] // Numeric domains keep explicit, non-coercing dispatch arms.
 fn apply_binary(
     source: &SourceText,
     kind: CallableKind,
@@ -6070,6 +6263,45 @@ fn apply_binary(
         return apply_comparison(source, kind, left, right, span, trace);
     }
     match (left, right) {
+        (
+            Value::Modular {
+                type_name: left_type,
+                lower,
+                upper,
+                value: left,
+            },
+            Value::Modular {
+                type_name: right_type,
+                value: right,
+                ..
+            },
+        ) if left_type == right_type => {
+            let raw = match kind {
+                CallableKind::Plus => left + right,
+                CallableKind::Minus => left - right,
+                CallableKind::Multiply => left * right,
+                _ => {
+                    return Err(diagnostic(
+                        source,
+                        "E-NO-APPLICABLE-OVERLOAD",
+                        span,
+                        "modular values support settled wrapping +, -, and * operations",
+                    ));
+                }
+            };
+            let value = reduce_modular(raw, &lower, &upper);
+            trace.record(TraceEvent {
+                event: "numeric.modular.wrapped",
+                rule: "TOPAL-NUM-MODULAR-ARITHMETIC-001",
+                detail: &left_type,
+            });
+            Ok(Value::Modular {
+                type_name: left_type,
+                lower,
+                upper,
+                value,
+            })
+        }
         (Value::Int(left), Value::Int(right)) => {
             apply_int_binary(source, kind, left, right, right_span, trace)
         }
@@ -6110,6 +6342,13 @@ fn apply_binary(
             "the implemented subset requires operands from one exact numeric domain",
         )),
     }
+}
+
+fn reduce_modular(value: BigInt, lower: &BigInt, upper: &BigInt) -> BigInt {
+    let modulus = upper - lower + BigInt::from(1);
+    let offset = value - lower;
+    let reduced = ((offset % &modulus) + &modulus) % &modulus;
+    reduced + lower
 }
 
 fn forget_refinement(value: Value, trace: &mut impl TraceSink, detail: &'static str) -> Value {
@@ -6330,6 +6569,18 @@ fn values_compare(left: Value, right: Value, trace: &mut impl TraceSink) -> Opti
     match (left, right) {
         (Value::Refined { value, .. }, right) => values_compare(*value, right, trace),
         (left, Value::Refined { value, .. }) => values_compare(left, *value, trace),
+        (
+            Value::Modular {
+                type_name: left_type,
+                value: left,
+                ..
+            },
+            Value::Modular {
+                type_name: right_type,
+                value: right,
+                ..
+            },
+        ) if left_type == right_type => Some(left.cmp(&right)),
         (Value::Int(left), Value::Int(right)) => Some(left.cmp(&right)),
         (Value::Rational(left), Value::Rational(right)) => Some(left.cmp(&right)),
         (Value::Int(left), Value::Rational(right)) => {
@@ -7776,6 +8027,18 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
         }
         (Value::String(left), Value::String(right)) => Some(left == right),
         (
+            Value::Modular {
+                type_name: left_type,
+                value: left,
+                ..
+            },
+            Value::Modular {
+                type_name: right_type,
+                value: right,
+                ..
+            },
+        ) if left_type == right_type => Some(left == right),
+        (
             Value::List {
                 element_classifier: left_classifier,
                 entries: left,
@@ -8390,6 +8653,25 @@ fn apply_negate(
             });
             Ok(Value::Rational(-operand))
         }
+        Value::Modular {
+            type_name,
+            lower,
+            upper,
+            value,
+        } => {
+            let value = reduce_modular(-value, &lower, &upper);
+            trace.record(TraceEvent {
+                event: "numeric.modular.wrapped",
+                rule: "TOPAL-NUM-MODULAR-ARITHMETIC-001",
+                detail: &type_name,
+            });
+            Ok(Value::Modular {
+                type_name,
+                lower,
+                upper,
+                value,
+            })
+        }
         Value::Boolean(_)
         | Value::IntRange { .. }
         | Value::RationalRange { .. }
@@ -8410,6 +8692,7 @@ fn apply_negate(
         | Value::Union(_)
         | Value::Constraint(_)
         | Value::Refined { .. }
+        | Value::ModularType(_)
         | Value::ErrorDomain(_)
         | Value::Error { .. }
         | Value::Unit => Err(diagnostic(

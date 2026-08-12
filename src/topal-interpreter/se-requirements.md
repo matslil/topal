@@ -1583,3 +1583,12 @@ all structured Error field projections under `TOPAL-TYPE-OPTIONAL-*`,
 `TOPAL-TYPE-RESULT-*`, and `TOPAL-ERROR-FIELD-001`. Formal traces, source-located
 diagnostics, LSP validation, and reversible scripted-debugger history shall
 cover commented examples.
+## TOPAL-INTP-SUBSET-193 — Settled modular numeric families
+
+All interpreter modes shall implement nominal ModNat and ModInt ranges, checked
+construction, explicit modular reduction, wrapping arithmetic, equality, and
+canonical ordering under `TOPAL-NUM-MODULAR-*`. Formal traces, Rust-style
+closed-range diagnostics, LSP validation, and reversible scripted-debugger
+history shall cover commented examples. Numeric families lacking approved
+source construction syntax remain documented in the PR rather than receiving
+an implementation-invented spelling.

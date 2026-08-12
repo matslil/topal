@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 130);
+    assert_eq!(examples.len(), 131);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3392,4 +3392,36 @@ fn every_mode_composes_optional_result_and_error_fields() {
     assert!(trace.contains("TOPAL-DECISION-OPTIONAL-001"));
     assert!(trace.contains("TOPAL-TYPE-RESULT-PROJECT-001"));
     assert!(trace.matches("TOPAL-ERROR-FIELD-001").count() >= 5);
+}
+
+#[test]
+fn every_mode_executes_settled_modular_numbers() {
+    let source = include_str!("../../../examples/interpreter/modular-numbers.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains(
+            "(ByteCounter 0, SignedByte -128, ByteCounter 255, SignedByte -128, true, true)"
+        ));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for rule in [
+        "TOPAL-NUM-MODULAR-TYPE-001",
+        "TOPAL-NUM-MODULAR-CONSTRUCT-001",
+        "TOPAL-NUM-MODULAR-REDUCE-001",
+        "TOPAL-NUM-MODULAR-ARITHMETIC-001",
+    ] {
+        assert!(trace.contains(rule), "missing {rule}");
+    }
+}
+
+#[test]
+fn closed_modular_construction_rejection_is_source_located() {
+    let output = run(&[], "Byte is ModNat (0 .. 255)\nByte 256\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-MODULAR-OUT-OF-RANGE")
+    );
 }
