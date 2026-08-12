@@ -74,6 +74,10 @@ A positional product whose component classifiers are supported may cross each
 generator value direction. Component order and each component's classifier
 shall remain intact across suspension.
 
+An arithmetic `Result (T, lang arithmetic ArithmeticErrorCode)` with supported
+success classifier `T` may cross generator boundaries as either its successful
+value or a structured arithmetic Error.
+
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 
 A generator continuation may execute ordinary binding and discarded-computation

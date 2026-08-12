@@ -3556,6 +3556,7 @@ fn supported_generator_value_classifier(classifier: &str) -> bool {
         )
     }) || tuple_classifiers(classifier)
         .is_some_and(|items| items.into_iter().all(supported_generator_value_classifier))
+        || result_success_classifier(classifier).is_some_and(supported_generator_value_classifier)
 }
 
 fn is_arithmetic_error_code(code: &str) -> bool {
@@ -8409,6 +8410,17 @@ fn custom_generator_preserves_enum_identity() {
 fn custom_generator_preserves_product_values() {
     let value = Session::new().evaluate("pair is generator ( initial : (Int, String) )\n  yields (Int, String)\n  resumes Unit\n  -> (Int, String)\n\n  _ is yield initial\n  (8, \"done\")\ngenerated is pair (7, \"item\")\ngenerated foreach { value }\n  _ is value = (7, \"item\")\n", &mut Vec::new()).unwrap();
     assert_eq!(value.to_string(), "(8, \"done\")");
+}
+
+#[test]
+fn custom_generator_returns_structured_result_error() {
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/interpreter/custom-generator-result-values.t"),
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert!(matches!(value, Value::Error { ref code, .. } if code == "division-by-zero"));
 }
 
 #[test]

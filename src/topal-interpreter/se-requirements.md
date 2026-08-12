@@ -1213,6 +1213,14 @@ classifiers as custom-generator input, yield, and final return. Suspension shall
 preserve component order and classifiers. Syntax, formal traces, LSP validation,
 and reversible scripted-debugger history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-163 — Result custom generator values
+
+All interpreter modes shall support arithmetic Result values as custom-
+generator input, yield, and final return when their success classifier is
+supported. Structured Error domain, code, and source position shall survive the
+boundary. Syntax, LSP, formal trace, and reversible debugger coverage shall use
+a commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

@@ -605,6 +605,24 @@ impl Parser<'_> {
         if first.kind != TokenKind::Identifier {
             return None;
         }
+        if self.source.slice(first.span) == "Result" {
+            let opening = self.take_nontrivia()?;
+            if opening.kind != TokenKind::LeftParen {
+                return None;
+            }
+            let mut depth = 1_usize;
+            let mut end = opening.span.end;
+            while depth > 0 {
+                let token = self.take_nontrivia()?;
+                match token.kind {
+                    TokenKind::LeftParen => depth += 1,
+                    TokenKind::RightParen => depth -= 1,
+                    _ => {}
+                }
+                end = token.span.end;
+            }
+            return Some(Span::new(first.span.start, end));
+        }
         if matches!(self.source.slice(first.span), "Optional" | "Range") {
             let payload = self.take_nontrivia()?;
             if payload.kind != TokenKind::Identifier {
@@ -1170,6 +1188,23 @@ impl Parser<'_> {
                 }
                 separator = self.take_nontrivia()?;
                 classifier.kind = TokenKind::Identifier;
+            }
+            if classifier.kind == TokenKind::Identifier
+                && self.source.slice(classifier.span) == "Result"
+                && separator.kind == TokenKind::LeftParen
+            {
+                let mut depth = 1_usize;
+                classifier.span = Span::new(classifier.span.start, separator.span.end);
+                while depth > 0 {
+                    separator = self.take_nontrivia()?;
+                    match separator.kind {
+                        TokenKind::LeftParen => depth += 1,
+                        TokenKind::RightParen => depth -= 1,
+                        _ => {}
+                    }
+                    classifier.span = Span::new(classifier.span.start, separator.span.end);
+                }
+                separator = self.take_nontrivia()?;
             }
             if classifier.kind == TokenKind::Identifier
                 && matches!(self.source.slice(classifier.span), "Range" | "Optional")
@@ -2066,6 +2101,16 @@ mod tests {
         assert_eq!(source.slice(parameters[0].classifier), "(Int, String)");
         assert_eq!(source.slice(*yielded), "(Int, String)");
         assert_eq!(source.slice(*result), "(Int, String)");
+    }
+
+    #[test]
+    fn parses_result_generator_classifiers() {
+        let source = SourceText::new(include_str!(
+            "../../../examples/interpreter/custom-generator-result-values.t"
+        ))
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     }
 
     #[test]
