@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 117);
+    assert_eq!(examples.len(), 118);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3030,6 +3030,22 @@ fn every_mode_transfers_generic_generator_function_boundaries() {
     assert!(trace.contains("generator.function.returned"));
     assert!(trace.contains("generator.parameter.transferred"));
     assert!(trace.contains("generator.foreach.result.bound"));
+}
+
+#[test]
+fn every_mode_transfers_compound_generator_function_boundaries() {
+    let source = include_str!(
+        "../../../examples/interpreter/custom-generator-compound-function-boundaries.t"
+    );
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"(8, \"done\")\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("Generator (Int, String) Unit (Int, String)"));
+    assert!(trace.contains("generator.function.returned"));
+    assert!(trace.contains("generator.parameter.transferred"));
 }
 
 #[test]

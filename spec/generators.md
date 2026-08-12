@@ -228,3 +228,5 @@ The ordinary function parameter and result rules shall accept
 `Generator Yield Unit Return` for every supported scalar or nominal `Yield` and
 `Return` classifier. Transfer shall preserve the exact declared generator
 classifier rather than restricting function boundaries to Character or String.
+Parenthesized compound classifiers, including positional products, shall be
+parsed and validated structurally in both generator directions.

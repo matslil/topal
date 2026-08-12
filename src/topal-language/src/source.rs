@@ -4400,7 +4400,7 @@ fn supported_value_classifier(
             | "String"
             | "Unit"
     ) || enum_types.contains_key(classifier)
-        || generator_scalar_classifiers(classifier).is_some_and(|(yielded, resumed, returned)| {
+        || generator_classifiers(classifier).is_some_and(|(yielded, resumed, returned)| {
             resumed == "Unit"
                 && supported_generator_value_classifier(yielded, enum_types)
                 && supported_generator_value_classifier(returned, enum_types)
@@ -4416,12 +4416,46 @@ fn supported_value_classifier(
             .is_some_and(|success| supported_value_classifier(success, enum_types))
 }
 
-fn generator_scalar_classifiers(classifier: &str) -> Option<(&str, &str, &str)> {
-    let parts = classifier.split_whitespace().collect::<Vec<_>>();
-    let ["Generator", yielded, resumed, returned] = parts.as_slice() else {
+fn generator_classifiers(classifier: &str) -> Option<(&str, &str, &str)> {
+    let contents = classifier.trim().strip_prefix("Generator ")?;
+    let parts = split_top_level_words(contents)?;
+    let [yielded, resumed, returned] = parts.as_slice() else {
         return None;
     };
     Some((yielded, resumed, returned))
+}
+
+fn split_top_level_words(text: &str) -> Option<Vec<&str>> {
+    let mut words = Vec::new();
+    let mut depth = 0_usize;
+    let mut start = None;
+    for (offset, character) in text.char_indices() {
+        match character {
+            '(' => {
+                depth += 1;
+                start.get_or_insert(offset);
+            }
+            ')' => {
+                depth = depth.checked_sub(1)?;
+                start.get_or_insert(offset);
+            }
+            character if character.is_whitespace() && depth == 0 => {
+                if let Some(start) = start.take() {
+                    words.push(text[start..offset].trim());
+                }
+            }
+            _ => {
+                start.get_or_insert(offset);
+            }
+        }
+    }
+    if depth != 0 {
+        return None;
+    }
+    if let Some(start) = start {
+        words.push(text[start..].trim());
+    }
+    Some(words)
 }
 
 fn accepted_source(input: &str, trace: &mut impl TraceSink) -> Result<SourceText, Diagnostic> {
@@ -8920,6 +8954,19 @@ fn custom_generator_crosses_generic_function_boundaries() {
             .iter()
             .any(|event| event.contains("generator.parameter.transferred"))
     );
+}
+
+#[test]
+fn compound_generator_crosses_function_boundaries() {
+    let value = Session::new()
+        .evaluate(
+            include_str!(
+                "../../../examples/interpreter/custom-generator-compound-function-boundaries.t"
+            ),
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(8, \"done\")");
 }
 
 #[test]

@@ -1893,6 +1893,23 @@ fn records_generic_generator_function_boundaries_reversibly() {
 }
 
 #[test]
+fn records_compound_generator_function_boundaries_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-compound-function-boundaries.debug"),
+            &format!("{root}custom-generator-compound-function-boundaries.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Generator (Int, String) Unit (Int, String)"));
+    assert!(stdout.contains("(8, \"done\")"));
+}
+
+#[test]
 fn records_yield_after_custom_close_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
