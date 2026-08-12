@@ -1221,6 +1221,13 @@ supported. Structured Error domain, code, and source position shall survive the
 boundary. Syntax, LSP, formal trace, and reversible debugger coverage shall use
 a commented example.
 
+## TOPAL-INTP-SUBSET-164 — Comparison custom generator values
+
+All interpreter modes shall support the language-defined nominal Comparison as
+a custom-generator input, yield, and final-return classifier. Suspension shall
+preserve nominal identity and alternative. Formal traces, LSP validation, and
+reversible scripted-debugger history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
