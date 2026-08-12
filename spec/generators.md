@@ -70,6 +70,10 @@ A previously declared nominal enum may be used in every generator value
 direction. Each transferred alternative retains the enum's nominal identity,
 not merely its alternative spelling.
 
+A positional product whose component classifiers are supported may cross each
+generator value direction. Component order and each component's classifier
+shall remain intact across suspension.
+
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 
 A generator continuation may execute ordinary binding and discarded-computation

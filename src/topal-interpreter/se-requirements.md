@@ -1206,6 +1206,13 @@ generator input, yield, and final-return classifier. Suspension shall preserve
 both enum identity and alternative. Formal traces, LSP validation, and
 reversible scripted-debugger history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-162 — Positional product custom generator values
+
+All interpreter modes shall support positional products of supported component
+classifiers as custom-generator input, yield, and final return. Suspension shall
+preserve component order and classifiers. Syntax, formal traces, LSP validation,
+and reversible scripted-debugger history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
