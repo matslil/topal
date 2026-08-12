@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 129);
+    assert_eq!(examples.len(), 130);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3376,4 +3376,20 @@ fn closed_constraint_rejection_has_source_help() {
             .unwrap()
             .contains("E-CONSTRAINT-REJECTED")
     );
+}
+
+#[test]
+fn every_mode_composes_optional_result_and_error_fields() {
+    let source = include_str!("../../../examples/interpreter/optional-result-composition.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("(4, 0, root./(Rational,Rational), division-by-zero"));
+        assert!(stdout.contains("None, None, Some (line is"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-DECISION-OPTIONAL-001"));
+    assert!(trace.contains("TOPAL-TYPE-RESULT-PROJECT-001"));
+    assert!(trace.matches("TOPAL-ERROR-FIELD-001").count() >= 5);
 }

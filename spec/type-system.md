@@ -287,6 +287,20 @@ returns the compiler-derived `ErrorDomain` identity stored independently in the
 same Error. Selection shall not reconstruct or otherwise alter the Error, and
 tools shall expose which field was selected.
 
+Selecting `detail` shall return `Optional String`, selecting `cause` shall
+return `Optional Error`, and selecting `source` shall return
+`Optional SourceLocation`. An intrinsic error which has no explanatory detail
+or cause shall return the corresponding nominal None values. A generated source
+location shall retain one-based line and column fields. Field selection shall
+never synthesize a detail or cause merely to make an Optional present.
+
+### TOPAL-TYPE-RESULT-COMPOSE-001 — Optional and Result decision composition
+
+Nested Optional and Result decisions shall preserve each nominal alternative
+and bind only payloads belonging to the selected action. Contextual success
+projection shall return the complete Error unchanged through every compatible
+enclosing Result boundary, including domain and source provenance.
+
 ### TOPAL-TYPE-RESULT-PROJECT-001 — Contextual success projection
 
 When an expression classified as `Result ( T, Codes )` initializes a binding

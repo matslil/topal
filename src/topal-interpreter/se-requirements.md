@@ -1575,3 +1575,11 @@ base type, and derive base equality and ordering under
 nominal Enum, Union, and Variant identities shall remain distinct. Formal
 traces, Rust-style rejection diagnostics, LSP validation, and reversible
 scripted-debugger history shall cover commented examples.
+## TOPAL-INTP-SUBSET-192 — Complete Optional and Result composition
+
+All interpreter modes shall execute explicit/contextual Optional construction,
+complete Optional and Result decisions, compatible contextual propagation, and
+all structured Error field projections under `TOPAL-TYPE-OPTIONAL-*`,
+`TOPAL-TYPE-RESULT-*`, and `TOPAL-ERROR-FIELD-001`. Formal traces, source-located
+diagnostics, LSP validation, and reversible scripted-debugger history shall
+cover commented examples.

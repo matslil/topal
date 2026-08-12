@@ -2077,7 +2077,12 @@ impl Session {
                         continue;
                     }
                     if let Expression::Identifier(label_span) = &items[index]
-                        && let Value::Error { domain, code, .. } = &result
+                        && let Value::Error {
+                            domain,
+                            code,
+                            line,
+                            column,
+                        } = &result
                     {
                         let label = source.slice(*label_span);
                         let selected = match label {
@@ -2086,6 +2091,21 @@ impl Session {
                                 alternative: code.clone(),
                             },
                             "domain" => Value::ErrorDomain(domain.clone()),
+                            "detail" => Value::Optional {
+                                payload_classifier: "String".into(),
+                                payload: None,
+                            },
+                            "cause" => Value::Optional {
+                                payload_classifier: "Error".into(),
+                                payload: None,
+                            },
+                            "source" => Value::Optional {
+                                payload_classifier: "SourceLocation".into(),
+                                payload: Some(Box::new(Value::Record(vec![
+                                    ("line".into(), Value::Int(BigInt::from(*line))),
+                                    ("column".into(), Value::Int(BigInt::from(*column))),
+                                ]))),
+                            },
                             _ => {
                                 return Err(diagnostic(
                                     source,
