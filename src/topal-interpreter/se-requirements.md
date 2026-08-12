@@ -1306,6 +1306,16 @@ diagnostics shall report expected and structurally found classifiers.
 Syntax, LSP, formal traces, reversible debugger history, and the overload
 example shall cover two differently classified final results.
 
+## TOPAL-INTP-SUBSET-174 — Generic generator function boundaries
+
+All interpreter modes shall transfer supported scalar custom-generator values
+through ordinary function results and parameters under
+`TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001`. A `Generator Int Unit String` shall
+retain its suspension state and final String through both boundaries. LSP,
+formal traces, reversible debugger history, and a commented example shall cover
+construction, return, parameter transfer, foreach result binding, and final
+value propagation.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

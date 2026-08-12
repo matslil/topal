@@ -221,3 +221,10 @@ Passing a custom Generator as an ordinary function argument shall transfer its
 single ownership into the matching parameter. The caller binding is consumed;
 the callee receives the same suspended state and may traverse it or allow its
 scope to close it.
+
+### TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001 — Generic scalar continuation boundaries
+
+The ordinary function parameter and result rules shall accept
+`Generator Yield Unit Return` for every supported scalar or nominal `Yield` and
+`Return` classifier. Transfer shall preserve the exact declared generator
+classifier rather than restricting function boundaries to Character or String.
