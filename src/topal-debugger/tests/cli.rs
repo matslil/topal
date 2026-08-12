@@ -1815,6 +1815,26 @@ fn records_generator_final_decision_reversibly() {
 }
 
 #[test]
+fn records_generator_local_function_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-local-function.debug"),
+            &format!("{root}custom-generator-local-function.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let declared_enum = stdout.find("enum.declared").unwrap();
+    let resumed = stdout.find("generator.resumed").unwrap();
+    let entered = stdout.rfind("function.entered").unwrap();
+    assert!(declared_enum < resumed && resumed < entered);
+    assert!(stdout.contains("\"accepted\""));
+}
+
+#[test]
 fn records_yield_after_custom_close_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))

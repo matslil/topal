@@ -1268,6 +1268,15 @@ return in order. Generator yield and return mismatches shall report both the
 expected and structurally found classifiers with actionable help. LSP and a
 commented example shall cover the valid form.
 
+## TOPAL-INTP-SUBSET-170 — Continuation-local declaration state
+
+All interpreter modes shall retain generator-local enum and function
+declarations, nominal identity, alternatives, and lexical captures across
+suspension. Calls after resumption shall use the retained declarations, which
+shall not escape to the consumer scope. The shared continuation snapshot used
+by the scripted debugger shall retain this state reversibly. LSP, formal trace,
+and commented examples shall cover the feature.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

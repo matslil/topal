@@ -123,6 +123,20 @@ An ordinary binding in a generator body shall be evaluated in the generator's
 local scope. Later yields may refer to that binding, and neither its name nor
 its value becomes visible in the caller's scope.
 
+### TOPAL-GENERATOR-LOCAL-FUNCTION-001 — Continuation-local functions
+
+A function declared in a generator body shall capture the generator's lexical
+scope, remain callable after suspension and resumption, and disappear when the
+continuation completes or closes. Its declaration and calls shall not introduce
+the function name into the consumer's scope.
+
+### TOPAL-GENERATOR-LOCAL-ENUM-001 — Continuation-local nominal types
+
+An enum declared in a generator body shall retain its nominal identity and
+alternatives across suspension for later local bindings and function calls. The
+type and alternatives disappear with the continuation and do not enter the
+consumer's scope.
+
 ### TOPAL-GENERATOR-EARLY-RETURN-001 — Return before first yield
 
 A generator may reach its declared final return without yielding. Applying it
