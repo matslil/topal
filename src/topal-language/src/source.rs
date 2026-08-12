@@ -4417,45 +4417,62 @@ fn supported_value_classifier(
 }
 
 fn generator_classifiers(classifier: &str) -> Option<(&str, &str, &str)> {
-    let contents = classifier.trim().strip_prefix("Generator ")?;
-    let parts = split_top_level_words(contents)?;
-    let [yielded, resumed, returned] = parts.as_slice() else {
-        return None;
-    };
-    Some((yielded, resumed, returned))
+    let contents = classifier.trim().strip_prefix("Generator")?;
+    let (yielded, contents) = take_classifier(contents)?;
+    let (resumed, contents) = take_classifier(contents)?;
+    let (returned, remainder) = take_classifier(contents)?;
+    remainder
+        .trim()
+        .is_empty()
+        .then_some((yielded, resumed, returned))
 }
 
-fn split_top_level_words(text: &str) -> Option<Vec<&str>> {
-    let mut words = Vec::new();
-    let mut depth = 0_usize;
-    let mut start = None;
-    for (offset, character) in text.char_indices() {
-        match character {
-            '(' => {
-                depth += 1;
-                start.get_or_insert(offset);
-            }
-            ')' => {
-                depth = depth.checked_sub(1)?;
-                start.get_or_insert(offset);
-            }
-            character if character.is_whitespace() && depth == 0 => {
-                if let Some(start) = start.take() {
-                    words.push(text[start..offset].trim());
-                }
-            }
-            _ => {
-                start.get_or_insert(offset);
-            }
-        }
+fn take_classifier(text: &str) -> Option<(&str, &str)> {
+    let text = text.trim_start();
+    if text.starts_with('(') {
+        let end = parenthesized_end(text)?;
+        return Some((&text[..end], &text[end..]));
     }
-    if depth != 0 {
+    let head_end = text.find(char::is_whitespace).unwrap_or(text.len());
+    let head = &text[..head_end];
+    if head.is_empty() {
         return None;
     }
-    if let Some(start) = start {
-        words.push(text[start..].trim());
+    if head == "Result" {
+        let tail = text[head_end..].trim_start();
+        let result_end = parenthesized_end(tail)?;
+        let end = text.len() - tail.len() + result_end;
+        return Some((&text[..end], &text[end..]));
     }
-    Some(words)
+    let arity = match head {
+        "Optional" | "Range" => 1,
+        "Generator" => 3,
+        _ => 0,
+    };
+    let mut remainder = &text[head_end..];
+    for _ in 0..arity {
+        let (_, next) = take_classifier(remainder)?;
+        remainder = next;
+    }
+    let end = text.len() - remainder.len();
+    Some((text[..end].trim_end(), remainder))
+}
+
+fn parenthesized_end(text: &str) -> Option<usize> {
+    let mut depth = 0_usize;
+    for (offset, character) in text.char_indices() {
+        match character {
+            '(' => depth += 1,
+            ')' => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 {
+                    return Some(offset + character.len_utf8());
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn accepted_source(input: &str, trace: &mut impl TraceSink) -> Result<SourceText, Diagnostic> {
@@ -8962,6 +8979,19 @@ fn compound_generator_crosses_function_boundaries() {
         .evaluate(
             include_str!(
                 "../../../examples/interpreter/custom-generator-compound-function-boundaries.t"
+            ),
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(8, \"done\")");
+}
+
+#[test]
+fn nested_generator_crosses_function_boundaries() {
+    let value = Session::new()
+        .evaluate(
+            include_str!(
+                "../../../examples/interpreter/custom-generator-nested-function-boundaries.t"
             ),
             &mut Vec::new(),
         )
