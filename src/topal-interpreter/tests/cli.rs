@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 120);
+    assert_eq!(examples.len(), 121);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3073,6 +3073,25 @@ fn every_mode_transfers_nested_generator_function_boundaries() {
     assert!(trace.contains(&format!(
         "\"event\":\"generator.parameter.transferred\",\"rule\":\"TOPAL-GENERATOR-FUNCTION-PARAMETER-001\",\"detail\":\"{classifier}\""
     )));
+}
+
+#[test]
+fn every_mode_transfers_list_generator_values() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-list-values.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"Entry ( 7, Entry ( 9, Empty ) )\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("Generator List Int Unit List Int"));
+    assert!(trace.contains("generator.function.returned"));
+    assert!(trace.contains("generator.parameter.transferred"));
+    assert!(trace.contains("TOPAL-LIST-APPEND-001"));
 }
 
 #[test]

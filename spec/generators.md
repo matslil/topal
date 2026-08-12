@@ -234,3 +234,7 @@ parsed and validated structurally in both generator directions.
 Classifier constructors in generator directions shall compose recursively at
 ordinary function boundaries. In particular, whitespace within `Optional T`
 and `Result (T, Codes)` shall not separate generator direction classifiers.
+
+This recursive composition includes `List T` once `T` is a supported generator
+value classifier. List order, multiplicity, and element classifier shall remain
+unchanged across suspension and continuation ownership transfer.

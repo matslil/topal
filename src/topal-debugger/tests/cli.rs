@@ -1927,6 +1927,24 @@ fn records_nested_generator_function_boundaries_reversibly() {
 }
 
 #[test]
+fn records_list_generator_values_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}custom-generator-list-values.debug"),
+            &format!("{root}custom-generator-list-values.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Generator List Int Unit List Int"));
+    assert!(stdout.contains("TOPAL-LIST-APPEND-001"));
+    assert!(stdout.contains("Entry ( 7, Entry ( 9, Empty ) )"));
+}
+
+#[test]
 fn records_yield_after_custom_close_failure_reversibly() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
