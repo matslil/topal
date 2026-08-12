@@ -2420,16 +2420,19 @@ impl Execution {
         let parameter_classifier = self.source.slice(parameter.classifier);
         let yield_classifier = self.source.slice(yielded);
         let result_classifier = self.source.slice(result);
-        if !supported_generator_value_classifier(parameter_classifier)
-            || !supported_generator_value_classifier(yield_classifier)
+        if !(supported_generator_value_classifier(parameter_classifier)
+            || session.enum_types.contains_key(parameter_classifier))
+            || !(supported_generator_value_classifier(yield_classifier)
+                || session.enum_types.contains_key(yield_classifier))
             || self.source.slice(resumed) != "Unit"
-            || !supported_generator_value_classifier(result_classifier)
+            || !(supported_generator_value_classifier(result_classifier)
+                || session.enum_types.contains_key(result_classifier))
         {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-GENERATOR-SIGNATURE",
                 span,
-                "the implemented generator subset requires supported scalar or Optional input/yield/return classifiers and Unit resume",
+                "the implemented generator subset requires supported scalar, Optional, Range, or declared enum input/yield/return classifiers and Unit resume",
             ));
         }
         if !supported_generator_body(&self.source, body) {
@@ -8387,6 +8390,18 @@ fn custom_generator_preserves_range_values() {
 fn custom_generator_preserves_nat_constraint() {
     let value = Session::new().evaluate("next is generator ( initial : Nat )\n  yields Nat\n  resumes Unit\n  -> Nat\n\n  _ is yield initial\n  initial + 1\ngenerated is next (Nat 7)\ngenerated foreach { value }\n  _ is value + 1\n", &mut Vec::new()).unwrap();
     assert_eq!(value.to_string(), "8");
+}
+
+#[test]
+fn custom_generator_preserves_enum_identity() {
+    let mut trace = Vec::new();
+    let value = Session::new().evaluate("Choice is Enum ( First, Second )\nchoose is generator ( initial : Choice )\n  yields Choice\n  resumes Unit\n  -> Choice\n\n  _ is yield initial\n  Second\ngenerated is choose First\ngenerated foreach { choice }\n  _ is choice = First\n", &mut trace).unwrap();
+    assert_eq!(value.to_string(), "Second");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("Generator Choice Unit Choice"))
+    );
 }
 
 #[test]

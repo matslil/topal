@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 104);
+    assert_eq!(examples.len(), 105);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2855,6 +2855,16 @@ fn every_mode_traverses_nat_generator_values() {
         let output = run(arguments, source);
         assert!(output.status.success());
         assert!(output.stdout.ends_with(b"8\n"));
+    }
+}
+
+#[test]
+fn every_mode_traverses_enum_generator_values() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-enum-values.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"Second\n"));
     }
 }
 
