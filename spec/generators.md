@@ -59,6 +59,10 @@ An `Optional T` whose payload classifier is supported may cross each generator
 value direction. Its `Some` or `None` alternative and nominal payload
 classifier shall remain intact across suspension.
 
+Exact `Range Int` and `Range Rational` values may likewise cross generator
+boundaries. Their inclusive endpoints and canonical empty state shall remain
+unchanged by suspension.
+
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 
 A generator continuation may execute ordinary binding and discarded-computation
