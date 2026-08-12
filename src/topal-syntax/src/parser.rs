@@ -588,6 +588,20 @@ impl Parser<'_> {
 
     fn generator_classifier(&mut self) -> Option<Span> {
         let first = self.take_nontrivia()?;
+        if first.kind == TokenKind::LeftParen {
+            let mut depth = 1_usize;
+            let mut end = first.span.end;
+            while depth > 0 {
+                let token = self.take_nontrivia()?;
+                match token.kind {
+                    TokenKind::LeftParen => depth += 1,
+                    TokenKind::RightParen => depth -= 1,
+                    _ => {}
+                }
+                end = token.span.end;
+            }
+            return Some(Span::new(first.span.start, end));
+        }
         if first.kind != TokenKind::Identifier {
             return None;
         }
@@ -1141,6 +1155,22 @@ impl Parser<'_> {
             let colon = self.take_nontrivia()?;
             let mut classifier = self.take_nontrivia()?;
             let mut separator = self.take_nontrivia()?;
+            if classifier.kind == TokenKind::LeftParen {
+                let mut depth = 1_usize;
+                while depth > 0 {
+                    match separator.kind {
+                        TokenKind::LeftParen => depth += 1,
+                        TokenKind::RightParen => depth -= 1,
+                        _ => {}
+                    }
+                    classifier.span = Span::new(classifier.span.start, separator.span.end);
+                    if depth > 0 {
+                        separator = self.take_nontrivia()?;
+                    }
+                }
+                separator = self.take_nontrivia()?;
+                classifier.kind = TokenKind::Identifier;
+            }
             if classifier.kind == TokenKind::Identifier
                 && matches!(self.source.slice(classifier.span), "Range" | "Optional")
                 && separator.kind == TokenKind::Identifier
@@ -2017,6 +2047,25 @@ mod tests {
         assert_eq!(source.slice(parameters[0].classifier), "Optional Int");
         assert_eq!(source.slice(*yielded), "Optional Int");
         assert_eq!(source.slice(*result), "Optional Int");
+    }
+
+    #[test]
+    fn parses_product_generator_classifiers() {
+        let source = SourceText::new("pair is generator ( initial : (Int, String) )\n  yields (Int, String)\n  resumes Unit\n  -> (Int, String)\n\n  _ is yield initial\n  (8, \"done\")").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Generator {
+            parameters,
+            yielded,
+            result,
+            ..
+        } = &parsed.statements[0]
+        else {
+            panic!("expected generator")
+        };
+        assert_eq!(source.slice(parameters[0].classifier), "(Int, String)");
+        assert_eq!(source.slice(*yielded), "(Int, String)");
+        assert_eq!(source.slice(*result), "(Int, String)");
     }
 
     #[test]
