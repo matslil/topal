@@ -3537,7 +3537,14 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
 fn supported_generator_value_classifier(classifier: &str) -> bool {
     matches!(
         classifier,
-        "Unit" | "Boolean" | "Character" | "Int" | "Rational" | "String"
+        "Unit"
+            | "Boolean"
+            | "Character"
+            | "Int"
+            | "Rational"
+            | "String"
+            | "Range Int"
+            | "Range Rational"
     ) || optional_payload_classifier(classifier).is_some_and(|payload| {
         matches!(
             payload,
@@ -8367,6 +8374,12 @@ fn custom_generator_preserves_optional_values() {
             .iter()
             .any(|event| event.contains("Generator Optional Int Unit Optional Int"))
     );
+}
+
+#[test]
+fn custom_generator_preserves_range_values() {
+    let value = Session::new().evaluate("narrow is generator ( initial : Range Int )\n  yields Range Int\n  resumes Unit\n  -> Range Int\n\n  _ is yield initial\n  initial and (5 .. 15)\ngenerated is narrow (0 .. 10)\ngenerated foreach { interval }\n  _ is 5 in interval\n", &mut Vec::new()).unwrap();
+    assert_eq!(value.to_string(), "5 .. 10");
 }
 
 #[test]

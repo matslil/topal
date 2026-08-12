@@ -1184,6 +1184,14 @@ shall preserve both the alternative and nominal payload classifier. Formal
 traces, LSP validation, and reversible scripted-debugger history shall cover a
 commented example.
 
+## TOPAL-INTP-SUBSET-159 — Range custom generator values
+
+All interpreter modes shall support exact Range Int and Range Rational values
+as custom-generator input, yield, and final return. Suspension shall preserve
+inclusive endpoints and canonical empty state. Formal traces, LSP validation,
+and reversible scripted-debugger history shall cover a commented Range Int
+example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

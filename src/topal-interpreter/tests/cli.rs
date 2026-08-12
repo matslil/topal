@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 102);
+    assert_eq!(examples.len(), 103);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2836,6 +2836,16 @@ fn every_mode_traverses_optional_generator_values() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("Generator Optional Int Unit Optional Int"));
     assert!(trace.contains("Some 7"));
+}
+
+#[test]
+fn every_mode_traverses_range_generator_values() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-range-values.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"5 .. 10\n"));
+    }
 }
 
 #[test]
