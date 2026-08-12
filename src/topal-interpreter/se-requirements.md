@@ -1333,6 +1333,15 @@ and `Result` classifiers. The parser shall preserve constructor boundaries when
 whitespace occurs inside a direction classifier. Syntax, LSP, formal traces,
 reversible debugger history, and a commented example shall cover the feature.
 
+## TOPAL-INTP-SUBSET-177 — List construction and decomposition
+
+All interpreter modes shall construct homogeneous `List T` values from `Empty`
+and `Entry (value, remaining-list)` in an expected List context, compare Lists
+structurally, and decompose them with complete Empty/Entry decisions. Entry
+classifier and remainder errors shall carry precise source diagnostics and
+actionable help. Syntax, LSP, formal traces, reversible debugger history, and a
+commented example shall cover the feature.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

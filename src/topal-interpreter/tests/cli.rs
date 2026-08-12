@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 119);
+    assert_eq!(examples.len(), 120);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3150,4 +3150,28 @@ fn rational_zero_division_trace_refutes_obligation() {
     let trace = String::from_utf8(output.stderr).unwrap();
     assert!(trace.contains("\"event\":\"obligation.refuted\""));
     assert!(!trace.contains("root./(Rational,Rational)"));
+}
+
+#[test]
+fn every_mode_constructs_compares_and_decomposes_lists() {
+    let source = include_str!("../../../examples/interpreter/lists.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"(Some 7, true)\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-LIST-CONSTRUCT-001"));
+    assert!(trace.contains("TOPAL-DECISION-LIST-001"));
+    assert!(trace.contains("TOPAL-TYPE-LIST-EQUALITY-001"));
+}
+
+#[test]
+fn script_mode_explains_invalid_list_entries() {
+    let output = run(&[], "values : List Int is Entry ( \"bad\", Empty )\n");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-LIST-ENTRY-CLASSIFIER]"));
+    assert!(diagnostic.contains("this list requires `Int`"));
+    assert!(diagnostic.contains("use a `Int` value"));
 }

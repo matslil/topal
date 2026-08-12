@@ -97,6 +97,12 @@ pub enum DecisionMatcher {
         binding: Option<Span>,
         span: Span,
     },
+    ListEmpty(Span),
+    ListEntry {
+        first: Span,
+        rest: Span,
+        span: Span,
+    },
     ErrorCode {
         namespace: Span,
         vocabulary: Span,
@@ -285,12 +291,13 @@ impl Parser<'_> {
                 .is_some_and(|token| token.kind == TokenKind::Colon)
         {
             self.take_nontrivia();
-            let classifier = self.take_nontrivia()?;
+            let classifier_start = self.take_nontrivia()?;
+            let classifier = self.classifier_from_first(classifier_start)?;
             let separator = self.take_nontrivia()?;
-            let (classifier, separator) =
-                self.extended_binding_classifier(classifier, separator)?;
-            if classifier.kind != TokenKind::Identifier
-                || separator.kind != TokenKind::Identifier
+            if !matches!(
+                classifier_start.kind,
+                TokenKind::Identifier | TokenKind::LeftParen
+            ) || separator.kind != TokenKind::Identifier
                 || self.source.slice(separator.span) != "is"
             {
                 self.diagnostics.push(SyntaxDiagnostic {
@@ -302,38 +309,12 @@ impl Parser<'_> {
             }
             return self.expression().map(|value| Statement::Binding {
                 name: first.span,
-                classifier: Some(classifier.span),
+                classifier: Some(classifier),
                 value,
             });
         }
         self.cursor = checkpoint;
         self.expression().map(Statement::Expression)
-    }
-
-    fn extended_binding_classifier(
-        &mut self,
-        mut classifier: Token,
-        mut separator: Token,
-    ) -> Option<(Token, Token)> {
-        if classifier.kind == TokenKind::Identifier
-            && matches!(self.source.slice(classifier.span), "Range" | "Optional")
-            && separator.kind == TokenKind::Identifier
-        {
-            classifier.span = Span::new(classifier.span.start, separator.span.end);
-            separator = self.take_nontrivia()?;
-        } else if classifier.kind == TokenKind::Identifier
-            && self.source.slice(classifier.span) == "Generator"
-            && separator.kind == TokenKind::Identifier
-        {
-            let resume = self.take_nontrivia()?;
-            let returned = self.take_nontrivia()?;
-            if resume.kind != TokenKind::Identifier || returned.kind != TokenKind::Identifier {
-                return None;
-            }
-            classifier.span = Span::new(classifier.span.start, returned.span.end);
-            separator = self.take_nontrivia()?;
-        }
-        Some((classifier, separator))
     }
 
     fn foreach_separator_index(&self) -> Option<usize> {
@@ -666,7 +647,7 @@ impl Parser<'_> {
             }
             return Some(Span::new(first.span.start, end));
         }
-        if matches!(self.source.slice(first.span), "Optional" | "Range") {
+        if matches!(self.source.slice(first.span), "Optional" | "Range" | "List") {
             let payload = self.generator_classifier()?;
             return Some(Span::new(first.span.start, payload.end));
         }
@@ -811,6 +792,12 @@ impl Parser<'_> {
             || [false, true].into_iter().all(|some| {
                 rules.iter().any(|rule| {
                     matches!(rule.matcher, DecisionMatcher::Optional { some: found, .. } if found == some)
+                })
+            })
+            || [false, true].into_iter().all(|entry| {
+                rules.iter().any(|rule| {
+                    matches!(rule.matcher, DecisionMatcher::ListEntry { .. } if entry)
+                        || matches!(rule.matcher, DecisionMatcher::ListEmpty(_) if !entry)
                 })
             })
             || self.complete_arithmetic_result(&rules);
@@ -1010,6 +997,12 @@ impl Parser<'_> {
             {
                 (self.optional_matcher(matcher_token)?, self.expression()?)
             }
+            TokenKind::Identifier if self.source.slice(matcher_token.span) == "Empty" => {
+                (self.list_empty_matcher(matcher_token)?, self.expression()?)
+            }
+            TokenKind::Identifier if self.source.slice(matcher_token.span) == "Entry" => {
+                (self.list_entry_matcher(matcher_token)?, self.expression()?)
+            }
             TokenKind::Identifier => (self.identifier_matcher(matcher_token)?, self.expression()?),
             token_kind if comparison_callable(token_kind).is_some() => {
                 let kind = comparison_callable(token_kind).expect("checked comparison token");
@@ -1069,6 +1062,48 @@ impl Parser<'_> {
                 binding.map_or(constructor.span.end, |binding| binding.span.end),
             ),
         })
+    }
+
+    fn list_entry_matcher(&mut self, constructor: Token) -> Option<DecisionMatcher> {
+        let opening = self.take_nontrivia()?;
+        let first = self.take_nontrivia()?;
+        let comma = self.take_nontrivia()?;
+        let rest = self.take_nontrivia()?;
+        let closing = self.take_nontrivia()?;
+        let separator = self.take_nontrivia()?;
+        if opening.kind != TokenKind::LeftParen
+            || first.kind != TokenKind::Identifier
+            || comma.kind != TokenKind::Comma
+            || rest.kind != TokenKind::Identifier
+            || closing.kind != TokenKind::RightParen
+            || separator.kind != TokenKind::Identifier
+            || self.source.slice(separator.span) != "then"
+        {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-LIST-PATTERN",
+                span: Span::new(constructor.span.start, separator.span.end),
+                message: "expected `Entry ( first, rest ) then`".into(),
+            });
+            return None;
+        }
+        Some(DecisionMatcher::ListEntry {
+            first: first.span,
+            rest: rest.span,
+            span: Span::new(constructor.span.start, closing.span.end),
+        })
+    }
+
+    fn list_empty_matcher(&mut self, constructor: Token) -> Option<DecisionMatcher> {
+        let separator = self.take_nontrivia()?;
+        if separator.kind != TokenKind::Identifier || self.source.slice(separator.span) != "then" {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-LIST-PATTERN",
+                span: Span::new(constructor.span.start, separator.span.end),
+                message: "expected `Empty then`".into(),
+            });
+            return None;
+        }
+        Some(DecisionMatcher::ListEmpty(constructor.span))
     }
 
     fn identifier_matcher(&mut self, identifier: Token) -> Option<DecisionMatcher> {
@@ -1504,6 +1539,8 @@ const fn matcher_span(matcher: &DecisionMatcher) -> Span {
         | DecisionMatcher::Identifier(span)
         | DecisionMatcher::Result { span, .. }
         | DecisionMatcher::Optional { span, .. }
+        | DecisionMatcher::ListEmpty(span)
+        | DecisionMatcher::ListEntry { span, .. }
         | DecisionMatcher::ErrorCode { span, .. }
         | DecisionMatcher::Comparison { span, .. }
         | DecisionMatcher::Otherwise(span) => *span,
@@ -2227,5 +2264,13 @@ mod tests {
         let diagnostic = parsed.diagnostics.first().unwrap();
         assert_eq!(diagnostic.code, "E-UNREACHABLE-DECISION-RULE");
         assert_eq!(source.slice(diagnostic.span), "true");
+    }
+
+    #[test]
+    fn parses_list_construction_and_total_decomposition() {
+        let source =
+            SourceText::new(include_str!("../../../examples/interpreter/lists.t")).unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     }
 }
