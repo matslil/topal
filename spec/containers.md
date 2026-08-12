@@ -94,3 +94,14 @@ containment operations require equality for the element classifier.
 
 `list reverse` shall produce a List with the same element classifier, entry
 count, and multiplicities in exactly the opposite order.
+
+### TOPAL-LIST-REMOVE-FIRST-001 — Remove the first equal entry
+
+`list remove-first value` shall remove only the earliest entry equal to `value`.
+If none is equal, it shall preserve the List unchanged.
+
+### TOPAL-LIST-REMOVE-ALL-001 — Remove every equal entry
+
+`list remove-all value` shall remove every entry equal to `value`. Both removal
+operations shall preserve the relative order of retained entries, preserve the
+element classifier, and require equality for that classifier.

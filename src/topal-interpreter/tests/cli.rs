@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 123);
+    assert_eq!(examples.len(), 124);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3239,4 +3239,21 @@ fn every_mode_distinguishes_list_containment_laws() {
     assert!(trace.contains("TOPAL-LIST-CONTAINS-ENTRY-001"));
     assert!(trace.contains("TOPAL-LIST-CONTAINS-SEQUENCE-001"));
     assert!(trace.contains("TOPAL-LIST-CONTAINS-SUBSEQUENCE-001"));
+}
+
+#[test]
+fn every_mode_removes_list_values_by_explicit_law() {
+    let source = include_str!("../../../examples/interpreter/list-removal.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("Entry ( 1, Entry ( 3")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-LIST-REMOVE-FIRST-001"));
+    assert!(trace.contains("TOPAL-LIST-REMOVE-ALL-001"));
 }

@@ -2565,3 +2565,20 @@ fn records_list_containment_laws_reversibly() {
     assert!(stdout.contains("TOPAL-LIST-CONTAINS-SUBSEQUENCE-001"));
     assert!(stdout.contains("(true, false, true, true, false, false)"));
 }
+
+#[test]
+fn records_list_value_removal_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}list-removal.debug"),
+            &format!("{root}list-removal.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-LIST-REMOVE-FIRST-001"));
+    assert!(stdout.contains("TOPAL-LIST-REMOVE-ALL-001"));
+}

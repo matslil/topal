@@ -1403,6 +1403,14 @@ entry count, or multiplicity. Reversing twice shall reproduce an equal List.
 LSP, formal traces, reversible debugger history, and the commented List example
 shall cover the operation.
 
+## TOPAL-INTP-SUBSET-186 — Value-based List removal
+
+All interpreter modes shall distinguish removing the first equal entry from
+removing all equal entries while preserving retained order and the List
+classifier. Classifier and equality failures shall be source-located. LSP,
+formal traces, reversible debugger history, and a commented example shall cover
+present, repeated, and absent target values.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
