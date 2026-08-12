@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 100);
+    assert_eq!(examples.len(), 101);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2812,6 +2812,17 @@ fn every_mode_traverses_exact_rational_generator_values() {
         assert!(output.status.success());
         assert!(output.stdout.ends_with(b"Rational ( 2, 3 )\n"));
     }
+}
+
+#[test]
+fn every_mode_traverses_unit_generator_values() {
+    let source = include_str!("../../../examples/interpreter/custom-generator-unit-values.t");
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("Generator Unit Unit Unit"));
+    assert_eq!(trace.matches("generator.yielded").count(), 1);
 }
 
 #[test]

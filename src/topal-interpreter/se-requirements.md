@@ -1169,6 +1169,13 @@ numeric value without conversion through a finite representation. Formal
 traces, LSP validation, and reversible scripted-debugger history shall cover a
 commented example.
 
+## TOPAL-INTP-SUBSET-157 — Unit custom generator values
+
+All interpreter modes shall support Unit as a custom-generator input and yield
+classifier. Foreach shall invoke its action for each yielded Unit and resume the
+continuation with Unit. LSP validation and reversible scripted-debugger history
+shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
