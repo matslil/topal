@@ -58,3 +58,13 @@ existing numeric overload.
 `uncons list` shall return `None (T, List T)` for an empty `List T`. For a
 nonempty List it shall return `Some (first, rest)`, where `first` is the first
 entry and `rest` is a `List T` containing every later entry in order.
+
+### TOPAL-LIST-FIRST-001 — Total first projection
+
+`first list` shall return `None T` for an empty `List T` and `Some value` for a
+nonempty List, where `value` is its first entry.
+
+### TOPAL-LIST-REST-001 — Total remaining-List projection
+
+`rest list` shall return `None (List T)` for an empty `List T` and `Some tail`
+for a nonempty List, where `tail` contains every entry after the first in order.
