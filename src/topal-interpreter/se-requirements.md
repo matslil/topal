@@ -1342,6 +1342,14 @@ classifier and remainder errors shall carry precise source diagnostics and
 actionable help. Syntax, LSP, formal traces, reversible debugger history, and a
 commented example shall cover the feature.
 
+## TOPAL-INTP-SUBSET-178 — Fundamental List operations
+
+All interpreter modes shall support `prepend`, `append`, and `concat` without
+changing List order or element classifiers, and shall report `entry-count` and
+`empty?` for Lists. Incompatible entry and List classifiers shall produce
+source-located diagnostics. LSP, formal traces, reversible debugger history,
+and the commented List example shall cover every operation.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

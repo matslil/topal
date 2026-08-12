@@ -2501,5 +2501,7 @@ fn records_list_construction_and_decomposition_reversibly() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-TYPE-LIST-CONSTRUCT-001"));
     assert!(stdout.contains("TOPAL-DECISION-LIST-001"));
-    assert!(stdout.contains("(Some 7, true)"));
+    assert!(stdout.contains("TOPAL-LIST-CONCAT-001"));
+    assert!(stdout.contains("TOPAL-LIST-ENTRY-COUNT-001"));
+    assert!(stdout.contains("(Some 6, 5, false, true, true)"));
 }
