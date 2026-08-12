@@ -13,4 +13,5 @@ suffix is one 10
 prepended is values prepend 6
 appended is prepended append 9
 combined is appended concat suffix
-(decide-first combined, first combined, rest combined, first empty-values, rest empty-values, entry-count combined, empty? combined, empty? empty-values, values = copy, uncons combined)
+reversed is combined reverse
+(decide-first combined, first combined, rest combined, first empty-values, rest empty-values, entry-count combined, empty? combined, empty? empty-values, values = copy, uncons combined, first reversed, reversed reverse = combined)

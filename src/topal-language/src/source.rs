@@ -1866,6 +1866,14 @@ impl Session {
                         continue;
                     }
                     if let Expression::Identifier(callable_span) = &items[index]
+                        && source.slice(*callable_span) == "reverse"
+                        && matches!(result, Value::List { .. })
+                    {
+                        apply_list_reverse(&mut result, trace);
+                        index += 1;
+                        continue;
+                    }
+                    if let Expression::Identifier(callable_span) = &items[index]
                         && matches!(
                             source.slice(*callable_span),
                             "prepend"
@@ -5587,6 +5595,28 @@ fn apply_count(
     Ok(Value::Int(BigInt::from(count)))
 }
 
+fn apply_list_reverse(value: &mut Value, trace: &mut impl TraceSink) {
+    let Value::List {
+        element_classifier,
+        entries,
+    } = value
+    else {
+        unreachable!("List reverse dispatched only for a List")
+    };
+    entries.reverse();
+    let classifier = format!("List {element_classifier}");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: "root.reverse(List)",
+    });
+    trace.record(TraceEvent {
+        event: "list.reversed",
+        rule: "TOPAL-LIST-REVERSE-001",
+        detail: &classifier,
+    });
+}
+
 fn apply_list_operation(
     source: &SourceText,
     operation: &str,
@@ -6478,7 +6508,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 20] = [
+const ROOT_OPERATIONS: [&str; 21] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -6498,6 +6528,7 @@ const ROOT_OPERATIONS: [&str; 20] = [
     "negate",
     "one",
     "rest",
+    "reverse",
     "zero",
 ];
 
@@ -9857,7 +9888,7 @@ fn lists_construct_compare_and_decompose() {
         .unwrap();
     assert_eq!(
         value.to_string(),
-        "(Some 6, Some 6, Some Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) ), None, None, 5, false, true, true, Some (6, Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) )))"
+        "(Some 6, Some 6, Some Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) ), None, None, 5, false, true, true, Some (6, Entry ( 7, Entry ( 8, Entry ( 9, Entry ( 10, Empty ) ) ) )), Some 10, true)"
     );
     assert!(
         trace
@@ -9881,6 +9912,7 @@ fn lists_construct_compare_and_decompose() {
         "list.uncons",
         "list.first",
         "list.rest",
+        "list.reversed",
     ] {
         assert!(trace.iter().any(|record| record.contains(event)), "{event}");
     }
