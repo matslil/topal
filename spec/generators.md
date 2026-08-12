@@ -18,10 +18,20 @@ Unit without exposing the intrinsic Error as the generator's final result.
 
 ### TOPAL-GENERATOR-DECLARATION-001 — Named generator declarations
 
-A declaration `name is generator ( initial : Input )`, followed by `yields
-Yield`, `resumes Resume`, and `-> Return` clauses, shall introduce a callable
-resumable function with those four classifiers. Applying it binds the initial
-operand and produces a fresh linear `Generator Yield Resume Return` value.
+A declaration `name is generator ( inputs )`, followed by `yields Yield`,
+`resumes Resume`, and `-> Return` clauses, shall introduce a callable resumable
+function with one or more classified initial operands and the three generator
+directions. Applying it binds every initial operand in declaration order and
+produces a fresh linear `Generator Yield Resume Return` value.
+
+### TOPAL-GENERATOR-OVERLOAD-001 — Initial-input overload selection
+
+Multiple generator declarations in one scope may share a name when their
+ordered initial-input classifier sequences differ. Application shall evaluate
+the argument once, select the first declaration whose complete input shape and
+classifiers accept it, bind components in declaration order, and start only
+that generator. Duplicate input signatures shall be rejected; yield, resume,
+and final-return classifiers shall not distinguish otherwise duplicate inputs.
 
 The first executable subset is conforming only in the root namespace, for one
 `Unit`, `Boolean`, `Character`, `Int`, `Rational`, or `String` input, one or more discarded `_ is yield
