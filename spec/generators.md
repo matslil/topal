@@ -88,6 +88,10 @@ positional product's component order and classifiers across suspension.
 The same recursive rule permits a supported product as the success classifier
 of an arithmetic Result while retaining its structured error alternative.
 
+Recursive classifier support includes declared nominal enums. Consequently,
+`Optional Choice` and `Result (Choice, lang arithmetic ArithmeticErrorCode)`
+retain the declared `Choice` identity at every generator boundary.
+
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 
 A generator continuation may execute ordinary binding and discarded-computation

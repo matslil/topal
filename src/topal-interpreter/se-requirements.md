@@ -1251,6 +1251,14 @@ positional-product payload classifier and transfer it through supported custom-
 generator boundaries. LSP, formal trace, and reversible debugger coverage shall
 use a commented example.
 
+## TOPAL-INTP-SUBSET-168 — Recursive nominal generator classifiers
+
+All interpreter modes shall recursively recognize declared nominal enums inside
+Optional and arithmetic Result classifiers at custom-generator input, yield,
+and final-return boundaries. The shared classifier validation used by ordinary
+functions and generators shall preserve the nominal enum identity. LSP, formal
+trace, and reversible debugger coverage shall use a commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
