@@ -4400,6 +4400,11 @@ fn supported_value_classifier(
             | "String"
             | "Unit"
     ) || enum_types.contains_key(classifier)
+        || generator_scalar_classifiers(classifier).is_some_and(|(yielded, resumed, returned)| {
+            resumed == "Unit"
+                && supported_generator_value_classifier(yielded, enum_types)
+                && supported_generator_value_classifier(returned, enum_types)
+        })
         || optional_payload_classifier(classifier)
             .is_some_and(|payload| supported_value_classifier(payload, enum_types))
         || tuple_classifiers(classifier).is_some_and(|items| {
@@ -4409,6 +4414,14 @@ fn supported_value_classifier(
         })
         || result_success_classifier(classifier)
             .is_some_and(|success| supported_value_classifier(success, enum_types))
+}
+
+fn generator_scalar_classifiers(classifier: &str) -> Option<(&str, &str, &str)> {
+    let parts = classifier.split_whitespace().collect::<Vec<_>>();
+    let ["Generator", yielded, resumed, returned] = parts.as_slice() else {
+        return None;
+    };
+    Some((yielded, resumed, returned))
 }
 
 fn accepted_source(input: &str, trace: &mut impl TraceSink) -> Result<SourceText, Diagnostic> {
@@ -8883,6 +8896,30 @@ fn classified_foreach_result_reports_mismatch() {
     assert_eq!(error.code, "E-FOREACH-RESULT-CLASSIFIER");
     assert!(error.message.contains("returned `String`"));
     assert!(error.message.contains("requires `Int`"));
+}
+
+#[test]
+fn custom_generator_crosses_generic_function_boundaries() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!(
+                "../../../examples/interpreter/custom-generator-generic-function-boundaries.t"
+            ),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value, Value::String("done".into()));
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.function.returned"))
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("generator.parameter.transferred"))
+    );
 }
 
 #[test]

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 116);
+    assert_eq!(examples.len(), 117);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3013,6 +3013,23 @@ fn every_mode_selects_generator_overloads() {
     assert!(trace.contains("generator.argument.bound"));
     assert_eq!(trace.matches("generator.foreach.result.bound").count(), 2);
     assert!(trace.contains("Int, String"));
+}
+
+#[test]
+fn every_mode_transfers_generic_generator_function_boundaries() {
+    let source = include_str!(
+        "../../../examples/interpreter/custom-generator-generic-function-boundaries.t"
+    );
+    for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(b"\"done\"\n"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("Generator Int Unit String"));
+    assert!(trace.contains("generator.function.returned"));
+    assert!(trace.contains("generator.parameter.transferred"));
+    assert!(trace.contains("generator.foreach.result.bound"));
 }
 
 #[test]
