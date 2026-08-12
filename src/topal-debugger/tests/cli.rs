@@ -2523,5 +2523,6 @@ fn records_list_construction_and_decomposition_reversibly() {
     assert!(stdout.contains("TOPAL-LIST-ENTRY-COUNT-001"));
     assert!(stdout.contains("TOPAL-LIST-EMPTY-001"));
     assert!(stdout.contains("TOPAL-LIST-ONE-001"));
-    assert!(stdout.contains("(Some 6, 5, false, true, true)"));
+    assert!(stdout.contains("TOPAL-LIST-UNCONS-001"));
+    assert!(stdout.contains("Some (6, Entry ( 7"));
 }

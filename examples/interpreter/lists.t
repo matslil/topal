@@ -1,6 +1,6 @@
 #!/usr/bin/env topal
 # Demonstrates homogeneous List construction and total decomposition, followed
-# by prepend, append, concat, entry-count, empty?, and structural equality.
+# by prepend, append, concat, entry-count, empty?, uncons, and equality.
 first is fn ( values : List Int ) -> Optional Int
   values
     Empty then None Int
@@ -13,4 +13,4 @@ suffix is one 10
 prepended is values prepend 6
 appended is prepended append 9
 combined is appended concat suffix
-(first combined, entry-count combined, empty? combined, empty? empty-values, values = copy)
+(first combined, entry-count combined, empty? combined, empty? empty-values, values = copy, uncons combined)

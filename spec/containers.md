@@ -52,3 +52,9 @@ expected classifier.
 `one value` shall construct a one-entry List whose element classifier is the
 structural classifier of `value`. Numeric calls such as `one Int` retain their
 existing numeric overload.
+
+### TOPAL-LIST-UNCONS-001 — Total front decomposition
+
+`uncons list` shall return `None (T, List T)` for an empty `List T`. For a
+nonempty List it shall return `Some (first, rest)`, where `first` is the first
+entry and `rest` is a `List T` containing every later entry in order.

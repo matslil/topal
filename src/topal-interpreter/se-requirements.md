@@ -1366,6 +1366,13 @@ transfers when `T` is supported. Formal traces shall retain the exact
 `Generator List T Unit List T` classifier. LSP, reversible debugger history,
 and a commented example shall cover the feature.
 
+## TOPAL-INTP-SUBSET-181 — Total List uncons
+
+All interpreter modes shall return `None (T, List T)` when applying `uncons` to
+an empty `List T`, and `Some (first, rest)` for a nonempty List while preserving
+entry order and the `List T` classifier. LSP, formal traces, reversible debugger
+history, diagnostics, and the commented List example shall cover the operation.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
