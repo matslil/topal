@@ -2273,10 +2273,7 @@ impl Execution {
             ));
         }
         let result_text = self.source.slice(result);
-        if !supported_value_classifier(result_text)
-            && !session.enum_types.contains_key(result_text)
-            && result_success_classifier(result_text).is_none()
-        {
+        if !supported_value_classifier(result_text, &session.enum_types) {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-RESULT-CLASSIFIER",
@@ -2289,9 +2286,7 @@ impl Execution {
             .iter()
             .map(|parameter| {
                 let classifier = self.source.slice(parameter.classifier);
-                if !supported_value_classifier(classifier)
-                    && !session.enum_types.contains_key(classifier)
-                {
+                if !supported_value_classifier(classifier, &session.enum_types) {
                     return Err(diagnostic(
                         &self.source,
                         "E-UNSUPPORTED-PARAMETER-CLASSIFIER",
@@ -2417,13 +2412,10 @@ impl Execution {
         let parameter_classifier = self.source.slice(parameter.classifier);
         let yield_classifier = self.source.slice(yielded);
         let result_classifier = self.source.slice(result);
-        if !(supported_generator_value_classifier(parameter_classifier)
-            || session.enum_types.contains_key(parameter_classifier))
-            || !(supported_generator_value_classifier(yield_classifier)
-                || session.enum_types.contains_key(yield_classifier))
+        if !supported_generator_value_classifier(parameter_classifier, &session.enum_types)
+            || !supported_generator_value_classifier(yield_classifier, &session.enum_types)
             || self.source.slice(resumed) != "Unit"
-            || !(supported_generator_value_classifier(result_classifier)
-                || session.enum_types.contains_key(result_classifier))
+            || !supported_generator_value_classifier(result_classifier, &session.enum_types)
         {
             return Err(diagnostic(
                 &self.source,
@@ -3534,7 +3526,10 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
     }
 }
 
-fn supported_generator_value_classifier(classifier: &str) -> bool {
+fn supported_generator_value_classifier(
+    classifier: &str,
+    enum_types: &BTreeMap<String, BTreeSet<String>>,
+) -> bool {
     matches!(
         classifier,
         "Unit"
@@ -3547,10 +3542,16 @@ fn supported_generator_value_classifier(classifier: &str) -> bool {
             | "String"
             | "Range Int"
             | "Range Rational"
-    ) || optional_payload_classifier(classifier).is_some_and(supported_generator_value_classifier)
-        || tuple_classifiers(classifier)
-            .is_some_and(|items| items.into_iter().all(supported_generator_value_classifier))
-        || result_success_classifier(classifier).is_some_and(supported_generator_value_classifier)
+    ) || enum_types.contains_key(classifier)
+        || optional_payload_classifier(classifier)
+            .is_some_and(|payload| supported_generator_value_classifier(payload, enum_types))
+        || tuple_classifiers(classifier).is_some_and(|items| {
+            items
+                .into_iter()
+                .all(|item| supported_generator_value_classifier(item, enum_types))
+        })
+        || result_success_classifier(classifier)
+            .is_some_and(|success| supported_generator_value_classifier(success, enum_types))
 }
 
 fn is_arithmetic_error_code(code: &str) -> bool {
@@ -3579,7 +3580,24 @@ fn optional_payload_classifier(classifier: &str) -> Option<&str> {
 
 fn tuple_classifiers(classifier: &str) -> Option<Vec<&str>> {
     let contents = classifier.trim().strip_prefix('(')?.strip_suffix(')')?;
-    let classifiers = contents.split(',').map(str::trim).collect::<Vec<_>>();
+    let mut classifiers = Vec::new();
+    let mut depth = 0_usize;
+    let mut start = 0_usize;
+    for (offset, character) in contents.char_indices() {
+        match character {
+            '(' => depth += 1,
+            ')' => depth = depth.checked_sub(1)?,
+            ',' if depth == 0 => {
+                classifiers.push(contents[start..offset].trim());
+                start = offset + character.len_utf8();
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return None;
+    }
+    classifiers.push(contents[start..].trim());
     (classifiers.len() > 1 && classifiers.iter().all(|item| !item.is_empty()))
         .then_some(classifiers)
 }
@@ -4187,7 +4205,10 @@ fn is_positive_literal_step(
     )
 }
 
-fn supported_value_classifier(classifier: &str) -> bool {
+fn supported_value_classifier(
+    classifier: &str,
+    enum_types: &BTreeMap<String, BTreeSet<String>>,
+) -> bool {
     matches!(
         classifier,
         "Boolean"
@@ -4206,9 +4227,16 @@ fn supported_value_classifier(classifier: &str) -> bool {
             | "Rational"
             | "String"
             | "Unit"
-    ) || optional_payload_classifier(classifier).is_some_and(supported_value_classifier)
-        || tuple_classifiers(classifier)
-            .is_some_and(|items| items.into_iter().all(supported_value_classifier))
+    ) || enum_types.contains_key(classifier)
+        || optional_payload_classifier(classifier)
+            .is_some_and(|payload| supported_value_classifier(payload, enum_types))
+        || tuple_classifiers(classifier).is_some_and(|items| {
+            items
+                .into_iter()
+                .all(|item| supported_value_classifier(item, enum_types))
+        })
+        || result_success_classifier(classifier)
+            .is_some_and(|success| supported_value_classifier(success, enum_types))
 }
 
 fn accepted_source(input: &str, trace: &mut impl TraceSink) -> Result<SourceText, Diagnostic> {
@@ -8493,6 +8521,19 @@ fn custom_generator_preserves_nested_absent_optional() {
     assert!(
         matches!(value, Value::Optional { ref payload_classifier, payload: None } if payload_classifier == "(Int, String)")
     );
+}
+
+#[test]
+fn custom_generators_preserve_recursive_nominal_classifiers() {
+    let value = Session::new()
+        .evaluate(
+            include_str!(
+                "../../../examples/interpreter/custom-generator-recursive-nominal-values.t"
+            ),
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(Some Second, Second)");
 }
 
 #[test]
