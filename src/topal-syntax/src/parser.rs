@@ -468,7 +468,10 @@ impl Parser<'_> {
             && opening.kind == TokenKind::LeftParen
             && closing.kind == TokenKind::RightParen
             && arrow.kind == TokenKind::Arrow
-            && result_token.kind == TokenKind::Identifier;
+            && matches!(
+                result_token.kind,
+                TokenKind::Identifier | TokenKind::LeftParen
+            );
         if !valid {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-UNSUPPORTED-FUNCTION-HEADER",
@@ -618,6 +621,10 @@ impl Parser<'_> {
 
     fn generator_classifier(&mut self) -> Option<Span> {
         let first = self.take_nontrivia()?;
+        self.classifier_from_first(first)
+    }
+
+    fn classifier_from_first(&mut self, first: Token) -> Option<Span> {
         if first.kind == TokenKind::LeftParen {
             let mut depth = 1_usize;
             let mut end = first.span.end;
@@ -705,45 +712,12 @@ impl Parser<'_> {
 
     fn function_result(&mut self, first: Token) -> Option<Span> {
         if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "Generator" {
-            let yielded = self.take_nontrivia()?;
-            let resumed = self.take_nontrivia()?;
-            let returned = self.take_nontrivia()?;
-            if [yielded, resumed, returned]
-                .iter()
-                .all(|token| token.kind == TokenKind::Identifier)
-            {
-                return Some(Span::new(first.span.start, returned.span.end));
-            }
-            return None;
+            let _yielded = self.generator_classifier()?;
+            let _resumed = self.generator_classifier()?;
+            let returned = self.generator_classifier()?;
+            return Some(Span::new(first.span.start, returned.end));
         }
-        if first.kind == TokenKind::Identifier
-            && matches!(self.source.slice(first.span), "Range" | "Optional")
-        {
-            let domain = self.take_nontrivia()?;
-            if domain.kind == TokenKind::Identifier {
-                return Some(Span::new(first.span.start, domain.span.end));
-            }
-            return None;
-        }
-        if first.kind != TokenKind::Identifier || self.source.slice(first.span) != "Result" {
-            return Some(first.span);
-        }
-        let opening = self.take_nontrivia()?;
-        if opening.kind != TokenKind::LeftParen {
-            return None;
-        }
-        let mut depth = 1_usize;
-        let mut end = opening.span.end;
-        while depth > 0 {
-            let token = self.take_nontrivia()?;
-            match token.kind {
-                TokenKind::LeftParen => depth += 1,
-                TokenKind::RightParen => depth -= 1,
-                _ => {}
-            }
-            end = token.span.end;
-        }
-        Some(Span::new(first.span.start, end))
+        self.classifier_from_first(first)
     }
 
     fn indented_function_body(&mut self, body_indent: usize) -> Option<Vec<Statement>> {
@@ -1277,14 +1251,11 @@ impl Parser<'_> {
             }
             if classifier.kind == TokenKind::Identifier
                 && self.source.slice(classifier.span) == "Generator"
-                && separator.kind == TokenKind::Identifier
             {
-                let resumed = self.take_nontrivia()?;
-                let returned = self.take_nontrivia()?;
-                if resumed.kind != TokenKind::Identifier || returned.kind != TokenKind::Identifier {
-                    return None;
-                }
-                classifier.span = Span::new(classifier.span.start, returned.span.end);
+                let _yielded = self.classifier_from_first(separator)?;
+                let _resumed = self.generator_classifier()?;
+                let returned = self.generator_classifier()?;
+                classifier.span = Span::new(classifier.span.start, returned.end);
                 separator = self.take_nontrivia()?;
             }
             if input.kind != TokenKind::Identifier
@@ -2221,6 +2192,16 @@ mod tests {
     fn parses_result_generator_classifiers() {
         let source = SourceText::new(include_str!(
             "../../../examples/interpreter/custom-generator-result-values.t"
+        ))
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
+    fn parses_compound_generator_function_classifiers() {
+        let source = SourceText::new(include_str!(
+            "../../../examples/interpreter/custom-generator-compound-function-boundaries.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));

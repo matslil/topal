@@ -1316,6 +1316,15 @@ formal traces, reversible debugger history, and a commented example shall cover
 construction, return, parameter transfer, foreach result binding, and final
 value propagation.
 
+## TOPAL-INTP-SUBSET-175 — Compound generator function classifiers
+
+All interpreter modes shall parse and transfer function parameters and results
+classified as `Generator (A, B) Unit (C, D)`. Classifier parsing shall respect
+balanced parentheses, and runtime validation shall preserve positional product
+structure through suspension, function ownership transfer, traversal, and
+final-result binding. Syntax, LSP, formal traces, reversible debugger history,
+and a commented example shall cover the feature.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into
