@@ -1199,6 +1199,13 @@ final-return classifier. Every transferred value shall satisfy the nonnegative
 constraint. Formal traces, LSP validation, and reversible scripted-debugger
 history shall cover a commented example.
 
+## TOPAL-INTP-SUBSET-161 — Enum custom generator values
+
+All interpreter modes shall support a declared nominal enum as a custom-
+generator input, yield, and final-return classifier. Suspension shall preserve
+both enum identity and alternative. Formal traces, LSP validation, and
+reversible scripted-debugger history shall cover a commented example.
+
 ## TOPAL-INTP-SUBSET-146 — Character-returning generator parameter
 
 All interpreter modes shall transfer `Generator Character Unit Character` into

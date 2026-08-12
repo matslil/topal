@@ -66,6 +66,10 @@ unchanged by suspension.
 A value classified as `Nat` may cross the same boundaries while retaining the
 nonnegative constraint represented by its Int value.
 
+A previously declared nominal enum may be used in every generator value
+direction. Each transferred alternative retains the enum's nominal identity,
+not merely its alternative spelling.
+
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 
 A generator continuation may execute ordinary binding and discarded-computation
