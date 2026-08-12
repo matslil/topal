@@ -78,6 +78,10 @@ An arithmetic `Result (T, lang arithmetic ArithmeticErrorCode)` with supported
 success classifier `T` may cross generator boundaries as either its successful
 value or a structured arithmetic Error.
 
+The language-defined nominal `Comparison` enum may cross every generator value
+direction while retaining its identity and `Less`, `Equal`, or `Greater`
+alternative.
+
 ### TOPAL-GENERATOR-BODY-STATEMENT-001 — Ordinary body statements
 
 A generator continuation may execute ordinary binding and discarded-computation

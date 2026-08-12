@@ -3543,6 +3543,7 @@ fn supported_generator_value_classifier(classifier: &str) -> bool {
         "Unit"
             | "Boolean"
             | "Character"
+            | "Comparison"
             | "Int"
             | "Nat"
             | "Rational"
@@ -8421,6 +8422,12 @@ fn custom_generator_returns_structured_result_error() {
         )
         .unwrap();
     assert!(matches!(value, Value::Error { ref code, .. } if code == "division-by-zero"));
+}
+
+#[test]
+fn custom_generator_preserves_comparison_identity() {
+    let value = Session::new().evaluate("order is generator ( initial : Comparison )\n  yields Comparison\n  resumes Unit\n  -> Comparison\n\n  _ is yield initial\n  3 <=> 2\ngenerated is order (1 <=> 2)\ngenerated foreach { comparison }\n  _ is comparison = (1 <=> 2)\n", &mut Vec::new()).unwrap();
+    assert_eq!(value.to_string(), "Greater");
 }
 
 #[test]
