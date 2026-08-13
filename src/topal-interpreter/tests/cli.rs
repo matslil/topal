@@ -92,6 +92,15 @@ fn interactive_mode_preserves_complete_unit_results() {
 }
 
 #[test]
+fn unicode_diagnostics_preserve_source_columns() {
+    let output = run(&[], "name is \"å\"\nnamé\n");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("2 | namé"));
+    assert!(diagnostic.contains('^'));
+}
+
+#[test]
 fn test_mode_records_discard_after_its_initializer() {
     let output = run(&["--test"], "_ is 20 + 22\n7\n");
     assert!(output.status.success());
