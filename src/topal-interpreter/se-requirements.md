@@ -1834,6 +1834,11 @@ All modes shall resolve packing under `TOPAL-LAYOUT-PACKING-001`.
 
 All modes shall resolve `Declared` under `TOPAL-LAYOUT-FIELD-ORDER-001`.
 
+## TOPAL-INTP-SUBSET-238 — Payload placement
+
+All modes shall resolve payload placement under
+`TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

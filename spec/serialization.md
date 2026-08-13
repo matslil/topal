@@ -25,6 +25,10 @@ external-layout access policies without granting runtime authority.
 
 `Declared` shall resolve the policy retaining source declaration field order.
 
+### TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001 — Sum payload placement
+
+`AfterTag` and `Overlay` shall resolve nominal tagged-sum payload policies.
+
 ### TOPAL-SER-SCOPE-001 — Protocol scope
 
 The native protocol represents the public semantic description of every object
