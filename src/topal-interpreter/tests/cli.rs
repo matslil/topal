@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 139);
+    assert_eq!(examples.len(), 145);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3551,4 +3551,104 @@ fn every_mode_applies_bound_named_function_values() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-FUNCTION-VALUE-001"));
     assert!(trace.contains("function.entered"));
+}
+
+#[test]
+fn every_mode_constructs_lazy_iterate_generators() {
+    let source = include_str!("../../../examples/interpreter/iterate-generator.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("<Generator Int Unit Unit>")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-ITERATE-001"));
+    assert!(!trace.contains("function.anonymous.called"));
+}
+
+#[test]
+fn every_mode_constructs_lazy_take_while_prefixes() {
+    let source = include_str!("../../../examples/interpreter/iterate-take-while.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("<Generator Int Unit Unit>")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-TAKE-WHILE-001"));
+    assert!(!trace.contains("function.anonymous.called"));
+}
+
+#[test]
+fn every_mode_traverses_bounded_generated_prefixes() {
+    let source = include_str!("../../../examples/interpreter/generated-foreach.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("()"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(
+        trace.matches("TOPAL-GENERATOR-ITERATE-FOREACH-001").count(),
+        11
+    );
+    assert!(trace.contains("TOPAL-GENERATOR-TAKE-WHILE-001"));
+}
+
+#[test]
+fn every_mode_collects_finite_generated_traversals() {
+    let source = include_str!("../../../examples/interpreter/generated-collect.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("Entry ( 0, Entry ( 1, Entry ( 2, Entry ( 3, Entry ( 4, Empty ) ) ) ) )")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-COLLECT-001"));
+}
+
+#[test]
+fn every_mode_constructs_lazy_unfold_generators() {
+    let source = include_str!("../../../examples/interpreter/unfold-generator.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("<Generator Value Unit Unit>")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-UNFOLD-001"));
+    assert!(!trace.contains("function.anonymous.called"));
+}
+
+#[test]
+fn every_mode_collects_finite_unfold_generators() {
+    let source = include_str!("../../../examples/interpreter/unfold-collect.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("Entry ( 4, Entry ( 5, Entry ( 6, Empty ) ) )")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("generator.yielded").count(), 3);
+    assert!(trace.contains("TOPAL-GENERATOR-UNFOLD-COLLECT-001"));
 }

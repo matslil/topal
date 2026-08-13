@@ -1,5 +1,53 @@
 # Generator semantics
 
+### TOPAL-GENERATOR-ITERATE-001 — Unbounded generated traversal
+
+`initial iterate { value } next` shall construct a fresh
+`Generator T Unit Unit`, where `T` is the classifier of `initial`. The generator
+shall yield `initial` first and, after every successful Unit resumption, apply
+the captured unary `next` function to the preceding value to obtain the next
+yield. Construction shall not invoke `next` or eagerly materialize values.
+Consumers must establish a stopping condition before complete traversal.
+
+### TOPAL-GENERATOR-TAKE-WHILE-001 — Generated prefix bound
+
+Applying `take-while` with a captured unary predicate to an `iterate` generator
+shall produce a lazy generator of the same yield classifier. It shall test each
+candidate before yielding it, finish with Unit at the first false result, and
+never evaluate the next function for a rejected candidate. Construction shall
+not invoke either captured function.
+
+### TOPAL-GENERATOR-ITERATE-FOREACH-001 — Bounded generated traversal
+
+`foreach` over an `iterate` generator bounded by `take-while` shall test each
+candidate, yield and visit every accepted value in order, resume with Unit, and
+only then compute the next candidate. The first rejected candidate shall not be
+visited and shall end traversal with Unit. Complete foreach over an unbounded
+`iterate` shall be rejected unless another statically finite consumer applies.
+
+### TOPAL-GENERATOR-COLLECT-001 — Finite generated materialization
+
+Unary `collect` over an `iterate` generator bounded by `take-while` shall
+materialize its accepted yields as `List T` in yield order, preserving
+classifier and multiplicity. It shall stop before the first rejected candidate.
+Collecting an unbounded generated traversal shall be rejected before traversal.
+
+### TOPAL-GENERATOR-UNFOLD-001 — Seeded generated traversal
+
+`seed unfold { state } step` shall lazily construct a
+`Generator T Unit Unit`. On each step it shall apply `step` to the current seed.
+`None` shall return Unit; `Some (value, next-seed)` shall yield `value` and retain
+`next-seed` for the following Unit resumption. Construction shall capture but
+not invoke the unary step function or require seed and yield types to agree.
+
+### TOPAL-GENERATOR-UNFOLD-COLLECT-001 — Finite unfold collection
+
+Unary `collect` over an unfold generator shall repeatedly eliminate its step
+Optional. It shall append each `Some` yielded component in order, continue with
+the paired seed of the original seed classifier, and stop at `None`. Every yield
+shall have one consistent classifier, which becomes the resulting List element
+classifier. The terminating `None` shall produce no entry.
+
 ### TOPAL-GENERATOR-ERROR-CODE-001 — Generator error-code vocabulary
 
 The qualified namespace `lang generator` publishes the nominal enum type

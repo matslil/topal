@@ -1654,3 +1654,49 @@ overloads as immutable values and apply them after rebinding under
 `TOPAL-FUNCTION-VALUE-001`. Existing typed selection, recursion, and result
 checks shall remain effective. Formal traces, LSP validation, and reversible
 scripted-debugger history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-202 — Lazy iterate generators
+
+All interpreter modes shall construct unbounded `iterate` generators lazily
+under `TOPAL-GENERATOR-ITERATE-001`, capturing but not invoking the unary next
+function until resumption. Formal traces, LSP validation, and reversible
+scripted-debugger history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-203 — Lazy take-while prefixes
+
+All interpreter modes shall lazily attach `take-while` predicates to generated
+traversals under `TOPAL-GENERATOR-TAKE-WHILE-001`, without invoking the next or
+predicate function during construction. Formal traces, LSP validation, and
+reversible scripted-debugger history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-204 — Bounded generated foreach
+
+All interpreter modes shall traverse take-while-bounded iterate generators
+under `TOPAL-GENERATOR-ITERATE-FOREACH-001`, preserving test-yield-action-resume
+order and excluding the first rejected candidate. Formal traces, unbounded
+traversal diagnostics, LSP validation, and reversible scripted-debugger history
+shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-205 — Finite generated collection
+
+All interpreter modes shall materialize take-while-bounded iterate generators
+as Lists under `TOPAL-GENERATOR-COLLECT-001`, preserving classifier, order, and
+multiplicity while rejecting unbounded collection. Formal traces, LSP
+validation, and reversible scripted-debugger history shall cover commented
+examples.
+
+## TOPAL-INTP-SUBSET-206 — Lazy unfold generators
+
+All interpreter modes shall lazily construct seeded unfold generators under
+`TOPAL-GENERATOR-UNFOLD-001`, preserving independent seed and yield directions
+and deferring the step function until consumption. Formal traces, LSP
+validation, and reversible scripted-debugger history shall cover commented
+examples.
+
+## TOPAL-INTP-SUBSET-207 — Finite unfold collection
+
+All interpreter modes shall collect unfold generators under
+`TOPAL-GENERATOR-UNFOLD-COLLECT-001`, preserving distinct seed and yield
+classifiers, yield order, and termination at None. Formal traces, classifier
+diagnostics, LSP validation, and reversible scripted-debugger history shall
+cover commented examples.

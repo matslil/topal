@@ -64,6 +64,16 @@ pub enum Value {
         returned: String,
         origin: String,
     },
+    IterateGenerator {
+        current: Box<Self>,
+        next: Box<Self>,
+        take_while: Option<Box<Self>>,
+        classifier: String,
+    },
+    UnfoldGenerator {
+        seed: Box<Self>,
+        step: Box<Self>,
+    },
     SuspendedGenerator {
         source: SourceText,
         body: Vec<Statement>,
@@ -229,6 +239,10 @@ impl fmt::Display for Value {
             Self::CharacterReturningGenerator { .. } => {
                 formatter.write_str("<Generator Character Unit Character>")
             }
+            Self::IterateGenerator { classifier, .. } => {
+                write!(formatter, "<Generator {classifier} Unit Unit>")
+            }
+            Self::UnfoldGenerator { .. } => formatter.write_str("<Generator Value Unit Unit>"),
             Self::SuspendedGenerator {
                 yield_classifier,
                 return_classifier,
@@ -969,6 +983,15 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if Self::is_unfold_construction(source, items) {
+                    return self.construct_unfold_generator(source, items, *span, trace);
+                }
+                if Self::is_iterate_take_while_construction(source, items) {
+                    return self.construct_iterate_take_while(source, items, *span, trace);
+                }
+                if Self::is_iterate_construction(source, items) {
+                    return self.construct_iterate_generator(source, items, *span, trace);
+                }
                 if self.is_bound_named_function_call(source, items) {
                     return self
                         .evaluate_bound_named_function_call(source, expression, items, trace);
@@ -2570,6 +2593,137 @@ impl Session {
             if matches!(source.slice(*name), "Continue" | "Finish"))
     }
 
+    fn is_iterate_construction(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [_, Expression::Identifier(operation), Expression::AnonymousFunction { .. }]
+            if source.slice(*operation) == "iterate")
+    }
+
+    fn is_unfold_construction(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [_, Expression::Identifier(operation), Expression::AnonymousFunction { .. }]
+            if source.slice(*operation) == "unfold")
+    }
+
+    fn construct_unfold_generator(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [seed, _, step_expression] = items else {
+            unreachable!("preselected unfold construction")
+        };
+        let seed = self.evaluate_expression(source, seed, trace)?;
+        let step = self.evaluate_expression(source, step_expression, trace)?;
+        if !matches!(&step, Value::AnonymousFunction(function) if function.parameters.len() == 1) {
+            return Err(diagnostic(
+                source,
+                "E-UNFOLD-FUNCTION-ARITY",
+                step_expression.span(),
+                "unfold step function requires exactly one seed parameter",
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "generator.unfold.constructed",
+            rule: "TOPAL-GENERATOR-UNFOLD-001",
+            detail: &structural_value_classifier(&seed),
+        });
+        let value = Value::UnfoldGenerator {
+            seed: Box::new(seed),
+            step: Box::new(step),
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
+    }
+
+    fn is_iterate_take_while_construction(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items,
+            [_, Expression::Identifier(iterate), Expression::AnonymousFunction { .. }, Expression::Identifier(take_while), Expression::AnonymousFunction { .. }]
+                if source.slice(*iterate) == "iterate" && source.slice(*take_while) == "take-while")
+    }
+
+    fn construct_iterate_take_while(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [initial, _, next_expression, _, predicate_expression] = items else {
+            unreachable!("preselected iterate take-while construction")
+        };
+        let current = self.evaluate_expression(source, initial, trace)?;
+        let classifier = structural_value_classifier(&current);
+        let next = self.evaluate_expression(source, next_expression, trace)?;
+        let predicate = self.evaluate_expression(source, predicate_expression, trace)?;
+        for (value, expression, role) in [
+            (&next, next_expression, "next"),
+            (&predicate, predicate_expression, "predicate"),
+        ] {
+            if !matches!(value, Value::AnonymousFunction(function) if function.parameters.len() == 1)
+            {
+                return Err(diagnostic(
+                    source,
+                    "E-GENERATED-TRAVERSAL-FUNCTION-ARITY",
+                    expression.span(),
+                    format!("iterate {role} function requires exactly one parameter"),
+                ));
+            }
+        }
+        trace.record(TraceEvent {
+            event: "generator.take-while.constructed",
+            rule: "TOPAL-GENERATOR-TAKE-WHILE-001",
+            detail: &classifier,
+        });
+        let value = Value::IterateGenerator {
+            current: Box::new(current),
+            next: Box::new(next),
+            take_while: Some(Box::new(predicate)),
+            classifier,
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
+    }
+
+    fn construct_iterate_generator(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [initial, _, next_expression] = items else {
+            unreachable!("preselected iterate construction")
+        };
+        let current = self.evaluate_expression(source, initial, trace)?;
+        let classifier = structural_value_classifier(&current);
+        let next = self.evaluate_expression(source, next_expression, trace)?;
+        let Value::AnonymousFunction(function) = &next else {
+            unreachable!("iterate syntax requires an anonymous function")
+        };
+        if function.parameters.len() != 1 {
+            return Err(diagnostic(
+                source,
+                "E-ITERATE-FUNCTION-ARITY",
+                next_expression.span(),
+                "iterate next function requires exactly one parameter",
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "generator.iterate.constructed",
+            rule: "TOPAL-GENERATOR-ITERATE-001",
+            detail: &classifier,
+        });
+        let value = Value::IterateGenerator {
+            current: Box::new(current),
+            next: Box::new(next),
+            take_while: None,
+            classifier,
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
+    }
+
     fn construct_traversal_control(
         &self,
         source: &SourceText,
@@ -3490,6 +3644,24 @@ impl Session {
             && source.slice(*operation) == "collect"
         {
             let value = self.evaluate_expression(source, collection, trace)?;
+            if let Value::IterateGenerator { .. } = value {
+                return self.collect_iterate_generator(
+                    source,
+                    value,
+                    collection.span(),
+                    span,
+                    trace,
+                );
+            }
+            if let Value::UnfoldGenerator { .. } = value {
+                return self.collect_unfold_generator(
+                    source,
+                    value,
+                    collection.span(),
+                    span,
+                    trace,
+                );
+            }
             if matches!(value, Value::List { .. }) {
                 trace.record(TraceEvent {
                     event: "list.collected",
@@ -3619,6 +3791,164 @@ impl Session {
             "unsupported collection materialization form",
         ))
     }
+
+    fn collect_iterate_generator(
+        &self,
+        source: &SourceText,
+        generator: Value,
+        source_span: Span,
+        result_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Value::IterateGenerator {
+            mut current,
+            next,
+            take_while,
+            classifier,
+        } = generator
+        else {
+            unreachable!("generated collection requires iterate generator")
+        };
+        let Some(predicate) = take_while else {
+            return Err(diagnostic(
+                source,
+                "E-UNBOUNDED-GENERATOR-COLLECT",
+                source_span,
+                "collect requires a statically finite generated traversal",
+            ));
+        };
+        let mut entries = Vec::new();
+        loop {
+            let accepted = self.invoke_anonymous_function(
+                &predicate,
+                vec![(*current).clone()],
+                result_span,
+                trace,
+            )?;
+            let Value::Boolean(accepted) = accepted else {
+                return Err(diagnostic(
+                    source,
+                    "E-TAKE-WHILE-PREDICATE-RESULT",
+                    source_span,
+                    "take-while predicate must return Boolean",
+                ));
+            };
+            if !accepted {
+                break;
+            }
+            entries.push((*current).clone());
+            let next_value =
+                self.invoke_anonymous_function(&next, vec![*current], result_span, trace)?;
+            if !value_has_classifier(&next_value, &classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-ITERATE-NEXT-CLASSIFIER",
+                    source_span,
+                    format!("iterate next function must return `{classifier}`"),
+                ));
+            }
+            *current = next_value;
+        }
+        trace.record(TraceEvent {
+            event: "generator.collected",
+            rule: "TOPAL-GENERATOR-COLLECT-001",
+            detail: &classifier,
+        });
+        let value = Value::List {
+            element_classifier: classifier,
+            entries,
+        };
+        self.checkpoint(trace, Some(&value), Some(result_span));
+        Ok(value)
+    }
+
+    fn collect_unfold_generator(
+        &self,
+        source: &SourceText,
+        generator: Value,
+        source_span: Span,
+        result_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Value::UnfoldGenerator { mut seed, step } = generator else {
+            unreachable!("unfold collection requires unfold generator")
+        };
+        let seed_classifier = structural_value_classifier(&seed);
+        let mut element_classifier = None;
+        let mut entries = Vec::new();
+        loop {
+            let result = self.invoke_anonymous_function(&step, vec![*seed], result_span, trace)?;
+            let Value::Optional { payload, .. } = result else {
+                return Err(diagnostic(
+                    source,
+                    "E-UNFOLD-STEP-RESULT",
+                    source_span,
+                    "unfold step must return Optional (Yield, Seed)",
+                ));
+            };
+            let Some(payload) = payload else {
+                break;
+            };
+            let Value::Tuple(mut pair) = *payload else {
+                return Err(diagnostic(
+                    source,
+                    "E-UNFOLD-STEP-RESULT",
+                    source_span,
+                    "unfold Some payload must be a two-field positional product",
+                ));
+            };
+            if pair.len() != 2 {
+                return Err(diagnostic(
+                    source,
+                    "E-UNFOLD-STEP-RESULT",
+                    source_span,
+                    "unfold Some payload must contain yielded value and next seed",
+                ));
+            }
+            let next_seed = pair.pop().expect("two-field unfold payload");
+            let yielded = pair.pop().expect("two-field unfold payload");
+            if !value_has_classifier(&next_seed, &seed_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-UNFOLD-SEED-CLASSIFIER",
+                    source_span,
+                    format!("unfold next seed must satisfy `{seed_classifier}`"),
+                ));
+            }
+            let yielded_classifier = structural_value_classifier(&yielded);
+            if element_classifier
+                .as_ref()
+                .is_some_and(|expected| expected != &yielded_classifier)
+            {
+                return Err(diagnostic(
+                    source,
+                    "E-UNFOLD-YIELD-CLASSIFIER",
+                    source_span,
+                    "unfold step yielded inconsistent value classifiers",
+                ));
+            }
+            element_classifier.get_or_insert(yielded_classifier);
+            trace.record(TraceEvent {
+                event: "generator.yielded",
+                rule: "TOPAL-GENERATOR-UNFOLD-COLLECT-001",
+                detail: &yielded.to_string(),
+            });
+            entries.push(yielded);
+            *seed = next_seed;
+        }
+        let element_classifier = element_classifier.unwrap_or_else(|| "Value".into());
+        trace.record(TraceEvent {
+            event: "generator.collected",
+            rule: "TOPAL-GENERATOR-UNFOLD-COLLECT-001",
+            detail: &element_classifier,
+        });
+        let value = Value::List {
+            element_classifier,
+            entries,
+        };
+        self.checkpoint(trace, Some(&value), Some(result_span));
+        Ok(value)
+    }
 }
 
 fn known_enum_alternatives(session: &Session, type_name: &str) -> Option<BTreeSet<String>> {
@@ -3664,6 +3994,17 @@ impl Execution {
                     });
                     return self
                         .execute_suspended_foreach(session, trace, value, binding, body, span);
+                }
+                if let Value::IterateGenerator { .. } = value {
+                    session.declared_names.remove(name_text);
+                    session.consumed_names.insert(name_text.to_owned());
+                    trace.record(TraceEvent {
+                        event: "generator.consumed",
+                        rule: "TOPAL-GENERATOR-ITERATE-FOREACH-001",
+                        detail: name_text,
+                    });
+                    return self
+                        .execute_iterate_foreach(session, trace, value, binding, body, span);
                 }
                 let (generated, origin, returned, returned_classifier) = match value {
                     Value::CharacterGenerator { generated, origin } => (
@@ -3795,6 +4136,108 @@ impl Execution {
             detail: returned_classifier,
         });
         Ok((returned, span))
+    }
+
+    fn execute_iterate_foreach(
+        &self,
+        session: &Session,
+        trace: &mut impl TraceSink,
+        generator: Value,
+        binding: Span,
+        body: &[Statement],
+        span: Span,
+    ) -> Result<(Value, Span), Diagnostic> {
+        let Value::IterateGenerator {
+            mut current,
+            next,
+            take_while,
+            classifier,
+        } = generator
+        else {
+            unreachable!("iterate traversal requires iterate generator")
+        };
+        let Some(predicate) = take_while else {
+            return Err(diagnostic(
+                &self.source,
+                "E-UNBOUNDED-GENERATOR-TRAVERSAL",
+                span,
+                "complete foreach traversal of unbounded iterate requires a stopping transformation",
+            ));
+        };
+        let binding_name = self.source.slice(binding).to_owned();
+        loop {
+            let accepted = session.invoke_anonymous_function(
+                &predicate,
+                vec![(*current).clone()],
+                span,
+                trace,
+            )?;
+            let Value::Boolean(accepted) = accepted else {
+                return Err(diagnostic(
+                    &self.source,
+                    "E-TAKE-WHILE-PREDICATE-RESULT",
+                    span,
+                    "take-while predicate must return Boolean",
+                ));
+            };
+            if !accepted {
+                trace.record(TraceEvent {
+                    event: "generator.returned",
+                    rule: "TOPAL-GENERATOR-TAKE-WHILE-001",
+                    detail: "Unit",
+                });
+                return Ok((Value::Unit, span));
+            }
+            trace.record(TraceEvent {
+                event: "generator.yielded",
+                rule: "TOPAL-GENERATOR-ITERATE-FOREACH-001",
+                detail: &current.to_string(),
+            });
+            let mut iteration = session.clone();
+            iteration
+                .bindings
+                .insert(binding_name.clone(), (*current).clone());
+            iteration.declared_names.insert(binding_name.clone());
+            let mut body_execution = Self {
+                source: self.source.clone(),
+                statements: body.to_vec(),
+                cursor: 0,
+                return_classifier: None,
+            };
+            loop {
+                match body_execution.step(&mut iteration, trace)? {
+                    ExecutionStep::Advanced { .. } => {}
+                    ExecutionStep::Complete(Value::Unit) => break,
+                    ExecutionStep::Complete(_) => {
+                        return Err(diagnostic(
+                            &self.source,
+                            "E-FOREACH-ACTION-RESULT",
+                            statement_span(body.last().expect("foreach body is nonempty")),
+                            "foreach action must return Unit",
+                        ));
+                    }
+                    ExecutionStep::Returned { .. } => {
+                        unreachable!("foreach body has no function return context")
+                    }
+                }
+            }
+            let next_value =
+                session.invoke_anonymous_function(&next, vec![*current], span, trace)?;
+            if !value_has_classifier(&next_value, &classifier) {
+                return Err(diagnostic(
+                    &self.source,
+                    "E-ITERATE-NEXT-CLASSIFIER",
+                    span,
+                    format!("iterate next function must return `{classifier}`"),
+                ));
+            }
+            *current = next_value;
+            trace.record(TraceEvent {
+                event: "generator.resumed",
+                rule: "TOPAL-GENERATOR-ITERATE-FOREACH-001",
+                detail: "Unit",
+            });
+        }
     }
 
     #[allow(clippy::too_many_lines)] // State restoration and suspension order remain explicit and auditable.
@@ -5473,6 +5916,16 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
     {
         return classifier == format!("Generator {yield_classifier} Unit {return_classifier}");
     }
+    if let Value::IterateGenerator {
+        classifier: yielded,
+        ..
+    } = value
+    {
+        return classifier == format!("Generator {yielded} Unit Unit");
+    }
+    if matches!(value, Value::UnfoldGenerator { .. }) {
+        return classifier == "Generator Value Unit Unit";
+    }
     if let Value::Optional {
         payload_classifier, ..
     } = value
@@ -6417,6 +6870,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Bag { .. } => "Bag",
         Value::Map { .. } => "Map",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
+        Value::IterateGenerator { .. } | Value::UnfoldGenerator { .. } => "Generator",
         Value::SuspendedGenerator {
             yield_classifier,
             return_classifier,
@@ -6498,6 +6952,10 @@ fn structural_value_classifier(value: &Value) -> String {
             return_classifier,
             ..
         } => format!("Generator {yield_classifier} Unit {return_classifier}"),
+        Value::IterateGenerator { classifier, .. } => {
+            format!("Generator {classifier} Unit Unit")
+        }
+        Value::UnfoldGenerator { .. } => "Generator Value Unit Unit".into(),
         Value::Enum { type_name, .. } | Value::Modular { type_name, .. } => type_name.clone(),
         Value::Union(union) => union.type_name.clone(),
         Value::Constraint(constraint) => format!("Constraint {}", constraint.base_classifier),
@@ -9115,6 +9573,8 @@ fn apply_negate(
         | Value::Map { .. }
         | Value::CharacterGenerator { .. }
         | Value::CharacterReturningGenerator { .. }
+        | Value::IterateGenerator { .. }
+        | Value::UnfoldGenerator { .. }
         | Value::SuspendedGenerator { .. }
         | Value::String(_)
         | Value::Tuple(_)
