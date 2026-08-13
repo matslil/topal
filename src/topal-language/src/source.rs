@@ -103,6 +103,8 @@ pub enum Value {
         line: usize,
         column: usize,
     },
+    Continue(Box<Self>),
+    Finish(Box<Self>),
     Completed,
     Unit,
 }
@@ -280,6 +282,8 @@ impl fmt::Display for Value {
             Self::Error { domain, code, .. } => {
                 write!(formatter, "Error ( domain is {domain}, code is {code} )")
             }
+            Self::Continue(value) => write!(formatter, "Continue {value}"),
+            Self::Finish(value) => write!(formatter, "Finish {value}"),
             Self::Completed => formatter.write_str("Completed"),
             Self::Unit => formatter.write_str("()"),
         }
@@ -953,6 +957,9 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if Self::is_traversal_control_constructor(source, items) {
+                    return self.construct_traversal_control(source, items, *span, trace);
+                }
                 if self.is_bound_anonymous_call(source, items) {
                     return self.evaluate_bound_anonymous_call(source, items, *span, trace);
                 }
@@ -2447,6 +2454,37 @@ impl Session {
             if matches!(self.bindings.get(source.slice(*name)), Some(Value::AnonymousFunction(_))))
     }
 
+    fn is_traversal_control_constructor(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _]
+            if matches!(source.slice(*name), "Continue" | "Finish"))
+    }
+
+    fn construct_traversal_control(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(name), payload] = items else {
+            unreachable!("preselected traversal-control constructor")
+        };
+        let payload = self.evaluate_expression(source, payload, trace)?;
+        let constructor = source.slice(*name);
+        trace.record(TraceEvent {
+            event: "traversal.control.constructed",
+            rule: "TOPAL-EXEC-TRAVERSAL-CONTROL-001",
+            detail: constructor,
+        });
+        let value = if constructor == "Continue" {
+            Value::Continue(Box::new(payload))
+        } else {
+            Value::Finish(Box::new(payload))
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
+    }
+
     fn evaluate_bound_anonymous_call(
         &self,
         source: &SourceText,
@@ -3274,8 +3312,33 @@ impl Session {
                 let function_span = function.span();
                 let function = self.evaluate_expression(source, function, trace)?;
                 for entry in entries {
-                    state =
-                        self.invoke_anonymous_function(&function, vec![state, entry], span, trace)?;
+                    let transformed = self.invoke_anonymous_function(
+                        &function,
+                        vec![state.clone(), entry],
+                        span,
+                        trace,
+                    )?;
+                    state = match transformed {
+                        Value::Continue(next) => *next,
+                        Value::Finish(result) => {
+                            let result = *result;
+                            if !value_has_classifier(&result, &expected) {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-FOLD-FINISH-CLASSIFIER",
+                                    function_span,
+                                    format!("Finish result must satisfy `{expected}`"),
+                                ));
+                            }
+                            trace.record(TraceEvent {
+                                event: "traversal.finished",
+                                rule: "TOPAL-EXEC-TRAVERSAL-CONTROL-001",
+                                detail: "fold",
+                            });
+                            return Ok(result);
+                        }
+                        value => value,
+                    };
                     if !value_has_classifier(&state, &expected) {
                         return Err(diagnostic(
                             source,
@@ -5337,6 +5400,8 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
+        | (Value::Continue(_), "TraversalControl")
+        | (Value::Finish(_), "TraversalControl")
         | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
@@ -6279,6 +6344,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Modular { .. } => "Modular",
         Value::ErrorDomain(_) => "ErrorDomain",
         Value::Error { .. } => "Error",
+        Value::Continue(_) | Value::Finish(_) => "TraversalControl",
         Value::Completed => "Completed",
         Value::Unit => "Unit",
     }
@@ -8948,6 +9014,8 @@ fn apply_negate(
         | Value::ModularType(_)
         | Value::ErrorDomain(_)
         | Value::Error { .. }
+        | Value::Continue(_)
+        | Value::Finish(_)
         | Value::Completed
         | Value::Unit => Err(diagnostic(
             source,

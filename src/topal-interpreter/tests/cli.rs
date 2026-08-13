@@ -3504,3 +3504,21 @@ fn every_mode_directly_applies_anonymous_function_values() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert_eq!(trace.matches("function.anonymous.called").count(), 2);
 }
+
+#[test]
+fn every_mode_short_circuits_fold_with_traversal_control() {
+    let source = include_str!("../../../examples/interpreter/traversal-control.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(1, (Continue 1, Finish 2))")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("function.anonymous.called").count(), 1);
+    assert!(trace.contains("traversal.finished"));
+    assert!(trace.contains("TOPAL-EXEC-TRAVERSAL-CONTROL-001"));
+}

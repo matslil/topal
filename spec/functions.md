@@ -10,6 +10,15 @@ returning it establishes a dependency on completion, while `Unit` establishes
 no completion dependency. Test traces and debugger history shall expose the
 construction of completion evidence before its binding or return.
 
+### TOPAL-EXEC-TRAVERSAL-CONTROL-001 — Traversal elimination
+
+`Continue state` and `Finish result` shall construct distinct traversal-control
+values. A short-circuiting fold shall pass the payload of `Continue` to its next
+invocation and shall immediately return the payload of `Finish` without
+invoking its function for remaining entries. This initial executable fold
+subset requires both payloads to satisfy the classifier of its initial state.
+Traces and debugger history shall expose construction and early termination.
+
 ### TOPAL-FUNCTION-STATIC-NULLARY-001 — Static nullary function execution
 
 A declaration `name is fn static () -> R` followed by one indented expression

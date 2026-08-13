@@ -1630,3 +1630,11 @@ under `TOPAL-FUNCTION-ANONYMOUS-001`, accepting unary operands directly and
 multi-parameter operands as positional products. Formal traces, arity
 diagnostics, LSP validation, and reversible scripted-debugger history shall
 cover commented examples.
+
+## TOPAL-INTP-SUBSET-199 — Short-circuiting traversal control
+
+All interpreter modes shall construct `Continue` and `Finish` control values
+and eliminate them in List fold under `TOPAL-EXEC-TRAVERSAL-CONTROL-001`,
+without invoking the fold function after `Finish`. Formal traces, LSP
+validation, and reversible scripted-debugger history shall cover commented
+examples.
