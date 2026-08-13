@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 158);
+    assert_eq!(examples.len(), 159);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3831,5 +3831,13 @@ fn every_mode_classifies_function_values() {
                 .unwrap()
                 .contains("42")
         );
+    }
+}
+
+#[test]
+fn every_mode_classifies_constraint_values() {
+    let source = include_str!("../../../examples/interpreter/constraint-classifier.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
     }
 }

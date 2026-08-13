@@ -23,6 +23,11 @@ retaining its concrete type identity.
 Named, anonymous, and symbolic callable values shall satisfy `Function` without
 erasing their invocation identity or captured environment.
 
+### TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001 — Constraint classification
+
+A constraint object shall satisfy `Constraint` while retaining its base type,
+predicate, and nominal identity.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:

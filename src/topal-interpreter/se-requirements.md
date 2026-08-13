@@ -1766,6 +1766,11 @@ Type values shall satisfy `Type` under `TOPAL-ABSTRACTION-TYPE-CLASSIFIER-001`.
 Callable values shall satisfy `Function` under
 `TOPAL-ABSTRACTION-FUNCTION-CLASSIFIER-001`.
 
+## TOPAL-INTP-SUBSET-222 — Constraint classification
+
+Constraint objects shall satisfy `Constraint` under
+`TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

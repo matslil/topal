@@ -6156,6 +6156,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
             Value::Callable(_) | Value::NamedFunction(_) | Value::AnonymousFunction(_),
             "Function",
         )
+        | (Value::Constraint(_), "Constraint")
         | (Value::Continue(_) | Value::Finish(_), "TraversalControl")
         | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,
@@ -6179,6 +6180,7 @@ fn supported_generator_value_classifier(
             | "Boolean"
             | "Character"
             | "Comparison"
+            | "Constraint"
             | "Int"
             | "Nat"
             | "Rational"
