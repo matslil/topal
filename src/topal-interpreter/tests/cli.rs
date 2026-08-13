@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 164);
+    assert_eq!(examples.len(), 165);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3891,5 +3891,13 @@ fn every_mode_compares_effect_rows() {
                 .unwrap()
                 .contains("true")
         );
+    }
+}
+
+#[test]
+fn every_mode_passes_effect_values_through_functions() {
+    let source = include_str!("../../../examples/interpreter/effect-function-boundary.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
     }
 }

@@ -1792,6 +1792,10 @@ Effect expressions shall satisfy `Effect` under `TOPAL-EFFECT-CLASSIFIER-001`.
 
 Effect rows shall compare under `TOPAL-EFFECT-IDENTITY-001`.
 
+## TOPAL-INTP-SUBSET-228 — Effect function boundaries
+
+Functions shall preserve Effect values under `TOPAL-EFFECT-BOUNDARY-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

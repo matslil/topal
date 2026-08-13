@@ -6934,6 +6934,8 @@ fn supported_value_classifier(
             | "Character"
             | "Completed"
             | "Comparison"
+            | "Constraint"
+            | "Effect"
             | "Generator Character Unit Unit"
             | "Generator Character Unit Character"
             | "Generator String Unit Unit"

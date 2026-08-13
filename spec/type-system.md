@@ -51,6 +51,10 @@ Every effect expression shall satisfy `Effect` while retaining its row identity.
 
 Effect expressions shall compare by canonical row identity; empty rows are equal.
 
+### TOPAL-EFFECT-BOUNDARY-001 — Effect function boundaries
+
+Functions may accept and return first-class `Effect` values without performing them.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:
