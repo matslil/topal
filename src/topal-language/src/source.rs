@@ -64,6 +64,11 @@ pub enum Value {
         returned: String,
         origin: String,
     },
+    IterateGenerator {
+        current: Box<Self>,
+        next: Box<Self>,
+        classifier: String,
+    },
     SuspendedGenerator {
         source: SourceText,
         body: Vec<Statement>,
@@ -228,6 +233,9 @@ impl fmt::Display for Value {
             }
             Self::CharacterReturningGenerator { .. } => {
                 formatter.write_str("<Generator Character Unit Character>")
+            }
+            Self::IterateGenerator { classifier, .. } => {
+                write!(formatter, "<Generator {classifier} Unit Unit>")
             }
             Self::SuspendedGenerator {
                 yield_classifier,
@@ -969,6 +977,9 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if Self::is_iterate_construction(source, items) {
+                    return self.construct_iterate_generator(source, items, *span, trace);
+                }
                 if self.is_bound_named_function_call(source, items) {
                     return self
                         .evaluate_bound_named_function_call(source, expression, items, trace);
@@ -2568,6 +2579,49 @@ impl Session {
     fn is_traversal_control_constructor(source: &SourceText, items: &[Expression]) -> bool {
         matches!(items, [Expression::Identifier(name), _]
             if matches!(source.slice(*name), "Continue" | "Finish"))
+    }
+
+    fn is_iterate_construction(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [_, Expression::Identifier(operation), Expression::AnonymousFunction { .. }]
+            if source.slice(*operation) == "iterate")
+    }
+
+    fn construct_iterate_generator(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [initial, _, next_expression] = items else {
+            unreachable!("preselected iterate construction")
+        };
+        let current = self.evaluate_expression(source, initial, trace)?;
+        let classifier = structural_value_classifier(&current);
+        let next = self.evaluate_expression(source, next_expression, trace)?;
+        let Value::AnonymousFunction(function) = &next else {
+            unreachable!("iterate syntax requires an anonymous function")
+        };
+        if function.parameters.len() != 1 {
+            return Err(diagnostic(
+                source,
+                "E-ITERATE-FUNCTION-ARITY",
+                next_expression.span(),
+                "iterate next function requires exactly one parameter",
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "generator.iterate.constructed",
+            rule: "TOPAL-GENERATOR-ITERATE-001",
+            detail: &classifier,
+        });
+        let value = Value::IterateGenerator {
+            current: Box::new(current),
+            next: Box::new(next),
+            classifier,
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
     }
 
     fn construct_traversal_control(
@@ -5473,6 +5527,13 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
     {
         return classifier == format!("Generator {yield_classifier} Unit {return_classifier}");
     }
+    if let Value::IterateGenerator {
+        classifier: yielded,
+        ..
+    } = value
+    {
+        return classifier == format!("Generator {yielded} Unit Unit");
+    }
     if let Value::Optional {
         payload_classifier, ..
     } = value
@@ -6417,6 +6478,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Bag { .. } => "Bag",
         Value::Map { .. } => "Map",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
+        Value::IterateGenerator { .. } => "Generator",
         Value::SuspendedGenerator {
             yield_classifier,
             return_classifier,
@@ -6498,6 +6560,9 @@ fn structural_value_classifier(value: &Value) -> String {
             return_classifier,
             ..
         } => format!("Generator {yield_classifier} Unit {return_classifier}"),
+        Value::IterateGenerator { classifier, .. } => {
+            format!("Generator {classifier} Unit Unit")
+        }
         Value::Enum { type_name, .. } | Value::Modular { type_name, .. } => type_name.clone(),
         Value::Union(union) => union.type_name.clone(),
         Value::Constraint(constraint) => format!("Constraint {}", constraint.base_classifier),
@@ -9115,6 +9180,7 @@ fn apply_negate(
         | Value::Map { .. }
         | Value::CharacterGenerator { .. }
         | Value::CharacterReturningGenerator { .. }
+        | Value::IterateGenerator { .. }
         | Value::SuspendedGenerator { .. }
         | Value::String(_)
         | Value::Tuple(_)

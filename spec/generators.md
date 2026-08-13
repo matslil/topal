@@ -1,5 +1,14 @@
 # Generator semantics
 
+### TOPAL-GENERATOR-ITERATE-001 — Unbounded generated traversal
+
+`initial iterate { value } next` shall construct a fresh
+`Generator T Unit Unit`, where `T` is the classifier of `initial`. The generator
+shall yield `initial` first and, after every successful Unit resumption, apply
+the captured unary `next` function to the preceding value to obtain the next
+yield. Construction shall not invoke `next` or eagerly materialize values.
+Consumers must establish a stopping condition before complete traversal.
+
 ### TOPAL-GENERATOR-ERROR-CODE-001 — Generator error-code vocabulary
 
 The qualified namespace `lang generator` publishes the nominal enum type

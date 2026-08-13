@@ -1654,3 +1654,10 @@ overloads as immutable values and apply them after rebinding under
 `TOPAL-FUNCTION-VALUE-001`. Existing typed selection, recursion, and result
 checks shall remain effective. Formal traces, LSP validation, and reversible
 scripted-debugger history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-202 — Lazy iterate generators
+
+All interpreter modes shall construct unbounded `iterate` generators lazily
+under `TOPAL-GENERATOR-ITERATE-001`, capturing but not invoking the unary next
+function until resumption. Formal traces, LSP validation, and reversible
+scripted-debugger history shall cover commented examples.
