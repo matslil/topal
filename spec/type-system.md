@@ -43,6 +43,10 @@ anonymous, or symbolic callable values and preserve their invocation behavior.
 `Effects ()` shall construct the canonical empty first-class effect expression,
 classified by `Effect`, without performing a runtime interaction.
 
+### TOPAL-EFFECT-CLASSIFIER-001 — Effect classification
+
+Every effect expression shall satisfy `Effect` while retaining its row identity.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:

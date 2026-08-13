@@ -6196,6 +6196,7 @@ fn supported_generator_value_classifier(
             | "Character"
             | "Comparison"
             | "Constraint"
+            | "Effect"
             | "Int"
             | "Nat"
             | "Rational"

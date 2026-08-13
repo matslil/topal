@@ -1784,6 +1784,10 @@ Higher-order inputs shall preserve callable values under
 
 All modes shall construct `Effects ()` under `TOPAL-EFFECT-EMPTY-001`.
 
+## TOPAL-INTP-SUBSET-226 — Effect classification
+
+Effect expressions shall satisfy `Effect` under `TOPAL-EFFECT-CLASSIFIER-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under
