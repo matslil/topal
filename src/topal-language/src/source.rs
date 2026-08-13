@@ -2431,6 +2431,17 @@ impl Session {
                 alternative: name.into(),
             });
         }
+        if matches!(name, "Natural" | "Packed") {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-PACKING-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "Packing".into(),
+                alternative: name.into(),
+            });
+        }
         if matches!(
             name,
             "Boolean" | "Completed" | "Int" | "Nat" | "Rational" | "Scope" | "String" | "Unit"

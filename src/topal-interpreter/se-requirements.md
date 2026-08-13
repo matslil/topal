@@ -1826,6 +1826,10 @@ All modes shall resolve access policies under `TOPAL-LAYOUT-ACCESS-001`.
 
 All modes shall resolve bit order under `TOPAL-LAYOUT-BIT-ORDER-001`.
 
+## TOPAL-INTP-SUBSET-236 — Layout packing
+
+All modes shall resolve packing under `TOPAL-LAYOUT-PACKING-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

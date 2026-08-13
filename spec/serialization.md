@@ -17,6 +17,10 @@ external-layout access policies without granting runtime authority.
 
 `MostSignificantFirst` and `LeastSignificantFirst` shall resolve nominal bit-order values.
 
+### TOPAL-LAYOUT-PACKING-001 — Product packing
+
+`Natural` and `Packed` shall resolve nominal product-packing policies.
+
 ### TOPAL-SER-SCOPE-001 — Protocol scope
 
 The native protocol represents the public semantic description of every object

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 172);
+    assert_eq!(examples.len(), 173);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3953,6 +3953,14 @@ fn every_mode_resolves_layout_access_policies() {
 #[test]
 fn every_mode_resolves_layout_bit_order() {
     let source = include_str!("../../../examples/interpreter/layout-bit-order.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_resolves_layout_packing() {
+    let source = include_str!("../../../examples/interpreter/layout-packing.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
