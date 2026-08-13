@@ -16,6 +16,7 @@ use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
+    Type(String),
     Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
@@ -181,6 +182,7 @@ impl fmt::Display for Value {
     #[allow(clippy::too_many_lines)] // Every runtime value keeps an explicit stable source representation.
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Type(name) => formatter.write_str(name),
             Self::Boolean(value) => value.fmt(formatter),
             Self::Int(value) => value.fmt(formatter),
             Self::Rational(value) => {
@@ -2386,6 +2388,18 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let name = source.slice(span);
+        if matches!(
+            name,
+            "Boolean" | "Completed" | "Int" | "Nat" | "Rational" | "Scope" | "String" | "Unit"
+        ) && name != "Completed"
+        {
+            trace.record(TraceEvent {
+                event: "type.resolved",
+                rule: "TOPAL-ABSTRACTION-TYPE-VALUE-001",
+                detail: name,
+            });
+            return Ok(Value::Type(name.into()));
+        }
         if name == "root" {
             trace.record(TraceEvent {
                 event: "namespace.resolved",
@@ -6137,6 +6151,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
         | (Value::Namespace(_), "Scope")
+        | (Value::Type(_), "Type")
         | (Value::Continue(_) | Value::Finish(_), "TraversalControl")
         | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,
@@ -7034,6 +7049,7 @@ fn record_result(trace: &mut impl TraceSink, value: &Value) {
 fn value_classifier(value: &Value) -> &'static str {
     match value {
         Value::Boolean(_) => "Boolean",
+        Value::Type(_) => "Type",
         Value::Int(_) => "Int",
         Value::Rational(_) => "Rational",
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
@@ -7136,6 +7152,7 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::Union(union) => union.type_name.clone(),
         Value::Constraint(constraint) => format!("Constraint {}", constraint.base_classifier),
         Value::Refined { constraint, .. } => constraint.clone(),
+        Value::Type(name) => name.clone(),
         Value::ModularType(kind) => kind.name.clone().unwrap_or_else(|| "Type".into()),
         _ => value_classifier(value).to_owned(),
     }
@@ -9736,6 +9753,7 @@ fn apply_negate(
             })
         }
         Value::Boolean(_)
+        | Value::Type(_)
         | Value::IntRange { .. }
         | Value::RationalRange { .. }
         | Value::Optional { .. }

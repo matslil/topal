@@ -3106,3 +3106,22 @@ fn records_scope_function_parameters_reversibly() {
             .contains("function.argument.bound")
     );
 }
+
+#[test]
+fn records_fundamental_type_values_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}type-values.debug"),
+            &format!("{root}type-values.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("TOPAL-ABSTRACTION-TYPE-VALUE-001")
+    );
+}

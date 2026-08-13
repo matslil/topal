@@ -1748,6 +1748,11 @@ Namespace alias chains shall retain identity under
 Functions shall accept namespace values through `Scope` parameters under
 `TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001`, with all tool coverage.
 
+## TOPAL-INTP-SUBSET-218 — Fundamental Type values
+
+All modes shall resolve fundamental Type objects under
+`TOPAL-ABSTRACTION-TYPE-VALUE-001`, with LSP and debugger coverage.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

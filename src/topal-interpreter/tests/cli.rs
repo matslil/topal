@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 154);
+    assert_eq!(examples.len(), 155);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3781,4 +3781,19 @@ fn every_mode_passes_namespaces_through_scope_parameters() {
         assert!(output.status.success());
         assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
     }
+}
+
+#[test]
+fn every_mode_resolves_fundamental_type_values() {
+    let source = include_str!("../../../examples/interpreter/type-values.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    assert_eq!(
+        String::from_utf8(run(&["--test"], source).stderr)
+            .unwrap()
+            .matches("TOPAL-ABSTRACTION-TYPE-VALUE-001")
+            .count(),
+        7
+    );
 }

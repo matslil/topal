@@ -2,6 +2,12 @@
 
 ## Formal text
 
+### TOPAL-ABSTRACTION-TYPE-VALUE-001 — Fundamental type values
+
+The fundamental names `Boolean`, `Int`, `Nat`, `Rational`, `String`, `Unit`, and
+`Scope` in expression position shall resolve immutable static objects of kind
+`Type`. Their displayed form and identity shall be their canonical name.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:
