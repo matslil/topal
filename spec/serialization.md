@@ -8,6 +8,11 @@
 explicit external layouts. They describe representation and do not change
 native serialization byte order by themselves.
 
+### TOPAL-LAYOUT-ACCESS-001 — Layout access policy
+
+`ReadWrite`, `ReadOnly`, `WriteOnly`, and `Reserved` shall resolve nominal
+external-layout access policies without granting runtime authority.
+
 ### TOPAL-SER-SCOPE-001 — Protocol scope
 
 The native protocol represents the public semantic description of every object

@@ -1818,6 +1818,10 @@ Unit shall remain distinct beside inert Effect values under
 
 All modes shall resolve Endian policies under `TOPAL-LAYOUT-ENDIAN-001`.
 
+## TOPAL-INTP-SUBSET-234 — Layout access policies
+
+All modes shall resolve access policies under `TOPAL-LAYOUT-ACCESS-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

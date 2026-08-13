@@ -2409,6 +2409,17 @@ impl Session {
                 alternative: name.into(),
             });
         }
+        if matches!(name, "ReadWrite" | "ReadOnly" | "WriteOnly" | "Reserved") {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-ACCESS-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "Access".into(),
+                alternative: name.into(),
+            });
+        }
         if matches!(
             name,
             "Boolean" | "Completed" | "Int" | "Nat" | "Rational" | "Scope" | "String" | "Unit"
