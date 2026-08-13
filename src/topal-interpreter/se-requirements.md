@@ -1743,6 +1743,11 @@ diagnostics under `TOPAL-NAMESPACE-DIAGNOSTIC-001`.
 Namespace alias chains shall retain identity under
 `TOPAL-NAMESPACE-ALIAS-CHAIN-001`, with interpreter, LSP, and debugger coverage.
 
+## TOPAL-INTP-SUBSET-217 — Scope function boundaries
+
+Functions shall accept namespace values through `Scope` parameters under
+`TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001`, with all tool coverage.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

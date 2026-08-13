@@ -6908,6 +6908,7 @@ fn supported_value_classifier(
             | "Range Int"
             | "Range Rational"
             | "Rational"
+            | "Scope"
             | "String"
             | "Unit"
     ) || enum_types.contains_key(classifier)

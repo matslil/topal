@@ -63,3 +63,10 @@ of that namespace, not unrelated caller bindings.
 Binding an existing namespace alias shall retain the same namespace identity
 and captured declaration set. Any finite chain of aliases shall resolve a
 qualified terminal exactly as the originally captured namespace value.
+
+### TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001 — Scope function parameters
+
+An ordinary function parameter classified as `Scope` shall accept a namespace
+value and preserve its concrete identity and captured members within the
+invocation. Qualified lookup through the parameter shall remain confined to
+that namespace and the value shall not escape or mutate its caller binding.

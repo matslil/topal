@@ -3087,3 +3087,22 @@ fn records_namespace_alias_chains_reversibly() {
             .contains("<namespace root>")
     );
 }
+
+#[test]
+fn records_scope_function_parameters_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}namespace-function-parameter.debug"),
+            &format!("{root}namespace-function-parameter.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("function.argument.bound")
+    );
+}

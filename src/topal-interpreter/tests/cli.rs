@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 153);
+    assert_eq!(examples.len(), 154);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3766,6 +3766,16 @@ fn missing_namespace_member_suggests_only_a_member() {
 #[test]
 fn every_mode_preserves_namespace_alias_chains() {
     let source = include_str!("../../../examples/interpreter/namespace-alias-chain.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+}
+
+#[test]
+fn every_mode_passes_namespaces_through_scope_parameters() {
+    let source = include_str!("../../../examples/interpreter/namespace-function-parameter.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
