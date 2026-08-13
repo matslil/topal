@@ -1700,3 +1700,62 @@ All interpreter modes shall collect unfold generators under
 classifiers, yield order, and termination at None. Formal traces, classifier
 diagnostics, LSP validation, and reversible scripted-debugger history shall
 cover commented examples.
+
+## TOPAL-INTP-SUBSET-208 — Executable root namespace
+
+All interpreter modes shall resolve `root` as the current source-session
+namespace and select qualified terminal declarations under
+`TOPAL-NAMESPACE-ROOT-001` without flattening or executing the namespace.
+Formal traces, diagnostics, LSP validation, and reversible scripted-debugger
+history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-209 — Immutable namespace aliases
+
+All interpreter modes shall bind namespaces as immutable aliases and resolve
+qualified members through their retained boundary under
+`TOPAL-NAMESPACE-ALIAS-001`. Formal traces, diagnostics, LSP validation, and
+reversible scripted-debugger history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-210 — Namespace availability with use
+
+All interpreter modes shall make namespace paths available with `use` under
+`TOPAL-NAMESPACE-USE-001` without flattening members. Formal traces, LSP
+validation, and reversible scripted-debugger history shall cover examples.
+
+## TOPAL-INTP-SUBSET-211 — Namespace capture visibility
+
+Namespace aliases shall preserve declaration visibility at their binding under
+`TOPAL-NAMESPACE-SNAPSHOT-001`, with interpreter, LSP, trace, and debugger
+coverage.
+
+## TOPAL-INTP-SUBSET-214 — Scope classification
+
+Namespace values shall satisfy `Scope` under `TOPAL-NAMESPACE-CLASSIFIER-001`
+without losing identity, with interpreter, LSP, trace, and debugger coverage.
+
+## TOPAL-INTP-SUBSET-215 — Qualified member diagnostics
+
+Missing qualified members shall produce namespace-specific Rust-style
+diagnostics under `TOPAL-NAMESPACE-DIAGNOSTIC-001`.
+
+## TOPAL-INTP-SUBSET-216 — Namespace alias chains
+
+Namespace alias chains shall retain identity under
+`TOPAL-NAMESPACE-ALIAS-CHAIN-001`, with interpreter, LSP, and debugger coverage.
+
+## TOPAL-INTP-SUBSET-217 — Scope function boundaries
+
+Functions shall accept namespace values through `Scope` parameters under
+`TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001`, with all tool coverage.
+
+## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
+
+Namespace lookup shall select generator terminals under
+`TOPAL-NAMESPACE-GENERATOR-001`, with interpreter, LSP, trace, and debugger
+coverage.
+
+## TOPAL-INTP-SUBSET-212 — Qualified namespace overloads
+
+Qualified lookup shall preserve namespace overload ordering under
+`TOPAL-NAMESPACE-OVERLOAD-001`, with interpreter, LSP, trace, and debugger
+coverage.

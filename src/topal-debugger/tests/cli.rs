@@ -2939,3 +2939,170 @@ fn records_unfold_collection_reversibly() {
     assert!(stdout.contains("TOPAL-GENERATOR-UNFOLD-COLLECT-001"));
     assert!(stdout.contains("Entry ( 4"));
 }
+
+#[test]
+fn records_root_namespace_resolution_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}root-namespace.debug"),
+            &format!("{root}root-namespace.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-NAMESPACE-ROOT-001"));
+    assert!(stdout.contains("<namespace root>"));
+}
+
+#[test]
+fn records_namespace_alias_resolution_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}namespace-alias.debug"),
+            &format!("{root}namespace-alias.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-NAMESPACE-ALIAS-001"));
+    assert!(stdout.contains("<namespace root>"));
+}
+
+#[test]
+fn records_namespace_use_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}use-namespace.debug"),
+            &format!("{root}use-namespace.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("TOPAL-NAMESPACE-USE-001")
+    );
+}
+
+#[test]
+fn records_namespace_snapshot_visibility_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}namespace-snapshot.debug"),
+            &format!("{root}namespace-snapshot.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("<namespace root>")
+    );
+}
+
+#[test]
+fn records_namespace_overload_selection_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}namespace-overloads.debug"),
+            &format!("{root}namespace-overloads.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("TOPAL-FUNCTION-OVERLOAD-001")
+    );
+}
+
+#[test]
+fn records_qualified_namespace_generators_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}namespace-generator.debug"),
+            &format!("{root}namespace-generator.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("generator.yielded")
+    );
+}
+
+#[test]
+fn records_scope_classification_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}scope-classifier.debug"),
+            &format!("{root}scope-classifier.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("<namespace root>")
+    );
+}
+
+#[test]
+fn records_namespace_alias_chains_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}namespace-alias-chain.debug"),
+            &format!("{root}namespace-alias-chain.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("<namespace root>")
+    );
+}
+
+#[test]
+fn records_scope_function_parameters_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}namespace-function-parameter.debug"),
+            &format!("{root}namespace-function-parameter.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("function.argument.bound")
+    );
+}

@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 145);
+    assert_eq!(examples.len(), 154);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3651,4 +3651,134 @@ fn every_mode_collects_finite_unfold_generators() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert_eq!(trace.matches("generator.yielded").count(), 3);
     assert!(trace.contains("TOPAL-GENERATOR-UNFOLD-COLLECT-001"));
+}
+
+#[test]
+fn every_mode_resolves_the_root_namespace_explicitly() {
+    let source = include_str!("../../../examples/interpreter/root-namespace.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(<namespace root>, 42)")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-NAMESPACE-ROOT-001"));
+    assert!(trace.contains("namespace.member.resolved"));
+}
+
+#[test]
+fn every_mode_resolves_members_through_namespace_aliases() {
+    let source = include_str!("../../../examples/interpreter/namespace-alias.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-NAMESPACE-ALIAS-001"));
+    assert!(trace.contains("namespace.alias.member.resolved"));
+}
+
+#[test]
+fn every_mode_makes_namespaces_available_with_use() {
+    let source = include_str!("../../../examples/interpreter/use-namespace.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+    assert!(
+        String::from_utf8(run(&["--test"], source).stderr)
+            .unwrap()
+            .contains("TOPAL-NAMESPACE-USE-001")
+    );
+}
+
+#[test]
+fn every_mode_preserves_namespace_capture_visibility() {
+    let source = include_str!("../../../examples/interpreter/namespace-snapshot.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(41, 42)")
+        );
+    }
+}
+
+#[test]
+fn every_mode_preserves_namespace_overload_sets() {
+    let source = include_str!("../../../examples/interpreter/namespace-overloads.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(42, \"Topal\")")
+        );
+    }
+    assert_eq!(
+        String::from_utf8(run(&["--test"], source).stderr)
+            .unwrap()
+            .matches("function.overload.selected")
+            .count(),
+        2
+    );
+}
+
+#[test]
+fn every_mode_applies_qualified_namespace_generators() {
+    let source = include_str!("../../../examples/interpreter/namespace-generator.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-DECLARATION-001"));
+    assert!(trace.contains("namespace.alias.member.resolved"));
+}
+
+#[test]
+fn every_mode_classifies_namespaces_as_scope() {
+    let source = include_str!("../../../examples/interpreter/scope-classifier.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+}
+
+#[test]
+fn missing_namespace_member_suggests_only_a_member() {
+    let output = run(&[], "answer is 42\napi is root\napi answr\n");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("E-NAMESPACE-MEMBER-NOT-FOUND"));
+    assert!(stderr.contains("did you mean `answer`?"));
+}
+
+#[test]
+fn every_mode_preserves_namespace_alias_chains() {
+    let source = include_str!("../../../examples/interpreter/namespace-alias-chain.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+}
+
+#[test]
+fn every_mode_passes_namespaces_through_scope_parameters() {
+    let source = include_str!("../../../examples/interpreter/namespace-function-parameter.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
 }
