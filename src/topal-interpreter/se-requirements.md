@@ -1676,3 +1676,11 @@ under `TOPAL-GENERATOR-ITERATE-FOREACH-001`, preserving test-yield-action-resume
 order and excluding the first rejected candidate. Formal traces, unbounded
 traversal diagnostics, LSP validation, and reversible scripted-debugger history
 shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-205 — Finite generated collection
+
+All interpreter modes shall materialize take-while-bounded iterate generators
+as Lists under `TOPAL-GENERATOR-COLLECT-001`, preserving classifier, order, and
+multiplicity while rejecting unbounded collection. Formal traces, LSP
+validation, and reversible scripted-debugger history shall cover commented
+examples.

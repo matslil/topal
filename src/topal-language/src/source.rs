@@ -3598,6 +3598,15 @@ impl Session {
             && source.slice(*operation) == "collect"
         {
             let value = self.evaluate_expression(source, collection, trace)?;
+            if let Value::IterateGenerator { .. } = value {
+                return self.collect_iterate_generator(
+                    source,
+                    value,
+                    collection.span(),
+                    span,
+                    trace,
+                );
+            }
             if matches!(value, Value::List { .. }) {
                 trace.record(TraceEvent {
                     event: "list.collected",
@@ -3726,6 +3735,76 @@ impl Session {
             span,
             "unsupported collection materialization form",
         ))
+    }
+
+    fn collect_iterate_generator(
+        &self,
+        source: &SourceText,
+        generator: Value,
+        source_span: Span,
+        result_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Value::IterateGenerator {
+            mut current,
+            next,
+            take_while,
+            classifier,
+        } = generator
+        else {
+            unreachable!("generated collection requires iterate generator")
+        };
+        let Some(predicate) = take_while else {
+            return Err(diagnostic(
+                source,
+                "E-UNBOUNDED-GENERATOR-COLLECT",
+                source_span,
+                "collect requires a statically finite generated traversal",
+            ));
+        };
+        let mut entries = Vec::new();
+        loop {
+            let accepted = self.invoke_anonymous_function(
+                &predicate,
+                vec![(*current).clone()],
+                result_span,
+                trace,
+            )?;
+            let Value::Boolean(accepted) = accepted else {
+                return Err(diagnostic(
+                    source,
+                    "E-TAKE-WHILE-PREDICATE-RESULT",
+                    source_span,
+                    "take-while predicate must return Boolean",
+                ));
+            };
+            if !accepted {
+                break;
+            }
+            entries.push((*current).clone());
+            let next_value =
+                self.invoke_anonymous_function(&next, vec![*current], result_span, trace)?;
+            if !value_has_classifier(&next_value, &classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-ITERATE-NEXT-CLASSIFIER",
+                    source_span,
+                    format!("iterate next function must return `{classifier}`"),
+                ));
+            }
+            current = Box::new(next_value);
+        }
+        trace.record(TraceEvent {
+            event: "generator.collected",
+            rule: "TOPAL-GENERATOR-COLLECT-001",
+            detail: &classifier,
+        });
+        let value = Value::List {
+            element_classifier: classifier,
+            entries,
+        };
+        self.checkpoint(trace, Some(&value), Some(result_span));
+        Ok(value)
     }
 }
 

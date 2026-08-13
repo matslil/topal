@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 142);
+    assert_eq!(examples.len(), 143);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3601,4 +3601,20 @@ fn every_mode_traverses_bounded_generated_prefixes() {
         11
     );
     assert!(trace.contains("TOPAL-GENERATOR-TAKE-WHILE-001"));
+}
+
+#[test]
+fn every_mode_collects_finite_generated_traversals() {
+    let source = include_str!("../../../examples/interpreter/generated-collect.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("Entry ( 0, Entry ( 1, Entry ( 2, Entry ( 3, Entry ( 4, Empty ) ) ) ) )")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-COLLECT-001"));
 }

@@ -2888,3 +2888,20 @@ fn records_generated_foreach_reversibly() {
     assert!(stdout.contains("TOPAL-GENERATOR-ITERATE-FOREACH-001"));
     assert!(stdout.contains("generator.returned"));
 }
+
+#[test]
+fn records_generated_collection_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}generated-collect.debug"),
+            &format!("{root}generated-collect.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-GENERATOR-COLLECT-001"));
+    assert!(stdout.contains("Entry ( 0"));
+}

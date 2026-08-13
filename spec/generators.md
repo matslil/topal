@@ -25,6 +25,13 @@ only then compute the next candidate. The first rejected candidate shall not be
 visited and shall end traversal with Unit. Complete foreach over an unbounded
 `iterate` shall be rejected unless another statically finite consumer applies.
 
+### TOPAL-GENERATOR-COLLECT-001 — Finite generated materialization
+
+Unary `collect` over an `iterate` generator bounded by `take-while` shall
+materialize its accepted yields as `List T` in yield order, preserving
+classifier and multiplicity. It shall stop before the first rejected candidate.
+Collecting an unbounded generated traversal shall be rejected before traversal.
+
 ### TOPAL-GENERATOR-ERROR-CODE-001 — Generator error-code vocabulary
 
 The qualified namespace `lang generator` publishes the nominal enum type
