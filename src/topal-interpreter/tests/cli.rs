@@ -3522,3 +3522,20 @@ fn every_mode_short_circuits_fold_with_traversal_control() {
     assert!(trace.contains("traversal.finished"));
     assert!(trace.contains("TOPAL-EXEC-TRAVERSAL-CONTROL-001"));
 }
+
+#[test]
+fn every_mode_applies_bound_symbolic_callable_values() {
+    let source = include_str!("../../../examples/interpreter/callable-values.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(42, -5, Less)")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("function.callable.captured").count(), 3);
+    assert_eq!(trace.matches("function.callable.called").count(), 3);
+}

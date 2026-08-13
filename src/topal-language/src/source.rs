@@ -35,6 +35,7 @@ pub enum Value {
         element_classifier: String,
         entries: Vec<Self>,
     },
+    Callable(CallableKind),
     AnonymousFunction(Box<AnonymousFunction>),
     Array {
         element_classifier: String,
@@ -188,6 +189,7 @@ impl fmt::Display for Value {
                 }
                 Ok(())
             }
+            Self::Callable(kind) => formatter.write_str(callable_name(*kind)),
             Self::AnonymousFunction(function) => {
                 write!(formatter, "<anonymous fn/{}>", function.parameters.len())
             }
@@ -950,13 +952,18 @@ impl Session {
                 body,
                 span: _,
             } => Ok(self.capture_anonymous_function(source, parameters, body, trace)),
-            Expression::Callable { span, .. } => Err(diagnostic(
-                source,
-                "E-UNSUPPORTED-CALLABLE-VALUE",
-                *span,
-                "callable values are not yet executable in isolation",
-            )),
+            Expression::Callable { kind, .. } => {
+                trace.record(TraceEvent {
+                    event: "function.callable.captured",
+                    rule: "TOPAL-FUNCTION-CALLABLE-VALUE-001",
+                    detail: callable_name(*kind),
+                });
+                Ok(Value::Callable(*kind))
+            }
             Expression::Application { items, span } => {
+                if self.is_bound_callable_call(source, items) {
+                    return self.evaluate_bound_callable_call(source, items, *span, trace);
+                }
                 if Self::is_traversal_control_constructor(source, items) {
                     return self.construct_traversal_control(source, items, *span, trace);
                 }
@@ -2452,6 +2459,58 @@ impl Session {
     fn is_bound_anonymous_call(&self, source: &SourceText, items: &[Expression]) -> bool {
         matches!(items, [Expression::Identifier(name), _]
             if matches!(self.bindings.get(source.slice(*name)), Some(Value::AnonymousFunction(_))))
+    }
+
+    fn is_bound_callable_call(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _]
+            if matches!(self.bindings.get(source.slice(*name)), Some(Value::Callable(_))))
+    }
+
+    fn evaluate_bound_callable_call(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(name), argument] = items else {
+            unreachable!("preselected bound callable call")
+        };
+        let Value::Callable(kind) = self.resolve_identifier(source, *name, trace)? else {
+            unreachable!("preselected callable binding")
+        };
+        let argument_span = argument.span();
+        let argument = self.evaluate_expression(source, argument, trace)?;
+        trace.record(TraceEvent {
+            event: "function.callable.called",
+            rule: "TOPAL-FUNCTION-CALLABLE-VALUE-001",
+            detail: callable_name(kind),
+        });
+        match argument {
+            Value::Tuple(mut operands) if operands.len() == 2 => {
+                let right = operands.pop().expect("two operands");
+                let left = operands.pop().expect("two operands");
+                apply_binary(
+                    source,
+                    kind,
+                    left,
+                    right,
+                    (span, argument_span, argument_span),
+                    trace,
+                )
+            }
+            operand if kind == CallableKind::Minus => apply_negate(source, operand, span, trace),
+            value => Err(diagnostic(
+                source,
+                "E-CALLABLE-ARGUMENT-PACKAGE",
+                argument_span,
+                format!(
+                    "callable `{}` requires a two-field positional product, found `{}`",
+                    callable_name(kind),
+                    structural_value_classifier(&value)
+                ),
+            )),
+        }
     }
 
     fn is_traversal_control_constructor(source: &SourceText, items: &[Expression]) -> bool {
@@ -6301,6 +6360,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
+        Value::Callable(_) => "Function",
         Value::AnonymousFunction(_) => "Function",
         Value::Array { .. } => "Array",
         Value::Set { .. } => "Set",
@@ -8996,6 +9056,7 @@ fn apply_negate(
         | Value::RationalRange { .. }
         | Value::Optional { .. }
         | Value::List { .. }
+        | Value::Callable(_)
         | Value::AnonymousFunction(_)
         | Value::Array { .. }
         | Value::Set { .. }
@@ -9023,6 +9084,26 @@ fn apply_negate(
             span,
             "prefix - requires an exact numeric operand",
         )),
+    }
+}
+
+const fn callable_name(kind: CallableKind) -> &'static str {
+    match kind {
+        CallableKind::Equal => "=",
+        CallableKind::NotEqual => "/=",
+        CallableKind::Less => "<",
+        CallableKind::Greater => ">",
+        CallableKind::LessEqual => "<=",
+        CallableKind::Compare => "<=>",
+        CallableKind::Range => "..",
+        CallableKind::GreaterEqual => ">=",
+        CallableKind::Plus => "+",
+        CallableKind::Minus => "-",
+        CallableKind::Multiply => "*",
+        CallableKind::Divide => "/",
+        CallableKind::QuotientModulo => "/%",
+        CallableKind::Modulo => "%",
+        CallableKind::Power => "^",
     }
 }
 

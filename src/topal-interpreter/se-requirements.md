@@ -1638,3 +1638,11 @@ and eliminate them in List fold under `TOPAL-EXEC-TRAVERSAL-CONTROL-001`,
 without invoking the fold function after `Finish`. Formal traces, LSP
 validation, and reversible scripted-debugger history shall cover commented
 examples.
+
+## TOPAL-INTP-SUBSET-200 — Symbolic callable values
+
+All interpreter modes shall retain symbolic callables as immutable function
+values and apply their unary or positional-product operands under
+`TOPAL-FUNCTION-CALLABLE-VALUE-001`. Formal traces, packaging diagnostics, LSP
+validation, and reversible scripted-debugger history shall cover commented
+examples.

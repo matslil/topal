@@ -317,3 +317,11 @@ A bound anonymous function may be applied directly. A unary function accepts
 its single operand directly. A function with several parameter components
 accepts one positional product containing those components and binds them in
 source order; an arity mismatch shall be rejected before entering its body.
+
+### TOPAL-FUNCTION-CALLABLE-VALUE-001 — Symbolic callable values
+
+A symbolic callable in value position shall produce a function value retaining
+that exact callable identity. Applying a binary callable value shall accept one
+two-field positional product and evaluate the corresponding operation. The
+symbol `-` additionally accepts one direct numeric operand as negation. Binding
+and later applying the value shall not restart name-based overload lookup.
