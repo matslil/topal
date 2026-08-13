@@ -1757,6 +1757,10 @@ All modes shall resolve fundamental Type objects under
 
 All modes shall compare Type identity under `TOPAL-ABSTRACTION-TYPE-IDENTITY-001`.
 
+## TOPAL-INTP-SUBSET-220 — Type classification
+
+Type values shall satisfy `Type` under `TOPAL-ABSTRACTION-TYPE-CLASSIFIER-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

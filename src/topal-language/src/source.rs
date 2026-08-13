@@ -6925,6 +6925,7 @@ fn supported_value_classifier(
             | "Rational"
             | "Scope"
             | "String"
+            | "Type"
             | "Unit"
     ) || enum_types.contains_key(classifier)
         || generator_classifiers(classifier).is_some_and(|(yielded, resumed, returned)| {

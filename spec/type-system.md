@@ -13,6 +13,11 @@ The fundamental names `Boolean`, `Int`, `Nat`, `Rational`, `String`, `Unit`, and
 Two fundamental Type values shall be equal exactly when they have the same
 canonical type identity. Distinct fundamental types shall compare unequal.
 
+### TOPAL-ABSTRACTION-TYPE-CLASSIFIER-001 — Type classification
+
+Every fundamental Type value shall satisfy the kind classifier `Type` while
+retaining its concrete type identity.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:
