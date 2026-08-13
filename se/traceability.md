@@ -317,3 +317,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-234` | `TOPAL-LAYOUT-ACCESS-001` | interpreter and LSP tests; access-policy example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-235` | `TOPAL-LAYOUT-BIT-ORDER-001` | interpreter and LSP tests; bit-order example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-236` | `TOPAL-LAYOUT-PACKING-001` | interpreter and LSP tests; packing example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-237` | `TOPAL-LAYOUT-FIELD-ORDER-001` | interpreter and LSP tests; field-order example | `topal-language`, `topal-interpreter`, `topal-lsp` |

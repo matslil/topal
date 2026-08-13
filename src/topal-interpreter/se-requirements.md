@@ -1830,6 +1830,10 @@ All modes shall resolve bit order under `TOPAL-LAYOUT-BIT-ORDER-001`.
 
 All modes shall resolve packing under `TOPAL-LAYOUT-PACKING-001`.
 
+## TOPAL-INTP-SUBSET-237 — Layout field order
+
+All modes shall resolve `Declared` under `TOPAL-LAYOUT-FIELD-ORDER-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

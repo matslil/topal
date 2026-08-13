@@ -21,6 +21,10 @@ external-layout access policies without granting runtime authority.
 
 `Natural` and `Packed` shall resolve nominal product-packing policies.
 
+### TOPAL-LAYOUT-FIELD-ORDER-001 — Declared field order
+
+`Declared` shall resolve the policy retaining source declaration field order.
+
 ### TOPAL-SER-SCOPE-001 — Protocol scope
 
 The native protocol represents the public semantic description of every object

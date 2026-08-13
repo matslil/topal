@@ -2442,6 +2442,17 @@ impl Session {
                 alternative: name.into(),
             });
         }
+        if name == "Declared" {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-FIELD-ORDER-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "FieldOrder".into(),
+                alternative: name.into(),
+            });
+        }
         if matches!(
             name,
             "Boolean" | "Completed" | "Int" | "Nat" | "Rational" | "Scope" | "String" | "Unit"
