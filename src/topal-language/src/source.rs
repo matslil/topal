@@ -953,6 +953,9 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if Self::is_record_reconstruction(source, items) {
+                    return self.evaluate_record_reconstruction(source, items, *span, trace);
+                }
                 if Self::is_range_selection(source, items) {
                     return self.evaluate_range_selection(source, items, *span, trace);
                 }
@@ -2410,6 +2413,74 @@ impl Session {
                 if matches!(source.slice(*operation), "select" | "select-index")
                     && !matches!(selector, Expression::AnonymousFunction { .. })
         )
+    }
+
+    fn is_record_reconstruction(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(
+            items,
+            [_, Expression::Identifier(operation), Expression::Product { fields, .. }]
+                if source.slice(*operation) == "with"
+                    && !fields.is_empty()
+                    && fields.iter().all(|field| field.label.is_some())
+        )
+    }
+
+    fn evaluate_record_reconstruction(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [
+            base,
+            _,
+            Expression::Product {
+                fields: replacements,
+                ..
+            },
+        ] = items
+        else {
+            unreachable!("preselected record reconstruction")
+        };
+        let Value::Record(mut fields) = self.evaluate_expression(source, base, trace)? else {
+            return Err(diagnostic(
+                source,
+                "E-RECONSTRUCT-NON-RECORD",
+                base.span(),
+                "`with` reconstruction requires a labeled product",
+            ));
+        };
+        let mut replaced = BTreeSet::new();
+        for replacement in replacements {
+            let label_span = replacement.label.expect("preselected labeled replacement");
+            let label = source.slice(label_span);
+            if !replaced.insert(label) {
+                return Err(diagnostic(
+                    source,
+                    "E-DUPLICATE-RECONSTRUCTION-FIELD",
+                    label_span,
+                    format!("field `{label}` is replaced more than once"),
+                ));
+            }
+            let Some((_, value)) = fields.iter_mut().find(|(name, _)| name == label) else {
+                return Err(diagnostic(
+                    source,
+                    "E-NO-SUCH-RECORD-FIELD",
+                    label_span,
+                    format!("record has no field named `{label}`"),
+                ));
+            };
+            *value = self.evaluate_expression(source, &replacement.value, trace)?;
+            trace.record(TraceEvent {
+                event: "record.field.replaced",
+                rule: "TOPAL-TYPE-RECONSTRUCT-001",
+                detail: label,
+            });
+        }
+        let result = Value::Record(fields);
+        self.checkpoint(trace, Some(&result), Some(span));
+        Ok(result)
     }
 
     fn evaluate_range_selection(

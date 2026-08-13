@@ -2735,3 +2735,20 @@ fn records_completion_evidence_reversibly() {
     assert!(stdout.contains("TOPAL-EXEC-COMPLETED-001"));
     assert!(stdout.contains("Completed"));
 }
+
+#[test]
+fn records_immutable_reconstruction_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}record-reconstruction.debug"),
+            &format!("{root}record-reconstruction.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-TYPE-RECONSTRUCT-001"));
+    assert!(stdout.contains("age is 37"));
+}

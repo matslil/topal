@@ -3457,3 +3457,19 @@ fn every_mode_returns_explicit_completion_evidence() {
     assert!(trace.contains("TOPAL-EXEC-COMPLETED-001"));
     assert!(trace.contains("function.return"));
 }
+
+#[test]
+fn every_mode_reconstructs_records_immutably() {
+    let source = include_str!("../../../examples/interpreter/record-reconstruction.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(36, \"Ada\", 37)")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-RECONSTRUCT-001"));
+}

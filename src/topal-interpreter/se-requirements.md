@@ -1608,3 +1608,10 @@ All interpreter modes shall evaluate `Completed` as zero-data completion
 evidence distinct from `Unit` under `TOPAL-EXEC-COMPLETED-001`. Formal traces,
 LSP validation, and reversible scripted-debugger history shall cover a
 commented function example.
+
+## TOPAL-INTP-SUBSET-196 — Immutable record reconstruction
+
+All interpreter modes shall reconstruct labeled products with `with` under
+`TOPAL-TYPE-RECONSTRUCT-001`, preserving the original and every unreplaced
+field. Formal traces, source-located diagnostics, LSP validation, and reversible
+scripted-debugger history shall cover a commented example.
