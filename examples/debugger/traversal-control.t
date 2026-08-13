@@ -1,0 +1,7 @@
+#!/usr/bin/env topal
+# Demonstrates reversible Continue and Finish construction while a fold action
+# stops immediately, before processing the remaining List entries.
+values : List Int is Entry (1, Entry (2, Entry (100, Empty)))
+controls is (Continue 1, Finish 2)
+stop is { state, value } Finish (state + value)
+(values fold 0 stop, controls)

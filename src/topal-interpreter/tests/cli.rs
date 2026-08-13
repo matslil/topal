@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 132);
+    assert_eq!(examples.len(), 139);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3439,4 +3439,116 @@ fn every_mode_selects_values_and_indexes_by_range() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-RANGE-VALUE-SELECTION-001"));
     assert!(trace.contains("TOPAL-RANGE-INDEX-SELECTION-001"));
+}
+
+#[test]
+fn every_mode_returns_explicit_completion_evidence() {
+    let source = include_str!("../../../examples/interpreter/completed-evidence.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("Completed")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-EXEC-COMPLETED-001"));
+    assert!(trace.contains("function.return"));
+}
+
+#[test]
+fn every_mode_reconstructs_records_immutably() {
+    let source = include_str!("../../../examples/interpreter/record-reconstruction.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(36, \"Ada\", 37)")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-RECONSTRUCT-001"));
+}
+
+#[test]
+fn every_mode_passes_bound_anonymous_function_values() {
+    let source = include_str!("../../../examples/interpreter/bound-anonymous-functions.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("Entry ( 2, Entry ( 4, Entry ( 6, Empty ) ) )"));
+        assert!(stdout.contains(", 6)"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
+    assert!(trace.matches("binding.resolved").count() >= 3);
+}
+
+#[test]
+fn every_mode_directly_applies_anonymous_function_values() {
+    let source = include_str!("../../../examples/interpreter/anonymous-function-application.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(42, 42)")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("function.anonymous.called").count(), 2);
+}
+
+#[test]
+fn every_mode_short_circuits_fold_with_traversal_control() {
+    let source = include_str!("../../../examples/interpreter/traversal-control.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(1, (Continue 1, Finish 2))")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("function.anonymous.called").count(), 1);
+    assert!(trace.contains("traversal.finished"));
+    assert!(trace.contains("TOPAL-EXEC-TRAVERSAL-CONTROL-001"));
+}
+
+#[test]
+fn every_mode_applies_bound_symbolic_callable_values() {
+    let source = include_str!("../../../examples/interpreter/callable-values.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(42, -5, Less)")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("function.callable.captured").count(), 3);
+    assert_eq!(trace.matches("function.callable.called").count(), 3);
+}
+
+#[test]
+fn every_mode_applies_bound_named_function_values() {
+    let source = include_str!("../../../examples/interpreter/named-function-values.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-VALUE-001"));
+    assert!(trace.contains("function.entered"));
 }

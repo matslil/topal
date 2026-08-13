@@ -1601,3 +1601,56 @@ Observable values shall preserve source kind, order, and multiplicity; formal
 traces shall retain selection provenance without exposing representation. LSP
 validation and reversible scripted-debugger history shall cover commented
 examples.
+
+## TOPAL-INTP-SUBSET-195 — Explicit completion evidence
+
+All interpreter modes shall evaluate `Completed` as zero-data completion
+evidence distinct from `Unit` under `TOPAL-EXEC-COMPLETED-001`. Formal traces,
+LSP validation, and reversible scripted-debugger history shall cover a
+commented function example.
+
+## TOPAL-INTP-SUBSET-196 — Immutable record reconstruction
+
+All interpreter modes shall reconstruct labeled products with `with` under
+`TOPAL-TYPE-RECONSTRUCT-001`, preserving the original and every unreplaced
+field. Formal traces, source-located diagnostics, LSP validation, and reversible
+scripted-debugger history shall cover a commented example.
+
+## TOPAL-INTP-SUBSET-197 — Bound anonymous function values
+
+All interpreter modes shall retain inferred anonymous functions as immutable
+values that can be bound and later supplied to compatible List operations under
+`TOPAL-FUNCTION-ANONYMOUS-001`. Formal traces, LSP validation, and reversible
+scripted-debugger history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-198 — Direct anonymous function application
+
+All interpreter modes shall directly apply bound inferred anonymous functions
+under `TOPAL-FUNCTION-ANONYMOUS-001`, accepting unary operands directly and
+multi-parameter operands as positional products. Formal traces, arity
+diagnostics, LSP validation, and reversible scripted-debugger history shall
+cover commented examples.
+
+## TOPAL-INTP-SUBSET-199 — Short-circuiting traversal control
+
+All interpreter modes shall construct `Continue` and `Finish` control values
+and eliminate them in List fold under `TOPAL-EXEC-TRAVERSAL-CONTROL-001`,
+without invoking the fold function after `Finish`. Formal traces, LSP
+validation, and reversible scripted-debugger history shall cover commented
+examples.
+
+## TOPAL-INTP-SUBSET-200 — Symbolic callable values
+
+All interpreter modes shall retain symbolic callables as immutable function
+values and apply their unary or positional-product operands under
+`TOPAL-FUNCTION-CALLABLE-VALUE-001`. Formal traces, packaging diagnostics, LSP
+validation, and reversible scripted-debugger history shall cover commented
+examples.
+
+## TOPAL-INTP-SUBSET-201 — Named function values
+
+All interpreter modes shall retain declared functions and their ordered
+overloads as immutable values and apply them after rebinding under
+`TOPAL-FUNCTION-VALUE-001`. Existing typed selection, recursion, and result
+checks shall remain effective. Formal traces, LSP validation, and reversible
+scripted-debugger history shall cover commented examples.

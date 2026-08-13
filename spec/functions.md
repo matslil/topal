@@ -2,6 +2,23 @@
 
 ## Formal text
 
+### TOPAL-EXEC-COMPLETED-001 — Completion evidence
+
+The identifier `Completed` in expression position shall evaluate to the
+zero-data value classified by `Completed`. It shall be distinct from `Unit`:
+returning it establishes a dependency on completion, while `Unit` establishes
+no completion dependency. Test traces and debugger history shall expose the
+construction of completion evidence before its binding or return.
+
+### TOPAL-EXEC-TRAVERSAL-CONTROL-001 — Traversal elimination
+
+`Continue state` and `Finish result` shall construct distinct traversal-control
+values. A short-circuiting fold shall pass the payload of `Continue` to its next
+invocation and shall immediately return the payload of `Finish` without
+invoking its function for remaining entries. This initial executable fold
+subset requires both payloads to satisfy the classifier of its initial state.
+Traces and debugger history shall expose construction and early termination.
+
 ### TOPAL-FUNCTION-STATIC-NULLARY-001 — Static nullary function execution
 
 A declaration `name is fn static () -> R` followed by one indented expression
@@ -290,3 +307,30 @@ construct an anonymous function only where the surrounding application selects
 one function type. Invocation shall bind its parameter patterns to the supplied
 arguments and resolve other names from the lexical environment captured when
 the function was constructed. Each invocation establishes its own return scope.
+
+The constructed function is an ordinary value and may be bound before being
+passed to another application. Resolving such a binding shall retain the same
+captured lexical environment, parameter arity, and invocation semantics as a
+function written directly at that contextual call site.
+
+A bound anonymous function may be applied directly. A unary function accepts
+its single operand directly. A function with several parameter components
+accepts one positional product containing those components and binds them in
+source order; an arity mismatch shall be rejected before entering its body.
+
+### TOPAL-FUNCTION-CALLABLE-VALUE-001 — Symbolic callable values
+
+A symbolic callable in value position shall produce a function value retaining
+that exact callable identity. Applying a binary callable value shall accept one
+two-field positional product and evaluate the corresponding operation. The
+symbol `-` additionally accepts one direct numeric operand as negation. Binding
+and later applying the value shall not restart name-based overload lookup.
+
+### TOPAL-FUNCTION-VALUE-001 — Named function values
+
+Resolving a declared function without applying it shall produce a function
+value retaining its declaration identity and complete ordered overload set.
+The value may be bound under another name and applied there; application shall
+perform ordinary argument evaluation, overload selection, static-context,
+termination, entry, and result checks against the retained declarations. It
+shall not resolve unrelated declarations that happen to use the new name.

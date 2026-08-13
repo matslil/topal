@@ -329,6 +329,15 @@ value, undeclared effect, or undefined operation. Implementations may reject a
 program when required proof is unavailable; they may not accept it by assuming
 unverified safety evidence. This realizes `TOPAL-REQ-SAFE-001`.
 
+### TOPAL-TYPE-RECONSTRUCT-001 — Immutable record reconstruction
+
+For a labeled product value `base`, `base with ( field is value, ... )` shall
+construct a new value of the same product type. Each named field shall exist
+exactly once in `base`; its replacement shall satisfy the original field
+classification. Unnamed fields, duplicate replacements, and fields absent from
+the base product shall be rejected. Fields not named by the reconstruction
+shall retain their values, and `base` shall remain unchanged.
+
 ## Graphical presentation
 
 ```mermaid

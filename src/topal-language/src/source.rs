@@ -35,6 +35,8 @@ pub enum Value {
         element_classifier: String,
         entries: Vec<Self>,
     },
+    Callable(CallableKind),
+    NamedFunction(Box<NamedFunction>),
     AnonymousFunction(Box<AnonymousFunction>),
     Array {
         element_classifier: String,
@@ -103,6 +105,9 @@ pub enum Value {
         line: usize,
         column: usize,
     },
+    Continue(Box<Self>),
+    Finish(Box<Self>),
+    Completed,
     Unit,
 }
 
@@ -122,6 +127,12 @@ pub struct AnonymousFunction {
     parameters: Vec<String>,
     body: Box<Expression>,
     bindings: BTreeMap<String, Value>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NamedFunction {
+    name: String,
+    candidates: Vec<UserFunction>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -185,6 +196,8 @@ impl fmt::Display for Value {
                 }
                 Ok(())
             }
+            Self::Callable(kind) => formatter.write_str(callable_name(*kind)),
+            Self::NamedFunction(function) => write!(formatter, "<fn {}>", function.name),
             Self::AnonymousFunction(function) => {
                 write!(formatter, "<anonymous fn/{}>", function.parameters.len())
             }
@@ -279,6 +292,9 @@ impl fmt::Display for Value {
             Self::Error { domain, code, .. } => {
                 write!(formatter, "Error ( domain is {domain}, code is {code} )")
             }
+            Self::Continue(value) => write!(formatter, "Continue {value}"),
+            Self::Finish(value) => write!(formatter, "Finish {value}"),
+            Self::Completed => formatter.write_str("Completed"),
             Self::Unit => formatter.write_str("()"),
         }
     }
@@ -944,13 +960,34 @@ impl Session {
                 body,
                 span: _,
             } => Ok(self.capture_anonymous_function(source, parameters, body, trace)),
-            Expression::Callable { span, .. } => Err(diagnostic(
-                source,
-                "E-UNSUPPORTED-CALLABLE-VALUE",
-                *span,
-                "callable values are not yet executable in isolation",
-            )),
+            Expression::Callable { kind, .. } => {
+                trace.record(TraceEvent {
+                    event: "function.callable.captured",
+                    rule: "TOPAL-FUNCTION-CALLABLE-VALUE-001",
+                    detail: callable_name(*kind),
+                });
+                Ok(Value::Callable(*kind))
+            }
             Expression::Application { items, span } => {
+                if self.is_bound_named_function_call(source, items) {
+                    return self
+                        .evaluate_bound_named_function_call(source, expression, items, trace);
+                }
+                if self.is_bound_callable_call(source, items) {
+                    return self.evaluate_bound_callable_call(source, items, *span, trace);
+                }
+                if Self::is_traversal_control_constructor(source, items) {
+                    return self.construct_traversal_control(source, items, *span, trace);
+                }
+                if self.is_bound_anonymous_call(source, items) {
+                    return self.evaluate_bound_anonymous_call(source, items, *span, trace);
+                }
+                if Self::is_record_reconstruction(source, items) {
+                    return self.evaluate_record_reconstruction(source, items, *span, trace);
+                }
+                if self.is_bound_list_higher_order_application(source, items) {
+                    return self.evaluate_list_higher_order(source, items, *span, trace);
+                }
                 if Self::is_range_selection(source, items) {
                     return self.evaluate_range_selection(source, items, *span, trace);
                 }
@@ -2307,17 +2344,33 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let name = source.slice(span);
+        if name == "Completed" {
+            trace.record(TraceEvent {
+                event: "completion.evidence",
+                rule: "TOPAL-EXEC-COMPLETED-001",
+                detail: "Completed",
+            });
+            return Ok(Value::Completed);
+        }
         if self.consumed_names.contains(name) {
             return Err(consumed_generator_diagnostic(source, span, name));
         }
-        let value = self.bindings.get(name).cloned().ok_or_else(|| {
+        let value = if let Some(value) = self.bindings.get(name) {
+            value.clone()
+        } else if let Some(candidates) = self.functions.get(name) {
+            Value::NamedFunction(Box::new(NamedFunction {
+                name: name.to_owned(),
+                candidates: candidates.clone(),
+            }))
+        } else {
             let error = diagnostic(source, "E-UNBOUND-NAME", span, "name is not bound");
-            closest_name(name, self.bindings.keys())
+            return Err(closest_name(name, self.bindings.keys())
+                .or_else(|| closest_name(name, self.functions.keys()))
                 .or_else(|| closest_root_operation(name))
                 .map_or(error.clone(), |candidate| {
                     error.with_help(format!("did you mean `{candidate}`?"))
-                })
-        })?;
+                }));
+        };
         trace.record(TraceEvent {
             event: "binding.resolved",
             rule: "TOPAL-SYN-BIND-001",
@@ -2400,6 +2453,249 @@ impl Session {
                 if matches!(source.slice(*operation), "select" | "select-index")
                     && !matches!(selector, Expression::AnonymousFunction { .. })
         )
+    }
+
+    fn is_bound_list_higher_order_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+    ) -> bool {
+        let bound_function = |expression: &Expression| {
+            matches!(expression, Expression::Identifier(name)
+                if matches!(self.bindings.get(source.slice(*name)), Some(Value::AnonymousFunction(_))))
+        };
+        matches!(
+            items,
+            [_, Expression::Identifier(operation), function]
+                if matches!(source.slice(*operation), "map" | "select" | "remove-indexes" | "remove-values")
+                    && bound_function(function)
+        ) || matches!(
+            items,
+            [_, Expression::Identifier(operation), _, function]
+                if source.slice(*operation) == "fold" && bound_function(function)
+        )
+    }
+
+    fn is_bound_anonymous_call(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _]
+            if matches!(self.bindings.get(source.slice(*name)), Some(Value::AnonymousFunction(_))))
+    }
+
+    fn is_bound_callable_call(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _]
+            if matches!(self.bindings.get(source.slice(*name)), Some(Value::Callable(_))))
+    }
+
+    fn is_bound_named_function_call(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _]
+            if matches!(self.bindings.get(source.slice(*name)), Some(Value::NamedFunction(_))))
+    }
+
+    fn evaluate_bound_named_function_call(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        items: &[Expression],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(alias), _] = items else {
+            unreachable!("preselected bound named function call")
+        };
+        let alias = source.slice(*alias);
+        let Some(Value::NamedFunction(function)) = self.bindings.get(alias) else {
+            unreachable!("preselected named function binding")
+        };
+        let mut invocation = self.clone();
+        invocation.bindings.remove(alias);
+        invocation
+            .functions
+            .insert(alias.to_owned(), function.candidates.clone());
+        trace.record(TraceEvent {
+            event: "function.value.called",
+            rule: "TOPAL-FUNCTION-VALUE-001",
+            detail: &function.name,
+        });
+        invocation.evaluate_expression(source, expression, trace)
+    }
+
+    fn evaluate_bound_callable_call(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(name), argument] = items else {
+            unreachable!("preselected bound callable call")
+        };
+        let Value::Callable(kind) = self.resolve_identifier(source, *name, trace)? else {
+            unreachable!("preselected callable binding")
+        };
+        let argument_span = argument.span();
+        let argument = self.evaluate_expression(source, argument, trace)?;
+        trace.record(TraceEvent {
+            event: "function.callable.called",
+            rule: "TOPAL-FUNCTION-CALLABLE-VALUE-001",
+            detail: callable_name(kind),
+        });
+        match argument {
+            Value::Tuple(mut operands) if operands.len() == 2 => {
+                let right = operands.pop().expect("two operands");
+                let left = operands.pop().expect("two operands");
+                apply_binary(
+                    source,
+                    kind,
+                    left,
+                    right,
+                    (span, argument_span, argument_span),
+                    trace,
+                )
+            }
+            operand if kind == CallableKind::Minus => apply_negate(source, operand, span, trace),
+            value => Err(diagnostic(
+                source,
+                "E-CALLABLE-ARGUMENT-PACKAGE",
+                argument_span,
+                format!(
+                    "callable `{}` requires a two-field positional product, found `{}`",
+                    callable_name(kind),
+                    structural_value_classifier(&value)
+                ),
+            )),
+        }
+    }
+
+    fn is_traversal_control_constructor(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _]
+            if matches!(source.slice(*name), "Continue" | "Finish"))
+    }
+
+    fn construct_traversal_control(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(name), payload] = items else {
+            unreachable!("preselected traversal-control constructor")
+        };
+        let payload = self.evaluate_expression(source, payload, trace)?;
+        let constructor = source.slice(*name);
+        trace.record(TraceEvent {
+            event: "traversal.control.constructed",
+            rule: "TOPAL-EXEC-TRAVERSAL-CONTROL-001",
+            detail: constructor,
+        });
+        let value = if constructor == "Continue" {
+            Value::Continue(Box::new(payload))
+        } else {
+            Value::Finish(Box::new(payload))
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
+    }
+
+    fn evaluate_bound_anonymous_call(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(name), argument_expression] = items else {
+            unreachable!("preselected bound anonymous call")
+        };
+        let function = self.resolve_identifier(source, *name, trace)?;
+        let arity = match &function {
+            Value::AnonymousFunction(function) => function.parameters.len(),
+            _ => unreachable!("preselected anonymous binding"),
+        };
+        let argument = self.evaluate_expression(source, argument_expression, trace)?;
+        let arguments = match (arity, argument) {
+            (1, value) => vec![value],
+            (_, Value::Tuple(values)) => values,
+            (_, value) => {
+                return Err(diagnostic(
+                    source,
+                    "E-ANONYMOUS-ARGUMENT-PACKAGE",
+                    argument_expression.span(),
+                    format!(
+                        "anonymous function expects {arity} arguments packaged as a tuple, found `{}`",
+                        structural_value_classifier(&value)
+                    ),
+                ));
+            }
+        };
+        self.invoke_anonymous_function(&function, arguments, span, trace)
+    }
+
+    fn is_record_reconstruction(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(
+            items,
+            [_, Expression::Identifier(operation), Expression::Product { fields, .. }]
+                if source.slice(*operation) == "with"
+                    && !fields.is_empty()
+                    && fields.iter().all(|field| field.label.is_some())
+        )
+    }
+
+    fn evaluate_record_reconstruction(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [
+            base,
+            _,
+            Expression::Product {
+                fields: replacements,
+                ..
+            },
+        ] = items
+        else {
+            unreachable!("preselected record reconstruction")
+        };
+        let Value::Record(mut fields) = self.evaluate_expression(source, base, trace)? else {
+            return Err(diagnostic(
+                source,
+                "E-RECONSTRUCT-NON-RECORD",
+                base.span(),
+                "`with` reconstruction requires a labeled product",
+            ));
+        };
+        let mut replaced = BTreeSet::new();
+        for replacement in replacements {
+            let label_span = replacement.label.expect("preselected labeled replacement");
+            let label = source.slice(label_span);
+            if !replaced.insert(label) {
+                return Err(diagnostic(
+                    source,
+                    "E-DUPLICATE-RECONSTRUCTION-FIELD",
+                    label_span,
+                    format!("field `{label}` is replaced more than once"),
+                ));
+            }
+            let Some((_, value)) = fields.iter_mut().find(|(name, _)| name == label) else {
+                return Err(diagnostic(
+                    source,
+                    "E-NO-SUCH-RECORD-FIELD",
+                    label_span,
+                    format!("record has no field named `{label}`"),
+                ));
+            };
+            *value = self.evaluate_expression(source, &replacement.value, trace)?;
+            trace.record(TraceEvent {
+                event: "record.field.replaced",
+                rule: "TOPAL-TYPE-RECONSTRUCT-001",
+                detail: label,
+            });
+        }
+        let result = Value::Record(fields);
+        self.checkpoint(trace, Some(&result), Some(span));
+        Ok(result)
     }
 
     fn evaluate_range_selection(
@@ -3127,8 +3423,33 @@ impl Session {
                 let function_span = function.span();
                 let function = self.evaluate_expression(source, function, trace)?;
                 for entry in entries {
-                    state =
-                        self.invoke_anonymous_function(&function, vec![state, entry], span, trace)?;
+                    let transformed = self.invoke_anonymous_function(
+                        &function,
+                        vec![state.clone(), entry],
+                        span,
+                        trace,
+                    )?;
+                    state = match transformed {
+                        Value::Continue(next) => *next,
+                        Value::Finish(result) => {
+                            let result = *result;
+                            if !value_has_classifier(&result, &expected) {
+                                return Err(diagnostic(
+                                    source,
+                                    "E-FOLD-FINISH-CLASSIFIER",
+                                    function_span,
+                                    format!("Finish result must satisfy `{expected}`"),
+                                ));
+                            }
+                            trace.record(TraceEvent {
+                                event: "traversal.finished",
+                                rule: "TOPAL-EXEC-TRAVERSAL-CONTROL-001",
+                                detail: "fold",
+                            });
+                            return Ok(result);
+                        }
+                        value => value,
+                    };
                     if !value_has_classifier(&state, &expected) {
                         return Err(diagnostic(
                             source,
@@ -5190,6 +5511,8 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
+        | (Value::Continue(_) | Value::Finish(_), "TraversalControl")
+        | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
         (Value::Int(value), "Nat") => value >= &BigInt::from(0),
@@ -5945,6 +6268,7 @@ fn supported_value_classifier(
         classifier,
         "Boolean"
             | "Character"
+            | "Completed"
             | "Comparison"
             | "Generator Character Unit Unit"
             | "Generator Character Unit Character"
@@ -6087,7 +6411,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
-        Value::AnonymousFunction(_) => "Function",
+        Value::Callable(_) | Value::NamedFunction(_) | Value::AnonymousFunction(_) => "Function",
         Value::Array { .. } => "Array",
         Value::Set { .. } => "Set",
         Value::Bag { .. } => "Bag",
@@ -6130,6 +6454,8 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Modular { .. } => "Modular",
         Value::ErrorDomain(_) => "ErrorDomain",
         Value::Error { .. } => "Error",
+        Value::Continue(_) | Value::Finish(_) => "TraversalControl",
+        Value::Completed => "Completed",
         Value::Unit => "Unit",
     }
 }
@@ -8780,6 +9106,8 @@ fn apply_negate(
         | Value::RationalRange { .. }
         | Value::Optional { .. }
         | Value::List { .. }
+        | Value::Callable(_)
+        | Value::NamedFunction(_)
         | Value::AnonymousFunction(_)
         | Value::Array { .. }
         | Value::Set { .. }
@@ -8798,12 +9126,35 @@ fn apply_negate(
         | Value::ModularType(_)
         | Value::ErrorDomain(_)
         | Value::Error { .. }
+        | Value::Continue(_)
+        | Value::Finish(_)
+        | Value::Completed
         | Value::Unit => Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",
             span,
             "prefix - requires an exact numeric operand",
         )),
+    }
+}
+
+const fn callable_name(kind: CallableKind) -> &'static str {
+    match kind {
+        CallableKind::Equal => "=",
+        CallableKind::NotEqual => "/=",
+        CallableKind::Less => "<",
+        CallableKind::Greater => ">",
+        CallableKind::LessEqual => "<=",
+        CallableKind::Compare => "<=>",
+        CallableKind::Range => "..",
+        CallableKind::GreaterEqual => ">=",
+        CallableKind::Plus => "+",
+        CallableKind::Minus => "-",
+        CallableKind::Multiply => "*",
+        CallableKind::Divide => "/",
+        CallableKind::QuotientModulo => "/%",
+        CallableKind::Modulo => "%",
+        CallableKind::Power => "^",
     }
 }
 
