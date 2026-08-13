@@ -55,6 +55,11 @@ Effect expressions shall compare by canonical row identity; empty rows are equal
 
 Functions may accept and return first-class `Effect` values without performing them.
 
+### TOPAL-EFFECT-PRODUCT-001 — Effect products
+
+Effect expressions may be packaged in ordinary positional products without
+performing their described interactions.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:

@@ -1796,6 +1796,10 @@ Effect rows shall compare under `TOPAL-EFFECT-IDENTITY-001`.
 
 Functions shall preserve Effect values under `TOPAL-EFFECT-BOUNDARY-001`.
 
+## TOPAL-INTP-SUBSET-229 — Effect products
+
+Products shall retain inert Effect values under `TOPAL-EFFECT-PRODUCT-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

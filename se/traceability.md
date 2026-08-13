@@ -309,3 +309,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-226` | `TOPAL-EFFECT-CLASSIFIER-001` | interpreter and LSP tests; Effect-classifier example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-227` | `TOPAL-EFFECT-IDENTITY-001` | interpreter and LSP tests; effect-identity example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-228` | `TOPAL-EFFECT-BOUNDARY-001` | interpreter and LSP tests; Effect-boundary example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-229` | `TOPAL-EFFECT-PRODUCT-001` | interpreter and LSP tests; Effect-product example | `topal-language`, `topal-interpreter`, `topal-lsp` |
