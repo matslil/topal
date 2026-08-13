@@ -57,6 +57,63 @@ fn every_interpreter_example_is_an_executable_script() {
 }
 
 #[test]
+fn every_interpreter_example_documents_its_feature() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/interpreter");
+    for entry in std::fs::read_dir(directory).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|extension| extension == "t") {
+            let source = std::fs::read_to_string(&path).unwrap();
+            assert!(
+                source
+                    .lines()
+                    .skip(1)
+                    .take(4)
+                    .any(|line| line.starts_with('#')),
+                "{} lacks a feature comment",
+                path.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn test_mode_preserves_script_standard_output() {
+    let source = "value is 40 + 2\nvalue\n";
+    assert_eq!(run(&[], source).stdout, run(&["--test"], source).stdout);
+}
+
+#[test]
+fn interactive_mode_preserves_complete_unit_results() {
+    let source = "40 + 2\n";
+    assert_eq!(
+        run(&[], source).stdout,
+        run(&["--interactive"], source).stdout
+    );
+}
+
+#[test]
+fn unicode_diagnostics_preserve_source_columns() {
+    let output = run(&[], "name is \"å\"\nnamé\n");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stderr).unwrap();
+    assert!(diagnostic.contains("2 | namé"));
+    assert!(diagnostic.contains('^'));
+}
+
+#[test]
+fn version_output_is_reproducible() {
+    let first = run(&["--version"], "");
+    let second = run(&["--version"], "");
+    assert!(first.status.success());
+    assert_eq!(first.stdout, second.stdout);
+    assert!(
+        String::from_utf8(first.stdout)
+            .unwrap()
+            .contains("language design-0")
+    );
+}
+
+#[test]
 fn test_mode_records_discard_after_its_initializer() {
     let output = run(&["--test"], "_ is 20 + 22\n7\n");
     assert!(output.status.success());

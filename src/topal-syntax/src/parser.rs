@@ -2523,4 +2523,13 @@ mod tests {
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     }
+
+    #[test]
+    fn malformed_source_corpus_never_panics() {
+        for input in ["(", "{", "fn", "x is", "x\n  then", "\0", "😀 ( , )"] {
+            if let Ok(source) = SourceText::new(input) {
+                let _ = parse(&source, &lex(&source));
+            }
+        }
+    }
 }

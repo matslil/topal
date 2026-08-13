@@ -2,6 +2,9 @@ use std::io::{self, Write};
 
 use crate::ExecutionSnapshot;
 
+/// Stable interpreter/compiler comparison envelope.
+pub const TEST_TRACE_SCHEMA: &str = "topal.test-trace/1";
+
 /// One stable, machine-readable interpreter decision.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraceEvent<'a> {
@@ -28,7 +31,7 @@ impl TraceEvent<'_> {
     #[must_use]
     pub fn to_json_line(&self) -> String {
         format!(
-            "{{\"schema\":\"topal.test-trace/1\",\"event\":\"{}\",\"rule\":\"{}\",\"detail\":\"{}\"}}",
+            "{{\"schema\":\"{TEST_TRACE_SCHEMA}\",\"event\":\"{}\",\"rule\":\"{}\",\"detail\":\"{}\"}}",
             escape(self.event),
             escape(self.rule),
             escape(self.detail)
@@ -76,4 +79,54 @@ fn escape(value: &str) -> String {
         }
     }
     escaped
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stable_schema_is_shared_by_every_event() {
+        let line = TraceEvent {
+            event: "event",
+            rule: "RULE",
+            detail: "detail",
+        }
+        .to_json_line();
+        assert!(line.contains(TEST_TRACE_SCHEMA));
+    }
+
+    #[test]
+    fn trace_serialization_is_deterministic() {
+        let event = TraceEvent {
+            event: "chosen",
+            rule: "RULE-001",
+            detail: "same",
+        };
+        assert_eq!(event.to_json_line(), event.to_json_line());
+    }
+
+    #[test]
+    fn trace_strings_are_validly_escaped() {
+        let line = TraceEvent {
+            event: "quote\"",
+            rule: "slash\\",
+            detail: "line\nnext",
+        }
+        .to_json_line();
+        assert!(line.contains("quote\\\""));
+        assert!(line.contains("slash\\\\"));
+        assert!(line.contains("line\\nnext"));
+    }
+
+    #[test]
+    fn one_event_always_occupies_one_json_line() {
+        let line = TraceEvent {
+            event: "a\nb",
+            rule: "r\nr",
+            detail: "d\nd",
+        }
+        .to_json_line();
+        assert!(!line.contains('\n'));
+    }
 }
