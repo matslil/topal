@@ -299,3 +299,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-216` | `TOPAL-NAMESPACE-ALIAS-CHAIN-001` | interpreter, LSP, and scripted debugger tests; alias-chain examples | `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | `TOPAL-INTP-SUBSET-217` | `TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001` | interpreter, LSP, and scripted debugger tests; Scope-parameter examples | `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | `TOPAL-INTP-SUBSET-218` | `TOPAL-ABSTRACTION-TYPE-VALUE-001` | interpreter, LSP, and scripted debugger tests; Type-value examples | `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
+| `TOPAL-INTP-SUBSET-219` | `TOPAL-ABSTRACTION-TYPE-IDENTITY-001` | interpreter and LSP tests; Type-identity example | `topal-language`, `topal-interpreter`, `topal-lsp` |

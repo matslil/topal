@@ -9094,6 +9094,7 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
         ) if left_constraint == right_constraint => values_equal(*left, *right, trace),
         (Value::Refined { value, .. }, right) => values_equal(*value, right, trace),
         (left, Value::Refined { value, .. }) => values_equal(left, *value, trace),
+        (Value::Type(left), Value::Type(right)) => Some(left == right),
         (Value::Boolean(left), Value::Boolean(right)) => Some(left == right),
         (Value::Int(left), Value::Int(right)) => Some(left == right),
         (Value::Rational(left), Value::Rational(right)) => Some(left == right),

@@ -8,6 +8,11 @@ The fundamental names `Boolean`, `Int`, `Nat`, `Rational`, `String`, `Unit`, and
 `Scope` in expression position shall resolve immutable static objects of kind
 `Type`. Their displayed form and identity shall be their canonical name.
 
+### TOPAL-ABSTRACTION-TYPE-IDENTITY-001 — Type-value equality
+
+Two fundamental Type values shall be equal exactly when they have the same
+canonical type identity. Distinct fundamental types shall compare unequal.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:

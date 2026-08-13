@@ -1753,6 +1753,10 @@ Functions shall accept namespace values through `Scope` parameters under
 All modes shall resolve fundamental Type objects under
 `TOPAL-ABSTRACTION-TYPE-VALUE-001`, with LSP and debugger coverage.
 
+## TOPAL-INTP-SUBSET-219 — Type identity equality
+
+All modes shall compare Type identity under `TOPAL-ABSTRACTION-TYPE-IDENTITY-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under
