@@ -83,6 +83,15 @@ fn test_mode_preserves_script_standard_output() {
 }
 
 #[test]
+fn interactive_mode_preserves_complete_unit_results() {
+    let source = "40 + 2\n";
+    assert_eq!(
+        run(&[], source).stdout,
+        run(&["--interactive"], source).stdout
+    );
+}
+
+#[test]
 fn test_mode_records_discard_after_its_initializer() {
     let output = run(&["--test"], "_ is 20 + 22\n7\n");
     assert!(output.status.success());
