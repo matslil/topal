@@ -2398,6 +2398,17 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let name = source.slice(span);
+        if matches!(name, "Little" | "Big") {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-ENDIAN-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "Endian".into(),
+                alternative: name.into(),
+            });
+        }
         if matches!(
             name,
             "Boolean" | "Completed" | "Int" | "Nat" | "Rational" | "Scope" | "String" | "Unit"

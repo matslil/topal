@@ -2,6 +2,12 @@
 
 ## Formal text
 
+### TOPAL-LAYOUT-ENDIAN-001 — External layout byte order
+
+`Little` and `Big` shall resolve the two nominal Endian policy values used by
+explicit external layouts. They describe representation and do not change
+native serialization byte order by themselves.
+
 ### TOPAL-SER-SCOPE-001 — Protocol scope
 
 The native protocol represents the public semantic description of every object

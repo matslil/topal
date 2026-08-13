@@ -313,3 +313,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-230` | `TOPAL-EFFECT-LIST-001` | interpreter and LSP tests; Effect-list example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-231` | `TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001` | interpreter and LSP tests; completion-effect example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-232` | `TOPAL-EXEC-UNIT-EFFECT-VALUE-001` | interpreter and LSP tests; Unit-effect example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-233` | `TOPAL-LAYOUT-ENDIAN-001` | interpreter and LSP tests; endian example | `topal-language`, `topal-interpreter`, `topal-lsp` |

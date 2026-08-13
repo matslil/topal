@@ -1814,6 +1814,10 @@ Completed evidence shall compose with inert Effect values under
 Unit shall remain distinct beside inert Effect values under
 `TOPAL-EXEC-UNIT-EFFECT-VALUE-001`.
 
+## TOPAL-INTP-SUBSET-233 — Layout endian policies
+
+All modes shall resolve Endian policies under `TOPAL-LAYOUT-ENDIAN-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under
