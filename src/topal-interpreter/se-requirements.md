@@ -1780,6 +1780,40 @@ Functions shall preserve Type values under `TOPAL-ABSTRACTION-TYPE-BOUNDARY-001`
 Higher-order inputs shall preserve callable values under
 `TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001`.
 
+## TOPAL-INTP-SUBSET-225 — Empty effect rows
+
+All modes shall construct `Effects ()` under `TOPAL-EFFECT-EMPTY-001`.
+
+## TOPAL-INTP-SUBSET-226 — Effect classification
+
+Effect expressions shall satisfy `Effect` under `TOPAL-EFFECT-CLASSIFIER-001`.
+
+## TOPAL-INTP-SUBSET-227 — Effect identity
+
+Effect rows shall compare under `TOPAL-EFFECT-IDENTITY-001`.
+
+## TOPAL-INTP-SUBSET-228 — Effect function boundaries
+
+Functions shall preserve Effect values under `TOPAL-EFFECT-BOUNDARY-001`.
+
+## TOPAL-INTP-SUBSET-229 — Effect products
+
+Products shall retain inert Effect values under `TOPAL-EFFECT-PRODUCT-001`.
+
+## TOPAL-INTP-SUBSET-230 — Effect collections
+
+Lists shall retain inert Effect values under `TOPAL-EFFECT-LIST-001`.
+
+## TOPAL-INTP-SUBSET-231 — Completion and Effect values
+
+Completed evidence shall compose with inert Effect values under
+`TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001`.
+
+## TOPAL-INTP-SUBSET-232 — Unit and Effect values
+
+Unit shall remain distinct beside inert Effect values under
+`TOPAL-EXEC-UNIT-EFFECT-VALUE-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

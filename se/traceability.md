@@ -305,3 +305,11 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-222` | `TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001` | interpreter and LSP tests; Constraint-classifier example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-223` | `TOPAL-ABSTRACTION-TYPE-BOUNDARY-001` | interpreter and LSP tests; Type-boundary example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-224` | `TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001` | interpreter and LSP tests; Function-boundary example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-225` | `TOPAL-EFFECT-EMPTY-001` | interpreter and LSP tests; empty-effects example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-226` | `TOPAL-EFFECT-CLASSIFIER-001` | interpreter and LSP tests; Effect-classifier example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-227` | `TOPAL-EFFECT-IDENTITY-001` | interpreter and LSP tests; effect-identity example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-228` | `TOPAL-EFFECT-BOUNDARY-001` | interpreter and LSP tests; Effect-boundary example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-229` | `TOPAL-EFFECT-PRODUCT-001` | interpreter and LSP tests; Effect-product example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-230` | `TOPAL-EFFECT-LIST-001` | interpreter and LSP tests; Effect-list example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-231` | `TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001` | interpreter and LSP tests; completion-effect example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-232` | `TOPAL-EXEC-UNIT-EFFECT-VALUE-001` | interpreter and LSP tests; Unit-effect example | `topal-language`, `topal-interpreter`, `topal-lsp` |

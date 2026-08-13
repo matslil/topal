@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 161);
+    assert_eq!(examples.len(), 169);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3863,5 +3863,73 @@ fn every_mode_passes_callable_values_through_functions() {
                 .unwrap()
                 .contains("42")
         );
+    }
+}
+
+#[test]
+fn every_mode_constructs_empty_effect_rows() {
+    let source = include_str!("../../../examples/interpreter/empty-effects.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_classifies_effect_rows() {
+    let source = include_str!("../../../examples/interpreter/effect-classifier.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_compares_effect_rows() {
+    let source = include_str!("../../../examples/interpreter/effect-identity.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(
+            String::from_utf8(run(arguments, source).stdout)
+                .unwrap()
+                .contains("true")
+        );
+    }
+}
+
+#[test]
+fn every_mode_passes_effect_values_through_functions() {
+    let source = include_str!("../../../examples/interpreter/effect-function-boundary.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_packages_effect_products() {
+    let source = include_str!("../../../examples/interpreter/effect-products.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_retains_effect_lists() {
+    let source = include_str!("../../../examples/interpreter/effect-list.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_composes_completion_with_effect_values() {
+    let source = include_str!("../../../examples/interpreter/completion-effect-value.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_keeps_unit_distinct_beside_effect_values() {
+    let source = include_str!("../../../examples/interpreter/unit-effect-value.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
     }
 }

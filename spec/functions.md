@@ -10,6 +10,16 @@ returning it establishes a dependency on completion, while `Unit` establishes
 no completion dependency. Test traces and debugger history shall expose the
 construction of completion evidence before its binding or return.
 
+### TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001 — Completion and effect values
+
+Returning `Completed` may be composed as data with an inert first-class Effect
+expression. Constructing or returning the Effect value shall not perform it.
+
+### TOPAL-EXEC-UNIT-EFFECT-VALUE-001 — Unit and effect values
+
+`Unit` remains absence of a completion dependency when packaged beside an inert
+Effect value; the static effect expression does not create work or completion.
+
 ### TOPAL-EXEC-TRAVERSAL-CONTROL-001 — Traversal elimination
 
 `Continue state` and `Finish result` shall construct distinct traversal-control

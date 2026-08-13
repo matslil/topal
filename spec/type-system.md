@@ -38,6 +38,32 @@ the concrete static type identity.
 An ordinary function parameter classified as `Function` shall accept named,
 anonymous, or symbolic callable values and preserve their invocation behavior.
 
+### TOPAL-EFFECT-EMPTY-001 — Empty effect row
+
+`Effects ()` shall construct the canonical empty first-class effect expression,
+classified by `Effect`, without performing a runtime interaction.
+
+### TOPAL-EFFECT-CLASSIFIER-001 — Effect classification
+
+Every effect expression shall satisfy `Effect` while retaining its row identity.
+
+### TOPAL-EFFECT-IDENTITY-001 — Effect-row equality
+
+Effect expressions shall compare by canonical row identity; empty rows are equal.
+
+### TOPAL-EFFECT-BOUNDARY-001 — Effect function boundaries
+
+Functions may accept and return first-class `Effect` values without performing them.
+
+### TOPAL-EFFECT-PRODUCT-001 — Effect products
+
+Effect expressions may be packaged in ordinary positional products without
+performing their described interactions.
+
+### TOPAL-EFFECT-LIST-001 — Effect collections
+
+Finite Lists may retain first-class Effect values as data without performing them.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:
