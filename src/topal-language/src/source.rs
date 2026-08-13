@@ -7057,7 +7057,7 @@ fn record_result(trace: &mut impl TraceSink, value: &Value) {
 fn value_classifier(value: &Value) -> &'static str {
     match value {
         Value::Boolean(_) => "Boolean",
-        Value::Type(_) => "Type",
+        Value::Type(_) | Value::ModularType(_) => "Type",
         Value::Int(_) => "Int",
         Value::Rational(_) => "Rational",
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
@@ -7104,7 +7104,6 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Union(_) => "Union",
         Value::Constraint(_) => "Constraint",
         Value::Refined { .. } => "Refined",
-        Value::ModularType(_) => "Type",
         Value::Modular { .. } => "Modular",
         Value::ErrorDomain(_) => "ErrorDomain",
         Value::Error { .. } => "Error",
@@ -9102,7 +9101,9 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
         ) if left_constraint == right_constraint => values_equal(*left, *right, trace),
         (Value::Refined { value, .. }, right) => values_equal(*value, right, trace),
         (left, Value::Refined { value, .. }) => values_equal(left, *value, trace),
-        (Value::Type(left), Value::Type(right)) => Some(left == right),
+        (Value::Type(left), Value::Type(right)) | (Value::String(left), Value::String(right)) => {
+            Some(left == right)
+        }
         (Value::Boolean(left), Value::Boolean(right)) => Some(left == right),
         (Value::Int(left), Value::Int(right)) => Some(left == right),
         (Value::Rational(left), Value::Rational(right)) => Some(left == right),
@@ -9114,7 +9115,6 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
             trace_conversion(trace, "Int->Rational:right");
             Some(left == BigRational::from_integer(right))
         }
-        (Value::String(left), Value::String(right)) => Some(left == right),
         (
             Value::Modular {
                 type_name: left_type,

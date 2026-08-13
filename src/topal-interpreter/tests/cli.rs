@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 160);
+    assert_eq!(examples.len(), 161);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3850,6 +3850,18 @@ fn every_mode_passes_type_values_through_functions() {
             String::from_utf8(run(arguments, source).stdout)
                 .unwrap()
                 .contains("Int")
+        );
+    }
+}
+
+#[test]
+fn every_mode_passes_callable_values_through_functions() {
+    let source = include_str!("../../../examples/interpreter/function-value-boundary.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(
+            String::from_utf8(run(arguments, source).stdout)
+                .unwrap()
+                .contains("42")
         );
     }
 }

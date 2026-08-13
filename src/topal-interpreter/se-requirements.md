@@ -1775,6 +1775,11 @@ Constraint objects shall satisfy `Constraint` under
 
 Functions shall preserve Type values under `TOPAL-ABSTRACTION-TYPE-BOUNDARY-001`.
 
+## TOPAL-INTP-SUBSET-224 — Function value boundaries
+
+Higher-order inputs shall preserve callable values under
+`TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

@@ -33,6 +33,11 @@ predicate, and nominal identity.
 An ordinary function may accept and return `Type`; invocation shall preserve
 the concrete static type identity.
 
+### TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001 — Higher-order Function boundaries
+
+An ordinary function parameter classified as `Function` shall accept named,
+anonymous, or symbolic callable values and preserve their invocation behavior.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:
