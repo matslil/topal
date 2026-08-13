@@ -37,6 +37,7 @@ pub enum Value {
     },
     Callable(CallableKind),
     NamedFunction(Box<NamedFunction>),
+    Namespace(Box<NamespaceValue>),
     AnonymousFunction(Box<AnonymousFunction>),
     Array {
         element_classifier: String,
@@ -146,6 +147,14 @@ pub struct NamedFunction {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NamespaceValue {
+    name: String,
+    bindings: BTreeMap<String, Value>,
+    functions: BTreeMap<String, Vec<UserFunction>>,
+    generators: BTreeMap<String, Vec<UserGenerator>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnionValue {
     type_name: String,
     alternative: String,
@@ -208,6 +217,7 @@ impl fmt::Display for Value {
             }
             Self::Callable(kind) => formatter.write_str(callable_name(*kind)),
             Self::NamedFunction(function) => write!(formatter, "<fn {}>", function.name),
+            Self::Namespace(namespace) => write!(formatter, "<namespace {}>", namespace.name),
             Self::AnonymousFunction(function) => {
                 write!(formatter, "<anonymous fn/{}>", function.parameters.len())
             }
@@ -983,6 +993,9 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if Self::is_root_qualified_application(source, items) {
+                    return self.evaluate_root_qualified_application(source, items, *span, trace);
+                }
                 if Self::is_unfold_construction(source, items) {
                     return self.construct_unfold_generator(source, items, *span, trace);
                 }
@@ -2367,6 +2380,19 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let name = source.slice(span);
+        if name == "root" {
+            trace.record(TraceEvent {
+                event: "namespace.resolved",
+                rule: "TOPAL-NAMESPACE-ROOT-001",
+                detail: "root",
+            });
+            return Ok(Value::Namespace(Box::new(NamespaceValue {
+                name: "root".into(),
+                bindings: self.bindings.clone(),
+                functions: self.functions.clone(),
+                generators: self.generators.clone(),
+            })));
+        }
         if name == "Completed" {
             trace.record(TraceEvent {
                 event: "completion.evidence",
@@ -2512,6 +2538,44 @@ impl Session {
     fn is_bound_named_function_call(&self, source: &SourceText, items: &[Expression]) -> bool {
         matches!(items, [Expression::Identifier(name), _]
             if matches!(self.bindings.get(source.slice(*name)), Some(Value::NamedFunction(_))))
+    }
+
+    fn is_root_qualified_application(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(root), Expression::Identifier(_), ..]
+            if source.slice(*root) == "root")
+    }
+
+    fn evaluate_root_qualified_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [
+            Expression::Identifier(_),
+            Expression::Identifier(member),
+            remainder @ ..,
+        ] = items
+        else {
+            unreachable!("preselected root-qualified application")
+        };
+        let member_name = source.slice(*member);
+        trace.record(TraceEvent {
+            event: "namespace.member.resolved",
+            rule: "TOPAL-NAMESPACE-ROOT-001",
+            detail: member_name,
+        });
+        if remainder.is_empty() {
+            return self.resolve_identifier(source, *member, trace);
+        }
+        let expression = Expression::Application {
+            items: std::iter::once(Expression::Identifier(*member))
+                .chain(remainder.iter().cloned())
+                .collect(),
+            span,
+        };
+        self.evaluate_expression(source, &expression, trace)
     }
 
     fn evaluate_bound_named_function_call(
@@ -6865,6 +6929,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
         Value::Callable(_) | Value::NamedFunction(_) | Value::AnonymousFunction(_) => "Function",
+        Value::Namespace(_) => "Scope",
         Value::Array { .. } => "Array",
         Value::Set { .. } => "Set",
         Value::Bag { .. } => "Bag",
@@ -9566,6 +9631,7 @@ fn apply_negate(
         | Value::List { .. }
         | Value::Callable(_)
         | Value::NamedFunction(_)
+        | Value::Namespace(_)
         | Value::AnonymousFunction(_)
         | Value::Array { .. }
         | Value::Set { .. }

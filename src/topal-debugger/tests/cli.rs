@@ -2939,3 +2939,20 @@ fn records_unfold_collection_reversibly() {
     assert!(stdout.contains("TOPAL-GENERATOR-UNFOLD-COLLECT-001"));
     assert!(stdout.contains("Entry ( 4"));
 }
+
+#[test]
+fn records_root_namespace_resolution_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}root-namespace.debug"),
+            &format!("{root}root-namespace.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-NAMESPACE-ROOT-001"));
+    assert!(stdout.contains("<namespace root>"));
+}

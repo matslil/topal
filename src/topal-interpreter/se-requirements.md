@@ -1700,3 +1700,11 @@ All interpreter modes shall collect unfold generators under
 classifiers, yield order, and termination at None. Formal traces, classifier
 diagnostics, LSP validation, and reversible scripted-debugger history shall
 cover commented examples.
+
+## TOPAL-INTP-SUBSET-208 — Executable root namespace
+
+All interpreter modes shall resolve `root` as the current source-session
+namespace and select qualified terminal declarations under
+`TOPAL-NAMESPACE-ROOT-001` without flattening or executing the namespace.
+Formal traces, diagnostics, LSP validation, and reversible scripted-debugger
+history shall cover commented examples.
