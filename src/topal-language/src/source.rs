@@ -17,6 +17,7 @@ use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
     Type(String),
+    Effects(Vec<String>),
     Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
@@ -183,6 +184,7 @@ impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Type(name) => formatter.write_str(name),
+            Self::Effects(effects) => write!(formatter, "Effects ({})", effects.join(", ")),
             Self::Boolean(value) => value.fmt(formatter),
             Self::Int(value) => value.fmt(formatter),
             Self::Rational(value) => {
@@ -995,6 +997,14 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if Self::is_empty_effects(source, items) {
+                    trace.record(TraceEvent {
+                        event: "effects.empty.constructed",
+                        rule: "TOPAL-EFFECT-EMPTY-001",
+                        detail: "Effects ()",
+                    });
+                    return Ok(Value::Effects(Vec::new()));
+                }
                 if Self::is_use_application(source, items) {
                     return self.evaluate_use_application(source, items, *span, trace);
                 }
@@ -2563,6 +2573,10 @@ impl Session {
     fn is_root_qualified_application(source: &SourceText, items: &[Expression]) -> bool {
         matches!(items, [Expression::Identifier(root), Expression::Identifier(_), ..]
             if source.slice(*root) == "root")
+    }
+
+    fn is_empty_effects(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), Expression::Unit(_)] if source.slice(*name) == "Effects")
     }
 
     fn is_use_application(source: &SourceText, items: &[Expression]) -> bool {
@@ -6152,6 +6166,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::String(_), "String")
         | (Value::Namespace(_), "Scope")
         | (Value::Type(_), "Type")
+        | (Value::Effects(_), "Effect")
         | (
             Value::Callable(_) | Value::NamedFunction(_) | Value::AnonymousFunction(_),
             "Function",
@@ -7058,6 +7073,7 @@ fn value_classifier(value: &Value) -> &'static str {
     match value {
         Value::Boolean(_) => "Boolean",
         Value::Type(_) | Value::ModularType(_) => "Type",
+        Value::Effects(_) => "Effect",
         Value::Int(_) => "Int",
         Value::Rational(_) => "Rational",
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
@@ -7160,6 +7176,7 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::Constraint(constraint) => format!("Constraint {}", constraint.base_classifier),
         Value::Refined { constraint, .. } => constraint.clone(),
         Value::Type(name) => name.clone(),
+        Value::Effects(_) => "Effect".into(),
         Value::ModularType(kind) => kind.name.clone().unwrap_or_else(|| "Type".into()),
         _ => value_classifier(value).to_owned(),
     }
@@ -9763,6 +9780,7 @@ fn apply_negate(
         }
         Value::Boolean(_)
         | Value::Type(_)
+        | Value::Effects(_)
         | Value::IntRange { .. }
         | Value::RationalRange { .. }
         | Value::Optional { .. }

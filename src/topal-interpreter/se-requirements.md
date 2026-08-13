@@ -1780,6 +1780,10 @@ Functions shall preserve Type values under `TOPAL-ABSTRACTION-TYPE-BOUNDARY-001`
 Higher-order inputs shall preserve callable values under
 `TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001`.
 
+## TOPAL-INTP-SUBSET-225 — Empty effect rows
+
+All modes shall construct `Effects ()` under `TOPAL-EFFECT-EMPTY-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

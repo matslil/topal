@@ -38,6 +38,11 @@ the concrete static type identity.
 An ordinary function parameter classified as `Function` shall accept named,
 anonymous, or symbolic callable values and preserve their invocation behavior.
 
+### TOPAL-EFFECT-EMPTY-001 — Empty effect row
+
+`Effects ()` shall construct the canonical empty first-class effect expression,
+classified by `Effect`, without performing a runtime interaction.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:

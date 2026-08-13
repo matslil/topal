@@ -305,3 +305,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-222` | `TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001` | interpreter and LSP tests; Constraint-classifier example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-223` | `TOPAL-ABSTRACTION-TYPE-BOUNDARY-001` | interpreter and LSP tests; Type-boundary example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-224` | `TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001` | interpreter and LSP tests; Function-boundary example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-225` | `TOPAL-EFFECT-EMPTY-001` | interpreter and LSP tests; empty-effects example | `topal-language`, `topal-interpreter`, `topal-lsp` |
