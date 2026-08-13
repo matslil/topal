@@ -315,3 +315,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-232` | `TOPAL-EXEC-UNIT-EFFECT-VALUE-001` | interpreter and LSP tests; Unit-effect example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-233` | `TOPAL-LAYOUT-ENDIAN-001` | interpreter and LSP tests; endian example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-234` | `TOPAL-LAYOUT-ACCESS-001` | interpreter and LSP tests; access-policy example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-235` | `TOPAL-LAYOUT-BIT-ORDER-001` | interpreter and LSP tests; bit-order example | `topal-language`, `topal-interpreter`, `topal-lsp` |

@@ -13,6 +13,10 @@ native serialization byte order by themselves.
 `ReadWrite`, `ReadOnly`, `WriteOnly`, and `Reserved` shall resolve nominal
 external-layout access policies without granting runtime authority.
 
+### TOPAL-LAYOUT-BIT-ORDER-001 — Storage-unit bit order
+
+`MostSignificantFirst` and `LeastSignificantFirst` shall resolve nominal bit-order values.
+
 ### TOPAL-SER-SCOPE-001 — Protocol scope
 
 The native protocol represents the public semantic description of every object

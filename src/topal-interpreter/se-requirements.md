@@ -1822,6 +1822,10 @@ All modes shall resolve Endian policies under `TOPAL-LAYOUT-ENDIAN-001`.
 
 All modes shall resolve access policies under `TOPAL-LAYOUT-ACCESS-001`.
 
+## TOPAL-INTP-SUBSET-235 — Layout bit order
+
+All modes shall resolve bit order under `TOPAL-LAYOUT-BIT-ORDER-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under
