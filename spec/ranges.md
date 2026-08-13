@@ -38,3 +38,17 @@ constructs their predicate intersection. Its lower bound is the greater lower
 bound and its upper bound is the lesser upper bound. Disjoint inputs therefore
 produce a reversed empty range rather than an error. Each operand is evaluated
 once, and the result retains the shared Range classifier.
+### TOPAL-RANGE-VALUE-SELECTION-001 — Convex value selection
+
+`collection select range` shall treat Range as its ordinary value predicate,
+retain exactly matching entries, and preserve source order and multiplicity.
+The visible result shall retain the source collection kind; retained
+`SelectionOf source range` evidence shall not expose a storage representation.
+
+### TOPAL-RANGE-INDEX-SELECTION-001 — Convex index selection
+
+`sequence select-index range` shall retain entries whose zero-based indexes
+belong to the inclusive Range Int. List results remain Lists; String positions
+are user-perceived Character indexes and results remain String. The operation
+may retain `RangeSelectionOf source range` and `SliceOf source` evidence, but
+these facts shall not change equality or expose whether storage is shared.

@@ -2582,3 +2582,139 @@ fn records_list_value_removal_reversibly() {
     assert!(stdout.contains("TOPAL-LIST-REMOVE-FIRST-001"));
     assert!(stdout.contains("TOPAL-LIST-REMOVE-ALL-001"));
 }
+
+#[test]
+fn records_contextual_anonymous_list_functions_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}anonymous-list-functions.debug"),
+            &format!("{root}anonymous-list-functions.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
+    assert!(stdout.contains("Entry ( 2, Entry ( 4, Entry ( 6"));
+}
+
+#[test]
+fn records_list_sequence_operations_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}list-sequence-operations.debug"),
+            &format!("{root}list-sequence-operations.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-LIST-INSERT-AT-001"));
+    assert!(stdout.contains("TOPAL-COLLECTION-ENTRIES-001"));
+}
+
+#[test]
+fn records_fundamental_container_collection_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}fundamental-containers.debug"),
+            &format!("{root}fundamental-containers.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-ARRAY-COLLECT-001"));
+    assert!(stdout.contains("TOPAL-MAP-COLLECT-001"));
+}
+
+#[test]
+fn records_payload_union_decisions_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}unions-and-recursive-products.debug"),
+            &format!("{root}unions-and-recursive-products.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-TYPE-UNION-001"));
+    assert!(stdout.contains("TOPAL-DECISION-UNION-001"));
+}
+
+#[test]
+fn records_constraint_evidence_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}constraints-and-derived-capabilities.debug"),
+            &format!("{root}constraints-and-derived-capabilities.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-TYPE-CONSTRAINT-VALIDATE-001"));
+    assert!(stdout.contains("constraint->base"));
+}
+
+#[test]
+fn records_optional_result_composition_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}optional-result-composition.debug"),
+            &format!("{root}optional-result-composition.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-TYPE-RESULT-PROJECT-001"));
+    assert!(stdout.contains("TOPAL-ERROR-FIELD-001"));
+}
+
+#[test]
+fn records_modular_arithmetic_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}modular-numbers.debug"),
+            &format!("{root}modular-numbers.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-NUM-MODULAR-REDUCE-001"));
+    assert!(stdout.contains("TOPAL-NUM-MODULAR-ARITHMETIC-001"));
+}
+
+#[test]
+fn records_range_selection_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}range-selection.debug"),
+            &format!("{root}range-selection.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-RANGE-VALUE-SELECTION-001"));
+    assert!(stdout.contains("TOPAL-RANGE-INDEX-SELECTION-001"));
+}

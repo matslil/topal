@@ -283,3 +283,10 @@ This visibility shall apply only to function declarations in the same scope. It
 shall not make an ordinary initializer value available before that initializer
 has executed. Test traces and debugger history shall identify the later
 function's selection and entry inside the earlier function's call frame.
+### TOPAL-FUNCTION-ANONYMOUS-001 — Contextual inferred anonymous functions
+
+A braced parameter pattern followed by an expression or indented body shall
+construct an anonymous function only where the surrounding application selects
+one function type. Invocation shall bind its parameter patterns to the supplied
+arguments and resolve other names from the lexical environment captured when
+the function was constructed. Each invocation establishes its own return scope.

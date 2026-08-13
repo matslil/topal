@@ -1532,3 +1532,72 @@ yield value` under `TOPAL-GENERATOR-RESUME-BINDING-001`. The binding shall not
 exist while suspended and shall be available to subsequent generator execution.
 Formal traces, LSP validation, and reversible scripted-debugger history shall
 cover a commented example.
+## TOPAL-INTP-SUBSET-187 — Contextual anonymous List functions
+
+All interpreter modes shall execute inferred anonymous functions used directly
+by List `map`, `select`, and `fold`, including immutable lexical capture, under
+`TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-COLLECTION-MAP-001`,
+`TOPAL-COLLECTION-SELECT-001`, and `TOPAL-COLLECTION-FOLD-001`. Formal traces,
+LSP validation, and reversible scripted-debugger history shall cover commented
+examples.
+## TOPAL-INTP-SUBSET-188 — Complete ordered List sequence operations
+
+All interpreter modes shall implement checked indexed insertion, regions and
+removal; explicit zip policies and unzip; List traversal, predicate removal,
+entry views, and List/String collection according to `TOPAL-LIST-*` and
+`TOPAL-COLLECTION-*` rules in `spec/containers.md`. Invalid closed positions
+shall be source diagnostics, while invalid unchecked runtime positions shall be
+formal `out-of-range` Results whose domain identifies the lexical operation.
+LSP validation and reversible scripted-debugger history shall cover commented
+examples.
+## TOPAL-INTP-SUBSET-189 — Fundamental Array, Set, Bag, and Map values
+
+All interpreter modes shall collect finite Lists into fixed-count Arrays,
+unique Sets, multiplicity-preserving Bags, and explicitly collision-resolved
+Maps under `TOPAL-ARRAY-COLLECT-001`, `TOPAL-SET-COLLECT-001`,
+`TOPAL-BAG-COLLECT-001`, and `TOPAL-MAP-COLLECT-001`. Counting, emptiness,
+formal traces, LSP validation, and reversible scripted-debugger history shall
+cover commented examples.
+## TOPAL-INTP-SUBSET-190 — Recursive products and general sums
+
+All interpreter modes shall construct and recursively classify nested tuples
+and records, positional Variants, labeled Unions, payload-bearing alternatives,
+and payload-free enum-like alternatives under `TOPAL-TYPE-PRODUCT-001`,
+`TOPAL-TYPE-UNION-001`, `TOPAL-TYPE-VARIANT-001`, and
+`TOPAL-DECISION-UNION-001`. Formal traces, LSP validation, and reversible
+scripted-debugger history shall cover commented examples.
+## TOPAL-INTP-SUBSET-191 — Constraints, conversions, equality, and ordering
+
+All interpreter modes shall construct named constraints, validate closed and
+dynamic values, retain successful evidence, forget evidence losslessly to the
+base type, and derive base equality and ordering under
+`TOPAL-TYPE-CONSTRAINT-001` and `TOPAL-TYPE-CONSTRAINT-VALIDATE-001`. Existing
+nominal Enum, Union, and Variant identities shall remain distinct. Formal
+traces, Rust-style rejection diagnostics, LSP validation, and reversible
+scripted-debugger history shall cover commented examples.
+## TOPAL-INTP-SUBSET-192 — Complete Optional and Result composition
+
+All interpreter modes shall execute explicit/contextual Optional construction,
+complete Optional and Result decisions, compatible contextual propagation, and
+all structured Error field projections under `TOPAL-TYPE-OPTIONAL-*`,
+`TOPAL-TYPE-RESULT-*`, and `TOPAL-ERROR-FIELD-001`. Formal traces, source-located
+diagnostics, LSP validation, and reversible scripted-debugger history shall
+cover commented examples.
+## TOPAL-INTP-SUBSET-193 — Settled modular numeric families
+
+All interpreter modes shall implement nominal ModNat and ModInt ranges, checked
+construction, explicit modular reduction, wrapping arithmetic, equality, and
+canonical ordering under `TOPAL-NUM-MODULAR-*`. Formal traces, Rust-style
+closed-range diagnostics, LSP validation, and reversible scripted-debugger
+history shall cover commented examples. Numeric families lacking approved
+source construction syntax remain documented in the PR rather than receiving
+an implementation-invented spelling.
+## TOPAL-INTP-SUBSET-194 — Range selection and slicing evidence
+
+All interpreter modes shall use Range Int as a convex value or zero-based index
+predicate over Lists and as a Character-index predicate over String under
+`TOPAL-RANGE-VALUE-SELECTION-001` and `TOPAL-RANGE-INDEX-SELECTION-001`.
+Observable values shall preserve source kind, order, and multiplicity; formal
+traces shall retain selection provenance without exposing representation. LSP
+validation and reversible scripted-debugger history shall cover commented
+examples.

@@ -35,6 +35,24 @@ pub enum Value {
         element_classifier: String,
         entries: Vec<Self>,
     },
+    AnonymousFunction(Box<AnonymousFunction>),
+    Array {
+        element_classifier: String,
+        entries: Vec<Self>,
+    },
+    Set {
+        element_classifier: String,
+        entries: Vec<Self>,
+    },
+    Bag {
+        element_classifier: String,
+        entries: Vec<(Self, usize)>,
+    },
+    Map {
+        key_classifier: String,
+        value_classifier: String,
+        entries: Vec<(Self, Self)>,
+    },
     CharacterGenerator {
         generated: Vec<String>,
         origin: String,
@@ -64,6 +82,20 @@ pub enum Value {
         type_name: String,
         alternative: String,
     },
+    Union(Box<UnionValue>),
+    Constraint(Box<ConstraintValue>),
+    Refined {
+        constraint: String,
+        base_classifier: String,
+        value: Box<Self>,
+    },
+    ModularType(Box<ModularType>),
+    Modular {
+        type_name: String,
+        lower: BigInt,
+        upper: BigInt,
+        value: BigInt,
+    },
     ErrorDomain(String),
     Error {
         domain: String,
@@ -75,14 +107,48 @@ pub enum Value {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[allow(clippy::box_collection)] // Keep recursive evaluator state below the tested stack-frame ceiling.
 pub struct GeneratorScopeState {
     functions: BTreeMap<String, Vec<UserFunction>>,
     declared_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
+    union_types: Box<BTreeMap<String, BTreeMap<String, Option<String>>>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AnonymousFunction {
+    source: SourceText,
+    parameters: Vec<String>,
+    body: Box<Expression>,
+    bindings: BTreeMap<String, Value>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnionValue {
+    type_name: String,
+    alternative: String,
+    payload_classifier: Option<String>,
+    payload: Option<Box<Value>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstraintValue {
+    name: Option<String>,
+    base_classifier: String,
+    predicate: Value,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ModularType {
+    name: Option<String>,
+    signed: bool,
+    lower: BigInt,
+    upper: BigInt,
 }
 
 impl fmt::Display for Value {
+    #[allow(clippy::too_many_lines)] // Every runtime value keeps an explicit stable source representation.
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Boolean(value) => value.fmt(formatter),
@@ -118,6 +184,31 @@ impl fmt::Display for Value {
                     formatter.write_str(" )")?;
                 }
                 Ok(())
+            }
+            Self::AnonymousFunction(function) => {
+                write!(formatter, "<anonymous fn/{}>", function.parameters.len())
+            }
+            Self::Array { entries, .. } => display_collection(formatter, "Array", entries),
+            Self::Set { entries, .. } => display_collection(formatter, "Set", entries),
+            Self::Bag { entries, .. } => {
+                formatter.write_str("Bag (")?;
+                for (index, (value, count)) in entries.iter().enumerate() {
+                    if index != 0 {
+                        formatter.write_str(", ")?;
+                    }
+                    write!(formatter, "({value}, {count})")?;
+                }
+                formatter.write_str(")")
+            }
+            Self::Map { entries, .. } => {
+                formatter.write_str("Map (")?;
+                for (index, (key, value)) in entries.iter().enumerate() {
+                    if index != 0 {
+                        formatter.write_str(", ")?;
+                    }
+                    write!(formatter, "({key}, {value})")?;
+                }
+                formatter.write_str(")")
             }
             Self::CharacterGenerator { .. } => {
                 formatter.write_str("<Generator Character Unit Unit>")
@@ -158,6 +249,32 @@ impl fmt::Display for Value {
                 formatter.write_str(")")
             }
             Self::Enum { alternative, .. } => formatter.write_str(alternative),
+            Self::Union(union) if union.payload.is_some() => write!(
+                formatter,
+                "{} {}",
+                union.alternative,
+                union.payload.as_deref().expect("present payload")
+            ),
+            Self::Union(union) => formatter.write_str(&union.alternative),
+            Self::Constraint(constraint) => write!(
+                formatter,
+                "<Constraint {}>",
+                constraint
+                    .name
+                    .as_deref()
+                    .unwrap_or(&constraint.base_classifier)
+            ),
+            Self::Refined { value, .. } => write!(formatter, "{value}"),
+            Self::ModularType(kind) => write!(
+                formatter,
+                "<{} {} .. {}>",
+                if kind.signed { "ModInt" } else { "ModNat" },
+                kind.lower,
+                kind.upper
+            ),
+            Self::Modular {
+                type_name, value, ..
+            } => write!(formatter, "{type_name} {value}"),
             Self::ErrorDomain(domain) => formatter.write_str(domain),
             Self::Error { domain, code, .. } => {
                 write!(formatter, "Error ( domain is {domain}, code is {code} )")
@@ -165,6 +282,21 @@ impl fmt::Display for Value {
             Self::Unit => formatter.write_str("()"),
         }
     }
+}
+
+fn display_collection(
+    formatter: &mut fmt::Formatter<'_>,
+    kind: &str,
+    entries: &[Value],
+) -> fmt::Result {
+    write!(formatter, "{kind} (")?;
+    for (index, entry) in entries.iter().enumerate() {
+        if index != 0 {
+            formatter.write_str(", ")?;
+        }
+        write!(formatter, "{entry}")?;
+    }
+    formatter.write_str(")")
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -222,6 +354,7 @@ impl Diagnostic {
 }
 
 #[derive(Clone, Default)]
+#[allow(clippy::box_collection)] // Keep recursive evaluator state below the tested stack-frame ceiling.
 pub struct Session {
     bindings: BTreeMap<String, Value>,
     functions: BTreeMap<String, Vec<UserFunction>>,
@@ -230,6 +363,7 @@ pub struct Session {
     consumed_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
+    union_types: Box<BTreeMap<String, BTreeMap<String, Option<String>>>>,
     call_stack: Vec<ActiveCall>,
     static_context: bool,
 }
@@ -323,6 +457,7 @@ impl Session {
                 parsed.statements.as_slice(),
                 [Statement::Function { .. }
                     | Statement::Generator { .. }
+                    | Statement::Union { .. }
                     | Statement::Foreach { .. }]
             )
     }
@@ -400,6 +535,7 @@ impl Session {
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: BTreeMap::new(),
+            union_types: Box::new(BTreeMap::new()),
             call_stack: Vec::new(),
             static_context: false,
         };
@@ -449,30 +585,7 @@ impl Session {
                 Ok(Value::Unit)
             }
             Expression::Product { fields, span } => {
-                let labeled = fields.iter().filter(|field| field.label.is_some()).count();
-                if labeled != 0 && labeled != fields.len() {
-                    return Err(diagnostic(
-                        source,
-                        "E-UNSUPPORTED-MIXED-PRODUCT",
-                        *span,
-                        "mixed positional and labeled product fields are not yet implemented",
-                    ));
-                }
-                if labeled == 0 {
-                    let values = fields
-                        .iter()
-                        .map(|field| self.evaluate_expression(source, &field.value, trace))
-                        .collect::<Result<Vec<_>, _>>()?;
-                    let detail = format!("fields={}", values.len());
-                    trace.record(TraceEvent {
-                        event: "product.tuple",
-                        rule: "TOPAL-TYPE-PRODUCT-001",
-                        detail: &detail,
-                    });
-                    Ok(Value::Tuple(values))
-                } else {
-                    self.evaluate_record(source, fields, trace)
-                }
+                self.evaluate_product(source, fields, *span, trace)
             }
             Expression::DecisionTable {
                 subject,
@@ -503,7 +616,14 @@ impl Session {
                         DecisionMatcher::ListEmpty(_) | DecisionMatcher::ListEntry { .. }
                     )
                 });
+                let has_union_matchers = rules.iter().any(|rule| {
+                    matches!(
+                        rule.matcher,
+                        DecisionMatcher::Union { .. } | DecisionMatcher::Variant { .. }
+                    )
+                });
                 if !enum_matchers.is_empty()
+                    && !has_union_matchers
                     && !rules
                         .iter()
                         .any(|rule| matches!(rule.matcher, DecisionMatcher::Otherwise(_)))
@@ -525,7 +645,9 @@ impl Session {
                         ));
                     }
                 }
-                let decision_rule = if has_list_matchers {
+                let decision_rule = if has_union_matchers {
+                    "TOPAL-DECISION-UNION-001"
+                } else if has_list_matchers {
                     "TOPAL-DECISION-LIST-001"
                 } else if has_optional_matchers {
                     "TOPAL-DECISION-OPTIONAL-001"
@@ -576,6 +698,26 @@ impl Session {
                                 };
                                 values_equal(subject.clone(), candidate, trace).unwrap_or(false)
                             }
+                        }
+                        DecisionMatcher::Union { alternative, .. } => {
+                            matches!(
+                                &subject,
+                                Value::Union(union)
+                                    if union.payload.is_some()
+                                        && union.alternative == source.slice(*alternative)
+                            )
+                        }
+                        DecisionMatcher::Variant {
+                            type_name, index, ..
+                        } => {
+                            let alternative = format!("at {}", source.slice(*index));
+                            matches!(
+                                &subject,
+                                Value::Union(union)
+                                    if union.payload.is_some()
+                                        && union.type_name == source.slice(*type_name)
+                                        && union.alternative == alternative
+                            )
                         }
                         DecisionMatcher::Result { error, .. } => {
                             *error == matches!(subject, Value::Error { .. })
@@ -707,6 +849,7 @@ impl Session {
                         consumed_names: self.consumed_names.clone(),
                         local_function_names: self.local_function_names.clone(),
                         enum_types: self.enum_types.clone(),
+                        union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: self.static_context,
                     };
@@ -766,6 +909,22 @@ impl Session {
                         detail: &detail,
                     });
                     branch.evaluate_expression(source, &selected_rule.action, trace)
+                } else if let DecisionMatcher::Union { binding, .. } = selected_rule.matcher {
+                    self.evaluate_union_decision_action(
+                        source,
+                        subject,
+                        binding,
+                        &selected_rule.action,
+                        trace,
+                    )
+                } else if let DecisionMatcher::Variant { binding, .. } = selected_rule.matcher {
+                    self.evaluate_union_decision_action(
+                        source,
+                        subject,
+                        binding,
+                        &selected_rule.action,
+                        trace,
+                    )
                 } else {
                     self.evaluate_expression(source, &selected_rule.action, trace)
                 }
@@ -773,32 +932,18 @@ impl Session {
             Expression::Integer(span) => evaluate_integer_literal(source, *span, trace),
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
             Expression::String(span) => evaluate_string_literal(source, *span, trace),
-            Expression::Identifier(span) => {
-                let name = source.slice(*span);
-                if self.consumed_names.contains(name) {
-                    return Err(consumed_generator_diagnostic(source, *span, name));
-                }
-                let value = self.bindings.get(name).cloned().ok_or_else(|| {
-                    let error = diagnostic(source, "E-UNBOUND-NAME", *span, "name is not bound");
-                    closest_name(name, self.bindings.keys())
-                        .or_else(|| closest_root_operation(name))
-                        .map_or(error.clone(), |candidate| {
-                            error.with_help(format!("did you mean `{candidate}`?"))
-                        })
-                })?;
-                trace.record(TraceEvent {
-                    event: "binding.resolved",
-                    rule: "TOPAL-SYN-BIND-001",
-                    detail: name,
-                });
-                Ok(value)
-            }
+            Expression::Identifier(span) => self.resolve_identifier(source, *span, trace),
             Expression::Discard(span) => Err(diagnostic(
                 source,
                 "E-DISCARD-VALUE",
                 *span,
                 "discard is valid only in a declaration or pattern",
             )),
+            Expression::AnonymousFunction {
+                parameters,
+                body,
+                span: _,
+            } => Ok(self.capture_anonymous_function(source, parameters, body, trace)),
             Expression::Callable { span, .. } => Err(diagnostic(
                 source,
                 "E-UNSUPPORTED-CALLABLE-VALUE",
@@ -806,73 +951,51 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
-                if let [
-                    Expression::Identifier(generator),
-                    text,
-                    Expression::Identifier(collector),
-                    Expression::Identifier(result),
-                ] = items.as_slice()
-                    && source.slice(*generator) == "characters"
-                    && source.slice(*collector) == "collect"
-                    && source.slice(*result) == "String"
-                {
-                    let text_span = text.span();
-                    let text = self.evaluate_expression(source, text, trace)?;
-                    let Value::String(text) = text else {
-                        return Err(diagnostic(
-                            source,
-                            "E-CHARACTERS-OPERAND",
-                            text_span,
-                            "characters requires a String operand",
-                        ));
-                    };
-                    trace.record(TraceEvent {
-                        event: "operator.selected",
-                        rule: "TOPAL-TYPE-CALL-001",
-                        detail: "root.characters(String)",
-                    });
-                    let mut collected = String::new();
-                    for character in characters(&text) {
-                        trace.record(TraceEvent {
-                            event: "generator.yielded",
-                            rule: "TOPAL-STRING-CHARACTERS-COLLECT-001",
-                            detail: character,
-                        });
-                        collected.push_str(character);
-                    }
-                    trace.record(TraceEvent {
-                        event: "string.characters.collected",
-                        rule: "TOPAL-STRING-CHARACTERS-COLLECT-001",
-                        detail: "String",
-                    });
-                    let value = Value::String(collected);
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
+                if Self::is_range_selection(source, items) {
+                    return self.evaluate_range_selection(source, items, *span, trace);
                 }
-                if let [Expression::Identifier(generator), text] = items.as_slice()
-                    && source.slice(*generator) == "characters"
-                {
-                    let text_span = text.span();
-                    let text = self.evaluate_expression(source, text, trace)?;
-                    let Value::String(text) = text else {
-                        return Err(diagnostic(
-                            source,
-                            "E-CHARACTERS-OPERAND",
-                            text_span,
-                            "characters requires a String operand",
-                        ));
-                    };
-                    trace.record(TraceEvent {
-                        event: "generator.started",
-                        rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
-                        detail: "Generator Character Unit Unit",
-                    });
-                    let value = Value::CharacterGenerator {
-                        generated: characters(&text).map(str::to_owned).collect(),
-                        origin: "root.characters".to_owned(),
-                    };
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
+                if self.is_explicit_modulo(source, items) {
+                    return self.apply_explicit_modulo(source, items, trace);
+                }
+                if Self::is_modular_type_definition(source, items) {
+                    return self.construct_modular_type(source, items, trace);
+                }
+                if self.is_modular_construction(source, items) {
+                    return self.construct_modular_value(source, items, *span, trace);
+                }
+                if Self::is_constraint_definition(source, items) {
+                    return self.construct_constraint(source, items, trace);
+                }
+                if self.is_constraint_application(source, items) {
+                    return self.apply_constraint(source, items, *span, trace);
+                }
+                if self.application_is_union_constructor(source, items) {
+                    return self.construct_union_application(source, items, *span, trace);
+                }
+                if matches!(
+                    items.as_slice(),
+                    [Expression::Identifier(operation), ..]
+                        if matches!(source.slice(*operation), "unzip" | "collect" | "collect-set" | "collect-bag" | "collect-map")
+                ) || matches!(
+                    items.as_slice(),
+                    [_, Expression::Identifier(operation), ..]
+                        if matches!(source.slice(*operation), "zip-longest" | "collect")
+                ) {
+                    return self.evaluate_list_materialization(source, items, *span, trace);
+                }
+                if matches!(
+                    items.as_slice(),
+                    [_, Expression::Identifier(operation), Expression::AnonymousFunction { .. }]
+                        if matches!(source.slice(*operation), "map" | "select" | "remove-indexes" | "remove-values")
+                ) || matches!(
+                    items.as_slice(),
+                    [_, Expression::Identifier(operation), _, Expression::AnonymousFunction { .. }]
+                        if source.slice(*operation) == "fold"
+                ) {
+                    return self.evaluate_list_higher_order(source, items, *span, trace);
+                }
+                if Self::is_characters_application(source, items) {
+                    return self.evaluate_characters_application(source, items, *span, trace);
                 }
                 if let [left, Expression::Identifier(callable), right] = items.as_slice()
                     && source.slice(*callable) == "canonically-equals"
@@ -1326,6 +1449,7 @@ impl Session {
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
+                        union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: false,
                     };
@@ -1379,6 +1503,7 @@ impl Session {
                             declared_names: generator_scope.declared_names,
                             local_function_names: generator_scope.local_function_names,
                             enum_types: generator_scope.enum_types,
+                            union_types: generator_scope.union_types,
                         }),
                         pending_yield,
                         resume_binding,
@@ -1490,6 +1615,7 @@ impl Session {
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
+                        union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: function.is_static,
                     };
@@ -1874,6 +2000,29 @@ impl Session {
                         continue;
                     }
                     if let Expression::Identifier(callable_span) = &items[index]
+                        && source.slice(*callable_span) == "entries"
+                        && matches!(result, Value::List { .. })
+                    {
+                        result = apply_list_entries_view(result, trace);
+                        index += 1;
+                        continue;
+                    }
+                    if let Expression::Identifier(callable_span) = &items[index]
+                        && source.slice(*callable_span) == "insert-at"
+                        && let Value::List { .. } = result
+                    {
+                        result = self.evaluate_list_insert_at(
+                            source,
+                            result,
+                            items.get(index + 1),
+                            items.get(index + 2),
+                            *callable_span,
+                            trace,
+                        )?;
+                        index += 3;
+                        continue;
+                    }
+                    if let Expression::Identifier(callable_span) = &items[index]
                         && matches!(
                             source.slice(*callable_span),
                             "prepend"
@@ -1882,6 +2031,13 @@ impl Session {
                                 | "contains-entry"
                                 | "contains-sequence"
                                 | "contains-subsequence"
+                                | "split-at"
+                                | "take"
+                                | "drop"
+                                | "remove"
+                                | "remove-indexes"
+                                | "zip-exact"
+                                | "zip-shortest"
                                 | "remove-first"
                                 | "remove-all"
                         )
@@ -1897,9 +2053,16 @@ impl Session {
                             ));
                         };
                         let right_span = right.span();
+                        let right_is_closed = expression_is_closed(right);
                         let right = self.evaluate_expression(source, right, trace)?;
                         result = apply_list_operation(
-                            source, operation, result, right, right_span, trace,
+                            source,
+                            operation,
+                            result,
+                            right,
+                            right_span,
+                            right_is_closed,
+                            trace,
                         )?;
                         self.checkpoint(
                             trace,
@@ -1951,7 +2114,12 @@ impl Session {
                         continue;
                     }
                     if let Expression::Identifier(label_span) = &items[index]
-                        && let Value::Error { domain, code, .. } = &result
+                        && let Value::Error {
+                            domain,
+                            code,
+                            line,
+                            column,
+                        } = &result
                     {
                         let label = source.slice(*label_span);
                         let selected = match label {
@@ -1960,6 +2128,21 @@ impl Session {
                                 alternative: code.clone(),
                             },
                             "domain" => Value::ErrorDomain(domain.clone()),
+                            "detail" => Value::Optional {
+                                payload_classifier: "String".into(),
+                                payload: None,
+                            },
+                            "cause" => Value::Optional {
+                                payload_classifier: "Error".into(),
+                                payload: None,
+                            },
+                            "source" => Value::Optional {
+                                payload_classifier: "SourceLocation".into(),
+                                payload: Some(Box::new(Value::Record(vec![
+                                    ("line".into(), Value::Int(BigInt::from(*line))),
+                                    ("column".into(), Value::Int(BigInt::from(*column))),
+                                ]))),
+                            },
                             _ => {
                                 return Err(diagnostic(
                                     source,
@@ -2083,6 +2266,1038 @@ impl Session {
         });
         Ok(Value::Record(values))
     }
+
+    fn evaluate_product(
+        &self,
+        source: &SourceText,
+        fields: &[topal_syntax::ProductField],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let labeled = fields.iter().filter(|field| field.label.is_some()).count();
+        if labeled != 0 && labeled != fields.len() {
+            return Err(diagnostic(
+                source,
+                "E-UNSUPPORTED-MIXED-PRODUCT",
+                span,
+                "mixed positional and labeled product fields are not yet implemented",
+            ));
+        }
+        if labeled == 0 {
+            let values = fields
+                .iter()
+                .map(|field| self.evaluate_expression(source, &field.value, trace))
+                .collect::<Result<Vec<_>, _>>()?;
+            let detail = format!("fields={}", values.len());
+            trace.record(TraceEvent {
+                event: "product.tuple",
+                rule: "TOPAL-TYPE-PRODUCT-001",
+                detail: &detail,
+            });
+            Ok(Value::Tuple(values))
+        } else {
+            self.evaluate_record(source, fields, trace)
+        }
+    }
+
+    fn resolve_identifier(
+        &self,
+        source: &SourceText,
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let name = source.slice(span);
+        if self.consumed_names.contains(name) {
+            return Err(consumed_generator_diagnostic(source, span, name));
+        }
+        let value = self.bindings.get(name).cloned().ok_or_else(|| {
+            let error = diagnostic(source, "E-UNBOUND-NAME", span, "name is not bound");
+            closest_name(name, self.bindings.keys())
+                .or_else(|| closest_root_operation(name))
+                .map_or(error.clone(), |candidate| {
+                    error.with_help(format!("did you mean `{candidate}`?"))
+                })
+        })?;
+        trace.record(TraceEvent {
+            event: "binding.resolved",
+            rule: "TOPAL-SYN-BIND-001",
+            detail: name,
+        });
+        Ok(value)
+    }
+
+    fn evaluate_union_decision_action(
+        &self,
+        source: &SourceText,
+        subject: Value,
+        binding: Span,
+        action: &Expression,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Value::Union(mut union) = subject else {
+            unreachable!("payload Union matcher selected only for a payload alternative")
+        };
+        let payload = union
+            .payload
+            .take()
+            .expect("payload matcher selected a present payload");
+        let name = source.slice(binding);
+        let mut branch = self.clone();
+        branch.bindings.insert(name.to_owned(), *payload);
+        trace.record(TraceEvent {
+            event: "union.payload.bound",
+            rule: "TOPAL-DECISION-UNION-001",
+            detail: name,
+        });
+        branch.evaluate_expression(source, action, trace)
+    }
+
+    fn union_constructor(&self, name: &str) -> Option<(&str, &str)> {
+        self.union_types
+            .iter()
+            .find_map(|(type_name, alternatives)| {
+                alternatives
+                    .get(name)
+                    .and_then(|classifier| classifier.as_deref())
+                    .map(|classifier| (type_name.as_str(), classifier))
+            })
+    }
+
+    fn application_is_union_constructor(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(constructor), _] if self.union_constructor(source.slice(*constructor)).is_some())
+            || matches!(
+                items,
+                [Expression::Identifier(type_name), Expression::Identifier(at), Expression::Integer(_), _]
+                    if source.slice(*at) == "at" && self.union_types.contains_key(source.slice(*type_name))
+            )
+    }
+
+    fn is_constraint_definition(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(
+            items,
+            [Expression::Identifier(_), Expression::Identifier(operation), Expression::AnonymousFunction { .. }]
+                if source.slice(*operation) == "constraint"
+        )
+    }
+
+    fn is_modular_type_definition(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(kind), _] if matches!(source.slice(*kind), "ModNat" | "ModInt"))
+    }
+
+    fn is_explicit_modulo(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(
+            items,
+            [_, Expression::Identifier(operation), Expression::Identifier(type_name)]
+                if source.slice(*operation) == "modulo"
+                    && matches!(self.bindings.get(source.slice(*type_name)), Some(Value::ModularType(_)))
+        )
+    }
+
+    fn is_range_selection(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(
+            items,
+            [_, Expression::Identifier(operation), selector]
+                if matches!(source.slice(*operation), "select" | "select-index")
+                    && !matches!(selector, Expression::AnonymousFunction { .. })
+        )
+    }
+
+    fn evaluate_range_selection(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [collection, Expression::Identifier(operation), selector] = items else {
+            unreachable!("preselected range selection")
+        };
+        let collection_value = self.evaluate_expression(source, collection, trace)?;
+        let selector_value = self.evaluate_expression(source, selector, trace)?;
+        let Value::IntRange { lower, upper } = selector_value else {
+            return Err(diagnostic(
+                source,
+                "E-SELECTION-RANGE",
+                selector.span(),
+                "range selection requires Range Int",
+            ));
+        };
+        let operation = source.slice(*operation);
+        let result = match collection_value {
+            Value::List {
+                element_classifier,
+                entries,
+            } if operation == "select-index" => {
+                let entries = entries
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(index, _)| {
+                        let index = BigInt::from(*index);
+                        index >= lower && index <= upper
+                    })
+                    .map(|(_, value)| value)
+                    .collect();
+                Value::List {
+                    element_classifier,
+                    entries,
+                }
+            }
+            Value::List {
+                element_classifier,
+                entries,
+            } if operation == "select" => {
+                let entries = entries
+                    .into_iter()
+                    .filter(|value| {
+                        matches!(value, Value::Int(candidate) if candidate >= &lower && candidate <= &upper)
+                    })
+                    .collect();
+                Value::List {
+                    element_classifier,
+                    entries,
+                }
+            }
+            Value::String(text) if operation == "select-index" => {
+                let selected = characters(&text)
+                    .enumerate()
+                    .filter(|(index, _)| {
+                        let index = BigInt::from(*index);
+                        index >= lower && index <= upper
+                    })
+                    .map(|(_, character)| character)
+                    .collect::<String>();
+                Value::String(selected)
+            }
+            value => {
+                return Err(diagnostic(
+                    source,
+                    "E-SELECTION-SOURCE",
+                    collection.span(),
+                    format!(
+                        "{operation} range has no overload for `{}`",
+                        structural_value_classifier(&value)
+                    ),
+                ));
+            }
+        };
+        trace.record(TraceEvent {
+            event: "collection.range.selected",
+            rule: if operation == "select-index" {
+                "TOPAL-RANGE-INDEX-SELECTION-001"
+            } else {
+                "TOPAL-RANGE-VALUE-SELECTION-001"
+            },
+            detail: operation,
+        });
+        self.checkpoint(trace, Some(&result), Some(span));
+        Ok(result)
+    }
+
+    fn apply_explicit_modulo(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [operand, _, Expression::Identifier(type_name)] = items else {
+            unreachable!("preselected explicit modular reduction")
+        };
+        let operand_value = self.evaluate_expression(source, operand, trace)?;
+        let Value::Int(value) = operand_value else {
+            return Err(diagnostic(
+                source,
+                "E-MODULO-OPERAND",
+                operand.span(),
+                "explicit modulo construction requires Int",
+            ));
+        };
+        let name = source.slice(*type_name);
+        let Value::ModularType(kind) = self.bindings.get(name).expect("known modular type") else {
+            unreachable!("preselected modular type")
+        };
+        let value = reduce_modular(value, &kind.lower, &kind.upper);
+        trace.record(TraceEvent {
+            event: "numeric.modular.reduced",
+            rule: "TOPAL-NUM-MODULAR-REDUCE-001",
+            detail: name,
+        });
+        Ok(Value::Modular {
+            type_name: name.into(),
+            lower: kind.lower.clone(),
+            upper: kind.upper.clone(),
+            value,
+        })
+    }
+
+    fn construct_modular_type(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(kind), range] = items else {
+            unreachable!("preselected modular type definition")
+        };
+        let signed = source.slice(*kind) == "ModInt";
+        let range_value = self.evaluate_expression(source, range, trace)?;
+        let Value::IntRange { lower, upper } = range_value else {
+            return Err(diagnostic(
+                source,
+                "E-MODULAR-RANGE",
+                range.span(),
+                "ModNat and ModInt require a finite Int range",
+            ));
+        };
+        if lower > BigInt::from(0)
+            || upper < BigInt::from(0)
+            || (!signed && lower != BigInt::from(0))
+        {
+            return Err(diagnostic(
+                source,
+                "E-MODULAR-RANGE",
+                range.span(),
+                "modular range must contain zero and ModNat must begin at zero",
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "numeric.modular.type.constructed",
+            rule: "TOPAL-NUM-MODULAR-TYPE-001",
+            detail: source.slice(*kind),
+        });
+        Ok(Value::ModularType(Box::new(ModularType {
+            name: None,
+            signed,
+            lower,
+            upper,
+        })))
+    }
+
+    fn is_modular_construction(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _] if matches!(self.bindings.get(source.slice(*name)), Some(Value::ModularType(_))))
+    }
+
+    fn construct_modular_value(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        _span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(name_span), operand] = items else {
+            unreachable!("preselected modular construction")
+        };
+        let name = source.slice(*name_span);
+        let Value::ModularType(kind) = self.bindings.get(name).expect("known modular type") else {
+            unreachable!("preselected modular type")
+        };
+        let operand_value = self.evaluate_expression(source, operand, trace)?;
+        let Value::Int(value) = operand_value else {
+            return Err(diagnostic(
+                source,
+                "E-MODULAR-CONSTRUCTION-OPERAND",
+                operand.span(),
+                "modular construction requires Int",
+            ));
+        };
+        if value < kind.lower || value > kind.upper {
+            if expression_is_closed(operand) {
+                return Err(diagnostic(
+                    source,
+                    "E-MODULAR-OUT-OF-RANGE",
+                    operand.span(),
+                    format!("value is outside `{name}` canonical range"),
+                ));
+            }
+            let position = source.position(operand.span().start);
+            return Ok(Value::Error {
+                domain: format!("root.{name}(Int)"),
+                code: "out-of-range".into(),
+                line: position.line,
+                column: position.column,
+            });
+        }
+        trace.record(TraceEvent {
+            event: "numeric.modular.constructed",
+            rule: "TOPAL-NUM-MODULAR-CONSTRUCT-001",
+            detail: name,
+        });
+        Ok(Value::Modular {
+            type_name: name.into(),
+            lower: kind.lower.clone(),
+            upper: kind.upper.clone(),
+            value,
+        })
+    }
+
+    fn construct_constraint(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(base), _, predicate] = items else {
+            unreachable!("preselected constraint definition")
+        };
+        let base_classifier = source.slice(*base);
+        if !matches!(
+            base_classifier,
+            "Boolean" | "Int" | "Nat" | "Rational" | "String"
+        ) {
+            return Err(diagnostic(
+                source,
+                "E-CONSTRAINT-BASE",
+                *base,
+                "constraint base must be a supported value classifier",
+            ));
+        }
+        let predicate = self.evaluate_expression(source, predicate, trace)?;
+        trace.record(TraceEvent {
+            event: "constraint.constructed",
+            rule: "TOPAL-TYPE-CONSTRAINT-001",
+            detail: base_classifier,
+        });
+        Ok(Value::Constraint(Box::new(ConstraintValue {
+            name: None,
+            base_classifier: base_classifier.into(),
+            predicate,
+        })))
+    }
+
+    fn is_constraint_application(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _] if matches!(self.bindings.get(source.slice(*name)), Some(Value::Constraint(_))))
+    }
+
+    fn apply_constraint(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(name_span), operand] = items else {
+            unreachable!("preselected constraint application")
+        };
+        let name = source.slice(*name_span);
+        let Value::Constraint(constraint) = self.bindings.get(name).expect("known constraint")
+        else {
+            unreachable!("preselected constraint value")
+        };
+        let value = self.evaluate_expression(source, operand, trace)?;
+        if !value_has_classifier(&value, &constraint.base_classifier) {
+            return Err(diagnostic(
+                source,
+                "E-CONSTRAINT-OPERAND",
+                operand.span(),
+                format!(
+                    "constraint `{name}` requires `{}`",
+                    constraint.base_classifier
+                ),
+            ));
+        }
+        let decision = self.invoke_anonymous_function(
+            &constraint.predicate,
+            vec![value.clone()],
+            span,
+            trace,
+        )?;
+        let Value::Boolean(accepted) = decision else {
+            return Err(diagnostic(
+                source,
+                "E-CONSTRAINT-PREDICATE-RESULT",
+                operand.span(),
+                "constraint predicate must return Boolean",
+            ));
+        };
+        trace.record(TraceEvent {
+            event: "constraint.validated",
+            rule: "TOPAL-TYPE-CONSTRAINT-VALIDATE-001",
+            detail: if accepted { "accepted" } else { "rejected" },
+        });
+        if accepted {
+            return Ok(Value::Refined {
+                constraint: name.into(),
+                base_classifier: constraint.base_classifier.clone(),
+                value: Box::new(value),
+            });
+        }
+        if expression_is_closed(operand) {
+            return Err(diagnostic(
+                source,
+                "E-CONSTRAINT-REJECTED",
+                operand.span(),
+                format!("value does not satisfy constraint `{name}`"),
+            ));
+        }
+        let position = source.position(operand.span().start);
+        Ok(Value::Error {
+            domain: format!("root.{name}({})", constraint.base_classifier),
+            code: "out-of-range".into(),
+            line: position.line,
+            column: position.column,
+        })
+    }
+
+    fn is_characters_application(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items.first(), Some(Expression::Identifier(operation)) if source.slice(*operation) == "characters")
+    }
+
+    fn evaluate_characters_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let text = items.get(1).expect("characters application has text");
+        let text_span = text.span();
+        let text = self.evaluate_expression(source, text, trace)?;
+        let Value::String(text) = text else {
+            return Err(diagnostic(
+                source,
+                "E-CHARACTERS-OPERAND",
+                text_span,
+                "characters requires a String operand",
+            ));
+        };
+        let value = if items.len() == 4 {
+            trace.record(TraceEvent {
+                event: "operator.selected",
+                rule: "TOPAL-TYPE-CALL-001",
+                detail: "root.characters(String)",
+            });
+            let mut collected = String::new();
+            for character in characters(&text) {
+                trace.record(TraceEvent {
+                    event: "generator.yielded",
+                    rule: "TOPAL-STRING-CHARACTERS-COLLECT-001",
+                    detail: character,
+                });
+                collected.push_str(character);
+            }
+            trace.record(TraceEvent {
+                event: "string.characters.collected",
+                rule: "TOPAL-STRING-CHARACTERS-COLLECT-001",
+                detail: "String",
+            });
+            Value::String(collected)
+        } else {
+            trace.record(TraceEvent {
+                event: "generator.started",
+                rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
+                detail: "Generator Character Unit Unit",
+            });
+            Value::CharacterGenerator {
+                generated: characters(&text).map(str::to_owned).collect(),
+                origin: "root.characters".to_owned(),
+            }
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
+    }
+
+    fn construct_union_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if let [Expression::Identifier(constructor), payload] = items {
+            return self.construct_union(source, *constructor, payload, span, trace);
+        }
+        let [
+            Expression::Identifier(type_name),
+            _,
+            Expression::Integer(index),
+            payload,
+        ] = items
+        else {
+            unreachable!("preselected positional Variant constructor application")
+        };
+        let index_text = source.slice(*index);
+        let key = format!("at {index_text}");
+        let type_text = source.slice(*type_name);
+        let classifier = self
+            .union_types
+            .get(type_text)
+            .and_then(|alternatives| alternatives.get(&key))
+            .and_then(Option::as_deref)
+            .ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-VARIANT-INDEX",
+                    *index,
+                    "Variant alternative index is outside its declared bounds",
+                )
+            })?;
+        let value = self.evaluate_expression(source, payload, trace)?;
+        if !value_has_classifier(&value, classifier) {
+            return Err(diagnostic(
+                source,
+                "E-VARIANT-PAYLOAD-CLASSIFIER",
+                payload.span(),
+                format!("Variant alternative {index_text} requires `{classifier}`"),
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "variant.constructed",
+            rule: "TOPAL-TYPE-VARIANT-001",
+            detail: index_text,
+        });
+        Ok(Value::Union(Box::new(UnionValue {
+            type_name: type_text.into(),
+            alternative: key,
+            payload_classifier: Some(classifier.into()),
+            payload: Some(Box::new(value)),
+        })))
+    }
+
+    fn construct_union(
+        &self,
+        source: &SourceText,
+        constructor: Span,
+        payload: &Expression,
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let name = source.slice(constructor);
+        let (type_name, classifier) = self
+            .union_constructor(name)
+            .expect("preselected payload Union constructor");
+        let value = self.evaluate_expression(source, payload, trace)?;
+        if !value_has_classifier(&value, classifier) {
+            return Err(diagnostic(
+                source,
+                "E-UNION-PAYLOAD-CLASSIFIER",
+                payload.span(),
+                format!(
+                    "Union constructor `{name}` requires `{classifier}`, found `{}`",
+                    structural_value_classifier(&value)
+                ),
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "union.constructed",
+            rule: "TOPAL-TYPE-UNION-001",
+            detail: name,
+        });
+        let result = Value::Union(Box::new(UnionValue {
+            type_name: type_name.to_owned(),
+            alternative: name.to_owned(),
+            payload_classifier: Some(classifier.to_owned()),
+            payload: Some(Box::new(value)),
+        }));
+        self.checkpoint(trace, Some(&result), Some(span));
+        Ok(result)
+    }
+
+    fn invoke_anonymous_function(
+        &self,
+        function: &Value,
+        arguments: Vec<Value>,
+        call_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Value::AnonymousFunction(function) = function else {
+            unreachable!("anonymous invocation is dispatched only for an anonymous function")
+        };
+        let AnonymousFunction {
+            source,
+            parameters,
+            body,
+            bindings,
+        } = function.as_ref();
+        if parameters.len() != arguments.len() {
+            return Err(diagnostic(
+                source,
+                "E-ANONYMOUS-FUNCTION-ARITY",
+                call_span,
+                format!(
+                    "anonymous function expects {} arguments, found {}",
+                    parameters.len(),
+                    arguments.len()
+                ),
+            ));
+        }
+        let mut invocation = self.clone();
+        invocation.bindings = bindings.clone();
+        for (parameter, argument) in parameters.iter().zip(arguments) {
+            invocation.bindings.insert(parameter.clone(), argument);
+        }
+        let detail = format!("arguments={}", parameters.len());
+        trace.record(TraceEvent {
+            event: "function.anonymous.called",
+            rule: "TOPAL-FUNCTION-ANONYMOUS-001",
+            detail: &detail,
+        });
+        invocation.evaluate_expression(source, body, trace)
+    }
+
+    fn capture_anonymous_function(
+        &self,
+        source: &SourceText,
+        parameters: &[Span],
+        body: &Expression,
+        trace: &mut impl TraceSink,
+    ) -> Value {
+        let parameters = parameters
+            .iter()
+            .map(|parameter| source.slice(*parameter).to_owned())
+            .collect::<Vec<_>>();
+        let detail = format!("parameters={}", parameters.len());
+        trace.record(TraceEvent {
+            event: "function.anonymous.captured",
+            rule: "TOPAL-FUNCTION-ANONYMOUS-001",
+            detail: &detail,
+        });
+        Value::AnonymousFunction(Box::new(AnonymousFunction {
+            source: source.clone(),
+            parameters,
+            body: Box::new(body.clone()),
+            bindings: self.bindings.clone(),
+        }))
+    }
+
+    fn evaluate_list_insert_at(
+        &self,
+        source: &SourceText,
+        list: Value,
+        boundary: Option<&Expression>,
+        inserted: Option<&Expression>,
+        operation_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Some(boundary) = boundary else {
+            return Err(diagnostic(
+                source,
+                "E-EXPECTED-OPERAND",
+                operation_span,
+                "expected a boundary after insert-at",
+            ));
+        };
+        let Some(inserted) = inserted else {
+            return Err(diagnostic(
+                source,
+                "E-EXPECTED-OPERAND",
+                boundary.span(),
+                "expected a value or List after the insertion boundary",
+            ));
+        };
+        let boundary_value = self.evaluate_expression(source, boundary, trace)?;
+        let inserted_value = self.evaluate_expression(source, inserted, trace)?;
+        apply_list_insert_at(
+            source,
+            list,
+            boundary_value,
+            boundary.span(),
+            inserted_value,
+            inserted.span(),
+            trace,
+        )
+    }
+
+    #[allow(clippy::too_many_lines)] // Collection laws remain explicit in one isolated frame.
+    fn evaluate_list_higher_order(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if let [collection, Expression::Identifier(operation_span), function] = items
+            && matches!(
+                source.slice(*operation_span),
+                "map" | "select" | "remove-indexes" | "remove-values"
+            )
+        {
+            return (|| {
+                let collection_span = collection.span();
+                let collection = self.evaluate_expression(source, collection, trace)?;
+                let Value::List {
+                    element_classifier,
+                    entries,
+                } = collection
+                else {
+                    return Err(diagnostic(
+                        source,
+                        "E-COLLECTION-OPERATION-SOURCE",
+                        collection_span,
+                        format!(
+                            "{} requires a homogeneous collection",
+                            source.slice(*operation_span)
+                        ),
+                    ));
+                };
+                let function_span = function.span();
+                let function = self.evaluate_expression(source, function, trace)?;
+                let operation = source.slice(*operation_span);
+                let mut output = Vec::new();
+                for (index, entry) in entries.into_iter().enumerate() {
+                    let input = entry.clone();
+                    let argument = if operation == "remove-indexes" {
+                        Value::Int(BigInt::from(index))
+                    } else {
+                        entry
+                    };
+                    let transformed =
+                        self.invoke_anonymous_function(&function, vec![argument], span, trace)?;
+                    if matches!(operation, "select" | "remove-indexes" | "remove-values") {
+                        let Value::Boolean(retain) = transformed else {
+                            return Err(diagnostic(
+                                source,
+                                "E-SELECT-PREDICATE-RESULT",
+                                function_span,
+                                format!("{operation} predicate must return Boolean"),
+                            ));
+                        };
+                        if retain == (operation == "select") {
+                            output.push(input);
+                        }
+                    } else {
+                        output.push(transformed);
+                    }
+                }
+                let output_classifier = if operation != "map" || output.is_empty() {
+                    element_classifier
+                } else {
+                    let classifier = structural_value_classifier(&output[0]);
+                    if output
+                        .iter()
+                        .any(|value| structural_value_classifier(value) != classifier)
+                    {
+                        return Err(diagnostic(
+                            source,
+                            "E-MAP-RESULT-CLASSIFIER",
+                            function_span,
+                            "map transformation returned values with different classifiers",
+                        ));
+                    }
+                    classifier
+                };
+                let selection = format!("root.{operation}(List {output_classifier})");
+                trace.record(TraceEvent {
+                    event: "operator.selected",
+                    rule: "TOPAL-TYPE-CALL-001",
+                    detail: &selection,
+                });
+                trace.record(TraceEvent {
+                    event: match operation {
+                        "map" => "list.mapped",
+                        "select" => "list.selected",
+                        _ => "list.entries.removed",
+                    },
+                    rule: match operation {
+                        "map" => "TOPAL-COLLECTION-MAP-001",
+                        "select" => "TOPAL-COLLECTION-SELECT-001",
+                        "remove-indexes" => "TOPAL-LIST-REMOVE-INDEXES-001",
+                        "remove-values" => "TOPAL-LIST-REMOVE-VALUES-001",
+                        _ => unreachable!("known higher-order List operation"),
+                    },
+                    detail: &output_classifier,
+                });
+                let result = Value::List {
+                    element_classifier: output_classifier,
+                    entries: output,
+                };
+                self.checkpoint(trace, Some(&result), Some(span));
+                Ok(result)
+            })();
+        }
+        if let [
+            collection,
+            Expression::Identifier(operation),
+            initial,
+            function,
+        ] = items
+            && source.slice(*operation) == "fold"
+        {
+            return (|| {
+                let collection_span = collection.span();
+                let collection = self.evaluate_expression(source, collection, trace)?;
+                let Value::List { entries, .. } = collection else {
+                    return Err(diagnostic(
+                        source,
+                        "E-COLLECTION-OPERATION-SOURCE",
+                        collection_span,
+                        "fold requires an ordered homogeneous collection",
+                    ));
+                };
+                let mut state = self.evaluate_expression(source, initial, trace)?;
+                let expected = structural_value_classifier(&state);
+                let function_span = function.span();
+                let function = self.evaluate_expression(source, function, trace)?;
+                for entry in entries {
+                    state =
+                        self.invoke_anonymous_function(&function, vec![state, entry], span, trace)?;
+                    if !value_has_classifier(&state, &expected) {
+                        return Err(diagnostic(
+                            source,
+                            "E-FOLD-STATE-CLASSIFIER",
+                            function_span,
+                            format!("fold step must preserve state classifier `{expected}`"),
+                        ));
+                    }
+                }
+                trace.record(TraceEvent {
+                    event: "list.folded",
+                    rule: "TOPAL-COLLECTION-FOLD-001",
+                    detail: &expected,
+                });
+                self.checkpoint(trace, Some(&state), Some(span));
+                Ok(state)
+            })();
+        }
+        unreachable!("higher-order List operation is preselected by its application shape")
+    }
+
+    #[allow(clippy::too_many_lines)] // Collector spellings and their distinct laws remain auditable together.
+    fn evaluate_list_materialization(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if let [Expression::Identifier(operation), pairs] = items
+            && source.slice(*operation) == "unzip"
+        {
+            let pairs_span = pairs.span();
+            let pairs = self.evaluate_expression(source, pairs, trace)?;
+            return apply_list_unzip(source, pairs, pairs_span, trace);
+        }
+        if let [Expression::Identifier(operation), collection] = items
+            && source.slice(*operation) == "collect"
+        {
+            let value = self.evaluate_expression(source, collection, trace)?;
+            if matches!(value, Value::List { .. }) {
+                trace.record(TraceEvent {
+                    event: "list.collected",
+                    rule: "TOPAL-COLLECTION-COLLECT-LIST-001",
+                    detail: "List",
+                });
+                return Ok(value);
+            }
+            return Err(diagnostic(
+                source,
+                "E-COLLECT-SOURCE",
+                collection.span(),
+                "unary collect requires a finite homogeneous traversal",
+            ));
+        }
+        if let [
+            collection,
+            Expression::Identifier(operation),
+            Expression::Identifier(target),
+        ] = items
+            && source.slice(*operation) == "collect"
+        {
+            let value = self.evaluate_expression(source, collection, trace)?;
+            if source.slice(*target) == "Array" {
+                let Value::List {
+                    element_classifier,
+                    entries,
+                } = value
+                else {
+                    return Err(diagnostic(
+                        source,
+                        "E-COLLECT-ARRAY-SOURCE",
+                        collection.span(),
+                        "Array collection requires a finite List",
+                    ));
+                };
+                trace.record(TraceEvent {
+                    event: "array.collected",
+                    rule: "TOPAL-ARRAY-COLLECT-001",
+                    detail: &format!("count={}", entries.len()),
+                });
+                return Ok(Value::Array {
+                    element_classifier,
+                    entries,
+                });
+            }
+            if source.slice(*target) != "String" {
+                return Err(diagnostic(
+                    source,
+                    "E-COLLECT-TARGET",
+                    *target,
+                    "implemented collectors are Array and String",
+                ));
+            }
+            let Value::List { entries, .. } = value else {
+                return Err(diagnostic(
+                    source,
+                    "E-COLLECT-SOURCE",
+                    collection.span(),
+                    "String collection requires a finite List of Character or String entries",
+                ));
+            };
+            let mut text = String::new();
+            for entry in entries {
+                let Value::String(fragment) = entry else {
+                    return Err(diagnostic(
+                        source,
+                        "E-COLLECT-STRING-ENTRY",
+                        collection.span(),
+                        "String collection requires Character or String entries",
+                    ));
+                };
+                text.push_str(&fragment);
+            }
+            trace.record(TraceEvent {
+                event: "string.collected",
+                rule: "TOPAL-COLLECTION-COLLECT-STRING-001",
+                detail: "String",
+            });
+            return Ok(Value::String(text));
+        }
+        if let [Expression::Identifier(operation), collection] = items
+            && matches!(source.slice(*operation), "collect-set" | "collect-bag")
+        {
+            let value = self.evaluate_expression(source, collection, trace)?;
+            return collect_unordered(
+                source,
+                source.slice(*operation),
+                value,
+                collection.span(),
+                trace,
+            );
+        }
+        if let [
+            Expression::Identifier(operation),
+            collection,
+            Expression::Identifier(resolving),
+            Expression::Identifier(policy),
+        ] = items
+            && source.slice(*operation) == "collect-map"
+            && source.slice(*resolving) == "resolving"
+        {
+            let value = self.evaluate_expression(source, collection, trace)?;
+            return collect_map(
+                source,
+                value,
+                source.slice(*policy),
+                collection.span(),
+                trace,
+            );
+        }
+        if let [
+            left_with_default,
+            Expression::Identifier(operation),
+            right_with_default,
+        ] = items
+            && source.slice(*operation) == "zip-longest"
+        {
+            let left = self.evaluate_expression(source, left_with_default, trace)?;
+            let right = self.evaluate_expression(source, right_with_default, trace)?;
+            return apply_list_zip_longest(source, left, right, span, trace);
+        }
+        Err(diagnostic(
+            source,
+            "E-UNSUPPORTED-COLLECTION-APPLICATION",
+            span,
+            "unsupported collection materialization form",
+        ))
+    }
 }
 
 fn known_enum_alternatives(session: &Session, type_name: &str) -> Option<BTreeSet<String>> {
@@ -2130,23 +3345,47 @@ impl Execution {
                         .execute_suspended_foreach(session, trace, value, binding, body, span);
                 }
                 let (generated, origin, returned, returned_classifier) = match value {
-                    Value::CharacterGenerator { generated, origin } => {
-                        (generated, origin, Value::Unit, "Unit")
-                    }
+                    Value::CharacterGenerator { generated, origin } => (
+                        generated.into_iter().map(Value::String).collect(),
+                        origin,
+                        Value::Unit,
+                        "Unit",
+                    ),
                     Value::CharacterReturningGenerator {
                         generated,
                         returned,
                         origin,
-                    } => (generated, origin, Value::String(returned), "Character"),
+                    } => (
+                        generated.into_iter().map(Value::String).collect(),
+                        origin,
+                        Value::String(returned),
+                        "Character",
+                    ),
+                    Value::List {
+                        element_classifier,
+                        entries,
+                    } => {
+                        session.bindings.insert(
+                            name_text.to_owned(),
+                            Value::List {
+                                element_classifier,
+                                entries: entries.clone(),
+                            },
+                        );
+                        session.declared_names.insert(name_text.to_owned());
+                        (entries, "root.List".into(), Value::Unit, "Unit")
+                    }
                     _ => return Err(foreach_source_diagnostic(&self.source, source.span())),
                 };
-                session.declared_names.remove(name_text);
-                session.consumed_names.insert(name_text.to_owned());
-                trace.record(TraceEvent {
-                    event: "generator.consumed",
-                    rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
-                    detail: name_text,
-                });
+                if origin != "root.List" {
+                    session.declared_names.remove(name_text);
+                    session.consumed_names.insert(name_text.to_owned());
+                    trace.record(TraceEvent {
+                        event: "generator.consumed",
+                        rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
+                        detail: name_text,
+                    });
+                }
                 (generated, origin, returned, returned_classifier)
             }
             Expression::Application { items, .. } => {
@@ -2166,7 +3405,9 @@ impl Execution {
                     ));
                 };
                 (
-                    characters(&text_value).map(str::to_owned).collect(),
+                    characters(&text_value)
+                        .map(|character| Value::String(character.to_owned()))
+                        .collect(),
                     "root.characters".to_owned(),
                     Value::Unit,
                     "Unit",
@@ -2176,20 +3417,22 @@ impl Execution {
         };
         let traversal_rule = if origin == "root.characters" {
             "TOPAL-STRING-CHARACTERS-FOREACH-001"
+        } else if origin == "root.List" {
+            "TOPAL-COLLECTION-FOREACH-001"
         } else {
             "TOPAL-GENERATOR-FOREACH-001"
         };
         let binding_name = self.source.slice(binding).to_owned();
-        for character in &generated {
+        for entry in &generated {
             let mut iteration = session.clone();
             iteration
                 .bindings
-                .insert(binding_name.clone(), Value::String(character.to_owned()));
+                .insert(binding_name.clone(), entry.clone());
             iteration.declared_names.insert(binding_name.clone());
             trace.record(TraceEvent {
                 event: "generator.yielded",
                 rule: traversal_rule,
-                detail: character,
+                detail: &entry.to_string(),
             });
             let mut body_execution = Self {
                 source: self.source.clone(),
@@ -2394,7 +3637,9 @@ impl Execution {
             ));
         }
         let result_text = self.source.slice(result);
-        if !supported_value_classifier(result_text, &session.enum_types) {
+        if !supported_value_classifier(result_text, &session.enum_types)
+            && !session.union_types.contains_key(result_text)
+        {
             return Err(diagnostic(
                 &self.source,
                 "E-UNSUPPORTED-RESULT-CLASSIFIER",
@@ -2407,7 +3652,9 @@ impl Execution {
             .iter()
             .map(|parameter| {
                 let classifier = self.source.slice(parameter.classifier);
-                if !supported_value_classifier(classifier, &session.enum_types) {
+                if !supported_value_classifier(classifier, &session.enum_types)
+                    && !session.union_types.contains_key(classifier)
+                {
                     return Err(diagnostic(
                         &self.source,
                         "E-UNSUPPORTED-PARAMETER-CLASSIFIER",
@@ -2665,6 +3912,11 @@ impl Execution {
                     span: *span,
                 },
             )?,
+            Statement::Union {
+                name,
+                alternatives,
+                span,
+            } => declare_union(&self.source, session, *name, alternatives, *span, trace)?,
             Statement::Foreach {
                 result,
                 source,
@@ -2772,6 +4024,7 @@ impl Execution {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Declaration specializations remain ordered before ordinary projection.
     fn execute_binding(
         &self,
         session: &mut Session,
@@ -2790,6 +4043,11 @@ impl Execution {
             ));
         }
         if let Some((value, span)) = declare_enum(&self.source, name, initializer, session, trace)?
+        {
+            return Ok(BindingOutcome::Bound(value, span));
+        }
+        if let Some((value, span)) =
+            declare_variant(&self.source, name, initializer, session, trace)
         {
             return Ok(BindingOutcome::Bound(value, span));
         }
@@ -2858,6 +4116,12 @@ impl Execution {
                 rule: "TOPAL-TYPE-RESULT-PROJECT-001",
                 detail: name_text,
             });
+        }
+        if let Value::Constraint(constraint) = &mut evaluated {
+            constraint.name = Some(name_text.to_owned());
+        }
+        if let Value::ModularType(kind) = &mut evaluated {
+            kind.name = Some(name_text.to_owned());
         }
         session.bindings.insert(name_text.to_owned(), evaluated);
         session.functions.remove(name_text);
@@ -3010,6 +4274,7 @@ fn expression_is_closed(expression: &Expression) -> bool {
             .iter()
             .all(|field| expression_is_closed(&field.value)),
         Expression::Application { items, .. } => items.iter().all(expression_is_closed),
+        Expression::AnonymousFunction { body, .. } => expression_is_closed(body),
         Expression::DecisionTable { .. } | Expression::Identifier(_) | Expression::Discard(_) => {
             false
         }
@@ -3268,6 +4533,7 @@ fn statement_span(statement: &Statement) -> Span {
         Statement::Binding { name, value, .. } => cover(*name, value.span()),
         Statement::Function { span, .. }
         | Statement::Generator { span, .. }
+        | Statement::Union { span, .. }
         | Statement::Foreach { span, .. } => *span,
         Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
@@ -3648,6 +4914,32 @@ fn enum_alternatives(source: &SourceText, expression: &Expression) -> Option<Vec
         .collect()
 }
 
+fn variant_alternatives(source: &SourceText, expression: &Expression) -> Option<Vec<String>> {
+    let Expression::Application { items, .. } = expression else {
+        return None;
+    };
+    let [
+        Expression::Identifier(constructor),
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    if source.slice(*constructor) != "Variant" {
+        return None;
+    }
+    fields
+        .iter()
+        .map(|field| {
+            field
+                .label
+                .is_none()
+                .then(|| classifier_expression(source, &field.value))
+                .flatten()
+        })
+        .collect()
+}
+
 fn evaluate_arithmetic_error_code(
     source: &SourceText,
     items: &[Expression],
@@ -3763,7 +5055,95 @@ fn declare_enum(
     Ok(Some((Value::Unit, cover(name, expression.span()))))
 }
 
+fn declare_union(
+    source: &SourceText,
+    session: &mut Session,
+    name: Span,
+    alternatives: &[topal_syntax::UnionAlternative],
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<(Value, Span), Diagnostic> {
+    let type_name = source.slice(name);
+    if session.declared_names.contains(type_name) {
+        return Err(diagnostic(
+            source,
+            "E-DUPLICATE-UNION",
+            name,
+            "name is already declared",
+        ));
+    }
+    let mut declared = BTreeMap::new();
+    for alternative in alternatives {
+        let alternative_name = source.slice(alternative.name);
+        if declared.contains_key(alternative_name) {
+            return Err(diagnostic(
+                source,
+                "E-DUPLICATE-UNION-ALTERNATIVE",
+                alternative.name,
+                "Union alternative occurs more than once",
+            ));
+        }
+        let classifier = alternative
+            .classifier
+            .map(|classifier| source.slice(classifier).to_owned());
+        declared.insert(alternative_name.to_owned(), classifier.clone());
+        if classifier.is_none() {
+            session.bindings.insert(
+                alternative_name.to_owned(),
+                Value::Union(Box::new(UnionValue {
+                    type_name: type_name.to_owned(),
+                    alternative: alternative_name.to_owned(),
+                    payload_classifier: None,
+                    payload: None,
+                })),
+            );
+        }
+        session.declared_names.insert(alternative_name.to_owned());
+    }
+    session.union_types.insert(type_name.to_owned(), declared);
+    session.declared_names.insert(type_name.to_owned());
+    trace.record(TraceEvent {
+        event: "union.declared",
+        rule: "TOPAL-TYPE-UNION-001",
+        detail: type_name,
+    });
+    Ok((Value::Unit, span))
+}
+
+fn declare_variant(
+    source: &SourceText,
+    name: Span,
+    expression: &Expression,
+    session: &mut Session,
+    trace: &mut impl TraceSink,
+) -> Option<(Value, Span)> {
+    let alternatives = variant_alternatives(source, expression)?;
+    let type_name = source.slice(name);
+    let declared = alternatives
+        .into_iter()
+        .enumerate()
+        .map(|(index, classifier)| (format!("at {index}"), Some(classifier)))
+        .collect();
+    session.union_types.insert(type_name.to_owned(), declared);
+    session.declared_names.insert(type_name.to_owned());
+    trace.record(TraceEvent {
+        event: "variant.declared",
+        rule: "TOPAL-TYPE-VARIANT-001",
+        detail: type_name,
+    });
+    Some((Value::Unit, expression.span()))
+}
+
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
+    if let Value::Refined {
+        constraint,
+        base_classifier,
+        value,
+    } = value
+    {
+        return classifier == constraint
+            || (classifier == base_classifier && value_has_classifier(value, base_classifier));
+    }
     if let Value::SuspendedGenerator {
         yield_classifier,
         return_classifier,
@@ -3813,7 +5193,10 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
         (Value::Int(value), "Nat") => value >= &BigInt::from(0),
-        (Value::Enum { type_name, .. }, classifier) => type_name == classifier,
+        (Value::Enum { type_name, .. } | Value::Modular { type_name, .. }, classifier) => {
+            type_name == classifier
+        }
+        (Value::Union(union), classifier) => union.type_name == classifier,
         _ => false,
     }
 }
@@ -4704,6 +6087,11 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
+        Value::AnonymousFunction(_) => "Function",
+        Value::Array { .. } => "Array",
+        Value::Set { .. } => "Set",
+        Value::Bag { .. } => "Bag",
+        Value::Map { .. } => "Map",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
         Value::SuspendedGenerator {
             yield_classifier,
@@ -4735,6 +6123,11 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Tuple(_) => "Tuple",
         Value::Record(_) => "Record",
         Value::Enum { .. } => "Enum",
+        Value::Union(_) => "Union",
+        Value::Constraint(_) => "Constraint",
+        Value::Refined { .. } => "Refined",
+        Value::ModularType(_) => "Type",
+        Value::Modular { .. } => "Modular",
         Value::ErrorDomain(_) => "ErrorDomain",
         Value::Error { .. } => "Error",
         Value::Unit => "Unit",
@@ -4759,12 +6152,31 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::List {
             element_classifier, ..
         } => format!("List {element_classifier}"),
+        Value::Array {
+            element_classifier,
+            entries,
+        } => format!("Array {} {element_classifier}", entries.len()),
+        Value::Set {
+            element_classifier, ..
+        } => format!("Set {element_classifier}"),
+        Value::Bag {
+            element_classifier, ..
+        } => format!("Bag {element_classifier}"),
+        Value::Map {
+            key_classifier,
+            value_classifier,
+            ..
+        } => format!("Map ({key_classifier}, {value_classifier})"),
         Value::SuspendedGenerator {
             yield_classifier,
             return_classifier,
             ..
         } => format!("Generator {yield_classifier} Unit {return_classifier}"),
-        Value::Enum { type_name, .. } => type_name.clone(),
+        Value::Enum { type_name, .. } | Value::Modular { type_name, .. } => type_name.clone(),
+        Value::Union(union) => union.type_name.clone(),
+        Value::Constraint(constraint) => format!("Constraint {}", constraint.base_classifier),
+        Value::Refined { constraint, .. } => constraint.clone(),
+        Value::ModularType(kind) => kind.name.clone().unwrap_or_else(|| "Type".into()),
         _ => value_classifier(value).to_owned(),
     }
 }
@@ -4897,6 +6309,7 @@ fn display_string(value: &str) -> String {
     format!("{tag}\"{value}\"{tag}")
 }
 
+#[allow(clippy::too_many_lines)] // Numeric domains keep explicit, non-coercing dispatch arms.
 fn apply_binary(
     source: &SourceText,
     kind: CallableKind,
@@ -4906,6 +6319,8 @@ fn apply_binary(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let (span, left_span, right_span) = spans;
+    let left = forget_refinement(left, trace, "constraint->base:left");
+    let right = forget_refinement(right, trace, "constraint->base:right");
     if matches!(kind, CallableKind::Equal | CallableKind::NotEqual) {
         return apply_equality(source, kind, left, right, span, trace);
     }
@@ -4951,6 +6366,45 @@ fn apply_binary(
         return apply_comparison(source, kind, left, right, span, trace);
     }
     match (left, right) {
+        (
+            Value::Modular {
+                type_name: left_type,
+                lower,
+                upper,
+                value: left,
+            },
+            Value::Modular {
+                type_name: right_type,
+                value: right,
+                ..
+            },
+        ) if left_type == right_type => {
+            let raw = match kind {
+                CallableKind::Plus => left + right,
+                CallableKind::Minus => left - right,
+                CallableKind::Multiply => left * right,
+                _ => {
+                    return Err(diagnostic(
+                        source,
+                        "E-NO-APPLICABLE-OVERLOAD",
+                        span,
+                        "modular values support settled wrapping +, -, and * operations",
+                    ));
+                }
+            };
+            let value = reduce_modular(raw, &lower, &upper);
+            trace.record(TraceEvent {
+                event: "numeric.modular.wrapped",
+                rule: "TOPAL-NUM-MODULAR-ARITHMETIC-001",
+                detail: &left_type,
+            });
+            Ok(Value::Modular {
+                type_name: left_type,
+                lower,
+                upper,
+                value,
+            })
+        }
         (Value::Int(left), Value::Int(right)) => {
             apply_int_binary(source, kind, left, right, right_span, trace)
         }
@@ -4990,6 +6444,22 @@ fn apply_binary(
             span,
             "the implemented subset requires operands from one exact numeric domain",
         )),
+    }
+}
+
+fn reduce_modular(value: BigInt, lower: &BigInt, upper: &BigInt) -> BigInt {
+    let modulus = upper - lower + BigInt::from(1);
+    let offset = value - lower;
+    let reduced = ((offset % &modulus) + &modulus) % &modulus;
+    reduced + lower
+}
+
+fn forget_refinement(value: Value, trace: &mut impl TraceSink, detail: &'static str) -> Value {
+    if let Value::Refined { value, .. } = value {
+        trace_conversion(trace, detail);
+        *value
+    } else {
+        value
     }
 }
 
@@ -5200,6 +6670,20 @@ fn apply_comparison(
 
 fn values_compare(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<Ordering> {
     match (left, right) {
+        (Value::Refined { value, .. }, right) => values_compare(*value, right, trace),
+        (left, Value::Refined { value, .. }) => values_compare(left, *value, trace),
+        (
+            Value::Modular {
+                type_name: left_type,
+                value: left,
+                ..
+            },
+            Value::Modular {
+                type_name: right_type,
+                value: right,
+                ..
+            },
+        ) if left_type == right_type => Some(left.cmp(&right)),
         (Value::Int(left), Value::Int(right)) => Some(left.cmp(&right)),
         (Value::Rational(left), Value::Rational(right)) => Some(left.cmp(&right)),
         (Value::Int(left), Value::Rational(right)) => {
@@ -5368,6 +6852,24 @@ fn apply_empty_predicate(
             format!("List {element_classifier}"),
             "list.empty.tested",
             "TOPAL-LIST-EMPTY-PREDICATE-001",
+        ),
+        Value::Array { entries, .. } | Value::Set { entries, .. } => (
+            entries.is_empty(),
+            "Collection".into(),
+            "collection.empty.tested",
+            "TOPAL-COLLECTION-EMPTY-PREDICATE-001",
+        ),
+        Value::Bag { entries, .. } => (
+            entries.is_empty(),
+            "Collection".into(),
+            "collection.empty.tested",
+            "TOPAL-COLLECTION-EMPTY-PREDICATE-001",
+        ),
+        Value::Map { entries, .. } => (
+            entries.is_empty(),
+            "Collection".into(),
+            "collection.empty.tested",
+            "TOPAL-COLLECTION-EMPTY-PREDICATE-001",
         ),
         value => {
             let found = structural_value_classifier(&value);
@@ -5568,6 +7070,26 @@ fn apply_count(
             "list.entry-count",
             "TOPAL-LIST-ENTRY-COUNT-001",
         ),
+        Value::Array { entries, .. } | Value::Set { entries, .. } if operation == "entry-count" => {
+            (
+                entries.len(),
+                "Collection".into(),
+                "collection.entry-count",
+                "TOPAL-COLLECTION-ENTRY-COUNT-001",
+            )
+        }
+        Value::Bag { entries, .. } if operation == "entry-count" => (
+            entries.iter().map(|(_, count)| count).sum(),
+            "Bag".into(),
+            "collection.entry-count",
+            "TOPAL-COLLECTION-ENTRY-COUNT-001",
+        ),
+        Value::Map { entries, .. } if operation == "entry-count" => (
+            entries.len(),
+            "Map".into(),
+            "collection.entry-count",
+            "TOPAL-COLLECTION-ENTRY-COUNT-001",
+        ),
         value => {
             let found = structural_value_classifier(&value);
             return Err(diagnostic(
@@ -5626,6 +7148,7 @@ fn apply_list_operation(
     left: Value,
     right: Value,
     right_span: Span,
+    right_is_closed: bool,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let Value::List {
@@ -5653,6 +7176,32 @@ fn apply_list_operation(
             element_classifier,
             entries,
             &right,
+            right_span,
+            trace,
+        );
+    }
+    if matches!(
+        operation,
+        "split-at" | "take" | "drop" | "remove" | "remove-indexes"
+    ) {
+        return apply_list_index_operation(
+            source,
+            operation,
+            element_classifier,
+            entries,
+            right,
+            right_span,
+            right_is_closed,
+            trace,
+        );
+    }
+    if matches!(operation, "zip-exact" | "zip-shortest") {
+        return apply_list_zip(
+            source,
+            operation,
+            &element_classifier,
+            entries,
+            right,
             right_span,
             trace,
         );
@@ -5730,6 +7279,644 @@ fn apply_list_operation(
     Ok(Value::List {
         element_classifier,
         entries,
+    })
+}
+
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Bounds, source evidence, and trace context remain explicit.
+fn apply_list_index_operation(
+    source: &SourceText,
+    operation: &str,
+    element_classifier: String,
+    mut entries: Vec<Value>,
+    operand: Value,
+    operand_span: Span,
+    operand_is_closed: bool,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if operation == "remove-indexes"
+        && let Value::IntRange { lower, upper } = operand
+    {
+        let Ok(lower) = usize::try_from(lower) else {
+            return list_boundary_failure(
+                source,
+                operation,
+                operand_span,
+                operand_is_closed,
+                trace,
+            );
+        };
+        let Ok(upper) = usize::try_from(upper) else {
+            return list_boundary_failure(
+                source,
+                operation,
+                operand_span,
+                operand_is_closed,
+                trace,
+            );
+        };
+        if lower > upper || upper >= entries.len() {
+            return list_boundary_failure(
+                source,
+                operation,
+                operand_span,
+                operand_is_closed,
+                trace,
+            );
+        }
+        entries.drain(lower..=upper);
+        trace.record(TraceEvent {
+            event: "list.entries.removed",
+            rule: "TOPAL-LIST-REMOVE-INDEXES-001",
+            detail: &format!("lower={lower};upper={upper}"),
+        });
+        return Ok(Value::List {
+            element_classifier,
+            entries,
+        });
+    }
+    let Value::Int(index) = operand else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-INDEX-CLASSIFIER",
+            operand_span,
+            format!("{operation} requires a Nat operand"),
+        ));
+    };
+    let Ok(index) = usize::try_from(index) else {
+        return list_boundary_failure(source, operation, operand_span, operand_is_closed, trace);
+    };
+    let valid = if operation == "remove" {
+        index < entries.len()
+    } else {
+        index <= entries.len()
+    };
+    if !valid {
+        return list_boundary_failure(source, operation, operand_span, operand_is_closed, trace);
+    }
+    let classifier = format!("List {element_classifier}");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: &format!("root.{operation}({classifier},Nat)"),
+    });
+    let value = match operation {
+        "split-at" => {
+            let suffix = entries.split_off(index);
+            Value::Tuple(vec![
+                Value::List {
+                    element_classifier: element_classifier.clone(),
+                    entries,
+                },
+                Value::List {
+                    element_classifier,
+                    entries: suffix,
+                },
+            ])
+        }
+        "take" => {
+            entries.truncate(index);
+            Value::List {
+                element_classifier,
+                entries,
+            }
+        }
+        "drop" => Value::List {
+            element_classifier,
+            entries: entries.split_off(index),
+        },
+        "remove" => {
+            entries.remove(index);
+            Value::List {
+                element_classifier,
+                entries,
+            }
+        }
+        _ => unreachable!("known indexed List operation"),
+    };
+    trace.record(TraceEvent {
+        event: "list.region.selected",
+        rule: match operation {
+            "split-at" => "TOPAL-LIST-SPLIT-AT-001",
+            "take" => "TOPAL-LIST-TAKE-001",
+            "drop" => "TOPAL-LIST-DROP-001",
+            "remove" => "TOPAL-LIST-REMOVE-INDEX-001",
+            _ => unreachable!("known indexed List operation"),
+        },
+        detail: &format!("index={index}"),
+    });
+    Ok(value)
+}
+
+fn apply_list_insert_at(
+    source: &SourceText,
+    list: Value,
+    boundary: Value,
+    boundary_span: Span,
+    inserted: Value,
+    inserted_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List {
+        element_classifier,
+        mut entries,
+    } = list
+    else {
+        unreachable!("insert-at is dispatched only for List")
+    };
+    let Value::Int(boundary) = boundary else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-BOUNDARY-CLASSIFIER",
+            boundary_span,
+            "insert-at boundary must be Nat",
+        ));
+    };
+    let Ok(boundary) = usize::try_from(boundary) else {
+        return Ok(list_boundary_error(
+            source,
+            "insert-at",
+            boundary_span,
+            trace,
+        ));
+    };
+    if boundary > entries.len() {
+        return Ok(list_boundary_error(
+            source,
+            "insert-at",
+            boundary_span,
+            trace,
+        ));
+    }
+    let inserted_entries = match inserted {
+        Value::List {
+            element_classifier: classifier,
+            entries,
+        } => {
+            if classifier != element_classifier {
+                return Err(diagnostic(
+                    source,
+                    "E-LIST-INSERT-CLASSIFIER",
+                    inserted_span,
+                    format!("cannot insert `List {classifier}` into `List {element_classifier}`"),
+                ));
+            }
+            entries
+        }
+        value if value_has_classifier(&value, &element_classifier) => vec![value],
+        value => {
+            return Err(diagnostic(
+                source,
+                "E-LIST-INSERT-CLASSIFIER",
+                inserted_span,
+                format!(
+                    "insert-at requires `{element_classifier}` or `List {element_classifier}`, found `{}`",
+                    structural_value_classifier(&value)
+                ),
+            ));
+        }
+    };
+    let inserted_count = inserted_entries.len();
+    entries.splice(boundary..boundary, inserted_entries);
+    trace.record(TraceEvent {
+        event: "list.inserted",
+        rule: "TOPAL-LIST-INSERT-AT-001",
+        detail: &format!("boundary={boundary};count={inserted_count}"),
+    });
+    Ok(Value::List {
+        element_classifier,
+        entries,
+    })
+}
+
+fn apply_list_entries_view(list: Value, trace: &mut impl TraceSink) -> Value {
+    let Value::List {
+        element_classifier,
+        entries,
+    } = list
+    else {
+        unreachable!("entries view is dispatched only for List")
+    };
+    let entry_classifier = format!("IndexedEntry {element_classifier}");
+    let entries = entries
+        .into_iter()
+        .enumerate()
+        .map(|(index, value)| {
+            Value::Record(vec![
+                ("index".into(), Value::Int(BigInt::from(index))),
+                ("value".into(), value),
+            ])
+        })
+        .collect();
+    trace.record(TraceEvent {
+        event: "list.entries.viewed",
+        rule: "TOPAL-COLLECTION-ENTRIES-001",
+        detail: &entry_classifier,
+    });
+    Value::List {
+        element_classifier: entry_classifier,
+        entries,
+    }
+}
+
+fn list_boundary_error(
+    source: &SourceText,
+    operation: &str,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Value {
+    let position = source.position(span.start);
+    trace.record(TraceEvent {
+        event: "list.boundary.rejected",
+        rule: "TOPAL-LIST-BOUNDARY-CHECK-001",
+        detail: operation,
+    });
+    Value::Error {
+        domain: if operation.starts_with("zip-") {
+            format!("root.{operation}(List,List)")
+        } else {
+            format!("root.{operation}(List,Nat)")
+        },
+        code: "out-of-range".into(),
+        line: position.line,
+        column: position.column,
+    }
+}
+
+fn list_boundary_failure(
+    source: &SourceText,
+    operation: &str,
+    span: Span,
+    operand_is_closed: bool,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if operand_is_closed {
+        return Err(diagnostic(
+            source,
+            "E-LIST-BOUNDARY-OUT-OF-RANGE",
+            span,
+            format!("{operation} operand is outside the List's valid bounds"),
+        )
+        .with_help(
+            "use a boundary no greater than the entry count, or an existing index for remove",
+        ));
+    }
+    Ok(list_boundary_error(source, operation, span, trace))
+}
+
+fn apply_list_zip(
+    source: &SourceText,
+    operation: &str,
+    left_classifier: &str,
+    left: Vec<Value>,
+    right: Value,
+    right_span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List {
+        element_classifier: right_classifier,
+        entries: right,
+    } = right
+    else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-OPERAND",
+            right_span,
+            format!("{operation} requires another List"),
+        ));
+    };
+    if operation == "zip-exact" && left.len() != right.len() {
+        return Ok(list_boundary_error(source, operation, right_span, trace));
+    }
+    let entries = left
+        .into_iter()
+        .zip(right)
+        .map(|(left, right)| Value::Tuple(vec![left, right]))
+        .collect();
+    let pair_classifier = format!("({left_classifier}, {right_classifier})");
+    trace.record(TraceEvent {
+        event: "list.zipped",
+        rule: if operation == "zip-exact" {
+            "TOPAL-LIST-ZIP-EXACT-001"
+        } else {
+            "TOPAL-LIST-ZIP-SHORTEST-001"
+        },
+        detail: operation,
+    });
+    Ok(Value::List {
+        element_classifier: pair_classifier,
+        entries,
+    })
+}
+
+fn apply_list_unzip(
+    source: &SourceText,
+    pairs: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List { entries, .. } = pairs else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-UNZIP-SOURCE",
+            span,
+            "unzip requires a List of two-field products",
+        ));
+    };
+    let mut left = Vec::with_capacity(entries.len());
+    let mut right = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let Value::Tuple(mut fields) = entry else {
+            return Err(diagnostic(
+                source,
+                "E-LIST-UNZIP-ENTRY",
+                span,
+                "unzip requires every List entry to be a two-field product",
+            ));
+        };
+        if fields.len() != 2 {
+            return Err(diagnostic(
+                source,
+                "E-LIST-UNZIP-ENTRY",
+                span,
+                "unzip requires every List entry to contain exactly two fields",
+            ));
+        }
+        right.push(fields.pop().expect("two fields"));
+        left.push(fields.pop().expect("two fields"));
+    }
+    let left_classifier = left
+        .first()
+        .map_or_else(|| "Object".into(), structural_value_classifier);
+    let right_classifier = right
+        .first()
+        .map_or_else(|| "Object".into(), structural_value_classifier);
+    trace.record(TraceEvent {
+        event: "list.unzipped",
+        rule: "TOPAL-LIST-UNZIP-001",
+        detail: &format!("count={}", left.len()),
+    });
+    Ok(Value::Tuple(vec![
+        Value::List {
+            element_classifier: left_classifier,
+            entries: left,
+        },
+        Value::List {
+            element_classifier: right_classifier,
+            entries: right,
+        },
+    ]))
+}
+
+fn apply_list_zip_longest(
+    source: &SourceText,
+    left: Value,
+    right: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::Tuple(mut left_fields) = left else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-LEFT",
+            span,
+            "zip-longest left operand must be `(List, default)`",
+        ));
+    };
+    let Value::Tuple(mut right_fields) = right else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-RIGHT",
+            span,
+            "zip-longest right operand must be `(List, default)`",
+        ));
+    };
+    if left_fields.len() != 2 || right_fields.len() != 2 {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-OPERAND",
+            span,
+            "zip-longest operands must each contain a List and its default",
+        ));
+    }
+    let left_default = left_fields.pop().expect("two fields");
+    let right_default = right_fields.pop().expect("two fields");
+    let Value::List {
+        element_classifier: left_classifier,
+        entries: left_entries,
+    } = left_fields.pop().expect("two fields")
+    else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-LEFT",
+            span,
+            "first left field must be a List",
+        ));
+    };
+    let Value::List {
+        element_classifier: right_classifier,
+        entries: right_entries,
+    } = right_fields.pop().expect("two fields")
+    else {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-RIGHT",
+            span,
+            "first right field must be a List",
+        ));
+    };
+    if !value_has_classifier(&left_default, &left_classifier)
+        || !value_has_classifier(&right_default, &right_classifier)
+    {
+        return Err(diagnostic(
+            source,
+            "E-LIST-ZIP-LONGEST-DEFAULT",
+            span,
+            "each zip-longest default must match its List element classifier",
+        ));
+    }
+    let count = left_entries.len().max(right_entries.len());
+    let entries = (0..count)
+        .map(|index| {
+            Value::Tuple(vec![
+                left_entries
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(|| left_default.clone()),
+                right_entries
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(|| right_default.clone()),
+            ])
+        })
+        .collect();
+    trace.record(TraceEvent {
+        event: "list.zipped",
+        rule: "TOPAL-LIST-ZIP-LONGEST-001",
+        detail: &format!("count={count}"),
+    });
+    Ok(Value::List {
+        element_classifier: format!("({left_classifier}, {right_classifier})"),
+        entries,
+    })
+}
+
+fn collect_unordered(
+    source: &SourceText,
+    operation: &str,
+    value: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List {
+        element_classifier,
+        entries,
+    } = value
+    else {
+        return Err(diagnostic(
+            source,
+            "E-UNORDERED-COLLECT-SOURCE",
+            span,
+            format!("{operation} requires a finite List"),
+        ));
+    };
+    let mut distinct: Vec<(Value, usize)> = Vec::new();
+    for entry in entries {
+        let mut found = None;
+        for (index, (candidate, _)) in distinct.iter().enumerate() {
+            if values_equal(candidate.clone(), entry.clone(), trace).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-UNORDERED-COLLECT-EQUALITY",
+                    span,
+                    format!("`{element_classifier}` must provide equality for {operation}"),
+                )
+            })? {
+                found = Some(index);
+                break;
+            }
+        }
+        if let Some(index) = found {
+            distinct[index].1 += 1;
+        } else {
+            distinct.push((entry, 1));
+        }
+    }
+    let count = distinct.len();
+    trace.record(TraceEvent {
+        event: if operation == "collect-set" {
+            "set.collected"
+        } else {
+            "bag.collected"
+        },
+        rule: if operation == "collect-set" {
+            "TOPAL-SET-COLLECT-001"
+        } else {
+            "TOPAL-BAG-COLLECT-001"
+        },
+        detail: &format!("distinct={count}"),
+    });
+    if operation == "collect-set" {
+        Ok(Value::Set {
+            element_classifier,
+            entries: distinct.into_iter().map(|(value, _)| value).collect(),
+        })
+    } else {
+        Ok(Value::Bag {
+            element_classifier,
+            entries: distinct,
+        })
+    }
+}
+
+fn collect_map(
+    source: &SourceText,
+    value: Value,
+    policy: &str,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    if !matches!(policy, "reject" | "keep-first" | "keep-last") {
+        return Err(diagnostic(
+            source,
+            "E-MAP-COLLISION-POLICY",
+            span,
+            "collect-map policy must be reject, keep-first, or keep-last",
+        ));
+    }
+    let Value::List { entries, .. } = value else {
+        return Err(diagnostic(
+            source,
+            "E-MAP-COLLECT-SOURCE",
+            span,
+            "collect-map requires a List of key/value products",
+        ));
+    };
+    let mut mapping: Vec<(Value, Value)> = Vec::new();
+    for entry in entries {
+        let Value::Tuple(mut pair) = entry else {
+            return Err(diagnostic(
+                source,
+                "E-MAP-COLLECT-ENTRY",
+                span,
+                "collect-map entries must be two-field products",
+            ));
+        };
+        if pair.len() != 2 {
+            return Err(diagnostic(
+                source,
+                "E-MAP-COLLECT-ENTRY",
+                span,
+                "collect-map entries must have exactly two fields",
+            ));
+        }
+        let value = pair.pop().expect("two fields");
+        let key = pair.pop().expect("two fields");
+        let mut collision = None;
+        for (index, (candidate, _)) in mapping.iter().enumerate() {
+            if values_equal(candidate.clone(), key.clone(), trace).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-MAP-KEY-EQUALITY",
+                    span,
+                    "map keys must provide equality",
+                )
+            })? {
+                collision = Some(index);
+                break;
+            }
+        }
+        match (collision, policy) {
+            (Some(_), "reject") => {
+                return Err(diagnostic(
+                    source,
+                    "E-MAP-KEY-COLLISION",
+                    span,
+                    "collect-map encountered a duplicate key under reject policy",
+                ));
+            }
+            (Some(_), "keep-first") => {}
+            (Some(index), "keep-last") => mapping[index].1 = value,
+            (None, _) => mapping.push((key, value)),
+            _ => unreachable!("validated collision policy"),
+        }
+    }
+    let key_classifier = mapping.first().map_or_else(
+        || "Object".into(),
+        |(key, _)| structural_value_classifier(key),
+    );
+    let value_classifier = mapping.first().map_or_else(
+        || "Object".into(),
+        |(_, value)| structural_value_classifier(value),
+    );
+    trace.record(TraceEvent {
+        event: "map.collected",
+        rule: "TOPAL-MAP-COLLECT-001",
+        detail: policy,
+    });
+    Ok(Value::Map {
+        key_classifier,
+        value_classifier,
+        entries: mapping,
     })
 }
 
@@ -5913,8 +8100,23 @@ fn contains_ordered_subsequence(
     Some(matched == pattern.len())
 }
 
+#[allow(clippy::too_many_lines)] // Every recursively derived equality remains explicit.
 fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<bool> {
     match (left, right) {
+        (
+            Value::Refined {
+                constraint: left_constraint,
+                value: left,
+                ..
+            },
+            Value::Refined {
+                constraint: right_constraint,
+                value: right,
+                ..
+            },
+        ) if left_constraint == right_constraint => values_equal(*left, *right, trace),
+        (Value::Refined { value, .. }, right) => values_equal(*value, right, trace),
+        (left, Value::Refined { value, .. }) => values_equal(left, *value, trace),
         (Value::Boolean(left), Value::Boolean(right)) => Some(left == right),
         (Value::Int(left), Value::Int(right)) => Some(left == right),
         (Value::Rational(left), Value::Rational(right)) => Some(left == right),
@@ -5927,6 +8129,18 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
             Some(left == BigRational::from_integer(right))
         }
         (Value::String(left), Value::String(right)) => Some(left == right),
+        (
+            Value::Modular {
+                type_name: left_type,
+                value: left,
+                ..
+            },
+            Value::Modular {
+                type_name: right_type,
+                value: right,
+                ..
+            },
+        ) if left_type == right_type => Some(left == right),
         (
             Value::List {
                 element_classifier: left_classifier,
@@ -5958,6 +8172,15 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
                 alternative: right,
             },
         ) if left_type == right_type => Some(left == right),
+        (Value::Union(left), Value::Union(right))
+            if left.type_name == right.type_name && left.alternative == right.alternative =>
+        {
+            match (left.payload, right.payload) {
+                (None, None) => Some(true),
+                (Some(left), Some(right)) => values_equal(*left, *right, trace),
+                _ => Some(false),
+            }
+        }
         (
             Value::Optional {
                 payload_classifier: left_classifier,
@@ -6533,11 +8756,35 @@ fn apply_negate(
             });
             Ok(Value::Rational(-operand))
         }
+        Value::Modular {
+            type_name,
+            lower,
+            upper,
+            value,
+        } => {
+            let value = reduce_modular(-value, &lower, &upper);
+            trace.record(TraceEvent {
+                event: "numeric.modular.wrapped",
+                rule: "TOPAL-NUM-MODULAR-ARITHMETIC-001",
+                detail: &type_name,
+            });
+            Ok(Value::Modular {
+                type_name,
+                lower,
+                upper,
+                value,
+            })
+        }
         Value::Boolean(_)
         | Value::IntRange { .. }
         | Value::RationalRange { .. }
         | Value::Optional { .. }
         | Value::List { .. }
+        | Value::AnonymousFunction(_)
+        | Value::Array { .. }
+        | Value::Set { .. }
+        | Value::Bag { .. }
+        | Value::Map { .. }
         | Value::CharacterGenerator { .. }
         | Value::CharacterReturningGenerator { .. }
         | Value::SuspendedGenerator { .. }
@@ -6545,6 +8792,10 @@ fn apply_negate(
         | Value::Tuple(_)
         | Value::Record(_)
         | Value::Enum { .. }
+        | Value::Union(_)
+        | Value::Constraint(_)
+        | Value::Refined { .. }
+        | Value::ModularType(_)
         | Value::ErrorDomain(_)
         | Value::Error { .. }
         | Value::Unit => Err(diagnostic(

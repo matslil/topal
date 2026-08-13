@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 124);
+    assert_eq!(examples.len(), 132);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3256,4 +3256,187 @@ fn every_mode_removes_list_values_by_explicit_law() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-LIST-REMOVE-FIRST-001"));
     assert!(trace.contains("TOPAL-LIST-REMOVE-ALL-001"));
+}
+
+#[test]
+fn every_mode_executes_contextual_anonymous_list_functions() {
+    let source = include_str!("../../../examples/interpreter/anonymous-list-functions.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains(
+            "(Entry ( 2, Entry ( 4, Entry ( 6, Empty ) ) ), Entry ( 2, Entry ( 3, Empty ) ), 6)"
+        ));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
+    assert!(trace.contains("TOPAL-COLLECTION-FOLD-001"));
+}
+
+#[test]
+fn every_mode_executes_complete_list_sequence_operations() {
+    let source = include_str!("../../../examples/interpreter/list-sequence-operations.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("domain is root.zip-exact(List,List)"));
+        assert!(stdout.contains("\"Topal\""));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for rule in [
+        "TOPAL-LIST-INSERT-AT-001",
+        "TOPAL-LIST-SPLIT-AT-001",
+        "TOPAL-LIST-REMOVE-INDEXES-001",
+        "TOPAL-LIST-ZIP-LONGEST-001",
+        "TOPAL-LIST-UNZIP-001",
+        "TOPAL-COLLECTION-FOREACH-001",
+        "TOPAL-COLLECTION-COLLECT-STRING-001",
+    ] {
+        assert!(trace.contains(rule), "missing {rule}");
+    }
+}
+
+#[test]
+fn closed_invalid_list_boundary_has_source_help() {
+    let output = run(&[], "values : List Int is one 1\nvalues take 2\n");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("E-LIST-BOUNDARY-OUT-OF-RANGE"));
+    assert!(stderr.contains("use a boundary no greater"));
+}
+
+#[test]
+fn every_mode_collects_fundamental_containers() {
+    let source = include_str!("../../../examples/interpreter/fundamental-containers.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("Array (2, 1, 2)"));
+        assert!(stdout.contains("Set (2, 1)"));
+        assert!(stdout.contains("Bag ((2, 2), (1, 1))"));
+        assert!(stdout.contains("Map ((\"Ada\", 11), (\"Lin\", 8))"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for rule in [
+        "TOPAL-ARRAY-COLLECT-001",
+        "TOPAL-SET-COLLECT-001",
+        "TOPAL-BAG-COLLECT-001",
+        "TOPAL-MAP-COLLECT-001",
+    ] {
+        assert!(trace.contains(rule), "missing {rule}");
+    }
+}
+
+#[test]
+fn every_mode_executes_recursive_products_variants_and_unions() {
+    let source = include_str!("../../../examples/interpreter/unions-and-recursive-products.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("((10, (20, 30)), (0, (0, 0)), \"text\", \"number\")")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-UNION-001"));
+    assert!(trace.contains("TOPAL-TYPE-VARIANT-001"));
+    assert!(trace.contains("TOPAL-DECISION-UNION-001"));
+}
+
+#[test]
+fn every_mode_validates_constraints_and_derives_base_capabilities() {
+    let source =
+        include_str!("../../../examples/interpreter/constraints-and-derived-capabilities.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("(3, true, true, 5"));
+        assert!(stdout.contains("domain is root.Positive(Int)"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-CONSTRAINT-001"));
+    assert!(trace.contains("TOPAL-TYPE-CONSTRAINT-VALIDATE-001"));
+    assert!(trace.contains("constraint->base"));
+}
+
+#[test]
+fn closed_constraint_rejection_has_source_help() {
+    let output = run(
+        &[],
+        "Positive is Int constraint { value } value > 0\nPositive 0\n",
+    );
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-CONSTRAINT-REJECTED")
+    );
+}
+
+#[test]
+fn every_mode_composes_optional_result_and_error_fields() {
+    let source = include_str!("../../../examples/interpreter/optional-result-composition.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("(4, 0, root./(Rational,Rational), division-by-zero"));
+        assert!(stdout.contains("None, None, Some (line is"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-DECISION-OPTIONAL-001"));
+    assert!(trace.contains("TOPAL-TYPE-RESULT-PROJECT-001"));
+    assert!(trace.matches("TOPAL-ERROR-FIELD-001").count() >= 5);
+}
+
+#[test]
+fn every_mode_executes_settled_modular_numbers() {
+    let source = include_str!("../../../examples/interpreter/modular-numbers.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains(
+            "(ByteCounter 0, SignedByte -128, ByteCounter 255, SignedByte -128, true, true)"
+        ));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for rule in [
+        "TOPAL-NUM-MODULAR-TYPE-001",
+        "TOPAL-NUM-MODULAR-CONSTRUCT-001",
+        "TOPAL-NUM-MODULAR-REDUCE-001",
+        "TOPAL-NUM-MODULAR-ARITHMETIC-001",
+    ] {
+        assert!(trace.contains(rule), "missing {rule}");
+    }
+}
+
+#[test]
+fn closed_modular_construction_rejection_is_source_located() {
+    let output = run(&[], "Byte is ModNat (0 .. 255)\nByte 256\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-MODULAR-OUT-OF-RANGE")
+    );
+}
+
+#[test]
+fn every_mode_selects_values_and_indexes_by_range() {
+    let source = include_str!("../../../examples/interpreter/range-selection.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains(
+            "(Entry ( 2, Entry ( 4, Entry ( 3, Empty ) ) ), Entry ( 2, Entry ( 4, Entry ( 7, Empty ) ) ), \"opa\")"
+        ));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-RANGE-VALUE-SELECTION-001"));
+    assert!(trace.contains("TOPAL-RANGE-INDEX-SELECTION-001"));
 }

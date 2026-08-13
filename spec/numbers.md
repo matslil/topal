@@ -340,3 +340,28 @@ The initial subset establishes arithmetic paths incrementally before
 formalizing remaining dynamic arithmetic failures or infinite operands. Left
 association is fixed by `TOPAL-SYN-GRAMMAR-001`; for example, `2 + 3 * 4`
 produces `20`, while `2 + ( 3 * 4 )` produces `14`.
+### TOPAL-NUM-MODULAR-TYPE-001 — Nominal modular numeric families
+
+`Name is ModNat (0 .. upper)` and `Name is ModInt (lower .. upper)` shall
+introduce distinct nominal modular types whose finite contiguous canonical range
+contains zero. The inclusive range determines the modulus. ModNat shall begin
+at zero; ModInt may use negative canonical representatives.
+
+### TOPAL-NUM-MODULAR-CONSTRUCT-001 — Checked canonical construction
+
+`Name value` shall preserve an Int already inside Name's canonical range. A
+closed out-of-range value shall be diagnosed; unchecked rejection shall return
+`out-of-range` from the lexical nominal constructor domain.
+
+### TOPAL-NUM-MODULAR-REDUCE-001 — Explicit modular reduction
+
+`value modulo Name` shall reduce every Int residue into Name's unique canonical
+representative, including negative and arbitrarily large operands.
+
+### TOPAL-NUM-MODULAR-ARITHMETIC-001 — Wrapping modular arithmetic
+
+Unary negation and binary `+`, `-`, and `*` over two values of the same nominal
+modular type shall reduce the exact intermediate result into that type's
+canonical range. Equality and total ordering require the same nominal type and
+compare canonical representatives. Equal-size but distinct declarations shall
+not share an operation merely because their modulus is equal.

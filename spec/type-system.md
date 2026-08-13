@@ -46,6 +46,45 @@ visible fields but neither captures nor reconstructs them.
 `Union{Cᵢ:Tᵢ}` carries exactly one labeled tag and payload. An enum is a nominal
 union whose payloads are all `Unit`.
 
+### TOPAL-TYPE-UNION-001 — Nominal labeled sums with payloads
+
+`Name is Union` followed by indented `Alternative` or
+`Alternative : Classifier` declarations shall introduce one nominal labeled
+sum. A payload-free constructor carries Unit. A payload constructor shall accept
+exactly one conforming value, including an ordinary recursive product. Matching
+shall select only the active alternative and bind its complete payload once.
+
+### TOPAL-TYPE-VARIANT-001 — Positional sums
+
+`Name is Variant (T₀, …, Tₙ)` shall introduce a nominal positional sum.
+`Name at i value` shall require a valid zero-based alternative index and a value
+classified by `Tᵢ`. The same `Name at i binding` shape shall match and bind that
+payload. Repeated classifiers remain distinct alternatives.
+
+### TOPAL-DECISION-UNION-001 — Sum decision selection
+
+A complete sum decision shall select exactly the active labeled or positional
+alternative. Payload bindings exist only while evaluating the selected action;
+payload-free alternatives bind nothing.
+
+### TOPAL-TYPE-CONSTRAINT-001 — Named constraint construction
+
+`Name is Base constraint { value } predicate` shall construct one constraint
+identity over `Base`. Its inferred anonymous predicate shall be pure in the
+implemented subset and return Boolean for every conforming Base input.
+
+### TOPAL-TYPE-CONSTRAINT-VALIDATE-001 — Constraint evidence
+
+Applying a statically known constraint to a conforming Base value shall evaluate
+its predicate exactly once. Success shall return the unchanged Base value with
+evidence for that named constraint. A closed rejected value shall be diagnosed;
+an unchecked dynamic rejection shall return `out-of-range` from the lexical
+constraint-application domain.
+
+Forgetting constraint evidence is an implicit lossless conversion to Base. The
+refined value derives exactly the canonical equality and ordering of Base; no
+second constraint-owned interpretation is introduced.
+
 ### TOPAL-TYPE-ENUM-001 — Nominal payload-free enum values
 
 A declaration `Name is Enum ( A₁, …, Aₙ )` introduces one nominal enum type and
@@ -247,6 +286,20 @@ Selecting `code` from an `Error` returns the concrete namespace-defined
 returns the compiler-derived `ErrorDomain` identity stored independently in the
 same Error. Selection shall not reconstruct or otherwise alter the Error, and
 tools shall expose which field was selected.
+
+Selecting `detail` shall return `Optional String`, selecting `cause` shall
+return `Optional Error`, and selecting `source` shall return
+`Optional SourceLocation`. An intrinsic error which has no explanatory detail
+or cause shall return the corresponding nominal None values. A generated source
+location shall retain one-based line and column fields. Field selection shall
+never synthesize a detail or cause merely to make an Optional present.
+
+### TOPAL-TYPE-RESULT-COMPOSE-001 — Optional and Result decision composition
+
+Nested Optional and Result decisions shall preserve each nominal alternative
+and bind only payloads belonging to the selected action. Contextual success
+projection shall return the complete Error unchanged through every compatible
+enclosing Result boundary, including domain and source provenance.
 
 ### TOPAL-TYPE-RESULT-PROJECT-001 — Contextual success projection
 
