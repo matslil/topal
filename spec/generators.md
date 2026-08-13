@@ -17,6 +17,14 @@ candidate before yielding it, finish with Unit at the first false result, and
 never evaluate the next function for a rejected candidate. Construction shall
 not invoke either captured function.
 
+### TOPAL-GENERATOR-ITERATE-FOREACH-001 — Bounded generated traversal
+
+`foreach` over an `iterate` generator bounded by `take-while` shall test each
+candidate, yield and visit every accepted value in order, resume with Unit, and
+only then compute the next candidate. The first rejected candidate shall not be
+visited and shall end traversal with Unit. Complete foreach over an unbounded
+`iterate` shall be rejected unless another statically finite consumer applies.
+
 ### TOPAL-GENERATOR-ERROR-CODE-001 — Generator error-code vocabulary
 
 The qualified namespace `lang generator` publishes the nominal enum type

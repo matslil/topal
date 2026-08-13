@@ -1668,3 +1668,11 @@ All interpreter modes shall lazily attach `take-while` predicates to generated
 traversals under `TOPAL-GENERATOR-TAKE-WHILE-001`, without invoking the next or
 predicate function during construction. Formal traces, LSP validation, and
 reversible scripted-debugger history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-204 — Bounded generated foreach
+
+All interpreter modes shall traverse take-while-bounded iterate generators
+under `TOPAL-GENERATOR-ITERATE-FOREACH-001`, preserving test-yield-action-resume
+order and excluding the first rejected candidate. Formal traces, unbounded
+traversal diagnostics, LSP validation, and reversible scripted-debugger history
+shall cover commented examples.

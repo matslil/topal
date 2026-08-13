@@ -3773,6 +3773,17 @@ impl Execution {
                     return self
                         .execute_suspended_foreach(session, trace, value, binding, body, span);
                 }
+                if let Value::IterateGenerator { .. } = value {
+                    session.declared_names.remove(name_text);
+                    session.consumed_names.insert(name_text.to_owned());
+                    trace.record(TraceEvent {
+                        event: "generator.consumed",
+                        rule: "TOPAL-GENERATOR-ITERATE-FOREACH-001",
+                        detail: name_text,
+                    });
+                    return self
+                        .execute_iterate_foreach(session, trace, value, binding, body, span);
+                }
                 let (generated, origin, returned, returned_classifier) = match value {
                     Value::CharacterGenerator { generated, origin } => (
                         generated.into_iter().map(Value::String).collect(),
@@ -3903,6 +3914,108 @@ impl Execution {
             detail: returned_classifier,
         });
         Ok((returned, span))
+    }
+
+    fn execute_iterate_foreach(
+        &self,
+        session: &Session,
+        trace: &mut impl TraceSink,
+        generator: Value,
+        binding: Span,
+        body: &[Statement],
+        span: Span,
+    ) -> Result<(Value, Span), Diagnostic> {
+        let Value::IterateGenerator {
+            mut current,
+            next,
+            take_while,
+            classifier,
+        } = generator
+        else {
+            unreachable!("iterate traversal requires iterate generator")
+        };
+        let Some(predicate) = take_while else {
+            return Err(diagnostic(
+                &self.source,
+                "E-UNBOUNDED-GENERATOR-TRAVERSAL",
+                span,
+                "complete foreach traversal of unbounded iterate requires a stopping transformation",
+            ));
+        };
+        let binding_name = self.source.slice(binding).to_owned();
+        loop {
+            let accepted = session.invoke_anonymous_function(
+                &predicate,
+                vec![(*current).clone()],
+                span,
+                trace,
+            )?;
+            let Value::Boolean(accepted) = accepted else {
+                return Err(diagnostic(
+                    &self.source,
+                    "E-TAKE-WHILE-PREDICATE-RESULT",
+                    span,
+                    "take-while predicate must return Boolean",
+                ));
+            };
+            if !accepted {
+                trace.record(TraceEvent {
+                    event: "generator.returned",
+                    rule: "TOPAL-GENERATOR-TAKE-WHILE-001",
+                    detail: "Unit",
+                });
+                return Ok((Value::Unit, span));
+            }
+            trace.record(TraceEvent {
+                event: "generator.yielded",
+                rule: "TOPAL-GENERATOR-ITERATE-FOREACH-001",
+                detail: &current.to_string(),
+            });
+            let mut iteration = session.clone();
+            iteration
+                .bindings
+                .insert(binding_name.clone(), (*current).clone());
+            iteration.declared_names.insert(binding_name.clone());
+            let mut body_execution = Self {
+                source: self.source.clone(),
+                statements: body.to_vec(),
+                cursor: 0,
+                return_classifier: None,
+            };
+            loop {
+                match body_execution.step(&mut iteration, trace)? {
+                    ExecutionStep::Advanced { .. } => {}
+                    ExecutionStep::Complete(Value::Unit) => break,
+                    ExecutionStep::Complete(_) => {
+                        return Err(diagnostic(
+                            &self.source,
+                            "E-FOREACH-ACTION-RESULT",
+                            statement_span(body.last().expect("foreach body is nonempty")),
+                            "foreach action must return Unit",
+                        ));
+                    }
+                    ExecutionStep::Returned { .. } => {
+                        unreachable!("foreach body has no function return context")
+                    }
+                }
+            }
+            let next_value =
+                session.invoke_anonymous_function(&next, vec![*current], span, trace)?;
+            if !value_has_classifier(&next_value, &classifier) {
+                return Err(diagnostic(
+                    &self.source,
+                    "E-ITERATE-NEXT-CLASSIFIER",
+                    span,
+                    format!("iterate next function must return `{classifier}`"),
+                ));
+            }
+            current = Box::new(next_value);
+            trace.record(TraceEvent {
+                event: "generator.resumed",
+                rule: "TOPAL-GENERATOR-ITERATE-FOREACH-001",
+                detail: "Unit",
+            });
+        }
     }
 
     #[allow(clippy::too_many_lines)] // State restoration and suspension order remain explicit and auditable.

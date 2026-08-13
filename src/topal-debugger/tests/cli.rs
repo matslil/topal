@@ -2871,3 +2871,20 @@ fn records_lazy_take_while_construction_reversibly() {
     assert!(stdout.contains("TOPAL-GENERATOR-TAKE-WHILE-001"));
     assert!(stdout.contains("<Generator Int Unit Unit>"));
 }
+
+#[test]
+fn records_generated_foreach_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}generated-foreach.debug"),
+            &format!("{root}generated-foreach.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-GENERATOR-ITERATE-FOREACH-001"));
+    assert!(stdout.contains("generator.returned"));
+}
