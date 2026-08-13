@@ -9,6 +9,14 @@ the captured unary `next` function to the preceding value to obtain the next
 yield. Construction shall not invoke `next` or eagerly materialize values.
 Consumers must establish a stopping condition before complete traversal.
 
+### TOPAL-GENERATOR-TAKE-WHILE-001 — Generated prefix bound
+
+Applying `take-while` with a captured unary predicate to an `iterate` generator
+shall produce a lazy generator of the same yield classifier. It shall test each
+candidate before yielding it, finish with Unit at the first false result, and
+never evaluate the next function for a rejected candidate. Construction shall
+not invoke either captured function.
+
 ### TOPAL-GENERATOR-ERROR-CODE-001 — Generator error-code vocabulary
 
 The qualified namespace `lang generator` publishes the nominal enum type

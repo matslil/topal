@@ -67,6 +67,7 @@ pub enum Value {
     IterateGenerator {
         current: Box<Self>,
         next: Box<Self>,
+        take_while: Option<Box<Self>>,
         classifier: String,
     },
     SuspendedGenerator {
@@ -977,6 +978,9 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if Self::is_iterate_take_while_construction(source, items) {
+                    return self.construct_iterate_take_while(source, items, *span, trace);
+                }
                 if Self::is_iterate_construction(source, items) {
                     return self.construct_iterate_generator(source, items, *span, trace);
                 }
@@ -2586,6 +2590,55 @@ impl Session {
             if source.slice(*operation) == "iterate")
     }
 
+    fn is_iterate_take_while_construction(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items,
+            [_, Expression::Identifier(iterate), Expression::AnonymousFunction { .. }, Expression::Identifier(take_while), Expression::AnonymousFunction { .. }]
+                if source.slice(*iterate) == "iterate" && source.slice(*take_while) == "take-while")
+    }
+
+    fn construct_iterate_take_while(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [initial, _, next_expression, _, predicate_expression] = items else {
+            unreachable!("preselected iterate take-while construction")
+        };
+        let current = self.evaluate_expression(source, initial, trace)?;
+        let classifier = structural_value_classifier(&current);
+        let next = self.evaluate_expression(source, next_expression, trace)?;
+        let predicate = self.evaluate_expression(source, predicate_expression, trace)?;
+        for (value, expression, role) in [
+            (&next, next_expression, "next"),
+            (&predicate, predicate_expression, "predicate"),
+        ] {
+            if !matches!(value, Value::AnonymousFunction(function) if function.parameters.len() == 1)
+            {
+                return Err(diagnostic(
+                    source,
+                    "E-GENERATED-TRAVERSAL-FUNCTION-ARITY",
+                    expression.span(),
+                    format!("iterate {role} function requires exactly one parameter"),
+                ));
+            }
+        }
+        trace.record(TraceEvent {
+            event: "generator.take-while.constructed",
+            rule: "TOPAL-GENERATOR-TAKE-WHILE-001",
+            detail: &classifier,
+        });
+        let value = Value::IterateGenerator {
+            current: Box::new(current),
+            next: Box::new(next),
+            take_while: Some(Box::new(predicate)),
+            classifier,
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
+    }
+
     fn construct_iterate_generator(
         &self,
         source: &SourceText,
@@ -2618,6 +2671,7 @@ impl Session {
         let value = Value::IterateGenerator {
             current: Box::new(current),
             next: Box::new(next),
+            take_while: None,
             classifier,
         };
         self.checkpoint(trace, Some(&value), Some(span));

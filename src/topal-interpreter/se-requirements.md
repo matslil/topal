@@ -1661,3 +1661,10 @@ All interpreter modes shall construct unbounded `iterate` generators lazily
 under `TOPAL-GENERATOR-ITERATE-001`, capturing but not invoking the unary next
 function until resumption. Formal traces, LSP validation, and reversible
 scripted-debugger history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-203 — Lazy take-while prefixes
+
+All interpreter modes shall lazily attach `take-while` predicates to generated
+traversals under `TOPAL-GENERATOR-TAKE-WHILE-001`, without invoking the next or
+predicate function during construction. Formal traces, LSP validation, and
+reversible scripted-debugger history shall cover commented examples.
