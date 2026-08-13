@@ -2391,6 +2391,7 @@ impl Session {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Built-in static policy identities stay explicit and auditable.
     fn resolve_identifier(
         &self,
         source: &SourceText,
@@ -2398,6 +2399,83 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let name = source.slice(span);
+        if matches!(name, "Little" | "Big") {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-ENDIAN-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "Endian".into(),
+                alternative: name.into(),
+            });
+        }
+        if matches!(name, "ReadWrite" | "ReadOnly" | "WriteOnly" | "Reserved") {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-ACCESS-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "Access".into(),
+                alternative: name.into(),
+            });
+        }
+        if matches!(name, "MostSignificantFirst" | "LeastSignificantFirst") {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-BIT-ORDER-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "BitOrder".into(),
+                alternative: name.into(),
+            });
+        }
+        if matches!(name, "Natural" | "Packed") {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-PACKING-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "Packing".into(),
+                alternative: name.into(),
+            });
+        }
+        if name == "Declared" {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-FIELD-ORDER-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "FieldOrder".into(),
+                alternative: name.into(),
+            });
+        }
+        if matches!(name, "AfterTag" | "Overlay") {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "PayloadPlacement".into(),
+                alternative: name.into(),
+            });
+        }
+        if matches!(name, "NoLength" | "NoTerminator") {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-ABSENCE-POLICY-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "LayoutPolicy".into(),
+                alternative: name.into(),
+            });
+        }
         if matches!(
             name,
             "Boolean" | "Completed" | "Int" | "Nat" | "Rational" | "Scope" | "String" | "Unit"

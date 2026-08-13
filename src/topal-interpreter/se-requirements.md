@@ -1814,6 +1814,36 @@ Completed evidence shall compose with inert Effect values under
 Unit shall remain distinct beside inert Effect values under
 `TOPAL-EXEC-UNIT-EFFECT-VALUE-001`.
 
+## TOPAL-INTP-SUBSET-233 — Layout endian policies
+
+All modes shall resolve Endian policies under `TOPAL-LAYOUT-ENDIAN-001`.
+
+## TOPAL-INTP-SUBSET-234 — Layout access policies
+
+All modes shall resolve access policies under `TOPAL-LAYOUT-ACCESS-001`.
+
+## TOPAL-INTP-SUBSET-235 — Layout bit order
+
+All modes shall resolve bit order under `TOPAL-LAYOUT-BIT-ORDER-001`.
+
+## TOPAL-INTP-SUBSET-236 — Layout packing
+
+All modes shall resolve packing under `TOPAL-LAYOUT-PACKING-001`.
+
+## TOPAL-INTP-SUBSET-237 — Layout field order
+
+All modes shall resolve `Declared` under `TOPAL-LAYOUT-FIELD-ORDER-001`.
+
+## TOPAL-INTP-SUBSET-238 — Payload placement
+
+All modes shall resolve payload placement under
+`TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001`.
+
+## TOPAL-INTP-SUBSET-239 — Layout absence policies
+
+All modes shall distinguish absent length and terminator under
+`TOPAL-LAYOUT-ABSENCE-POLICY-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

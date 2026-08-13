@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 169);
+    assert_eq!(examples.len(), 176);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3929,6 +3929,62 @@ fn every_mode_composes_completion_with_effect_values() {
 #[test]
 fn every_mode_keeps_unit_distinct_beside_effect_values() {
     let source = include_str!("../../../examples/interpreter/unit-effect-value.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_resolves_layout_endian_policies() {
+    let source = include_str!("../../../examples/interpreter/layout-endian.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_resolves_layout_access_policies() {
+    let source = include_str!("../../../examples/interpreter/layout-access.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_resolves_layout_bit_order() {
+    let source = include_str!("../../../examples/interpreter/layout-bit-order.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_resolves_layout_packing() {
+    let source = include_str!("../../../examples/interpreter/layout-packing.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_resolves_declared_field_order() {
+    let source = include_str!("../../../examples/interpreter/layout-field-order.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_resolves_payload_placement() {
+    let source = include_str!("../../../examples/interpreter/layout-payload-placement.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_resolves_layout_absence_policies() {
+    let source = include_str!("../../../examples/interpreter/layout-absence-policies.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }

@@ -313,3 +313,10 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-230` | `TOPAL-EFFECT-LIST-001` | interpreter and LSP tests; Effect-list example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-231` | `TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001` | interpreter and LSP tests; completion-effect example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-232` | `TOPAL-EXEC-UNIT-EFFECT-VALUE-001` | interpreter and LSP tests; Unit-effect example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-233` | `TOPAL-LAYOUT-ENDIAN-001` | interpreter and LSP tests; endian example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-234` | `TOPAL-LAYOUT-ACCESS-001` | interpreter and LSP tests; access-policy example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-235` | `TOPAL-LAYOUT-BIT-ORDER-001` | interpreter and LSP tests; bit-order example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-236` | `TOPAL-LAYOUT-PACKING-001` | interpreter and LSP tests; packing example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-237` | `TOPAL-LAYOUT-FIELD-ORDER-001` | interpreter and LSP tests; field-order example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-238` | `TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001` | interpreter and LSP tests; payload-placement example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-239` | `TOPAL-LAYOUT-ABSENCE-POLICY-001` | interpreter and LSP tests; absence-policy example | `topal-language`, `topal-interpreter`, `topal-lsp` |

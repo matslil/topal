@@ -2,6 +2,38 @@
 
 ## Formal text
 
+### TOPAL-LAYOUT-ENDIAN-001 — External layout byte order
+
+`Little` and `Big` shall resolve the two nominal Endian policy values used by
+explicit external layouts. They describe representation and do not change
+native serialization byte order by themselves.
+
+### TOPAL-LAYOUT-ACCESS-001 — Layout access policy
+
+`ReadWrite`, `ReadOnly`, `WriteOnly`, and `Reserved` shall resolve nominal
+external-layout access policies without granting runtime authority.
+
+### TOPAL-LAYOUT-BIT-ORDER-001 — Storage-unit bit order
+
+`MostSignificantFirst` and `LeastSignificantFirst` shall resolve nominal bit-order values.
+
+### TOPAL-LAYOUT-PACKING-001 — Product packing
+
+`Natural` and `Packed` shall resolve nominal product-packing policies.
+
+### TOPAL-LAYOUT-FIELD-ORDER-001 — Declared field order
+
+`Declared` shall resolve the policy retaining source declaration field order.
+
+### TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001 — Sum payload placement
+
+`AfterTag` and `Overlay` shall resolve nominal tagged-sum payload policies.
+
+### TOPAL-LAYOUT-ABSENCE-POLICY-001 — Absent length and terminator
+
+`NoLength` and `NoTerminator` shall resolve distinct nominal layout policy
+values; neither implies the other.
+
 ### TOPAL-SER-SCOPE-001 — Protocol scope
 
 The native protocol represents the public semantic description of every object
