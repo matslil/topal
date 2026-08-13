@@ -70,6 +70,10 @@ pub enum Value {
         take_while: Option<Box<Self>>,
         classifier: String,
     },
+    UnfoldGenerator {
+        seed: Box<Self>,
+        step: Box<Self>,
+    },
     SuspendedGenerator {
         source: SourceText,
         body: Vec<Statement>,
@@ -238,6 +242,7 @@ impl fmt::Display for Value {
             Self::IterateGenerator { classifier, .. } => {
                 write!(formatter, "<Generator {classifier} Unit Unit>")
             }
+            Self::UnfoldGenerator { .. } => formatter.write_str("<Generator Value Unit Unit>"),
             Self::SuspendedGenerator {
                 yield_classifier,
                 return_classifier,
@@ -978,6 +983,9 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if Self::is_unfold_construction(source, items) {
+                    return self.construct_unfold_generator(source, items, *span, trace);
+                }
                 if Self::is_iterate_take_while_construction(source, items) {
                     return self.construct_iterate_take_while(source, items, *span, trace);
                 }
@@ -2588,6 +2596,44 @@ impl Session {
     fn is_iterate_construction(source: &SourceText, items: &[Expression]) -> bool {
         matches!(items, [_, Expression::Identifier(operation), Expression::AnonymousFunction { .. }]
             if source.slice(*operation) == "iterate")
+    }
+
+    fn is_unfold_construction(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [_, Expression::Identifier(operation), Expression::AnonymousFunction { .. }]
+            if source.slice(*operation) == "unfold")
+    }
+
+    fn construct_unfold_generator(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [seed, _, step_expression] = items else {
+            unreachable!("preselected unfold construction")
+        };
+        let seed = self.evaluate_expression(source, seed, trace)?;
+        let step = self.evaluate_expression(source, step_expression, trace)?;
+        if !matches!(&step, Value::AnonymousFunction(function) if function.parameters.len() == 1) {
+            return Err(diagnostic(
+                source,
+                "E-UNFOLD-FUNCTION-ARITY",
+                step_expression.span(),
+                "unfold step function requires exactly one seed parameter",
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "generator.unfold.constructed",
+            rule: "TOPAL-GENERATOR-UNFOLD-001",
+            detail: &structural_value_classifier(&seed),
+        });
+        let value = Value::UnfoldGenerator {
+            seed: Box::new(seed),
+            step: Box::new(step),
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
     }
 
     fn is_iterate_take_while_construction(source: &SourceText, items: &[Expression]) -> bool {
@@ -5780,6 +5826,9 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
     {
         return classifier == format!("Generator {yielded} Unit Unit");
     }
+    if matches!(value, Value::UnfoldGenerator { .. }) {
+        return classifier == "Generator Value Unit Unit";
+    }
     if let Value::Optional {
         payload_classifier, ..
     } = value
@@ -6725,6 +6774,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Map { .. } => "Map",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
         Value::IterateGenerator { .. } => "Generator",
+        Value::UnfoldGenerator { .. } => "Generator",
         Value::SuspendedGenerator {
             yield_classifier,
             return_classifier,
@@ -6809,6 +6859,7 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::IterateGenerator { classifier, .. } => {
             format!("Generator {classifier} Unit Unit")
         }
+        Value::UnfoldGenerator { .. } => "Generator Value Unit Unit".into(),
         Value::Enum { type_name, .. } | Value::Modular { type_name, .. } => type_name.clone(),
         Value::Union(union) => union.type_name.clone(),
         Value::Constraint(constraint) => format!("Constraint {}", constraint.base_classifier),
@@ -9427,6 +9478,7 @@ fn apply_negate(
         | Value::CharacterGenerator { .. }
         | Value::CharacterReturningGenerator { .. }
         | Value::IterateGenerator { .. }
+        | Value::UnfoldGenerator { .. }
         | Value::SuspendedGenerator { .. }
         | Value::String(_)
         | Value::Tuple(_)

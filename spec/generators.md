@@ -32,6 +32,14 @@ materialize its accepted yields as `List T` in yield order, preserving
 classifier and multiplicity. It shall stop before the first rejected candidate.
 Collecting an unbounded generated traversal shall be rejected before traversal.
 
+### TOPAL-GENERATOR-UNFOLD-001 — Seeded generated traversal
+
+`seed unfold { state } step` shall lazily construct a
+`Generator T Unit Unit`. On each step it shall apply `step` to the current seed.
+`None` shall return Unit; `Some (value, next-seed)` shall yield `value` and retain
+`next-seed` for the following Unit resumption. Construction shall capture but
+not invoke the unary step function or require seed and yield types to agree.
+
 ### TOPAL-GENERATOR-ERROR-CODE-001 — Generator error-code vocabulary
 
 The qualified namespace `lang generator` publishes the nominal enum type

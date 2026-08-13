@@ -1684,3 +1684,11 @@ as Lists under `TOPAL-GENERATOR-COLLECT-001`, preserving classifier, order, and
 multiplicity while rejecting unbounded collection. Formal traces, LSP
 validation, and reversible scripted-debugger history shall cover commented
 examples.
+
+## TOPAL-INTP-SUBSET-206 — Lazy unfold generators
+
+All interpreter modes shall lazily construct seeded unfold generators under
+`TOPAL-GENERATOR-UNFOLD-001`, preserving independent seed and yield directions
+and deferring the step function until consumption. Formal traces, LSP
+validation, and reversible scripted-debugger history shall cover commented
+examples.

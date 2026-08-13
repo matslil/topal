@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 143);
+    assert_eq!(examples.len(), 144);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3617,4 +3617,21 @@ fn every_mode_collects_finite_generated_traversals() {
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-GENERATOR-COLLECT-001"));
+}
+
+#[test]
+fn every_mode_constructs_lazy_unfold_generators() {
+    let source = include_str!("../../../examples/interpreter/unfold-generator.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("<Generator Value Unit Unit>")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-UNFOLD-001"));
+    assert!(!trace.contains("function.anonymous.called"));
 }
