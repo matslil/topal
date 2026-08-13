@@ -105,4 +105,17 @@ mod tests {
         };
         assert_eq!(event.to_json_line(), event.to_json_line());
     }
+
+    #[test]
+    fn trace_strings_are_validly_escaped() {
+        let line = TraceEvent {
+            event: "quote\"",
+            rule: "slash\\",
+            detail: "line\nnext",
+        }
+        .to_json_line();
+        assert!(line.contains("quote\\\""));
+        assert!(line.contains("slash\\\\"));
+        assert!(line.contains("line\\nnext"));
+    }
 }
