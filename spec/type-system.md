@@ -60,6 +60,10 @@ Functions may accept and return first-class `Effect` values without performing t
 Effect expressions may be packaged in ordinary positional products without
 performing their described interactions.
 
+### TOPAL-EFFECT-LIST-001 — Effect collections
+
+Finite Lists may retain first-class Effect values as data without performing them.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:
