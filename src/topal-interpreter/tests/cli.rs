@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 149);
+    assert_eq!(examples.len(), 150);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3710,4 +3710,25 @@ fn every_mode_preserves_namespace_capture_visibility() {
                 .contains("(41, 42)")
         );
     }
+}
+
+#[test]
+fn every_mode_preserves_namespace_overload_sets() {
+    let source = include_str!("../../../examples/interpreter/namespace-overloads.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(42, \"Topal\")")
+        );
+    }
+    assert_eq!(
+        String::from_utf8(run(&["--test"], source).stderr)
+            .unwrap()
+            .matches("function.overload.selected")
+            .count(),
+        2
+    );
 }

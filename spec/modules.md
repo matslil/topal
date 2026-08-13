@@ -32,3 +32,10 @@ A namespace value captured by a binding shall contain declarations visible at
 that binding statement. A declaration introduced later in the same source
 session shall not retroactively enter the earlier namespace value. Resolving
 the live `root` namespace later shall observe the later declaration.
+
+### TOPAL-NAMESPACE-OVERLOAD-001 — Qualified overload preservation
+
+Qualified lookup through a namespace or alias shall retain the selected
+namespace's complete source-ordered overload set. Application shall choose the
+first applicable retained declaration without combining overloads from the
+caller's lexical scope.
