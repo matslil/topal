@@ -1721,3 +1721,9 @@ reversible scripted-debugger history shall cover commented examples.
 All interpreter modes shall make namespace paths available with `use` under
 `TOPAL-NAMESPACE-USE-001` without flattening members. Formal traces, LSP
 validation, and reversible scripted-debugger history shall cover examples.
+
+## TOPAL-INTP-SUBSET-211 — Namespace capture visibility
+
+Namespace aliases shall preserve declaration visibility at their binding under
+`TOPAL-NAMESPACE-SNAPSHOT-001`, with interpreter, LSP, trace, and debugger
+coverage.

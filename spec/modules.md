@@ -25,3 +25,10 @@ or combine them with declarations bearing the same unqualified names.
 namespace value for optional binding. It shall make the qualified path
 available without flattening members into the current lexical scope. Applying
 `use` to a terminal non-namespace value shall be rejected.
+
+### TOPAL-NAMESPACE-SNAPSHOT-001 — Alias declaration visibility
+
+A namespace value captured by a binding shall contain declarations visible at
+that binding statement. A declaration introduced later in the same source
+session shall not retroactively enter the earlier namespace value. Resolving
+the live `root` namespace later shall observe the later declaration.

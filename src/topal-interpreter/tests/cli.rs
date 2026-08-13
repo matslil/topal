@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 148);
+    assert_eq!(examples.len(), 149);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3696,4 +3696,18 @@ fn every_mode_makes_namespaces_available_with_use() {
             .unwrap()
             .contains("TOPAL-NAMESPACE-USE-001")
     );
+}
+
+#[test]
+fn every_mode_preserves_namespace_capture_visibility() {
+    let source = include_str!("../../../examples/interpreter/namespace-snapshot.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(41, 42)")
+        );
+    }
 }

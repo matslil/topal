@@ -291,3 +291,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-208` | `TOPAL-NAMESPACE-ROOT-001` | language tests; interpreter, LSP, and scripted debugger tests; root-namespace examples | `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | `TOPAL-INTP-SUBSET-209` | `TOPAL-NAMESPACE-ROOT-001`, `TOPAL-NAMESPACE-ALIAS-001` | language tests; interpreter, LSP, and scripted debugger tests; namespace-alias examples | `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | `TOPAL-INTP-SUBSET-210` | `TOPAL-NAMESPACE-USE-001` | interpreter, LSP, and scripted debugger tests; namespace-use examples | `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
+| `TOPAL-INTP-SUBSET-211` | `TOPAL-NAMESPACE-SNAPSHOT-001` | interpreter, LSP, and scripted debugger tests; namespace-snapshot examples | `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
