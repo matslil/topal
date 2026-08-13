@@ -18,3 +18,10 @@ the original namespace identity, members, visibility, and overload ordering.
 `alias member operands` shall resolve `member` within that retained namespace
 before applying remaining operands. It shall not copy members into local scope
 or combine them with declarations bearing the same unqualified names.
+
+### TOPAL-NAMESPACE-USE-001 — Making a namespace available
+
+`use path` shall resolve `path` to a published namespace and produce that same
+namespace value for optional binding. It shall make the qualified path
+available without flattening members into the current lexical scope. Applying
+`use` to a terminal non-namespace value shall be rejected.

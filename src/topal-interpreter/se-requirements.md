@@ -1715,3 +1715,9 @@ All interpreter modes shall bind namespaces as immutable aliases and resolve
 qualified members through their retained boundary under
 `TOPAL-NAMESPACE-ALIAS-001`. Formal traces, diagnostics, LSP validation, and
 reversible scripted-debugger history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-210 — Namespace availability with use
+
+All interpreter modes shall make namespace paths available with `use` under
+`TOPAL-NAMESPACE-USE-001` without flattening members. Formal traces, LSP
+validation, and reversible scripted-debugger history shall cover examples.

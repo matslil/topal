@@ -993,6 +993,9 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if Self::is_use_application(source, items) {
+                    return self.evaluate_use_application(source, items, *span, trace);
+                }
                 if self.is_bound_namespace_application(source, items) {
                     return self.evaluate_bound_namespace_application(source, items, *span, trace);
                 }
@@ -2546,6 +2549,39 @@ impl Session {
     fn is_root_qualified_application(source: &SourceText, items: &[Expression]) -> bool {
         matches!(items, [Expression::Identifier(root), Expression::Identifier(_), ..]
             if source.slice(*root) == "root")
+    }
+
+    fn is_use_application(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(keyword), _]
+            if source.slice(*keyword) == "use")
+    }
+
+    fn evaluate_use_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [_, selected] = items else {
+            unreachable!("preselected use application")
+        };
+        let value = self.evaluate_expression(source, selected, trace)?;
+        if !matches!(value, Value::Namespace(_)) {
+            return Err(diagnostic(
+                source,
+                "E-USE-NON-NAMESPACE",
+                selected.span(),
+                "use requires a published namespace path",
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "namespace.made-available",
+            rule: "TOPAL-NAMESPACE-USE-001",
+            detail: &value.to_string(),
+        });
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
     }
 
     fn is_bound_namespace_application(&self, source: &SourceText, items: &[Expression]) -> bool {

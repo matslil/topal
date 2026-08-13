@@ -2973,3 +2973,22 @@ fn records_namespace_alias_resolution_reversibly() {
     assert!(stdout.contains("TOPAL-NAMESPACE-ALIAS-001"));
     assert!(stdout.contains("<namespace root>"));
 }
+
+#[test]
+fn records_namespace_use_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}use-namespace.debug"),
+            &format!("{root}use-namespace.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("TOPAL-NAMESPACE-USE-001")
+    );
+}
