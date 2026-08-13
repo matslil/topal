@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 175);
+    assert_eq!(examples.len(), 176);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3977,6 +3977,14 @@ fn every_mode_resolves_declared_field_order() {
 #[test]
 fn every_mode_resolves_payload_placement() {
     let source = include_str!("../../../examples/interpreter/layout-payload-placement.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_resolves_layout_absence_policies() {
+    let source = include_str!("../../../examples/interpreter/layout-absence-policies.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }

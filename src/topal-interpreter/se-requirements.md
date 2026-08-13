@@ -1839,6 +1839,11 @@ All modes shall resolve `Declared` under `TOPAL-LAYOUT-FIELD-ORDER-001`.
 All modes shall resolve payload placement under
 `TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001`.
 
+## TOPAL-INTP-SUBSET-239 — Layout absence policies
+
+All modes shall distinguish absent length and terminator under
+`TOPAL-LAYOUT-ABSENCE-POLICY-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

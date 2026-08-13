@@ -29,6 +29,11 @@ external-layout access policies without granting runtime authority.
 
 `AfterTag` and `Overlay` shall resolve nominal tagged-sum payload policies.
 
+### TOPAL-LAYOUT-ABSENCE-POLICY-001 — Absent length and terminator
+
+`NoLength` and `NoTerminator` shall resolve distinct nominal layout policy
+values; neither implies the other.
+
 ### TOPAL-SER-SCOPE-001 — Protocol scope
 
 The native protocol represents the public semantic description of every object

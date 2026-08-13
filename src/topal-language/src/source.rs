@@ -2391,6 +2391,7 @@ impl Session {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Built-in static policy identities stay explicit and auditable.
     fn resolve_identifier(
         &self,
         source: &SourceText,
@@ -2461,6 +2462,17 @@ impl Session {
             });
             return Ok(Value::Enum {
                 type_name: "PayloadPlacement".into(),
+                alternative: name.into(),
+            });
+        }
+        if matches!(name, "NoLength" | "NoTerminator") {
+            trace.record(TraceEvent {
+                event: "layout.policy.resolved",
+                rule: "TOPAL-LAYOUT-ABSENCE-POLICY-001",
+                detail: name,
+            });
+            return Ok(Value::Enum {
+                type_name: "LayoutPolicy".into(),
                 alternative: name.into(),
             });
         }

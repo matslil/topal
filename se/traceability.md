@@ -319,3 +319,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-236` | `TOPAL-LAYOUT-PACKING-001` | interpreter and LSP tests; packing example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-237` | `TOPAL-LAYOUT-FIELD-ORDER-001` | interpreter and LSP tests; field-order example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-238` | `TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001` | interpreter and LSP tests; payload-placement example | `topal-language`, `topal-interpreter`, `topal-lsp` |
+| `TOPAL-INTP-SUBSET-239` | `TOPAL-LAYOUT-ABSENCE-POLICY-001` | interpreter and LSP tests; absence-policy example | `topal-language`, `topal-interpreter`, `topal-lsp` |
