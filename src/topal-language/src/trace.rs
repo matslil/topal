@@ -2,6 +2,9 @@ use std::io::{self, Write};
 
 use crate::ExecutionSnapshot;
 
+/// Stable interpreter/compiler comparison envelope.
+pub const TEST_TRACE_SCHEMA: &str = "topal.test-trace/1";
+
 /// One stable, machine-readable interpreter decision.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraceEvent<'a> {
@@ -28,7 +31,7 @@ impl TraceEvent<'_> {
     #[must_use]
     pub fn to_json_line(&self) -> String {
         format!(
-            "{{\"schema\":\"topal.test-trace/1\",\"event\":\"{}\",\"rule\":\"{}\",\"detail\":\"{}\"}}",
+            "{{\"schema\":\"{TEST_TRACE_SCHEMA}\",\"event\":\"{}\",\"rule\":\"{}\",\"detail\":\"{}\"}}",
             escape(self.event),
             escape(self.rule),
             escape(self.detail)
@@ -76,4 +79,20 @@ fn escape(value: &str) -> String {
         }
     }
     escaped
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stable_schema_is_shared_by_every_event() {
+        let line = TraceEvent {
+            event: "event",
+            rule: "RULE",
+            detail: "detail",
+        }
+        .to_json_line();
+        assert!(line.contains(TEST_TRACE_SCHEMA));
+    }
 }
