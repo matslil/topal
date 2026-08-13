@@ -101,6 +101,19 @@ fn unicode_diagnostics_preserve_source_columns() {
 }
 
 #[test]
+fn version_output_is_reproducible() {
+    let first = run(&["--version"], "");
+    let second = run(&["--version"], "");
+    assert!(first.status.success());
+    assert_eq!(first.stdout, second.stdout);
+    assert!(
+        String::from_utf8(first.stdout)
+            .unwrap()
+            .contains("language design-0")
+    );
+}
+
+#[test]
 fn test_mode_records_discard_after_its_initializer() {
     let output = run(&["--test"], "_ is 20 + 22\n7\n");
     assert!(output.status.success());
