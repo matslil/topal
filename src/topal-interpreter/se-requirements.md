@@ -1809,6 +1809,11 @@ Lists shall retain inert Effect values under `TOPAL-EFFECT-LIST-001`.
 Completed evidence shall compose with inert Effect values under
 `TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001`.
 
+## TOPAL-INTP-SUBSET-232 — Unit and Effect values
+
+Unit shall remain distinct beside inert Effect values under
+`TOPAL-EXEC-UNIT-EFFECT-VALUE-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

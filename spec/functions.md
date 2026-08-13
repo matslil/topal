@@ -15,6 +15,11 @@ construction of completion evidence before its binding or return.
 Returning `Completed` may be composed as data with an inert first-class Effect
 expression. Constructing or returning the Effect value shall not perform it.
 
+### TOPAL-EXEC-UNIT-EFFECT-VALUE-001 — Unit and effect values
+
+`Unit` remains absence of a completion dependency when packaged beside an inert
+Effect value; the static effect expression does not create work or completion.
+
 ### TOPAL-EXEC-TRAVERSAL-CONTROL-001 — Traversal elimination
 
 `Continue state` and `Finish result` shall construct distinct traversal-control
