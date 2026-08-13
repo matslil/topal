@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 132);
+    assert_eq!(examples.len(), 139);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3538,4 +3538,17 @@ fn every_mode_applies_bound_symbolic_callable_values() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert_eq!(trace.matches("function.callable.captured").count(), 3);
     assert_eq!(trace.matches("function.callable.called").count(), 3);
+}
+
+#[test]
+fn every_mode_applies_bound_named_function_values() {
+    let source = include_str!("../../../examples/interpreter/named-function-values.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-VALUE-001"));
+    assert!(trace.contains("function.entered"));
 }

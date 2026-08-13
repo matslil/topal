@@ -1646,3 +1646,11 @@ values and apply their unary or positional-product operands under
 `TOPAL-FUNCTION-CALLABLE-VALUE-001`. Formal traces, packaging diagnostics, LSP
 validation, and reversible scripted-debugger history shall cover commented
 examples.
+
+## TOPAL-INTP-SUBSET-201 — Named function values
+
+All interpreter modes shall retain declared functions and their ordered
+overloads as immutable values and apply them after rebinding under
+`TOPAL-FUNCTION-VALUE-001`. Existing typed selection, recursion, and result
+checks shall remain effective. Formal traces, LSP validation, and reversible
+scripted-debugger history shall cover commented examples.

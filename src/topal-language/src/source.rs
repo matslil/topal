@@ -36,6 +36,7 @@ pub enum Value {
         entries: Vec<Self>,
     },
     Callable(CallableKind),
+    NamedFunction(Box<NamedFunction>),
     AnonymousFunction(Box<AnonymousFunction>),
     Array {
         element_classifier: String,
@@ -129,6 +130,12 @@ pub struct AnonymousFunction {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NamedFunction {
+    name: String,
+    candidates: Vec<UserFunction>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnionValue {
     type_name: String,
     alternative: String,
@@ -190,6 +197,7 @@ impl fmt::Display for Value {
                 Ok(())
             }
             Self::Callable(kind) => formatter.write_str(callable_name(*kind)),
+            Self::NamedFunction(function) => write!(formatter, "<fn {}>", function.name),
             Self::AnonymousFunction(function) => {
                 write!(formatter, "<anonymous fn/{}>", function.parameters.len())
             }
@@ -961,6 +969,10 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if self.is_bound_named_function_call(source, items) {
+                    return self
+                        .evaluate_bound_named_function_call(source, expression, items, trace);
+                }
                 if self.is_bound_callable_call(source, items) {
                     return self.evaluate_bound_callable_call(source, items, *span, trace);
                 }
@@ -2343,14 +2355,22 @@ impl Session {
         if self.consumed_names.contains(name) {
             return Err(consumed_generator_diagnostic(source, span, name));
         }
-        let value = self.bindings.get(name).cloned().ok_or_else(|| {
+        let value = if let Some(value) = self.bindings.get(name) {
+            value.clone()
+        } else if let Some(candidates) = self.functions.get(name) {
+            Value::NamedFunction(Box::new(NamedFunction {
+                name: name.to_owned(),
+                candidates: candidates.clone(),
+            }))
+        } else {
             let error = diagnostic(source, "E-UNBOUND-NAME", span, "name is not bound");
-            closest_name(name, self.bindings.keys())
+            return Err(closest_name(name, self.bindings.keys())
+                .or_else(|| closest_name(name, self.functions.keys()))
                 .or_else(|| closest_root_operation(name))
                 .map_or(error.clone(), |candidate| {
                     error.with_help(format!("did you mean `{candidate}`?"))
-                })
-        })?;
+                }));
+        };
         trace.record(TraceEvent {
             event: "binding.resolved",
             rule: "TOPAL-SYN-BIND-001",
@@ -2464,6 +2484,38 @@ impl Session {
     fn is_bound_callable_call(&self, source: &SourceText, items: &[Expression]) -> bool {
         matches!(items, [Expression::Identifier(name), _]
             if matches!(self.bindings.get(source.slice(*name)), Some(Value::Callable(_))))
+    }
+
+    fn is_bound_named_function_call(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _]
+            if matches!(self.bindings.get(source.slice(*name)), Some(Value::NamedFunction(_))))
+    }
+
+    fn evaluate_bound_named_function_call(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        items: &[Expression],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(alias), _] = items else {
+            unreachable!("preselected bound named function call")
+        };
+        let alias = source.slice(*alias);
+        let Some(Value::NamedFunction(function)) = self.bindings.get(alias) else {
+            unreachable!("preselected named function binding")
+        };
+        let mut invocation = self.clone();
+        invocation.bindings.remove(alias);
+        invocation
+            .functions
+            .insert(alias.to_owned(), function.candidates.clone());
+        trace.record(TraceEvent {
+            event: "function.value.called",
+            rule: "TOPAL-FUNCTION-VALUE-001",
+            detail: &function.name,
+        });
+        invocation.evaluate_expression(source, expression, trace)
     }
 
     fn evaluate_bound_callable_call(
@@ -5459,8 +5511,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
-        | (Value::Continue(_), "TraversalControl")
-        | (Value::Finish(_), "TraversalControl")
+        | (Value::Continue(_) | Value::Finish(_), "TraversalControl")
         | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
@@ -6360,8 +6411,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
-        Value::Callable(_) => "Function",
-        Value::AnonymousFunction(_) => "Function",
+        Value::Callable(_) | Value::NamedFunction(_) | Value::AnonymousFunction(_) => "Function",
         Value::Array { .. } => "Array",
         Value::Set { .. } => "Set",
         Value::Bag { .. } => "Bag",
@@ -9057,6 +9107,7 @@ fn apply_negate(
         | Value::Optional { .. }
         | Value::List { .. }
         | Value::Callable(_)
+        | Value::NamedFunction(_)
         | Value::AnonymousFunction(_)
         | Value::Array { .. }
         | Value::Set { .. }

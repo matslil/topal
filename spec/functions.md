@@ -325,3 +325,12 @@ that exact callable identity. Applying a binary callable value shall accept one
 two-field positional product and evaluate the corresponding operation. The
 symbol `-` additionally accepts one direct numeric operand as negation. Binding
 and later applying the value shall not restart name-based overload lookup.
+
+### TOPAL-FUNCTION-VALUE-001 — Named function values
+
+Resolving a declared function without applying it shall produce a function
+value retaining its declaration identity and complete ordered overload set.
+The value may be bound under another name and applied there; application shall
+perform ordinary argument evaluation, overload selection, static-context,
+termination, entry, and result checks against the retained declarations. It
+shall not resolve unrelated declarations that happen to use the new name.
