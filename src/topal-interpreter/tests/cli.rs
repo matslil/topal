@@ -3473,3 +3473,18 @@ fn every_mode_reconstructs_records_immutably() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-TYPE-RECONSTRUCT-001"));
 }
+
+#[test]
+fn every_mode_passes_bound_anonymous_function_values() {
+    let source = include_str!("../../../examples/interpreter/bound-anonymous-functions.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("Entry ( 2, Entry ( 4, Entry ( 6, Empty ) ) )"));
+        assert!(stdout.contains(", 6)"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
+    assert!(trace.matches("binding.resolved").count() >= 3);
+}

@@ -956,6 +956,9 @@ impl Session {
                 if Self::is_record_reconstruction(source, items) {
                     return self.evaluate_record_reconstruction(source, items, *span, trace);
                 }
+                if self.is_bound_list_higher_order_application(source, items) {
+                    return self.evaluate_list_higher_order(source, items, *span, trace);
+                }
                 if Self::is_range_selection(source, items) {
                     return self.evaluate_range_selection(source, items, *span, trace);
                 }
@@ -2412,6 +2415,27 @@ impl Session {
             [_, Expression::Identifier(operation), selector]
                 if matches!(source.slice(*operation), "select" | "select-index")
                     && !matches!(selector, Expression::AnonymousFunction { .. })
+        )
+    }
+
+    fn is_bound_list_higher_order_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+    ) -> bool {
+        let bound_function = |expression: &Expression| {
+            matches!(expression, Expression::Identifier(name)
+                if matches!(self.bindings.get(source.slice(*name)), Some(Value::AnonymousFunction(_))))
+        };
+        matches!(
+            items,
+            [_, Expression::Identifier(operation), function]
+                if matches!(source.slice(*operation), "map" | "select" | "remove-indexes" | "remove-values")
+                    && bound_function(function)
+        ) || matches!(
+            items,
+            [_, Expression::Identifier(operation), _, function]
+                if source.slice(*operation) == "fold" && bound_function(function)
         )
     }
 

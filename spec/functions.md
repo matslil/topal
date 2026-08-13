@@ -298,3 +298,8 @@ construct an anonymous function only where the surrounding application selects
 one function type. Invocation shall bind its parameter patterns to the supplied
 arguments and resolve other names from the lexical environment captured when
 the function was constructed. Each invocation establishes its own return scope.
+
+The constructed function is an ordinary value and may be bound before being
+passed to another application. Resolving such a binding shall retain the same
+captured lexical environment, parameter arity, and invocation semantics as a
+function written directly at that contextual call site.

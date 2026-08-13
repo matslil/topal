@@ -1615,3 +1615,10 @@ All interpreter modes shall reconstruct labeled products with `with` under
 `TOPAL-TYPE-RECONSTRUCT-001`, preserving the original and every unreplaced
 field. Formal traces, source-located diagnostics, LSP validation, and reversible
 scripted-debugger history shall cover a commented example.
+
+## TOPAL-INTP-SUBSET-197 — Bound anonymous function values
+
+All interpreter modes shall retain inferred anonymous functions as immutable
+values that can be bound and later supplied to compatible List operations under
+`TOPAL-FUNCTION-ANONYMOUS-001`. Formal traces, LSP validation, and reversible
+scripted-debugger history shall cover commented examples.
