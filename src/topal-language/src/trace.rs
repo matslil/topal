@@ -118,4 +118,15 @@ mod tests {
         assert!(line.contains("slash\\\\"));
         assert!(line.contains("line\\nnext"));
     }
+
+    #[test]
+    fn one_event_always_occupies_one_json_line() {
+        let line = TraceEvent {
+            event: "a\nb",
+            rule: "r\nr",
+            detail: "d\nd",
+        }
+        .to_json_line();
+        assert!(!line.contains('\n'));
+    }
 }
