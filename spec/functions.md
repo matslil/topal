@@ -2,6 +2,14 @@
 
 ## Formal text
 
+### TOPAL-EXEC-COMPLETED-001 — Completion evidence
+
+The identifier `Completed` in expression position shall evaluate to the
+zero-data value classified by `Completed`. It shall be distinct from `Unit`:
+returning it establishes a dependency on completion, while `Unit` establishes
+no completion dependency. Test traces and debugger history shall expose the
+construction of completion evidence before its binding or return.
+
 ### TOPAL-FUNCTION-STATIC-NULLARY-001 — Static nullary function execution
 
 A declaration `name is fn static () -> R` followed by one indented expression

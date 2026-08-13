@@ -103,6 +103,7 @@ pub enum Value {
         line: usize,
         column: usize,
     },
+    Completed,
     Unit,
 }
 
@@ -279,6 +280,7 @@ impl fmt::Display for Value {
             Self::Error { domain, code, .. } => {
                 write!(formatter, "Error ( domain is {domain}, code is {code} )")
             }
+            Self::Completed => formatter.write_str("Completed"),
             Self::Unit => formatter.write_str("()"),
         }
     }
@@ -2307,6 +2309,14 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let name = source.slice(span);
+        if name == "Completed" {
+            trace.record(TraceEvent {
+                event: "completion.evidence",
+                rule: "TOPAL-EXEC-COMPLETED-001",
+                detail: "Completed",
+            });
+            return Ok(Value::Completed);
+        }
         if self.consumed_names.contains(name) {
             return Err(consumed_generator_diagnostic(source, span, name));
         }
@@ -5190,6 +5200,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
+        | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
         (Value::Int(value), "Nat") => value >= &BigInt::from(0),
@@ -5945,6 +5956,7 @@ fn supported_value_classifier(
         classifier,
         "Boolean"
             | "Character"
+            | "Completed"
             | "Comparison"
             | "Generator Character Unit Unit"
             | "Generator Character Unit Character"
@@ -6130,6 +6142,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Modular { .. } => "Modular",
         Value::ErrorDomain(_) => "ErrorDomain",
         Value::Error { .. } => "Error",
+        Value::Completed => "Completed",
         Value::Unit => "Unit",
     }
 }
@@ -8798,6 +8811,7 @@ fn apply_negate(
         | Value::ModularType(_)
         | Value::ErrorDomain(_)
         | Value::Error { .. }
+        | Value::Completed
         | Value::Unit => Err(diagnostic(
             source,
             "E-NO-APPLICABLE-OVERLOAD",

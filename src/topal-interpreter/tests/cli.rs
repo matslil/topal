@@ -3440,3 +3440,20 @@ fn every_mode_selects_values_and_indexes_by_range() {
     assert!(trace.contains("TOPAL-RANGE-VALUE-SELECTION-001"));
     assert!(trace.contains("TOPAL-RANGE-INDEX-SELECTION-001"));
 }
+
+#[test]
+fn every_mode_returns_explicit_completion_evidence() {
+    let source = include_str!("../../../examples/interpreter/completed-evidence.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("Completed")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-EXEC-COMPLETED-001"));
+    assert!(trace.contains("function.return"));
+}

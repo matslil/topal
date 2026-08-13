@@ -1601,3 +1601,10 @@ Observable values shall preserve source kind, order, and multiplicity; formal
 traces shall retain selection provenance without exposing representation. LSP
 validation and reversible scripted-debugger history shall cover commented
 examples.
+
+## TOPAL-INTP-SUBSET-195 — Explicit completion evidence
+
+All interpreter modes shall evaluate `Completed` as zero-data completion
+evidence distinct from `Unit` under `TOPAL-EXEC-COMPLETED-001`. Formal traces,
+LSP validation, and reversible scripted-debugger history shall cover a
+commented function example.
