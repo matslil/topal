@@ -1622,3 +1622,11 @@ All interpreter modes shall retain inferred anonymous functions as immutable
 values that can be bound and later supplied to compatible List operations under
 `TOPAL-FUNCTION-ANONYMOUS-001`. Formal traces, LSP validation, and reversible
 scripted-debugger history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-198 — Direct anonymous function application
+
+All interpreter modes shall directly apply bound inferred anonymous functions
+under `TOPAL-FUNCTION-ANONYMOUS-001`, accepting unary operands directly and
+multi-parameter operands as positional products. Formal traces, arity
+diagnostics, LSP validation, and reversible scripted-debugger history shall
+cover commented examples.

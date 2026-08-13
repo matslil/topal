@@ -953,6 +953,9 @@ impl Session {
                 "callable values are not yet executable in isolation",
             )),
             Expression::Application { items, span } => {
+                if self.is_bound_anonymous_call(source, items) {
+                    return self.evaluate_bound_anonymous_call(source, items, *span, trace);
+                }
                 if Self::is_record_reconstruction(source, items) {
                     return self.evaluate_record_reconstruction(source, items, *span, trace);
                 }
@@ -2437,6 +2440,45 @@ impl Session {
             [_, Expression::Identifier(operation), _, function]
                 if source.slice(*operation) == "fold" && bound_function(function)
         )
+    }
+
+    fn is_bound_anonymous_call(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(name), _]
+            if matches!(self.bindings.get(source.slice(*name)), Some(Value::AnonymousFunction(_))))
+    }
+
+    fn evaluate_bound_anonymous_call(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [Expression::Identifier(name), argument_expression] = items else {
+            unreachable!("preselected bound anonymous call")
+        };
+        let function = self.resolve_identifier(source, *name, trace)?;
+        let arity = match &function {
+            Value::AnonymousFunction(function) => function.parameters.len(),
+            _ => unreachable!("preselected anonymous binding"),
+        };
+        let argument = self.evaluate_expression(source, argument_expression, trace)?;
+        let arguments = match (arity, argument) {
+            (1, value) => vec![value],
+            (_, Value::Tuple(values)) => values,
+            (_, value) => {
+                return Err(diagnostic(
+                    source,
+                    "E-ANONYMOUS-ARGUMENT-PACKAGE",
+                    argument_expression.span(),
+                    format!(
+                        "anonymous function expects {arity} arguments packaged as a tuple, found `{}`",
+                        structural_value_classifier(&value)
+                    ),
+                ));
+            }
+        };
+        self.invoke_anonymous_function(&function, arguments, span, trace)
     }
 
     fn is_record_reconstruction(source: &SourceText, items: &[Expression]) -> bool {

@@ -303,3 +303,8 @@ The constructed function is an ordinary value and may be bound before being
 passed to another application. Resolving such a binding shall retain the same
 captured lexical environment, parameter arity, and invocation semantics as a
 function written directly at that contextual call site.
+
+A bound anonymous function may be applied directly. A unary function accepts
+its single operand directly. A function with several parameter components
+accepts one positional product containing those components and binds them in
+source order; an arity mismatch shall be rejected before entering its body.

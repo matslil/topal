@@ -2769,3 +2769,20 @@ fn records_bound_anonymous_function_values_reversibly() {
     assert!(stdout.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
     assert!(stdout.contains("<anonymous fn/1>"));
 }
+
+#[test]
+fn records_direct_anonymous_function_application_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}anonymous-function-application.debug"),
+            &format!("{root}anonymous-function-application.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("function.anonymous.called"));
+    assert!(stdout.contains("<anonymous fn/2>"));
+}

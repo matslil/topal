@@ -3488,3 +3488,19 @@ fn every_mode_passes_bound_anonymous_function_values() {
     assert!(trace.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
     assert!(trace.matches("binding.resolved").count() >= 3);
 }
+
+#[test]
+fn every_mode_directly_applies_anonymous_function_values() {
+    let source = include_str!("../../../examples/interpreter/anonymous-function-application.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(42, 42)")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("function.anonymous.called").count(), 2);
+}
