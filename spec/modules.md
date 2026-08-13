@@ -45,3 +45,15 @@ caller's lexical scope.
 Qualified terminal resolution shall include generator declarations. Applying a
 qualified generator shall retain its namespace provenance and produce the same
 fresh linear continuation as an unaliased application.
+
+### TOPAL-NAMESPACE-CLASSIFIER-001 — Scope classification
+
+Every namespace value shall satisfy the general static classifier `Scope`.
+Classifying an alias as `Scope` shall preserve its concrete namespace identity
+and members; it shall not erase the information required for qualified lookup.
+
+### TOPAL-NAMESPACE-DIAGNOSTIC-001 — Missing qualified members
+
+Failure to resolve a qualified terminal shall identify the selected namespace
+and missing member. A close suggestion shall be drawn only from visible members
+of that namespace, not unrelated caller bindings.

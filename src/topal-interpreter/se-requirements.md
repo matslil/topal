@@ -1728,6 +1728,16 @@ Namespace aliases shall preserve declaration visibility at their binding under
 `TOPAL-NAMESPACE-SNAPSHOT-001`, with interpreter, LSP, trace, and debugger
 coverage.
 
+## TOPAL-INTP-SUBSET-214 — Scope classification
+
+Namespace values shall satisfy `Scope` under `TOPAL-NAMESPACE-CLASSIFIER-001`
+without losing identity, with interpreter, LSP, trace, and debugger coverage.
+
+## TOPAL-INTP-SUBSET-215 — Qualified member diagnostics
+
+Missing qualified members shall produce namespace-specific Rust-style
+diagnostics under `TOPAL-NAMESPACE-DIAGNOSTIC-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

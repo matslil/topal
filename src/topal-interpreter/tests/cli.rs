@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 151);
+    assert_eq!(examples.len(), 152);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3742,4 +3742,23 @@ fn every_mode_applies_qualified_namespace_generators() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-GENERATOR-DECLARATION-001"));
     assert!(trace.contains("namespace.alias.member.resolved"));
+}
+
+#[test]
+fn every_mode_classifies_namespaces_as_scope() {
+    let source = include_str!("../../../examples/interpreter/scope-classifier.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+}
+
+#[test]
+fn missing_namespace_member_suggests_only_a_member() {
+    let output = run(&[], "answer is 42\napi is root\napi answr\n");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("E-NAMESPACE-MEMBER-NOT-FOUND"));
+    assert!(stderr.contains("did you mean `answer`?"));
 }

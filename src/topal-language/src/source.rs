@@ -2608,6 +2608,30 @@ impl Session {
             unreachable!("preselected namespace alias")
         };
         let member_name = source.slice(*member);
+        if !namespace.bindings.contains_key(member_name)
+            && !namespace.functions.contains_key(member_name)
+            && !namespace.generators.contains_key(member_name)
+        {
+            let names = namespace
+                .bindings
+                .keys()
+                .chain(namespace.functions.keys())
+                .chain(namespace.generators.keys());
+            let error = diagnostic(
+                source,
+                "E-NAMESPACE-MEMBER-NOT-FOUND",
+                *member,
+                format!(
+                    "namespace `{}` has no member `{member_name}`",
+                    namespace.name
+                ),
+            );
+            return Err(
+                closest_name(member_name, names).map_or(error.clone(), |candidate| {
+                    error.with_help(format!("did you mean `{candidate}`?"))
+                }),
+            );
+        }
         trace.record(TraceEvent {
             event: "namespace.alias.member.resolved",
             rule: "TOPAL-NAMESPACE-ALIAS-001",
@@ -6112,6 +6136,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
+        | (Value::Namespace(_), "Scope")
         | (Value::Continue(_) | Value::Finish(_), "TraversalControl")
         | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,
@@ -6138,6 +6163,7 @@ fn supported_generator_value_classifier(
             | "Int"
             | "Nat"
             | "Rational"
+            | "Scope"
             | "String"
             | "Range Int"
             | "Range Rational"
