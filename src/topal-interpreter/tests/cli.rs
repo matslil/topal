@@ -77,6 +77,12 @@ fn every_interpreter_example_documents_its_feature() {
 }
 
 #[test]
+fn test_mode_preserves_script_standard_output() {
+    let source = "value is 40 + 2\nvalue\n";
+    assert_eq!(run(&[], source).stdout, run(&["--test"], source).stdout);
+}
+
+#[test]
 fn test_mode_records_discard_after_its_initializer() {
     let output = run(&["--test"], "_ is 20 + 22\n7\n");
     assert!(output.status.success());
