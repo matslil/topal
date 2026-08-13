@@ -47,6 +47,10 @@ classified by `Effect`, without performing a runtime interaction.
 
 Every effect expression shall satisfy `Effect` while retaining its row identity.
 
+### TOPAL-EFFECT-IDENTITY-001 — Effect-row equality
+
+Effect expressions shall compare by canonical row identity; empty rows are equal.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:

@@ -9122,6 +9122,7 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
         (Value::Type(left), Value::Type(right)) | (Value::String(left), Value::String(right)) => {
             Some(left == right)
         }
+        (Value::Effects(left), Value::Effects(right)) => Some(left == right),
         (Value::Boolean(left), Value::Boolean(right)) => Some(left == right),
         (Value::Int(left), Value::Int(right)) => Some(left == right),
         (Value::Rational(left), Value::Rational(right)) => Some(left == right),

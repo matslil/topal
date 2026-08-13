@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 163);
+    assert_eq!(examples.len(), 164);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3879,5 +3879,17 @@ fn every_mode_classifies_effect_rows() {
     let source = include_str!("../../../examples/interpreter/effect-classifier.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_compares_effect_rows() {
+    let source = include_str!("../../../examples/interpreter/effect-identity.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(
+            String::from_utf8(run(arguments, source).stdout)
+                .unwrap()
+                .contains("true")
+        );
     }
 }

@@ -1788,6 +1788,10 @@ All modes shall construct `Effects ()` under `TOPAL-EFFECT-EMPTY-001`.
 
 Effect expressions shall satisfy `Effect` under `TOPAL-EFFECT-CLASSIFIER-001`.
 
+## TOPAL-INTP-SUBSET-227 — Effect identity
+
+Effect rows shall compare under `TOPAL-EFFECT-IDENTITY-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under
