@@ -10,3 +10,11 @@ session's root namespace. A qualified path beginning `root member` shall resolve
 operands shall apply the resolved terminal value using its ordinary function,
 generator, or value semantics. Binding or displaying the namespace shall not
 copy, flatten, or execute its declarations.
+
+### TOPAL-NAMESPACE-ALIAS-001 — Immutable namespace aliases
+
+Binding a namespace value with `is` shall create an immutable alias retaining
+the original namespace identity, members, visibility, and overload ordering.
+`alias member operands` shall resolve `member` within that retained namespace
+before applying remaining operands. It shall not copy members into local scope
+or combine them with declarations bearing the same unqualified names.

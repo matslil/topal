@@ -2956,3 +2956,20 @@ fn records_root_namespace_resolution_reversibly() {
     assert!(stdout.contains("TOPAL-NAMESPACE-ROOT-001"));
     assert!(stdout.contains("<namespace root>"));
 }
+
+#[test]
+fn records_namespace_alias_resolution_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}namespace-alias.debug"),
+            &format!("{root}namespace-alias.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-NAMESPACE-ALIAS-001"));
+    assert!(stdout.contains("<namespace root>"));
+}

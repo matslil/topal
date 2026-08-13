@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 146);
+    assert_eq!(examples.len(), 147);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3668,4 +3668,17 @@ fn every_mode_resolves_the_root_namespace_explicitly() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-NAMESPACE-ROOT-001"));
     assert!(trace.contains("namespace.member.resolved"));
+}
+
+#[test]
+fn every_mode_resolves_members_through_namespace_aliases() {
+    let source = include_str!("../../../examples/interpreter/namespace-alias.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-NAMESPACE-ALIAS-001"));
+    assert!(trace.contains("namespace.alias.member.resolved"));
 }

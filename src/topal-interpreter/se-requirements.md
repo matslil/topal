@@ -1708,3 +1708,10 @@ namespace and select qualified terminal declarations under
 `TOPAL-NAMESPACE-ROOT-001` without flattening or executing the namespace.
 Formal traces, diagnostics, LSP validation, and reversible scripted-debugger
 history shall cover commented examples.
+
+## TOPAL-INTP-SUBSET-209 — Immutable namespace aliases
+
+All interpreter modes shall bind namespaces as immutable aliases and resolve
+qualified members through their retained boundary under
+`TOPAL-NAMESPACE-ALIAS-001`. Formal traces, diagnostics, LSP validation, and
+reversible scripted-debugger history shall cover commented examples.

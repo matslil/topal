@@ -993,6 +993,9 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if self.is_bound_namespace_application(source, items) {
+                    return self.evaluate_bound_namespace_application(source, items, *span, trace);
+                }
                 if Self::is_root_qualified_application(source, items) {
                     return self.evaluate_root_qualified_application(source, items, *span, trace);
                 }
@@ -2543,6 +2546,51 @@ impl Session {
     fn is_root_qualified_application(source: &SourceText, items: &[Expression]) -> bool {
         matches!(items, [Expression::Identifier(root), Expression::Identifier(_), ..]
             if source.slice(*root) == "root")
+    }
+
+    fn is_bound_namespace_application(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items, [Expression::Identifier(alias), Expression::Identifier(_), ..]
+            if matches!(self.bindings.get(source.slice(*alias)), Some(Value::Namespace(_))))
+    }
+
+    fn evaluate_bound_namespace_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [
+            Expression::Identifier(alias),
+            Expression::Identifier(member),
+            remainder @ ..,
+        ] = items
+        else {
+            unreachable!("preselected namespace alias application")
+        };
+        let Some(Value::Namespace(namespace)) = self.bindings.get(source.slice(*alias)) else {
+            unreachable!("preselected namespace alias")
+        };
+        let member_name = source.slice(*member);
+        trace.record(TraceEvent {
+            event: "namespace.alias.member.resolved",
+            rule: "TOPAL-NAMESPACE-ALIAS-001",
+            detail: member_name,
+        });
+        let mut qualified = self.clone();
+        qualified.bindings = namespace.bindings.clone();
+        qualified.functions = namespace.functions.clone();
+        qualified.generators = namespace.generators.clone();
+        if remainder.is_empty() {
+            return qualified.resolve_identifier(source, *member, trace);
+        }
+        let expression = Expression::Application {
+            items: std::iter::once(Expression::Identifier(*member))
+                .chain(remainder.iter().cloned())
+                .collect(),
+            span,
+        };
+        qualified.evaluate_expression(source, &expression, trace)
     }
 
     fn evaluate_root_qualified_application(
