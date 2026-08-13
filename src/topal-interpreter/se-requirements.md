@@ -1692,3 +1692,11 @@ All interpreter modes shall lazily construct seeded unfold generators under
 and deferring the step function until consumption. Formal traces, LSP
 validation, and reversible scripted-debugger history shall cover commented
 examples.
+
+## TOPAL-INTP-SUBSET-207 — Finite unfold collection
+
+All interpreter modes shall collect unfold generators under
+`TOPAL-GENERATOR-UNFOLD-COLLECT-001`, preserving distinct seed and yield
+classifiers, yield order, and termination at None. Formal traces, classifier
+diagnostics, LSP validation, and reversible scripted-debugger history shall
+cover commented examples.

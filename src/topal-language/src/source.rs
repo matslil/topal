@@ -3653,6 +3653,15 @@ impl Session {
                     trace,
                 );
             }
+            if let Value::UnfoldGenerator { .. } = value {
+                return self.collect_unfold_generator(
+                    source,
+                    value,
+                    collection.span(),
+                    span,
+                    trace,
+                );
+            }
             if matches!(value, Value::List { .. }) {
                 trace.record(TraceEvent {
                     event: "list.collected",
@@ -3838,7 +3847,7 @@ impl Session {
                     format!("iterate next function must return `{classifier}`"),
                 ));
             }
-            current = Box::new(next_value);
+            *current = next_value;
         }
         trace.record(TraceEvent {
             event: "generator.collected",
@@ -3847,6 +3856,94 @@ impl Session {
         });
         let value = Value::List {
             element_classifier: classifier,
+            entries,
+        };
+        self.checkpoint(trace, Some(&value), Some(result_span));
+        Ok(value)
+    }
+
+    fn collect_unfold_generator(
+        &self,
+        source: &SourceText,
+        generator: Value,
+        source_span: Span,
+        result_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Value::UnfoldGenerator { mut seed, step } = generator else {
+            unreachable!("unfold collection requires unfold generator")
+        };
+        let seed_classifier = structural_value_classifier(&seed);
+        let mut element_classifier = None;
+        let mut entries = Vec::new();
+        loop {
+            let result = self.invoke_anonymous_function(&step, vec![*seed], result_span, trace)?;
+            let Value::Optional { payload, .. } = result else {
+                return Err(diagnostic(
+                    source,
+                    "E-UNFOLD-STEP-RESULT",
+                    source_span,
+                    "unfold step must return Optional (Yield, Seed)",
+                ));
+            };
+            let Some(payload) = payload else {
+                break;
+            };
+            let Value::Tuple(mut pair) = *payload else {
+                return Err(diagnostic(
+                    source,
+                    "E-UNFOLD-STEP-RESULT",
+                    source_span,
+                    "unfold Some payload must be a two-field positional product",
+                ));
+            };
+            if pair.len() != 2 {
+                return Err(diagnostic(
+                    source,
+                    "E-UNFOLD-STEP-RESULT",
+                    source_span,
+                    "unfold Some payload must contain yielded value and next seed",
+                ));
+            }
+            let next_seed = pair.pop().expect("two-field unfold payload");
+            let yielded = pair.pop().expect("two-field unfold payload");
+            if !value_has_classifier(&next_seed, &seed_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-UNFOLD-SEED-CLASSIFIER",
+                    source_span,
+                    format!("unfold next seed must satisfy `{seed_classifier}`"),
+                ));
+            }
+            let yielded_classifier = structural_value_classifier(&yielded);
+            if element_classifier
+                .as_ref()
+                .is_some_and(|expected| expected != &yielded_classifier)
+            {
+                return Err(diagnostic(
+                    source,
+                    "E-UNFOLD-YIELD-CLASSIFIER",
+                    source_span,
+                    "unfold step yielded inconsistent value classifiers",
+                ));
+            }
+            element_classifier.get_or_insert(yielded_classifier);
+            trace.record(TraceEvent {
+                event: "generator.yielded",
+                rule: "TOPAL-GENERATOR-UNFOLD-COLLECT-001",
+                detail: &yielded.to_string(),
+            });
+            entries.push(yielded);
+            *seed = next_seed;
+        }
+        let element_classifier = element_classifier.unwrap_or_else(|| "Value".into());
+        trace.record(TraceEvent {
+            event: "generator.collected",
+            rule: "TOPAL-GENERATOR-UNFOLD-COLLECT-001",
+            detail: &element_classifier,
+        });
+        let value = Value::List {
+            element_classifier,
             entries,
         };
         self.checkpoint(trace, Some(&value), Some(result_span));
@@ -4134,7 +4231,7 @@ impl Execution {
                     format!("iterate next function must return `{classifier}`"),
                 ));
             }
-            current = Box::new(next_value);
+            *current = next_value;
             trace.record(TraceEvent {
                 event: "generator.resumed",
                 rule: "TOPAL-GENERATOR-ITERATE-FOREACH-001",
@@ -6773,8 +6870,7 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Bag { .. } => "Bag",
         Value::Map { .. } => "Map",
         Value::CharacterReturningGenerator { .. } => "Generator Character Unit Character",
-        Value::IterateGenerator { .. } => "Generator",
-        Value::UnfoldGenerator { .. } => "Generator",
+        Value::IterateGenerator { .. } | Value::UnfoldGenerator { .. } => "Generator",
         Value::SuspendedGenerator {
             yield_classifier,
             return_classifier,

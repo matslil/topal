@@ -40,6 +40,14 @@ Collecting an unbounded generated traversal shall be rejected before traversal.
 `next-seed` for the following Unit resumption. Construction shall capture but
 not invoke the unary step function or require seed and yield types to agree.
 
+### TOPAL-GENERATOR-UNFOLD-COLLECT-001 — Finite unfold collection
+
+Unary `collect` over an unfold generator shall repeatedly eliminate its step
+Optional. It shall append each `Some` yielded component in order, continue with
+the paired seed of the original seed classifier, and stop at `None`. Every yield
+shall have one consistent classifier, which becomes the resulting List element
+classifier. The terminating `None` shall produce no entry.
+
 ### TOPAL-GENERATOR-ERROR-CODE-001 — Generator error-code vocabulary
 
 The qualified namespace `lang generator` publishes the nominal enum type
