@@ -57,3 +57,9 @@ and members; it shall not erase the information required for qualified lookup.
 Failure to resolve a qualified terminal shall identify the selected namespace
 and missing member. A close suggestion shall be drawn only from visible members
 of that namespace, not unrelated caller bindings.
+
+### TOPAL-NAMESPACE-ALIAS-CHAIN-001 — Alias-chain identity
+
+Binding an existing namespace alias shall retain the same namespace identity
+and captured declaration set. Any finite chain of aliases shall resolve a
+qualified terminal exactly as the originally captured namespace value.

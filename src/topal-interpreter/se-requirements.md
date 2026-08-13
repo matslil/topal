@@ -1738,6 +1738,11 @@ without losing identity, with interpreter, LSP, trace, and debugger coverage.
 Missing qualified members shall produce namespace-specific Rust-style
 diagnostics under `TOPAL-NAMESPACE-DIAGNOSTIC-001`.
 
+## TOPAL-INTP-SUBSET-216 — Namespace alias chains
+
+Namespace alias chains shall retain identity under
+`TOPAL-NAMESPACE-ALIAS-CHAIN-001`, with interpreter, LSP, and debugger coverage.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

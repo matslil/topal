@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 152);
+    assert_eq!(examples.len(), 153);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3761,4 +3761,14 @@ fn missing_namespace_member_suggests_only_a_member() {
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(stderr.contains("E-NAMESPACE-MEMBER-NOT-FOUND"));
     assert!(stderr.contains("did you mean `answer`?"));
+}
+
+#[test]
+fn every_mode_preserves_namespace_alias_chains() {
+    let source = include_str!("../../../examples/interpreter/namespace-alias-chain.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
 }

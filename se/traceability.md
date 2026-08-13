@@ -296,3 +296,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-213` | `TOPAL-NAMESPACE-GENERATOR-001`, `TOPAL-GENERATOR-DECLARATION-001` | interpreter, LSP, and scripted debugger tests; namespace-generator examples | `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | `TOPAL-INTP-SUBSET-214` | `TOPAL-NAMESPACE-CLASSIFIER-001` | interpreter, LSP, and scripted debugger tests; Scope-classifier examples | `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | `TOPAL-INTP-SUBSET-215` | `TOPAL-NAMESPACE-DIAGNOSTIC-001` | interpreter diagnostic tests | `topal-language`, `topal-interpreter` |
+| `TOPAL-INTP-SUBSET-216` | `TOPAL-NAMESPACE-ALIAS-CHAIN-001` | interpreter, LSP, and scripted debugger tests; alias-chain examples | `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
