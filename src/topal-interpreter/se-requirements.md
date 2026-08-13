@@ -1771,6 +1771,10 @@ Callable values shall satisfy `Function` under
 Constraint objects shall satisfy `Constraint` under
 `TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001`.
 
+## TOPAL-INTP-SUBSET-223 — Type function boundaries
+
+Functions shall preserve Type values under `TOPAL-ABSTRACTION-TYPE-BOUNDARY-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

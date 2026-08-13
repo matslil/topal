@@ -28,6 +28,11 @@ erasing their invocation identity or captured environment.
 A constraint object shall satisfy `Constraint` while retaining its base type,
 predicate, and nominal identity.
 
+### TOPAL-ABSTRACTION-TYPE-BOUNDARY-001 — Type function boundaries
+
+An ordinary function may accept and return `Type`; invocation shall preserve
+the concrete static type identity.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:
