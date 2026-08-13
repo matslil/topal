@@ -1728,6 +1728,12 @@ Namespace aliases shall preserve declaration visibility at their binding under
 `TOPAL-NAMESPACE-SNAPSHOT-001`, with interpreter, LSP, trace, and debugger
 coverage.
 
+## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
+
+Namespace lookup shall select generator terminals under
+`TOPAL-NAMESPACE-GENERATOR-001`, with interpreter, LSP, trace, and debugger
+coverage.
+
 ## TOPAL-INTP-SUBSET-212 — Qualified namespace overloads
 
 Qualified lookup shall preserve namespace overload ordering under

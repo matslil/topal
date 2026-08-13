@@ -39,3 +39,9 @@ Qualified lookup through a namespace or alias shall retain the selected
 namespace's complete source-ordered overload set. Application shall choose the
 first applicable retained declaration without combining overloads from the
 caller's lexical scope.
+
+### TOPAL-NAMESPACE-GENERATOR-001 — Qualified generator application
+
+Qualified terminal resolution shall include generator declarations. Applying a
+qualified generator shall retain its namespace provenance and produce the same
+fresh linear continuation as an unaliased application.

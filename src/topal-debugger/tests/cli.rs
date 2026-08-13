@@ -3030,3 +3030,22 @@ fn records_namespace_overload_selection_reversibly() {
             .contains("TOPAL-FUNCTION-OVERLOAD-001")
     );
 }
+
+#[test]
+fn records_qualified_namespace_generators_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}namespace-generator.debug"),
+            &format!("{root}namespace-generator.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("generator.yielded")
+    );
+}

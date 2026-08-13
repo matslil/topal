@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 150);
+    assert_eq!(examples.len(), 151);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3731,4 +3731,15 @@ fn every_mode_preserves_namespace_overload_sets() {
             .count(),
         2
     );
+}
+
+#[test]
+fn every_mode_applies_qualified_namespace_generators() {
+    let source = include_str!("../../../examples/interpreter/namespace-generator.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-GENERATOR-DECLARATION-001"));
+    assert!(trace.contains("namespace.alias.member.resolved"));
 }
