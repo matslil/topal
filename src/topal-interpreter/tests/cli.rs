@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 157);
+    assert_eq!(examples.len(), 158);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3818,6 +3818,18 @@ fn every_mode_classifies_type_values() {
             String::from_utf8(run(arguments, source).stdout)
                 .unwrap()
                 .contains("Int")
+        );
+    }
+}
+
+#[test]
+fn every_mode_classifies_function_values() {
+    let source = include_str!("../../../examples/interpreter/function-classifier.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(
+            String::from_utf8(run(arguments, source).stdout)
+                .unwrap()
+                .contains("42")
         );
     }
 }

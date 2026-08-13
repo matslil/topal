@@ -18,6 +18,11 @@ canonical type identity. Distinct fundamental types shall compare unequal.
 Every fundamental Type value shall satisfy the kind classifier `Type` while
 retaining its concrete type identity.
 
+### TOPAL-ABSTRACTION-FUNCTION-CLASSIFIER-001 — Function classification
+
+Named, anonymous, and symbolic callable values shall satisfy `Function` without
+erasing their invocation identity or captured environment.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:

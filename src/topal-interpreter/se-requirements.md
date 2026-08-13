@@ -1761,6 +1761,11 @@ All modes shall compare Type identity under `TOPAL-ABSTRACTION-TYPE-IDENTITY-001
 
 Type values shall satisfy `Type` under `TOPAL-ABSTRACTION-TYPE-CLASSIFIER-001`.
 
+## TOPAL-INTP-SUBSET-221 — Function classification
+
+Callable values shall satisfy `Function` under
+`TOPAL-ABSTRACTION-FUNCTION-CLASSIFIER-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

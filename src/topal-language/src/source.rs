@@ -6152,6 +6152,10 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::String(_), "String")
         | (Value::Namespace(_), "Scope")
         | (Value::Type(_), "Type")
+        | (
+            Value::Callable(_) | Value::NamedFunction(_) | Value::AnonymousFunction(_),
+            "Function",
+        )
         | (Value::Continue(_) | Value::Finish(_), "TraversalControl")
         | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,
@@ -6918,6 +6922,7 @@ fn supported_value_classifier(
             | "Generator String Unit Character"
             | "Generator String Unit String"
             | "Generator Character Unit String"
+            | "Function"
             | "Int"
             | "Nat"
             | "Range Int"
