@@ -1748,6 +1748,38 @@ Namespace alias chains shall retain identity under
 Functions shall accept namespace values through `Scope` parameters under
 `TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001`, with all tool coverage.
 
+## TOPAL-INTP-SUBSET-218 — Fundamental Type values
+
+All modes shall resolve fundamental Type objects under
+`TOPAL-ABSTRACTION-TYPE-VALUE-001`, with LSP and debugger coverage.
+
+## TOPAL-INTP-SUBSET-219 — Type identity equality
+
+All modes shall compare Type identity under `TOPAL-ABSTRACTION-TYPE-IDENTITY-001`.
+
+## TOPAL-INTP-SUBSET-220 — Type classification
+
+Type values shall satisfy `Type` under `TOPAL-ABSTRACTION-TYPE-CLASSIFIER-001`.
+
+## TOPAL-INTP-SUBSET-221 — Function classification
+
+Callable values shall satisfy `Function` under
+`TOPAL-ABSTRACTION-FUNCTION-CLASSIFIER-001`.
+
+## TOPAL-INTP-SUBSET-222 — Constraint classification
+
+Constraint objects shall satisfy `Constraint` under
+`TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001`.
+
+## TOPAL-INTP-SUBSET-223 — Type function boundaries
+
+Functions shall preserve Type values under `TOPAL-ABSTRACTION-TYPE-BOUNDARY-001`.
+
+## TOPAL-INTP-SUBSET-224 — Function value boundaries
+
+Higher-order inputs shall preserve callable values under
+`TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001`.
+
 ## TOPAL-INTP-SUBSET-213 — Qualified namespace generators
 
 Namespace lookup shall select generator terminals under

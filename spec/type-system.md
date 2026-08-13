@@ -2,6 +2,42 @@
 
 ## Formal text
 
+### TOPAL-ABSTRACTION-TYPE-VALUE-001 — Fundamental type values
+
+The fundamental names `Boolean`, `Int`, `Nat`, `Rational`, `String`, `Unit`, and
+`Scope` in expression position shall resolve immutable static objects of kind
+`Type`. Their displayed form and identity shall be their canonical name.
+
+### TOPAL-ABSTRACTION-TYPE-IDENTITY-001 — Type-value equality
+
+Two fundamental Type values shall be equal exactly when they have the same
+canonical type identity. Distinct fundamental types shall compare unequal.
+
+### TOPAL-ABSTRACTION-TYPE-CLASSIFIER-001 — Type classification
+
+Every fundamental Type value shall satisfy the kind classifier `Type` while
+retaining its concrete type identity.
+
+### TOPAL-ABSTRACTION-FUNCTION-CLASSIFIER-001 — Function classification
+
+Named, anonymous, and symbolic callable values shall satisfy `Function` without
+erasing their invocation identity or captured environment.
+
+### TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001 — Constraint classification
+
+A constraint object shall satisfy `Constraint` while retaining its base type,
+predicate, and nominal identity.
+
+### TOPAL-ABSTRACTION-TYPE-BOUNDARY-001 — Type function boundaries
+
+An ordinary function may accept and return `Type`; invocation shall preserve
+the concrete static type identity.
+
+### TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001 — Higher-order Function boundaries
+
+An ordinary function parameter classified as `Function` shall accept named,
+anonymous, or symbolic callable values and preserve their invocation behavior.
+
 ### TOPAL-TYPE-KIND-001 — Object kinds
 
 Every static object has exactly one kind in:
