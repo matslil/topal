@@ -57,6 +57,26 @@ fn every_interpreter_example_is_an_executable_script() {
 }
 
 #[test]
+fn every_interpreter_example_documents_its_feature() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/interpreter");
+    for entry in std::fs::read_dir(directory).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|extension| extension == "t") {
+            let source = std::fs::read_to_string(&path).unwrap();
+            assert!(
+                source
+                    .lines()
+                    .skip(1)
+                    .take(4)
+                    .any(|line| line.starts_with('#')),
+                "{} lacks a feature comment",
+                path.display()
+            );
+        }
+    }
+}
+
+#[test]
 fn test_mode_records_discard_after_its_initializer() {
     let output = run(&["--test"], "_ is 20 + 22\n7\n");
     assert!(output.status.success());
