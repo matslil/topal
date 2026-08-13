@@ -95,4 +95,14 @@ mod tests {
         .to_json_line();
         assert!(line.contains(TEST_TRACE_SCHEMA));
     }
+
+    #[test]
+    fn trace_serialization_is_deterministic() {
+        let event = TraceEvent {
+            event: "chosen",
+            rule: "RULE-001",
+            detail: "same",
+        };
+        assert_eq!(event.to_json_line(), event.to_json_line());
+    }
 }
