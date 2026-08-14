@@ -29,6 +29,11 @@ pub enum Value {
     Version(LanguageVersion),
     NativeSerializer(LanguageVersion),
     SerializationStream(Vec<u8>),
+    ObjectDescription {
+        identity: String,
+        kind: String,
+        value: Box<Value>,
+    },
     TaskType(Box<TaskTypeValue>),
     TaskDefinition(Box<TaskDefinitionValue>),
     TaskInstance(Box<RefCell<TaskInstanceValue>>),
@@ -317,9 +322,18 @@ impl fmt::Display for Value {
             }
             Self::Effects(effects) => write!(formatter, "Effects ({})", effects.join(", ")),
             Self::Boolean(value) => value.fmt(formatter),
+            Self::ObjectDescription {
+                identity,
+                kind,
+                value,
+            } => {
+                write!(formatter, "ObjectDescription ({identity}, {kind}, {value})")
+            }
             Self::SizeBits(bits) => write!(formatter, "{bits}[b]"),
             Self::AddressRangeType(_) => formatter.write_str("AddressRange <subtype>"),
-            Self::AddressRange { lower, upper, .. } => write!(formatter, "{lower} .. {upper}"),
+            Self::AddressRange { lower, upper, .. } | Self::IntRange { lower, upper } => {
+                write!(formatter, "{lower} .. {upper}")
+            }
             Self::AddressOffsetType(_) => formatter.write_str("AddressOffset <subtype>"),
             Self::AddressOffset { offset, .. } => offset.fmt(formatter),
             Self::LayoutType(layout) => write!(formatter, "Layout {}", layout.semantic),
@@ -359,7 +373,6 @@ impl fmt::Display for Value {
                     value.denom()
                 )
             }
-            Self::IntRange { lower, upper } => write!(formatter, "{lower} .. {upper}"),
             Self::RationalRange { lower, upper } => write!(
                 formatter,
                 "Rational ( {}, {} ) .. Rational ( {}, {} )",
@@ -764,6 +777,7 @@ impl Session {
         Ok(attributes)
     }
 
+    #[allow(clippy::too_many_lines)] // Closed layout forms and their diagnostics remain auditable together.
     fn evaluate_layout_application(
         &self,
         source: &SourceText,
@@ -1147,6 +1161,7 @@ impl Session {
         Ok(value)
     }
 
+    #[allow(clippy::too_many_lines)] // One message transaction keeps its stable trace and state transition together.
     fn evaluate_task_message(
         &self,
         source: &SourceText,
@@ -9593,20 +9608,22 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Boolean(_) => "Boolean",
         Value::Version(_) => "Version",
         Value::SerializationStream(_) => "SerializationStream",
-        Value::TaskType(_) => "Type",
-        Value::TaskDefinition(_) => "TaskDefinition",
-        Value::TaskInstance(_) => "Task",
-        Value::SizeBits(_) => "Size",
-        Value::AddressRangeType(_)
+        Value::ObjectDescription { .. } => "ObjectDescription",
+        Value::TaskType(_)
+        | Value::AddressRangeType(_)
         | Value::AddressOffsetType(_)
         | Value::LayoutType(_)
         | Value::LayoutFactory(_)
-        | Value::LocationType(_) => "Type",
+        | Value::LocationType(_)
+        | Value::Type(_)
+        | Value::ModularType(_) => "Type",
+        Value::TaskDefinition(_) => "TaskDefinition",
+        Value::TaskInstance(_) => "Task",
+        Value::SizeBits(_) => "Size",
         Value::AddressRange { .. } => "AddressRange",
         Value::AddressOffset { .. } => "AddressOffset",
         Value::Location { .. } => "Location",
         Value::LayoutBacked { .. } => "Layout",
-        Value::Type(_) | Value::ModularType(_) => "Type",
         Value::Effects(_) => "Effect",
         Value::Int(_) => "Int",
         Value::Rational(_) => "Rational",
@@ -9867,6 +9884,7 @@ fn stream_for_value(
     })
 }
 
+#[allow(clippy::too_many_lines)] // Each supported semantic schema remains explicit at the authority-free boundary.
 fn serialize_language_value(
     value: &Value,
     types: &mut Vec<TypeDefinition>,
@@ -9896,6 +9914,24 @@ fn serialize_language_value(
             },
             SerializedValue::ArbitraryInt(value.clone()),
         ),
+        Value::Rational(value) => {
+            let (numerator_id, numerator) =
+                serialize_language_value(&Value::Int(value.numer().clone()), types, identities)?;
+            let (denominator_id, denominator) =
+                serialize_language_value(&Value::Int(value.denom().clone()), types, identities)?;
+            let mut schema_payload = Vec::new();
+            put_protocol_uvarint(numerator_id, &mut schema_payload);
+            put_protocol_uvarint(denominator_id, &mut schema_payload);
+            (
+                "Rational".into(),
+                TypeDefinition::ObjectDescription {
+                    identity: "Rational".into(),
+                    kind: 3,
+                    schema_payload,
+                },
+                SerializedValue::ObjectDescription(vec![numerator, denominator]),
+            )
+        }
         Value::String(value) => (
             "String".to_owned(),
             TypeDefinition::Text {
@@ -9939,7 +9975,126 @@ fn serialize_language_value(
                 SerializedValue::Product(encoded),
             )
         }
-        _ => return Err("this language object does not yet have a native serialization schema"),
+        Value::List {
+            element_classifier,
+            entries,
+        }
+        | Value::Array {
+            element_classifier,
+            entries,
+        } => {
+            let (element, encoded) = serialize_homogeneous_values(entries, types, identities)?;
+            let identity = match value {
+                Value::List { .. } => format!("List {element_classifier}"),
+                Value::Array { .. } => format!("Array {} {element_classifier}", entries.len()),
+                _ => unreachable!(),
+            };
+            (
+                identity.clone(),
+                TypeDefinition::Sequence { identity, element },
+                SerializedValue::Sequence(encoded),
+            )
+        }
+        Value::Bag {
+            element_classifier,
+            entries,
+        } => {
+            let values = entries
+                .iter()
+                .flat_map(|(value, count)| std::iter::repeat_n(value.clone(), *count))
+                .collect::<Vec<_>>();
+            let (element, encoded) = serialize_homogeneous_values(&values, types, identities)?;
+            let identity = format!("Bag {element_classifier}");
+            (
+                identity.clone(),
+                TypeDefinition::Sequence { identity, element },
+                SerializedValue::Sequence(encoded),
+            )
+        }
+        Value::Set {
+            element_classifier,
+            entries,
+        } => {
+            let values = entries.clone();
+            let (element, mut encoded) = serialize_homogeneous_values(&values, types, identities)?;
+            encoded.sort();
+            let mut schema_payload = Vec::new();
+            put_protocol_uvarint(element, &mut schema_payload);
+            put_protocol_text("semantic-total-order", &mut schema_payload);
+            let identity = format!("Set {element_classifier}");
+            (
+                identity.clone(),
+                TypeDefinition::ObjectDescription {
+                    identity,
+                    kind: 11,
+                    schema_payload,
+                },
+                SerializedValue::ObjectDescription(vec![SerializedValue::Sequence(encoded)]),
+            )
+        }
+        Value::Map {
+            key_classifier,
+            value_classifier,
+            entries,
+        } => {
+            let mut key_type = None;
+            let mut value_type = None;
+            let mut encoded = Vec::with_capacity(entries.len());
+            for (key, value) in entries {
+                let (key_id, key) = serialize_language_value(key, types, identities)?;
+                let (value_id, value) = serialize_language_value(value, types, identities)?;
+                if key_type.replace(key_id).is_some_and(|id| id != key_id)
+                    || value_type
+                        .replace(value_id)
+                        .is_some_and(|id| id != value_id)
+                {
+                    return Err("map entries do not share one key and value serialization schema");
+                }
+                encoded.push(SerializedValue::Product(vec![key, value]));
+            }
+            let (key_type, value_type) = (
+                key_type.ok_or("an empty Map needs explicit serializable schemas")?,
+                value_type.unwrap(),
+            );
+            encoded.sort_by(|left, right| match (left, right) {
+                (SerializedValue::Product(left), SerializedValue::Product(right)) => {
+                    left[0].cmp(&right[0])
+                }
+                _ => Ordering::Equal,
+            });
+            let mut schema_payload = Vec::new();
+            put_protocol_uvarint(key_type, &mut schema_payload);
+            put_protocol_uvarint(value_type, &mut schema_payload);
+            put_protocol_text("semantic-total-order", &mut schema_payload);
+            let identity = format!("Map ({key_classifier}, {value_classifier})");
+            (
+                identity.clone(),
+                TypeDefinition::ObjectDescription {
+                    identity,
+                    kind: 12,
+                    schema_payload,
+                },
+                SerializedValue::ObjectDescription(vec![SerializedValue::Sequence(encoded)]),
+            )
+        }
+        _ => {
+            let (schema, description) =
+                serialize_language_value(&Value::String(value.to_string()), types, identities)?;
+            let identity = format!("description:{}", structural_value_classifier(value));
+            let kind = format!("{:?}", value.object_kind());
+            let mut schema_payload = Vec::new();
+            put_protocol_text(&kind, &mut schema_payload);
+            put_protocol_uvarint(schema, &mut schema_payload);
+            (
+                identity.clone(),
+                TypeDefinition::ObjectDescription {
+                    identity,
+                    kind: 15,
+                    schema_payload,
+                },
+                SerializedValue::ObjectDescription(vec![description]),
+            )
+        }
     };
     if let Some(id) = identities.get(&identity) {
         return Ok((*id, serialized));
@@ -9950,10 +10105,49 @@ fn serialize_language_value(
     Ok((id, serialized))
 }
 
+fn serialize_homogeneous_values(
+    values: &[Value],
+    types: &mut Vec<TypeDefinition>,
+    identities: &mut BTreeMap<String, usize>,
+) -> Result<(usize, Vec<SerializedValue>), &'static str> {
+    let mut element = None;
+    let mut encoded = Vec::with_capacity(values.len());
+    for value in values {
+        let (id, value) = serialize_language_value(value, types, identities)?;
+        if element.replace(id).is_some_and(|existing| existing != id) {
+            return Err("collection entries do not share one native serialization type");
+        }
+        encoded.push(value);
+    }
+    let element =
+        element.ok_or("an empty collection needs an explicit serializable element schema")?;
+    Ok((element, encoded))
+}
+
+fn put_protocol_uvarint(mut value: usize, output: &mut Vec<u8>) {
+    loop {
+        let mut byte = u8::try_from(value & 0x7f).expect("seven-bit payload fits in u8");
+        value >>= 7;
+        if value != 0 {
+            byte |= 0x80;
+        }
+        output.push(byte);
+        if value == 0 {
+            break;
+        }
+    }
+}
+
+fn put_protocol_text(value: &str, output: &mut Vec<u8>) {
+    put_protocol_uvarint(value.len(), output);
+    output.extend_from_slice(value.as_bytes());
+}
+
 fn value_from_serialized(event: &SerializedEvent, types: &[TypeDefinition]) -> Option<Value> {
     deserialize_language_value(event.type_id, &event.value, types)
 }
 
+#[allow(clippy::too_many_lines)] // Schema reconstruction mirrors the explicit serializer cases.
 fn deserialize_language_value(
     type_id: usize,
     value: &SerializedValue,
@@ -9996,8 +10190,143 @@ fn deserialize_language_value(
                     .collect::<Option<Vec<_>>>()?,
             ))
         }
+        (
+            TypeDefinition::ObjectDescription {
+                identity, kind: 3, ..
+            },
+            SerializedValue::ObjectDescription(values),
+        ) if identity == "Rational" => {
+            let [
+                SerializedValue::ArbitraryInt(numerator),
+                SerializedValue::ArbitraryInt(denominator),
+            ] = values.as_slice()
+            else {
+                return None;
+            };
+            Some(Value::Rational(BigRational::new(
+                numerator.clone(),
+                denominator.clone(),
+            )))
+        }
+        (TypeDefinition::Sequence { identity, element }, SerializedValue::Sequence(values)) => {
+            let entries = values
+                .iter()
+                .map(|value| deserialize_language_value(*element, value, types))
+                .collect::<Option<Vec<_>>>()?;
+            if let Some(classifier) = identity.strip_prefix("List ") {
+                Some(Value::List {
+                    element_classifier: classifier.into(),
+                    entries,
+                })
+            } else if let Some(rest) = identity.strip_prefix("Array ") {
+                let (_, classifier) = rest.split_once(' ')?;
+                Some(Value::Array {
+                    element_classifier: classifier.into(),
+                    entries,
+                })
+            } else {
+                identity.strip_prefix("Bag ").map(|classifier| Value::Bag {
+                    element_classifier: classifier.into(),
+                    entries: entries.into_iter().map(|value| (value, 1)).collect(),
+                })
+            }
+        }
+        (
+            TypeDefinition::ObjectDescription {
+                identity,
+                kind: 11,
+                schema_payload,
+            },
+            SerializedValue::ObjectDescription(values),
+        ) => {
+            let [SerializedValue::Sequence(values)] = values.as_slice() else {
+                return None;
+            };
+            let (element, _) = read_protocol_uvarint(schema_payload)?;
+            let entries = values
+                .iter()
+                .map(|value| deserialize_language_value(element, value, types))
+                .collect::<Option<Vec<_>>>()?;
+            Some(Value::Set {
+                element_classifier: identity.strip_prefix("Set ")?.into(),
+                entries,
+            })
+        }
+        (
+            TypeDefinition::ObjectDescription {
+                identity,
+                kind: 12,
+                schema_payload,
+            },
+            SerializedValue::ObjectDescription(values),
+        ) => {
+            let [SerializedValue::Sequence(values)] = values.as_slice() else {
+                return None;
+            };
+            let (key_type, used) = read_protocol_uvarint(schema_payload)?;
+            let (value_type, _) = read_protocol_uvarint(&schema_payload[used..])?;
+            let entries = values
+                .iter()
+                .map(|entry| {
+                    let SerializedValue::Product(pair) = entry else {
+                        return None;
+                    };
+                    let [key, value] = pair.as_slice() else {
+                        return None;
+                    };
+                    Some((
+                        deserialize_language_value(key_type, key, types)?,
+                        deserialize_language_value(value_type, value, types)?,
+                    ))
+                })
+                .collect::<Option<Vec<_>>>()?;
+            let classifiers = identity.strip_prefix("Map (")?.strip_suffix(')')?;
+            let (key_classifier, value_classifier) = classifiers.split_once(", ")?;
+            Some(Value::Map {
+                key_classifier: key_classifier.into(),
+                value_classifier: value_classifier.into(),
+                entries,
+            })
+        }
+        (
+            TypeDefinition::ObjectDescription {
+                identity,
+                kind: 15,
+                schema_payload,
+            },
+            SerializedValue::ObjectDescription(values),
+        ) => {
+            let (kind, used) = read_protocol_text(schema_payload)?;
+            let (schema, _) = read_protocol_uvarint(&schema_payload[used..])?;
+            let [description] = values.as_slice() else {
+                return None;
+            };
+            Some(Value::ObjectDescription {
+                identity: identity.clone(),
+                kind,
+                value: Box::new(deserialize_language_value(schema, description, types)?),
+            })
+        }
         _ => None,
     }
+}
+
+fn read_protocol_uvarint(bytes: &[u8]) -> Option<(usize, usize)> {
+    let mut value = 0_usize;
+    for (index, byte) in bytes.iter().copied().enumerate() {
+        let shift = index.checked_mul(7)?;
+        value |= usize::from(byte & 0x7f).checked_shl(u32::try_from(shift).ok()?)?;
+        if byte & 0x80 == 0 {
+            return Some((value, index + 1));
+        }
+    }
+    None
+}
+
+fn read_protocol_text(bytes: &[u8]) -> Option<(String, usize)> {
+    let (length, used) = read_protocol_uvarint(bytes)?;
+    let end = used.checked_add(length)?;
+    Some((std::str::from_utf8(bytes.get(used..end)?).ok()?.into(), end))
 }
 
 fn generator_classifier_diagnostic(
@@ -12563,6 +12892,7 @@ fn pow_rational(mut base: BigRational, mut exponent: BigInt) -> BigRational {
     result
 }
 
+#[allow(clippy::too_many_lines)] // Rejection remains exhaustive across every nonnumeric value kind.
 fn apply_negate(
     source: &SourceText,
     operand: Value,
@@ -12656,6 +12986,7 @@ fn apply_negate(
         | Value::Capability(_)
         | Value::Interface(_)
         | Value::Introspection(_)
+        | Value::ObjectDescription { .. }
         | Value::Refined { .. }
         | Value::ModularType(_)
         | Value::AddressRangeType(_)
@@ -13066,6 +13397,47 @@ mod tests {
         ))
         .unwrap();
         assert_eq!(round_trip.to_string(), huge);
+    }
+
+    #[test]
+    fn native_serialization_round_trips_numeric_and_collection_schemas() {
+        let values = [
+            Value::Rational(BigRational::new(BigInt::from(1), BigInt::from(3))),
+            Value::List {
+                element_classifier: "Int".into(),
+                entries: vec![Value::Int(BigInt::from(1)), Value::Int(BigInt::from(2))],
+            },
+            Value::Set {
+                element_classifier: "Int".into(),
+                entries: vec![Value::Int(BigInt::from(1)), Value::Int(BigInt::from(2))],
+            },
+            Value::Map {
+                key_classifier: "Int".into(),
+                value_classifier: "String".into(),
+                entries: vec![
+                    (Value::Int(BigInt::from(1)), Value::String("one".into())),
+                    (Value::Int(BigInt::from(2)), Value::String("two".into())),
+                ],
+            },
+        ];
+        for value in values {
+            let stream = stream_for_value(LanguageVersion::DESIGN_0, &value).unwrap();
+            let bytes = serialize_native(&stream).unwrap();
+            let decoded = deserialize_native(&bytes, SerializationLimits::default()).unwrap();
+            assert_eq!(
+                value_from_serialized(&decoded.events[0], &decoded.types),
+                Some(value)
+            );
+        }
+
+        let described = Value::Type("Int".into());
+        let stream = stream_for_value(LanguageVersion::DESIGN_0, &described).unwrap();
+        let bytes = serialize_native(&stream).unwrap();
+        let decoded = deserialize_native(&bytes, SerializationLimits::default()).unwrap();
+        assert!(matches!(
+            value_from_serialized(&decoded.events[0], &decoded.types),
+            Some(Value::ObjectDescription { kind, .. }) if kind == "Type"
+        ));
     }
 
     #[test]

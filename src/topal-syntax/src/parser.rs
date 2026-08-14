@@ -81,8 +81,8 @@ impl Expression {
             | Self::Block { span, .. }
             | Self::DecisionTable { span, .. }
             | Self::AnonymousFunction { span, .. }
-            | Self::Application { span, .. } => *span,
-            Self::Measured { span, .. } => *span,
+            | Self::Application { span, .. }
+            | Self::Measured { span, .. } => *span,
         }
     }
 }
@@ -1959,6 +1959,7 @@ impl Parser<'_> {
         Some(Expression::Application { items, span })
     }
 
+    #[allow(clippy::too_many_lines)] // Literal suffix validation stays beside the primary token dispatch.
     fn primary(&mut self) -> Option<Expression> {
         let token = self.take_nontrivia()?;
         match token.kind {

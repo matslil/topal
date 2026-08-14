@@ -25,3 +25,11 @@ An Int definition whose `width-bits` is zero shall use canonical arbitrary-width
 sign-and-magnitude encoding. Encoders shall emit no magnitude octets for zero;
 decoders shall reject negative zero, leading zero magnitude octets, invalid sign
 octets, and a negative sign for an unsigned definition.
+
+Physical input chunk boundaries shall not affect decoding. Rational
+descriptions shall be reduced with a positive denominator. Set entries and Map
+keys shall be strictly ordered by their declared order and shall reject
+duplicates. Source serialization shall reconstruct recognized numeric,
+product, sequence, Set, and Map schemas and shall return a recursively validated
+`ObjectDescription` for understood objects which cannot safely be reconstructed
+without manufacturing authority.
