@@ -8461,21 +8461,15 @@ fn serialize_language_value(
             },
             SerializedValue::Boolean(*value),
         ),
-        Value::Int(value) => {
-            let value = value
-                .to_string()
-                .parse::<i128>()
-                .map_err(|_| "this protocol revision cannot yet encode an Int outside 128 bits")?;
-            (
-                "Int128".to_owned(),
-                TypeDefinition::Int {
-                    identity: "Int128".into(),
-                    signed: true,
-                    width_bits: 128,
-                },
-                SerializedValue::Int(value),
-            )
-        }
+        Value::Int(value) => (
+            "Int".to_owned(),
+            TypeDefinition::Int {
+                identity: "Int".into(),
+                signed: true,
+                width_bits: 0,
+            },
+            SerializedValue::ArbitraryInt(value.clone()),
+        ),
         Value::String(value) => (
             "String".to_owned(),
             TypeDefinition::Text {
@@ -8546,6 +8540,9 @@ fn deserialize_language_value(
         }
         (TypeDefinition::Int { .. }, SerializedValue::Int(value)) => {
             Some(Value::Int(BigInt::from(*value)))
+        }
+        (TypeDefinition::Int { .. }, SerializedValue::ArbitraryInt(value)) => {
+            Some(Value::Int(value.clone()))
         }
         (TypeDefinition::Text { .. }, SerializedValue::Text(value)) => {
             Some(Value::String(value.clone()))
@@ -11618,6 +11615,13 @@ mod tests {
         )
         .unwrap();
         assert_eq!(round_trip.to_string(), "(answer is 42, ok is true)");
+
+        let huge = "1606938044258990275541962092341162602522202993782792835301376";
+        let round_trip = evaluate(&format!(
+            "stream is v0.1 (lang serialize) {huge}\nlang deserialize stream\n"
+        ))
+        .unwrap();
+        assert_eq!(round_trip.to_string(), huge);
     }
 
     #[test]

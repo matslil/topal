@@ -84,7 +84,7 @@ TypeDef = identity:text kind:u8 payload-length:uvarint payload:bytes(payload-len
 
 kind 0  Unit       payload = empty
 kind 1  Boolean    payload = empty
-kind 2  Int    payload = signed:u8 width-bits:uvarint
+kind 2  Int    payload = signed:u8 width-bits:uvarint # zero selects arbitrary width
 kind 3  Rational   payload = numerator-type:id denominator-type:id
 kind 4  Text       payload = normalization:u8       # 0 means NFC
 kind 5  Bytes      payload = empty
@@ -101,7 +101,9 @@ kind 15 Description payload = object-kind:text schema:id
 kind 16 Recursive  payload = identity:text
 ```
 
-Widths are positive multiples of eight. Duplicate identities, labels, tags, or
+Fixed widths are positive multiples of eight. `width-bits` zero selects the
+arbitrary-width encoding from `TOPAL-SER-VALUE-001`; it is not a zero-bit
+fixed-width integer. Duplicate identities, labels, tags, or
 set/map keys are malformed. Tags are dense from zero in declaration order.
 Type identities are stable within an immutable language revision. Payload
 length permits a parser to preserve an understood description but does not

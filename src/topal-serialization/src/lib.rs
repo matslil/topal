@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use num_bigint::{BigInt, Sign};
 use topal_semantics::LanguageVersion;
 use topal_source::is_nfc;
 
@@ -81,6 +82,7 @@ pub enum SerializedValue {
     Unit,
     Boolean(bool),
     Int(i128),
+    ArbitraryInt(BigInt),
     Text(String),
     Bytes(Vec<u8>),
     Product(Vec<Self>),
@@ -430,12 +432,33 @@ fn encode_value(
             output.push(u8::from(*value));
             Ok(())
         }
+        (SerializedValue::ArbitraryInt(value), TypeDefinition::Int { width_bits: 0, .. }) => {
+            let (sign, mut magnitude) = value.to_bytes_be();
+            if sign == Sign::NoSign {
+                magnitude.clear();
+            }
+            output.push(match sign {
+                Sign::Minus => 1,
+                Sign::NoSign | Sign::Plus => 0,
+            });
+            put_uvarint(magnitude.len() as u64, output);
+            output.extend(magnitude);
+            Ok(())
+        }
         (
             SerializedValue::Int(value),
             TypeDefinition::Int {
                 signed, width_bits, ..
             },
         ) => {
+            if *width_bits == 0 {
+                return Err(error(
+                    ErrorKind::Malformed,
+                    "value",
+                    0,
+                    "arbitrary integer requires an arbitrary-precision value",
+                ));
+            }
             let width = usize::try_from(width_bits / 8).map_err(|_| {
                 error(
                     ErrorKind::Malformed,
@@ -679,13 +702,13 @@ fn validate_types(types: &[TypeDefinition], offset: usize) -> Result<(), Protoco
         }
         match definition {
             TypeDefinition::Int { width_bits, .. }
-                if *width_bits == 0 || !width_bits.is_multiple_of(8) =>
+                if *width_bits != 0 && !width_bits.is_multiple_of(8) =>
             {
                 return Err(error(
                     ErrorKind::Malformed,
                     "type table",
                     offset,
-                    "integer width is not a positive multiple of eight",
+                    "fixed integer width is not a positive multiple of eight",
                 ));
             }
             TypeDefinition::Record { fields, .. } => {
@@ -961,6 +984,48 @@ impl<'a> Reader<'a> {
             TypeDefinition::Int {
                 signed, width_bits, ..
             } => {
+                if *width_bits == 0 {
+                    let sign = match self.byte("value")? {
+                        0 => Sign::Plus,
+                        1 if *signed => Sign::Minus,
+                        1 => {
+                            return Err(self.failure(
+                                ErrorKind::Malformed,
+                                "value",
+                                "unsigned arbitrary integer has a negative sign",
+                            ));
+                        }
+                        _ => {
+                            return Err(self.failure(
+                                ErrorKind::Malformed,
+                                "value",
+                                "invalid arbitrary integer sign",
+                            ));
+                        }
+                    };
+                    let length =
+                        self.count("value", self.bytes.len().saturating_sub(self.offset))?;
+                    let magnitude = self.take(length, "value")?;
+                    if magnitude.first() == Some(&0) {
+                        return Err(self.failure(
+                            ErrorKind::Malformed,
+                            "value",
+                            "arbitrary integer magnitude is not minimal",
+                        ));
+                    }
+                    if magnitude.is_empty() && sign == Sign::Minus {
+                        return Err(self.failure(
+                            ErrorKind::Malformed,
+                            "value",
+                            "negative zero is not canonical",
+                        ));
+                    }
+                    return Ok(SerializedValue::ArbitraryInt(if magnitude.is_empty() {
+                        BigInt::from(0)
+                    } else {
+                        BigInt::from_bytes_be(sign, magnitude)
+                    }));
+                }
                 let width = usize::try_from(width_bits / 8).map_err(|_| {
                     self.failure(
                         ErrorKind::ResourceLimit,
@@ -968,7 +1033,7 @@ impl<'a> Reader<'a> {
                         "integer width is too large",
                     )
                 })?;
-                if width == 0 || width > 16 || !width_bits.is_multiple_of(8) {
+                if width > 16 || !width_bits.is_multiple_of(8) {
                     return Err(self.failure(
                         ErrorKind::Malformed,
                         "value",
@@ -1463,6 +1528,45 @@ mod tests {
         assert_eq!(
             serialize(&overflowing).unwrap_err().message,
             "integer is outside its declared width"
+        );
+    }
+
+    #[test]
+    fn arbitrary_integers_round_trip_canonically_and_reject_nonminimal_forms() {
+        let arbitrary = |value: BigInt| Stream {
+            header: sample().header,
+            types: vec![TypeDefinition::Int {
+                identity: "Int".into(),
+                signed: true,
+                width_bits: 0,
+            }],
+            events: vec![Event {
+                type_id: 0,
+                value: SerializedValue::ArbitraryInt(value),
+            }],
+        };
+        let huge = arbitrary(BigInt::from(1_u8) << 300_usize);
+        let bytes = serialize(&huge).unwrap();
+        assert_eq!(deserialize(&bytes, Limits::default()).unwrap(), huge);
+
+        let mut nonminimal = serialize(&arbitrary(BigInt::from(256))).unwrap();
+        let first_magnitude = nonminimal.len() - 2;
+        nonminimal[first_magnitude] = 0;
+        assert_eq!(
+            deserialize(&nonminimal, Limits::default())
+                .unwrap_err()
+                .message,
+            "arbitrary integer magnitude is not minimal"
+        );
+
+        let mut negative_zero = serialize(&arbitrary(BigInt::from(0))).unwrap();
+        let sign = negative_zero.len() - 2;
+        negative_zero[sign] = 1;
+        assert_eq!(
+            deserialize(&negative_zero, Limits::default())
+                .unwrap_err()
+                .message,
+            "negative zero is not canonical"
         );
     }
 

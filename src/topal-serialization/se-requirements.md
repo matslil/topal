@@ -20,3 +20,8 @@ values shall be checked before the event is exposed.
 
 Recursive value decoding shall enforce a caller-supplied nesting limit before
 descending into a component or allocating its nested result.
+
+An Int definition whose `width-bits` is zero shall use canonical arbitrary-width
+sign-and-magnitude encoding. Encoders shall emit no magnitude octets for zero;
+decoders shall reject negative zero, leading zero magnitude octets, invalid sign
+octets, and a negative sign for an unsigned definition.
