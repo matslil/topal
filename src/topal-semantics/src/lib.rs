@@ -1,5 +1,7 @@
 //! Shared, deterministic semantic identities for every Topal source tool.
 
+pub mod introspection;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::str::FromStr;
