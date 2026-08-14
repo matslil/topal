@@ -540,6 +540,18 @@ pub enum Layout {
     },
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum LayoutValue {
+    Integer(i128),
+    Product(Vec<Self>),
+    Sum {
+        alternative: usize,
+        value: Box<Self>,
+    },
+    Sequence(Vec<Self>),
+    Text(String),
+}
+
 impl Layout {
     /// Validate recursive external-representation policy.
     ///
@@ -591,6 +603,352 @@ impl Layout {
             }
         }
     }
+
+    /// Encode one value after checking write authority and layout conformance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for absent write rights, a mismatched value, overflow,
+    /// invalid text, or an invalid layout.
+    pub fn write(
+        &self,
+        value: &LayoutValue,
+        rights: AccessRights,
+    ) -> Result<Vec<u8>, &'static str> {
+        self.validate()?;
+        if !rights.write {
+            return Err("layout write is not authorized");
+        }
+        self.encode_value(value)
+    }
+
+    /// Decode one complete value after checking read authority.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for absent read rights, malformed bytes, trailing data,
+    /// or an invalid layout.
+    pub fn read(&self, bytes: &[u8], rights: AccessRights) -> Result<LayoutValue, &'static str> {
+        self.validate()?;
+        if !rights.read {
+            return Err("layout read is not authorized");
+        }
+        let (value, consumed) = self.decode_value(bytes)?;
+        if consumed != bytes.len() {
+            return Err("layout value has trailing bytes");
+        }
+        Ok(value)
+    }
+
+    fn encode_value(&self, value: &LayoutValue) -> Result<Vec<u8>, &'static str> {
+        match (self, value) {
+            (
+                Self::Scalar {
+                    bits,
+                    signed,
+                    byte_order,
+                },
+                LayoutValue::Integer(value),
+            ) => encode_fixed_integer(*value, *bits, *signed, *byte_order),
+            (Self::Product { fields, packing }, LayoutValue::Product(values)) => {
+                if fields.len() != values.len() {
+                    return Err("product value has the wrong field count");
+                }
+                let mut bytes = Vec::new();
+                for ((_, layout), value) in fields.iter().zip(values) {
+                    if *packing == Packing::Natural {
+                        pad_to_alignment(&mut bytes, layout.byte_alignment()?);
+                    }
+                    bytes.extend(layout.encode_value(value)?);
+                }
+                Ok(bytes)
+            }
+            (
+                Self::Sum {
+                    tag, alternatives, ..
+                },
+                LayoutValue::Sum { alternative, value },
+            ) => {
+                let Some((_, payload)) = alternatives.get(*alternative) else {
+                    return Err("sum value has an invalid alternative");
+                };
+                let mut bytes = tag.encode_value(&LayoutValue::Integer(
+                    i128::try_from(*alternative).map_err(|_| "sum tag does not fit")?,
+                ))?;
+                bytes.extend(payload.encode_value(value)?);
+                Ok(bytes)
+            }
+            (Self::Sequence { element, count }, LayoutValue::Sequence(values)) => {
+                if usize::try_from(count.unwrap_or_default()).ok() != Some(values.len()) {
+                    return Err("sequence value has the wrong entry count");
+                }
+                let mut bytes = Vec::new();
+                for value in values {
+                    bytes.extend(element.encode_value(value)?);
+                }
+                Ok(bytes)
+            }
+            (
+                Self::Text {
+                    code_unit_bits: 8,
+                    length_prefix,
+                    terminator,
+                    ..
+                },
+                LayoutValue::Text(text),
+            ) => {
+                if text.contains('\0') {
+                    return Err("text layout cannot encode U+0000");
+                }
+                let mut bytes = Vec::new();
+                if *length_prefix {
+                    encode_uvarint(text.len() as u64, &mut bytes);
+                }
+                bytes.extend_from_slice(text.as_bytes());
+                if let Some(terminator) = terminator {
+                    bytes.push(
+                        u8::try_from(*terminator).map_err(|_| "terminator is not one octet")?,
+                    );
+                }
+                Ok(bytes)
+            }
+            (Self::Text { .. }, LayoutValue::Text(_)) => {
+                Err("only UTF-8 text layouts are implemented by the shared codec")
+            }
+            _ => Err("value does not conform to layout"),
+        }
+    }
+
+    #[allow(clippy::too_many_lines)] // Keep recursive layout cases symmetric and auditable.
+    fn decode_value(&self, bytes: &[u8]) -> Result<(LayoutValue, usize), &'static str> {
+        match self {
+            Self::Scalar {
+                bits,
+                signed,
+                byte_order,
+            } => {
+                let width = usize::try_from(bits / 8).map_err(|_| "scalar width is too large")?;
+                let input = bytes.get(..width).ok_or("premature end of scalar")?;
+                Ok((
+                    LayoutValue::Integer(decode_fixed_integer(input, *signed, *byte_order)?),
+                    width,
+                ))
+            }
+            Self::Product { fields, packing } => {
+                let mut consumed = 0;
+                let mut values = Vec::new();
+                for (_, layout) in fields {
+                    if *packing == Packing::Natural {
+                        consumed = aligned_offset(consumed, layout.byte_alignment()?);
+                        if consumed > bytes.len() {
+                            return Err("premature end of product padding");
+                        }
+                    }
+                    let (value, length) = layout.decode_value(&bytes[consumed..])?;
+                    consumed += length;
+                    values.push(value);
+                }
+                Ok((LayoutValue::Product(values), consumed))
+            }
+            Self::Sum {
+                tag, alternatives, ..
+            } => {
+                let (LayoutValue::Integer(tag_value), tag_length) = tag.decode_value(bytes)? else {
+                    return Err("sum tag layout is not scalar");
+                };
+                let alternative = usize::try_from(tag_value).map_err(|_| "invalid sum tag")?;
+                let Some((_, payload)) = alternatives.get(alternative) else {
+                    return Err("invalid sum tag");
+                };
+                let (value, payload_length) = payload.decode_value(&bytes[tag_length..])?;
+                Ok((
+                    LayoutValue::Sum {
+                        alternative,
+                        value: Box::new(value),
+                    },
+                    tag_length + payload_length,
+                ))
+            }
+            Self::Sequence { element, count } => {
+                let mut consumed = 0;
+                let mut values = Vec::new();
+                for _ in 0..count.unwrap_or_default() {
+                    let (value, length) = element.decode_value(&bytes[consumed..])?;
+                    consumed += length;
+                    values.push(value);
+                }
+                Ok((LayoutValue::Sequence(values), consumed))
+            }
+            Self::Text {
+                code_unit_bits: 8,
+                length_prefix,
+                terminator,
+                ..
+            } => {
+                let (start, length) = if *length_prefix {
+                    let (length, consumed) = decode_uvarint(bytes)?;
+                    (
+                        consumed,
+                        usize::try_from(length).map_err(|_| "text length is too large")?,
+                    )
+                } else {
+                    let terminator = u8::try_from(terminator.ok_or("text has no boundary")?)
+                        .map_err(|_| "terminator is not one octet")?;
+                    (
+                        0,
+                        bytes
+                            .iter()
+                            .position(|byte| *byte == terminator)
+                            .ok_or("text terminator is absent")?,
+                    )
+                };
+                let text_bytes = bytes
+                    .get(start..start + length)
+                    .ok_or("premature end of text")?;
+                let text = std::str::from_utf8(text_bytes).map_err(|_| "text is not UTF-8")?;
+                let terminator_length = usize::from(terminator.is_some());
+                if terminator_length == 1
+                    && bytes.get(start + length)
+                        != terminator
+                            .and_then(|value| u8::try_from(value).ok())
+                            .as_ref()
+                {
+                    return Err("text terminator is absent");
+                }
+                Ok((
+                    LayoutValue::Text(text.to_owned()),
+                    start + length + terminator_length,
+                ))
+            }
+            Self::Text { .. } => Err("only UTF-8 text layouts are implemented by the shared codec"),
+        }
+    }
+
+    fn byte_alignment(&self) -> Result<usize, &'static str> {
+        match self {
+            Self::Scalar { bits, .. } => {
+                usize::try_from(bits / 8).map_err(|_| "layout alignment is too large")
+            }
+            Self::Product { fields, packing } => {
+                if *packing == Packing::Packed {
+                    Ok(1)
+                } else {
+                    fields
+                        .iter()
+                        .map(|(_, layout)| layout.byte_alignment())
+                        .try_fold(1, |maximum, alignment| Ok(maximum.max(alignment?)))
+                }
+            }
+            Self::Sum {
+                tag, alternatives, ..
+            } => alternatives
+                .iter()
+                .map(|(_, layout)| layout.byte_alignment())
+                .try_fold(tag.byte_alignment()?, |maximum, alignment| {
+                    Ok(maximum.max(alignment?))
+                }),
+            Self::Sequence { element, .. } => element.byte_alignment(),
+            Self::Text { code_unit_bits, .. } => {
+                usize::try_from(code_unit_bits / 8).map_err(|_| "text alignment is too large")
+            }
+        }
+    }
+}
+
+fn aligned_offset(offset: usize, alignment: usize) -> usize {
+    offset.saturating_add(alignment - 1) / alignment * alignment
+}
+
+fn pad_to_alignment(bytes: &mut Vec<u8>, alignment: usize) {
+    bytes.resize(aligned_offset(bytes.len(), alignment), 0);
+}
+
+fn encode_fixed_integer(
+    value: i128,
+    bits: u64,
+    signed: bool,
+    order: ByteOrder,
+) -> Result<Vec<u8>, &'static str> {
+    let width = usize::try_from(bits / 8).map_err(|_| "scalar width is too large")?;
+    if width > 16 {
+        return Err("scalar width exceeds the shared integer codec");
+    }
+    if bits < 128 {
+        let (minimum, maximum) = if signed {
+            (-(1_i128 << (bits - 1)), (1_i128 << (bits - 1)) - 1)
+        } else {
+            (0, (1_i128 << bits) - 1)
+        };
+        if !(minimum..=maximum).contains(&value) {
+            return Err("integer does not fit scalar layout");
+        }
+    } else if !signed && value < 0 {
+        return Err("negative integer does not fit unsigned layout");
+    }
+    let encoded = match order {
+        ByteOrder::Little => value.to_le_bytes(),
+        ByteOrder::Big => value.to_be_bytes(),
+    };
+    Ok(match order {
+        ByteOrder::Little => encoded[..width].to_vec(),
+        ByteOrder::Big => encoded[16 - width..].to_vec(),
+    })
+}
+
+fn decode_fixed_integer(
+    bytes: &[u8],
+    signed: bool,
+    order: ByteOrder,
+) -> Result<i128, &'static str> {
+    if bytes.len() > 16 {
+        return Err("scalar width exceeds the shared integer codec");
+    }
+    let negative = signed
+        && match order {
+            ByteOrder::Little => bytes.last(),
+            ByteOrder::Big => bytes.first(),
+        }
+        .is_some_and(|byte| byte & 0x80 != 0);
+    let mut encoded = [if negative { 0xff } else { 0 }; 16];
+    match order {
+        ByteOrder::Little => encoded[..bytes.len()].copy_from_slice(bytes),
+        ByteOrder::Big => encoded[16 - bytes.len()..].copy_from_slice(bytes),
+    }
+    Ok(match order {
+        ByteOrder::Little => i128::from_le_bytes(encoded),
+        ByteOrder::Big => i128::from_be_bytes(encoded),
+    })
+}
+
+fn encode_uvarint(mut value: u64, bytes: &mut Vec<u8>) {
+    loop {
+        let mut byte = (value & 0x7f) as u8;
+        value >>= 7;
+        if value != 0 {
+            byte |= 0x80;
+        }
+        bytes.push(byte);
+        if value == 0 {
+            break;
+        }
+    }
+}
+
+fn decode_uvarint(bytes: &[u8]) -> Result<(u64, usize), &'static str> {
+    let mut value = 0_u64;
+    for (index, byte) in bytes.iter().copied().take(10).enumerate() {
+        let shift = index * 7;
+        value |= u64::from(byte & 0x7f)
+            .checked_shl(u32::try_from(shift).map_err(|_| "invalid varint")?)
+            .ok_or("varint overflow")?;
+        if byte & 0x80 == 0 {
+            if index > 0 && byte == 0 {
+                return Err("nonminimal varint");
+            }
+            return Ok((value, index + 1));
+        }
+    }
+    Err("unterminated or overflowing varint")
 }
 
 fn validate_octet_width(bits: u64) -> Result<(), &'static str> {
@@ -1575,5 +1933,51 @@ mod tests {
             .validate()
             .is_err()
         );
+    }
+
+    #[test]
+    fn layout_codecs_check_rights_endian_and_malformed_input() {
+        let scalar = Layout::Scalar {
+            bits: 16,
+            signed: true,
+            byte_order: ByteOrder::Big,
+        };
+        let read_write = AccessRights {
+            read: true,
+            write: true,
+        };
+        let bytes = scalar.write(&LayoutValue::Integer(-2), read_write).unwrap();
+        assert_eq!(bytes, [0xff, 0xfe]);
+        assert_eq!(
+            scalar.read(&bytes, read_write),
+            Ok(LayoutValue::Integer(-2))
+        );
+        assert!(scalar.read(&bytes[..1], read_write).is_err());
+        assert!(
+            scalar
+                .write(
+                    &LayoutValue::Integer(1),
+                    AccessRights {
+                        read: true,
+                        write: false,
+                    },
+                )
+                .is_err()
+        );
+
+        let text = Layout::Text {
+            code_unit_bits: 8,
+            byte_order: ByteOrder::Little,
+            length_prefix: true,
+            terminator: None,
+        };
+        let encoded = text
+            .write(&LayoutValue::Text("å".into()), read_write)
+            .unwrap();
+        assert_eq!(
+            text.read(&encoded, read_write),
+            Ok(LayoutValue::Text("å".into()))
+        );
+        assert!(text.read(&[2, 0xff, 0xff], read_write).is_err());
     }
 }
