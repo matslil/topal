@@ -4064,3 +4064,41 @@ fn every_mode_evaluates_empty_blocks() {
         assert!(run(arguments, source).status.success());
     }
 }
+
+#[test]
+fn script_and_test_modes_load_directory_applications() {
+    let directory =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/applications/module-loading");
+    for arguments in [&[][..], &["--test"][..]] {
+        let output = Command::new(env!("CARGO_BIN_EXE_topal"))
+            .args(arguments)
+            .arg(&directory)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), "42");
+    }
+}
+
+#[test]
+fn script_and_test_modes_preserve_nested_module_paths() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/applications/nested-module-loading");
+    for arguments in [&[][..], &["--test"][..]] {
+        let output = Command::new(env!("CARGO_BIN_EXE_topal"))
+            .args(arguments)
+            .arg(&directory)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), "42");
+    }
+}

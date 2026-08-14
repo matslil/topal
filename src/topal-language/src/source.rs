@@ -422,6 +422,7 @@ pub struct Session {
     functions: BTreeMap<String, Vec<UserFunction>>,
     generators: BTreeMap<String, Vec<UserGenerator>>,
     declared_names: BTreeSet<String>,
+    published_names: BTreeSet<String>,
     consumed_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
@@ -504,6 +505,95 @@ impl Session {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Evaluate one source file as an isolated module and bind its published
+    /// interface under `name` in this session.
+    ///
+    /// # Errors
+    ///
+    /// Returns a source, semantic, or duplicate-module diagnostic.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if an already accepted Rust string cannot be represented by
+    /// the shared source layer while rendering a duplicate-name diagnostic.
+    pub fn load_module(
+        &mut self,
+        name: &str,
+        input: &str,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if self.declared_names.contains(name) {
+            let source = SourceText::new(input).expect("module input was accepted as UTF-8");
+            return Err(diagnostic(
+                &source,
+                "E-DUPLICATE-MODULE",
+                Span::new(0, 0),
+                format!("module `{name}` is already declared"),
+            ));
+        }
+        let mut module = Self::new();
+        module.evaluate(input, trace)?;
+        self.attach_module(name, module, trace)
+    }
+
+    /// Attach an already evaluated child scope under one canonical component.
+    ///
+    /// # Errors
+    ///
+    /// Returns a duplicate-module diagnostic when `name` is already declared.
+    pub fn attach_module(
+        &mut self,
+        name: &str,
+        module: Self,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if self.declared_names.contains(name) {
+            return Err(Diagnostic {
+                code: "E-DUPLICATE-MODULE",
+                message: format!("module `{name}` is already declared"),
+                line: 1,
+                column: 1,
+                marker_width: 1,
+                source_line: None,
+                help: None,
+            });
+        }
+        let namespace = module.into_published_namespace(name);
+        self.bindings.insert(name.to_owned(), namespace.clone());
+        self.declared_names.insert(name.to_owned());
+        self.published_names.insert(name.to_owned());
+        trace.record(TraceEvent {
+            event: "module.loaded",
+            rule: "TOPAL-NAMESPACE-USE-001",
+            detail: name,
+        });
+        Ok(namespace)
+    }
+
+    fn into_published_namespace(self, name: &str) -> Value {
+        let bindings = self
+            .bindings
+            .into_iter()
+            .filter(|(member, _)| self.published_names.contains(member))
+            .collect();
+        let functions = self
+            .functions
+            .into_iter()
+            .filter(|(member, _)| self.published_names.contains(member))
+            .collect();
+        let generators = self
+            .generators
+            .into_iter()
+            .filter(|(member, _)| self.published_names.contains(member))
+            .collect();
+        Value::Namespace(Box::new(NamespaceValue {
+            name: name.to_owned(),
+            bindings,
+            functions,
+            generators,
+        }))
     }
 
     /// Report whether a complete block statement should await a dedented line
@@ -594,6 +684,7 @@ impl Session {
             functions: BTreeMap::new(),
             generators: BTreeMap::new(),
             declared_names: bindings.keys().cloned().collect(),
+            published_names: BTreeSet::new(),
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: BTreeMap::new(),
@@ -909,6 +1000,7 @@ impl Session {
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
                         declared_names: self.declared_names.clone(),
+                        published_names: self.published_names.clone(),
                         consumed_names: self.consumed_names.clone(),
                         local_function_names: self.local_function_names.clone(),
                         enum_types: self.enum_types.clone(),
@@ -1556,6 +1648,7 @@ impl Session {
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
+                        published_names: BTreeSet::new(),
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
@@ -1722,6 +1815,7 @@ impl Session {
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
+                        published_names: BTreeSet::new(),
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
@@ -4966,12 +5060,17 @@ impl Execution {
             Statement::Published {
                 declaration, span, ..
             } => {
+                let published_name = declaration_name(&self.source, declaration);
                 trace.record(TraceEvent {
                     event: "namespace.member.published",
                     rule: "TOPAL-NAMESPACE-ROOT-001",
                     detail: self.source.slice(*span),
                 });
-                match self.execute_published(session, trace, declaration)? {
+                let outcome = self.execute_published(session, trace, declaration)?;
+                if let Some(name) = published_name {
+                    session.published_names.insert(name.to_owned());
+                }
+                match outcome {
                     ExecutionStep::Complete(value) | ExecutionStep::Advanced { value, .. } => {
                         (value, *span)
                     }
@@ -5685,6 +5784,18 @@ fn statement_span(statement: &Statement) -> Span {
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
         Statement::Expression(expression) => expression.span(),
     }
+}
+
+fn declaration_name<'a>(source: &'a SourceText, statement: &Statement) -> Option<&'a str> {
+    let name = match statement {
+        Statement::Binding { name, .. }
+        | Statement::Function { name, .. }
+        | Statement::Generator { name, .. }
+        | Statement::Union { name, .. } => *name,
+        Statement::Published { declaration, .. } => return declaration_name(source, declaration),
+        _ => return None,
+    };
+    Some(source.slice(name))
 }
 
 fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
@@ -13650,4 +13761,24 @@ fn list_remainder_must_be_a_list() {
         .unwrap_err();
     assert_eq!(error.code, "E-LIST-REMAINDER");
     assert!(error.help.unwrap().contains("Empty"));
+}
+
+#[test]
+fn loaded_modules_expose_only_published_members() {
+    let mut session = Session::new();
+    session
+        .load_module(
+            "math",
+            "private-value is 40\npub answer is private-value + 2\n",
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(
+        session.evaluate("math answer", &mut Vec::new()).unwrap(),
+        Value::Int(BigInt::from(42))
+    );
+    let error = session
+        .evaluate("math private-value", &mut Vec::new())
+        .unwrap_err();
+    assert_eq!(error.code, "E-NAMESPACE-MEMBER-NOT-FOUND");
 }

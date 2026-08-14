@@ -1884,3 +1884,12 @@ A `pub` declaration shall execute with its ordinary declaration semantics and
 enter the current source module's published interface. Qualified lookup through
 the live `root` namespace shall resolve that member under
 `TOPAL-NAMESPACE-ROOT-001` without flattening it into another scope.
+
+## TOPAL-INTP-SUBSET-244 — Directory applications
+
+Passing a directory to script or test mode shall load its `application.t`,
+ordinary `.t` files, and nested directories under the source-layout rules in
+`docs/modules.md`. Each ordinary filename and directory shall form one
+qualified module component, only `pub` members shall enter a file interface,
+and `application.t` shall execute after all recursively nested interfaces are
+available without flattening their canonical paths.

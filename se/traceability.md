@@ -327,3 +327,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-241` | `TOPAL-SYN-GRAMMAR-001` | syntax and interpreter tests; lexical-block examples | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | `TOPAL-INTP-SUBSET-242` | `TOPAL-TYPE-MATCH-001` | syntax, language, interpreter, and LSP example tests; discard-function-pattern example | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | `TOPAL-INTP-SUBSET-243` | `TOPAL-NAMESPACE-ROOT-001` | language, interpreter, LSP, and scripted debugger tests; published-root-member examples | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
+| `TOPAL-INTP-SUBSET-244` | source layout and visibility in `docs/modules.md`; `TOPAL-NAMESPACE-USE-001` | interpreter directory-application tests; module-loading application example | `topal-language`, `topal-interpreter` |
