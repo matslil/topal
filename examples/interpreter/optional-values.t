@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates explicit present and absent Optional construction. None carries
 # the named payload type even though display intentionally omits it.
 missing : Optional Int is None

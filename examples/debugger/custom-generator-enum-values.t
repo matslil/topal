@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible nominal enum flow through a suspended generator,
 # preserving Choice identity separately from First and Second alternatives.
 Choice is Enum ( First, Second )

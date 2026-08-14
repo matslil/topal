@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a named value constraint, successful evidence construction,
 # evidence-forgetting conversion back to Int, and equality/ordering derived from
 # the constrained base type. The commented failing form is a static diagnostic.

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates checked dynamic Rational-to-Int validation: exact quotients
 # become Int, while a fractional quotient propagates not-representable.
 halve is fn (value : Int) -> Result (Int, lang arithmetic ArithmeticErrorCode)

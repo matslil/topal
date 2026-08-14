@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible Rational range construction and exact membership.
 interval is 0 .. 2.5
 preserve is fn (candidate : Range Rational) -> Range Rational

@@ -7,6 +7,20 @@ and related syntax. General effect handlers, foreign integration, stronger
 automated proof, additional resource dimensions, and other explicitly identified
 extensions remain future work rather than gaps in the initial language.
 
+## Source language selection
+
+The stable bootstrap constructor is `use language (...)`, without embedding the
+language's current product name. Revision `design-0` has source-visible language
+version `v0.1`, abbreviated from `v0.1.0-0`.
+
+Every source file selects its own language version, including executable
+hashbang scripts. That selection is authoritative when interpreting, compiling,
+or debugging the file. A command-line language version supplies only the
+immutable context for interactive commands, which have no enclosing source
+file; it never overrides a source header. When the option is omitted, an
+interactive tool selects the highest language version it supports. Tools
+diagnose incompatible versions at module or artifact boundaries.
+
 ## Settled foundations
 
 The following questions from the initial audit are no longer open:

@@ -345,12 +345,14 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
             if matches!(
                 lexeme,
                 "fn" | "generator"
+                    | "language"
                     | "is"
                     | "otherwise"
                     | "resumes"
                     | "return"
                     | "static"
                     | "then"
+                    | "use"
                     | "yield"
                     | "yields"
             ) =>
@@ -358,11 +360,11 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
             Some(4)
         }
         TokenKind::Identifier => Some(0),
-        TokenKind::Integer | TokenKind::Rational => Some(1),
+        TokenKind::Integer | TokenKind::Rational | TokenKind::Version => Some(1),
         TokenKind::String => Some(2),
         TokenKind::Comment | TokenKind::Hashbang => Some(3),
         TokenKind::Boolean | TokenKind::Discard => Some(4),
-        TokenKind::LeftParen
+        TokenKind::LeftParen | TokenKind::At
         | TokenKind::RightParen
         | TokenKind::LeftBrace
         | TokenKind::RightBrace
@@ -638,7 +640,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 179);
+        assert_eq!(examples.len(), 180);
 
         let mut server = Server::default();
         for (version, example) in examples.iter().enumerate() {

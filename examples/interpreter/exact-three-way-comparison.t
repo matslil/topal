@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates exact three-way comparison for Int, Rational, and their canonical
 # mixed-domain conversion, then exhaustively consumes Comparison alternatives.
 describe is fn (value : Comparison) -> String

@@ -70,3 +70,11 @@ An ordinary function parameter classified as `Scope` shall accept a namespace
 value and preserve its concrete identity and captured members within the
 invocation. Qualified lookup through the parameter shall remain confined to
 that namespace and the value shall not escape or mutate its caller binding.
+
+### TOPAL-CONTEXT-SELECT-001 — Defining-context selection
+
+Inside a function body, `@ member` shall resolve `member` only in the immutable
+package or module context captured when that function was declared. It shall
+not search caller bindings or process-global state. The selected context shall
+remain attached to a function value across namespace and parameter boundaries.
+Use outside a function body and an absent context member shall be diagnosed.

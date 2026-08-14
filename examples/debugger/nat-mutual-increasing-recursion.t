@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible mutual increasing Nat recursion and cycle proof.
 even is fn (value : Nat) -> Boolean
   value

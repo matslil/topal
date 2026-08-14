@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates restoration of generator-local enum and function declarations
 # when abandonment delivers generator-closed to the suspended yield.
 handle-close is generator ( initial : Character )

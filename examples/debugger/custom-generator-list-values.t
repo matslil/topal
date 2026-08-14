@@ -1,4 +1,7 @@
 #!/usr/bin/env topal-debug
+use language (
+  version is v0.1
+)
 # Demonstrates reversible List transfer through generator suspension and
 # ordinary function ownership boundaries before its distinct final return.
 relay is generator ( initial : List Int )

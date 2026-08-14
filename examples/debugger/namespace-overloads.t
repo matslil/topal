@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible overload selection within an aliased namespace.
 identity is fn (value : Int) -> Int
   value

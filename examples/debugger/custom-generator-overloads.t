@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible unary and binary generator overload selection,
 # positional binding order, suspension, resumption, and distinct final results.
 select is generator ( value : Int )

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible function-result ownership transfer followed by yield,
 # Unit resumption, and a distinct final Character return in the caller.
 yield-return is generator ( initial : Character )

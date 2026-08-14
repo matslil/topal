@@ -24,11 +24,11 @@ fn navigates_recorded_execution_in_both_directions() {
     assert!(stdout.contains("#1 source.accepted [TOPAL-SYN-SOURCE-001]"));
     assert!(stdout.contains("> #0 context.selected"));
     assert!(stdout.contains("no value at current execution state"));
-    assert!(stdout.contains("basic-history.t:4:1"));
+    assert!(stdout.contains("basic-history.t:8:1"));
     assert!(stdout.contains("answer is 40"));
-    assert!(stdout.contains("breakpoint set at line 3"));
-    assert!(stdout.contains("breakpoint set at line 4"));
-    assert!(stdout.contains("breakpoint removed from line 3"));
+    assert!(stdout.contains("breakpoint set at line 7"));
+    assert!(stdout.contains("breakpoint set at line 8"));
+    assert!(stdout.contains("breakpoint removed from line 7"));
     assert!(stdout.contains("watchpoint set for answer"));
     assert!(stdout.contains("watchpoint removed for answer"));
     assert!(stdout.contains("checkpoint result saved"));
@@ -3173,4 +3173,25 @@ fn steps_through_discard_input_patterns() {
             .unwrap()
             .contains("function.argument.discarded")
     );
+}
+
+#[test]
+fn records_defining_context_selection() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}constructed-context.debug"),
+            &format!("{root}constructed-context.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("context.member.selected [TOPAL-CONTEXT-SELECT-001] offset"));
+    assert!(stdout.contains("evaluation.add [TOPAL-NUM-ADD-001] Int"));
 }

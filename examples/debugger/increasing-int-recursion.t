@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible proof and recursive ascent toward an upper bound.
 distance-up is fn (value : Int) -> Int
   value

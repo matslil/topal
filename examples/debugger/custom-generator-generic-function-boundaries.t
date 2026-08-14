@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible Generator Int Unit String ownership transfer through
 # an ordinary function result and parameter before traversal and final return.
 numbers is generator ( initial : Int )

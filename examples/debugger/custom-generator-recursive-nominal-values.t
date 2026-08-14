@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible recursive classifier state for declared Choice values
 # nested inside Optional and arithmetic Result generator boundaries.
 Choice is Enum ( First, Second )

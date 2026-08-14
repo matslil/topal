@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible parameter transfer, yield, Unit resume, and distinct
 # Character return through the consuming ordinary function.
 yield-return is generator ( initial : Character )

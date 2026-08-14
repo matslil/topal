@@ -15,6 +15,13 @@ fn run(arguments: &[&str], input: &str) -> std::process::Output {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
+    let input = if arguments.contains(&"--interactive") {
+        input.replacen("use language (\n  version is v0.1\n)\n", "", 1)
+    } else if arguments.contains(&"--version") || arguments.contains(&"--help") {
+        input.to_owned()
+    } else {
+        format!("use language (\n  version is v0.1\n)\n{input}")
+    };
     child
         .stdin
         .take()
@@ -42,7 +49,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 179);
+    assert_eq!(examples.len(), 181);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -96,7 +103,7 @@ fn unicode_diagnostics_preserve_source_columns() {
     let output = run(&[], "name is \"å\"\nnamé\n");
     assert!(!output.status.success());
     let diagnostic = String::from_utf8(output.stderr).unwrap();
-    assert!(diagnostic.contains("2 | namé"));
+    assert!(diagnostic.contains("5 | namé"));
     assert!(diagnostic.contains('^'));
 }
 
@@ -109,7 +116,38 @@ fn version_output_is_reproducible() {
     assert!(
         String::from_utf8(first.stdout)
             .unwrap()
-            .contains("language design-0")
+            .contains("highest language v0.1")
+    );
+}
+
+#[test]
+fn script_mode_requires_an_explicit_source_language_version() {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_topal"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(b"42\n").unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("E-MISSING-LANGUAGE-VERSION"));
+    assert!(stderr.contains("use language"));
+}
+
+#[test]
+fn interactive_language_version_is_explicit_or_defaults_to_highest_supported() {
+    assert_eq!(
+        run(&["--interactive"], "40 + 2\n").stdout,
+        run(&["--interactive", "--language-version", "v0.1"], "40 + 2\n").stdout
+    );
+    let unsupported = run(&["--interactive", "--language-version", "v9.0"], "");
+    assert!(!unsupported.status.success());
+    assert!(
+        String::from_utf8(unsupported.stderr)
+            .unwrap()
+            .contains("highest language version")
     );
 }
 
@@ -279,7 +317,7 @@ fn version_exposes_the_language_context_unicode_version() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8(output.stdout).unwrap(),
-        "topal 0.1.0 (language design-0; Unicode 17.0.0)\n"
+        "topal 0.1.0 (highest language v0.1; Unicode 17.0.0)\n"
     );
 }
 
@@ -657,8 +695,8 @@ fn script_diagnostic_shows_source_marker_and_help() {
     assert!(!output.status.success());
     let diagnostic = String::from_utf8(output.stderr).unwrap();
     assert!(diagnostic.contains("error[E-UNKNOWN-TOKEN]"));
-    assert!(diagnostic.contains(" --> <stdin>:1:9"));
-    assert!(diagnostic.contains("1 | value + ?"));
+    assert!(diagnostic.contains(" --> <stdin>:4:9"));
+    assert!(diagnostic.contains("4 | value + ?"));
     assert!(diagnostic.contains("  |         ^"));
     assert!(diagnostic.contains("= help: remove this character"));
 }
@@ -678,7 +716,7 @@ fn unbound_name_diagnostic_suggests_a_close_visible_binding() {
     assert!(!output.status.success());
     let diagnostic = String::from_utf8(output.stderr).unwrap();
     assert!(diagnostic.contains("error[E-UNBOUND-NAME]"));
-    assert!(diagnostic.contains("2 | anwser"));
+    assert!(diagnostic.contains("5 | anwser"));
     assert!(diagnostic.contains("= help: did you mean `answer`?"));
 }
 
@@ -1746,7 +1784,7 @@ fn test_trace_explains_zero_division_rejection() {
     assert!(!trace.contains("root./(Int,Int)"));
     assert!(!trace.contains("evaluation.divide"));
     assert!(trace.contains("error[E-DIVISION-BY-ZERO]"));
-    assert!(trace.contains("<stdin>:1:5"));
+    assert!(trace.contains("<stdin>:4:5"));
 }
 
 #[test]
@@ -1784,7 +1822,7 @@ fn negative_exponent_is_rejected_for_int_overload() {
     assert!(trace.contains("\"detail\":\"exponent.finite-nat\""));
     assert!(!trace.contains("root.^(Int,Nat)"));
     assert!(trace.contains("error[E-NO-APPLICABLE-OVERLOAD]"));
-    assert!(trace.contains("<stdin>:1:5"));
+    assert!(trace.contains("<stdin>:4:5"));
 }
 
 #[test]
@@ -4062,5 +4100,57 @@ fn every_mode_evaluates_empty_blocks() {
     let source = include_str!("../../../examples/interpreter/empty-block.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn script_and_test_modes_load_directory_applications() {
+    let directory =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/applications/module-loading");
+    for arguments in [&[][..], &["--test"][..]] {
+        let output = Command::new(env!("CARGO_BIN_EXE_topal"))
+            .args(arguments)
+            .arg(&directory)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), "42");
+    }
+}
+
+#[test]
+fn script_and_test_modes_preserve_nested_module_paths() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/applications/nested-module-loading");
+    for arguments in [&[][..], &["--test"][..]] {
+        let output = Command::new(env!("CARGO_BIN_EXE_topal"))
+            .args(arguments)
+            .arg(&directory)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), "42");
+    }
+}
+
+#[test]
+fn every_mode_selects_defining_context_members() {
+    let source = include_str!("../../../examples/interpreter/constructed-context.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
     }
 }

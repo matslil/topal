@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible observation of a yielded Character followed by a
 # distinct final Character return from the same generator continuation.
 yield-then-return is generator ( initial : Character )

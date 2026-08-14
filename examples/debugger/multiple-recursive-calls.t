@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible descent through two proven calls in one action.
 branch-count is fn (value : Int) -> Int
   value

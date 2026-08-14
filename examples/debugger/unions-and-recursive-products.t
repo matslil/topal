@@ -1,4 +1,7 @@
 #!/usr/bin/env topal-debug
+use language (
+  version is v0.1
+)
 # Demonstrates reversible construction and matching of a payload Union and a
 # positional Variant whose payload is a recursively nested product.
 Message is Union

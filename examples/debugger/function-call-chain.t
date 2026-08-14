@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible nested entry and return to a later declaration.
 answer is fn () -> Int
   increment 41

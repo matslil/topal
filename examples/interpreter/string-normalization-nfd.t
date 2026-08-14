@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates explicit canonical decomposition without changing the input.
 preserved is "é"
 decomposed is preserved normalize NFD

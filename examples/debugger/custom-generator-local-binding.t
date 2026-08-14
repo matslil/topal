@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible creation and use of a generator-local binding before
 # the continuation yields its Character and later returns Unit.
 copy-once is generator ( initial : Character )

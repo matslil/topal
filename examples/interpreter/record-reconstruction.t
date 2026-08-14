@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates immutable record reconstruction: `with` replaces the selected
 # field in a new product while the original product remains unchanged.
 person is (name is "Ada", age is 36)

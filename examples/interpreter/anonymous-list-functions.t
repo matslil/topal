@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates inferred anonymous functions in their contextual collection uses:
 # map transforms each entry, select retains matching entries, and fold carries
 # an explicitly initialized state from left to right.

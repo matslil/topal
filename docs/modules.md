@@ -327,10 +327,15 @@ directly.
 Every source file begins by selecting an immutable language version explicitly:
 
 ```topal
-use lang topal (
+use language (
   version is v1.5
 )
 ```
+
+Command-line version selection establishes the context for interactive input;
+it does not override this source declaration. If an interactive tool is
+started without a version, it uses the highest language version that particular
+interpreter, compiler, or debugger supports.
 
 The `v` prefix constructs a `Version` value. `v1.5` is the abbreviated spelling
 of `v1.5.0-0`; the complete form contains natural-number major, minor, patch,
@@ -341,13 +346,13 @@ The selection establishes a language context from its occurrence forward.
 Another top-level selection may begin a region using another version:
 
 ```topal
-use lang topal (
+use language (
   version is v1.5
 )
 
 current-function is ...
 
-use lang topal (
+use language (
   version is v1.4
 )
 
@@ -364,7 +369,7 @@ After the mandatory initial selection, a source file may construct and name an
 inactive language context:
 
 ```topal
-legacy is use lang topal (
+legacy is use language (
   version is v1.0,
   features is ()
 )
@@ -380,7 +385,7 @@ A selected version may accept optional features as an ordinary static
 constructor argument:
 
 ```topal
-use lang topal (
+use language (
   version is v1.5,
   features is ( realtime )
 )
@@ -404,14 +409,14 @@ meaning.
 For example, a file can visibly separate production declarations from tests:
 
 ```topal
-use lang topal (
+use language (
   version is v1.5
 )
 
 eligible is fn ( user : User ) -> Bool
   ...
 
-use lang topal (
+use language (
   version is v1.5,
   features is ( testing )
 )
@@ -443,7 +448,7 @@ semantics needed for interoperability.
 
 The compiler must recognize the initial language construction before it knows
 which language grammar to apply. A small, stable bootstrap syntax therefore
-recognizes line boundaries, `# ` comments, `use lang topal`, and its
+recognizes line boundaries, `# ` comments, `use language`, and its
 comma-separated constructor record made from identifier associations and basic
 static object literals. Its general contextual type is `Record ( Identifier,
 Object )`. The bootstrap parser delimits the record and uses its `version`
@@ -461,7 +466,7 @@ For example:
 
 ```topal
 # Begin with Topal 1.5 and its realtime feature.
-use lang topal (
+use language (
   version is v1.5,
   features is ( realtime )
 )
@@ -480,7 +485,7 @@ contains a `package.t` file. Like every Topal source file, `package.t` begins by
 selecting a language revision:
 
 ```topal
-use lang topal (
+use language (
   version is v1.5
 )
 
@@ -503,7 +508,7 @@ package status is maintained
 package description is "Exact numerical calculations"
 ```
 
-The initial `use lang topal` uses the same construction-record syntax as every
+The initial `use language` uses the same construction-record syntax as every
 later construction. Its restricted record grammar is part of the bootstrap
 syntax. Once it has selected an immutable language revision, that revision
 defines the grammar and meaning of `Package`, `use package`, version values,
@@ -685,7 +690,7 @@ The shared root implementation belongs in `package.t`:
 
 ```topal
 # package.t
-use lang topal (
+use language (
   version is v1.5
 )
 
@@ -702,7 +707,7 @@ independent versions:
 
 ```topal
 # library.t
-use lang topal (
+use language (
   version is v1.5
 )
 
@@ -713,7 +718,7 @@ pub calculate
 
 ```topal
 # application.t
-use lang topal (
+use language (
   version is v1.5
 )
 
@@ -945,7 +950,7 @@ The source root's `package.t` provides the final license and copyright defaults
 for the complete package:
 
 ```topal
-use lang topal (
+use language (
   version is v1.5
 )
 
@@ -985,7 +990,7 @@ mandatory package defaults. A root declaration then overrides only its own
 active value from that point forward:
 
 ```topal
-use lang topal (
+use language (
   version is v1.5
 )
 
@@ -1025,7 +1030,7 @@ implementation:
 
 ```topal
 # parser/module.t
-use lang topal (
+use language (
   version is v1.5
 )
 
@@ -1048,7 +1053,7 @@ applies while constructing that application:
 
 ```topal
 # library.t
-use lang topal (
+use language (
   version is v1.5
 )
 
@@ -1059,7 +1064,7 @@ pub calculate
 
 ```topal
 # application.t
-use lang topal (
+use language (
   version is v1.5
 )
 

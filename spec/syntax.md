@@ -25,6 +25,20 @@ A tool shall diagnose an unsupported Unicode context rather than substitute
 host, dependency, or newer Unicode data. Mixed-script and confusable-name
 diagnostics shall not change lexical acceptance or program semantics.
 
+### TOPAL-SYN-CONTEXT-001 — Source language selection
+
+Every source file shall begin, after an optional hashbang, comments, and blank
+lines, with `use language ( version is V )`, where line breaks are permitted by
+the ordinary product grammar and `V` is a `Version` literal. The stable
+`design-0` context is identified by `v0.1`, canonically `v0.1.0-0`. A source
+tool shall use that selection for the file even when its command line selected
+a different interactive default, and shall diagnose unsupported versions.
+
+An interactive source session may select its initial language version through
+a tool option. When no version is supplied, every source tool shall select the
+highest language version that tool implements. This default does not override
+the mandatory selection in a source file.
+
 ### TOPAL-SYN-LEX-001 — Tokens
 
 Let `XID_Start` and `XID_Continue` be the Unicode 17.0.0 identifier properties
@@ -32,6 +46,7 @@ fixed by `TOPAL-SYN-UNICODE-001`.
 
 ```ebnf
 identifier       ::= identifier-start identifier-continue* [ "?" ] ;
+version          ::= "v" natural "." natural [ "." natural [ "-" natural ] ] ;
 identifier-start ::= XID_Start | "_" ;
 identifier-continue ::= XID_Continue | "-" ;
 discard          ::= "_" ;

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates ranges as reusable convex predicates for value selection and
 # zero-based position selection. Results remain ordinary Lists and Strings;
 # retained SliceOf/SelectionOf provenance is observable only through traces.

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible selection of the qualified generator-closed code rule,
 # independently of the Error domain and generator provenance.
 handle-close-code is generator ( initial : Character )

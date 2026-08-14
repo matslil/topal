@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates preserved strings, character/sequence counting, and products.
 message is text"Topal strings preserve "quotes",
 newlines, and {braces}."text

@@ -142,6 +142,15 @@ language-context Unicode version through deterministic version output and test
 trace context selection. A dependency with different Unicode tables shall fail
 the build rather than silently change source acceptance.
 
+## TOPAL-INTP-CONTEXT-001 — Versioned source and interactive contexts
+
+Script and test modes shall require and honor the source file's initial
+language selection according to `TOPAL-SYN-CONTEXT-001`, including source read
+from standard input. `--language-version VERSION` shall select only the initial
+interactive context. With no interactive version option, the interpreter shall
+select its highest supported language version. Unsupported versions shall
+produce an actionable diagnostic rather than fall back to another version.
+
 ## TOPAL-INTP-SUBSET-015 — Unit product
 
 All interpreter modes shall parse and evaluate the zero-field product `()` as
@@ -1877,3 +1886,19 @@ decision.
 Typed function and generator inputs shall accept `_` under
 `TOPAL-TYPE-MATCH-001`, validate the corresponding argument classifier, and
 introduce no binding. Traces shall distinguish discarding from binding.
+
+## TOPAL-INTP-SUBSET-243 — Published root members
+
+A `pub` declaration shall execute with its ordinary declaration semantics and
+enter the current source module's published interface. Qualified lookup through
+the live `root` namespace shall resolve that member under
+`TOPAL-NAMESPACE-ROOT-001` without flattening it into another scope.
+
+## TOPAL-INTP-SUBSET-244 — Directory applications
+
+Passing a directory to script or test mode shall load its `application.t`,
+ordinary `.t` files, and nested directories under the source-layout rules in
+`docs/modules.md`. Each ordinary filename and directory shall form one
+qualified module component, only `pub` members shall enter a file interface,
+and `application.t` shall execute after all recursively nested interfaces are
+available without flattening their canonical paths.

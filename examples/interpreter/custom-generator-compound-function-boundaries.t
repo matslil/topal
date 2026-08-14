@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a generator with positional-product yield and return classifiers
 # crossing ordinary function result and parameter ownership boundaries.
 pairs is generator ( initial : (Int, String) )

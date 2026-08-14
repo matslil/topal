@@ -10,7 +10,7 @@ constructor's `features` argument. A source file constructs that language
 context at the point where its test declarations begin:
 
 ```topal
-use lang topal (
+use language (
   version is v1.5,
   features is ( testing )
 )

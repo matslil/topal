@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates recursively composed generator classifiers crossing ordinary
 # function boundaries: Optional wraps each yielded product and Result wraps the
 # generator's final product without flattening either classifier.

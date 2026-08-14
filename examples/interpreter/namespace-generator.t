@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates applying a generator selected through a namespace alias.
 once is generator (initial : Character)
   yields Character

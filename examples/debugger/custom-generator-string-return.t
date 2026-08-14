@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible String yield, Unit resumption, and distinct final
 # String return from one custom continuation.
 text-result is generator ( initial : String )

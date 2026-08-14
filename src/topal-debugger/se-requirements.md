@@ -12,6 +12,12 @@ observation shall not change program results, semantic decision order, or
 diagnostics. Debugger events shall identify stable source and semantic
 decisions rather than implementation addresses.
 
+The debugger shall require and honor each debuggee source file's language
+selection according to `TOPAL-SYN-CONTEXT-001`. If no version applies to a
+tool-created source context, it shall use the highest version supported by the
+debugger. Debugger inspection expressions inherit the debuggee's selected
+context.
+
 ## TOPAL-DEBUG-REVERSE-001 — Reversible Topal state
 
 The debugger shall support reverse stepping by retaining transition history

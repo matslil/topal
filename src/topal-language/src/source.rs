@@ -4,7 +4,7 @@ use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use topal_semantics::ObjectKind;
+use topal_semantics::{LanguageVersion, ObjectKind};
 use topal_source::{
     SourceText, Span, canonically_equal, case_fold, character_at, character_count, characters,
     lowercase, normalize_nfc, normalize_nfd, uppercase,
@@ -422,6 +422,8 @@ pub struct Session {
     functions: BTreeMap<String, Vec<UserFunction>>,
     generators: BTreeMap<String, Vec<UserGenerator>>,
     declared_names: BTreeSet<String>,
+    published_names: BTreeSet<String>,
+    language_version: LanguageVersion,
     consumed_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
@@ -506,6 +508,116 @@ impl Session {
         Self::default()
     }
 
+    /// Create an interactive evaluation context for a supported language version.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when this tool does not implement `language_version`.
+    pub fn for_language_version(language_version: LanguageVersion) -> Result<Self, &'static str> {
+        if language_version != LanguageVersion::DESIGN_0 {
+            return Err("the highest language version supported by this tool is v0.1");
+        }
+        Ok(Self {
+            language_version,
+            ..Self::default()
+        })
+    }
+
+    /// The highest source language version implemented by this evaluator.
+    #[must_use]
+    pub const fn highest_supported_language_version() -> LanguageVersion {
+        LanguageVersion::DESIGN_0
+    }
+
+    /// Evaluate one source file as an isolated module and bind its published
+    /// interface under `name` in this session.
+    ///
+    /// # Errors
+    ///
+    /// Returns a source, semantic, or duplicate-module diagnostic.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if an already accepted Rust string cannot be represented by
+    /// the shared source layer while rendering a duplicate-name diagnostic.
+    pub fn load_module(
+        &mut self,
+        name: &str,
+        input: &str,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if self.declared_names.contains(name) {
+            let source = SourceText::new(input).expect("module input was accepted as UTF-8");
+            return Err(diagnostic(
+                &source,
+                "E-DUPLICATE-MODULE",
+                Span::new(0, 0),
+                format!("module `{name}` is already declared"),
+            ));
+        }
+        let mut module = Self::new();
+        module.evaluate_source_file(input, trace)?;
+        self.attach_module(name, module, trace)
+    }
+
+    /// Attach an already evaluated child scope under one canonical component.
+    ///
+    /// # Errors
+    ///
+    /// Returns a duplicate-module diagnostic when `name` is already declared.
+    pub fn attach_module(
+        &mut self,
+        name: &str,
+        module: Self,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if self.declared_names.contains(name) {
+            return Err(Diagnostic {
+                code: "E-DUPLICATE-MODULE",
+                message: format!("module `{name}` is already declared"),
+                line: 1,
+                column: 1,
+                marker_width: 1,
+                source_line: None,
+                help: None,
+            });
+        }
+        let namespace = module.into_published_namespace(name);
+        self.bindings.insert(name.to_owned(), namespace.clone());
+        self.declared_names.insert(name.to_owned());
+        self.published_names.insert(name.to_owned());
+        trace.record(TraceEvent {
+            event: "module.loaded",
+            rule: "TOPAL-NAMESPACE-USE-001",
+            detail: name,
+        });
+        Ok(namespace)
+    }
+
+    fn into_published_namespace(self, name: &str) -> Value {
+        let bindings = self
+            .bindings
+            .into_iter()
+            .filter(|(member, _)| self.published_names.contains(member))
+            .collect();
+        let functions = self
+            .functions
+            .into_iter()
+            .filter(|(member, _)| self.published_names.contains(member))
+            .collect();
+        let generators = self
+            .generators
+            .into_iter()
+            .filter(|(member, _)| self.published_names.contains(member))
+            .collect();
+        Value::Namespace(Box::new(NamespaceValue {
+            name: name.to_owned(),
+            bindings,
+            functions,
+            generators,
+        }))
+    }
+
     /// Report whether a complete block statement should await a dedented line
     /// before an interactive session submits it.
     #[must_use]
@@ -546,6 +658,26 @@ impl Session {
         }
     }
 
+    /// Evaluate a complete source file, including its mandatory language header.
+    ///
+    /// # Errors
+    ///
+    /// Returns a diagnostic when the header is absent or the source is invalid.
+    pub fn evaluate_source_file(
+        &mut self,
+        input: &str,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let mut execution = self.prepare_source_file(input, trace)?;
+        loop {
+            match execution.step(self, trace)? {
+                ExecutionStep::Complete(value) => return Ok(value),
+                ExecutionStep::Advanced { .. } => {}
+                ExecutionStep::Returned { .. } => unreachable!("top-level return is rejected"),
+            }
+        }
+    }
+
     /// Prepare a source unit for resumable execution.
     ///
     /// # Errors
@@ -578,6 +710,58 @@ impl Session {
         })
     }
 
+    /// Prepare a complete source file and require its initial language selection.
+    ///
+    /// # Errors
+    ///
+    /// Returns a diagnostic when the header is absent or the source is invalid.
+    pub fn prepare_source_file(
+        &mut self,
+        input: &str,
+        trace: &mut impl TraceSink,
+    ) -> Result<Execution, Diagnostic> {
+        let mut execution = self.prepare(input, trace)?;
+        let Some(Statement::LanguageSelection { version, .. }) = execution.statements.first()
+        else {
+            return Err(diagnostic(
+                &execution.source,
+                "E-MISSING-LANGUAGE-VERSION",
+                Span::new(0, 0),
+                "source files begin with a language-version selection",
+            )
+            .with_help("add `use language (\n  version is v0.1\n)` at the start of the file"));
+        };
+        let requested = execution
+            .source
+            .slice(*version)
+            .parse::<LanguageVersion>()
+            .map_err(|message| {
+                diagnostic(&execution.source, "E-LANGUAGE-VERSION", *version, message)
+            })?;
+        if requested != Self::highest_supported_language_version() {
+            return Err(diagnostic(
+                &execution.source,
+                "E-UNSUPPORTED-LANGUAGE-VERSION",
+                *version,
+                format!(
+                    "language version `{requested}` is not supported; highest supported version is `{}`",
+                    Self::highest_supported_language_version()
+                ),
+            ));
+        }
+        self.language_version = requested;
+        execution.statements.remove(0);
+        if execution.statements.is_empty() {
+            return Err(expected_statement(input));
+        }
+        trace.record(TraceEvent {
+            event: "language.context.selected",
+            rule: "TOPAL-SYN-CONTEXT-001",
+            detail: &requested.to_string(),
+        });
+        Ok(execution)
+    }
+
     /// Evaluate one expression against an immutable binding snapshot.
     ///
     /// # Errors
@@ -594,6 +778,8 @@ impl Session {
             functions: BTreeMap::new(),
             generators: BTreeMap::new(),
             declared_names: bindings.keys().cloned().collect(),
+            published_names: BTreeSet::new(),
+            language_version: LanguageVersion::DESIGN_0,
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: BTreeMap::new(),
@@ -637,40 +823,7 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let value = match expression {
-            Expression::Block { statements, .. } => {
-                if statements.is_empty() {
-                    trace.record(TraceEvent {
-                        event: "block.empty.evaluated",
-                        rule: "TOPAL-SYN-GRAMMAR-001",
-                        detail: "Unit",
-                    });
-                    Ok(Value::Unit)
-                } else {
-                    let mut branch = self.clone();
-                    let mut execution = Execution {
-                        source: source.clone(),
-                        statements: statements.clone(),
-                        cursor: 0,
-                        return_classifier: None,
-                    };
-                    loop {
-                        match execution.step(&mut branch, trace)? {
-                            ExecutionStep::Complete(value) => {
-                                trace.record(TraceEvent {
-                                    event: "block.evaluated",
-                                    rule: "TOPAL-SYN-GRAMMAR-001",
-                                    detail: &structural_value_classifier(&value),
-                                });
-                                break Ok(value);
-                            }
-                            ExecutionStep::Advanced { .. } => {}
-                            ExecutionStep::Returned { .. } => unreachable!(
-                                "a standalone block rejects return without a function context"
-                            ),
-                        }
-                    }
-                }
-            }
+            Expression::Block { statements, .. } => self.evaluate_block(source, statements, trace),
             Expression::Boolean(span) => Ok(evaluate_boolean_literal(source, *span, trace)),
             Expression::Unit(_) => {
                 trace.record(TraceEvent {
@@ -942,6 +1095,8 @@ impl Session {
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
                         declared_names: self.declared_names.clone(),
+                        published_names: self.published_names.clone(),
+                        language_version: self.language_version,
                         consumed_names: self.consumed_names.clone(),
                         local_function_names: self.local_function_names.clone(),
                         enum_types: self.enum_types.clone(),
@@ -1029,6 +1184,23 @@ impl Session {
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
             Expression::String(span) => evaluate_string_literal(source, *span, trace),
             Expression::Identifier(span) => self.resolve_identifier(source, *span, trace),
+            Expression::ContextIdentifier(span) => {
+                if self.call_stack.is_empty() {
+                    return Err(diagnostic(
+                        source,
+                        "E-CONTEXT-SELECTION",
+                        *span,
+                        "`@` selects the defining context from inside a function",
+                    ));
+                }
+                let value = self.resolve_identifier(source, *span, trace)?;
+                trace.record(TraceEvent {
+                    event: "context.member.selected",
+                    rule: "TOPAL-CONTEXT-SELECT-001",
+                    detail: source.slice(*span),
+                });
+                Ok(value)
+            }
             Expression::Discard(span) => Err(diagnostic(
                 source,
                 "E-DISCARD-VALUE",
@@ -1589,6 +1761,8 @@ impl Session {
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
+                        published_names: BTreeSet::new(),
+                        language_version: self.language_version,
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
@@ -1755,6 +1929,8 @@ impl Session {
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
+                        published_names: BTreeSet::new(),
+                        language_version: self.language_version,
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
@@ -2378,6 +2554,46 @@ impl Session {
         }?;
         self.checkpoint(trace, Some(&value), Some(expression.span()));
         Ok(value)
+    }
+
+    #[inline(never)]
+    fn evaluate_block(
+        &self,
+        source: &SourceText,
+        statements: &[Statement],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if statements.is_empty() {
+            trace.record(TraceEvent {
+                event: "block.empty.evaluated",
+                rule: "TOPAL-SYN-GRAMMAR-001",
+                detail: "Unit",
+            });
+            return Ok(Value::Unit);
+        }
+        let mut branch = self.clone();
+        let mut execution = Execution {
+            source: source.clone(),
+            statements: statements.to_vec(),
+            cursor: 0,
+            return_classifier: None,
+        };
+        loop {
+            match execution.step(&mut branch, trace)? {
+                ExecutionStep::Complete(value) => {
+                    trace.record(TraceEvent {
+                        event: "block.evaluated",
+                        rule: "TOPAL-SYN-GRAMMAR-001",
+                        detail: &structural_value_classifier(&value),
+                    });
+                    return Ok(value);
+                }
+                ExecutionStep::Advanced { .. } => {}
+                ExecutionStep::Returned { .. } => {
+                    unreachable!("a standalone block rejects return without a function context")
+                }
+            }
+        }
     }
 
     fn evaluate_record(
@@ -4956,14 +5172,54 @@ impl Execution {
     ) -> Result<ExecutionStep, Diagnostic> {
         let statement = &self.statements[self.cursor];
         let (value, span) = match statement {
-            Statement::Published { span, .. } => {
-                return Err(diagnostic(
-                    &self.source,
-                    "E-UNSUPPORTED-PUBLICATION",
-                    *span,
-                    "published declarations require a loaded module context",
-                )
-                .with_help("execute this source as part of a module or remove `pub`"));
+            Statement::LanguageSelection { version, span } => {
+                let requested = self
+                    .source
+                    .slice(*version)
+                    .parse::<LanguageVersion>()
+                    .map_err(|message| {
+                        diagnostic(&self.source, "E-LANGUAGE-VERSION", *version, message)
+                    })?;
+                if requested != LanguageVersion::DESIGN_0 {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-UNSUPPORTED-LANGUAGE-VERSION",
+                        *version,
+                        format!(
+                            "language version `{requested}` is not supported; highest supported version is `{}`",
+                            LanguageVersion::DESIGN_0
+                        ),
+                    ));
+                }
+                session.language_version = requested;
+                trace.record(TraceEvent {
+                    event: "language.context.selected",
+                    rule: "TOPAL-SYN-GRAMMAR-001",
+                    detail: &requested.to_string(),
+                });
+                (Value::Unit, *span)
+            }
+            Statement::Published {
+                declaration, span, ..
+            } => {
+                let published_name = declaration_name(&self.source, declaration);
+                trace.record(TraceEvent {
+                    event: "namespace.member.published",
+                    rule: "TOPAL-NAMESPACE-ROOT-001",
+                    detail: self.source.slice(*span),
+                });
+                let outcome = self.execute_published(session, trace, declaration)?;
+                if let Some(name) = published_name {
+                    session.published_names.insert(name.to_owned());
+                }
+                match outcome {
+                    ExecutionStep::Complete(value) | ExecutionStep::Advanced { value, .. } => {
+                        (value, *span)
+                    }
+                    ExecutionStep::Returned { value, span } => {
+                        return Ok(ExecutionStep::Returned { value, span });
+                    }
+                }
             }
             Statement::DiagnosticControl { span, .. } => (Value::Unit, *span),
             Statement::Binding {
@@ -5126,6 +5382,22 @@ impl Execution {
             session.checkpoint(trace, Some(&value), Some(span));
             Ok(ExecutionStep::Advanced { value, span })
         }
+    }
+
+    #[inline(never)]
+    fn execute_published(
+        &self,
+        session: &mut Session,
+        trace: &mut impl TraceSink,
+        declaration: &Statement,
+    ) -> Result<ExecutionStep, Diagnostic> {
+        let mut published = Self {
+            source: self.source.clone(),
+            statements: vec![declaration.clone()],
+            cursor: 0,
+            return_classifier: self.return_classifier.clone(),
+        };
+        published.step(session, trace)
     }
 
     #[allow(clippy::too_many_lines)] // Declaration specializations remain ordered before ordinary projection.
@@ -5388,9 +5660,10 @@ fn expression_is_closed(expression: &Expression) -> bool {
             .all(|field| expression_is_closed(&field.value)),
         Expression::Application { items, .. } => items.iter().all(expression_is_closed),
         Expression::AnonymousFunction { body, .. } => expression_is_closed(body),
-        Expression::DecisionTable { .. } | Expression::Identifier(_) | Expression::Discard(_) => {
-            false
-        }
+        Expression::DecisionTable { .. }
+        | Expression::Identifier(_)
+        | Expression::ContextIdentifier(_)
+        | Expression::Discard(_) => false,
     }
 }
 
@@ -5644,7 +5917,8 @@ const fn cover(first: Span, second: Span) -> Span {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => cover(*name, value.span()),
-        Statement::Published { span, .. }
+        Statement::LanguageSelection { span, .. }
+        | Statement::Published { span, .. }
         | Statement::DiagnosticControl { span, .. }
         | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
@@ -5654,6 +5928,18 @@ fn statement_span(statement: &Statement) -> Span {
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
         Statement::Expression(expression) => expression.span(),
     }
+}
+
+fn declaration_name<'a>(source: &'a SourceText, statement: &Statement) -> Option<&'a str> {
+    let name = match statement {
+        Statement::Binding { name, .. }
+        | Statement::Function { name, .. }
+        | Statement::Generator { name, .. }
+        | Statement::Union { name, .. } => *name,
+        Statement::Published { declaration, .. } => return declaration_name(source, declaration),
+        _ => return None,
+    };
+    Some(source.slice(name))
 }
 
 fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
@@ -13619,4 +13905,24 @@ fn list_remainder_must_be_a_list() {
         .unwrap_err();
     assert_eq!(error.code, "E-LIST-REMAINDER");
     assert!(error.help.unwrap().contains("Empty"));
+}
+
+#[test]
+fn loaded_modules_expose_only_published_members() {
+    let mut session = Session::new();
+    session
+        .load_module(
+            "math",
+            "private-value is 40\npub answer is private-value + 2\n",
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(
+        session.evaluate("math answer", &mut Vec::new()).unwrap(),
+        Value::Int(BigInt::from(42))
+    );
+    let error = session
+        .evaluate("math private-value", &mut Vec::new())
+        .unwrap_err();
+    assert_eq!(error.code, "E-NAMESPACE-MEMBER-NOT-FOUND");
 }

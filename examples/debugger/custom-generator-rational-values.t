@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible preservation of an exact Rational while a generator
 # is suspended and resumed before its distinct final return.
 next is generator ( initial : Rational )

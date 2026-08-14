@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a mutual cycle where one action calls the next member twice;
 # every call targets the same member and independently decreases its argument.
 first-count is fn (value : Int) -> Int

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible tracing of a yield, Unit resumption, and the explicit
 # String return that completes the generator continuation.
 finish is generator ( initial : String )

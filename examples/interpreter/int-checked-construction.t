@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates exact checked Int construction: an Int is preserved, an exact
 # dynamic Rational becomes Int, and a fractional dynamic Rational returns Error.
 as-int is fn (value : Rational) -> Result (Int, lang arithmetic ArithmeticErrorCode)

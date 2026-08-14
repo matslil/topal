@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates recursive Result classification: the successful value is a
 # positional (Int, String) product preserved through suspension and return.
 pair is generator ( initial : Result ((Int, String), lang arithmetic ArithmeticErrorCode) )

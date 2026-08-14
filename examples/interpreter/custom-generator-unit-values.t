@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a payload-free generator boundary using Unit for input, yield,
 # resumption, and final return. Foreach still invokes its action once.
 pulse is generator ( initial : Unit )

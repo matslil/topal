@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a same-name overload set selecting its Int and String headers
 # independently, in source declaration order and without using result type.
 describe is fn (value : Int) -> String

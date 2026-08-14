@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible explicit Some and typed None construction.
 missing : Optional Int is None
 preserve is fn (candidate : Optional Int) -> Optional Int

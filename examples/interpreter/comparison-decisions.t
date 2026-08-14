@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates an ordered comparison decision table implementing minimum. The
 # subject becomes the left comparison operand, only the selected action runs,
 # and the exhaustive otherwise fallback is necessarily the final rule.

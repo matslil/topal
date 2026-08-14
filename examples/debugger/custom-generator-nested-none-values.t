@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible absent Optional state retaining the complete
 # (Int, String) payload classifier despite carrying no payload value.
 absent is generator ( initial : Optional (Int, String) )

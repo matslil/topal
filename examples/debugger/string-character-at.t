@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible Unicode character indexing and Optional outcomes. An
 # Optional decision preserves a present Character and handles an absent index.
 describe is fn (candidate : Optional Character) -> String

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible transfer of a constrained Nat value through a
 # suspended generator and its final return.
 next is generator ( initial : Nat )

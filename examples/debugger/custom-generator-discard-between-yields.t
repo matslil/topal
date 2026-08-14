@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible ordering of Unit resumption, a discarded String
 # computation, and the next custom-generator suspension.
 inspect-between is generator ( initial : String )

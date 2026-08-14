@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates recursive generator classifiers: Optional preserves its Some
 # alternative while its positional (Int, String) payload retains component order.
 pair is generator ( initial : Optional (Int, String) )

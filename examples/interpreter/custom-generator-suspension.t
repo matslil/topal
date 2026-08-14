@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates true suspension. The local `copy` binding after the first yield
 # is created only when foreach resumes with Unit, before the second yield.
 pause-twice is generator ( initial : Character )

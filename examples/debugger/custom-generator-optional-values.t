@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible preservation of a nominal Optional Int through a
 # yielded Some alternative and a distinct final None alternative.
 optional is generator ( initial : Optional Int )

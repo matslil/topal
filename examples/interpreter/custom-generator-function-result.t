@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates returning a live custom continuation from an ordinary function.
 # Function exit transfers ownership; the caller then consumes the single yield.
 pause-once is generator ( initial : Character )

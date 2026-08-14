@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates recursive nominal classifiers. The declared Choice identity is
 # preserved inside both Optional and arithmetic Result generator boundaries.
 Choice is Enum ( First, Second )

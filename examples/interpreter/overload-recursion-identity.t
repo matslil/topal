@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates that a call from the String overload to the distinct Int overload
 # is ordinary dispatch, not recursion merely because both share a name.
 describe is fn (value : Int) -> String

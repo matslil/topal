@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates that a namespace alias retains typed, source-ordered overloads.
 identity is fn (value : Int) -> Int
   value

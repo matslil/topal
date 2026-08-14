@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible delivery and handling of generator-closed inside the
 # abandoned custom continuation, with domain and provenance kept separate.
 handle-close is generator ( initial : Character )

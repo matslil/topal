@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible restoration of local nominal and function state while
 # generator abandonment executes its generator-closed result action.
 handle-close is generator ( initial : Character )
