@@ -293,6 +293,185 @@ pub struct ResourceTracker {
     declaration_order: Vec<ResourceIdentity>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AccessRights {
+    pub read: bool,
+    pub write: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Location {
+    pub resource: ResourceIdentity,
+    pub base: u128,
+    pub size: u128,
+    pub layout_size: u128,
+    pub alignment: u128,
+    pub rights: AccessRights,
+    pub lifetime: u64,
+    pub access_widths: BTreeSet<u128>,
+}
+
+impl Location {
+    /// Validate the complete semantic location tuple.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for overflow, range, alignment, rights, or access defects.
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.base.checked_add(self.size).is_none() {
+            return Err("location range overflows its address domain");
+        }
+        if self.layout_size > self.size {
+            return Err("layout exceeds the location range");
+        }
+        if self.alignment == 0 || !self.base.is_multiple_of(self.alignment) {
+            return Err("location base does not satisfy alignment");
+        }
+        if !self.rights.read && !self.rights.write {
+            return Err("location grants no access rights");
+        }
+        if self.access_widths.is_empty()
+            || self
+                .access_widths
+                .iter()
+                .any(|width| *width == 0 || *width > self.size)
+        {
+            return Err("location has an invalid access width");
+        }
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn aliases(&self, other: &Self) -> bool {
+        self.resource == other.resource
+            && self.base < other.base.saturating_add(other.size)
+            && other.base < self.base.saturating_add(self.size)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum MemoryEvent {
+    Read {
+        location: Location,
+        width: u128,
+    },
+    Write {
+        location: Location,
+        width: u128,
+        value_identity: String,
+    },
+}
+
+impl MemoryEvent {
+    /// Check authorization and declared width before an event occurs.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the event is not permitted by its location.
+    pub fn validate(&self) -> Result<(), &'static str> {
+        let (location, width, permitted) = match self {
+            Self::Read { location, width } => (location, width, location.rights.read),
+            Self::Write {
+                location, width, ..
+            } => (location, width, location.rights.write),
+        };
+        location.validate()?;
+        if !permitted {
+            return Err("memory event is not authorized");
+        }
+        if !location.access_widths.contains(width) || !location.base.is_multiple_of(*width) {
+            return Err("memory event width or alignment is invalid");
+        }
+        Ok(())
+    }
+
+    fn location(&self) -> &Location {
+        match self {
+            Self::Read { location, .. } | Self::Write { location, .. } => location,
+        }
+    }
+
+    fn writes(&self) -> bool {
+        matches!(self, Self::Write { .. })
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct MemoryExecution {
+    events: Vec<MemoryEvent>,
+    order: BTreeSet<(usize, usize)>,
+}
+
+impl MemoryExecution {
+    /// Append one validated event and return its stable execution index.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the event is invalid.
+    pub fn record(&mut self, event: MemoryEvent) -> Result<usize, &'static str> {
+        event.validate()?;
+        let index = self.events.len();
+        self.events.push(event);
+        Ok(index)
+    }
+
+    /// Add a happens-before edge while preserving acyclicity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for unknown events or an edge that creates a cycle.
+    pub fn order_before(&mut self, before: usize, after: usize) -> Result<(), &'static str> {
+        if before >= self.events.len() || after >= self.events.len() {
+            return Err("memory ordering edge names an unknown event");
+        }
+        if before == after || self.happens_before(after, before) {
+            return Err("memory ordering edge creates a cycle");
+        }
+        self.order.insert((before, after));
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn happens_before(&self, before: usize, after: usize) -> bool {
+        let mut pending = vec![before];
+        let mut visited = BTreeSet::new();
+        while let Some(current) = pending.pop() {
+            if !visited.insert(current) {
+                continue;
+            }
+            for &(_, next) in self.order.iter().filter(|(source, _)| *source == current) {
+                if next == after {
+                    return true;
+                }
+                pending.push(next);
+            }
+        }
+        false
+    }
+
+    /// Reject unordered conflicting events.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when two aliasing events conflict without ordering.
+    pub fn validate_race_free(&self) -> Result<(), &'static str> {
+        for left in 0..self.events.len() {
+            for right in left + 1..self.events.len() {
+                let left_event = &self.events[left];
+                let right_event = &self.events[right];
+                if left_event.location().aliases(right_event.location())
+                    && (left_event.writes() || right_event.writes())
+                    && !self.happens_before(left, right)
+                    && !self.happens_before(right, left)
+                {
+                    return Err("unordered conflicting memory events form a data race");
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 impl ResourceTracker {
     /// Add one fresh ownership obligation.
     ///
@@ -614,5 +793,85 @@ mod tests {
         assert_eq!(tracker.destroy_all(), vec![second.clone(), first.clone()]);
         assert!(tracker.destroy_all().is_empty());
         assert_eq!(tracker.state(&first), Some(&ResourceState::Destroyed));
+    }
+
+    #[test]
+    fn locations_separate_resources_and_validate_events() {
+        let resource = ResourceIdentity(QualifiedName(vec!["memory".into(), "buffer".into()]));
+        let location = Location {
+            resource: resource.clone(),
+            base: 16,
+            size: 8,
+            layout_size: 8,
+            alignment: 8,
+            rights: AccessRights {
+                read: true,
+                write: false,
+            },
+            lifetime: 1,
+            access_widths: BTreeSet::from([1, 2, 4, 8]),
+        };
+        assert_eq!(location.validate(), Ok(()));
+        assert_eq!(
+            MemoryEvent::Read {
+                location: location.clone(),
+                width: 4,
+            }
+            .validate(),
+            Ok(())
+        );
+        assert!(
+            MemoryEvent::Write {
+                location: location.clone(),
+                width: 4,
+                value_identity: "value".into(),
+            }
+            .validate()
+            .is_err()
+        );
+        let overlapping_other_resource = Location {
+            resource: ResourceIdentity(QualifiedName(vec!["memory".into(), "other".into()])),
+            ..location.clone()
+        };
+        assert!(!location.aliases(&overlapping_other_resource));
+        assert!(location.aliases(&Location {
+            base: 20,
+            size: 4,
+            layout_size: 4,
+            alignment: 4,
+            ..location.clone()
+        }));
+    }
+
+    #[test]
+    fn memory_execution_requires_order_for_conflicts() {
+        let location = Location {
+            resource: ResourceIdentity(QualifiedName(vec!["memory".into(), "shared".into()])),
+            base: 0,
+            size: 4,
+            layout_size: 4,
+            alignment: 4,
+            rights: AccessRights {
+                read: true,
+                write: true,
+            },
+            lifetime: 1,
+            access_widths: BTreeSet::from([4]),
+        };
+        let mut execution = MemoryExecution::default();
+        let write = execution
+            .record(MemoryEvent::Write {
+                location: location.clone(),
+                width: 4,
+                value_identity: "one".into(),
+            })
+            .unwrap();
+        let read = execution
+            .record(MemoryEvent::Read { location, width: 4 })
+            .unwrap();
+        assert!(execution.validate_race_free().is_err());
+        execution.order_before(write, read).unwrap();
+        assert_eq!(execution.validate_race_free(), Ok(()));
+        assert!(execution.order_before(read, write).is_err());
     }
 }
