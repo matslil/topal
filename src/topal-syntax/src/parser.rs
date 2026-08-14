@@ -149,6 +149,11 @@ pub struct DecisionRule {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Statement {
+    DiagnosticControl {
+        operation: DiagnosticControlKind,
+        warning: Span,
+        span: Span,
+    },
     Binding {
         name: Span,
         classifier: Option<Span>,
@@ -194,6 +199,13 @@ pub enum Statement {
     Expression(Expression),
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DiagnosticControlKind {
+    DisableNext,
+    Push,
+    Pop,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ParsedSource {
     pub statements: Vec<Statement>,
@@ -222,6 +234,7 @@ pub fn parse(source: &SourceText, lexed: &Lexed) -> ParsedSource {
             parser.skip_to_newline();
         }
     }
+    validate_diagnostic_controls(source, &statements, &mut parser.diagnostics);
     ParsedSource {
         statements,
         diagnostics: parser.diagnostics,
@@ -244,9 +257,13 @@ impl Parser<'_> {
         self.ordinary_statement()
     }
 
+    #[allow(clippy::too_many_lines)] // Declaration forms retain localized diagnostics.
     fn ordinary_statement(&mut self) -> Option<Statement> {
         let checkpoint = self.cursor;
         let first = self.take_nontrivia()?;
+        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "lang" {
+            return self.diagnostic_control(first);
+        }
         if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "return" {
             let Some(value) = self.expression() else {
                 self.diagnostics.push(SyntaxDiagnostic {
@@ -344,6 +361,38 @@ impl Parser<'_> {
         }
         self.cursor = checkpoint;
         self.expression().map(Statement::Expression)
+    }
+
+    fn diagnostic_control(&mut self, lang: Token) -> Option<Statement> {
+        let operation = self.take_nontrivia()?;
+        let warning = self.take_nontrivia()?;
+        let kind = match self.source.slice(operation.span) {
+            "disable-warning" => DiagnosticControlKind::DisableNext,
+            "push-disable-warning" => DiagnosticControlKind::Push,
+            "pop-disable-warning" => DiagnosticControlKind::Pop,
+            _ => {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-DIAGNOSTIC-CONTROL",
+                    span: operation.span,
+                    message: "expected a diagnostic-control operation after `lang`".into(),
+                });
+                self.skip_to_newline();
+                return None;
+            }
+        };
+        if operation.kind != TokenKind::Identifier || warning.kind != TokenKind::Identifier {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-DIAGNOSTIC-CONTROL",
+                span: Span::new(lang.span.start, warning.span.end),
+                message: "expected `lang diagnostic-operation warning-name`".into(),
+            });
+            return None;
+        }
+        Some(Statement::DiagnosticControl {
+            operation: kind,
+            warning: warning.span,
+            span: Span::new(lang.span.start, warning.span.end),
+        })
     }
 
     fn foreach_separator_index(&self) -> Option<usize> {
@@ -1733,13 +1782,83 @@ impl Parser<'_> {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => Span::new(name.start, value.span().end),
-        Statement::Function { span, .. }
+        Statement::DiagnosticControl { span, .. }
+        | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
         | Statement::Foreach { span, .. }
         | Statement::Discard { span, .. } => *span,
         Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
         Statement::Expression(expression) => expression.span(),
+    }
+}
+
+fn validate_diagnostic_controls(
+    source: &SourceText,
+    statements: &[Statement],
+    diagnostics: &mut Vec<SyntaxDiagnostic>,
+) {
+    let mut stack = Vec::<Span>::new();
+    let mut pending = None;
+    for statement in statements {
+        match statement {
+            Statement::DiagnosticControl {
+                operation,
+                warning,
+                span,
+            } => match operation {
+                DiagnosticControlKind::DisableNext => pending = Some((*warning, *span)),
+                DiagnosticControlKind::Push => stack.push(*warning),
+                DiagnosticControlKind::Pop => match stack.last().copied() {
+                    None => diagnostics.push(SyntaxDiagnostic {
+                        code: "E-DIAGNOSTIC-CONTROL-UNDERFLOW",
+                        span: *span,
+                        message: "cannot pop an empty warning-suppression stack".into(),
+                    }),
+                    Some(active) if source.slice(active) != source.slice(*warning) => {
+                        diagnostics.push(SyntaxDiagnostic {
+                            code: "E-DIAGNOSTIC-CONTROL-MISMATCH",
+                            span: *warning,
+                            message: format!(
+                                "cannot pop warning `{}` while `{}` is active",
+                                source.slice(*warning),
+                                source.slice(active)
+                            ),
+                        });
+                    }
+                    Some(_) => {
+                        stack.pop();
+                    }
+                },
+            },
+            Statement::Function { body, .. }
+            | Statement::Generator { body, .. }
+            | Statement::Foreach { body, .. } => {
+                pending = None;
+                validate_diagnostic_controls(source, body, diagnostics);
+            }
+            _ => pending = None,
+        }
+    }
+    if let Some((warning, span)) = pending {
+        diagnostics.push(SyntaxDiagnostic {
+            code: "E-DIAGNOSTIC-CONTROL-TARGET",
+            span,
+            message: format!(
+                "warning suppression for `{}` has no following statement",
+                source.slice(warning)
+            ),
+        });
+    }
+    if let Some(warning) = stack.last().copied() {
+        diagnostics.push(SyntaxDiagnostic {
+            code: "E-DIAGNOSTIC-CONTROL-UNCLOSED",
+            span: warning,
+            message: format!(
+                "warning suppression for `{}` remains active at the context boundary",
+                source.slice(warning)
+            ),
+        });
     }
 }
 
@@ -2530,6 +2649,42 @@ mod tests {
             if let Ok(source) = SourceText::new(input) {
                 let _ = parse(&source, &lex(&source));
             }
+        }
+    }
+
+    #[test]
+    fn parses_balanced_diagnostic_controls() {
+        let source = SourceText::new(include_str!(
+            "../../../examples/interpreter/diagnostic-controls.t"
+        ))
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(
+            parsed.statements[0],
+            Statement::DiagnosticControl {
+                operation: DiagnosticControlKind::DisableNext,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn rejects_unbalanced_diagnostic_controls() {
+        for (input, code) in [
+            (
+                "lang pop-disable-warning unused",
+                "E-DIAGNOSTIC-CONTROL-UNDERFLOW",
+            ),
+            (
+                "lang push-disable-warning unused\n()",
+                "E-DIAGNOSTIC-CONTROL-UNCLOSED",
+            ),
+            ("lang disable-warning unused", "E-DIAGNOSTIC-CONTROL-TARGET"),
+        ] {
+            let source = SourceText::new(input).unwrap();
+            let parsed = parse(&source, &lex(&source));
+            assert!(parsed.diagnostics.iter().any(|error| error.code == code));
         }
     }
 }

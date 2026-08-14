@@ -1855,3 +1855,11 @@ coverage.
 Qualified lookup shall preserve namespace overload ordering under
 `TOPAL-NAMESPACE-OVERLOAD-001`, with interpreter, LSP, trace, and debugger
 coverage.
+
+## TOPAL-INTP-SUBSET-240 — Diagnostic controls
+
+All source modes shall accept balanced `lang` warning controls under
+`TOPAL-SYN-DIAG-001`. One-statement suppression shall require a following
+statement; scoped suppression shall reject stack underflow, mismatched pops,
+and a nonempty stack at every lexical context boundary. Controls shall not
+change program values or semantic decision traces.

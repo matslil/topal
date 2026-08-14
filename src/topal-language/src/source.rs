@@ -4904,6 +4904,7 @@ impl Execution {
     ) -> Result<ExecutionStep, Diagnostic> {
         let statement = &self.statements[self.cursor];
         let (value, span) = match statement {
+            Statement::DiagnosticControl { span, .. } => (Value::Unit, *span),
             Statement::Binding {
                 name,
                 classifier,
@@ -5573,7 +5574,8 @@ const fn cover(first: Span, second: Span) -> Span {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => cover(*name, value.span()),
-        Statement::Function { span, .. }
+        Statement::DiagnosticControl { span, .. }
+        | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
         | Statement::Foreach { span, .. } => *span,
@@ -5594,7 +5596,8 @@ fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
         if yielded_statement(source, statement).is_none()
             && !matches!(
                 statement,
-                Statement::Binding { .. }
+                Statement::DiagnosticControl { .. }
+                    | Statement::Binding { .. }
                     | Statement::Discard { .. }
                     | Statement::Function { .. }
                     | Statement::Return { .. }
