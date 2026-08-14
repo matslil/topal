@@ -90,3 +90,10 @@ session shall remain usable for inspection and reverse navigation rather than
 terminating with the debuggee. Repeated advancement may retry only when doing
 so cannot duplicate an external effect; otherwise it shall remain stopped at
 the recorded failure.
+
+## TOPAL-DEBUG-COMPILER-BOUNDARY-001 — No debugger artifact lowering
+
+The source debugger shall share the interpreter's deterministic GEIR boundary.
+Artifact export, compiler lowering, and artifact optimization shall not become
+debuggee transitions and shall fail with `E-COMPILER-ONLY` through embedding
+interfaces.

@@ -1914,3 +1914,10 @@ ordinary `.t` files, and nested directories under the source-layout rules in
 qualified module component, only `pub` members shall enter a file interface,
 and `application.t` shall execute after all recursively nested interfaces are
 available without flattening their canonical paths.
+
+## TOPAL-INTP-COMPILER-BOUNDARY-001 — Compiler-only static operations
+
+The interpreter shall use the shared GEIR boundary for artifact export,
+compiler lowering, and artifact optimization. It shall never assign runtime
+semantics to those operations and shall return the stable
+`E-COMPILER-ONLY` diagnostic if one is requested through an embedding API.

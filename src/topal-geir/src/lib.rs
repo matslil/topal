@@ -8,6 +8,54 @@ use topal_source::is_nfc;
 
 pub const ARTIFACT_REVISION: u64 = 1;
 
+pub const COMPILER_ONLY_ERROR_CODE: &str = "E-COMPILER-ONLY";
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ToolRole {
+    Compiler,
+    Interpreter,
+    Debugger,
+    LanguageServer,
+    Linter,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerOnlyOperation {
+    ExportGenericArtifact,
+    EmitObjectCode,
+    OptimizeArtifact,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BoundaryError {
+    pub code: &'static str,
+    pub operation: CompilerOnlyOperation,
+    pub tool: ToolRole,
+    pub message: &'static str,
+}
+
+/// Enforce that artifact production and compiler lowering never acquire an
+/// accidental runtime meaning in another source tool.
+///
+/// # Errors
+///
+/// Returns the same stable diagnostic for every non-compiler caller.
+pub const fn require_compiler(
+    tool: ToolRole,
+    operation: CompilerOnlyOperation,
+) -> Result<(), BoundaryError> {
+    if matches!(tool, ToolRole::Compiler) {
+        Ok(())
+    } else {
+        Err(BoundaryError {
+            code: COMPILER_ONLY_ERROR_CODE,
+            operation,
+            tool,
+            message: "this static artifact operation is available only to the compiler",
+        })
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Visibility {
     Public,
@@ -923,6 +971,27 @@ mod tests {
         assert_eq!(
             invalid.validate().unwrap_err().stage,
             ValidationStage::Export
+        );
+    }
+
+    #[test]
+    fn compiler_only_boundary_is_stable_for_every_source_tool() {
+        for tool in [
+            ToolRole::Interpreter,
+            ToolRole::Debugger,
+            ToolRole::LanguageServer,
+            ToolRole::Linter,
+        ] {
+            let error =
+                require_compiler(tool, CompilerOnlyOperation::ExportGenericArtifact).unwrap_err();
+            assert_eq!(error.code, COMPILER_ONLY_ERROR_CODE);
+        }
+        assert_eq!(
+            require_compiler(
+                ToolRole::Compiler,
+                CompilerOnlyOperation::ExportGenericArtifact
+            ),
+            Ok(())
         );
     }
 }

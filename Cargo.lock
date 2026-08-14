@@ -173,6 +173,7 @@ version = "0.1.0"
 dependencies = [
  "num-bigint",
  "num-rational",
+ "topal-geir",
  "topal-semantics",
  "topal-source",
  "topal-syntax",

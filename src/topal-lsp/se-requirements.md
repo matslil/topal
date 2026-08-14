@@ -55,3 +55,10 @@ shall not advertise planned operations before their interpreter semantics land.
 When an operation accepts a finite set of implemented static arguments, its
 detail shall name those arguments so completion does not imply support for
 planned alternatives.
+
+## TOPAL-LSP-COMPILER-BOUNDARY-001 — Analysis-only artifact boundary
+
+The language server may inspect typed static views but shall not export, lower,
+or optimize GEIR artifacts. Requests through shared embedding interfaces shall
+return `E-COMPILER-ONLY` without executing source or retaining runtime
+reflection metadata.
