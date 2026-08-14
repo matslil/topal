@@ -494,6 +494,124 @@ pub struct DependencyGraph {
     edges: BTreeSet<(DependencyNode, DependencyNode)>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ByteOrder {
+    Little,
+    Big,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Packing {
+    Natural,
+    Packed,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PayloadPlacement {
+    AfterTag,
+    Overlay,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Layout {
+    Scalar {
+        bits: u64,
+        signed: bool,
+        byte_order: ByteOrder,
+    },
+    Product {
+        fields: Vec<(String, Self)>,
+        packing: Packing,
+    },
+    Sum {
+        tag: Box<Self>,
+        alternatives: Vec<(String, Self)>,
+        placement: PayloadPlacement,
+    },
+    Sequence {
+        element: Box<Self>,
+        count: Option<u64>,
+    },
+    Text {
+        code_unit_bits: u64,
+        byte_order: ByteOrder,
+        length_prefix: bool,
+        terminator: Option<u32>,
+    },
+}
+
+impl Layout {
+    /// Validate recursive external-representation policy.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for zero/non-octet widths, duplicate fields or
+    /// alternatives, unbounded sequences, or text without a boundary policy.
+    pub fn validate(&self) -> Result<(), &'static str> {
+        match self {
+            Self::Scalar { bits, .. } => validate_octet_width(*bits),
+            Self::Product { fields, .. } => {
+                validate_unique_names(fields.iter().map(|(name, _)| name))?;
+                for (_, layout) in fields {
+                    layout.validate()?;
+                }
+                Ok(())
+            }
+            Self::Sum {
+                tag, alternatives, ..
+            } => {
+                tag.validate()?;
+                validate_unique_names(alternatives.iter().map(|(name, _)| name))?;
+                if alternatives.is_empty() {
+                    return Err("sum layout requires an alternative");
+                }
+                for (_, layout) in alternatives {
+                    layout.validate()?;
+                }
+                Ok(())
+            }
+            Self::Sequence { element, count } => {
+                element.validate()?;
+                if count.is_none() {
+                    return Err("sequence layout requires a finite count policy");
+                }
+                Ok(())
+            }
+            Self::Text {
+                code_unit_bits,
+                length_prefix,
+                terminator,
+                ..
+            } => {
+                validate_octet_width(*code_unit_bits)?;
+                if !length_prefix && terminator.is_none() {
+                    return Err("text layout requires a length or terminator policy");
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+fn validate_octet_width(bits: u64) -> Result<(), &'static str> {
+    if bits == 0 || !bits.is_multiple_of(8) {
+        Err("layout width must be a positive multiple of eight")
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_unique_names<'a>(
+    names: impl IntoIterator<Item = &'a String>,
+) -> Result<(), &'static str> {
+    let mut unique = BTreeSet::new();
+    if names.into_iter().all(|name| unique.insert(name)) {
+        Ok(())
+    } else {
+        Err("layout names must be unique")
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ScheduleEvidence {
     pub order: Vec<DependencyNode>,
@@ -1416,5 +1534,46 @@ mod tests {
         suspended.depends_on(&first, &external).unwrap();
         suspended.depends_on(&external, &first).unwrap();
         assert!(suspended.schedule().is_ok());
+    }
+
+    #[test]
+    fn recursive_layouts_validate_structure_and_boundaries() {
+        let octet = Layout::Scalar {
+            bits: 8,
+            signed: false,
+            byte_order: ByteOrder::Little,
+        };
+        let packet = Layout::Product {
+            fields: vec![
+                ("tag".into(), octet.clone()),
+                (
+                    "name".into(),
+                    Layout::Text {
+                        code_unit_bits: 8,
+                        byte_order: ByteOrder::Little,
+                        length_prefix: true,
+                        terminator: None,
+                    },
+                ),
+            ],
+            packing: Packing::Packed,
+        };
+        assert_eq!(packet.validate(), Ok(()));
+        assert!(
+            Layout::Product {
+                fields: vec![("same".into(), octet.clone()), ("same".into(), octet)],
+                packing: Packing::Natural,
+            }
+            .validate()
+            .is_err()
+        );
+        assert!(
+            Layout::Sequence {
+                element: Box::new(packet),
+                count: None,
+            }
+            .validate()
+            .is_err()
+        );
     }
 }
