@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
+use sha2::{Digest, Sha256};
 use topal_semantics::LanguageVersion;
 use topal_source::is_nfc;
 
@@ -274,6 +275,92 @@ pub struct ArtifactError {
     pub message: &'static str,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ArtifactLimits {
+    pub table_entries: usize,
+    pub blocks: usize,
+    pub instructions: usize,
+    pub bytes: usize,
+}
+
+impl Default for ArtifactLimits {
+    fn default() -> Self {
+        Self {
+            table_entries: 1_000_000,
+            blocks: 1_000_000,
+            instructions: 10_000_000,
+            bytes: 64 * 1_024 * 1_024,
+        }
+    }
+}
+
+/// Produce the stable anonymous structural identity required by
+/// `TOPAL-GIR-ID-001`.
+#[must_use]
+pub fn structural_identity(canonical_definition: &[u8]) -> [u8; 32] {
+    Sha256::digest(canonical_definition).into()
+}
+
+/// Decode, validate, and confirm the canonical representation of one GEIR
+/// module before exposing it to a consumer.
+///
+/// # Errors
+///
+/// Rejects malformed, noncanonical, unsupported, or semantically invalid
+/// artifacts as a whole.
+pub fn decode_canonical(bytes: &[u8], limits: ArtifactLimits) -> Result<Module, ArtifactError> {
+    if bytes.len() > limits.bytes {
+        return fail(
+            ValidationStage::Framing,
+            "artifact exceeds configured byte limit",
+        );
+    }
+    let mut reader = ArtifactReader {
+        bytes,
+        offset: 0,
+        limits,
+    };
+    if reader.take(9)? != b"TOPALGEIR" {
+        return fail(ValidationStage::Framing, "invalid artifact magic");
+    }
+    let revision = reader.uvarint()?;
+    let language = LanguageVersion {
+        major: reader.uvarint()?,
+        minor: reader.uvarint()?,
+        patch: reader.uvarint()?,
+        build: reader.uvarint()?,
+    };
+    let imports = reader.identities()?;
+    let identities = reader.identities()?;
+    let types = reader.types()?;
+    let evidence = reader.evidence()?;
+    let capabilities = reader.ids()?;
+    let functions = reader.functions()?;
+    let exports = reader.ids()?;
+    if reader.offset != bytes.len() {
+        return fail(ValidationStage::Framing, "artifact has trailing bytes");
+    }
+    let module = Module {
+        revision,
+        language,
+        imports,
+        identities,
+        types,
+        capabilities,
+        evidence,
+        functions,
+        exports,
+    };
+    let validated = module.validate()?;
+    if validated.canonical_bytes() != bytes {
+        return fail(
+            ValidationStage::Framing,
+            "artifact encoding is not canonical",
+        );
+    }
+    Ok(module)
+}
+
 impl fmt::Display for ArtifactError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{:?}: {}", self.stage, self.message)
@@ -381,12 +468,22 @@ impl Module {
         Ok(())
     }
 
+    #[allow(clippy::too_many_lines)] // Control-flow obligations remain in normative validation order.
     fn validate_ssa(&self) -> Result<(), ArtifactError> {
         for function in &self.functions {
             if function.entry >= function.blocks.len() {
                 return fail(ValidationStage::Ssa, "entry block is out of bounds");
             }
             let mut predecessors = vec![0_usize; function.blocks.len()];
+            if !function.blocks[function.entry]
+                .parameters
+                .starts_with(&function.inputs)
+            {
+                return fail(
+                    ValidationStage::Ssa,
+                    "entry block parameters do not begin with function inputs",
+                );
+            }
             for block in &function.blocks {
                 for target in terminator_targets(&block.terminator) {
                     let Some(count) = predecessors.get_mut(target) else {
@@ -407,9 +504,75 @@ impl Module {
                 {
                     return fail(ValidationStage::Ssa, "terminator SSA use is not dominated");
                 }
+                let value_types = block_value_types(block);
+                match &block.terminator {
+                    Terminator::Return(value) if value_types[*value] != function.result => {
+                        return fail(ValidationStage::Ssa, "return value has the wrong type");
+                    }
+                    Terminator::Branch { target, arguments } => {
+                        let expected = &function.blocks[*target].parameters;
+                        let actual = arguments
+                            .iter()
+                            .map(|value| value_types[*value])
+                            .collect::<Vec<_>>();
+                        if &actual != expected {
+                            return fail(
+                                ValidationStage::Ssa,
+                                "branch arguments do not match target block parameters",
+                            );
+                        }
+                    }
+                    Terminator::Match { targets, .. }
+                        if targets
+                            .iter()
+                            .any(|target| !function.blocks[*target].parameters.is_empty()) =>
+                    {
+                        return fail(
+                            ValidationStage::Ssa,
+                            "match target requires parameters absent from the terminator",
+                        );
+                    }
+                    Terminator::Yield { resume, .. } | Terminator::Suspend { resume }
+                        if function.blocks[*resume].parameters.len() > 1 =>
+                    {
+                        return fail(
+                            ValidationStage::Ssa,
+                            "resumption target accepts more than one protocol value",
+                        );
+                    }
+                    Terminator::TailApply {
+                        function: target,
+                        arguments,
+                    } => {
+                        let Some(target) = self.functions.get(*target) else {
+                            return fail(
+                                ValidationStage::Ssa,
+                                "tail application target is out of bounds",
+                            );
+                        };
+                        let actual = arguments
+                            .iter()
+                            .map(|value| value_types[*value])
+                            .collect::<Vec<_>>();
+                        if actual != target.inputs || target.result != function.result {
+                            return fail(
+                                ValidationStage::Ssa,
+                                "tail application signature does not match",
+                            );
+                        }
+                    }
+                    _ => {}
+                }
             }
             if predecessors[function.entry] != 0 {
                 return fail(ValidationStage::Ssa, "entry block has a predecessor");
+            }
+            if predecessors
+                .iter()
+                .enumerate()
+                .any(|(index, count)| index != function.entry && *count == 0)
+            {
+                return fail(ValidationStage::Ssa, "non-entry block is unreachable");
             }
         }
         Ok(())
@@ -479,6 +642,112 @@ impl Module {
                         _ => {}
                     }
                 }
+                self.validate_instruction_types(block)?;
+            }
+        }
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_lines)] // Type derivation stays exhaustive over the stable opcode registry.
+    fn validate_instruction_types(&self, block: &Block) -> Result<(), ArtifactError> {
+        let mut values = block.parameters.clone();
+        for instruction in &block.instructions {
+            match instruction {
+                Instruction::Product {
+                    result_type,
+                    values: operands,
+                }
+                | Instruction::Construct {
+                    result_type,
+                    values: operands,
+                } => {
+                    let expected = match &self.types[*result_type] {
+                        Type::Tuple(types) => types.clone(),
+                        Type::Record(fields) | Type::Variant(fields) => {
+                            fields.iter().map(|(_, id)| *id).collect()
+                        }
+                        _ => {
+                            return fail(
+                                ValidationStage::Semantics,
+                                "product instruction result is not a product type",
+                            );
+                        }
+                    };
+                    let actual = operands.iter().map(|id| values[*id]).collect::<Vec<_>>();
+                    if actual != expected {
+                        return fail(
+                            ValidationStage::Semantics,
+                            "product instruction operands have the wrong types",
+                        );
+                    }
+                }
+                Instruction::Project {
+                    result_type,
+                    value,
+                    field,
+                } => {
+                    let projected = match &self.types[values[*value]] {
+                        Type::Tuple(types) => types.get(*field).copied(),
+                        Type::Record(fields) | Type::Variant(fields) => {
+                            fields.get(*field).map(|(_, id)| *id)
+                        }
+                        _ => None,
+                    };
+                    if projected != Some(*result_type) {
+                        return fail(
+                            ValidationStage::Semantics,
+                            "projection does not derive its declared result type",
+                        );
+                    }
+                }
+                Instruction::Apply {
+                    result_type,
+                    function,
+                    arguments,
+                    effects,
+                } => {
+                    let Some(target) = self.functions.get(*function) else {
+                        return fail(
+                            ValidationStage::Semantics,
+                            "application target is out of bounds",
+                        );
+                    };
+                    let actual = arguments.iter().map(|id| values[*id]).collect::<Vec<_>>();
+                    if actual != target.inputs
+                        || *result_type != target.result
+                        || effects != &target.effects
+                    {
+                        return fail(
+                            ValidationStage::Semantics,
+                            "application signature or effects do not match",
+                        );
+                    }
+                }
+                Instruction::Validate {
+                    result_type, value, ..
+                }
+                | Instruction::PackExists {
+                    result_type, value, ..
+                }
+                | Instruction::UnpackExists { result_type, value }
+                | Instruction::Convert {
+                    result_type, value, ..
+                } if *result_type == values[*value] => {}
+                Instruction::Effect { effect, .. }
+                    if self
+                        .identities
+                        .get(*effect)
+                        .is_none_or(|identity| identity.declaration_path.is_empty()) =>
+                {
+                    return fail(
+                        ValidationStage::Semantics,
+                        "effect instruction has no exact effect identity",
+                    );
+                }
+                _ => {}
+            }
+            if let Some(result) = instruction.result_type() {
+                values.push(result);
             }
         }
         Ok(())
@@ -850,6 +1119,326 @@ fn encode_u64(mut value: u64, output: &mut Vec<u8>) {
     }
 }
 
+struct ArtifactReader<'a> {
+    bytes: &'a [u8],
+    offset: usize,
+    limits: ArtifactLimits,
+}
+
+impl<'a> ArtifactReader<'a> {
+    fn take(&mut self, length: usize) -> Result<&'a [u8], ArtifactError> {
+        let end = self.offset.checked_add(length).ok_or(ArtifactError {
+            stage: ValidationStage::Framing,
+            message: "artifact length overflows",
+        })?;
+        let value = self.bytes.get(self.offset..end).ok_or(ArtifactError {
+            stage: ValidationStage::Framing,
+            message: "artifact ends prematurely",
+        })?;
+        self.offset = end;
+        Ok(value)
+    }
+
+    fn byte(&mut self) -> Result<u8, ArtifactError> {
+        Ok(self.take(1)?[0])
+    }
+
+    fn uvarint(&mut self) -> Result<u64, ArtifactError> {
+        let mut value = 0_u64;
+        for index in 0..10 {
+            let byte = self.byte()?;
+            if index == 9 && byte > 1 {
+                return fail(ValidationStage::Framing, "artifact varint overflows");
+            }
+            value |= u64::from(byte & 0x7f) << (index * 7);
+            if byte & 0x80 == 0 {
+                if index > 0 && byte == 0 {
+                    return fail(ValidationStage::Framing, "artifact varint is nonminimal");
+                }
+                return Ok(value);
+            }
+        }
+        fail(ValidationStage::Framing, "artifact varint is unterminated")
+    }
+
+    fn count(&mut self, maximum: usize) -> Result<usize, ArtifactError> {
+        let count = usize::try_from(self.uvarint()?).map_err(|_| ArtifactError {
+            stage: ValidationStage::Framing,
+            message: "artifact count exceeds host limits",
+        })?;
+        if count > maximum {
+            return fail(
+                ValidationStage::Framing,
+                "artifact count exceeds configured limit",
+            );
+        }
+        Ok(count)
+    }
+
+    fn bytes(&mut self) -> Result<Vec<u8>, ArtifactError> {
+        let length = self.count(self.limits.bytes)?;
+        Ok(self.take(length)?.to_vec())
+    }
+
+    fn text(&mut self) -> Result<String, ArtifactError> {
+        let bytes = self.bytes()?;
+        let text = std::str::from_utf8(&bytes).map_err(|_| ArtifactError {
+            stage: ValidationStage::Framing,
+            message: "artifact text is not UTF-8",
+        })?;
+        if !canonical_text(text) {
+            return fail(
+                ValidationStage::Framing,
+                "artifact text is not canonical NFC",
+            );
+        }
+        Ok(text.to_owned())
+    }
+
+    fn ids(&mut self) -> Result<Vec<usize>, ArtifactError> {
+        let count = self.count(self.limits.table_entries)?;
+        (0..count)
+            .map(|_| {
+                usize::try_from(self.uvarint()?).map_err(|_| ArtifactError {
+                    stage: ValidationStage::Framing,
+                    message: "artifact index exceeds host limits",
+                })
+            })
+            .collect()
+    }
+
+    fn texts(&mut self) -> Result<Vec<String>, ArtifactError> {
+        let count = self.count(self.limits.table_entries)?;
+        (0..count).map(|_| self.text()).collect()
+    }
+
+    fn identities(&mut self) -> Result<Vec<Identity>, ArtifactError> {
+        let count = self.count(self.limits.table_entries)?;
+        (0..count)
+            .map(|_| {
+                Ok(Identity {
+                    package: self.text()?,
+                    module_path: self.texts()?,
+                    declaration_path: self.texts()?,
+                    language_revision: LanguageVersion {
+                        major: self.uvarint()?,
+                        minor: self.uvarint()?,
+                        patch: self.uvarint()?,
+                        build: self.uvarint()?,
+                    },
+                })
+            })
+            .collect()
+    }
+
+    fn types(&mut self) -> Result<Vec<Type>, ArtifactError> {
+        let count = self.count(self.limits.table_entries)?;
+        (0..count).map(|_| self.type_value()).collect()
+    }
+
+    fn type_value(&mut self) -> Result<Type, ArtifactError> {
+        Ok(match self.byte()? {
+            0 => Type::Primitive(self.text()?),
+            1 => Type::Tuple(self.ids()?),
+            2 => Type::Record(self.fields()?),
+            3 => Type::Variant(self.fields()?),
+            4 => Type::Union(self.ids()?),
+            5 => Type::Constraint {
+                base: self.index()?,
+                predicate: self.index()?,
+            },
+            6 => Type::Function {
+                inputs: self.ids()?,
+                result: self.index()?,
+            },
+            7 => Type::Existential(self.index()?),
+            8 => Type::Nominal(self.index()?),
+            9 => Type::Application {
+                constructor: self.index()?,
+                arguments: self.ids()?,
+            },
+            10 => Type::RecursiveRef(self.index()?),
+            _ => return fail(ValidationStage::TypeFormation, "unknown GEIR type opcode"),
+        })
+    }
+
+    fn fields(&mut self) -> Result<Vec<(String, usize)>, ArtifactError> {
+        let count = self.count(self.limits.table_entries)?;
+        (0..count)
+            .map(|_| Ok((self.text()?, self.index()?)))
+            .collect()
+    }
+
+    fn evidence(&mut self) -> Result<Vec<Evidence>, ArtifactError> {
+        let count = self.count(self.limits.table_entries)?;
+        (0..count)
+            .map(|_| {
+                let identity = self.index()?;
+                let calculus = self.text()?;
+                let certificate = self.bytes()?;
+                let status = match self.byte()? {
+                    0 => EvidenceStatus::Verified,
+                    1 => EvidenceStatus::TrustedUnverified,
+                    _ => return fail(ValidationStage::Evidence, "unknown evidence status"),
+                };
+                Ok(Evidence {
+                    identity,
+                    calculus,
+                    certificate,
+                    status,
+                })
+            })
+            .collect()
+    }
+
+    fn functions(&mut self) -> Result<Vec<Function>, ArtifactError> {
+        let count = self.count(self.limits.table_entries)?;
+        (0..count).map(|_| self.function()).collect()
+    }
+
+    fn function(&mut self) -> Result<Function, ArtifactError> {
+        let identity = self.index()?;
+        let visibility = match self.byte()? {
+            0 => Visibility::Private,
+            1 => Visibility::Public,
+            _ => return fail(ValidationStage::Framing, "invalid visibility encoding"),
+        };
+        let static_parameters = self.ids()?;
+        let inputs = self.ids()?;
+        let result = self.index()?;
+        let effects = self.ids()?;
+        let guarantees = self.ids()?;
+        let block_count = self.count(self.limits.blocks)?;
+        let blocks = (0..block_count)
+            .map(|_| self.block())
+            .collect::<Result<Vec<_>, _>>()?;
+        let entry = self.index()?;
+        Ok(Function {
+            identity,
+            visibility,
+            static_parameters,
+            inputs,
+            result,
+            effects,
+            guarantees,
+            blocks,
+            entry,
+        })
+    }
+
+    fn block(&mut self) -> Result<Block, ArtifactError> {
+        let parameters = self.ids()?;
+        let count = self.count(self.limits.instructions)?;
+        let instructions = (0..count)
+            .map(|_| self.instruction())
+            .collect::<Result<Vec<_>, _>>()?;
+        let terminator = self.terminator()?;
+        Ok(Block {
+            parameters,
+            instructions,
+            terminator,
+        })
+    }
+
+    #[allow(clippy::too_many_lines)] // The stable opcode registry is intentionally explicit.
+    fn instruction(&mut self) -> Result<Instruction, ArtifactError> {
+        Ok(match self.byte()? {
+            0 => Instruction::Constant {
+                result_type: self.index()?,
+                bytes: self.bytes()?,
+            },
+            1 => Instruction::Product {
+                result_type: self.index()?,
+                values: self.ids()?,
+            },
+            2 => Instruction::Project {
+                result_type: self.index()?,
+                value: self.index()?,
+                field: self.index()?,
+            },
+            3 => Instruction::Apply {
+                result_type: self.index()?,
+                function: self.index()?,
+                arguments: self.ids()?,
+                effects: self.ids()?,
+            },
+            4 => Instruction::Validate {
+                result_type: self.index()?,
+                value: self.index()?,
+                evidence: self.index()?,
+            },
+            5 => Instruction::BeginRegion,
+            6 => Instruction::EndRegion,
+            7 => Instruction::Construct {
+                result_type: self.index()?,
+                values: self.ids()?,
+            },
+            8 => Instruction::Convert {
+                result_type: self.index()?,
+                value: self.index()?,
+                evidence: self.index()?,
+            },
+            9 => Instruction::Capability {
+                result_type: self.index()?,
+                evidence: self.index()?,
+            },
+            10 => Instruction::Effect {
+                result_type: self.index()?,
+                effect: self.index()?,
+                arguments: self.ids()?,
+            },
+            11 => Instruction::PackExists {
+                result_type: self.index()?,
+                value: self.index()?,
+                evidence: self.index()?,
+            },
+            12 => Instruction::UnpackExists {
+                result_type: self.index()?,
+                value: self.index()?,
+            },
+            _ => {
+                return fail(
+                    ValidationStage::Semantics,
+                    "unknown GEIR instruction opcode",
+                );
+            }
+        })
+    }
+
+    fn terminator(&mut self) -> Result<Terminator, ArtifactError> {
+        Ok(match self.byte()? {
+            0 => Terminator::Return(self.index()?),
+            1 => Terminator::Branch {
+                target: self.index()?,
+                arguments: self.ids()?,
+            },
+            2 => Terminator::Match {
+                value: self.index()?,
+                targets: self.ids()?,
+            },
+            3 => Terminator::Yield {
+                value: self.index()?,
+                resume: self.index()?,
+            },
+            4 => Terminator::Suspend {
+                resume: self.index()?,
+            },
+            5 => Terminator::TailApply {
+                function: self.index()?,
+                arguments: self.ids()?,
+            },
+            _ => return fail(ValidationStage::Ssa, "unknown GEIR terminator opcode"),
+        })
+    }
+
+    fn index(&mut self) -> Result<usize, ArtifactError> {
+        usize::try_from(self.uvarint()?).map_err(|_| ArtifactError {
+            stage: ValidationStage::Framing,
+            message: "artifact index exceeds host limits",
+        })
+    }
+}
+
 fn terminator_targets(value: &Terminator) -> Vec<usize> {
     match value {
         Terminator::Branch { target, .. } => vec![*target],
@@ -857,6 +1446,19 @@ fn terminator_targets(value: &Terminator) -> Vec<usize> {
         Terminator::Yield { resume, .. } | Terminator::Suspend { resume } => vec![*resume],
         Terminator::Return(_) | Terminator::TailApply { .. } => Vec::new(),
     }
+}
+fn block_value_types(block: &Block) -> Vec<usize> {
+    block
+        .parameters
+        .iter()
+        .copied()
+        .chain(
+            block
+                .instructions
+                .iter()
+                .filter_map(Instruction::result_type),
+        )
+        .collect()
 }
 fn terminator_values(value: &Terminator) -> Vec<usize> {
     match value {
@@ -967,6 +1569,10 @@ mod tests {
                 1, 0, 3, 73, 110, 116, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0,
             ]
         );
+        assert_eq!(
+            decode_canonical(&first, ArtifactLimits::default()).unwrap(),
+            module
+        );
     }
 
     #[test]
@@ -1000,6 +1606,60 @@ mod tests {
                 CompilerOnlyOperation::ExportGenericArtifact
             ),
             Ok(())
+        );
+    }
+
+    #[test]
+    fn decoder_rejects_every_truncated_prefix_and_noncanonical_varint() {
+        let bytes = module().validate().unwrap().canonical_bytes();
+        for end in 0..bytes.len() {
+            assert!(decode_canonical(&bytes[..end], ArtifactLimits::default()).is_err());
+        }
+        let mut nonminimal = b"TOPALGEIR".to_vec();
+        nonminimal.extend([0x81, 0]);
+        assert_eq!(
+            decode_canonical(&nonminimal, ArtifactLimits::default())
+                .unwrap_err()
+                .stage,
+            ValidationStage::Framing
+        );
+    }
+
+    #[test]
+    fn structural_identity_is_normative_sha256() {
+        assert_eq!(
+            structural_identity(b""),
+            [
+                0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f,
+                0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b,
+                0x78, 0x52, 0xb8, 0x55,
+            ]
+        );
+    }
+
+    #[test]
+    fn validation_rederives_return_and_branch_types() {
+        let mut wrong_return = module();
+        wrong_return.types.push(Type::Primitive("Boolean".into()));
+        wrong_return.functions[0].blocks[0].parameters[0] = 1;
+        assert_eq!(
+            wrong_return.validate().unwrap_err().stage,
+            ValidationStage::Ssa
+        );
+
+        let mut wrong_edge = module();
+        wrong_edge.functions[0].blocks.push(Block {
+            parameters: vec![0, 0],
+            instructions: vec![],
+            terminator: Terminator::Return(0),
+        });
+        wrong_edge.functions[0].blocks[0].terminator = Terminator::Branch {
+            target: 1,
+            arguments: vec![0],
+        };
+        assert_eq!(
+            wrong_edge.validate().unwrap_err().message,
+            "branch arguments do not match target block parameters"
         );
     }
 }

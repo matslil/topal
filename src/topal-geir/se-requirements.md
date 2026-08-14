@@ -11,3 +11,9 @@ The validator shall preserve exact language revision, stable identities,
 types, effects, capability and proof evidence, SSA control flow, visibility,
 and the `trusted-unverified` status. Generic substitution shall retain exact
 argument and evidence identities and fail when an obligation is absent.
+
+Canonical artifact input shall be decoded with minimal framing and configured
+resource limits, validated as a complete module, and byte-for-byte re-encoded
+before exposure. Anonymous structural identities shall use SHA-256 over their
+canonical definition as required by `TOPAL-GIR-ID-001`. Validation shall
+rederive SSA edge, return, application, product, projection, and effect types.
