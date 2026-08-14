@@ -4922,6 +4922,15 @@ impl Execution {
     ) -> Result<ExecutionStep, Diagnostic> {
         let statement = &self.statements[self.cursor];
         let (value, span) = match statement {
+            Statement::Published { span, .. } => {
+                return Err(diagnostic(
+                    &self.source,
+                    "E-UNSUPPORTED-PUBLICATION",
+                    *span,
+                    "published declarations require a loaded module context",
+                )
+                .with_help("execute this source as part of a module or remove `pub`"));
+            }
             Statement::DiagnosticControl { span, .. } => (Value::Unit, *span),
             Statement::Binding {
                 name,
@@ -5592,7 +5601,8 @@ const fn cover(first: Span, second: Span) -> Span {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => cover(*name, value.span()),
-        Statement::DiagnosticControl { span, .. }
+        Statement::Published { span, .. }
+        | Statement::DiagnosticControl { span, .. }
         | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
@@ -5614,7 +5624,8 @@ fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
         if yielded_statement(source, statement).is_none()
             && !matches!(
                 statement,
-                Statement::DiagnosticControl { .. }
+                Statement::Published { .. }
+                    | Statement::DiagnosticControl { .. }
                     | Statement::Binding { .. }
                     | Statement::Discard { .. }
                     | Statement::Function { .. }

@@ -149,6 +149,10 @@ pub struct DecisionRule {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Statement {
+    Published {
+        declaration: Box<Self>,
+        span: Span,
+    },
     DiagnosticControl {
         operation: DiagnosticControlKind,
         warning: Span,
@@ -261,6 +265,28 @@ impl Parser<'_> {
     fn ordinary_statement(&mut self) -> Option<Statement> {
         let checkpoint = self.cursor;
         let first = self.take_nontrivia()?;
+        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "pub" {
+            let declaration = self.ordinary_statement()?;
+            if !matches!(
+                declaration,
+                Statement::Binding { .. }
+                    | Statement::Function { .. }
+                    | Statement::Generator { .. }
+                    | Statement::Union { .. }
+            ) {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-PUBLICATION-TARGET",
+                    span: statement_span(&declaration),
+                    message: "`pub` requires a declaration".into(),
+                });
+                return None;
+            }
+            let span = Span::new(first.span.start, statement_span(&declaration).end);
+            return Some(Statement::Published {
+                declaration: Box::new(declaration),
+                span,
+            });
+        }
         if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "lang" {
             return self.diagnostic_control(first);
         }
@@ -1782,7 +1808,8 @@ impl Parser<'_> {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => Span::new(name.start, value.span().end),
-        Statement::DiagnosticControl { span, .. }
+        Statement::Published { span, .. }
+        | Statement::DiagnosticControl { span, .. }
         | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
@@ -1802,6 +1829,14 @@ fn validate_diagnostic_controls(
     let mut pending = None;
     for statement in statements {
         match statement {
+            Statement::Published { declaration, .. } => {
+                pending = None;
+                validate_diagnostic_controls(
+                    source,
+                    std::slice::from_ref(declaration.as_ref()),
+                    diagnostics,
+                );
+            }
             Statement::DiagnosticControl {
                 operation,
                 warning,
@@ -2686,5 +2721,29 @@ mod tests {
             let parsed = parse(&source, &lex(&source));
             assert!(parsed.diagnostics.iter().any(|error| error.code == code));
         }
+    }
+
+    #[test]
+    fn preserves_publication_on_declarations() {
+        let source = SourceText::new("pub answer is 42").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(
+            parsed.statements.as_slice(),
+            [Statement::Published { declaration, .. }]
+                if matches!(declaration.as_ref(), Statement::Binding { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_publication_on_expressions() {
+        let source = SourceText::new("pub 42").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|error| error.code == "E-PUBLICATION-TARGET")
+        );
     }
 }
