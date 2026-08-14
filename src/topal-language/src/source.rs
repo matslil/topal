@@ -5,6 +5,11 @@ use std::fmt::{self, Write as _};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_semantics::{LanguageVersion, ObjectKind};
+use topal_serialization::{
+    Event as SerializedEvent, Header as SerializationHeader, Limits as SerializationLimits,
+    SerializedValue, Stream as SerializationStream, StreamByteOrder, TypeDefinition,
+    deserialize as deserialize_native, serialize as serialize_native,
+};
 use topal_source::{
     SourceText, Span, canonically_equal, case_fold, character_at, character_count, characters,
     lowercase, normalize_nfc, normalize_nfd, uppercase,
@@ -21,6 +26,8 @@ pub enum Value {
     Effects(Vec<String>),
     Boolean(bool),
     Version(LanguageVersion),
+    NativeSerializer(LanguageVersion),
+    SerializationStream(Vec<u8>),
     Int(BigInt),
     Rational(BigRational),
     IntRange {
@@ -266,6 +273,10 @@ impl fmt::Display for Value {
             Self::Effects(effects) => write!(formatter, "Effects ({})", effects.join(", ")),
             Self::Boolean(value) => value.fmt(formatter),
             Self::Version(value) => value.fmt(formatter),
+            Self::NativeSerializer(version) => write!(formatter, "<lang serialize {version}>"),
+            Self::SerializationStream(bytes) => {
+                write!(formatter, "SerializationStream ( {} bytes )", bytes.len())
+            }
             Self::Int(value) => value.fmt(formatter),
             Self::Rational(value) => {
                 write!(
@@ -611,6 +622,145 @@ enum BindingOutcome {
 }
 
 impl Session {
+    fn is_lang_operation(source: &SourceText, expression: &Expression, expected: &str) -> bool {
+        matches!(
+            expression,
+            Expression::Application { items, .. }
+                if matches!(items.as_slice(),
+                    [Expression::Identifier(lang), Expression::Identifier(operation)]
+                        if source.slice(*lang) == "lang" && source.slice(*operation) == expected)
+        )
+    }
+
+    fn is_native_serialization(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items,
+            [Expression::Identifier(lang), Expression::Identifier(operation), _]
+                if source.slice(*lang) == "lang" && source.slice(*operation) == "deserialize")
+            || matches!(items,
+                [Expression::Identifier(lang), Expression::Identifier(version), operation]
+                    if source.slice(*lang) == "lang" && source.slice(*version) == "version"
+                        && Self::is_lang_operation(source, operation, "serialize"))
+            || matches!(items, [_, operation, _] if Self::is_lang_operation(source, operation, "serialize"))
+            || matches!(items,
+                [Expression::Identifier(name), _]
+                    if matches!(self.bindings.get(source.slice(*name)), Some(Value::NativeSerializer(_))))
+    }
+
+    #[allow(clippy::too_many_lines)] // Protocol boundary diagnostics stay beside each source form.
+    fn evaluate_native_serialization(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if let [
+            Expression::Identifier(lang),
+            Expression::Identifier(operation),
+            stream,
+        ] = items
+            && source.slice(*lang) == "lang"
+            && source.slice(*operation) == "deserialize"
+        {
+            let Value::SerializationStream(bytes) =
+                self.evaluate_expression(source, stream, trace)?
+            else {
+                return Err(diagnostic(
+                    source,
+                    "E-DESERIALIZE-OPERAND",
+                    stream.span(),
+                    "lang deserialize requires a native SerializationStream",
+                ));
+            };
+            let decoded =
+                deserialize_native(&bytes, SerializationLimits::default()).map_err(|error| {
+                    diagnostic(
+                        source,
+                        "E-DESERIALIZATION",
+                        span,
+                        format!(
+                            "native stream rejected at {} byte {}: {}",
+                            error.stage, error.offset, error.message
+                        ),
+                    )
+                })?;
+            let event = decoded.events.first().ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-DESERIALIZATION",
+                    span,
+                    "native stream contains no value event",
+                )
+            })?;
+            let value = value_from_serialized(event, &decoded.types).ok_or_else(|| diagnostic(source, "E-DESERIALIZATION-OBJECT", span, "native value is understood but cannot be reconstructed by this interpreter revision"))?;
+            trace.record(TraceEvent {
+                event: "serialization.deserialized",
+                rule: "TOPAL-SER-DESER-001",
+                detail: "validated native event",
+            });
+            return Ok(value);
+        }
+
+        let (version, subject) = match items {
+            [
+                Expression::Identifier(lang),
+                Expression::Identifier(version),
+                operation,
+            ] if source.slice(*lang) == "lang"
+                && source.slice(*version) == "version"
+                && Self::is_lang_operation(source, operation, "serialize") =>
+            {
+                return Ok(Value::NativeSerializer(self.language_version));
+            }
+            [version, operation, subject]
+                if Self::is_lang_operation(source, operation, "serialize") =>
+            {
+                let Value::Version(version) = self.evaluate_expression(source, version, trace)?
+                else {
+                    return Err(diagnostic(
+                        source,
+                        "E-SERIALIZATION-VERSION",
+                        version.span(),
+                        "the left operand of lang serialize must be a Version",
+                    ));
+                };
+                (version, subject)
+            }
+            [Expression::Identifier(name), subject] => {
+                let Some(Value::NativeSerializer(version)) = self.bindings.get(source.slice(*name))
+                else {
+                    return Err(diagnostic(
+                        source,
+                        "E-SERIALIZATION-OPERATION",
+                        span,
+                        "expected a native serialization operation",
+                    ));
+                };
+                (*version, subject)
+            }
+            _ => {
+                return Err(diagnostic(
+                    source,
+                    "E-SERIALIZATION-OPERATION",
+                    span,
+                    "expected `version (lang serialize) value`",
+                ));
+            }
+        };
+        let value = self.evaluate_expression(source, subject, trace)?;
+        let stream = stream_for_value(version, &value).map_err(|message| {
+            diagnostic(source, "E-SERIALIZATION-VALUE", subject.span(), message)
+        })?;
+        let bytes = serialize_native(&stream)
+            .map_err(|error| diagnostic(source, "E-SERIALIZATION", span, error.message))?;
+        trace.record(TraceEvent {
+            event: "serialization.serialized",
+            rule: "TOPAL-SER-CANON-001",
+            detail: &format!("{} bytes", bytes.len()),
+        });
+        Ok(Value::SerializationStream(bytes))
+    }
+
     fn is_lang_introspection(source: &SourceText, items: &[Expression]) -> bool {
         let qualified_prefix = matches!(
             (items.first(), items.get(1)),
@@ -1535,6 +1685,9 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if self.is_native_serialization(source, items) {
+                    return self.evaluate_native_serialization(source, items, *span, trace);
+                }
                 if Self::is_lang_introspection(source, items) {
                     return self.evaluate_lang_introspection(source, items, *span, trace);
                 }
@@ -2995,6 +3148,9 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let name = source.slice(span);
+        if let Ok(version) = name.parse::<LanguageVersion>() {
+            return Ok(Value::Version(version));
+        }
         if matches!(name, "Little" | "Big") {
             trace.record(TraceEvent {
                 event: "layout.policy.resolved",
@@ -8003,6 +8159,7 @@ fn value_classifier(value: &Value) -> &'static str {
     match value {
         Value::Boolean(_) => "Boolean",
         Value::Version(_) => "Version",
+        Value::SerializationStream(_) => "SerializationStream",
         Value::Type(_) | Value::ModularType(_) => "Type",
         Value::Effects(_) => "Effect",
         Value::Int(_) => "Int",
@@ -8010,7 +8167,10 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
-        Value::Callable(_) | Value::NamedFunction(_) | Value::AnonymousFunction(_) => "Function",
+        Value::Callable(_)
+        | Value::NamedFunction(_)
+        | Value::AnonymousFunction(_)
+        | Value::NativeSerializer(_) => "Function",
         Value::Namespace(_) => "Scope",
         Value::Array { .. } => "Array",
         Value::Set { .. } => "Set",
@@ -8219,6 +8379,165 @@ fn introspection_view(source: &SourceText, value: Value, span: Span) -> Result<V
         }
     };
     Ok(Value::Introspection(Box::new(view)))
+}
+
+fn stream_for_value(
+    version: LanguageVersion,
+    value: &Value,
+) -> Result<SerializationStream, &'static str> {
+    let mut types = Vec::new();
+    let mut identities = BTreeMap::new();
+    let (type_id, value) = serialize_language_value(value, &mut types, &mut identities)?;
+    Ok(SerializationStream {
+        header: SerializationHeader {
+            language_identity: "topal".into(),
+            language_version: version,
+            byte_order: if cfg!(target_endian = "little") {
+                StreamByteOrder::Little
+            } else {
+                StreamByteOrder::Big
+            },
+            streaming: false,
+        },
+        types,
+        events: vec![SerializedEvent { type_id, value }],
+    })
+}
+
+fn serialize_language_value(
+    value: &Value,
+    types: &mut Vec<TypeDefinition>,
+    identities: &mut BTreeMap<String, usize>,
+) -> Result<(usize, SerializedValue), &'static str> {
+    let (identity, definition, serialized) = match value {
+        Value::Unit => (
+            "Unit".to_owned(),
+            TypeDefinition::Unit {
+                identity: "Unit".into(),
+            },
+            SerializedValue::Unit,
+        ),
+        Value::Boolean(value) => (
+            "Boolean".to_owned(),
+            TypeDefinition::Boolean {
+                identity: "Boolean".into(),
+            },
+            SerializedValue::Boolean(*value),
+        ),
+        Value::Int(value) => {
+            let value = value
+                .to_string()
+                .parse::<i128>()
+                .map_err(|_| "this protocol revision cannot yet encode an Int outside 128 bits")?;
+            (
+                "Int128".to_owned(),
+                TypeDefinition::Int {
+                    identity: "Int128".into(),
+                    signed: true,
+                    width_bits: 128,
+                },
+                SerializedValue::Int(value),
+            )
+        }
+        Value::String(value) => (
+            "String".to_owned(),
+            TypeDefinition::Text {
+                identity: "String".into(),
+            },
+            SerializedValue::Text(value.clone()),
+        ),
+        Value::Tuple(values) => {
+            let mut components = Vec::with_capacity(values.len());
+            let mut encoded = Vec::with_capacity(values.len());
+            for value in values {
+                let (id, value) = serialize_language_value(value, types, identities)?;
+                components.push(id);
+                encoded.push(value);
+            }
+            let identity = structural_value_classifier(value);
+            (
+                identity.clone(),
+                TypeDefinition::Tuple {
+                    identity,
+                    components,
+                },
+                SerializedValue::Product(encoded),
+            )
+        }
+        Value::Record(fields) => {
+            let mut definitions = Vec::with_capacity(fields.len());
+            let mut encoded = Vec::with_capacity(fields.len());
+            for (label, value) in fields {
+                let (id, value) = serialize_language_value(value, types, identities)?;
+                definitions.push((label.clone(), id));
+                encoded.push(value);
+            }
+            let identity = structural_value_classifier(value);
+            (
+                identity.clone(),
+                TypeDefinition::Record {
+                    identity,
+                    fields: definitions,
+                },
+                SerializedValue::Product(encoded),
+            )
+        }
+        _ => return Err("this language object does not yet have a native serialization schema"),
+    };
+    if let Some(id) = identities.get(&identity) {
+        return Ok((*id, serialized));
+    }
+    let id = types.len();
+    types.push(definition);
+    identities.insert(identity, id);
+    Ok((id, serialized))
+}
+
+fn value_from_serialized(event: &SerializedEvent, types: &[TypeDefinition]) -> Option<Value> {
+    deserialize_language_value(event.type_id, &event.value, types)
+}
+
+fn deserialize_language_value(
+    type_id: usize,
+    value: &SerializedValue,
+    types: &[TypeDefinition],
+) -> Option<Value> {
+    match (types.get(type_id)?, value) {
+        (TypeDefinition::Unit { .. }, SerializedValue::Unit) => Some(Value::Unit),
+        (TypeDefinition::Boolean { .. }, SerializedValue::Boolean(value)) => {
+            Some(Value::Boolean(*value))
+        }
+        (TypeDefinition::Int { .. }, SerializedValue::Int(value)) => {
+            Some(Value::Int(BigInt::from(*value)))
+        }
+        (TypeDefinition::Text { .. }, SerializedValue::Text(value)) => {
+            Some(Value::String(value.clone()))
+        }
+        (TypeDefinition::Tuple { components, .. }, SerializedValue::Product(values)) => {
+            Some(Value::Tuple(
+                components
+                    .iter()
+                    .zip(values)
+                    .map(|(id, value)| deserialize_language_value(*id, value, types))
+                    .collect::<Option<Vec<_>>>()?,
+            ))
+        }
+        (TypeDefinition::Record { fields, .. }, SerializedValue::Product(values)) => {
+            Some(Value::Record(
+                fields
+                    .iter()
+                    .zip(values)
+                    .map(|((label, id), value)| {
+                        Some((
+                            label.clone(),
+                            deserialize_language_value(*id, value, types)?,
+                        ))
+                    })
+                    .collect::<Option<Vec<_>>>()?,
+            ))
+        }
+        _ => None,
+    }
 }
 
 fn generator_classifier_diagnostic(
@@ -10838,6 +11157,8 @@ fn apply_negate(
         }
         Value::Boolean(_)
         | Value::Version(_)
+        | Value::NativeSerializer(_)
+        | Value::SerializationStream(_)
         | Value::Type(_)
         | Value::Effects(_)
         | Value::IntRange { .. }
@@ -11241,6 +11562,18 @@ mod tests {
         assert_eq!(error.code, "E-STATIC-INTROSPECTION-SUBJECT");
         let error = evaluate("1 lang same-object 1\n").unwrap_err();
         assert_eq!(error.code, "E-STATIC-INTROSPECTION-SUBJECT");
+    }
+
+    #[test]
+    fn serializes_with_an_explicit_version_and_deserializes_validated_streams() {
+        let direct = evaluate("v0.1 (lang serialize) (answer is 42, ok is true)\n").unwrap();
+        assert!(matches!(direct, Value::SerializationStream(_)));
+
+        let round_trip = evaluate(
+            "serialize is lang version (lang serialize)\nstream is serialize (answer is 42, ok is true)\nlang deserialize stream\n",
+        )
+        .unwrap();
+        assert_eq!(round_trip.to_string(), "(answer is 42, ok is true)");
     }
 
     #[test]

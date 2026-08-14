@@ -1930,3 +1930,11 @@ All source modes shall evaluate `lang context`, `lang version`, `lang identity`,
 static object relations under `TOPAL-INTRO-QUALIFIED-001` through
 `TOPAL-INTRO-RELATION-001`. Runtime values shall not acquire reflection
 metadata, and inapplicable operands shall produce stable diagnostics.
+
+## TOPAL-INTP-SUBSET-246 — Native serialization operations
+
+All source modes shall support version-first `lang serialize`, its ordinary
+partial application, and `lang deserialize` under `TOPAL-SER-SCOPE-001` through
+`TOPAL-SER-DESER-001`. Deserialization shall accept only a validated native
+`SerializationStream`; unsupported source objects shall fail explicitly rather
+than silently losing semantic structure.

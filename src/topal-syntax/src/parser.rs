@@ -1753,7 +1753,7 @@ impl Parser<'_> {
             TokenKind::Integer => Some(Expression::Integer(token.span)),
             TokenKind::Rational => Some(Expression::Rational(token.span)),
             TokenKind::String => Some(Expression::String(token.span)),
-            TokenKind::Identifier => Some(Expression::Identifier(token.span)),
+            TokenKind::Identifier | TokenKind::Version => Some(Expression::Identifier(token.span)),
             TokenKind::At => {
                 let selected = self.take_nontrivia()?;
                 if selected.kind != TokenKind::Identifier {
