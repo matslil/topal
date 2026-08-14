@@ -87,10 +87,12 @@ pub struct ProductField {
     pub value: Expression,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionParameter {
     pub name: Span,
     pub classifier: Span,
+    pub fields: Vec<Self>,
+    pub default: Option<Expression>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1735,6 +1737,29 @@ impl Parser<'_> {
             if input.kind == TokenKind::RightParen {
                 break input;
             }
+            if input.kind == TokenKind::LeftParen {
+                let (fields, package_closing) = self.parameter_package(input)?;
+                let separator = self.take_nontrivia()?;
+                if !matches!(separator.kind, TokenKind::Comma | TokenKind::RightParen) {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-FUNCTION-PARAMETER-PACKAGE",
+                        span: separator.span,
+                        message: "expected `,` or `)` after packaged function operand".into(),
+                    });
+                    return None;
+                }
+                parameters.push(FunctionParameter {
+                    name: input.span,
+                    classifier: Span::new(input.span.start, package_closing.span.end),
+                    fields,
+                    default: None,
+                });
+                if separator.kind == TokenKind::RightParen {
+                    break separator;
+                }
+                input = self.take_nontrivia()?;
+                continue;
+            }
             let colon = self.take_nontrivia()?;
             let classifier_start = self.take_nontrivia()?;
             let classifier = self.classifier_from_first(classifier_start)?;
@@ -1760,6 +1785,8 @@ impl Parser<'_> {
             parameters.push(FunctionParameter {
                 name: input.span,
                 classifier,
+                fields: Vec::new(),
+                default: None,
             });
             if separator.kind == TokenKind::RightParen {
                 break separator;
@@ -1767,6 +1794,60 @@ impl Parser<'_> {
             input = self.take_nontrivia()?;
         };
         Some((parameters, closing))
+    }
+
+    fn parameter_package(&mut self, opening: Token) -> Option<(Vec<FunctionParameter>, Token)> {
+        self.delimiter_depth += 1;
+        let mut fields = Vec::new();
+        let closing = loop {
+            let name = self.take_nontrivia()?;
+            if name.kind == TokenKind::RightParen {
+                break name;
+            }
+            let colon = self.take_nontrivia()?;
+            let classifier_start = self.take_nontrivia()?;
+            let classifier = self.classifier_from_first(classifier_start)?;
+            if !matches!(name.kind, TokenKind::Identifier | TokenKind::Discard)
+                || colon.kind != TokenKind::Colon
+            {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-FUNCTION-PARAMETER-PACKAGE",
+                    span: Span::new(opening.span.start, classifier.end),
+                    message: "packaged parameters require `name : Type` fields".into(),
+                });
+                self.delimiter_depth -= 1;
+                return None;
+            }
+            let default = if self.peek_nontrivia().is_some_and(|token| {
+                token.kind == TokenKind::Identifier && self.source.slice(token.span) == "default"
+            }) {
+                self.take_nontrivia();
+                self.expression()
+            } else {
+                None
+            };
+            let separator = self.take_nontrivia()?;
+            fields.push(FunctionParameter {
+                name: name.span,
+                classifier,
+                fields: Vec::new(),
+                default,
+            });
+            if separator.kind == TokenKind::RightParen {
+                break separator;
+            }
+            if separator.kind != TokenKind::Comma {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-FUNCTION-PARAMETER-PACKAGE",
+                    span: separator.span,
+                    message: "expected `,` or `)` after packaged parameter field".into(),
+                });
+                self.delimiter_depth -= 1;
+                return None;
+            }
+        };
+        self.delimiter_depth -= 1;
+        Some((fields, closing))
     }
 
     fn expression(&mut self) -> Option<Expression> {
@@ -2468,6 +2549,23 @@ mod tests {
             };
             assert_eq!(source.slice(bound), "Effects ()");
         }
+    }
+
+    #[test]
+    fn retains_packaged_operand_fields_and_defaults() {
+        let source = SourceText::new(
+            "choose is fn ( ( value : Int, fallback : Int default 0 ) ) -> Int\n  value\n",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert_eq!(parsed.diagnostics, []);
+        let Statement::Function { parameters, .. } = &parsed.statements[0] else {
+            panic!("expected function");
+        };
+        assert_eq!(parameters.len(), 1);
+        assert_eq!(parameters[0].fields.len(), 2);
+        assert!(parameters[0].fields[0].default.is_none());
+        assert!(parameters[0].fields[1].default.is_some());
     }
 
     #[test]

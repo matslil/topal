@@ -1945,3 +1945,10 @@ Function declarations shall accept same-line and continued explicit effect
 upper bounds under `TOPAL-FUNCTION-EFFECT-BOUND-001`, retain them in static
 function views, and expose their declaration in test traces and debugger
 history without performing the described effects.
+
+## TOPAL-INTP-SUBSET-248 — Packaged function operands
+
+Function declarations shall accept packaged operand fields and field defaults
+under `TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Calls shall support positional
+products and labeled records, fill omitted defaulted associations in the
+invocation scope, and trace whether each field was supplied or defaulted.

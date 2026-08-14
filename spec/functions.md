@@ -70,6 +70,16 @@ shall fail rather than erase or widen an unsatisfied bound. Static function
 views and tool traces shall retain the declared bound without performing its
 effects.
 
+### TOPAL-FUNCTION-PACKAGED-OPERAND-001 — Packaged operand patterns
+
+Either syntactic operand may be a parenthesized field package whose declarations
+use `name : Type`. A field may append `default expression`; defaults fill only
+omitted labeled associations and SHALL NOT make the complete syntactic operand
+optional. Invocation SHALL reject unknown or duplicate labels, require every
+nondefaulted field, validate every supplied or defaulted value against its
+declared classifier, and bind all field names in the one invocation scope.
+Parameter names SHALL be unique across all packaged and unpackaged operands.
+
 ### TOPAL-FUNCTION-STATIC-BINARY-001 — Static binary infix function execution
 
 A declaration `name is fn static ( left : L, right : R ) -> O` shall introduce

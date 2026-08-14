@@ -584,12 +584,20 @@ struct UserFunction {
     source: SourceText,
     is_static: bool,
     parameters: Vec<(String, String)>,
+    parameter_packages: BTreeMap<usize, Vec<UserParameterField>>,
     result: String,
     effect_bound: Option<String>,
     body: Vec<Statement>,
     bindings: BTreeMap<String, Value>,
     termination_rule: Option<&'static str>,
     recursion_target: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct UserParameterField {
+    name: String,
+    classifier: String,
+    default: Option<Expression>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -2355,7 +2363,7 @@ impl Session {
                         .iter()
                         .find(|function| {
                             (!self.static_context || function.is_static)
-                                && function_accepts(&function.parameters, &argument)
+                                && user_function_accepts(function, &argument)
                         })
                         .cloned();
                     let Some(function) = function else {
@@ -2436,7 +2444,7 @@ impl Session {
                         });
                     }
                     let mut function_scope = Self {
-                        bindings: function.bindings,
+                        bindings: function.bindings.clone(),
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
@@ -2455,13 +2463,7 @@ impl Session {
                         termination_rule: function.termination_rule,
                         recursion_target: function.recursion_target.clone(),
                     });
-                    bind_function_arguments(
-                        &mut function_scope,
-                        &function.parameters,
-                        argument,
-                        trace,
-                        rule,
-                    );
+                    bind_function_arguments(&mut function_scope, &function, argument, trace, rule)?;
                     trace.record(TraceEvent {
                         event: "function.selected",
                         rule: "TOPAL-TYPE-CALL-001",
@@ -5485,9 +5487,45 @@ impl Execution {
             ));
         }
         validate_parameter_names(&self.source, parameters)?;
+        let mut parameter_packages = BTreeMap::new();
         let parameters = parameters
             .iter()
-            .map(|parameter| {
+            .enumerate()
+            .map(|(index, parameter)| {
+                if !parameter.fields.is_empty() {
+                    let fields = parameter
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let classifier = self.source.slice(field.classifier);
+                            if !supported_value_classifier(classifier, &session.enum_types)
+                                && !session.union_types.contains_key(classifier)
+                            {
+                                return Err(diagnostic(
+                                    &self.source,
+                                    "E-UNSUPPORTED-PARAMETER-CLASSIFIER",
+                                    field.classifier,
+                                    "the packaged parameter classifier is not supported by this interpreter subset",
+                                ));
+                            }
+                            Ok(UserParameterField {
+                                name: self.source.slice(field.name).to_owned(),
+                                classifier: classifier.to_owned(),
+                                default: field.default.clone(),
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    let classifier = format!(
+                        "({})",
+                        fields
+                            .iter()
+                            .map(|field| format!("{} is {}", field.name, field.classifier))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                    parameter_packages.insert(index, fields);
+                    return Ok((format!("$package{index}"), classifier));
+                }
                 let classifier = self.source.slice(parameter.classifier);
                 if !supported_value_classifier(classifier, &session.enum_types)
                     && !session.union_types.contains_key(classifier)
@@ -5536,6 +5574,7 @@ impl Execution {
             source: self.source.clone(),
             is_static,
             parameters,
+            parameter_packages,
             result: result_text.to_owned(),
             effect_bound: effect_bound_text.clone(),
             body: body.to_vec(),
@@ -7417,20 +7456,75 @@ fn function_accepts(parameters: &[(String, String)], argument: &Value) -> bool {
     }
 }
 
+fn user_function_accepts(function: &UserFunction, argument: &Value) -> bool {
+    let arguments = match function.parameters.as_slice() {
+        [] => return matches!(argument, Value::Unit),
+        [_] => std::slice::from_ref(argument),
+        parameters => {
+            let Value::Tuple(arguments) = argument else {
+                return false;
+            };
+            if arguments.len() != parameters.len() {
+                return false;
+            }
+            arguments
+        }
+    };
+    function.parameters.iter().enumerate().zip(arguments).all(
+        |((index, (_, classifier)), argument)| {
+            function.parameter_packages.get(&index).map_or_else(
+                || value_has_classifier(argument, classifier),
+                |fields| package_accepts(fields, argument),
+            )
+        },
+    )
+}
+
+fn package_accepts(fields: &[UserParameterField], argument: &Value) -> bool {
+    match argument {
+        Value::Record(values) => {
+            values
+                .iter()
+                .all(|(label, _)| fields.iter().any(|field| field.name == *label))
+                && fields.iter().all(|field| {
+                    values
+                        .iter()
+                        .find(|(label, _)| *label == field.name)
+                        .map_or(field.default.is_some(), |(_, value)| {
+                            value_has_classifier(value, &field.classifier)
+                        })
+                })
+        }
+        Value::Tuple(values) => {
+            values.len() == fields.len()
+                && fields
+                    .iter()
+                    .zip(values)
+                    .all(|(field, value)| value_has_classifier(value, &field.classifier))
+        }
+        _ => false,
+    }
+}
+
 fn bind_function_arguments(
     scope: &mut Session,
-    parameters: &[(String, String)],
+    function: &UserFunction,
     argument: Value,
     trace: &mut impl TraceSink,
     rule: &'static str,
-) {
-    let arguments = match (parameters, argument) {
-        ([], Value::Unit) => return,
+) -> Result<(), Diagnostic> {
+    let arguments = match (function.parameters.as_slice(), argument) {
+        ([], Value::Unit) => return Ok(()),
         ([_], argument) => vec![argument],
         (_, Value::Tuple(arguments)) => arguments,
         _ => unreachable!("selected overload has already validated its argument"),
     };
-    for ((parameter, _), argument) in parameters.iter().zip(arguments) {
+    for (index, ((parameter, _), argument)) in function.parameters.iter().zip(arguments).enumerate()
+    {
+        if let Some(fields) = function.parameter_packages.get(&index) {
+            bind_package_fields(scope, &function.source, fields, argument, trace, rule)?;
+            continue;
+        }
         if parameter == "_" {
             trace.record(TraceEvent {
                 event: "function.argument.discarded",
@@ -7447,6 +7541,54 @@ fn bind_function_arguments(
             detail: parameter,
         });
     }
+    Ok(())
+}
+
+fn bind_package_fields(
+    scope: &mut Session,
+    source: &SourceText,
+    fields: &[UserParameterField],
+    argument: Value,
+    trace: &mut impl TraceSink,
+    rule: &'static str,
+) -> Result<(), Diagnostic> {
+    let supplied = match argument {
+        Value::Record(values) => values.into_iter().collect::<BTreeMap<_, _>>(),
+        Value::Tuple(values) => fields
+            .iter()
+            .map(|field| field.name.clone())
+            .zip(values)
+            .collect(),
+        _ => unreachable!("selected package has validated its argument"),
+    };
+    for field in fields {
+        let value = if let Some(value) = supplied.get(&field.name) {
+            value.clone()
+        } else {
+            let default = field
+                .default
+                .as_ref()
+                .expect("selected package requires a supplied field or default");
+            let value = scope.evaluate_expression(source, default, trace)?;
+            trace.record(TraceEvent {
+                event: "function.argument.defaulted",
+                rule: "TOPAL-FUNCTION-PACKAGED-OPERAND-001",
+                detail: &field.name,
+            });
+            value
+        };
+        if field.name == "_" {
+            continue;
+        }
+        scope.bindings.insert(field.name.clone(), value);
+        scope.declared_names.insert(field.name.clone());
+        trace.record(TraceEvent {
+            event: "function.argument.bound",
+            rule,
+            detail: &field.name,
+        });
+    }
+    Ok(())
 }
 
 fn bind_generator_arguments(
@@ -7617,12 +7759,22 @@ fn validate_parameter_names(
     source: &SourceText,
     parameters: &[FunctionParameter],
 ) -> Result<(), Diagnostic> {
-    for (index, parameter) in parameters.iter().enumerate() {
+    let flattened = parameters
+        .iter()
+        .flat_map(|parameter| {
+            if parameter.fields.is_empty() {
+                std::slice::from_ref(parameter)
+            } else {
+                parameter.fields.as_slice()
+            }
+        })
+        .collect::<Vec<_>>();
+    for (index, parameter) in flattened.iter().enumerate() {
         let name = source.slice(parameter.name);
         if name == "_" {
             continue;
         }
-        if parameters[..index]
+        if flattened[..index]
             .iter()
             .any(|earlier| source.slice(earlier.name) == name)
         {
@@ -11649,6 +11801,21 @@ mod tests {
             Value::Introspection(view)
                 if matches!(&*view, IntrospectionValue::FunctionView { effects, .. } if effects == &["Effects ()"])
         ));
+    }
+
+    #[test]
+    fn binds_packaged_function_operands_and_fills_field_defaults() {
+        let value = evaluate(
+            "sum is fn ( ( value : Int, fallback : Int default 2 ) ) -> Int\n  value + fallback\nsum (value is 40)\n",
+        )
+        .unwrap();
+        assert_eq!(value, Value::Int(BigInt::from(42)));
+
+        let value = evaluate(
+            "sum is fn ( ( value : Int, fallback : Int default 2 ) ) -> Int\n  value + fallback\nsum (value is 40, fallback is 3)\n",
+        )
+        .unwrap();
+        assert_eq!(value, Value::Int(BigInt::from(43)));
     }
 
     #[test]
