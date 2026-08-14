@@ -402,6 +402,154 @@ pub struct MemoryExecution {
     order: BTreeSet<(usize, usize)>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct TaskIdentity(pub u64);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TaskState {
+    Constructed,
+    Runnable,
+    Waiting { external: bool },
+    Closing,
+    Completed,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct TaskRecord {
+    parent: Option<TaskIdentity>,
+    children: BTreeSet<TaskIdentity>,
+    state: TaskState,
+    cancellation_requested: bool,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct TaskScheduler {
+    next_identity: u64,
+    tasks: BTreeMap<TaskIdentity, TaskRecord>,
+}
+
+impl TaskScheduler {
+    /// Construct a task in one structured parent scope.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the parent does not exist or is already closing.
+    pub fn construct(
+        &mut self,
+        parent: Option<TaskIdentity>,
+    ) -> Result<TaskIdentity, &'static str> {
+        if let Some(parent) = parent {
+            let Some(record) = self.tasks.get(&parent) else {
+                return Err("task parent does not exist");
+            };
+            if matches!(record.state, TaskState::Closing | TaskState::Completed) {
+                return Err("cannot add a child to a closing task scope");
+            }
+        }
+        let identity = TaskIdentity(self.next_identity);
+        self.next_identity += 1;
+        self.tasks.insert(
+            identity,
+            TaskRecord {
+                parent,
+                children: BTreeSet::new(),
+                state: TaskState::Constructed,
+                cancellation_requested: false,
+            },
+        );
+        if let Some(parent) = parent {
+            let Some(parent_record) = self.tasks.get_mut(&parent) else {
+                return Err("task parent disappeared during construction");
+            };
+            parent_record.children.insert(identity);
+        }
+        Ok(identity)
+    }
+
+    /// Start a newly constructed task.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless the task is constructed.
+    pub fn start(&mut self, task: TaskIdentity) -> Result<(), &'static str> {
+        let record = self.tasks.get_mut(&task).ok_or("task does not exist")?;
+        if record.state != TaskState::Constructed {
+            return Err("only a constructed task may start");
+        }
+        record.state = TaskState::Runnable;
+        Ok(())
+    }
+
+    /// Begin structured cancellation for a task and every child.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the task does not exist.
+    pub fn cancel(&mut self, task: TaskIdentity) -> Result<(), &'static str> {
+        let children = self
+            .tasks
+            .get(&task)
+            .ok_or("task does not exist")?
+            .children
+            .iter()
+            .copied()
+            .collect::<Vec<_>>();
+        for child in children {
+            self.cancel(child)?;
+        }
+        let Some(record) = self.tasks.get_mut(&task) else {
+            return Err("task disappeared during cancellation");
+        };
+        record.cancellation_requested = true;
+        record.state = TaskState::Closing;
+        Ok(())
+    }
+
+    /// Begin ordinary scope closure; children retain their own completion path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an unknown or already completed task.
+    pub fn begin_close(&mut self, task: TaskIdentity) -> Result<(), &'static str> {
+        let record = self.tasks.get_mut(&task).ok_or("task does not exist")?;
+        if record.state == TaskState::Completed {
+            return Err("completed task cannot close again");
+        }
+        record.state = TaskState::Closing;
+        Ok(())
+    }
+
+    /// Acknowledge closure after every child has completed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error while a child remains incomplete or before closure.
+    pub fn acknowledge_closed(&mut self, task: TaskIdentity) -> Result<(), &'static str> {
+        let record = self.tasks.get(&task).ok_or("task does not exist")?;
+        if record.state != TaskState::Closing {
+            return Err("task has not begun closing");
+        }
+        if record.children.iter().any(|child| {
+            !matches!(
+                self.tasks.get(child).map(|record| &record.state),
+                Some(TaskState::Completed)
+            )
+        }) {
+            return Err("task scope still has a live child");
+        }
+        let Some(record) = self.tasks.get_mut(&task) else {
+            return Err("task disappeared during closure");
+        };
+        record.state = TaskState::Completed;
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn state(&self, task: TaskIdentity) -> Option<&TaskState> {
+        self.tasks.get(&task).map(|record| &record.state)
+    }
+}
+
 impl MemoryExecution {
     /// Append one validated event and return its stable execution index.
     ///
@@ -873,5 +1021,20 @@ mod tests {
         execution.order_before(write, read).unwrap();
         assert_eq!(execution.validate_race_free(), Ok(()));
         assert!(execution.order_before(read, write).is_err());
+    }
+
+    #[test]
+    fn task_cancellation_closes_children_before_parent() {
+        let mut scheduler = TaskScheduler::default();
+        let parent = scheduler.construct(None).unwrap();
+        scheduler.start(parent).unwrap();
+        let child = scheduler.construct(Some(parent)).unwrap();
+        scheduler.start(child).unwrap();
+        scheduler.cancel(parent).unwrap();
+        assert_eq!(scheduler.state(child), Some(&TaskState::Closing));
+        assert!(scheduler.acknowledge_closed(parent).is_err());
+        scheduler.acknowledge_closed(child).unwrap();
+        scheduler.acknowledge_closed(parent).unwrap();
+        assert_eq!(scheduler.state(parent), Some(&TaskState::Completed));
     }
 }
