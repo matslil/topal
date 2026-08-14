@@ -157,6 +157,17 @@ pub enum IntrospectionValue {
         identity: String,
         members: Vec<String>,
     },
+    ConstraintView {
+        identity: String,
+        base: String,
+    },
+    EffectView {
+        identities: Vec<String>,
+    },
+    ProtocolView {
+        identity: String,
+        operations: Vec<String>,
+    },
     DeclarationView {
         name: Option<String>,
         canonical_path: Option<String>,
@@ -444,6 +455,23 @@ impl fmt::Display for IntrospectionValue {
             Self::ScopeView { identity, members } => write!(
                 formatter,
                 "lang ScopeView ( identity is {identity}, members is {members:?} )"
+            ),
+            Self::ConstraintView { identity, base } => write!(
+                formatter,
+                "lang ConstraintView ( identity is {identity}, base is {base} )"
+            ),
+            Self::EffectView { identities } => {
+                write!(
+                    formatter,
+                    "lang EffectView ( identities is {identities:?} )"
+                )
+            }
+            Self::ProtocolView {
+                identity,
+                operations,
+            } => write!(
+                formatter,
+                "lang ProtocolView ( identity is {identity}, operations is {operations:?} )"
             ),
             Self::DeclarationView {
                 name,
@@ -8217,6 +8245,9 @@ fn value_classifier(value: &Value) -> &'static str {
             IntrospectionValue::TypeView { .. } => "lang TypeView",
             IntrospectionValue::FunctionView { .. } => "lang FunctionView",
             IntrospectionValue::ScopeView { .. } => "lang ScopeView",
+            IntrospectionValue::ConstraintView { .. } => "lang ConstraintView",
+            IntrospectionValue::EffectView { .. } => "lang EffectView",
+            IntrospectionValue::ProtocolView { .. } => "lang ProtocolView",
             IntrospectionValue::DeclarationView { .. } => "lang DeclarationView",
             IntrospectionValue::LanguageContext { .. } => "lang LanguageContext",
         },
@@ -8300,6 +8331,7 @@ fn introspection_identity(value: &Value) -> Option<String> {
             .as_ref()
             .map(|name| format!("constraint:root.{name}")),
         Value::Capability(alternatives) => Some(format!("capability:{alternatives:?}")),
+        Value::Effects(effects) => Some(format!("effect-set:{effects:?}")),
         Value::Interface(interface) => Some(format!("interface:root.{}", interface.name)),
         Value::Introspection(value) => match value.as_ref() {
             IntrospectionValue::Identity { canonical, .. } => Some(canonical.clone()),
@@ -8362,12 +8394,17 @@ fn introspection_view(source: &SourceText, value: Value, span: Span) -> Result<V
                 members,
             }
         }
-        Value::Constraint(constraint) => IntrospectionValue::TypeView {
-            form: "RefinedType".into(),
+        Value::Constraint(constraint) => IntrospectionValue::ConstraintView {
             identity: constraint
                 .name
                 .clone()
                 .unwrap_or_else(|| constraint.base_classifier.clone()),
+            base: constraint.base_classifier,
+        },
+        Value::Effects(identities) => IntrospectionValue::EffectView { identities },
+        Value::Interface(interface) => IntrospectionValue::ProtocolView {
+            identity: format!("root.{}", interface.name),
+            operations: interface.functions.keys().cloned().collect(),
         },
         _ => {
             return Err(diagnostic(
@@ -11545,6 +11582,13 @@ mod tests {
             view,
             Value::Introspection(value)
                 if matches!(&*value, IntrospectionValue::TypeView { form, identity } if form == "PrimitiveType" && identity == "Int")
+        ));
+
+        let effect = evaluate("lang view (Effects ())\n").unwrap();
+        assert!(matches!(
+            effect,
+            Value::Introspection(value)
+                if matches!(&*value, IntrospectionValue::EffectView { identities } if identities.is_empty())
         ));
     }
 
