@@ -1,3 +1,4 @@
+use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write as _};
@@ -28,6 +29,38 @@ pub enum Value {
     Version(LanguageVersion),
     NativeSerializer(LanguageVersion),
     SerializationStream(Vec<u8>),
+    ObjectDescription {
+        identity: String,
+        kind: String,
+        value: Box<Value>,
+    },
+    TaskType(Box<TaskTypeValue>),
+    TaskDefinition(Box<TaskDefinitionValue>),
+    TaskInstance(Box<RefCell<TaskInstanceValue>>),
+    SizeBits(BigInt),
+    AddressRangeType(Vec<(String, Value)>),
+    AddressRange {
+        attributes: Vec<(String, Value)>,
+        lower: BigInt,
+        upper: BigInt,
+    },
+    AddressOffsetType(Vec<(String, Value)>),
+    AddressOffset {
+        attributes: Vec<(String, Value)>,
+        offset: BigInt,
+    },
+    LayoutType(Box<LayoutValue>),
+    LayoutFactory(Vec<(String, Value)>),
+    LayoutBacked {
+        layout: Box<LayoutValue>,
+        value: Box<Value>,
+    },
+    LocationType(Box<LayoutValue>),
+    Location {
+        layout: Box<LayoutValue>,
+        offset: Box<Value>,
+        storage: Box<RefCell<Option<Value>>>,
+    },
     Int(BigInt),
     Rational(BigRational),
     IntRange {
@@ -98,6 +131,8 @@ pub enum Value {
         yield_classifier: String,
         return_classifier: String,
         origin: String,
+        task_state: Option<BTreeMap<String, Self>>,
+        task_owner: Option<String>,
     },
     String(String),
     Tuple(Vec<Self>),
@@ -260,6 +295,12 @@ pub struct ModularType {
     upper: BigInt,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LayoutValue {
+    semantic: String,
+    attributes: Vec<(String, Value)>,
+}
+
 impl fmt::Display for Value {
     #[allow(clippy::too_many_lines)] // Every runtime value keeps an explicit stable source representation.
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -283,10 +324,47 @@ impl fmt::Display for Value {
             }
             Self::Effects(effects) => write!(formatter, "Effects ({})", effects.join(", ")),
             Self::Boolean(value) => value.fmt(formatter),
+            Self::ObjectDescription {
+                identity,
+                kind,
+                value,
+            } => {
+                write!(formatter, "ObjectDescription ({identity}, {kind}, {value})")
+            }
+            Self::SizeBits(bits) => write!(formatter, "{bits}[b]"),
+            Self::AddressRangeType(_) => formatter.write_str("AddressRange <subtype>"),
+            Self::AddressRange { lower, upper, .. } | Self::IntRange { lower, upper } => {
+                write!(formatter, "{lower} .. {upper}")
+            }
+            Self::AddressOffsetType(_) => formatter.write_str("AddressOffset <subtype>"),
+            Self::AddressOffset { offset, .. } => offset.fmt(formatter),
+            Self::LayoutType(layout) => write!(formatter, "Layout {}", layout.semantic),
+            Self::LayoutFactory(_) => formatter.write_str("Layout <subtype constructor>"),
+            Self::LayoutBacked { value, .. } => value.fmt(formatter),
+            Self::LocationType(layout) => {
+                write!(formatter, "Location (Layout {})", layout.semantic)
+            }
+            Self::Location { layout, offset, .. } => {
+                write!(formatter, "Location {} {offset}", layout.semantic)
+            }
             Self::Version(value) => value.fmt(formatter),
             Self::NativeSerializer(version) => write!(formatter, "<lang serialize {version}>"),
             Self::SerializationStream(bytes) => {
                 write!(formatter, "SerializationStream ( {} bytes )", bytes.len())
+            }
+            Self::TaskType(task) => write!(
+                formatter,
+                "Task {}",
+                task.name.as_deref().unwrap_or("<specialized>")
+            ),
+            Self::TaskDefinition(task) => write!(formatter, "<TaskDefinition {}>", task.name),
+            Self::TaskInstance(task) => {
+                let task = task.borrow();
+                write!(
+                    formatter,
+                    "<Task {} #{}>",
+                    task.definition.name, task.identity
+                )
             }
             Self::Int(value) => value.fmt(formatter),
             Self::Rational(value) => {
@@ -297,7 +375,6 @@ impl fmt::Display for Value {
                     value.denom()
                 )
             }
-            Self::IntRange { lower, upper } => write!(formatter, "{lower} .. {upper}"),
             Self::RationalRange { lower, upper } => write!(
                 formatter,
                 "Rational ( {}, {} ) .. Rational ( {}, {} )",
@@ -577,6 +654,9 @@ pub struct Session {
     union_types: Box<BTreeMap<String, BTreeMap<String, Option<String>>>>,
     call_stack: Vec<ActiveCall>,
     static_context: bool,
+    task_state: Option<BTreeMap<String, Value>>,
+    next_task_identity: Cell<u64>,
+    next_transaction_identity: Cell<u64>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -598,6 +678,30 @@ struct UserParameterField {
     name: String,
     classifier: String,
     default: Option<Expression>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TaskTypeValue {
+    name: Option<String>,
+    options: Vec<(String, Value)>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TaskDefinitionValue {
+    name: String,
+    task_type: TaskTypeValue,
+    source: SourceText,
+    state_fields: Vec<(String, String)>,
+    handlers: BTreeMap<String, Vec<UserFunction>>,
+    streams: BTreeMap<String, Vec<UserGenerator>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TaskInstanceValue {
+    identity: u64,
+    definition: TaskDefinitionValue,
+    state: BTreeMap<String, Value>,
+    terminated: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -660,6 +764,788 @@ enum BindingOutcome {
 }
 
 impl Session {
+    fn layout_attributes(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        trace: &mut impl TraceSink,
+    ) -> Result<Vec<(String, Value)>, Diagnostic> {
+        let Value::Record(attributes) = self.evaluate_expression(source, expression, trace)? else {
+            return Err(diagnostic(
+                source,
+                "E-LAYOUT-ATTRIBUTES",
+                expression.span(),
+                "layout attributes require a labeled record",
+            ));
+        };
+        Ok(attributes)
+    }
+
+    #[allow(clippy::too_many_lines)] // Closed layout forms and their diagnostics remain auditable together.
+    fn evaluate_layout_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Option<Result<Value, Diagnostic>> {
+        let identifier = |expression: &Expression| match expression {
+            Expression::Identifier(name) => Some(source.slice(*name)),
+            _ => None,
+        };
+        if let [operation, location] = items
+            && identifier(operation) == Some("read")
+            && let Some(name) = identifier(location)
+            && let Some(Value::Location {
+                layout, storage, ..
+            }) = self.bindings.get(name)
+        {
+            if matches!(layout_access(layout), "WriteOnly" | "Reserved") {
+                return Some(Err(diagnostic(
+                    source,
+                    "E-LAYOUT-NOT-READABLE",
+                    span,
+                    "location layout does not permit reads",
+                )));
+            }
+            let result = storage.borrow().clone().ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-LAYOUT-UNINITIALIZED",
+                    span,
+                    "location has no stored layout value",
+                )
+            });
+            if result.is_ok() {
+                trace.record(TraceEvent {
+                    event: "location.read",
+                    rule: "TOPAL-LOCATION-READ-001",
+                    detail: name,
+                });
+            }
+            return Some(result);
+        }
+        if let [location, operation, value] = items
+            && identifier(operation) == Some("write")
+            && let Some(name) = identifier(location)
+            && let Some(Value::Location {
+                layout, storage, ..
+            }) = self.bindings.get(name)
+        {
+            if matches!(layout_access(layout), "ReadOnly" | "Reserved") {
+                return Some(Err(diagnostic(
+                    source,
+                    "E-LAYOUT-NOT-WRITABLE",
+                    span,
+                    "location layout does not permit writes",
+                )));
+            }
+            let value_span = value.span();
+            let result = self
+                .evaluate_expression(source, value, trace)
+                .and_then(|value| {
+                    let stored = coerce_layout_value(source, value_span, layout, value)?;
+                    *storage.borrow_mut() = Some(stored);
+                    trace.record(TraceEvent {
+                        event: "location.written",
+                        rule: "TOPAL-LOCATION-WRITE-001",
+                        detail: name,
+                    });
+                    Ok(Value::Unit)
+                });
+            return Some(result);
+        }
+        if let [attributes, constructor, semantic @ ..] = items
+            && identifier(constructor) == Some("Layout")
+            && !semantic.is_empty()
+        {
+            let result = self
+                .layout_attributes(source, attributes, trace)
+                .and_then(|attributes| {
+                    let semantic_span = Span::new(
+                        semantic.first().expect("checked nonempty").span().start,
+                        semantic.last().expect("checked nonempty").span().end,
+                    );
+                    let semantic = source.slice(semantic_span).trim();
+                    validate_layout_attributes(source, span, semantic, &attributes)?;
+                    trace.record(TraceEvent {
+                        event: "layout.constructed",
+                        rule: "TOPAL-LAYOUT-CONSTRUCT-001",
+                        detail: semantic,
+                    });
+                    Ok(Value::LayoutType(Box::new(LayoutValue {
+                        semantic: semantic.into(),
+                        attributes,
+                    })))
+                });
+            return Some(result);
+        }
+        if let [constructor, semantic] = items
+            && identifier(constructor) == Some("Layout")
+        {
+            if matches!(semantic, Expression::Product { .. }) {
+                return Some(
+                    self.layout_attributes(source, semantic, trace)
+                        .map(Value::LayoutFactory),
+                );
+            }
+            let semantic = source.slice(semantic.span()).trim();
+            let attributes = if semantic == "Unit" {
+                vec![
+                    ("storage-size".into(), Value::SizeBits(BigInt::from(0))),
+                    (
+                        "encoding".into(),
+                        Value::Enum {
+                            type_name: "LayoutEncoding".into(),
+                            alternative: "Empty".into(),
+                        },
+                    ),
+                ]
+            } else {
+                return Some(Err(diagnostic(
+                    source,
+                    "E-LAYOUT-ATTRIBUTES",
+                    span,
+                    "this semantic type requires explicit layout attributes",
+                )));
+            };
+            return Some(Ok(Value::LayoutType(Box::new(LayoutValue {
+                semantic: semantic.into(),
+                attributes,
+            }))));
+        }
+        if let [name, semantic @ ..] = items
+            && !semantic.is_empty()
+            && let Some(name) = identifier(name)
+            && let Some(Value::LayoutFactory(attributes)) = self.bindings.get(name)
+        {
+            let semantic_span = Span::new(
+                semantic.first().unwrap().span().start,
+                semantic.last().unwrap().span().end,
+            );
+            let semantic = source.slice(semantic_span).trim();
+            return Some(
+                validate_layout_attributes(source, span, semantic, attributes).map(|()| {
+                    Value::LayoutType(Box::new(LayoutValue {
+                        semantic: semantic.into(),
+                        attributes: attributes.clone(),
+                    }))
+                }),
+            );
+        }
+        if let [constructor, attributes] = items
+            && matches!(
+                identifier(constructor),
+                Some("AddressRange" | "AddressOffset")
+            )
+        {
+            let kind = identifier(constructor).unwrap();
+            return Some(
+                self.layout_attributes(source, attributes, trace)
+                    .map(|attributes| {
+                        if kind == "AddressRange" {
+                            Value::AddressRangeType(attributes)
+                        } else {
+                            Value::AddressOffsetType(attributes)
+                        }
+                    }),
+            );
+        }
+        if let [attributes, constructor, argument] = items
+            && matches!(
+                identifier(constructor),
+                Some("AddressRange" | "AddressOffset")
+            )
+        {
+            let kind = identifier(constructor).unwrap();
+            return Some(self.layout_attributes(source, attributes, trace).and_then(
+                |attributes| {
+                    let value = self.evaluate_expression(source, argument, trace)?;
+                    if kind == "AddressRange" {
+                        match value {
+                            Value::IntRange { lower, upper } if lower >= BigInt::from(0) => {
+                                Ok(Value::AddressRange {
+                                    attributes,
+                                    lower,
+                                    upper,
+                                })
+                            }
+                            _ => Err(diagnostic(
+                                source,
+                                "E-ADDRESS-RANGE",
+                                argument.span(),
+                                "AddressRange requires a nonnegative Nat range",
+                            )),
+                        }
+                    } else {
+                        match value {
+                            Value::Int(offset) if offset >= BigInt::from(0) => {
+                                validate_address_offset(
+                                    source,
+                                    argument.span(),
+                                    &attributes,
+                                    &offset,
+                                )?;
+                                Ok(Value::AddressOffset { attributes, offset })
+                            }
+                            _ => Err(diagnostic(
+                                source,
+                                "E-ADDRESS-OFFSET",
+                                argument.span(),
+                                "AddressOffset requires a Nat byte offset",
+                            )),
+                        }
+                    }
+                },
+            ));
+        }
+        if let [constructor, layout] = items
+            && identifier(constructor) == Some("Location")
+        {
+            return Some(self.evaluate_expression(source, layout, trace).and_then(
+                |value| match value {
+                    Value::LayoutType(layout) => Ok(Value::LocationType(layout)),
+                    _ => Err(diagnostic(
+                        source,
+                        "E-LOCATION-LAYOUT",
+                        layout.span(),
+                        "Location requires an explicit Layout value",
+                    )),
+                },
+            ));
+        }
+        if let [name, argument] = items
+            && let Some(name) = identifier(name)
+            && let Some(constructor) = self.bindings.get(name)
+        {
+            let result = match constructor {
+                Value::AddressRangeType(attributes) => Some(
+                    self.evaluate_expression(source, argument, trace).and_then(
+                        |value| match value {
+                            Value::IntRange { lower, upper } if lower >= BigInt::from(0) => {
+                                Ok(Value::AddressRange {
+                                    attributes: attributes.clone(),
+                                    lower,
+                                    upper,
+                                })
+                            }
+                            _ => Err(diagnostic(
+                                source,
+                                "E-ADDRESS-RANGE",
+                                argument.span(),
+                                "AddressRange requires a nonnegative Nat range",
+                            )),
+                        },
+                    ),
+                ),
+                Value::AddressOffsetType(attributes) => Some(
+                    self.evaluate_expression(source, argument, trace).and_then(
+                        |value| match value {
+                            Value::Int(offset) if offset >= BigInt::from(0) => {
+                                validate_address_offset(
+                                    source,
+                                    argument.span(),
+                                    attributes,
+                                    &offset,
+                                )?;
+                                Ok(Value::AddressOffset {
+                                    attributes: attributes.clone(),
+                                    offset,
+                                })
+                            }
+                            _ => Err(diagnostic(
+                                source,
+                                "E-ADDRESS-OFFSET",
+                                argument.span(),
+                                "AddressOffset requires a Nat byte offset",
+                            )),
+                        },
+                    ),
+                ),
+                Value::LocationType(layout) => Some(
+                    self.evaluate_expression(source, argument, trace).and_then(
+                        |offset| match offset {
+                            Value::AddressOffset { attributes, offset } => {
+                                validate_location_fit(
+                                    source,
+                                    argument.span(),
+                                    layout,
+                                    &attributes,
+                                    &offset,
+                                )?;
+                                Ok(Value::Location {
+                                    layout: layout.clone(),
+                                    offset: Box::new(Value::AddressOffset { attributes, offset }),
+                                    storage: Box::new(RefCell::new(None)),
+                                })
+                            }
+                            _ => Err(diagnostic(
+                                source,
+                                "E-LOCATION-OFFSET",
+                                argument.span(),
+                                "a location requires an AddressOffset value",
+                            )),
+                        },
+                    ),
+                ),
+                Value::LayoutType(layout) => Some(
+                    self.evaluate_expression(source, argument, trace)
+                        .and_then(|value| {
+                            coerce_layout_value(source, argument.span(), layout, value)
+                        }),
+                ),
+                _ => None,
+            };
+            if result.is_some() {
+                return result;
+            }
+        }
+        None
+    }
+
+    fn construct_task_instance(
+        &self,
+        source: &SourceText,
+        definition_name: Span,
+        argument: &Expression,
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Some(Value::TaskDefinition(definition)) =
+            self.bindings.get(source.slice(definition_name)).cloned()
+        else {
+            unreachable!("task definition was checked before construction");
+        };
+        let start = definition
+            .handlers
+            .get("start")
+            .and_then(|handlers| handlers.first())
+            .cloned()
+            .expect("task definitions require start");
+        let argument = self.evaluate_expression(source, argument, trace)?;
+        if !function_accepts(&start.parameters, &argument) {
+            return Err(diagnostic(
+                source,
+                "E-TASK-START-ARGUMENT",
+                span,
+                "task construction arguments do not match its start handler",
+            ));
+        }
+        let state = definition
+            .state_fields
+            .iter()
+            .map(|(name, _)| (name.clone(), Value::Unit))
+            .collect();
+        let (start_result, state) =
+            self.invoke_task_handler(&definition, &start, argument, state, trace)?;
+        if matches!(start_result, Value::Error { .. }) {
+            trace.record(TraceEvent {
+                event: "task.start.failed",
+                rule: "TOPAL-TASK-LIFECYCLE-001",
+                detail: &definition.name,
+            });
+            return Ok(start_result);
+        }
+        for (name, classifier) in &definition.state_fields {
+            if !state
+                .get(name)
+                .is_some_and(|value| value_has_classifier(value, classifier))
+            {
+                return Err(diagnostic(
+                    source,
+                    "E-TASK-STATE-INITIALIZATION",
+                    span,
+                    format!("start did not initialize `{name}` as `{classifier}`"),
+                ));
+            }
+        }
+        let identity = self.next_task_identity.get();
+        self.next_task_identity.set(identity + 1);
+        let value = Value::TaskInstance(Box::new(RefCell::new(TaskInstanceValue {
+            identity,
+            definition: *definition,
+            state,
+            terminated: false,
+        })));
+        trace.record(TraceEvent {
+            event: "task.started",
+            rule: "TOPAL-TASK-LIFECYCLE-001",
+            detail: &identity.to_string(),
+        });
+        Ok(value)
+    }
+
+    #[allow(clippy::too_many_lines)] // One message transaction keeps its stable trace and state transition together.
+    fn evaluate_task_message(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [
+            Expression::Identifier(instance_name),
+            Expression::Identifier(operation),
+            payload,
+        ] = items
+        else {
+            return Err(diagnostic(
+                source,
+                "E-TASK-MESSAGE-SHAPE",
+                span,
+                "task messages require `task operation payload`",
+            ));
+        };
+        let instance_key = source.slice(*instance_name).to_owned();
+        let Some(Value::TaskInstance(instance)) = self.bindings.get(&instance_key) else {
+            unreachable!("task instance was checked before message execution");
+        };
+        let instance_snapshot = instance.borrow().clone();
+        let operation_name = source.slice(*operation);
+        if operation_name == "start" {
+            return Err(diagnostic(
+                source,
+                "E-TASK-START-PRIVATE",
+                *operation,
+                "start is a lifecycle handler and cannot receive a message",
+            ));
+        }
+        if instance_snapshot
+            .definition
+            .streams
+            .contains_key(operation_name)
+        {
+            return self.construct_task_stream(
+                source,
+                &instance_key,
+                operation_name,
+                payload,
+                span,
+                trace,
+            );
+        }
+        let handler = instance_snapshot
+            .definition
+            .handlers
+            .get(operation_name)
+            .and_then(|handlers| handlers.first())
+            .cloned()
+            .ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-TASK-HANDLER",
+                    *operation,
+                    "task capability exposes no such message handler",
+                )
+            })?;
+        if instance_snapshot.terminated {
+            if handler.result == "Unit" {
+                trace.record(TraceEvent {
+                    event: "message.discarded.terminated",
+                    rule: "TOPAL-TASK-LIFECYCLE-001",
+                    detail: operation_name,
+                });
+                return Ok(Value::Unit);
+            }
+            let position = source.position(operation.start);
+            return Ok(Value::Error {
+                domain: "lang task".into(),
+                code: "task-terminated".into(),
+                line: position.line,
+                column: position.column,
+            });
+        }
+        let payload = self.evaluate_expression(source, payload, trace)?;
+        if operation_name == "terminate" {
+            if !function_accepts(&handler.parameters, &payload) {
+                return Err(diagnostic(
+                    source,
+                    "E-TASK-TERMINATE-ARGUMENT",
+                    span,
+                    "termination reason does not match the lifecycle handler",
+                ));
+            }
+            let (result, state) = self.invoke_task_handler(
+                &instance_snapshot.definition,
+                &handler,
+                payload,
+                instance_snapshot.state.clone(),
+                trace,
+            )?;
+            let mut updated = instance_snapshot;
+            updated.state = state;
+            updated.terminated = true;
+            *instance.borrow_mut() = updated;
+            trace.record(TraceEvent {
+                event: "task.terminated",
+                rule: "TOPAL-TASK-LIFECYCLE-001",
+                detail: &instance_key,
+            });
+            return Ok(result);
+        }
+        let context = Value::Record(vec![
+            (
+                "session-id".into(),
+                Value::Int(BigInt::from(self.next_transaction_identity.get())),
+            ),
+            ("sender".into(), Value::String("root".into())),
+        ]);
+        let argument = match handler.parameters.len() {
+            1 => context,
+            2 => Value::Tuple(vec![context, payload]),
+            _ => {
+                return Err(diagnostic(
+                    source,
+                    "E-TASK-HANDLER-SHAPE",
+                    *operation,
+                    "message handler requires MessageContext plus zero or one ordinary operand",
+                ));
+            }
+        };
+        let transaction = self.next_transaction_identity.get();
+        self.next_transaction_identity.set(transaction + 1);
+        let detail = format!(
+            "transaction={transaction};task={};operation={operation_name}",
+            instance_snapshot.identity
+        );
+        trace.record(TraceEvent {
+            event: "message.sent",
+            rule: "TOPAL-CONC-INTERACT-001",
+            detail: &detail,
+        });
+        trace.record(TraceEvent {
+            event: "message.received",
+            rule: "TOPAL-DEBUG-MESSAGE-001",
+            detail: &detail,
+        });
+        let (result, state) = self.invoke_task_handler(
+            &instance_snapshot.definition,
+            &handler,
+            argument,
+            instance_snapshot.state.clone(),
+            trace,
+        )?;
+        for (name, classifier) in &instance_snapshot.definition.state_fields {
+            if !state
+                .get(name)
+                .is_some_and(|value| value_has_classifier(value, classifier))
+            {
+                return Err(diagnostic(
+                    source,
+                    "E-TASK-STATE-REPLACEMENT",
+                    span,
+                    format!("message left `{name}` outside `{classifier}`"),
+                ));
+            }
+        }
+        let mut updated = instance_snapshot;
+        updated.state = state;
+        *instance.borrow_mut() = updated;
+        trace.record(TraceEvent {
+            event: "message.completed",
+            rule: "TOPAL-CONC-ORDER-001",
+            detail: &detail,
+        });
+        Ok(result)
+    }
+
+    #[allow(clippy::too_many_lines)] // Initial delivery, suspension state, and transaction evidence remain together.
+    fn construct_task_stream(
+        &self,
+        source: &SourceText,
+        instance_name: &str,
+        operation: &str,
+        payload: &Expression,
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Some(Value::TaskInstance(instance)) = self.bindings.get(instance_name) else {
+            unreachable!("task stream owner was resolved before dispatch")
+        };
+        let snapshot = instance.borrow().clone();
+        if snapshot.terminated {
+            let position = source.position(span.start);
+            return Ok(Value::Error {
+                domain: "lang task".into(),
+                code: "task-terminated".into(),
+                line: position.line,
+                column: position.column,
+            });
+        }
+        let payload = self.evaluate_expression(source, payload, trace)?;
+        let context = Value::Record(vec![
+            (
+                "session-id".into(),
+                Value::Int(BigInt::from(self.next_transaction_identity.get())),
+            ),
+            ("sender".into(), Value::String("root".into())),
+        ]);
+        let candidates = &snapshot.definition.streams[operation];
+        let argument = if candidates
+            .iter()
+            .any(|candidate| candidate.parameters.len() == 2)
+        {
+            Value::Tuple(vec![context, payload])
+        } else {
+            context
+        };
+        let generator = candidates
+            .iter()
+            .find(|candidate| function_accepts(&candidate.parameters, &argument))
+            .cloned()
+            .ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-TASK-STREAM-ARGUMENT",
+                    span,
+                    "no stream handler accepts this payload",
+                )
+            })?;
+        let transaction = self.next_transaction_identity.get();
+        self.next_transaction_identity.set(transaction + 1);
+        let detail = format!(
+            "transaction={transaction};task={};operation={operation}",
+            snapshot.identity
+        );
+        trace.record(TraceEvent {
+            event: "message.sent",
+            rule: "TOPAL-CONC-INTERACT-001",
+            detail: &detail,
+        });
+        trace.record(TraceEvent {
+            event: "message.received",
+            rule: "TOPAL-DEBUG-MESSAGE-001",
+            detail: &detail,
+        });
+        let mut scope = Self {
+            bindings: generator.bindings.clone(),
+            functions: Box::new(snapshot.definition.handlers.clone()),
+            generators: Box::new(snapshot.definition.streams.clone()),
+            declared_names: BTreeSet::new(),
+            published_names: BTreeSet::new(),
+            language_version: self.language_version,
+            consumed_names: BTreeSet::new(),
+            local_function_names: BTreeSet::new(),
+            enum_types: self.enum_types.clone(),
+            union_types: self.union_types.clone(),
+            call_stack: Vec::new(),
+            static_context: false,
+            task_state: Some(snapshot.state),
+            next_task_identity: Cell::new(self.next_task_identity.get()),
+            next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
+        };
+        bind_generator_arguments(&mut scope, &generator.parameters, argument, trace);
+        let mut cursor = 0;
+        let mut pending_yield = None;
+        let mut resume_binding = None;
+        let mut returned = None;
+        advance_custom_generator(
+            &generator.source,
+            &generator.body,
+            &mut cursor,
+            &mut scope,
+            &mut pending_yield,
+            &mut resume_binding,
+            &mut returned,
+            &generator.yielded,
+            &generator.result,
+            operation,
+            trace,
+        )?;
+        sync_stream_task_state(self, Some(instance_name), scope.task_state.as_ref());
+        trace.record(TraceEvent {
+            event: "message.stream.started",
+            rule: "TOPAL-TASK-MESSAGE-001",
+            detail: &detail,
+        });
+        Ok(Value::SuspendedGenerator {
+            source: Box::new(generator.source),
+            body: Box::new(generator.body),
+            cursor,
+            bindings: Box::new(scope.bindings),
+            scope_state: Box::new(GeneratorScopeState {
+                functions: *scope.functions,
+                declared_names: scope.declared_names,
+                local_function_names: scope.local_function_names,
+                enum_types: scope.enum_types,
+                union_types: scope.union_types,
+            }),
+            pending_yield,
+            resume_binding,
+            returned: returned.map(Box::new),
+            yield_classifier: generator.yielded,
+            return_classifier: generator.result,
+            origin: format!("task.{operation}.transaction-{transaction}"),
+            task_state: scope.task_state,
+            task_owner: Some(instance_name.into()),
+        })
+    }
+
+    fn invoke_task_handler(
+        &self,
+        definition: &TaskDefinitionValue,
+        function: &UserFunction,
+        argument: Value,
+        state: BTreeMap<String, Value>,
+        trace: &mut impl TraceSink,
+    ) -> Result<(Value, BTreeMap<String, Value>), Diagnostic> {
+        let mut scope = Self {
+            bindings: function.bindings.clone(),
+            functions: Box::new(definition.handlers.clone()),
+            generators: self.generators.clone(),
+            declared_names: BTreeSet::new(),
+            published_names: BTreeSet::new(),
+            language_version: self.language_version,
+            consumed_names: BTreeSet::new(),
+            local_function_names: BTreeSet::new(),
+            enum_types: self.enum_types.clone(),
+            union_types: self.union_types.clone(),
+            call_stack: vec![ActiveCall {
+                name: definition.name.clone(),
+                signature: function_signature(&definition.name, function),
+                termination_rule: None,
+                recursion_target: None,
+            }],
+            static_context: false,
+            task_state: Some(state),
+            next_task_identity: Cell::new(self.next_task_identity.get()),
+            next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
+        };
+        bind_function_arguments(
+            &mut scope,
+            function,
+            argument,
+            trace,
+            "TOPAL-FUNCTION-ORDINARY-001",
+        )?;
+        let mut execution = Execution {
+            source: definition.source.clone(),
+            statements: function.body.clone(),
+            cursor: 0,
+            return_classifier: Some(function.result.clone()),
+        };
+        let value = loop {
+            match execution.step(&mut scope, trace)? {
+                ExecutionStep::Advanced { .. } => {}
+                ExecutionStep::Complete(value) | ExecutionStep::Returned { value, .. } => {
+                    break value;
+                }
+            }
+        };
+        if !value_has_classifier(&value, &function.result) {
+            return Err(diagnostic(
+                &definition.source,
+                "E-TASK-HANDLER-RESULT",
+                statement_span(function.body.last().expect("handler body is nonempty")),
+                format!(
+                    "task handler returned a value outside `{}`",
+                    function.result
+                ),
+            ));
+        }
+        Ok((value, scope.task_state.unwrap_or_default()))
+    }
+
     fn is_lang_operation(source: &SourceText, expression: &Expression, expected: &str) -> bool {
         matches!(
             expression,
@@ -1288,6 +2174,9 @@ impl Session {
             union_types: Box::new(BTreeMap::new()),
             call_stack: Vec::new(),
             static_context: false,
+            task_state: None,
+            next_task_identity: Cell::new(0),
+            next_transaction_identity: Cell::new(0),
         };
         let mut execution = session.prepare(input, trace)?;
         if !matches!(execution.statements.as_slice(), [Statement::Expression(_)]) {
@@ -1327,6 +2216,35 @@ impl Session {
         let value = match expression {
             Expression::Block { statements, .. } => self.evaluate_block(source, statements, trace),
             Expression::Boolean(span) => Ok(evaluate_boolean_literal(source, *span, trace)),
+            Expression::Measured { value, unit, span } => {
+                let amount = parse_integer(source.slice(*value)).ok_or_else(|| {
+                    diagnostic(
+                        source,
+                        "E-SIZE-LITERAL",
+                        *span,
+                        "size must use a Nat literal",
+                    )
+                })?;
+                if amount < BigInt::from(0) || !matches!(source.slice(*unit), "b" | "B") {
+                    return Err(diagnostic(
+                        source,
+                        "E-SIZE-LITERAL",
+                        *span,
+                        "size must be nonnegative and use `[b]` or `[B]`",
+                    ));
+                }
+                let bits = if source.slice(*unit) == "B" {
+                    amount * 8
+                } else {
+                    amount
+                };
+                trace.record(TraceEvent {
+                    event: "layout.size.constructed",
+                    rule: "TOPAL-LAYOUT-SIZE-001",
+                    detail: source.slice(*span),
+                });
+                Ok(Value::SizeBits(bits))
+            }
             Expression::Unit(_) => {
                 trace.record(TraceEvent {
                     event: "product.unit",
@@ -1605,6 +2523,9 @@ impl Session {
                         union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: self.static_context,
+                        task_state: self.task_state.clone(),
+                        next_task_identity: Cell::new(self.next_task_identity.get()),
+                        next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
                     };
                     branch.bindings.insert(name.to_owned(), subject);
                     trace.record(TraceEvent {
@@ -1687,7 +2608,7 @@ impl Session {
             Expression::String(span) => evaluate_string_literal(source, *span, trace),
             Expression::Identifier(span) => self.resolve_identifier(source, *span, trace),
             Expression::ContextIdentifier(span) => {
-                if self.call_stack.is_empty() {
+                if self.call_stack.is_empty() && self.task_state.is_none() {
                     return Err(diagnostic(
                         source,
                         "E-CONTEXT-SELECTION",
@@ -1695,7 +2616,12 @@ impl Session {
                         "`@` selects the defining context from inside a function",
                     ));
                 }
-                let value = self.resolve_identifier(source, *span, trace)?;
+                let value = self
+                    .task_state
+                    .as_ref()
+                    .and_then(|state| state.get(source.slice(*span)))
+                    .cloned()
+                    .map_or_else(|| self.resolve_identifier(source, *span, trace), Ok)?;
                 trace.record(TraceEvent {
                     event: "context.member.selected",
                     rule: "TOPAL-CONTEXT-SELECT-001",
@@ -1723,8 +2649,70 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if let Some(value) = self.evaluate_layout_application(source, items, *span, trace) {
+                    return value;
+                }
+                if let [Expression::Identifier(task), options] = items.as_slice()
+                    && source.slice(*task) == "Task"
+                {
+                    let Expression::Product { fields, .. } = options else {
+                        return Err(diagnostic(
+                            source,
+                            "E-TASK-OPTIONS",
+                            options.span(),
+                            "Task requires one labeled option record",
+                        ));
+                    };
+                    let mut resolved_options = Vec::with_capacity(fields.len());
+                    for field in fields {
+                        let Some(label) = field.label else {
+                            return Err(diagnostic(
+                                source,
+                                "E-TASK-OPTIONS",
+                                field.value.span(),
+                                "Task options must be labeled",
+                            ));
+                        };
+                        let value = if source.slice(label) == "identity"
+                            && let Expression::Identifier(identity) = field.value
+                        {
+                            Value::String(source.slice(identity).to_owned())
+                        } else {
+                            self.evaluate_expression(source, &field.value, trace)?
+                        };
+                        resolved_options.push((source.slice(label).to_owned(), value));
+                    }
+                    trace.record(TraceEvent {
+                        event: "task.type.specialized",
+                        rule: "TOPAL-TASK-DEFINITION-001",
+                        detail: "Task",
+                    });
+                    return Ok(Value::TaskType(Box::new(TaskTypeValue {
+                        name: None,
+                        options: resolved_options,
+                    })));
+                }
                 if self.is_native_serialization(source, items) {
                     return self.evaluate_native_serialization(source, items, *span, trace);
+                }
+                if let [Expression::Identifier(definition), argument] = items.as_slice()
+                    && matches!(
+                        self.bindings.get(source.slice(*definition)),
+                        Some(Value::TaskDefinition(_))
+                    )
+                {
+                    return self.construct_task_instance(
+                        source,
+                        *definition,
+                        argument,
+                        *span,
+                        trace,
+                    );
+                }
+                if matches!(items.first(), Some(Expression::Identifier(instance))
+                    if matches!(self.bindings.get(source.slice(*instance)), Some(Value::TaskInstance(_))))
+                {
+                    return self.evaluate_task_message(source, items, *span, trace);
                 }
                 if Self::is_lang_introspection(source, items) {
                     return self.evaluate_lang_introspection(source, items, *span, trace);
@@ -2288,6 +3276,9 @@ impl Session {
                         union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: false,
+                        task_state: None,
+                        next_task_identity: Cell::new(self.next_task_identity.get()),
+                        next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
                     };
                     bind_generator_arguments(
                         &mut generator_scope,
@@ -2347,6 +3338,8 @@ impl Session {
                         yield_classifier: generator.yielded,
                         return_classifier: generator.result,
                         origin,
+                        task_state: None,
+                        task_owner: None,
                     };
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
@@ -2456,6 +3449,9 @@ impl Session {
                         union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: function.is_static,
+                        task_state: None,
+                        next_task_identity: Cell::new(self.next_task_identity.get()),
+                        next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
                     };
                     function_scope.call_stack.push(ActiveCall {
                         name: name.to_owned(),
@@ -3262,7 +4258,42 @@ impl Session {
         }
         if matches!(
             name,
-            "Boolean" | "Completed" | "Int" | "Nat" | "Rational" | "Scope" | "String" | "Unit"
+            "Empty"
+                | "BooleanBits"
+                | "RawBits"
+                | "UnsignedBinary"
+                | "TwosComplement"
+                | "OnesComplement"
+                | "SignMagnitude"
+                | "BiasedBinary"
+                | "Ratio"
+                | "Utf8"
+                | "Utf16"
+                | "Utf32"
+                | "Ascii"
+                | "Tagged"
+                | "NoPadding"
+                | "Cached"
+                | "Uncached"
+                | "Memory"
+                | "MMIO"
+        ) {
+            return Ok(Value::Enum {
+                type_name: "LayoutEncoding".into(),
+                alternative: name.into(),
+            });
+        }
+        if matches!(
+            name,
+            "Boolean"
+                | "Completed"
+                | "Int"
+                | "MessageContext"
+                | "Nat"
+                | "Rational"
+                | "Scope"
+                | "String"
+                | "Unit"
         ) && name != "Completed"
         {
             trace.record(TraceEvent {
@@ -5335,6 +6366,8 @@ impl Execution {
             yield_classifier,
             return_classifier,
             origin,
+            ref mut task_state,
+            ref task_owner,
         } = generator
         else {
             unreachable!("caller selects a suspended generator")
@@ -5380,6 +6413,7 @@ impl Execution {
                     detail: "Unit",
                 });
                 let mut scope = session.clone();
+                scope.task_state = task_state.take();
                 scope.bindings = std::mem::take(bindings);
                 scope.functions = Box::new(std::mem::take(&mut scope_state.functions));
                 scope.declared_names = std::mem::take(&mut scope_state.declared_names);
@@ -5413,6 +6447,8 @@ impl Execution {
                 scope_state.declared_names = scope.declared_names;
                 scope_state.local_function_names = scope.local_function_names;
                 scope_state.enum_types = scope.enum_types;
+                *task_state = scope.task_state;
+                sync_stream_task_state(session, task_owner.as_deref(), task_state.as_ref());
                 *returned = next_returned.map(Box::new);
                 continue;
             }
@@ -5427,6 +6463,7 @@ impl Execution {
                 ),
                 detail: &return_classifier,
             });
+            sync_stream_task_state(session, task_owner.as_deref(), task_state.as_ref());
             return Ok((value, span));
         }
     }
@@ -5445,6 +6482,212 @@ impl Execution {
             detail: "_",
         });
         Ok((Value::Unit, cover(span, value.span())))
+    }
+
+    #[allow(clippy::too_many_lines)] // Declaration validation and trace setup stay auditable together.
+    fn declare_task_implementation(
+        &self,
+        session: &mut Session,
+        trace: &mut impl TraceSink,
+        name: Span,
+        classifier: &Expression,
+        declarations: &[Statement],
+        span: Span,
+    ) -> Result<(Value, Span), Diagnostic> {
+        let Value::TaskType(task_type) =
+            session.evaluate_expression(&self.source, classifier, trace)?
+        else {
+            return Err(diagnostic(
+                &self.source,
+                "E-TASK-IMPLEMENTATION-TYPE",
+                classifier.span(),
+                "an indented implementation requires a specialized Task type",
+            ));
+        };
+        let mut state_fields = Vec::new();
+        let mut handler_session = session.clone();
+        for declaration in declarations {
+            match declaration {
+                Statement::StateField {
+                    name: field,
+                    classifier,
+                } => state_fields.push((
+                    self.source.slice(*field).to_owned(),
+                    self.source.slice(*classifier).to_owned(),
+                )),
+                Statement::Function {
+                    name,
+                    is_static,
+                    parameters,
+                    result,
+                    effect_bound,
+                    body,
+                    span,
+                } => {
+                    self.declare_function(
+                        &mut handler_session,
+                        trace,
+                        FunctionDeclaration {
+                            name: *name,
+                            is_static: *is_static,
+                            parameters,
+                            result: *result,
+                            effect_bound: *effect_bound,
+                            body,
+                            span: *span,
+                        },
+                    )?;
+                }
+                Statement::Generator {
+                    name,
+                    parameters,
+                    yielded,
+                    resumed,
+                    result,
+                    body,
+                    span,
+                } => {
+                    self.declare_generator(
+                        &mut handler_session,
+                        trace,
+                        GeneratorDeclaration {
+                            name: *name,
+                            parameters,
+                            yielded: *yielded,
+                            resumed: *resumed,
+                            result: *result,
+                            body,
+                            span: *span,
+                        },
+                    )?;
+                }
+                _ => {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-TASK-IMPLEMENTATION-MEMBER",
+                        statement_span(declaration),
+                        "task implementations initially contain state fields and handlers",
+                    ));
+                }
+            }
+        }
+        let handlers: BTreeMap<String, Vec<UserFunction>> = declarations
+            .iter()
+            .filter_map(|declaration| match declaration {
+                Statement::Function { name, .. } => {
+                    let name = self.source.slice(*name).to_owned();
+                    Some((
+                        name.clone(),
+                        handler_session.functions.get(&name).cloned().unwrap(),
+                    ))
+                }
+                _ => None,
+            })
+            .collect();
+        let streams: BTreeMap<String, Vec<UserGenerator>> = declarations
+            .iter()
+            .filter_map(|declaration| match declaration {
+                Statement::Generator { name, .. } => {
+                    let name = self.source.slice(*name).to_owned();
+                    Some((
+                        name.clone(),
+                        handler_session.generators.get(&name).cloned().unwrap(),
+                    ))
+                }
+                _ => None,
+            })
+            .collect();
+        if !handlers.contains_key("start") {
+            return Err(diagnostic(
+                &self.source,
+                "E-TASK-START-REQUIRED",
+                name,
+                "every task implementation requires a start handler",
+            ));
+        }
+        for (handler_name, candidates) in &handlers {
+            for handler in candidates {
+                if matches!(handler_name.as_str(), "start" | "terminate") {
+                    if result_success_classifier(&handler.result) == Some("Unit") {
+                        return Err(diagnostic(
+                            &self.source,
+                            "E-TASK-START-RESULT",
+                            name,
+                            "start cannot return Result with Unit success",
+                        ));
+                    }
+                    continue;
+                }
+                if handler.parameters.is_empty()
+                    || handler.parameters.len() > 2
+                    || handler.parameters[0].1 != "MessageContext"
+                {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-TASK-HANDLER-SHAPE",
+                        name,
+                        format!(
+                            "message handler `{handler_name}` requires MessageContext plus zero or one ordinary operand"
+                        ),
+                    ));
+                }
+                if handler.result != "Unit"
+                    && result_success_classifier(&handler.result)
+                        .is_none_or(|success| success == "Unit")
+                {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-TASK-HANDLER-RESULT",
+                        name,
+                        format!(
+                            "message handler `{handler_name}` must return Unit or Result with a non-Unit success value"
+                        ),
+                    ));
+                }
+            }
+        }
+        for (stream_name, candidates) in &streams {
+            for stream in candidates {
+                if stream.parameters.is_empty()
+                    || stream.parameters.len() > 2
+                    || stream.parameters[0].1 != "MessageContext"
+                    || result_success_classifier(&stream.result).is_none()
+                {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-TASK-STREAM-SHAPE",
+                        name,
+                        format!(
+                            "stream handler `{stream_name}` requires MessageContext, at most one payload, and a Result final return"
+                        ),
+                    ));
+                }
+            }
+        }
+        let task_type = TaskTypeValue {
+            name: classifier_name(&self.source, classifier),
+            ..*task_type
+        };
+        let value = Value::TaskDefinition(Box::new(TaskDefinitionValue {
+            name: self.source.slice(name).to_owned(),
+            task_type,
+            source: self.source.clone(),
+            state_fields,
+            handlers,
+            streams,
+        }));
+        session
+            .bindings
+            .insert(self.source.slice(name).to_owned(), value.clone());
+        session
+            .declared_names
+            .insert(self.source.slice(name).to_owned());
+        trace.record(TraceEvent {
+            event: "task.definition.declared",
+            rule: "TOPAL-TASK-DEFINITION-001",
+            detail: self.source.slice(name),
+        });
+        Ok((value, span))
     }
 
     #[allow(clippy::too_many_lines)] // Declaration validation and trace setup stay auditable together.
@@ -5806,6 +7049,53 @@ impl Execution {
                     return Ok(ExecutionStep::Returned { value, span });
                 }
             },
+            Statement::Implementation {
+                name,
+                classifier,
+                declarations,
+                span,
+            } => self.declare_task_implementation(
+                session,
+                trace,
+                *name,
+                classifier,
+                declarations,
+                *span,
+            )?,
+            Statement::StateField { name, .. } => {
+                return Err(diagnostic(
+                    &self.source,
+                    "E-STATE-FIELD-CONTEXT",
+                    *name,
+                    "a task state field is valid only inside a task implementation",
+                ));
+            }
+            Statement::ContextAssignment { name, value, span } => {
+                let value = session.evaluate_expression(&self.source, value, trace)?;
+                let Some(state) = session.task_state.as_mut() else {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-TASK-STATE-CONTEXT",
+                        *name,
+                        "task state replacement requires an executing task handler",
+                    ));
+                };
+                if !state.contains_key(self.source.slice(*name)) {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-UNKNOWN-TASK-STATE",
+                        *name,
+                        "task implementation declares no such state field",
+                    ));
+                }
+                state.insert(self.source.slice(*name).to_owned(), value);
+                trace.record(TraceEvent {
+                    event: "task.state.replaced",
+                    rule: "TOPAL-TASK-STATE-001",
+                    detail: self.source.slice(*name),
+                });
+                (Value::Unit, *span)
+            }
             Statement::Function {
                 name,
                 is_static,
@@ -6053,14 +7343,6 @@ impl Execution {
                 return Ok(ExecutionStep::Returned { value, span });
             }
             Statement::Expression(expression) => {
-                if self.cursor + 1 != self.statements.len() {
-                    return Err(diagnostic(
-                        &self.source,
-                        "E-DISCARDED-VALUE",
-                        expression.span(),
-                        "a non-final expression value cannot be discarded",
-                    ));
-                }
                 let value = evaluate_expression_with_optional_context(
                     &self.source,
                     session,
@@ -6068,6 +7350,14 @@ impl Execution {
                     self.return_classifier.as_deref(),
                     trace,
                 )?;
+                if self.cursor + 1 != self.statements.len() && value != Value::Unit {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-DISCARDED-VALUE",
+                        expression.span(),
+                        "a non-final expression value cannot be discarded",
+                    ));
+                }
                 consume_generator_argument(&self.source, session, expression);
                 (value, expression.span())
             }
@@ -6351,6 +7641,7 @@ fn expression_is_closed(expression: &Expression) -> bool {
         Expression::Unit(_)
         | Expression::Boolean(_)
         | Expression::Integer(_)
+        | Expression::Measured { .. }
         | Expression::Rational(_)
         | Expression::String(_)
         | Expression::Callable { .. } => true,
@@ -6619,12 +7910,15 @@ fn statement_span(statement: &Statement) -> Span {
         Statement::LanguageSelection { span, .. }
         | Statement::Published { span, .. }
         | Statement::DiagnosticControl { span, .. }
+        | Statement::Implementation { span, .. }
+        | Statement::ContextAssignment { span, .. }
         | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
         | Statement::Interface { span, .. }
         | Statement::InterfaceImplementation { span, .. }
         | Statement::Foreach { span, .. } => *span,
+        Statement::StateField { name, classifier } => cover(*name, *classifier),
         Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
         Statement::Expression(expression) => expression.span(),
@@ -6634,6 +7928,7 @@ fn statement_span(statement: &Statement) -> Span {
 fn declaration_name<'a>(source: &'a SourceText, statement: &Statement) -> Option<&'a str> {
     let name = match statement {
         Statement::Binding { name, .. }
+        | Statement::Implementation { name, .. }
         | Statement::Function { name, .. }
         | Statement::Generator { name, .. }
         | Statement::Union { name, .. }
@@ -6658,6 +7953,7 @@ fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
                 Statement::Published { .. }
                     | Statement::DiagnosticControl { .. }
                     | Statement::Binding { .. }
+                    | Statement::ContextAssignment { .. }
                     | Statement::Discard { .. }
                     | Statement::Function { .. }
                     | Statement::Return { .. }
@@ -6692,6 +7988,12 @@ fn yielded_statement<'a>(
 ) -> Option<(Option<Span>, &'a Expression)> {
     if let Some(expression) = discarded_yield_expression(source, statement) {
         return Some((None, expression));
+    }
+    if let Statement::Expression(Expression::Application { items, .. }) = statement
+        && let [Expression::Identifier(keyword), yielded] = items.as_slice()
+        && source.slice(*keyword) == "yield"
+    {
+        return Some((None, yielded));
     }
     let Statement::Binding {
         name,
@@ -7240,6 +8542,16 @@ fn declare_variant(
 }
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
+    if classifier == "MessageContext"
+        && matches!(value, Value::Record(fields)
+            if fields.iter().any(|(name, _)| name == "session-id")
+                && fields.iter().any(|(name, _)| name == "sender"))
+    {
+        return true;
+    }
+    if let Value::LayoutBacked { layout, value } = value {
+        return classifier == layout.semantic || value_has_classifier(value, classifier);
+    }
     if let Value::Refined {
         constraint,
         base_classifier,
@@ -7343,6 +8655,7 @@ fn supported_generator_value_classifier(
             | "Constraint"
             | "Effect"
             | "Int"
+            | "MessageContext"
             | "Nat"
             | "Rational"
             | "Scope"
@@ -7380,7 +8693,11 @@ fn result_success_classifier(classifier: &str) -> Option<&str> {
     let comma = top_level_comma(contents)?;
     let (success, errors) = (&contents[..comma], &contents[comma + 1..]);
     let errors = errors.split_whitespace().collect::<Vec<_>>().join(" ");
-    (errors == "lang arithmetic ArithmeticErrorCode").then(|| success.trim())
+    matches!(
+        errors.as_str(),
+        "lang arithmetic ArithmeticErrorCode" | "()"
+    )
+    .then(|| success.trim())
 }
 
 fn optional_payload_classifier(classifier: &str) -> Option<&str> {
@@ -8221,6 +9538,7 @@ fn supported_value_classifier(
             | "Generator Character Unit String"
             | "Function"
             | "Int"
+            | "MessageContext"
             | "Nat"
             | "Range Int"
             | "Range Rational"
@@ -8349,12 +9667,267 @@ fn record_result(trace: &mut impl TraceSink, value: &Value) {
     });
 }
 
+fn validate_layout_attributes(
+    source: &SourceText,
+    span: Span,
+    semantic: &str,
+    attributes: &[(String, Value)],
+) -> Result<(), Diagnostic> {
+    const COMMON: &[&str] = &["storage-size", "encoding", "endian", "access", "alignment"];
+    const EXTRA: &[&str] = &[
+        "bit-order",
+        "unit-size",
+        "canonical",
+        "length",
+        "false-pattern",
+        "true-pattern",
+        "bias",
+        "numerator-layout",
+        "denominator-layout",
+        "integer-layout",
+        "quantum",
+        "exponent-bits",
+        "fraction-bits",
+        "exponent-bias",
+        "subnormal",
+        "infinity",
+        "signed-zero",
+        "nan",
+        "termination",
+        "padding",
+        "packing",
+        "field-order",
+        "tag-layout",
+        "tags",
+        "payload-placement",
+        "element-layout",
+        "stride",
+        "entry-layout",
+        "ordering",
+        "measurement-unit",
+    ];
+    for (name, _) in attributes {
+        if !COMMON.contains(&name.as_str()) && !EXTRA.contains(&name.as_str()) {
+            return Err(diagnostic(
+                source,
+                "E-LAYOUT-UNKNOWN-FIELD",
+                span,
+                format!("`{name}` is not a layout attribute"),
+            ));
+        }
+    }
+    let field = |name: &str| {
+        attributes
+            .iter()
+            .find(|(field, _)| field == name)
+            .map(|(_, value)| value)
+    };
+    if let Some(size) = field("storage-size")
+        && !matches!(size, Value::SizeBits(bits) if bits >= &BigInt::from(0))
+    {
+        return Err(diagnostic(
+            source,
+            "E-LAYOUT-STORAGE-SIZE",
+            span,
+            "storage-size requires a nonnegative bit or byte size",
+        ));
+    }
+    if semantic == "Unit" {
+        if field("storage-size").is_some_and(|value| value != &Value::SizeBits(BigInt::from(0))) {
+            return Err(diagnostic(
+                source,
+                "E-LAYOUT-UNIT-SIZE",
+                span,
+                "Layout Unit has exactly 0[b] storage",
+            ));
+        }
+    } else if matches!(
+        semantic,
+        "Boolean" | "Nat" | "Int" | "Rational" | "String" | "Character"
+    ) && field("encoding").is_none()
+    {
+        return Err(diagnostic(
+            source,
+            "E-LAYOUT-ENCODING",
+            span,
+            format!("Layout {semantic} requires an encoding"),
+        ));
+    }
+    Ok(())
+}
+
+fn sync_stream_task_state(
+    session: &Session,
+    owner: Option<&str>,
+    state: Option<&BTreeMap<String, Value>>,
+) {
+    let (Some(_), Some(state), Some(Value::TaskInstance(instance))) = (
+        owner,
+        state,
+        owner.and_then(|name| session.bindings.get(name)),
+    ) else {
+        return;
+    };
+    instance.borrow_mut().state = state.clone();
+}
+
+fn layout_access(layout: &LayoutValue) -> &str {
+    layout
+        .attributes
+        .iter()
+        .find_map(|(name, value)| {
+            (name == "access")
+                .then_some(value)
+                .and_then(|value| match value {
+                    Value::Enum { alternative, .. } => Some(alternative.as_str()),
+                    _ => None,
+                })
+        })
+        .unwrap_or("ReadWrite")
+}
+
+fn validate_address_offset(
+    source: &SourceText,
+    span: Span,
+    attributes: &[(String, Value)],
+    offset: &BigInt,
+) -> Result<(), Diagnostic> {
+    if let Some(Value::Int(alignment)) = attributes
+        .iter()
+        .find_map(|(name, value)| (name == "alignment").then_some(value))
+        && (alignment <= &BigInt::from(0) || offset % alignment != BigInt::from(0))
+    {
+        return Err(diagnostic(
+            source,
+            "E-ADDRESS-OFFSET-ALIGNMENT",
+            span,
+            "address offset does not satisfy its byte alignment",
+        ));
+    }
+    if let Some(Value::AddressRange { lower, upper, .. }) = attributes
+        .iter()
+        .find_map(|(name, value)| (name == "range").then_some(value))
+        && offset > &(upper - lower)
+    {
+        return Err(diagnostic(
+            source,
+            "E-ADDRESS-OFFSET-RANGE",
+            span,
+            "address offset lies outside its associated range",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_location_fit(
+    source: &SourceText,
+    span: Span,
+    layout: &LayoutValue,
+    offset_attributes: &[(String, Value)],
+    offset: &BigInt,
+) -> Result<(), Diagnostic> {
+    let size_bits = layout.attributes.iter().find_map(|(name, value)| {
+        (name == "storage-size")
+            .then_some(value)
+            .and_then(|value| match value {
+                Value::SizeBits(bits) => Some(bits),
+                _ => None,
+            })
+    });
+    if let (Some(bits), Some(Value::AddressRange { lower, upper, .. })) = (
+        size_bits,
+        offset_attributes
+            .iter()
+            .find_map(|(name, value)| (name == "range").then_some(value)),
+    ) {
+        let bytes = (bits + BigInt::from(7)) / BigInt::from(8);
+        if offset + bytes > upper - lower + BigInt::from(1) {
+            return Err(diagnostic(
+                source,
+                "E-LOCATION-RANGE",
+                span,
+                "layout does not fit in the associated address range",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn coerce_layout_value(
+    source: &SourceText,
+    span: Span,
+    layout: &LayoutValue,
+    value: Value,
+) -> Result<Value, Diagnostic> {
+    if let Value::LayoutBacked {
+        layout: existing, ..
+    } = &value
+        && existing.as_ref() == layout
+    {
+        return Ok(value);
+    }
+    if !value_has_classifier(&value, &layout.semantic) {
+        return Err(diagnostic(
+            source,
+            "E-LAYOUT-SEMANTIC-VALUE",
+            span,
+            format!(
+                "Layout {} requires a {} value",
+                layout.semantic, layout.semantic
+            ),
+        ));
+    }
+    if let Value::Int(integer) = &value
+        && let Some(Value::SizeBits(bits)) = layout
+            .attributes
+            .iter()
+            .find_map(|(name, value)| (name == "storage-size").then_some(value))
+    {
+        let unsigned = layout.attributes.iter().any(|(name, value)| {
+            name == "encoding"
+                && matches!(value, Value::Enum { alternative, .. } if alternative == "UnsignedBinary")
+        });
+        let limit = usize::try_from(bits)
+            .ok()
+            .map(|width| BigInt::from(1_u8) << width);
+        if unsigned
+            && (integer < &BigInt::from(0) || limit.as_ref().is_some_and(|limit| integer >= limit))
+        {
+            return Err(diagnostic(
+                source,
+                "E-LAYOUT-NOT-REPRESENTABLE",
+                span,
+                "integer is not representable by the selected layout",
+            ));
+        }
+    }
+    Ok(Value::LayoutBacked {
+        layout: Box::new(layout.clone()),
+        value: Box::new(value),
+    })
+}
+
 fn value_classifier(value: &Value) -> &'static str {
     match value {
         Value::Boolean(_) => "Boolean",
         Value::Version(_) => "Version",
         Value::SerializationStream(_) => "SerializationStream",
-        Value::Type(_) | Value::ModularType(_) => "Type",
+        Value::ObjectDescription { .. } => "ObjectDescription",
+        Value::TaskType(_)
+        | Value::AddressRangeType(_)
+        | Value::AddressOffsetType(_)
+        | Value::LayoutType(_)
+        | Value::LayoutFactory(_)
+        | Value::LocationType(_)
+        | Value::Type(_)
+        | Value::ModularType(_) => "Type",
+        Value::TaskDefinition(_) => "TaskDefinition",
+        Value::TaskInstance(_) => "Task",
+        Value::SizeBits(_) => "Size",
+        Value::AddressRange { .. } => "AddressRange",
+        Value::AddressOffset { .. } => "AddressOffset",
+        Value::Location { .. } => "Location",
+        Value::LayoutBacked { .. } => "Layout",
         Value::Effects(_) => "Effect",
         Value::Int(_) => "Int",
         Value::Rational(_) => "Rational",
@@ -8476,7 +10049,15 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::Type(name) => name.clone(),
         Value::Effects(_) => "Effect".into(),
         Value::ModularType(kind) => kind.name.clone().unwrap_or_else(|| "Type".into()),
+        Value::LayoutBacked { layout, .. } => layout.semantic.clone(),
         _ => value_classifier(value).to_owned(),
+    }
+}
+
+fn classifier_name(source: &SourceText, expression: &Expression) -> Option<String> {
+    match expression {
+        Expression::Identifier(span) => Some(source.slice(*span).to_owned()),
+        _ => None,
     }
 }
 
@@ -8607,6 +10188,7 @@ fn stream_for_value(
     })
 }
 
+#[allow(clippy::too_many_lines)] // Each supported semantic schema remains explicit at the authority-free boundary.
 fn serialize_language_value(
     value: &Value,
     types: &mut Vec<TypeDefinition>,
@@ -8636,6 +10218,24 @@ fn serialize_language_value(
             },
             SerializedValue::ArbitraryInt(value.clone()),
         ),
+        Value::Rational(value) => {
+            let (numerator_id, numerator) =
+                serialize_language_value(&Value::Int(value.numer().clone()), types, identities)?;
+            let (denominator_id, denominator) =
+                serialize_language_value(&Value::Int(value.denom().clone()), types, identities)?;
+            let mut schema_payload = Vec::new();
+            put_protocol_uvarint(numerator_id, &mut schema_payload);
+            put_protocol_uvarint(denominator_id, &mut schema_payload);
+            (
+                "Rational".into(),
+                TypeDefinition::ObjectDescription {
+                    identity: "Rational".into(),
+                    kind: 3,
+                    schema_payload,
+                },
+                SerializedValue::ObjectDescription(vec![numerator, denominator]),
+            )
+        }
         Value::String(value) => (
             "String".to_owned(),
             TypeDefinition::Text {
@@ -8679,7 +10279,126 @@ fn serialize_language_value(
                 SerializedValue::Product(encoded),
             )
         }
-        _ => return Err("this language object does not yet have a native serialization schema"),
+        Value::List {
+            element_classifier,
+            entries,
+        }
+        | Value::Array {
+            element_classifier,
+            entries,
+        } => {
+            let (element, encoded) = serialize_homogeneous_values(entries, types, identities)?;
+            let identity = match value {
+                Value::List { .. } => format!("List {element_classifier}"),
+                Value::Array { .. } => format!("Array {} {element_classifier}", entries.len()),
+                _ => unreachable!(),
+            };
+            (
+                identity.clone(),
+                TypeDefinition::Sequence { identity, element },
+                SerializedValue::Sequence(encoded),
+            )
+        }
+        Value::Bag {
+            element_classifier,
+            entries,
+        } => {
+            let values = entries
+                .iter()
+                .flat_map(|(value, count)| std::iter::repeat_n(value.clone(), *count))
+                .collect::<Vec<_>>();
+            let (element, encoded) = serialize_homogeneous_values(&values, types, identities)?;
+            let identity = format!("Bag {element_classifier}");
+            (
+                identity.clone(),
+                TypeDefinition::Sequence { identity, element },
+                SerializedValue::Sequence(encoded),
+            )
+        }
+        Value::Set {
+            element_classifier,
+            entries,
+        } => {
+            let values = entries.clone();
+            let (element, mut encoded) = serialize_homogeneous_values(&values, types, identities)?;
+            encoded.sort();
+            let mut schema_payload = Vec::new();
+            put_protocol_uvarint(element, &mut schema_payload);
+            put_protocol_text("semantic-total-order", &mut schema_payload);
+            let identity = format!("Set {element_classifier}");
+            (
+                identity.clone(),
+                TypeDefinition::ObjectDescription {
+                    identity,
+                    kind: 11,
+                    schema_payload,
+                },
+                SerializedValue::ObjectDescription(vec![SerializedValue::Sequence(encoded)]),
+            )
+        }
+        Value::Map {
+            key_classifier,
+            value_classifier,
+            entries,
+        } => {
+            let mut key_type = None;
+            let mut value_type = None;
+            let mut encoded = Vec::with_capacity(entries.len());
+            for (key, value) in entries {
+                let (key_id, key) = serialize_language_value(key, types, identities)?;
+                let (value_id, value) = serialize_language_value(value, types, identities)?;
+                if key_type.replace(key_id).is_some_and(|id| id != key_id)
+                    || value_type
+                        .replace(value_id)
+                        .is_some_and(|id| id != value_id)
+                {
+                    return Err("map entries do not share one key and value serialization schema");
+                }
+                encoded.push(SerializedValue::Product(vec![key, value]));
+            }
+            let (key_type, value_type) = (
+                key_type.ok_or("an empty Map needs explicit serializable schemas")?,
+                value_type.unwrap(),
+            );
+            encoded.sort_by(|left, right| match (left, right) {
+                (SerializedValue::Product(left), SerializedValue::Product(right)) => {
+                    left[0].cmp(&right[0])
+                }
+                _ => Ordering::Equal,
+            });
+            let mut schema_payload = Vec::new();
+            put_protocol_uvarint(key_type, &mut schema_payload);
+            put_protocol_uvarint(value_type, &mut schema_payload);
+            put_protocol_text("semantic-total-order", &mut schema_payload);
+            let identity = format!("Map ({key_classifier}, {value_classifier})");
+            (
+                identity.clone(),
+                TypeDefinition::ObjectDescription {
+                    identity,
+                    kind: 12,
+                    schema_payload,
+                },
+                SerializedValue::ObjectDescription(vec![SerializedValue::Sequence(encoded)]),
+            )
+        }
+        _ => {
+            let (schema, description) =
+                serialize_language_value(&Value::String(value.to_string()), types, identities)?;
+            let identity = format!("description:{}", structural_value_classifier(value));
+            let kind = format!("{:?}", value.object_kind());
+            let mut schema_payload = Vec::new();
+            put_protocol_text(&kind, &mut schema_payload);
+            put_protocol_uvarint(schema, &mut schema_payload);
+            (
+                identity.clone(),
+                TypeDefinition::ObjectDescription {
+                    identity,
+                    kind: 15,
+                    schema_payload,
+                },
+                SerializedValue::ObjectDescription(vec![description]),
+            )
+        }
     };
     if let Some(id) = identities.get(&identity) {
         return Ok((*id, serialized));
@@ -8690,10 +10409,49 @@ fn serialize_language_value(
     Ok((id, serialized))
 }
 
+fn serialize_homogeneous_values(
+    values: &[Value],
+    types: &mut Vec<TypeDefinition>,
+    identities: &mut BTreeMap<String, usize>,
+) -> Result<(usize, Vec<SerializedValue>), &'static str> {
+    let mut element = None;
+    let mut encoded = Vec::with_capacity(values.len());
+    for value in values {
+        let (id, value) = serialize_language_value(value, types, identities)?;
+        if element.replace(id).is_some_and(|existing| existing != id) {
+            return Err("collection entries do not share one native serialization type");
+        }
+        encoded.push(value);
+    }
+    let element =
+        element.ok_or("an empty collection needs an explicit serializable element schema")?;
+    Ok((element, encoded))
+}
+
+fn put_protocol_uvarint(mut value: usize, output: &mut Vec<u8>) {
+    loop {
+        let mut byte = u8::try_from(value & 0x7f).expect("seven-bit payload fits in u8");
+        value >>= 7;
+        if value != 0 {
+            byte |= 0x80;
+        }
+        output.push(byte);
+        if value == 0 {
+            break;
+        }
+    }
+}
+
+fn put_protocol_text(value: &str, output: &mut Vec<u8>) {
+    put_protocol_uvarint(value.len(), output);
+    output.extend_from_slice(value.as_bytes());
+}
+
 fn value_from_serialized(event: &SerializedEvent, types: &[TypeDefinition]) -> Option<Value> {
     deserialize_language_value(event.type_id, &event.value, types)
 }
 
+#[allow(clippy::too_many_lines)] // Schema reconstruction mirrors the explicit serializer cases.
 fn deserialize_language_value(
     type_id: usize,
     value: &SerializedValue,
@@ -8736,8 +10494,143 @@ fn deserialize_language_value(
                     .collect::<Option<Vec<_>>>()?,
             ))
         }
+        (
+            TypeDefinition::ObjectDescription {
+                identity, kind: 3, ..
+            },
+            SerializedValue::ObjectDescription(values),
+        ) if identity == "Rational" => {
+            let [
+                SerializedValue::ArbitraryInt(numerator),
+                SerializedValue::ArbitraryInt(denominator),
+            ] = values.as_slice()
+            else {
+                return None;
+            };
+            Some(Value::Rational(BigRational::new(
+                numerator.clone(),
+                denominator.clone(),
+            )))
+        }
+        (TypeDefinition::Sequence { identity, element }, SerializedValue::Sequence(values)) => {
+            let entries = values
+                .iter()
+                .map(|value| deserialize_language_value(*element, value, types))
+                .collect::<Option<Vec<_>>>()?;
+            if let Some(classifier) = identity.strip_prefix("List ") {
+                Some(Value::List {
+                    element_classifier: classifier.into(),
+                    entries,
+                })
+            } else if let Some(rest) = identity.strip_prefix("Array ") {
+                let (_, classifier) = rest.split_once(' ')?;
+                Some(Value::Array {
+                    element_classifier: classifier.into(),
+                    entries,
+                })
+            } else {
+                identity.strip_prefix("Bag ").map(|classifier| Value::Bag {
+                    element_classifier: classifier.into(),
+                    entries: entries.into_iter().map(|value| (value, 1)).collect(),
+                })
+            }
+        }
+        (
+            TypeDefinition::ObjectDescription {
+                identity,
+                kind: 11,
+                schema_payload,
+            },
+            SerializedValue::ObjectDescription(values),
+        ) => {
+            let [SerializedValue::Sequence(values)] = values.as_slice() else {
+                return None;
+            };
+            let (element, _) = read_protocol_uvarint(schema_payload)?;
+            let entries = values
+                .iter()
+                .map(|value| deserialize_language_value(element, value, types))
+                .collect::<Option<Vec<_>>>()?;
+            Some(Value::Set {
+                element_classifier: identity.strip_prefix("Set ")?.into(),
+                entries,
+            })
+        }
+        (
+            TypeDefinition::ObjectDescription {
+                identity,
+                kind: 12,
+                schema_payload,
+            },
+            SerializedValue::ObjectDescription(values),
+        ) => {
+            let [SerializedValue::Sequence(values)] = values.as_slice() else {
+                return None;
+            };
+            let (key_type, used) = read_protocol_uvarint(schema_payload)?;
+            let (value_type, _) = read_protocol_uvarint(&schema_payload[used..])?;
+            let entries = values
+                .iter()
+                .map(|entry| {
+                    let SerializedValue::Product(pair) = entry else {
+                        return None;
+                    };
+                    let [key, value] = pair.as_slice() else {
+                        return None;
+                    };
+                    Some((
+                        deserialize_language_value(key_type, key, types)?,
+                        deserialize_language_value(value_type, value, types)?,
+                    ))
+                })
+                .collect::<Option<Vec<_>>>()?;
+            let classifiers = identity.strip_prefix("Map (")?.strip_suffix(')')?;
+            let (key_classifier, value_classifier) = classifiers.split_once(", ")?;
+            Some(Value::Map {
+                key_classifier: key_classifier.into(),
+                value_classifier: value_classifier.into(),
+                entries,
+            })
+        }
+        (
+            TypeDefinition::ObjectDescription {
+                identity,
+                kind: 15,
+                schema_payload,
+            },
+            SerializedValue::ObjectDescription(values),
+        ) => {
+            let (kind, used) = read_protocol_text(schema_payload)?;
+            let (schema, _) = read_protocol_uvarint(&schema_payload[used..])?;
+            let [description] = values.as_slice() else {
+                return None;
+            };
+            Some(Value::ObjectDescription {
+                identity: identity.clone(),
+                kind,
+                value: Box::new(deserialize_language_value(schema, description, types)?),
+            })
+        }
         _ => None,
     }
+}
+
+fn read_protocol_uvarint(bytes: &[u8]) -> Option<(usize, usize)> {
+    let mut value = 0_usize;
+    for (index, byte) in bytes.iter().copied().enumerate() {
+        let shift = index.checked_mul(7)?;
+        value |= usize::from(byte & 0x7f).checked_shl(u32::try_from(shift).ok()?)?;
+        if byte & 0x80 == 0 {
+            return Some((value, index + 1));
+        }
+    }
+    None
+}
+
+fn read_protocol_text(bytes: &[u8]) -> Option<(String, usize)> {
+    let (length, used) = read_protocol_uvarint(bytes)?;
+    let end = used.checked_add(length)?;
+    Some((std::str::from_utf8(bytes.get(used..end)?).ok()?.into(), end))
 }
 
 fn generator_classifier_diagnostic(
@@ -11303,6 +13196,7 @@ fn pow_rational(mut base: BigRational, mut exponent: BigInt) -> BigRational {
     result
 }
 
+#[allow(clippy::too_many_lines)] // Rejection remains exhaustive across every nonnumeric value kind.
 fn apply_negate(
     source: &SourceText,
     operand: Value,
@@ -11336,6 +13230,12 @@ fn apply_negate(
             });
             Ok(Value::Rational(-operand))
         }
+        Value::SizeBits(_) => Err(diagnostic(
+            source,
+            "E-NEGATE-OPERAND",
+            span,
+            "a storage size cannot be negated",
+        )),
         Value::Modular {
             type_name,
             lower,
@@ -11359,6 +13259,9 @@ fn apply_negate(
         | Value::Version(_)
         | Value::NativeSerializer(_)
         | Value::SerializationStream(_)
+        | Value::TaskType(_)
+        | Value::TaskDefinition(_)
+        | Value::TaskInstance(_)
         | Value::Type(_)
         | Value::Effects(_)
         | Value::IntRange { .. }
@@ -11387,8 +13290,18 @@ fn apply_negate(
         | Value::Capability(_)
         | Value::Interface(_)
         | Value::Introspection(_)
+        | Value::ObjectDescription { .. }
         | Value::Refined { .. }
         | Value::ModularType(_)
+        | Value::AddressRangeType(_)
+        | Value::AddressRange { .. }
+        | Value::AddressOffsetType(_)
+        | Value::AddressOffset { .. }
+        | Value::LayoutType(_)
+        | Value::LayoutFactory(_)
+        | Value::LayoutBacked { .. }
+        | Value::LocationType(_)
+        | Value::Location { .. }
         | Value::ErrorDomain(_)
         | Value::Error { .. }
         | Value::Continue(_)
@@ -11791,6 +13704,47 @@ mod tests {
     }
 
     #[test]
+    fn native_serialization_round_trips_numeric_and_collection_schemas() {
+        let values = [
+            Value::Rational(BigRational::new(BigInt::from(1), BigInt::from(3))),
+            Value::List {
+                element_classifier: "Int".into(),
+                entries: vec![Value::Int(BigInt::from(1)), Value::Int(BigInt::from(2))],
+            },
+            Value::Set {
+                element_classifier: "Int".into(),
+                entries: vec![Value::Int(BigInt::from(1)), Value::Int(BigInt::from(2))],
+            },
+            Value::Map {
+                key_classifier: "Int".into(),
+                value_classifier: "String".into(),
+                entries: vec![
+                    (Value::Int(BigInt::from(1)), Value::String("one".into())),
+                    (Value::Int(BigInt::from(2)), Value::String("two".into())),
+                ],
+            },
+        ];
+        for value in values {
+            let stream = stream_for_value(LanguageVersion::DESIGN_0, &value).unwrap();
+            let bytes = serialize_native(&stream).unwrap();
+            let decoded = deserialize_native(&bytes, SerializationLimits::default()).unwrap();
+            assert_eq!(
+                value_from_serialized(&decoded.events[0], &decoded.types),
+                Some(value)
+            );
+        }
+
+        let described = Value::Type("Int".into());
+        let stream = stream_for_value(LanguageVersion::DESIGN_0, &described).unwrap();
+        let bytes = serialize_native(&stream).unwrap();
+        let decoded = deserialize_native(&bytes, SerializationLimits::default()).unwrap();
+        assert!(matches!(
+            value_from_serialized(&decoded.events[0], &decoded.types),
+            Some(Value::ObjectDescription { kind, .. }) if kind == "Type"
+        ));
+    }
+
+    #[test]
     fn retains_explicit_function_effect_upper_bounds_for_static_views() {
         let value = evaluate(
             "identity is fn ( value : Int ) -> Int\n  : Effects ()\n  value\nlang view identity\n",
@@ -11816,6 +13770,109 @@ mod tests {
         )
         .unwrap();
         assert_eq!(value, Value::Int(BigInt::from(43)));
+    }
+
+    #[test]
+    fn constructs_tasks_and_routes_stateful_message_transactions() {
+        let source = "Counter is Task (queue-size is 10, identity is counter)\
+\ncounter-service is Counter\
+\n  count : Nat\
+\n  start is fn ( initial : Nat ) -> Completed\
+\n    @ count is initial\
+\n    Completed\
+\n  increment is fn ( _ : MessageContext, amount : Nat ) -> Unit\
+\n    @ count is @ count + amount\
+\n  current is fn ( _ : MessageContext, _ : Unit ) -> Result ( Nat, () )\
+\n    @ count\
+\ncounter is counter-service 40\
+\ncounter increment 2\
+\ncounter current ()\n";
+        let mut trace = Vec::new();
+        let value = Session::new().evaluate(source, &mut trace).unwrap();
+        assert_eq!(value, Value::Int(BigInt::from(42)));
+        assert!(trace.iter().any(|event| event.contains("message.sent")));
+        assert!(trace.iter().any(|event| event.contains("message.received")));
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("task.state.replaced"))
+        );
+    }
+
+    #[test]
+    fn task_termination_discards_events_and_fails_requests_in_task_domain() {
+        let source = "Counter is Task (identity is counter)\
+\nservice is Counter\
+\n  count : Nat\
+\n  start is fn (initial : Nat) -> Completed\
+\n    @ count is initial\
+\n    Completed\
+\n  ping is fn (_ : MessageContext, _ : Unit) -> Unit\
+\n    ()\
+\n  current is fn (_ : MessageContext, _ : Unit) -> Result (Nat, ())\
+\n    @ count\
+\n  terminate is fn (_ : String) -> Unit\
+\n    ()\
+\ninstance is service 1\
+\ninstance terminate \"done\"\
+\ninstance ping ()\
+\ninstance current ()\n";
+        assert!(matches!(
+            evaluate(source).unwrap(),
+            Value::Error { domain, code, .. }
+                if domain == "lang task" && code == "task-terminated"
+        ));
+    }
+
+    #[test]
+    fn task_streams_follow_transactions_and_reacquire_current_state() {
+        let source = "Counter is Task (identity is counter)\
+\nservice is Counter\
+\n  count : Nat\
+\n  start is fn (initial : Nat) -> Completed\
+\n    @ count is initial\
+\n    Completed\
+\n  values is generator (_ : MessageContext, _ : Unit)\
+\n    yields Nat\
+\n    resumes Unit\
+\n    -> Result (Unit, ())\
+\n    yield @ count\
+\n    @ count is @ count + 1\
+\n    yield @ count\
+\n    ()\
+\n  current is fn (_ : MessageContext, _ : Unit) -> Result (Nat, ())\
+\n    @ count\
+\ninstance is service 1\
+\nstream is instance values ()\
+\nstream foreach { value }\
+\n  ()\
+\ninstance current ()\n";
+        let mut trace = Vec::new();
+        let value = Session::new().evaluate(source, &mut trace).unwrap();
+        assert_eq!(value, Value::Int(BigInt::from(2)));
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("message.stream.started"))
+        );
+    }
+
+    #[test]
+    fn constructs_external_layouts_ranges_offsets_and_locations() {
+        let source = "UInt32LE is (storage-size is 32[b], encoding is UnsignedBinary, endian is Little) Layout Nat\
+\nDeviceAddresses is AddressRange (caching is Uncached, minimum-access-size is 32[b], medium is MMIO)\
+\ndevice is DeviceAddresses (0x40000000 .. 0x4000ffff)\
+\nDeviceOffset is AddressOffset (range is device, alignment is 4)\
+\ncontrol-offset is DeviceOffset 32\
+\nControlLocation is Location UInt32LE\
+\ncontrol is ControlLocation control-offset\
+\nstored is UInt32LE 42\
+\ncontrol write stored\
+\nread control\n";
+        let value = evaluate(source).unwrap();
+        assert!(
+            matches!(value, Value::LayoutBacked { value, .. } if *value == Value::Int(BigInt::from(42)))
+        );
     }
 
     #[test]

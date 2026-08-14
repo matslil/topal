@@ -20,6 +20,11 @@ pub enum Expression {
         span: Span,
     },
     Integer(Span),
+    Measured {
+        value: Span,
+        unit: Span,
+        span: Span,
+    },
     Rational(Span),
     String(Span),
     Identifier(Span),
@@ -76,7 +81,8 @@ impl Expression {
             | Self::Block { span, .. }
             | Self::DecisionTable { span, .. }
             | Self::AnonymousFunction { span, .. }
-            | Self::Application { span, .. } => *span,
+            | Self::Application { span, .. }
+            | Self::Measured { span, .. } => *span,
         }
     }
 }
@@ -184,6 +190,21 @@ pub enum Statement {
         classifier: Option<Span>,
         value: Expression,
     },
+    Implementation {
+        name: Span,
+        classifier: Expression,
+        declarations: Vec<Self>,
+        span: Span,
+    },
+    StateField {
+        name: Span,
+        classifier: Span,
+    },
+    ContextAssignment {
+        name: Span,
+        value: Expression,
+        span: Span,
+    },
     Function {
         name: Span,
         is_static: bool,
@@ -255,6 +276,7 @@ pub fn parse(source: &SourceText, lexed: &Lexed) -> ParsedSource {
         tokens: &lexed.tokens,
         cursor: 0,
         delimiter_depth: 0,
+        current_indent: 0,
         diagnostics: lexed.diagnostics.clone(),
     };
     let mut statements = Vec::new();
@@ -282,6 +304,7 @@ struct Parser<'a> {
     tokens: &'a [Token],
     cursor: usize,
     delimiter_depth: usize,
+    current_indent: usize,
     diagnostics: Vec<SyntaxDiagnostic>,
 }
 
@@ -355,6 +378,24 @@ impl Parser<'_> {
                 value,
             });
         }
+        if first.kind == TokenKind::At {
+            let name = self.take_nontrivia();
+            let separator = self.peek_nontrivia();
+            if let (Some(name), Some(separator)) = (name, separator)
+                && name.kind == TokenKind::Identifier
+                && separator.kind == TokenKind::Identifier
+                && self.source.slice(separator.span) == "is"
+            {
+                self.take_nontrivia();
+                let value = self.expression()?;
+                return Some(Statement::ContextAssignment {
+                    name: name.span,
+                    span: Span::new(first.span.start, value.span().end),
+                    value,
+                });
+            }
+            self.cursor = checkpoint;
+        }
         if first.kind == TokenKind::Boolean
             && self.peek_nontrivia().is_some_and(|second| {
                 second.kind == TokenKind::Identifier && self.source.slice(second.span) == "is"
@@ -389,6 +430,19 @@ impl Parser<'_> {
                 }
             }
             if let Some(value) = self.expression() {
+                if first.kind == TokenKind::Identifier
+                    && let Some((indent, body_start)) = self.indented_body_after_current_line()
+                {
+                    self.cursor = body_start;
+                    let declarations = self.indented_function_body(indent)?;
+                    let end = statement_span(declarations.last()?).end;
+                    return Some(Statement::Implementation {
+                        name: first.span,
+                        classifier: value,
+                        declarations,
+                        span: Span::new(first.span.start, end),
+                    });
+                }
                 return Some(if first.kind == TokenKind::Discard {
                     Statement::Discard {
                         span: first.span,
@@ -417,6 +471,12 @@ impl Parser<'_> {
             self.take_nontrivia();
             let classifier_start = self.take_nontrivia()?;
             let classifier = self.classifier_from_first(classifier_start)?;
+            if self.peek_nontrivia().is_none() {
+                return Some(Statement::StateField {
+                    name: first.span,
+                    classifier,
+                });
+            }
             let separator = self.take_nontrivia()?;
             if !matches!(
                 classifier_start.kind,
@@ -456,10 +516,13 @@ impl Parser<'_> {
         else {
             return false;
         };
-        if !remaining
+        let Some(indent) = remaining
             .get(newline + 1)
-            .is_some_and(|token| token.kind == TokenKind::Whitespace)
-        {
+            .filter(|token| token.kind == TokenKind::Whitespace)
+        else {
+            return false;
+        };
+        if indent.span.end - indent.span.start <= self.current_indent {
             return false;
         }
         let significant = remaining[newline + 1..]
@@ -606,6 +669,18 @@ impl Parser<'_> {
             })
     }
 
+    fn indented_body_after_current_line(&self) -> Option<(usize, usize)> {
+        let newline = self.tokens.get(self.cursor)?;
+        if newline.kind != TokenKind::Newline {
+            return None;
+        }
+        let body_start = self.cursor + 1;
+        let indent = self.tokens.get(body_start)?;
+        let width = indent.span.end - indent.span.start;
+        (indent.kind == TokenKind::Whitespace && width > self.current_indent)
+            .then_some((width, body_start))
+    }
+
     fn foreach_statement(&mut self) -> Option<Statement> {
         let separator_index = self.foreach_separator_index()?;
         let mut source_start = self.cursor;
@@ -640,6 +715,7 @@ impl Parser<'_> {
             tokens: &self.tokens[source_start..separator_index],
             cursor: 0,
             delimiter_depth: 0,
+            current_indent: self.current_indent,
             diagnostics: Vec::new(),
         };
         let source_expression = source_parser.expression()?;
@@ -1165,7 +1241,11 @@ impl Parser<'_> {
 
     fn indented_function_body(&mut self, body_indent: usize) -> Option<Vec<Statement>> {
         self.cursor += 1;
-        let mut body = vec![self.statement()?];
+        let outer_indent = self.current_indent;
+        self.current_indent = body_indent;
+        let first = self.statement();
+        self.current_indent = outer_indent;
+        let mut body = vec![first?];
         loop {
             if !self
                 .peek()
@@ -1203,7 +1283,10 @@ impl Parser<'_> {
                 break;
             }
             self.cursor += 1;
-            body.push(self.statement()?);
+            self.current_indent = body_indent;
+            let statement = self.statement();
+            self.current_indent = outer_indent;
+            body.push(statement?);
         }
         Some(body)
     }
@@ -1707,6 +1790,7 @@ impl Parser<'_> {
             tokens: &self.tokens[self.cursor..separator_index],
             cursor: 0,
             delimiter_depth: 0,
+            current_indent: self.current_indent,
             diagnostics: Vec::new(),
         };
         let operand = parser.expression();
@@ -1875,11 +1959,37 @@ impl Parser<'_> {
         Some(Expression::Application { items, span })
     }
 
+    #[allow(clippy::too_many_lines)] // Literal suffix validation stays beside the primary token dispatch.
     fn primary(&mut self) -> Option<Expression> {
         let token = self.take_nontrivia()?;
         match token.kind {
             TokenKind::Boolean => Some(Expression::Boolean(token.span)),
-            TokenKind::Integer => Some(Expression::Integer(token.span)),
+            TokenKind::Integer => {
+                if self
+                    .peek_nontrivia()
+                    .is_some_and(|next| next.kind == TokenKind::LeftBracket)
+                {
+                    self.take_nontrivia();
+                    let unit = self.take_nontrivia()?;
+                    let closing = self.take_nontrivia()?;
+                    if unit.kind != TokenKind::Identifier || closing.kind != TokenKind::RightBracket
+                    {
+                        self.diagnostics.push(SyntaxDiagnostic {
+                            code: "E-MEASUREMENT-SUFFIX",
+                            span: Span::new(token.span.start, closing.span.end),
+                            message: "a size suffix has the form `[b]` or `[B]`".into(),
+                        });
+                        return None;
+                    }
+                    Some(Expression::Measured {
+                        value: token.span,
+                        unit: unit.span,
+                        span: Span::new(token.span.start, closing.span.end),
+                    })
+                } else {
+                    Some(Expression::Integer(token.span))
+                }
+            }
             TokenKind::Rational => Some(Expression::Rational(token.span)),
             TokenKind::String => Some(Expression::String(token.span)),
             TokenKind::Identifier | TokenKind::Version => Some(Expression::Identifier(token.span)),
@@ -2005,11 +2115,20 @@ impl Parser<'_> {
         }
 
         let closing = self.tokens[closing_index];
+        let block_indent = self.tokens[start..closing_index]
+            .windows(2)
+            .filter_map(|tokens| {
+                (tokens[0].kind == TokenKind::Newline && tokens[1].kind == TokenKind::Whitespace)
+                    .then_some(tokens[1].span.end - tokens[1].span.start)
+            })
+            .min()
+            .unwrap_or(self.current_indent);
         let mut block_parser = Self {
             source: self.source,
             tokens: &self.tokens[start..closing_index],
             cursor: 0,
             delimiter_depth: 0,
+            current_indent: block_indent,
             diagnostics: Vec::new(),
         };
         let mut statements = Vec::new();
@@ -2288,6 +2407,8 @@ fn statement_span(statement: &Statement) -> Span {
         Statement::LanguageSelection { span, .. }
         | Statement::Published { span, .. }
         | Statement::DiagnosticControl { span, .. }
+        | Statement::Implementation { span, .. }
+        | Statement::ContextAssignment { span, .. }
         | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
@@ -2295,6 +2416,7 @@ fn statement_span(statement: &Statement) -> Span {
         | Statement::InterfaceImplementation { span, .. }
         | Statement::Foreach { span, .. }
         | Statement::Discard { span, .. } => *span,
+        Statement::StateField { name, classifier } => Span::new(name.start, classifier.end),
         Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
         Statement::Expression(expression) => expression.span(),
     }
@@ -2566,6 +2688,24 @@ mod tests {
         assert_eq!(parameters[0].fields.len(), 2);
         assert!(parameters[0].fields[0].default.is_none());
         assert!(parameters[0].fields[1].default.is_some());
+    }
+
+    #[test]
+    fn retains_task_implementation_state_handlers_and_context_assignment() {
+        let source = SourceText::new(
+            "Counter is Task (queue-size is 10)\ncounter-service is Counter\n  count : Nat\n  start is fn ( initial : Nat ) -> Completed\n    @ count is initial\n    Completed\n",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert_eq!(parsed.diagnostics, []);
+        let Statement::Implementation { declarations, .. } = &parsed.statements[1] else {
+            panic!("expected task implementation");
+        };
+        assert!(matches!(declarations[0], Statement::StateField { .. }));
+        let Statement::Function { body, .. } = &declarations[1] else {
+            panic!("expected lifecycle handler");
+        };
+        assert!(matches!(body[0], Statement::ContextAssignment { .. }));
     }
 
     #[test]

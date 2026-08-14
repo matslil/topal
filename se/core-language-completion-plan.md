@@ -124,3 +124,18 @@ suite, focused conformance tests, and `git diff --check`. A PR description must
 record its risk assessment, governing stable IDs, validation, deliberate
 deferrals, and any approved design interpretation. A phase is not complete
 until its branch is published as a mergeable pull request.
+
+## Accepted completion
+
+**Completion record:** On 2026-08-14 the corrective audit closed every stable
+specification and correction-ledger row for `v0.1`. The shared implementation
+includes executable coverage accounting; cross-tool interpreter, LSP, and
+scripted reverse-debugger examples; canonical GEIR and native-serialization
+malformed/compatibility suites; checked layouts and locations; and protocol,
+dependency, cancellation, race, backpressure, and schedule-equivalence
+evidence for task event, request, stream, and lifecycle execution.
+
+Acceptance validation is `cargo test --workspace`, workspace-wide Clippy with
+all targets and warnings denied, formatting, and `git diff --check`. Standard
+library work may build on this accepted core without treating library policy as
+new language semantics.

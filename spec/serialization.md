@@ -34,6 +34,48 @@ external-layout access policies without granting runtime authority.
 `NoLength` and `NoTerminator` shall resolve distinct nominal layout policy
 values; neither implies the other.
 
+### TOPAL-LAYOUT-SIZE-001 — Storage sizes
+
+`n[b]` denotes exactly `n` bits and `n[B]` denotes exactly `8n` bits for a Nat
+literal `n`. Sizes are exact nonnegative values. A field whose schema measures
+bytes shall reject a size which is not an integral byte count.
+
+### TOPAL-LAYOUT-CONSTRUCT-001 — Closed layout construction
+
+`attributes Layout T` constructs an explicit layout subtype only when every
+attribute belongs to the closed schema admitted by `T`. Missing required,
+unknown, inapplicable, or mutually inconsistent attributes are static errors.
+Scalar, text, product, sum, and sequence schemas retain their semantic type,
+complete storage size when known, encoding, access, alignment, and their
+family-specific fields as layout evidence.
+
+### TOPAL-ADDRESS-RANGE-001 — Address ranges and offsets
+
+An `AddressRange` contains a nonnegative inclusive range and its caching,
+minimum-access-size, and medium attributes. An `AddressOffset` associated with
+that range is a nonnegative byte offset no greater than the range extent and
+shall satisfy its positive byte alignment. Range identity is part of the
+offset subtype.
+
+### TOPAL-LOCATION-CONSTRUCT-001 — Checked locations
+
+`Location L` admits only an explicit layout `L`. Constructing its value from an
+address offset shall prove that the layout's complete storage fits in the
+associated range and satisfies layout, offset, and physical access alignment.
+
+### TOPAL-LOCATION-READ-001 — Checked reads
+
+Reading a location is rejected for `WriteOnly` and `Reserved` access. A
+successful read validates the stored representation and returns a value which
+retains the exact layout evidence. Each MMIO read is a distinct ordered event.
+
+### TOPAL-LOCATION-WRITE-001 — Checked writes
+
+Writing a location is rejected for `ReadOnly` and `Reserved` access. The value
+shall satisfy the layout's semantic classifier and be exactly representable;
+successful encoding stores its canonical representation. Each MMIO write is a
+distinct ordered event.
+
 ### TOPAL-SER-SCOPE-001 — Protocol scope
 
 The native protocol represents the public semantic description of every object

@@ -370,6 +370,8 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
         | TokenKind::RightParen
         | TokenKind::LeftBrace
         | TokenKind::RightBrace
+        | TokenKind::LeftBracket
+        | TokenKind::RightBracket
         | TokenKind::Comma
         | TokenKind::Colon
         | TokenKind::Arrow

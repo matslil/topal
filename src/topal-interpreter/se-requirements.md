@@ -1952,3 +1952,22 @@ Function declarations shall accept packaged operand fields and field defaults
 under `TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Calls shall support positional
 products and labeled records, fill omitted defaulted associations in the
 invocation scope, and trace whether each field was supplied or defaulted.
+
+## TOPAL-INTP-SUBSET-249 — Stateful task message transactions
+
+All source modes shall construct specialized task types and definitions,
+initialize typed private state through `start`, route event, request, and stream
+applications under `TOPAL-TASK-DEFINITION-001` through
+`TOPAL-TASK-MESSAGE-001`, and enforce owner lifecycle termination with the
+`lang task` `task-terminated` error. Formal traces shall retain a stable transaction
+identity across send and receive. LSP validation and reversible scripted
+debugger history shall cover a commented stateful task example.
+
+## TOPAL-INTP-SUBSET-250 — External layouts and checked locations
+
+All source modes shall construct exact bit/byte sizes, closed scalar, text,
+product, sum, and sequence layout descriptions, address ranges, aligned byte
+offsets, layout-backed values, and checked locations under `TOPAL-LAYOUT-*`,
+`TOPAL-ADDRESS-RANGE-001`, and `TOPAL-LOCATION-*`. Reads and writes shall retain
+layout evidence and stable ordered trace decisions. LSP validation and
+reversible scripted-debugger history shall cover a commented example.

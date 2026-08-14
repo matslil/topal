@@ -77,7 +77,7 @@ impl TypeDefinition {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum SerializedValue {
     Unit,
     Boolean(bool),
@@ -353,6 +353,26 @@ pub fn deserialize(bytes: &[u8], limits: Limits) -> Result<Stream, ProtocolError
     })
 }
 
+/// Collect physical stream chunks and validate the resulting logical stream.
+///
+/// Chunk boundaries carry no protocol meaning, including when they split a
+/// varint, UTF-8 sequence, type payload, or event frame.
+///
+/// # Errors
+///
+/// Returns the same deterministic error as [`deserialize`] after all supplied
+/// chunks have been consumed.
+pub fn deserialize_chunks<'a>(
+    chunks: impl IntoIterator<Item = &'a [u8]>,
+    limits: Limits,
+) -> Result<Stream, ProtocolError> {
+    let mut bytes = Vec::new();
+    for chunk in chunks {
+        bytes.extend_from_slice(chunk);
+    }
+    deserialize(&bytes, limits)
+}
+
 fn encode_type(definition: &TypeDefinition, output: &mut Vec<u8>) -> Result<(), ProtocolError> {
     put_text(definition.identity(), output)?;
     let mut payload = Vec::new();
@@ -575,6 +595,102 @@ fn encode_components(
     Ok(())
 }
 
+fn serialized_integer(value: &SerializedValue) -> Option<BigInt> {
+    match value {
+        SerializedValue::Int(value) => Some(BigInt::from(*value)),
+        SerializedValue::ArbitraryInt(value) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn validate_canonical_rational(values: &[SerializedValue]) -> Result<(), ProtocolError> {
+    let [numerator, denominator] = values else {
+        return Err(error(
+            ErrorKind::Malformed,
+            "value",
+            0,
+            "Rational requires numerator and denominator",
+        ));
+    };
+    let Some(mut numerator) = serialized_integer(numerator) else {
+        return Err(error(
+            ErrorKind::Malformed,
+            "value",
+            0,
+            "Rational numerator is not an integer",
+        ));
+    };
+    let Some(mut denominator) = serialized_integer(denominator) else {
+        return Err(error(
+            ErrorKind::Malformed,
+            "value",
+            0,
+            "Rational denominator is not an integer",
+        ));
+    };
+    if denominator <= BigInt::from(0) {
+        return Err(error(
+            ErrorKind::Malformed,
+            "value",
+            0,
+            "Rational denominator is not positive",
+        ));
+    }
+    if numerator < BigInt::from(0) {
+        numerator = -numerator;
+    }
+    while denominator != BigInt::from(0) {
+        let remainder = &numerator % &denominator;
+        numerator = denominator;
+        denominator = remainder;
+    }
+    if numerator != BigInt::from(1) {
+        return Err(error(
+            ErrorKind::Malformed,
+            "value",
+            0,
+            "Rational is not normalized",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_strict_order(
+    values: &[SerializedValue],
+    message: &'static str,
+) -> Result<(), ProtocolError> {
+    if values.windows(2).all(|pair| pair[0] < pair[1]) {
+        Ok(())
+    } else {
+        Err(error(ErrorKind::Malformed, "value", 0, message))
+    }
+}
+
+fn validate_map_order(entries: &[SerializedValue]) -> Result<(), ProtocolError> {
+    let keys = entries
+        .iter()
+        .map(|entry| match entry {
+            SerializedValue::Product(pair) if pair.len() == 2 => Ok(&pair[0]),
+            _ => Err(error(
+                ErrorKind::Malformed,
+                "value",
+                0,
+                "Map entry requires a key-value product",
+            )),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if keys.windows(2).all(|pair| pair[0] < pair[1]) {
+        Ok(())
+    } else {
+        Err(error(
+            ErrorKind::Malformed,
+            "value",
+            0,
+            "map keys are duplicate or not in canonical order",
+        ))
+    }
+}
+
 fn encode_described_value(
     values: &[SerializedValue],
     kind: u8,
@@ -585,7 +701,11 @@ fn encode_described_value(
 ) -> Result<(), ProtocolError> {
     let references = described_references(kind, schema, types.len(), usize::MAX, 0)?;
     match kind {
-        3 | 13..=15 => encode_components(values, &references, types, order, output),
+        3 => {
+            validate_canonical_rational(values)?;
+            encode_components(values, &references, types, order, output)
+        }
+        13..=15 => encode_components(values, &references, types, order, output),
         5 => match values {
             [SerializedValue::Bytes(bytes)] => {
                 put_uvarint(bytes.len() as u64, output);
@@ -621,6 +741,7 @@ fn encode_described_value(
         },
         11 => match values {
             [SerializedValue::Sequence(entries)] => {
+                validate_strict_order(entries, "set entries are not in canonical order")?;
                 put_uvarint(entries.len() as u64, output);
                 for entry in entries {
                     encode_value(entry, &types[references[0]], types, order, output)?;
@@ -636,6 +757,7 @@ fn encode_described_value(
         },
         12 => match values {
             [SerializedValue::Sequence(entries)] => {
+                validate_map_order(entries)?;
                 put_uvarint(entries.len() as u64, output);
                 for entry in entries {
                     let SerializedValue::Product(pair) = entry else {
@@ -1135,9 +1257,13 @@ impl<'a> Reader<'a> {
     ) -> Result<SerializedValue, ProtocolError> {
         let references = described_references(kind, schema, types.len(), text_limit, self.offset)?;
         let values = match kind {
-            3 | 13..=15 => {
-                self.values(&references, types, order, text_limit, depth, depth_limit)?
+            3 => {
+                let values =
+                    self.values(&references, types, order, text_limit, depth, depth_limit)?;
+                validate_canonical_rational(&values)?;
+                values
             }
+            13..=15 => self.values(&references, types, order, text_limit, depth, depth_limit)?,
             5 => {
                 let length = self.count("value", self.bytes.len().saturating_sub(self.offset))?;
                 vec![SerializedValue::Bytes(self.take(length, "value")?.to_vec())]
@@ -1170,6 +1296,7 @@ impl<'a> Reader<'a> {
                         depth_limit,
                     )?);
                 }
+                validate_strict_order(&entries, "set entries are not in canonical order")?;
                 vec![SerializedValue::Sequence(entries)]
             }
             12 => {
@@ -1185,6 +1312,7 @@ impl<'a> Reader<'a> {
                         depth_limit,
                     )?));
                 }
+                validate_map_order(&entries)?;
                 vec![SerializedValue::Sequence(entries)]
             }
             16 => {
@@ -1586,7 +1714,10 @@ mod tests {
                 _ => unreachable!(),
             };
             let described = match kind {
-                3 => vec![SerializedValue::Unit, SerializedValue::Unit],
+                3 => vec![
+                    SerializedValue::ArbitraryInt(BigInt::from(1)),
+                    SerializedValue::ArbitraryInt(BigInt::from(2)),
+                ],
                 5 => vec![SerializedValue::Bytes(vec![1, 2, 3])],
                 9 => vec![SerializedValue::Variant {
                     alternative: 0,
@@ -1602,8 +1733,16 @@ mod tests {
             let stream = Stream {
                 header: sample().header,
                 types: vec![
-                    TypeDefinition::Unit {
-                        identity: "Unit".into(),
+                    if kind == 3 {
+                        TypeDefinition::Int {
+                            identity: "Int".into(),
+                            signed: true,
+                            width_bits: 0,
+                        }
+                    } else {
+                        TypeDefinition::Unit {
+                            identity: "Unit".into(),
+                        }
                     },
                     TypeDefinition::ObjectDescription {
                         identity: format!("kind-{kind}"),
@@ -1657,6 +1796,82 @@ mod tests {
         assert_eq!(
             deserialize(truncated, Limits::default()).unwrap_err().kind,
             ErrorKind::Malformed
+        );
+    }
+
+    #[test]
+    fn physical_chunk_boundaries_do_not_change_stream_decoding() {
+        let bytes = serialize(&sample()).unwrap();
+        for split in 0..=bytes.len() {
+            assert_eq!(
+                deserialize_chunks([&bytes[..split], &bytes[split..]], Limits::default()).unwrap(),
+                sample()
+            );
+        }
+    }
+
+    #[test]
+    fn rational_and_collection_descriptions_enforce_canonical_values() {
+        let mut rational = Stream {
+            header: sample().header,
+            types: vec![
+                TypeDefinition::Int {
+                    identity: "Int".into(),
+                    signed: true,
+                    width_bits: 0,
+                },
+                TypeDefinition::ObjectDescription {
+                    identity: "Rational".into(),
+                    kind: 3,
+                    schema_payload: vec![0, 0],
+                },
+            ],
+            events: vec![Event {
+                type_id: 1,
+                value: SerializedValue::ObjectDescription(vec![
+                    SerializedValue::ArbitraryInt(BigInt::from(2)),
+                    SerializedValue::ArbitraryInt(BigInt::from(4)),
+                ]),
+            }],
+        };
+        assert_eq!(
+            serialize(&rational).unwrap_err().message,
+            "Rational is not normalized"
+        );
+        if let SerializedValue::ObjectDescription(values) = &mut rational.events[0].value {
+            values[0] = SerializedValue::ArbitraryInt(BigInt::from(1));
+            values[1] = SerializedValue::ArbitraryInt(BigInt::from(2));
+        }
+        let bytes = serialize(&rational).unwrap();
+        assert_eq!(deserialize(&bytes, Limits::default()).unwrap(), rational);
+
+        let mut set_schema = vec![0];
+        put_text("canonical", &mut set_schema).unwrap();
+        let set = Stream {
+            header: rational.header,
+            types: vec![
+                TypeDefinition::Int {
+                    identity: "Int".into(),
+                    signed: true,
+                    width_bits: 0,
+                },
+                TypeDefinition::ObjectDescription {
+                    identity: "Set Int".into(),
+                    kind: 11,
+                    schema_payload: set_schema,
+                },
+            ],
+            events: vec![Event {
+                type_id: 1,
+                value: SerializedValue::ObjectDescription(vec![SerializedValue::Sequence(vec![
+                    SerializedValue::ArbitraryInt(BigInt::from(2)),
+                    SerializedValue::ArbitraryInt(BigInt::from(1)),
+                ])]),
+            }],
+        };
+        assert_eq!(
+            serialize(&set).unwrap_err().message,
+            "set entries are not in canonical order"
         );
     }
 }
