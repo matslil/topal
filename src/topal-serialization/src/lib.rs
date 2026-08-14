@@ -82,13 +82,14 @@ pub enum SerializedValue {
     Boolean(bool),
     Int(i128),
     Text(String),
+    Bytes(Vec<u8>),
     Product(Vec<Self>),
     Variant {
         alternative: usize,
         value: Box<Self>,
     },
     Sequence(Vec<Self>),
-    ObjectDescription(Vec<u8>),
+    ObjectDescription(Vec<Self>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -504,10 +505,14 @@ fn encode_value(
             }
             Ok(())
         }
-        (SerializedValue::ObjectDescription(bytes), TypeDefinition::ObjectDescription { .. }) => {
-            output.extend(bytes);
-            Ok(())
-        }
+        (
+            SerializedValue::ObjectDescription(values),
+            TypeDefinition::ObjectDescription {
+                kind,
+                schema_payload,
+                ..
+            },
+        ) => encode_described_value(values, *kind, schema_payload, types, order, output),
         _ => Err(error(
             ErrorKind::Malformed,
             "value",
@@ -536,6 +541,103 @@ fn encode_components(
         encode_value(value, &types[*id], types, order, output)?;
     }
     Ok(())
+}
+
+fn encode_described_value(
+    values: &[SerializedValue],
+    kind: u8,
+    schema: &[u8],
+    types: &[TypeDefinition],
+    order: StreamByteOrder,
+    output: &mut Vec<u8>,
+) -> Result<(), ProtocolError> {
+    let references = described_references(kind, schema, types.len(), usize::MAX, 0)?;
+    match kind {
+        3 | 13..=15 => encode_components(values, &references, types, order, output),
+        5 => match values {
+            [SerializedValue::Bytes(bytes)] => {
+                put_uvarint(bytes.len() as u64, output);
+                output.extend(bytes);
+                Ok(())
+            }
+            _ => Err(error(
+                ErrorKind::Malformed,
+                "value",
+                0,
+                "Bytes description requires one byte value",
+            )),
+        },
+        9 => match values {
+            [SerializedValue::Variant { alternative, value }] => {
+                let Some(type_id) = references.get(*alternative) else {
+                    return Err(error(
+                        ErrorKind::Malformed,
+                        "value",
+                        0,
+                        "invalid union alternative",
+                    ));
+                };
+                put_uvarint(*alternative as u64, output);
+                encode_value(value, &types[*type_id], types, order, output)
+            }
+            _ => Err(error(
+                ErrorKind::Malformed,
+                "value",
+                0,
+                "Union description requires one alternative",
+            )),
+        },
+        11 => match values {
+            [SerializedValue::Sequence(entries)] => {
+                put_uvarint(entries.len() as u64, output);
+                for entry in entries {
+                    encode_value(entry, &types[references[0]], types, order, output)?;
+                }
+                Ok(())
+            }
+            _ => Err(error(
+                ErrorKind::Malformed,
+                "value",
+                0,
+                "Set description requires one sequence",
+            )),
+        },
+        12 => match values {
+            [SerializedValue::Sequence(entries)] => {
+                put_uvarint(entries.len() as u64, output);
+                for entry in entries {
+                    let SerializedValue::Product(pair) = entry else {
+                        return Err(error(
+                            ErrorKind::Malformed,
+                            "value",
+                            0,
+                            "Map entry requires a key-value product",
+                        ));
+                    };
+                    encode_components(pair, &references, types, order, output)?;
+                }
+                Ok(())
+            }
+            _ => Err(error(
+                ErrorKind::Malformed,
+                "value",
+                0,
+                "Map description requires one sequence",
+            )),
+        },
+        16 => Err(error(
+            ErrorKind::Unsupported,
+            "value",
+            0,
+            "a bare recursive description has no finite value",
+        )),
+        _ => Err(error(
+            ErrorKind::Malformed,
+            "value",
+            0,
+            "unknown described value kind",
+        )),
+    }
 }
 
 fn validate_types(types: &[TypeDefinition], offset: usize) -> Result<(), ProtocolError> {
@@ -904,12 +1006,75 @@ impl<'a> Reader<'a> {
                 }
                 Ok(SerializedValue::Sequence(values))
             }
-            TypeDefinition::ObjectDescription { .. } => {
-                let remaining = self.bytes[self.offset..].to_vec();
-                self.offset = self.bytes.len();
-                Ok(SerializedValue::ObjectDescription(remaining))
-            }
+            TypeDefinition::ObjectDescription {
+                kind,
+                schema_payload,
+                ..
+            } => self.described_value(*kind, schema_payload, types, order, text_limit),
         }
+    }
+
+    fn described_value(
+        &mut self,
+        kind: u8,
+        schema: &[u8],
+        types: &[TypeDefinition],
+        order: StreamByteOrder,
+        text_limit: usize,
+    ) -> Result<SerializedValue, ProtocolError> {
+        let references = described_references(kind, schema, types.len(), text_limit, self.offset)?;
+        let values = match kind {
+            3 | 13..=15 => self.values(&references, types, order, text_limit)?,
+            5 => {
+                let length = self.count("value", self.bytes.len().saturating_sub(self.offset))?;
+                vec![SerializedValue::Bytes(self.take(length, "value")?.to_vec())]
+            }
+            9 => {
+                let alternative = self.count("value", references.len().saturating_sub(1))?;
+                let value =
+                    self.value(&types[references[alternative]], types, order, text_limit)?;
+                vec![SerializedValue::Variant {
+                    alternative,
+                    value: Box::new(value),
+                }]
+            }
+            11 => {
+                let count = self.count("value", 1_000_000)?;
+                let mut entries = Vec::with_capacity(count);
+                for _ in 0..count {
+                    entries.push(self.value(&types[references[0]], types, order, text_limit)?);
+                }
+                vec![SerializedValue::Sequence(entries)]
+            }
+            12 => {
+                let count = self.count("value", 1_000_000)?;
+                let mut entries = Vec::with_capacity(count);
+                for _ in 0..count {
+                    entries.push(SerializedValue::Product(self.values(
+                        &references,
+                        types,
+                        order,
+                        text_limit,
+                    )?));
+                }
+                vec![SerializedValue::Sequence(entries)]
+            }
+            16 => {
+                return Err(self.failure(
+                    ErrorKind::Unsupported,
+                    "value",
+                    "a bare recursive description has no finite value",
+                ));
+            }
+            _ => {
+                return Err(self.failure(
+                    ErrorKind::Malformed,
+                    "value",
+                    "unknown described value kind",
+                ));
+            }
+        };
+        Ok(SerializedValue::ObjectDescription(values))
     }
 
     fn values(
@@ -941,37 +1106,48 @@ fn validate_described_schema(
     text_limit: usize,
     offset: usize,
 ) -> Result<(), ProtocolError> {
+    described_references(kind, payload, prior, text_limit, offset).map(|_| ())
+}
+
+fn described_references(
+    kind: u8,
+    payload: &[u8],
+    prior: usize,
+    text_limit: usize,
+    offset: usize,
+) -> Result<Vec<usize>, ProtocolError> {
     let mut reader = Reader {
         bytes: payload,
         offset: 0,
     };
+    let mut references = Vec::new();
     match kind {
         3 => {
-            described_id(&mut reader, prior)?;
-            described_id(&mut reader, prior)?;
+            references.push(described_id(&mut reader, prior)?);
+            references.push(described_id(&mut reader, prior)?);
         }
         5 => {}
         9 => {
             let count = reader.count("type table", payload.len())?;
             for _ in 0..count {
-                described_id(&mut reader, prior)?;
+                references.push(described_id(&mut reader, prior)?);
             }
         }
         11 | 13 => {
-            described_id(&mut reader, prior)?;
+            references.push(described_id(&mut reader, prior)?);
             reader.text("type table", text_limit)?;
         }
         12 => {
-            described_id(&mut reader, prior)?;
-            described_id(&mut reader, prior)?;
+            references.push(described_id(&mut reader, prior)?);
+            references.push(described_id(&mut reader, prior)?);
             reader.text("type table", text_limit)?;
         }
         14 => {
-            described_id(&mut reader, prior)?;
+            references.push(described_id(&mut reader, prior)?);
         }
         15 => {
             reader.text("type table", text_limit)?;
-            described_id(&mut reader, prior)?;
+            references.push(described_id(&mut reader, prior)?);
         }
         16 => {
             reader.text("type table", text_limit)?;
@@ -993,7 +1169,7 @@ fn validate_described_schema(
             "described schema has trailing bytes",
         ));
     }
-    Ok(())
+    Ok(references)
 }
 
 fn described_id(reader: &mut Reader<'_>, prior: usize) -> Result<usize, ProtocolError> {
@@ -1196,7 +1372,7 @@ mod tests {
 
     #[test]
     fn every_protocol_kind_is_preserved_as_a_safe_description() {
-        for kind in [3, 5, 9, 11, 12, 13, 14, 15, 16] {
+        for kind in [3, 5, 9, 11, 12, 13, 14, 15] {
             let schema_payload = match kind {
                 3 => vec![0, 0],
                 5 => vec![],
@@ -1207,6 +1383,20 @@ mod tests {
                 14 => vec![0],
                 15 => vec![4, b'k', b'i', b'n', b'd', 0],
                 16 => vec![4, b's', b'e', b'l', b'f'],
+                _ => unreachable!(),
+            };
+            let described = match kind {
+                3 => vec![SerializedValue::Unit, SerializedValue::Unit],
+                5 => vec![SerializedValue::Bytes(vec![1, 2, 3])],
+                9 => vec![SerializedValue::Variant {
+                    alternative: 0,
+                    value: Box::new(SerializedValue::Unit),
+                }],
+                11 => vec![SerializedValue::Sequence(vec![SerializedValue::Unit])],
+                12 => vec![SerializedValue::Sequence(vec![SerializedValue::Product(
+                    vec![SerializedValue::Unit, SerializedValue::Unit],
+                )])],
+                13..=15 => vec![SerializedValue::Unit],
                 _ => unreachable!(),
             };
             let stream = Stream {
@@ -1223,12 +1413,36 @@ mod tests {
                 ],
                 events: vec![Event {
                     type_id: 1,
-                    value: SerializedValue::ObjectDescription(vec![1, 2, 3]),
+                    value: SerializedValue::ObjectDescription(described),
                 }],
             };
             let bytes = serialize(&stream).unwrap();
             assert_eq!(deserialize(&bytes, Limits::default()).unwrap(), stream);
         }
+    }
+
+    #[test]
+    fn described_values_are_structurally_checked_instead_of_accepted_as_frame_bytes() {
+        let stream = Stream {
+            header: sample().header,
+            types: vec![
+                TypeDefinition::Unit {
+                    identity: "Unit".into(),
+                },
+                TypeDefinition::ObjectDescription {
+                    identity: "Rational".into(),
+                    kind: 3,
+                    schema_payload: vec![0, 0],
+                },
+            ],
+            events: vec![Event {
+                type_id: 1,
+                value: SerializedValue::ObjectDescription(vec![SerializedValue::Unit]),
+            }],
+        };
+        let error = serialize(&stream).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Malformed);
+        assert_eq!(error.stage, "value");
     }
 
     #[test]
