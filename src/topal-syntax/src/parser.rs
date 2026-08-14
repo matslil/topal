@@ -327,7 +327,15 @@ impl Parser<'_> {
                 span,
             });
         }
-        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "lang" {
+        if first.kind == TokenKind::Identifier
+            && self.source.slice(first.span) == "lang"
+            && self.peek_nontrivia().is_some_and(|operation| {
+                matches!(
+                    self.source.slice(operation.span),
+                    "disable-warning" | "push-disable-warning" | "pop-disable-warning"
+                )
+            })
+        {
             return self.diagnostic_control(first);
         }
         if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "return" {

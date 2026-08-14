@@ -20,6 +20,7 @@ pub enum Value {
     Type(String),
     Effects(Vec<String>),
     Boolean(bool),
+    Version(LanguageVersion),
     Int(BigInt),
     Rational(BigRational),
     IntRange {
@@ -102,6 +103,7 @@ pub enum Value {
     Constraint(Box<ConstraintValue>),
     Capability(Vec<BTreeSet<String>>),
     Interface(Box<InterfaceValue>),
+    Introspection(Box<IntrospectionValue>),
     Refined {
         constraint: String,
         base_classifier: String,
@@ -125,6 +127,39 @@ pub enum Value {
     Finish(Box<Self>),
     Completed,
     Unit,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum IntrospectionValue {
+    Identity {
+        kind: ObjectKind,
+        canonical: String,
+    },
+    TypeView {
+        form: String,
+        identity: String,
+    },
+    FunctionView {
+        identity: String,
+        inputs: Vec<String>,
+        output: String,
+        is_static: bool,
+        effects: Vec<String>,
+    },
+    ScopeView {
+        identity: String,
+        members: Vec<String>,
+    },
+    DeclarationView {
+        name: Option<String>,
+        canonical_path: Option<String>,
+        language_version: LanguageVersion,
+    },
+    LanguageContext {
+        language: String,
+        version: LanguageVersion,
+        features: Vec<String>,
+    },
 }
 
 impl Value {
@@ -213,6 +248,7 @@ impl fmt::Display for Value {
         match self {
             Self::Type(name) => formatter.write_str(name),
             Self::Interface(interface) => write!(formatter, "<Interface {}>", interface.name),
+            Self::Introspection(value) => write!(formatter, "{value}"),
             Self::Capability(alternatives) => {
                 let text = alternatives
                     .iter()
@@ -229,6 +265,7 @@ impl fmt::Display for Value {
             }
             Self::Effects(effects) => write!(formatter, "Effects ({})", effects.join(", ")),
             Self::Boolean(value) => value.fmt(formatter),
+            Self::Version(value) => value.fmt(formatter),
             Self::Int(value) => value.fmt(formatter),
             Self::Rational(value) => {
                 write!(
@@ -367,6 +404,52 @@ impl fmt::Display for Value {
             Self::Finish(value) => write!(formatter, "Finish {value}"),
             Self::Completed => formatter.write_str("Completed"),
             Self::Unit => formatter.write_str("()"),
+        }
+    }
+}
+
+impl fmt::Display for IntrospectionValue {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Identity { kind, canonical } => {
+                write!(
+                    formatter,
+                    "lang Identity ( kind is {kind:?}, path is {canonical} )"
+                )
+            }
+            Self::TypeView { form, identity } => {
+                write!(formatter, "lang {form} ( identity is {identity} )")
+            }
+            Self::FunctionView {
+                identity,
+                inputs,
+                output,
+                is_static,
+                effects,
+            } => write!(
+                formatter,
+                "lang FunctionView ( identity is {identity}, inputs is {inputs:?}, output is {output}, static is {is_static}, effects is {effects:?} )"
+            ),
+            Self::ScopeView { identity, members } => write!(
+                formatter,
+                "lang ScopeView ( identity is {identity}, members is {members:?} )"
+            ),
+            Self::DeclarationView {
+                name,
+                canonical_path,
+                language_version,
+            } => write!(
+                formatter,
+                "lang DeclarationView ( name is {name:?}, path is {canonical_path:?}, version is {language_version} )"
+            ),
+            Self::LanguageContext {
+                language,
+                version,
+                features,
+            } => write!(
+                formatter,
+                "lang LanguageContext ( language is {language}, version is {version}, features is {features:?} )"
+            ),
         }
     }
 }
@@ -528,6 +611,211 @@ enum BindingOutcome {
 }
 
 impl Session {
+    fn is_lang_introspection(source: &SourceText, items: &[Expression]) -> bool {
+        let qualified_prefix = matches!(
+            (items.first(), items.get(1)),
+            (Some(Expression::Identifier(lang)), Some(Expression::Identifier(operation)))
+                if source.slice(*lang) == "lang"
+                    && matches!(source.slice(*operation),
+                        "context" | "version" | "identity" | "view" | "declaration" | "public-members")
+        );
+        let qualified_infix = matches!(
+            (items.get(1), items.get(2)),
+            (Some(Expression::Identifier(lang)), Some(Expression::Identifier(operation)))
+                if source.slice(*lang) == "lang"
+                    && matches!(source.slice(*operation),
+                        "same-object" | "equivalent-type" | "compatible-with" | "same-layout")
+        );
+        qualified_prefix || qualified_infix
+    }
+
+    #[allow(clippy::too_many_lines)] // Qualified static operations remain explicit and auditable.
+    fn evaluate_lang_introspection(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if let [
+            Expression::Identifier(lang),
+            Expression::Identifier(operation),
+        ] = items
+            && source.slice(*lang) == "lang"
+        {
+            return match source.slice(*operation) {
+                "context" => {
+                    trace.record(TraceEvent {
+                        event: "introspection.context.viewed",
+                        rule: "TOPAL-SYN-CONTEXT-001",
+                        detail: &self.language_version.to_string(),
+                    });
+                    Ok(Value::Introspection(Box::new(
+                        IntrospectionValue::LanguageContext {
+                            language: "topal".into(),
+                            version: self.language_version,
+                            features: Vec::new(),
+                        },
+                    )))
+                }
+                "version" => Ok(Value::Version(self.language_version)),
+                _ => Err(diagnostic(
+                    source,
+                    "E-INTROSPECTION-OPERATION",
+                    *operation,
+                    "unknown qualified static introspection operation",
+                )),
+            };
+        }
+        if let [
+            Expression::Identifier(lang),
+            Expression::Identifier(operation),
+            subject,
+        ] = items
+            && source.slice(*lang) == "lang"
+        {
+            let subject_span = subject.span();
+            let value = self.evaluate_expression(source, subject, trace)?;
+            let result = match source.slice(*operation) {
+                "identity" => Value::Introspection(Box::new(IntrospectionValue::Identity {
+                    kind: value.object_kind(),
+                    canonical: introspection_identity(&value).ok_or_else(|| {
+                        diagnostic(
+                            source,
+                            "E-STATIC-INTROSPECTION-SUBJECT",
+                            subject_span,
+                            "lang identity requires a statically known language object",
+                        )
+                    })?,
+                })),
+                "view" => introspection_view(source, value, subject_span)?,
+                "declaration" => {
+                    let name = match subject {
+                        Expression::Identifier(name) => Some(source.slice(*name).to_owned()),
+                        _ => None,
+                    };
+                    Value::Introspection(Box::new(IntrospectionValue::DeclarationView {
+                        canonical_path: name.as_ref().map(|name| format!("root.{name}")),
+                        name,
+                        language_version: self.language_version,
+                    }))
+                }
+                "public-members" => {
+                    let Value::Namespace(namespace) = value else {
+                        return Err(diagnostic(
+                            source,
+                            "E-INTROSPECTION-KIND",
+                            subject_span,
+                            "lang public-members requires a visible Scope",
+                        ));
+                    };
+                    let mut members = if namespace.name == "root" {
+                        self.published_names.iter().cloned().collect::<Vec<_>>()
+                    } else {
+                        namespace
+                            .bindings
+                            .keys()
+                            .chain(namespace.functions.keys())
+                            .chain(namespace.generators.keys())
+                            .cloned()
+                            .collect::<Vec<_>>()
+                    };
+                    members.sort();
+                    members.dedup();
+                    Value::Introspection(Box::new(IntrospectionValue::ScopeView {
+                        identity: namespace.name,
+                        members,
+                    }))
+                }
+                _ => {
+                    return Err(diagnostic(
+                        source,
+                        "E-INTROSPECTION-OPERATION",
+                        *operation,
+                        "unknown qualified static introspection operation",
+                    ));
+                }
+            };
+            trace.record(TraceEvent {
+                event: "introspection.object.viewed",
+                rule: "TOPAL-TYPE-KIND-001",
+                detail: source.slice(*operation),
+            });
+            return Ok(result);
+        }
+        if let [
+            left,
+            Expression::Identifier(lang),
+            Expression::Identifier(operation),
+            right,
+        ] = items
+            && source.slice(*lang) == "lang"
+        {
+            let left = self.evaluate_expression(source, left, trace)?;
+            let right = self.evaluate_expression(source, right, trace)?;
+            let relation = source.slice(*operation);
+            let result = match relation {
+                "same-object" => {
+                    let left = introspection_identity(&left);
+                    let right = introspection_identity(&right);
+                    match (left, right) {
+                        (Some(left), Some(right)) => left == right,
+                        _ => {
+                            return Err(diagnostic(
+                                source,
+                                "E-STATIC-INTROSPECTION-SUBJECT",
+                                span,
+                                "lang same-object requires statically known language objects",
+                            ));
+                        }
+                    }
+                }
+                "equivalent-type" | "compatible-with"
+                    if matches!(left, Value::Type(_) | Value::ModularType(_))
+                        && matches!(right, Value::Type(_) | Value::ModularType(_)) =>
+                {
+                    introspection_identity(&left) == introspection_identity(&right)
+                }
+                "equivalent-type" | "compatible-with" => {
+                    return Err(diagnostic(
+                        source,
+                        "E-INTROSPECTION-KIND",
+                        span,
+                        "this relation requires two statically known Type objects",
+                    ));
+                }
+                "same-layout" => {
+                    return Err(diagnostic(
+                        source,
+                        "E-INTROSPECTION-KIND",
+                        span,
+                        "lang same-layout requires two explicit Layout values",
+                    ));
+                }
+                _ => {
+                    return Err(diagnostic(
+                        source,
+                        "E-INTROSPECTION-RELATION",
+                        *operation,
+                        "unknown qualified introspection relation",
+                    ));
+                }
+            };
+            trace.record(TraceEvent {
+                event: "introspection.relation.compared",
+                rule: "TOPAL-TYPE-ID-001",
+                detail: relation,
+            });
+            return Ok(Value::Boolean(result));
+        }
+        Err(diagnostic(
+            source,
+            "E-INTROSPECTION-SYNTAX",
+            span,
+            "qualified introspection requires `lang operation subject`",
+        ))
+    }
+
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -1247,6 +1535,9 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if Self::is_lang_introspection(source, items) {
+                    return self.evaluate_lang_introspection(source, items, *span, trace);
+                }
                 if Self::is_empty_effects(source, items) {
                     trace.record(TraceEvent {
                         event: "effects.empty.constructed",
@@ -7711,6 +8002,7 @@ fn record_result(trace: &mut impl TraceSink, value: &Value) {
 fn value_classifier(value: &Value) -> &'static str {
     match value {
         Value::Boolean(_) => "Boolean",
+        Value::Version(_) => "Version",
         Value::Type(_) | Value::ModularType(_) => "Type",
         Value::Effects(_) => "Effect",
         Value::Int(_) => "Int",
@@ -7760,6 +8052,14 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Constraint(_) => "Constraint",
         Value::Capability(_) => "Capability",
         Value::Interface(_) => "Interface",
+        Value::Introspection(value) => match value.as_ref() {
+            IntrospectionValue::Identity { .. } => "lang Identity",
+            IntrospectionValue::TypeView { .. } => "lang TypeView",
+            IntrospectionValue::FunctionView { .. } => "lang FunctionView",
+            IntrospectionValue::ScopeView { .. } => "lang ScopeView",
+            IntrospectionValue::DeclarationView { .. } => "lang DeclarationView",
+            IntrospectionValue::LanguageContext { .. } => "lang LanguageContext",
+        },
         Value::Refined { .. } => "Refined",
         Value::Modular { .. } => "Modular",
         Value::ErrorDomain(_) => "ErrorDomain",
@@ -7821,6 +8121,104 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::ModularType(kind) => kind.name.clone().unwrap_or_else(|| "Type".into()),
         _ => value_classifier(value).to_owned(),
     }
+}
+
+fn introspection_identity(value: &Value) -> Option<String> {
+    match value {
+        Value::Type(name) => Some(format!("type:{name}")),
+        Value::ModularType(kind) => Some(format!(
+            "type:{}:{}..{}",
+            if kind.signed { "ModInt" } else { "ModNat" },
+            kind.lower,
+            kind.upper
+        )),
+        Value::NamedFunction(function) => Some(format!("function:root.{}", function.name)),
+        Value::Callable(kind) => Some(format!("function:root.{}", callable_name(*kind))),
+        Value::Namespace(namespace) => Some(format!("scope:{}", namespace.name)),
+        Value::Constraint(constraint) => constraint
+            .name
+            .as_ref()
+            .map(|name| format!("constraint:root.{name}")),
+        Value::Capability(alternatives) => Some(format!("capability:{alternatives:?}")),
+        Value::Interface(interface) => Some(format!("interface:root.{}", interface.name)),
+        Value::Introspection(value) => match value.as_ref() {
+            IntrospectionValue::Identity { canonical, .. } => Some(canonical.clone()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn introspection_view(source: &SourceText, value: Value, span: Span) -> Result<Value, Diagnostic> {
+    let view = match value {
+        Value::Type(identity) => IntrospectionValue::TypeView {
+            form: "PrimitiveType".into(),
+            identity,
+        },
+        Value::ModularType(kind) => IntrospectionValue::TypeView {
+            form: "RefinedType".into(),
+            identity: kind.name.clone().unwrap_or_else(|| {
+                format!(
+                    "{} {}..{}",
+                    if kind.signed { "ModInt" } else { "ModNat" },
+                    kind.lower,
+                    kind.upper
+                )
+            }),
+        },
+        Value::NamedFunction(function) => {
+            let Some(first) = function.candidates.first() else {
+                return Err(diagnostic(
+                    source,
+                    "E-INTROSPECTION-EMPTY-FUNCTION",
+                    span,
+                    "function view has no declared overload",
+                ));
+            };
+            IntrospectionValue::FunctionView {
+                identity: format!("root.{}", function.name),
+                inputs: first
+                    .parameters
+                    .iter()
+                    .map(|(_, classifier)| classifier.clone())
+                    .collect(),
+                output: first.result.clone(),
+                is_static: first.is_static,
+                effects: Vec::new(),
+            }
+        }
+        Value::Namespace(namespace) => {
+            let mut members = namespace
+                .bindings
+                .keys()
+                .chain(namespace.functions.keys())
+                .chain(namespace.generators.keys())
+                .cloned()
+                .collect::<Vec<_>>();
+            members.sort();
+            members.dedup();
+            IntrospectionValue::ScopeView {
+                identity: namespace.name,
+                members,
+            }
+        }
+        Value::Constraint(constraint) => IntrospectionValue::TypeView {
+            form: "RefinedType".into(),
+            identity: constraint
+                .name
+                .clone()
+                .unwrap_or_else(|| constraint.base_classifier.clone()),
+        },
+        _ => {
+            return Err(diagnostic(
+                source,
+                "E-STATIC-INTROSPECTION-SUBJECT",
+                span,
+                "lang view requires a statically known Type, Function, Scope, Constraint, Effect, or Protocol",
+            ));
+        }
+    };
+    Ok(Value::Introspection(Box::new(view)))
 }
 
 fn generator_classifier_diagnostic(
@@ -10439,6 +10837,7 @@ fn apply_negate(
             })
         }
         Value::Boolean(_)
+        | Value::Version(_)
         | Value::Type(_)
         | Value::Effects(_)
         | Value::IntRange { .. }
@@ -10466,6 +10865,7 @@ fn apply_negate(
         | Value::Constraint(_)
         | Value::Capability(_)
         | Value::Interface(_)
+        | Value::Introspection(_)
         | Value::Refined { .. }
         | Value::ModularType(_)
         | Value::ErrorDomain(_)
@@ -10799,6 +11199,48 @@ mod tests {
 
     fn evaluate(source: &str) -> Result<Value, Diagnostic> {
         Session::new().evaluate(source, &mut std::io::sink())
+    }
+
+    #[test]
+    fn evaluates_qualified_static_introspection() {
+        assert!(matches!(
+            evaluate("lang context\n").unwrap(),
+            Value::Introspection(_)
+        ));
+        assert_eq!(
+            evaluate("lang version\n").unwrap(),
+            Value::Version(LanguageVersion::DESIGN_0)
+        );
+
+        let identity = evaluate("lang identity Int\n").unwrap();
+        assert!(matches!(
+            identity,
+            Value::Introspection(value)
+                if matches!(&*value, IntrospectionValue::Identity { canonical, .. } if canonical == "type:Int")
+        ));
+
+        let view = evaluate("lang view Int\n").unwrap();
+        assert!(matches!(
+            view,
+            Value::Introspection(value)
+                if matches!(&*value, IntrospectionValue::TypeView { form, identity } if form == "PrimitiveType" && identity == "Int")
+        ));
+    }
+
+    #[test]
+    fn evaluates_static_object_relations_without_runtime_reflection() {
+        assert_eq!(
+            evaluate("Int lang same-object Int\n").unwrap(),
+            Value::Boolean(true)
+        );
+        assert_eq!(
+            evaluate("Int lang equivalent-type Rational\n").unwrap(),
+            Value::Boolean(false)
+        );
+        let error = evaluate("lang view 42\n").unwrap_err();
+        assert_eq!(error.code, "E-STATIC-INTROSPECTION-SUBJECT");
+        let error = evaluate("1 lang same-object 1\n").unwrap_err();
+        assert_eq!(error.code, "E-STATIC-INTROSPECTION-SUBJECT");
     }
 
     #[test]

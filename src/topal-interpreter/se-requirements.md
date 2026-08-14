@@ -1922,3 +1922,11 @@ The interpreter shall use the shared GEIR boundary for artifact export,
 compiler lowering, and artifact optimization. It shall never assign runtime
 semantics to those operations and shall return the stable
 `E-COMPILER-ONLY` diagnostic if one is requested through an embedding API.
+
+## TOPAL-INTP-SUBSET-245 — Qualified static introspection foundation
+
+All source modes shall evaluate `lang context`, `lang version`, `lang identity`,
+`lang view`, `lang declaration`, `lang public-members`, and the implemented
+static object relations under `TOPAL-INTRO-QUALIFIED-001` through
+`TOPAL-INTRO-RELATION-001`. Runtime values shall not acquire reflection
+metadata, and inapplicable operands shall produce stable diagnostics.
