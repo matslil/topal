@@ -54,6 +54,12 @@ fn read_ledger(root: &Path) -> BTreeMap<String, LedgerEntry> {
 fn every_stable_specification_rule_has_a_completion_owner() {
     let root = workspace_root();
     let entries = read_ledger(&root);
+    let traceability = fs::read_to_string(root.join("se/traceability.md"))
+        .expect("traceability matrix must be readable");
+    let implementation_coverage = traceability
+        .split_once("## Implementation coverage")
+        .expect("traceability must contain implementation coverage")
+        .1;
     let mut observed = BTreeMap::new();
 
     for directory_entry in fs::read_dir(root.join("spec")).expect("spec must be readable") {
@@ -98,5 +104,20 @@ fn every_stable_specification_rule_has_a_completion_owner() {
             matches!(entry.status.as_str(), "planned" | "complete"),
             "invalid completion status for {path}"
         );
+        if entry.status == "complete" {
+            let specification = fs::read_to_string(root.join(&path)).unwrap();
+            for line in specification.lines() {
+                let Some(rule) = line
+                    .strip_prefix("### ")
+                    .and_then(|line| line.split_once(' '))
+                else {
+                    continue;
+                };
+                assert!(
+                    implementation_coverage.contains(rule.0),
+                    "completed rule {rule:?} from {path} lacks implementation evidence"
+                );
+            }
+        }
     }
 }
