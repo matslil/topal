@@ -103,7 +103,7 @@ fn records_reversible_static_function_call_decisions() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}static-function-call.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}static-function-call.t"),
         ])
         .output()
@@ -128,7 +128,7 @@ fn records_reversible_static_function_argument_binding() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}static-unary-function.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}static-unary-function.t"),
         ])
         .output()
@@ -153,7 +153,7 @@ fn records_reversible_static_product_argument_bindings() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}static-product-function.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}static-product-function.t"),
         ])
         .output()
@@ -187,7 +187,7 @@ fn records_reversible_explicit_function_return() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}function-return.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}function-return.t"),
         ])
         .output()
@@ -211,7 +211,7 @@ fn records_reversible_ordinary_function_execution() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}ordinary-function.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}ordinary-function.t"),
         ])
         .output()
@@ -233,7 +233,7 @@ fn records_reversible_nat_function_execution() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}nat-functions.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}nat-functions.t"),
         ])
         .output()
@@ -251,7 +251,7 @@ fn records_reversible_nat_recursion() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}nat-recursion.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}nat-recursion.t"),
         ])
         .output()
@@ -273,7 +273,7 @@ fn records_reversible_increasing_nat_recursion() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}nat-increasing-recursion.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}nat-increasing-recursion.t"),
         ])
         .output()
@@ -295,7 +295,7 @@ fn records_reversible_mutual_nat_recursion() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}nat-mutual-recursion.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}nat-mutual-recursion.t"),
         ])
         .output()
@@ -317,7 +317,7 @@ fn records_reversible_mutual_increasing_nat_recursion() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}nat-mutual-increasing-recursion.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}nat-mutual-increasing-recursion.t"),
         ])
         .output()
@@ -339,7 +339,7 @@ fn records_reversible_enum_values() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}enum-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}enum-values.t"),
         ])
         .output()
@@ -360,7 +360,7 @@ fn records_reversible_enum_function_classification() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}enum-functions.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}enum-functions.t"),
         ])
         .output()
@@ -381,7 +381,7 @@ fn records_reversible_exhaustive_enum_decision() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}enum-decisions.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}enum-decisions.t"),
         ])
         .output()
@@ -403,7 +403,7 @@ fn records_reversible_arithmetic_error_code_selection() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}arithmetic-error-codes.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}arithmetic-error-codes.t"),
         ])
         .output()
@@ -428,7 +428,7 @@ fn records_reversible_successful_result_contract() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}result-success.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}result-success.t"),
         ])
         .output()
@@ -449,7 +449,7 @@ fn records_reversible_dynamic_division_error() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}result-division-error.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}result-division-error.t"),
         ])
         .output()
@@ -472,7 +472,7 @@ fn records_reversible_negative_rational_exponentiation() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}rational-negative-exponent.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}rational-negative-exponent.t"),
         ])
         .output()
@@ -493,7 +493,7 @@ fn records_reversible_dynamic_negative_power_error() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}result-negative-power-error.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}result-negative-power-error.t"),
         ])
         .output()
@@ -514,7 +514,7 @@ fn records_reversible_result_error_propagation() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}result-error-propagation.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}result-error-propagation.t"),
         ])
         .output()
@@ -536,7 +536,7 @@ fn records_reversible_result_decisions() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}result-decisions.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}result-decisions.t"),
         ])
         .output()
@@ -558,7 +558,7 @@ fn records_reversible_error_field_selection() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}error-field-selection.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}error-field-selection.t"),
         ])
         .output()
@@ -580,7 +580,7 @@ fn records_reversible_error_code_decisions() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}error-code-decisions.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}error-code-decisions.t"),
         ])
         .output()
@@ -598,7 +598,7 @@ fn records_reversible_result_success_projection() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}result-success-projection.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}result-success-projection.t"),
         ])
         .output()
@@ -616,7 +616,7 @@ fn records_reversible_exhaustive_error_code_decision() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}exhaustive-error-code-decisions.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}exhaustive-error-code-decisions.t"),
         ])
         .output()
@@ -634,7 +634,7 @@ fn records_reversible_character_classification() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}character-classification.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}character-classification.t"),
         ])
         .output()
@@ -652,7 +652,7 @@ fn records_reversible_int_euclidean_modulo() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}int-euclidean-modulo.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}int-euclidean-modulo.t"),
         ])
         .output()
@@ -672,7 +672,7 @@ fn records_reversible_exact_numeric_absolute() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}exact-numeric-absolute.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}exact-numeric-absolute.t"),
         ])
         .output()
@@ -690,7 +690,7 @@ fn records_reversible_named_exact_numeric_negation() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}exact-numeric-negate.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}exact-numeric-negate.t"),
         ])
         .output()
@@ -708,7 +708,7 @@ fn records_reversible_exact_numeric_zero() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}exact-numeric-zero.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}exact-numeric-zero.t"),
         ])
         .output()
@@ -730,7 +730,7 @@ fn records_reversible_exact_three_way_comparison() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}exact-three-way-comparison.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}exact-three-way-comparison.t"),
         ])
         .output()
@@ -749,7 +749,7 @@ fn records_reversible_exact_rational_int_narrowing() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}exact-rational-int-narrowing.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}exact-rational-int-narrowing.t"),
         ])
         .output()
@@ -767,7 +767,7 @@ fn records_reversible_dynamic_rational_int_validation() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}dynamic-rational-int-validation.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}dynamic-rational-int-validation.t"),
         ])
         .output()
@@ -788,7 +788,7 @@ fn records_reversible_checked_int_construction() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}int-checked-construction.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}int-checked-construction.t"),
         ])
         .output()
@@ -811,7 +811,7 @@ fn records_reversible_checked_nat_construction() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}nat-checked-construction.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}nat-checked-construction.t"),
         ])
         .output()
@@ -830,7 +830,7 @@ fn records_reversible_canonical_rational_construction() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}rational-exact-construction.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}rational-exact-construction.t"),
         ])
         .output()
@@ -853,7 +853,7 @@ fn records_reversible_dynamic_rational_construction() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}dynamic-rational-construction.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}dynamic-rational-construction.t"),
         ])
         .output()
@@ -872,7 +872,7 @@ fn records_reversible_inclusive_int_ranges() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}inclusive-int-ranges.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}inclusive-int-ranges.t"),
         ])
         .output()
@@ -893,7 +893,7 @@ fn records_reversible_rational_ranges() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}rational-ranges.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}rational-ranges.t"),
         ])
         .output()
@@ -912,7 +912,7 @@ fn records_reversible_boolean_not() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}boolean-logic.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}boolean-logic.t"),
         ])
         .output()
@@ -936,7 +936,7 @@ fn records_reversible_explicit_optional_construction() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}optional-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}optional-values.t"),
         ])
         .output()
@@ -963,7 +963,7 @@ fn records_reversible_string_character_indexing() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-character-at.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-character-at.t"),
         ])
         .output()
@@ -985,7 +985,7 @@ fn records_reversible_universal_unicode_uppercase() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-uppercase.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-uppercase.t"),
         ])
         .output()
@@ -1003,7 +1003,7 @@ fn records_reversible_universal_unicode_lowercase() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-lowercase.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-lowercase.t"),
         ])
         .output()
@@ -1021,7 +1021,7 @@ fn records_reversible_full_unicode_case_folding() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-case-fold.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-case-fold.t"),
         ])
         .output()
@@ -1039,7 +1039,7 @@ fn records_reversible_canonical_string_equality() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-canonical-equality.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-canonical-equality.t"),
         ])
         .output()
@@ -1057,7 +1057,7 @@ fn records_reversible_character_traversal_collection() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-character-traversal.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-character-traversal.t"),
         ])
         .output()
@@ -1075,7 +1075,7 @@ fn records_reversible_character_generator_foreach() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-character-foreach.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-character-foreach.t"),
         ])
         .output()
@@ -1094,7 +1094,7 @@ fn records_reversible_named_character_generator_consumption() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-named-character-generator.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-named-character-generator.t"),
         ])
         .output()
@@ -1112,7 +1112,7 @@ fn records_reversible_returned_character_generator() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-character-generator-result.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-character-generator-result.t"),
         ])
         .output()
@@ -1130,7 +1130,7 @@ fn records_reversible_generator_parameter_transfer() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-character-generator-parameter.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-character-generator-parameter.t"),
         ])
         .output()
@@ -1148,7 +1148,7 @@ fn records_reversible_abandoned_generator_close() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}string-character-generator-close.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}string-character-generator-close.t"),
         ])
         .output()
@@ -1166,7 +1166,7 @@ fn records_reversible_generator_error_code_selection() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}generator-error-codes.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}generator-error-codes.t"),
         ])
         .output()
@@ -1183,7 +1183,7 @@ fn records_custom_multiple_yield_generator_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-multiple-yield-generator.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-multiple-yield-generator.t"),
         ])
         .output()
@@ -1204,7 +1204,7 @@ fn records_custom_generator_local_binding_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-local-binding.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-local-binding.t"),
         ])
         .output()
@@ -1222,7 +1222,7 @@ fn records_generator_return_before_yield_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-early-return.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-early-return.t"),
         ])
         .output()
@@ -1240,7 +1240,7 @@ fn records_distinct_generator_final_character_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-final-character.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-final-character.t"),
         ])
         .output()
@@ -1258,7 +1258,7 @@ fn records_custom_generator_suspension_order_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-suspension.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-suspension.t"),
         ])
         .output()
@@ -1275,7 +1275,7 @@ fn records_unit_resume_binding_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-resume-binding.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-resume-binding.t"),
         ])
         .output()
@@ -1292,7 +1292,7 @@ fn records_abandoned_custom_generator_close_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-close.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-close.t"),
         ])
         .output()
@@ -1309,7 +1309,7 @@ fn records_custom_generator_close_handler_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-close-handler.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-close-handler.t"),
         ])
         .output()
@@ -1327,7 +1327,7 @@ fn records_qualified_generator_close_code_match_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-close-code-pattern.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-close-code-pattern.t"),
         ])
         .output()
@@ -1344,7 +1344,7 @@ fn records_custom_generator_function_result_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-function-result.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-function-result.t"),
         ])
         .output()
@@ -1362,7 +1362,7 @@ fn records_custom_generator_function_parameter_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-function-parameter.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-function-parameter.t"),
         ])
         .output()
@@ -1380,7 +1380,7 @@ fn records_unconsumed_custom_generator_parameter_close_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-parameter-close.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-parameter-close.t"),
         ])
         .output()
@@ -1398,7 +1398,7 @@ fn records_character_returning_generator_parameter_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-character-return-parameter.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-character-return-parameter.t"),
         ])
         .output()
@@ -1416,7 +1416,7 @@ fn records_character_returning_generator_function_result_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-character-return-result.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-character-return-result.t"),
         ])
         .output()
@@ -1434,7 +1434,7 @@ fn records_custom_generator_string_input_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-string-input.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-string-input.t"),
         ])
         .output()
@@ -1451,7 +1451,7 @@ fn records_custom_string_yields_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-string-yield.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-string-yield.t"),
         ])
         .output()
@@ -1468,7 +1468,7 @@ fn records_distinct_generator_final_string_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-string-return.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-string-return.t"),
         ])
         .output()
@@ -1486,7 +1486,7 @@ fn records_discarded_computation_between_yields_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-discard-between-yields.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-discard-between-yields.t"),
         ])
         .output()
@@ -1503,7 +1503,7 @@ fn records_explicit_generator_return_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-explicit-return.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-explicit-return.t"),
         ])
         .output()
@@ -1521,7 +1521,7 @@ fn records_explicit_return_after_generator_resumption_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-return-after-yield.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-return-after-yield.t"),
         ])
         .output()
@@ -1540,7 +1540,7 @@ fn records_boolean_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-boolean-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-boolean-values.t"),
         ])
         .output()
@@ -1558,7 +1558,7 @@ fn records_int_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-int-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-int-values.t"),
         ])
         .output()
@@ -1575,7 +1575,7 @@ fn records_rational_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-rational-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-rational-values.t"),
         ])
         .output()
@@ -1592,7 +1592,7 @@ fn records_unit_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-unit-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-unit-values.t"),
         ])
         .output()
@@ -1609,7 +1609,7 @@ fn records_optional_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-optional-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-optional-values.t"),
         ])
         .output()
@@ -1627,7 +1627,7 @@ fn records_range_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-range-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-range-values.t"),
         ])
         .output()
@@ -1644,7 +1644,7 @@ fn records_nat_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-nat-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-nat-values.t"),
         ])
         .output()
@@ -1661,7 +1661,7 @@ fn records_enum_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-enum-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-enum-values.t"),
         ])
         .output()
@@ -1679,7 +1679,7 @@ fn records_product_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-product-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-product-values.t"),
         ])
         .output()
@@ -1696,7 +1696,7 @@ fn records_result_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-result-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-result-values.t"),
         ])
         .output()
@@ -1713,7 +1713,7 @@ fn records_comparison_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-comparison-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-comparison-values.t"),
         ])
         .output()
@@ -1731,7 +1731,7 @@ fn records_nested_optional_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-nested-optional-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-nested-optional-values.t"),
         ])
         .output()
@@ -1748,7 +1748,7 @@ fn records_nested_result_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-nested-result-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-nested-result-values.t"),
         ])
         .output()
@@ -1765,7 +1765,7 @@ fn records_nested_absent_optional_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-nested-none-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-nested-none-values.t"),
         ])
         .output()
@@ -1782,7 +1782,7 @@ fn records_recursive_nominal_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-recursive-nominal-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-recursive-nominal-values.t"),
         ])
         .output()
@@ -1800,7 +1800,7 @@ fn records_generator_final_decision_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-final-decision.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-final-decision.t"),
         ])
         .output()
@@ -1820,7 +1820,7 @@ fn records_generator_local_function_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-local-function.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-local-function.t"),
         ])
         .output()
@@ -1840,7 +1840,7 @@ fn records_generator_local_close_handler_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-local-close-handler.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-local-close-handler.t"),
         ])
         .output()
@@ -1860,7 +1860,7 @@ fn records_generator_overload_selection_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-overloads.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-overloads.t"),
         ])
         .output()
@@ -1879,7 +1879,7 @@ fn records_generic_generator_function_boundaries_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-generic-function-boundaries.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-generic-function-boundaries.t"),
         ])
         .output()
@@ -1898,7 +1898,7 @@ fn records_compound_generator_function_boundaries_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-compound-function-boundaries.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-compound-function-boundaries.t"),
         ])
         .output()
@@ -1915,7 +1915,7 @@ fn records_nested_generator_function_boundaries_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-nested-function-boundaries.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-nested-function-boundaries.t"),
         ])
         .output()
@@ -1932,7 +1932,7 @@ fn records_list_generator_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-list-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-list-values.t"),
         ])
         .output()
@@ -1950,7 +1950,7 @@ fn records_yield_after_custom_close_failure_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}custom-generator-yield-after-close.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}custom-generator-yield-after-close.t"),
         ])
         .output()
@@ -1967,7 +1967,7 @@ fn records_consumed_generator_failure_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}generator-consumed.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}generator-consumed.t"),
         ])
         .output()
@@ -1985,7 +1985,7 @@ fn records_reversible_nested_function_call_order() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}function-call-chain.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}function-call-chain.t"),
         ])
         .output()
@@ -2018,7 +2018,7 @@ fn records_reversible_function_local_shadowing() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}function-local-shadowing.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}function-local-shadowing.t"),
         ])
         .output()
@@ -2045,7 +2045,7 @@ fn records_reversible_function_overload_reasons() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}function-overloads.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}function-overloads.t"),
         ])
         .output()
@@ -2072,7 +2072,7 @@ fn records_reversible_boolean_decision_selection() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}boolean-decision.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}boolean-decision.t"),
         ])
         .output()
@@ -2099,7 +2099,7 @@ fn records_reversible_exhaustive_boolean_decision_selection() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}exhaustive-boolean-decision.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}exhaustive-boolean-decision.t"),
         ])
         .output()
@@ -2126,7 +2126,7 @@ fn records_reversible_call_to_later_function_declaration() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}forward-function-declaration.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}forward-function-declaration.t"),
         ])
         .output()
@@ -2153,7 +2153,7 @@ fn records_reversible_mutual_int_recursion_proof() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}mutual-int-recursion.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}mutual-int-recursion.t"),
         ])
         .output()
@@ -2177,7 +2177,7 @@ fn records_reversible_mutual_increasing_int_recursion_proof() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}mutual-increasing-int-recursion.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}mutual-increasing-int-recursion.t"),
         ])
         .output()
@@ -2199,7 +2199,7 @@ fn records_reversible_calls_between_distinct_overloads() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}overload-recursion-identity.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}overload-recursion-identity.t"),
         ])
         .output()
@@ -2222,7 +2222,7 @@ fn records_reversible_positive_literal_recursion_steps() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}positive-recursion-steps.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}positive-recursion-steps.t"),
         ])
         .output()
@@ -2244,7 +2244,7 @@ fn records_reversible_multiple_recursive_calls() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}multiple-recursive-calls.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}multiple-recursive-calls.t"),
         ])
         .output()
@@ -2265,7 +2265,7 @@ fn records_reversible_multiple_calls_on_a_mutual_edge() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}mutual-multiple-recursive-calls.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}mutual-multiple-recursive-calls.t"),
         ])
         .output()
@@ -2286,7 +2286,7 @@ fn records_reversible_rational_natural_exponentiation() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}rational-exponentiation.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}rational-exponentiation.t"),
         ])
         .output()
@@ -2308,7 +2308,7 @@ fn records_reversible_comparison_decision_selection() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}comparison-decision.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}comparison-decision.t"),
         ])
         .output()
@@ -2330,7 +2330,7 @@ fn records_reversible_decreasing_int_recursion() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}decreasing-int-recursion.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}decreasing-int-recursion.t"),
         ])
         .output()
@@ -2355,7 +2355,7 @@ fn records_reversible_increasing_int_recursion() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}increasing-int-recursion.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}increasing-int-recursion.t"),
         ])
         .output()
@@ -2379,7 +2379,7 @@ fn records_reversible_comparison_operand_expression() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}decision-operand-expression.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}decision-operand-expression.t"),
         ])
         .output()
@@ -2402,7 +2402,7 @@ fn records_reversible_nested_lexical_function() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}nested-function.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}nested-function.t"),
         ])
         .output()
@@ -2510,7 +2510,7 @@ fn records_list_construction_and_decomposition_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}lists.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}lists.t"),
         ])
         .output()
@@ -2536,7 +2536,7 @@ fn records_recursive_list_classifiers_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}nested-lists.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}nested-lists.t"),
         ])
         .output()
@@ -2553,7 +2553,7 @@ fn records_list_containment_laws_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}list-containment.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}list-containment.t"),
         ])
         .output()
@@ -2572,7 +2572,7 @@ fn records_list_value_removal_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}list-removal.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}list-removal.t"),
         ])
         .output()
@@ -2589,7 +2589,7 @@ fn records_contextual_anonymous_list_functions_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}anonymous-list-functions.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}anonymous-list-functions.t"),
         ])
         .output()
@@ -2606,7 +2606,7 @@ fn records_list_sequence_operations_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}list-sequence-operations.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}list-sequence-operations.t"),
         ])
         .output()
@@ -2623,7 +2623,7 @@ fn records_fundamental_container_collection_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}fundamental-containers.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}fundamental-containers.t"),
         ])
         .output()
@@ -2640,7 +2640,7 @@ fn records_payload_union_decisions_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}unions-and-recursive-products.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}unions-and-recursive-products.t"),
         ])
         .output()
@@ -2657,7 +2657,7 @@ fn records_constraint_evidence_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}constraints-and-derived-capabilities.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}constraints-and-derived-capabilities.t"),
         ])
         .output()
@@ -2674,7 +2674,7 @@ fn records_optional_result_composition_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}optional-result-composition.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}optional-result-composition.t"),
         ])
         .output()
@@ -2691,7 +2691,7 @@ fn records_modular_arithmetic_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}modular-numbers.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}modular-numbers.t"),
         ])
         .output()
@@ -2708,7 +2708,7 @@ fn records_range_selection_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}range-selection.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}range-selection.t"),
         ])
         .output()
@@ -2725,7 +2725,7 @@ fn records_completion_evidence_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}completed-evidence.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}completed-evidence.t"),
         ])
         .output()
@@ -2793,7 +2793,7 @@ fn records_short_circuiting_traversal_control_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}traversal-control.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}traversal-control.t"),
         ])
         .output()
@@ -2861,7 +2861,7 @@ fn records_lazy_take_while_construction_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}iterate-take-while.debug"),
+            &format!("{root}scripts/finish-and-print-digits.debug"),
             &format!("{root}iterate-take-while.t"),
         ])
         .output()
@@ -2895,7 +2895,7 @@ fn records_generated_collection_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}generated-collect.debug"),
+            &format!("{root}scripts/finish-and-print-digits.debug"),
             &format!("{root}generated-collect.t"),
         ])
         .output()
@@ -2929,7 +2929,7 @@ fn records_unfold_collection_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}unfold-collect.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}unfold-collect.t"),
         ])
         .output()
@@ -2963,7 +2963,7 @@ fn records_namespace_alias_resolution_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}namespace-alias.debug"),
+            &format!("{root}scripts/finish-and-print-current.debug"),
             &format!("{root}namespace-alias.t"),
         ])
         .output()
@@ -2980,7 +2980,7 @@ fn records_namespace_use_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}use-namespace.debug"),
+            &format!("{root}scripts/finish-and-print-current.debug"),
             &format!("{root}use-namespace.t"),
         ])
         .output()
@@ -3018,7 +3018,7 @@ fn records_namespace_overload_selection_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}namespace-overloads.debug"),
+            &format!("{root}scripts/finish-and-print-api.debug"),
             &format!("{root}namespace-overloads.t"),
         ])
         .output()
@@ -3037,7 +3037,7 @@ fn records_qualified_namespace_generators_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}namespace-generator.debug"),
+            &format!("{root}scripts/finish-and-print-api.debug"),
             &format!("{root}namespace-generator.t"),
         ])
         .output()
@@ -3056,7 +3056,7 @@ fn records_scope_classification_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}scope-classifier.debug"),
+            &format!("{root}scripts/finish-and-print-api.debug"),
             &format!("{root}scope-classifier.t"),
         ])
         .output()
@@ -3094,7 +3094,7 @@ fn records_scope_function_parameters_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}namespace-function-parameter.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}namespace-function-parameter.t"),
         ])
         .output()
@@ -3113,7 +3113,7 @@ fn records_fundamental_type_values_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}type-values.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}type-values.t"),
         ])
         .output()
@@ -3132,7 +3132,7 @@ fn steps_over_diagnostic_controls_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}diagnostic-controls.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}diagnostic-controls.t"),
         ])
         .output()
@@ -3147,7 +3147,7 @@ fn steps_through_lexical_blocks_reversibly() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}empty-block.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}empty-block.t"),
         ])
         .output()
@@ -3162,7 +3162,7 @@ fn steps_through_discard_input_patterns() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}discard-function-pattern.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}discard-function-pattern.t"),
         ])
         .output()
@@ -3181,7 +3181,7 @@ fn records_defining_context_selection() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}constructed-context.debug"),
+            &format!("{root}scripts/source-step-history.debug"),
             &format!("{root}constructed-context.t"),
         ])
         .output()
@@ -3202,7 +3202,7 @@ fn records_function_interface_declaration() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}function-interface.debug"),
+            &format!("{root}scripts/source-step-history.debug"),
             &format!("{root}function-interface.t"),
         ])
         .output()
@@ -3225,7 +3225,7 @@ fn records_capability_composition() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}capability-composition.debug"),
+            &format!("{root}scripts/source-step-history.debug"),
             &format!("{root}capability-composition.t"),
         ])
         .output()
@@ -3248,7 +3248,7 @@ fn records_reversible_static_introspection() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}static-introspection.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}static-introspection.t"),
         ])
         .output()
@@ -3269,7 +3269,7 @@ fn records_reversible_native_serialization() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}native-serialization.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}native-serialization.t"),
         ])
         .output()
@@ -3291,7 +3291,7 @@ fn records_reversible_function_effect_bounds() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}function-effect-bound.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}function-effect-bound.t"),
         ])
         .output()
@@ -3316,7 +3316,7 @@ fn records_reversible_packaged_function_defaults() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}packaged-function-operand.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}packaged-function-operand.t"),
         ])
         .output()
@@ -3340,7 +3340,7 @@ fn follows_reversible_task_message_transactions() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}task-message-transactions.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}task-message-transactions.t"),
         ])
         .output()
@@ -3364,7 +3364,7 @@ fn records_reversible_checked_location_access() {
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
             "--script",
-            &format!("{root}external-layout-location.debug"),
+            &format!("{root}scripts/finish-and-reverse.debug"),
             &format!("{root}external-layout-location.t"),
         ])
         .output()
