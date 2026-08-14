@@ -278,6 +278,91 @@ pub struct EffectRow {
     pub tail: Option<String>,
 }
 
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ResourceIdentity(pub QualifiedName);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ResourceState {
+    Owned { binding: String, lifetime: u64 },
+    Destroyed,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ResourceTracker {
+    resources: BTreeMap<ResourceIdentity, ResourceState>,
+    declaration_order: Vec<ResourceIdentity>,
+}
+
+impl ResourceTracker {
+    /// Add one fresh ownership obligation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the resource identity already has an obligation.
+    pub fn declare(
+        &mut self,
+        identity: ResourceIdentity,
+        binding: impl Into<String>,
+        lifetime: u64,
+    ) -> Result<(), &'static str> {
+        if self.resources.contains_key(&identity) {
+            return Err("resource identity already has an ownership obligation");
+        }
+        self.declaration_order.push(identity.clone());
+        self.resources.insert(
+            identity,
+            ResourceState::Owned {
+                binding: binding.into(),
+                lifetime,
+            },
+        );
+        Ok(())
+    }
+
+    /// Move ownership to a new binding without duplicating the obligation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error after destruction or from a binding that is not the owner.
+    pub fn move_to(
+        &mut self,
+        identity: &ResourceIdentity,
+        from: &str,
+        to: impl Into<String>,
+    ) -> Result<(), &'static str> {
+        let Some(ResourceState::Owned { binding, .. }) = self.resources.get_mut(identity) else {
+            return Err("resource is not live");
+        };
+        if binding != from {
+            return Err("move source does not own the resource");
+        }
+        *binding = to.into();
+        Ok(())
+    }
+
+    /// Destroy live resources in reverse declaration order.
+    #[must_use]
+    pub fn destroy_all(&mut self) -> Vec<ResourceIdentity> {
+        let mut destroyed = Vec::new();
+        for identity in self.declaration_order.iter().rev() {
+            if matches!(
+                self.resources.get(identity),
+                Some(ResourceState::Owned { .. })
+            ) {
+                self.resources
+                    .insert(identity.clone(), ResourceState::Destroyed);
+                destroyed.push(identity.clone());
+            }
+        }
+        destroyed
+    }
+
+    #[must_use]
+    pub fn state(&self, identity: &ResourceIdentity) -> Option<&ResourceState> {
+        self.resources.get(identity)
+    }
+}
+
 impl EffectRow {
     #[must_use]
     pub fn compose(&self, other: &Self) -> Option<Self> {
@@ -511,5 +596,23 @@ mod tests {
             })
             .is_none()
         );
+    }
+
+    #[test]
+    fn resource_moves_retain_one_obligation_and_cleanup_once() {
+        let first = ResourceIdentity(QualifiedName(vec!["resource".into(), "first".into()]));
+        let second = ResourceIdentity(QualifiedName(vec!["resource".into(), "second".into()]));
+        let mut tracker = ResourceTracker::default();
+        tracker.declare(first.clone(), "input", 1).unwrap();
+        tracker.declare(second.clone(), "other", 1).unwrap();
+        tracker.move_to(&first, "input", "output").unwrap();
+        assert!(tracker.move_to(&first, "input", "again").is_err());
+        assert!(matches!(
+            tracker.state(&first),
+            Some(ResourceState::Owned { binding, .. }) if binding == "output"
+        ));
+        assert_eq!(tracker.destroy_all(), vec![second.clone(), first.clone()]);
+        assert!(tracker.destroy_all().is_empty());
+        assert_eq!(tracker.state(&first), Some(&ResourceState::Destroyed));
     }
 }
