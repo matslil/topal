@@ -345,6 +345,7 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
             if matches!(
                 lexeme,
                 "fn" | "generator"
+                    | "Interface"
                     | "language"
                     | "is"
                     | "otherwise"
@@ -364,7 +365,8 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
         TokenKind::String => Some(2),
         TokenKind::Comment | TokenKind::Hashbang => Some(3),
         TokenKind::Boolean | TokenKind::Discard => Some(4),
-        TokenKind::LeftParen | TokenKind::At
+        TokenKind::LeftParen
+        | TokenKind::At
         | TokenKind::RightParen
         | TokenKind::LeftBrace
         | TokenKind::RightBrace
@@ -529,6 +531,16 @@ mod tests {
         assert_eq!(
             output[0]["params"]["diagnostics"][0]["code"],
             "E-DUPLICATE-ERROR-CODE-PATTERN"
+        );
+    }
+
+    #[test]
+    fn accepts_and_highlights_function_interfaces() {
+        let source = include_str!("../../../examples/interpreter/function-interface.t");
+        assert!(diagnostics(source).is_empty());
+        assert_eq!(
+            semantic_token_type(TokenKind::Identifier, "Interface"),
+            Some(4)
         );
     }
 

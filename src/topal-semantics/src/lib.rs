@@ -124,6 +124,128 @@ pub struct DeclarationIdentity {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct QualifiedName(pub Vec<String>);
 
+/// A generic type pattern whose parameters are replaced simultaneously.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TypePattern {
+    Parameter(String),
+    Concrete(TypeIdentity),
+    Tuple(Vec<Self>),
+    Record(Vec<(String, Self)>),
+}
+
+impl TypePattern {
+    /// Instantiate this pattern without discarding the substitution evidence.
+    #[must_use]
+    pub fn instantiate(&self, arguments: &BTreeMap<String, TypeIdentity>) -> Option<TypeIdentity> {
+        match self {
+            Self::Parameter(name) => arguments.get(name).cloned(),
+            Self::Concrete(identity) => Some(identity.clone()),
+            Self::Tuple(fields) => Some(TypeIdentity::Structural(StructuralType::Tuple(
+                fields
+                    .iter()
+                    .map(|field| field.instantiate(arguments))
+                    .collect::<Option<Vec<_>>>()?,
+            ))),
+            Self::Record(fields) => Some(TypeIdentity::Structural(StructuralType::Record(
+                fields
+                    .iter()
+                    .map(|(label, field)| Some((label.clone(), field.instantiate(arguments)?)))
+                    .collect::<Option<Vec<_>>>()?,
+            ))),
+        }
+    }
+}
+
+/// Canonical evidence retained by one successful generic instantiation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InstantiationEvidence {
+    pub declaration: DeclarationIdentity,
+    pub arguments: BTreeMap<String, TypeIdentity>,
+    pub result: TypeIdentity,
+}
+
+/// Canonical proof that one subject provides an atomic capability.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CapabilityEvidence {
+    pub capability: QualifiedName,
+    pub subject: TypeIdentity,
+    pub roles: BTreeMap<String, DeclarationIdentity>,
+}
+
+/// A coherence-checked collection of capability proofs.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct CapabilitySet(BTreeMap<(QualifiedName, TypeIdentity), CapabilityEvidence>);
+
+impl CapabilitySet {
+    /// Insert evidence, accepting an identical proof and rejecting ambiguity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the same capability and subject have different roles.
+    pub fn insert(&mut self, evidence: CapabilityEvidence) -> Result<(), &'static str> {
+        let key = (evidence.capability.clone(), evidence.subject.clone());
+        if let Some(existing) = self.0.get(&key) {
+            return if existing == &evidence {
+                Ok(())
+            } else {
+                Err("conflicting canonical capability evidence")
+            };
+        }
+        self.0.insert(key, evidence);
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn select(
+        &self,
+        capability: &QualifiedName,
+        subject: &TypeIdentity,
+    ) -> Option<&CapabilityEvidence> {
+        self.0.get(&(capability.clone(), subject.clone()))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InterfaceOperation {
+    Function {
+        inputs: Vec<TypeIdentity>,
+        result: TypeIdentity,
+    },
+    Generator {
+        inputs: Vec<TypeIdentity>,
+        yielded: TypeIdentity,
+        resumed: TypeIdentity,
+        result: TypeIdentity,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InterfaceShape {
+    pub identity: DeclarationIdentity,
+    pub operations: BTreeMap<String, InterfaceOperation>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InterfaceImplementation {
+    pub interface: InterfaceShape,
+    pub operations: BTreeMap<String, DeclarationIdentity>,
+}
+
+impl InterfaceImplementation {
+    /// Validate that an implementation supplies exactly the interface roles.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a missing or additional operation role.
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.interface.operations.keys().eq(self.operations.keys()) {
+            Ok(())
+        } else {
+            Err("interface implementation roles do not match the interface")
+        }
+    }
+}
+
 /// Conservative, canonically ordered effect row.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EffectSet(BTreeSet<QualifiedName>);
@@ -262,5 +384,74 @@ mod tests {
         assert_eq!("v0.1".parse(), Ok(LanguageVersion::DESIGN_0));
         assert_eq!(LanguageVersion::DESIGN_0.to_string(), "v0.1");
         assert!("v0.2".parse::<LanguageVersion>().unwrap() > LanguageVersion::DESIGN_0);
+    }
+
+    #[test]
+    fn generic_patterns_preserve_exact_substitutions() {
+        let pattern = TypePattern::Record(vec![
+            ("first".into(), TypePattern::Parameter("T".into())),
+            ("second".into(), TypePattern::Parameter("T".into())),
+        ]);
+        let nominal = TypeIdentity::Nominal {
+            declaration: declaration("UserId", 2),
+            parameters: Vec::new(),
+        };
+        let arguments = BTreeMap::from([("T".into(), nominal.clone())]);
+        assert_eq!(
+            pattern.instantiate(&arguments),
+            Some(TypeIdentity::Structural(StructuralType::Record(vec![
+                ("first".into(), nominal.clone()),
+                ("second".into(), nominal),
+            ])))
+        );
+        assert!(pattern.instantiate(&BTreeMap::new()).is_none());
+    }
+
+    #[test]
+    fn capability_evidence_is_coherent_per_exact_subject() {
+        let subject = TypeIdentity::Fundamental("Int");
+        let capability = QualifiedName(vec!["lang".into(), "Equality".into()]);
+        let evidence = CapabilityEvidence {
+            capability: capability.clone(),
+            subject: subject.clone(),
+            roles: BTreeMap::from([("equal".into(), declaration("equal-int", 0))]),
+        };
+        let mut set = CapabilitySet::default();
+        assert_eq!(set.insert(evidence.clone()), Ok(()));
+        assert_eq!(set.insert(evidence.clone()), Ok(()));
+        assert_eq!(set.select(&capability, &subject), Some(&evidence));
+
+        let conflicting = CapabilityEvidence {
+            roles: BTreeMap::from([("equal".into(), declaration("other-equal", 1))]),
+            ..evidence
+        };
+        assert!(set.insert(conflicting).is_err());
+    }
+
+    #[test]
+    fn interface_implementation_requires_exact_roles() {
+        let shape = InterfaceShape {
+            identity: declaration("Parser", 0),
+            operations: BTreeMap::from([(
+                "parse".into(),
+                InterfaceOperation::Function {
+                    inputs: vec![TypeIdentity::Fundamental("String")],
+                    result: TypeIdentity::Fundamental("Boolean"),
+                },
+            )]),
+        };
+        let complete = InterfaceImplementation {
+            interface: shape.clone(),
+            operations: BTreeMap::from([("parse".into(), declaration("parse", 1))]),
+        };
+        assert_eq!(complete.validate(), Ok(()));
+        assert!(
+            InterfaceImplementation {
+                interface: shape,
+                operations: BTreeMap::new(),
+            }
+            .validate()
+            .is_err()
+        );
     }
 }

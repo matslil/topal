@@ -100,6 +100,8 @@ pub enum Value {
     },
     Union(Box<UnionValue>),
     Constraint(Box<ConstraintValue>),
+    Capability(Vec<BTreeSet<String>>),
+    Interface(Box<InterfaceValue>),
     Refined {
         constraint: String,
         base_classifier: String,
@@ -137,6 +139,8 @@ impl Value {
             }
             Self::Namespace(_) => ObjectKind::Scope,
             Self::Constraint(_) => ObjectKind::Constraint,
+            Self::Capability(_) => ObjectKind::Capability,
+            Self::Interface(_) => ObjectKind::Interface,
             _ => ObjectKind::Value,
         }
     }
@@ -190,6 +194,12 @@ pub struct ConstraintValue {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InterfaceValue {
+    name: String,
+    functions: BTreeMap<String, (Vec<String>, String)>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ModularType {
     name: Option<String>,
     signed: bool,
@@ -202,6 +212,21 @@ impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Type(name) => formatter.write_str(name),
+            Self::Interface(interface) => write!(formatter, "<Interface {}>", interface.name),
+            Self::Capability(alternatives) => {
+                let text = alternatives
+                    .iter()
+                    .map(|conjunction| {
+                        conjunction
+                            .iter()
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .join(" and ")
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" or ");
+                formatter.write_str(&text)
+            }
             Self::Effects(effects) => write!(formatter, "Effects ({})", effects.join(", ")),
             Self::Boolean(value) => value.fmt(formatter),
             Self::Int(value) => value.fmt(formatter),
@@ -632,6 +657,7 @@ impl Session {
                 [Statement::Function { .. }
                     | Statement::Generator { .. }
                     | Statement::Union { .. }
+                    | Statement::Interface { .. }
                     | Statement::Foreach { .. }]
             )
     }
@@ -1663,6 +1689,17 @@ impl Session {
                 {
                     let left = self.evaluate_expression(source, left, trace)?;
                     let right = self.evaluate_expression(source, right, trace)?;
+                    if let (Value::Capability(mut left), Value::Capability(right)) =
+                        (left.clone(), right.clone())
+                    {
+                        left.extend(right);
+                        trace.record(TraceEvent {
+                            event: "capability.composed",
+                            rule: "TOPAL-CAPABILITY-EVIDENCE-001",
+                            detail: "or",
+                        });
+                        return Ok(Value::Capability(left));
+                    }
                     let (Value::Boolean(left), Value::Boolean(right)) = (left, right) else {
                         return Err(diagnostic(
                             source,
@@ -2755,6 +2792,17 @@ impl Session {
                 detail: name,
             });
             return Ok(Value::Type(name.into()));
+        }
+        if matches!(
+            name,
+            "Equality" | "Ordering" | "Foldable" | "Membership" | "Indexed" | "Keyed"
+        ) {
+            trace.record(TraceEvent {
+                event: "capability.resolved",
+                rule: "TOPAL-CAPABILITY-EVIDENCE-001",
+                detail: name,
+            });
+            return Ok(Value::Capability(vec![BTreeSet::from([name.to_owned()])]));
         }
         if name == "root" {
             trace.record(TraceEvent {
@@ -5277,6 +5325,129 @@ impl Execution {
                 alternatives,
                 span,
             } => declare_union(&self.source, session, *name, alternatives, *span, trace)?,
+            Statement::Interface {
+                name,
+                functions,
+                span,
+            } => {
+                let name_text = self.source.slice(*name);
+                if session.declared_names.contains(name_text) {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-DUPLICATE-DECLARATION",
+                        *name,
+                        format!("`{name_text}` is already declared"),
+                    ));
+                }
+                let mut operations = BTreeMap::new();
+                for function in functions {
+                    let operation = self.source.slice(function.name).to_owned();
+                    if operations
+                        .insert(
+                            operation.clone(),
+                            (
+                                function
+                                    .parameters
+                                    .iter()
+                                    .map(|parameter| {
+                                        self.source.slice(parameter.classifier).to_owned()
+                                    })
+                                    .collect(),
+                                self.source.slice(function.result).to_owned(),
+                            ),
+                        )
+                        .is_some()
+                    {
+                        return Err(diagnostic(
+                            &self.source,
+                            "E-DUPLICATE-INTERFACE-OPERATION",
+                            function.name,
+                            format!("interface operation `{operation}` is declared twice"),
+                        ));
+                    }
+                }
+                let value = Value::Interface(Box::new(InterfaceValue {
+                    name: name_text.to_owned(),
+                    functions: operations,
+                }));
+                session.bindings.insert(name_text.to_owned(), value.clone());
+                session.declared_names.insert(name_text.to_owned());
+                trace.record(TraceEvent {
+                    event: "interface.declared",
+                    rule: "TOPAL-INTERFACE-SHAPE-001",
+                    detail: name_text,
+                });
+                (value, *span)
+            }
+            Statement::InterfaceImplementation {
+                interface,
+                declarations,
+                span,
+            } => {
+                let interface_name = self.source.slice(*interface);
+                let Some(Value::Interface(shape)) = session.bindings.get(interface_name) else {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-UNKNOWN-INTERFACE",
+                        *interface,
+                        format!("`{interface_name}` is not a declared interface"),
+                    ));
+                };
+                let supplied = declarations
+                    .iter()
+                    .map(|declaration| match declaration {
+                        Statement::Function {
+                            name,
+                            parameters,
+                            result,
+                            ..
+                        } => Some((
+                            self.source.slice(*name).to_owned(),
+                            (
+                                parameters
+                                    .iter()
+                                    .map(|parameter| {
+                                        self.source.slice(parameter.classifier).to_owned()
+                                    })
+                                    .collect::<Vec<_>>(),
+                                self.source.slice(*result).to_owned(),
+                            ),
+                        )),
+                        _ => None,
+                    })
+                    .collect::<Option<BTreeMap<_, _>>>()
+                    .ok_or_else(|| {
+                        diagnostic(
+                            &self.source,
+                            "E-INTERFACE-IMPLEMENTATION",
+                            *span,
+                            "an interface implementation contains function declarations only",
+                        )
+                    })?;
+                if supplied != shape.functions {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-INTERFACE-IMPLEMENTATION",
+                        *span,
+                        "implementation operations must exactly match the interface shapes",
+                    ));
+                }
+                for declaration in declarations {
+                    let mut nested = Execution {
+                        source: self.source.clone(),
+                        statements: vec![declaration.clone()],
+                        cursor: 0,
+                        return_classifier: None,
+                    };
+                    let _ = nested.step(session, trace)?;
+                }
+                trace.record(TraceEvent {
+                    event: "interface.implemented",
+                    rule: "TOPAL-INTERFACE-IMPLEMENTATION-001",
+                    detail: interface_name,
+                });
+                (Value::Unit, *span)
+            }
             Statement::Foreach {
                 result,
                 source,
@@ -5923,6 +6094,8 @@ fn statement_span(statement: &Statement) -> Span {
         | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
+        | Statement::Interface { span, .. }
+        | Statement::InterfaceImplementation { span, .. }
         | Statement::Foreach { span, .. } => *span,
         Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
@@ -5935,7 +6108,8 @@ fn declaration_name<'a>(source: &'a SourceText, statement: &Statement) -> Option
         Statement::Binding { name, .. }
         | Statement::Function { name, .. }
         | Statement::Generator { name, .. }
-        | Statement::Union { name, .. } => *name,
+        | Statement::Union { name, .. }
+        | Statement::Interface { name, .. } => *name,
         Statement::Published { declaration, .. } => return declaration_name(source, declaration),
         _ => return None,
     };
@@ -6598,6 +6772,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         "Type" => Some(ObjectKind::Type),
         "Function" => Some(ObjectKind::Function),
         "Constraint" => Some(ObjectKind::Constraint),
+        "Capability" => Some(ObjectKind::Capability),
         "Effect" => Some(ObjectKind::Effect),
         "Scope" => Some(ObjectKind::Scope),
         _ => None,
@@ -7583,6 +7758,8 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Enum { .. } => "Enum",
         Value::Union(_) => "Union",
         Value::Constraint(_) => "Constraint",
+        Value::Capability(_) => "Capability",
+        Value::Interface(_) => "Interface",
         Value::Refined { .. } => "Refined",
         Value::Modular { .. } => "Modular",
         Value::ErrorDomain(_) => "ErrorDomain",
@@ -8035,6 +8212,24 @@ fn apply_and(
             detail: "and:eager",
         });
         return Ok(Value::Boolean(*left && *right));
+    }
+    if let (Value::Capability(left), Value::Capability(right)) = (&left, &right) {
+        let alternatives = left
+            .iter()
+            .flat_map(|left| {
+                right.iter().map(move |right| {
+                    let mut combined = left.clone();
+                    combined.extend(right.iter().cloned());
+                    combined
+                })
+            })
+            .collect();
+        trace.record(TraceEvent {
+            event: "capability.composed",
+            rule: "TOPAL-CAPABILITY-EVIDENCE-001",
+            detail: "and",
+        });
+        return Ok(Value::Capability(alternatives));
     }
     let result = match (left, right) {
         (
@@ -10269,6 +10464,8 @@ fn apply_negate(
         | Value::Enum { .. }
         | Value::Union(_)
         | Value::Constraint(_)
+        | Value::Capability(_)
+        | Value::Interface(_)
         | Value::Refined { .. }
         | Value::ModularType(_)
         | Value::ErrorDomain(_)
@@ -13925,4 +14122,13 @@ fn loaded_modules_expose_only_published_members() {
         .evaluate("math private-value", &mut Vec::new())
         .unwrap_err();
     assert_eq!(error.code, "E-NAMESPACE-MEMBER-NOT-FOUND");
+}
+
+#[test]
+fn interface_implementations_require_exact_shapes() {
+    let source = "Parser is Interface\n  parse is fn (source : String) -> Boolean\nParser\n  other is fn (source : String) -> Boolean\n    true\n()";
+    let error = Session::new()
+        .evaluate(source, &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-INTERFACE-IMPLEMENTATION");
 }

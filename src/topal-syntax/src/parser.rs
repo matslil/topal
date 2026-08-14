@@ -94,6 +94,14 @@ pub struct FunctionParameter {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InterfaceFunction {
+    pub name: Span,
+    pub parameters: Vec<FunctionParameter>,
+    pub result: Span,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnionAlternative {
     pub name: Span,
     pub classifier: Option<Span>,
@@ -196,6 +204,16 @@ pub enum Statement {
         alternatives: Vec<UnionAlternative>,
         span: Span,
     },
+    Interface {
+        name: Span,
+        functions: Vec<InterfaceFunction>,
+        span: Span,
+    },
+    InterfaceImplementation {
+        interface: Span,
+        declarations: Vec<Statement>,
+        span: Span,
+    },
     Foreach {
         result: Option<(Span, Option<Span>)>,
         source: Expression,
@@ -276,6 +294,9 @@ impl Parser<'_> {
     fn ordinary_statement(&mut self) -> Option<Statement> {
         let checkpoint = self.cursor;
         let first = self.take_nontrivia()?;
+        if first.kind == TokenKind::Identifier && self.interface_implementation_ahead() {
+            return self.interface_implementation(first);
+        }
         if first.kind == TokenKind::Identifier
             && self.source.slice(first.span) == "use"
             && self.peek_nontrivia().is_some_and(|next| {
@@ -352,6 +373,7 @@ impl Parser<'_> {
                     "fn" => return self.function(first),
                     "generator" => return self.generator(first),
                     "Union" => return self.union(first),
+                    "Interface" => return self.interface(first),
                     _ => {}
                 }
             }
@@ -406,6 +428,61 @@ impl Parser<'_> {
         }
         self.cursor = checkpoint;
         self.expression().map(Statement::Expression)
+    }
+
+    fn interface_implementation_ahead(&self) -> bool {
+        let remaining = &self.tokens[self.cursor..];
+        if !remaining
+            .iter()
+            .find(|token| !matches!(token.kind, TokenKind::Whitespace | TokenKind::Comment))
+            .is_some_and(|token| token.kind == TokenKind::Newline)
+        {
+            return false;
+        }
+        let Some(newline) = remaining
+            .iter()
+            .position(|token| token.kind == TokenKind::Newline)
+        else {
+            return false;
+        };
+        if !remaining
+            .get(newline + 1)
+            .is_some_and(|token| token.kind == TokenKind::Whitespace)
+        {
+            return false;
+        }
+        let significant = remaining[newline + 1..]
+            .iter()
+            .filter(|token| !matches!(token.kind, TokenKind::Whitespace | TokenKind::Comment))
+            .take(3)
+            .collect::<Vec<_>>();
+        matches!(significant.as_slice(), [name, separator, function]
+            if name.kind == TokenKind::Identifier
+                && separator.kind == TokenKind::Identifier
+                && self.source.slice(separator.span) == "is"
+                && function.kind == TokenKind::Identifier
+                && self.source.slice(function.span) == "fn")
+    }
+
+    fn interface_implementation(&mut self, interface: Token) -> Option<Statement> {
+        if !self
+            .peek()
+            .is_some_and(|token| token.kind == TokenKind::Newline)
+        {
+            return None;
+        }
+        self.cursor += 1;
+        let indent = self.peek()?;
+        if indent.kind != TokenKind::Whitespace {
+            return None;
+        }
+        let declarations = self.indented_function_body(indent.span.end - indent.span.start)?;
+        let end = statement_span(declarations.last()?).end;
+        Some(Statement::InterfaceImplementation {
+            interface: interface.span,
+            declarations,
+            span: Span::new(interface.span.start, end),
+        })
     }
 
     fn language_selection(&mut self, use_keyword: Token) -> Option<Statement> {
@@ -769,6 +846,90 @@ impl Parser<'_> {
             name: name.span,
             alternatives,
             span: Span::new(name.span.start, end),
+        })
+    }
+
+    fn interface(&mut self, name: Token) -> Option<Statement> {
+        let interface = self.take_nontrivia()?;
+        let newline = self.peek()?;
+        if self.source.slice(interface.span) != "Interface" || newline.kind != TokenKind::Newline {
+            self.error_current(
+                "E-EXPECTED-INTERFACE-OPERATIONS",
+                "interface operations begin on following indented lines",
+            );
+            return None;
+        }
+        self.cursor += 1;
+        let Some(indent) = self.peek() else {
+            self.error_current("E-EMPTY-INTERFACE", "an interface requires an operation");
+            return None;
+        };
+        if indent.kind != TokenKind::Whitespace {
+            self.error_current(
+                "E-EXPECTED-INTERFACE-OPERATIONS",
+                "interface operations must be indented",
+            );
+            return None;
+        }
+        let indentation = indent.span.end - indent.span.start;
+        let mut functions = Vec::new();
+        while let Some(current) = self.peek() {
+            if current.kind != TokenKind::Whitespace
+                || current.span.end - current.span.start != indentation
+            {
+                break;
+            }
+            self.cursor += 1;
+            let operation = self.take_nontrivia()?;
+            let separator = self.take_nontrivia()?;
+            let function = self.take_nontrivia()?;
+            let opening = self.take_nontrivia()?;
+            let (parameters, closing) = self.static_function_parameters(opening)?;
+            let arrow = self.take_nontrivia()?;
+            let result_token = self.take_nontrivia()?;
+            let result = self.function_result(result_token)?;
+            if operation.kind != TokenKind::Identifier
+                || self.source.slice(separator.span) != "is"
+                || self.source.slice(function.span) != "fn"
+                || closing.kind != TokenKind::RightParen
+                || arrow.kind != TokenKind::Arrow
+            {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-INTERFACE-OPERATION",
+                    span: Span::new(operation.span.start, result.end),
+                    message: "expected `name is fn (inputs) -> Result`".into(),
+                });
+                return None;
+            }
+            functions.push(InterfaceFunction {
+                name: operation.span,
+                parameters,
+                result,
+                span: Span::new(operation.span.start, result.end),
+            });
+            let checkpoint = self.cursor;
+            if self
+                .peek()
+                .is_some_and(|token| token.kind == TokenKind::Newline)
+            {
+                self.cursor += 1;
+                if !self.peek().is_some_and(|token| {
+                    token.kind == TokenKind::Whitespace
+                        && token.span.end - token.span.start == indentation
+                }) {
+                    self.cursor = checkpoint;
+                    break;
+                }
+            }
+        }
+        let Some(last) = functions.last() else {
+            self.error_current("E-EMPTY-INTERFACE", "an interface requires an operation");
+            return None;
+        };
+        Some(Statement::Interface {
+            name: name.span,
+            span: Span::new(name.span.start, last.span.end),
+            functions,
         })
     }
 
@@ -1993,6 +2154,8 @@ fn statement_span(statement: &Statement) -> Span {
         | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
+        | Statement::Interface { span, .. }
+        | Statement::InterfaceImplementation { span, .. }
         | Statement::Foreach { span, .. }
         | Statement::Discard { span, .. } => *span,
         Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
@@ -2936,6 +3099,20 @@ mod tests {
             parsed.statements.first(),
             Some(Statement::LanguageSelection { version, .. })
                 if source.slice(*version) == "v0.1"
+        ));
+    }
+
+    #[test]
+    fn parses_function_interface_shapes_without_bodies() {
+        let source = SourceText::new(
+            "Parser is Interface\n  parse is fn (source : String) -> Boolean\nParser",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(
+            parsed.statements.first(),
+            Some(Statement::Interface { functions, .. }) if functions.len() == 1
         ));
     }
 }
