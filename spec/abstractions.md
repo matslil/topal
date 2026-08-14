@@ -29,6 +29,14 @@ For one capability and exact subject, a static context shall contain at most one
 canonical role assignment. Repeating identical evidence is idempotent;
 conflicting assignments are an ambiguity error before execution.
 
+### TOPAL-CAPABILITY-COMPOSE-001 — Capability conjunction and alternatives
+
+`A and B` over capability expressions shall require the same implicit subject
+and retain every promise from both operands. `A or B` shall retain distinct
+evidence alternatives without claiming either operand unconditionally.
+Composition is canonical and idempotent and does not create a runtime method
+namespace.
+
 ### TOPAL-INTERFACE-SHAPE-001 — Implementation-independent call shapes
 
 An interface shall retain its nominal declaration identity and a uniquely named

@@ -151,6 +151,18 @@ interactive context. With no interactive version option, the interpreter shall
 select its highest supported language version. Unsupported versions shall
 produce an actionable diagnostic rather than fall back to another version.
 
+## TOPAL-INTP-ABSTRACTION-001 — Function interfaces
+
+All interpreter modes shall construct implementation-independent function
+interface shapes and shall accept an intentional indented implementation only
+when it supplies exactly the declared operation names and classifiers under
+`TOPAL-INTERFACE-SHAPE-001` and `TOPAL-INTERFACE-IMPLEMENTATION-001`. Test mode
+and debugger history shall record declaration and conformance decisions.
+
+The shared evaluator shall also resolve the initial atomic capability vocabulary
+as static Capability objects and compose conjunctions and alternatives under
+`TOPAL-CAPABILITY-COMPOSE-001`, preserving deterministic evidence traces.
+
 ## TOPAL-INTP-SUBSET-015 — Unit product
 
 All interpreter modes shall parse and evaluate the zero-field product `()` as

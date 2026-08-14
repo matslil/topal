@@ -3195,3 +3195,49 @@ fn records_defining_context_selection() {
     assert!(stdout.contains("context.member.selected [TOPAL-CONTEXT-SELECT-001] offset"));
     assert!(stdout.contains("evaluation.add [TOPAL-NUM-ADD-001] Int"));
 }
+
+#[test]
+fn records_function_interface_declaration() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-interface.debug"),
+            &format!("{root}function-interface.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("interface.implemented [TOPAL-INTERFACE-IMPLEMENTATION-001] Parser")
+    );
+}
+
+#[test]
+fn records_capability_composition() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}capability-composition.debug"),
+            &format!("{root}capability-composition.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("capability.composed [TOPAL-CAPABILITY-EVIDENCE-001]")
+    );
+}

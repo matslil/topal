@@ -49,7 +49,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 181);
+    assert_eq!(examples.len(), 183);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4152,5 +4152,37 @@ fn every_mode_selects_defining_context_members() {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+}
+
+#[test]
+fn every_mode_declares_function_interfaces() {
+    let source = include_str!("../../../examples/interpreter/function-interface.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8(output.stdout).unwrap().contains("true"));
+    }
+}
+
+#[test]
+fn every_mode_composes_capability_promises() {
+    let source = include_str!("../../../examples/interpreter/capability-composition.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("Equality and Ordering")
+        );
     }
 }

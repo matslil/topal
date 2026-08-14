@@ -188,6 +188,8 @@ fn interactive(
                     "E-UNTERMINATED-STRING"
                         | "E-EXPECTED-RPAREN"
                         | "E-EXPECTED-FUNCTION-BODY"
+                        | "E-EMPTY-INTERFACE"
+                        | "E-EXPECTED-INTERFACE-OPERATIONS"
                         | "E-EXPECTED-FOREACH-BODY"
                         | "E-UNSUPPORTED-GENERATOR-HEADER"
                         | "E-EXPECTED-INDENTED-GENERATOR-HEADER"
