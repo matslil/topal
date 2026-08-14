@@ -11,7 +11,7 @@ listed disposition or an individually recorded, authoritative deferral.
 
 | Specification | Rules | Phase | Owner | Terminal disposition | Status |
 | --- | ---: | ---: | --- | --- | --- |
-| `spec/syntax.md` | 10 | 2 | `topal-source`, `topal-syntax` | static | planned |
+| `spec/syntax.md` | 11 | 2 | `topal-source`, `topal-syntax` | static | planned |
 | `spec/type-system.md` | 45 | 2 | `topal-language` shared semantics | static, runtime | planned |
 | `spec/functions.md` | 29 | 2 | `topal-language` execution | runtime | planned |
 | `spec/decisions.md` | 6 | 2 | `topal-syntax`, `topal-language` | static, runtime | planned |
@@ -20,7 +20,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/strings.md` | 24 | 3 | `topal-source`, `topal-language` | static, runtime | complete |
 | `spec/containers.md` | 45 | 3 | `topal-language` value domains | runtime | complete |
 | `spec/generators.md` | 27 | 3 | `topal-language` execution | runtime | complete |
-| `spec/modules.md` | 10 | 4 | shared loader and `topal-language` | static, runtime | planned |
+| `spec/modules.md` | 11 | 4 | shared loader and `topal-language` | static, runtime | complete |
 | `spec/memory-model.md` | 9 | 6 | shared resource and memory semantics | static, runtime | planned |
 | `spec/concurrency-model.md` | 12 | 7 | shared execution scheduler | static, runtime | planned |
 | `spec/serialization.md` | 16 | 8 | shared layout and serialization codecs | artifact, runtime | planned |

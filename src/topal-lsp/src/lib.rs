@@ -364,7 +364,7 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
         TokenKind::String => Some(2),
         TokenKind::Comment | TokenKind::Hashbang => Some(3),
         TokenKind::Boolean | TokenKind::Discard => Some(4),
-        TokenKind::LeftParen
+        TokenKind::LeftParen | TokenKind::At
         | TokenKind::RightParen
         | TokenKind::LeftBrace
         | TokenKind::RightBrace

@@ -49,7 +49,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 180);
+    assert_eq!(examples.len(), 181);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4138,5 +4138,19 @@ fn script_and_test_modes_preserve_nested_module_paths() {
             String::from_utf8_lossy(&output.stderr)
         );
         assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), "42");
+    }
+}
+
+#[test]
+fn every_mode_selects_defining_context_members() {
+    let source = include_str!("../../../examples/interpreter/constructed-context.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
     }
 }

@@ -23,6 +23,7 @@ pub enum Expression {
     Rational(Span),
     String(Span),
     Identifier(Span),
+    ContextIdentifier(Span),
     Discard(Span),
     AnonymousFunction {
         parameters: Vec<Span>,
@@ -68,6 +69,7 @@ impl Expression {
             | Self::Rational(span)
             | Self::String(span)
             | Self::Identifier(span)
+            | Self::ContextIdentifier(span)
             | Self::Discard(span)
             | Self::Callable { span, .. }
             | Self::Product { span, .. }
@@ -1583,6 +1585,18 @@ impl Parser<'_> {
             TokenKind::Rational => Some(Expression::Rational(token.span)),
             TokenKind::String => Some(Expression::String(token.span)),
             TokenKind::Identifier => Some(Expression::Identifier(token.span)),
+            TokenKind::At => {
+                let selected = self.take_nontrivia()?;
+                if selected.kind != TokenKind::Identifier {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-CONTEXT-SELECTION",
+                        span: selected.span,
+                        message: "`@` requires a member of the defining context".into(),
+                    });
+                    return None;
+                }
+                Some(Expression::ContextIdentifier(selected.span))
+            }
             TokenKind::Discard => Some(Expression::Discard(token.span)),
             TokenKind::Equals => Some(Expression::Callable {
                 kind: CallableKind::Equal,

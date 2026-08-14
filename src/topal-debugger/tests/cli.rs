@@ -3174,3 +3174,24 @@ fn steps_through_discard_input_patterns() {
             .contains("function.argument.discarded")
     );
 }
+
+#[test]
+fn records_defining_context_selection() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}constructed-context.debug"),
+            &format!("{root}constructed-context.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("context.member.selected [TOPAL-CONTEXT-SELECT-001] offset"));
+    assert!(stdout.contains("evaluation.add [TOPAL-NUM-ADD-001] Int"));
+}

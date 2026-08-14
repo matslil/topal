@@ -1184,6 +1184,23 @@ impl Session {
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
             Expression::String(span) => evaluate_string_literal(source, *span, trace),
             Expression::Identifier(span) => self.resolve_identifier(source, *span, trace),
+            Expression::ContextIdentifier(span) => {
+                if self.call_stack.is_empty() {
+                    return Err(diagnostic(
+                        source,
+                        "E-CONTEXT-SELECTION",
+                        *span,
+                        "`@` selects the defining context from inside a function",
+                    ));
+                }
+                let value = self.resolve_identifier(source, *span, trace)?;
+                trace.record(TraceEvent {
+                    event: "context.member.selected",
+                    rule: "TOPAL-CONTEXT-SELECT-001",
+                    detail: source.slice(*span),
+                });
+                Ok(value)
+            }
             Expression::Discard(span) => Err(diagnostic(
                 source,
                 "E-DISCARD-VALUE",
@@ -5643,9 +5660,10 @@ fn expression_is_closed(expression: &Expression) -> bool {
             .all(|field| expression_is_closed(&field.value)),
         Expression::Application { items, .. } => items.iter().all(expression_is_closed),
         Expression::AnonymousFunction { body, .. } => expression_is_closed(body),
-        Expression::DecisionTable { .. } | Expression::Identifier(_) | Expression::Discard(_) => {
-            false
-        }
+        Expression::DecisionTable { .. }
+        | Expression::Identifier(_)
+        | Expression::ContextIdentifier(_)
+        | Expression::Discard(_) => false,
     }
 }
 

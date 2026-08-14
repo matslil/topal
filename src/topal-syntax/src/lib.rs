@@ -43,6 +43,7 @@ pub enum TokenKind {
     SlashPercent,
     Percent,
     Caret,
+    At,
     Unknown,
 }
 
@@ -176,6 +177,7 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         '/' => (TokenKind::Slash, 1),
         '%' => (TokenKind::Percent, 1),
         '^' => (TokenKind::Caret, 1),
+        '@' => (TokenKind::At, 1),
         c if c.is_ascii_digit() => take_number(rest),
         '_' if rest.len() == 1
             || rest[1..]
