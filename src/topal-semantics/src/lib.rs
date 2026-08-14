@@ -264,6 +264,39 @@ impl EffectSet {
     pub fn iter(&self) -> impl Iterator<Item = &QualifiedName> {
         self.0.iter()
     }
+
+    #[must_use]
+    pub fn contains_all(&self, required: &Self) -> bool {
+        required.0.is_subset(&self.0)
+    }
+}
+
+/// A canonical effect row with an optional polymorphic tail variable.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct EffectRow {
+    pub known: EffectSet,
+    pub tail: Option<String>,
+}
+
+impl EffectRow {
+    #[must_use]
+    pub fn compose(&self, other: &Self) -> Option<Self> {
+        let tail = match (&self.tail, &other.tail) {
+            (Some(left), Some(right)) if left != right => return None,
+            (Some(tail), _) | (_, Some(tail)) => Some(tail.clone()),
+            (None, None) => None,
+        };
+        Some(Self {
+            known: self.known.union(&other.known),
+            tail,
+        })
+    }
+
+    #[must_use]
+    pub fn is_contained_by(&self, allowed: &Self) -> bool {
+        allowed.known.contains_all(&self.known)
+            && (self.tail.is_none() || self.tail == allowed.tail)
+    }
 }
 
 /// Stable relationship evidence retained by a typing derivation.
@@ -452,6 +485,31 @@ mod tests {
             }
             .validate()
             .is_err()
+        );
+    }
+
+    #[test]
+    fn effect_rows_compose_and_check_containment_canonically() {
+        let read = QualifiedName(vec!["app".into(), "read".into()]);
+        let write = QualifiedName(vec!["app".into(), "write".into()]);
+        let left = EffectRow {
+            known: EffectSet::from_effects([read.clone()]),
+            tail: Some("E".into()),
+        };
+        let right = EffectRow {
+            known: EffectSet::from_effects([write.clone()]),
+            tail: Some("E".into()),
+        };
+        let composed = left.compose(&right).unwrap();
+        assert_eq!(composed.known.iter().count(), 2);
+        assert!(left.is_contained_by(&composed));
+        assert!(right.is_contained_by(&composed));
+        assert!(
+            left.compose(&EffectRow {
+                known: EffectSet::default(),
+                tail: Some("Other".into()),
+            })
+            .is_none()
         );
     }
 }
