@@ -322,3 +322,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-239` | `TOPAL-LAYOUT-ABSENCE-POLICY-001` | interpreter and LSP tests; absence-policy example | `topal-language`, `topal-interpreter`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-240` | `TOPAL-SYN-DIAG-001` | syntax tests; interpreter, LSP, and scripted debugger tests; diagnostic-control examples | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | shared semantic identities | `TOPAL-TYPE-KIND-001`, `TOPAL-TYPE-JUDGE-001`, `TOPAL-TYPE-ID-001`, `TOPAL-SYN-ORDER-001` | unit tests in `topal-semantics`; existing classifier and overload conformance suites | `topal-semantics`, `topal-language` |
+| `TOPAL-INTP-SUBSET-241` | `TOPAL-SYN-GRAMMAR-001` | syntax and interpreter tests; lexical-block examples | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |

@@ -4,6 +4,10 @@ use crate::{Lexed, SyntaxDiagnostic, Token, TokenKind};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expression {
+    Block {
+        statements: Vec<Statement>,
+        span: Span,
+    },
     Unit(Span),
     Boolean(Span),
     Product {
@@ -67,6 +71,7 @@ impl Expression {
             | Self::Discard(span)
             | Self::Callable { span, .. }
             | Self::Product { span, .. }
+            | Self::Block { span, .. }
             | Self::DecisionTable { span, .. }
             | Self::AnonymousFunction { span, .. }
             | Self::Application { span, .. } => *span,
@@ -1569,7 +1574,7 @@ impl Parser<'_> {
                 self.delimiter_depth -= 1;
                 expression
             }
-            TokenKind::LeftBrace => self.anonymous_function(token),
+            TokenKind::LeftBrace => self.braced_expression(token),
             _ => {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-EXPECTED-EXPRESSION",
@@ -1580,6 +1585,90 @@ impl Parser<'_> {
                 None
             }
         }
+    }
+
+    fn braced_expression(&mut self, opening: Token) -> Option<Expression> {
+        let start = self.cursor;
+        let mut depth = 1_usize;
+        let mut closing_index = None;
+        for (offset, token) in self.tokens[start..].iter().enumerate() {
+            match token.kind {
+                TokenKind::LeftBrace => depth += 1,
+                TokenKind::RightBrace => {
+                    depth -= 1;
+                    if depth == 0 {
+                        closing_index = Some(start + offset);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let Some(closing_index) = closing_index else {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-RBRACE",
+                span: opening.span,
+                message: "expected a closing brace".into(),
+            });
+            return None;
+        };
+        if self.braces_introduce_anonymous_function(start, closing_index) {
+            return self.anonymous_function(opening);
+        }
+
+        let closing = self.tokens[closing_index];
+        let mut block_parser = Self {
+            source: self.source,
+            tokens: &self.tokens[start..closing_index],
+            cursor: 0,
+            delimiter_depth: 0,
+            diagnostics: Vec::new(),
+        };
+        let mut statements = Vec::new();
+        while block_parser.skip_separators() {
+            if let Some(statement) = block_parser.statement() {
+                statements.push(statement);
+            }
+            if block_parser
+                .peek()
+                .is_some_and(|token| token.kind != TokenKind::Newline)
+            {
+                block_parser.error_current(
+                    "E-UNSUPPORTED-SYNTAX",
+                    "unsupported token after block statement",
+                );
+                block_parser.skip_to_newline();
+            }
+        }
+        validate_diagnostic_controls(self.source, &statements, &mut block_parser.diagnostics);
+        self.diagnostics.extend(block_parser.diagnostics);
+        self.cursor = closing_index + 1;
+        Some(Expression::Block {
+            statements,
+            span: Span::new(opening.span.start, closing.span.end),
+        })
+    }
+
+    fn braces_introduce_anonymous_function(&self, start: usize, closing: usize) -> bool {
+        let content = self.tokens[start..closing]
+            .iter()
+            .filter(|token| !token.kind.is_trivia())
+            .collect::<Vec<_>>();
+        let parameters = !content.is_empty()
+            && content.iter().enumerate().all(|(index, token)| {
+                if index % 2 == 0 {
+                    token.kind == TokenKind::Identifier
+                } else {
+                    token.kind == TokenKind::Comma
+                }
+            });
+        if !parameters {
+            return false;
+        }
+        self.tokens[closing + 1..]
+            .iter()
+            .take_while(|token| token.kind != TokenKind::Newline)
+            .any(|token| !token.kind.is_trivia())
     }
 
     fn anonymous_function(&mut self, opening: Token) -> Option<Expression> {

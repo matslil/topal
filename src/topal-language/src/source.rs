@@ -637,6 +637,40 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let value = match expression {
+            Expression::Block { statements, .. } => {
+                if statements.is_empty() {
+                    trace.record(TraceEvent {
+                        event: "block.empty.evaluated",
+                        rule: "TOPAL-SYN-GRAMMAR-001",
+                        detail: "Unit",
+                    });
+                    Ok(Value::Unit)
+                } else {
+                    let mut branch = self.clone();
+                    let mut execution = Execution {
+                        source: source.clone(),
+                        statements: statements.clone(),
+                        cursor: 0,
+                        return_classifier: None,
+                    };
+                    loop {
+                        match execution.step(&mut branch, trace)? {
+                            ExecutionStep::Complete(value) => {
+                                trace.record(TraceEvent {
+                                    event: "block.evaluated",
+                                    rule: "TOPAL-SYN-GRAMMAR-001",
+                                    detail: &structural_value_classifier(&value),
+                                });
+                                break Ok(value);
+                            }
+                            ExecutionStep::Advanced { .. } => {}
+                            ExecutionStep::Returned { .. } => unreachable!(
+                                "a standalone block rejects return without a function context"
+                            ),
+                        }
+                    }
+                }
+            }
             Expression::Boolean(span) => Ok(evaluate_boolean_literal(source, *span, trace)),
             Expression::Unit(_) => {
                 trace.record(TraceEvent {
@@ -5334,6 +5368,15 @@ fn evaluate_list_expression(
 
 fn expression_is_closed(expression: &Expression) -> bool {
     match expression {
+        Expression::Block { statements, .. } => {
+            statements.iter().all(|statement| match statement {
+                Statement::Binding { value, .. }
+                | Statement::Discard { value, .. }
+                | Statement::Return { value, .. }
+                | Statement::Expression(value) => expression_is_closed(value),
+                _ => false,
+            })
+        }
         Expression::Unit(_)
         | Expression::Boolean(_)
         | Expression::Integer(_)
