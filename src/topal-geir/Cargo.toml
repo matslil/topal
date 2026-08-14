@@ -1,17 +1,13 @@
 [package]
-name = "topal-language"
+name = "topal-geir"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-topal-geir = { path = "../topal-geir" }
-num-bigint = "0.4"
-num-rational = "0.4"
-topal-source = { path = "../topal-source" }
 topal-semantics = { path = "../topal-semantics" }
-topal-syntax = { path = "../topal-syntax" }
+topal-source = { path = "../topal-source" }
 
 [lints]
 workspace = true
