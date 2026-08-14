@@ -264,6 +264,303 @@ impl EffectSet {
     pub fn iter(&self) -> impl Iterator<Item = &QualifiedName> {
         self.0.iter()
     }
+
+    #[must_use]
+    pub fn contains_all(&self, required: &Self) -> bool {
+        required.0.is_subset(&self.0)
+    }
+}
+
+/// A canonical effect row with an optional polymorphic tail variable.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct EffectRow {
+    pub known: EffectSet,
+    pub tail: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ResourceIdentity(pub QualifiedName);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ResourceState {
+    Owned { binding: String, lifetime: u64 },
+    Destroyed,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ResourceTracker {
+    resources: BTreeMap<ResourceIdentity, ResourceState>,
+    declaration_order: Vec<ResourceIdentity>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AccessRights {
+    pub read: bool,
+    pub write: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Location {
+    pub resource: ResourceIdentity,
+    pub base: u128,
+    pub size: u128,
+    pub layout_size: u128,
+    pub alignment: u128,
+    pub rights: AccessRights,
+    pub lifetime: u64,
+    pub access_widths: BTreeSet<u128>,
+}
+
+impl Location {
+    /// Validate the complete semantic location tuple.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for overflow, range, alignment, rights, or access defects.
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.base.checked_add(self.size).is_none() {
+            return Err("location range overflows its address domain");
+        }
+        if self.layout_size > self.size {
+            return Err("layout exceeds the location range");
+        }
+        if self.alignment == 0 || !self.base.is_multiple_of(self.alignment) {
+            return Err("location base does not satisfy alignment");
+        }
+        if !self.rights.read && !self.rights.write {
+            return Err("location grants no access rights");
+        }
+        if self.access_widths.is_empty()
+            || self
+                .access_widths
+                .iter()
+                .any(|width| *width == 0 || *width > self.size)
+        {
+            return Err("location has an invalid access width");
+        }
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn aliases(&self, other: &Self) -> bool {
+        self.resource == other.resource
+            && self.base < other.base.saturating_add(other.size)
+            && other.base < self.base.saturating_add(self.size)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum MemoryEvent {
+    Read {
+        location: Location,
+        width: u128,
+    },
+    Write {
+        location: Location,
+        width: u128,
+        value_identity: String,
+    },
+}
+
+impl MemoryEvent {
+    /// Check authorization and declared width before an event occurs.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the event is not permitted by its location.
+    pub fn validate(&self) -> Result<(), &'static str> {
+        let (location, width, permitted) = match self {
+            Self::Read { location, width } => (location, width, location.rights.read),
+            Self::Write {
+                location, width, ..
+            } => (location, width, location.rights.write),
+        };
+        location.validate()?;
+        if !permitted {
+            return Err("memory event is not authorized");
+        }
+        if !location.access_widths.contains(width) || !location.base.is_multiple_of(*width) {
+            return Err("memory event width or alignment is invalid");
+        }
+        Ok(())
+    }
+
+    fn location(&self) -> &Location {
+        match self {
+            Self::Read { location, .. } | Self::Write { location, .. } => location,
+        }
+    }
+
+    fn writes(&self) -> bool {
+        matches!(self, Self::Write { .. })
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct MemoryExecution {
+    events: Vec<MemoryEvent>,
+    order: BTreeSet<(usize, usize)>,
+}
+
+impl MemoryExecution {
+    /// Append one validated event and return its stable execution index.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the event is invalid.
+    pub fn record(&mut self, event: MemoryEvent) -> Result<usize, &'static str> {
+        event.validate()?;
+        let index = self.events.len();
+        self.events.push(event);
+        Ok(index)
+    }
+
+    /// Add a happens-before edge while preserving acyclicity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for unknown events or an edge that creates a cycle.
+    pub fn order_before(&mut self, before: usize, after: usize) -> Result<(), &'static str> {
+        if before >= self.events.len() || after >= self.events.len() {
+            return Err("memory ordering edge names an unknown event");
+        }
+        if before == after || self.happens_before(after, before) {
+            return Err("memory ordering edge creates a cycle");
+        }
+        self.order.insert((before, after));
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn happens_before(&self, before: usize, after: usize) -> bool {
+        let mut pending = vec![before];
+        let mut visited = BTreeSet::new();
+        while let Some(current) = pending.pop() {
+            if !visited.insert(current) {
+                continue;
+            }
+            for &(_, next) in self.order.iter().filter(|(source, _)| *source == current) {
+                if next == after {
+                    return true;
+                }
+                pending.push(next);
+            }
+        }
+        false
+    }
+
+    /// Reject unordered conflicting events.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when two aliasing events conflict without ordering.
+    pub fn validate_race_free(&self) -> Result<(), &'static str> {
+        for left in 0..self.events.len() {
+            for right in left + 1..self.events.len() {
+                let left_event = &self.events[left];
+                let right_event = &self.events[right];
+                if left_event.location().aliases(right_event.location())
+                    && (left_event.writes() || right_event.writes())
+                    && !self.happens_before(left, right)
+                    && !self.happens_before(right, left)
+                {
+                    return Err("unordered conflicting memory events form a data race");
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl ResourceTracker {
+    /// Add one fresh ownership obligation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the resource identity already has an obligation.
+    pub fn declare(
+        &mut self,
+        identity: ResourceIdentity,
+        binding: impl Into<String>,
+        lifetime: u64,
+    ) -> Result<(), &'static str> {
+        if self.resources.contains_key(&identity) {
+            return Err("resource identity already has an ownership obligation");
+        }
+        self.declaration_order.push(identity.clone());
+        self.resources.insert(
+            identity,
+            ResourceState::Owned {
+                binding: binding.into(),
+                lifetime,
+            },
+        );
+        Ok(())
+    }
+
+    /// Move ownership to a new binding without duplicating the obligation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error after destruction or from a binding that is not the owner.
+    pub fn move_to(
+        &mut self,
+        identity: &ResourceIdentity,
+        from: &str,
+        to: impl Into<String>,
+    ) -> Result<(), &'static str> {
+        let Some(ResourceState::Owned { binding, .. }) = self.resources.get_mut(identity) else {
+            return Err("resource is not live");
+        };
+        if binding != from {
+            return Err("move source does not own the resource");
+        }
+        *binding = to.into();
+        Ok(())
+    }
+
+    /// Destroy live resources in reverse declaration order.
+    #[must_use]
+    pub fn destroy_all(&mut self) -> Vec<ResourceIdentity> {
+        let mut destroyed = Vec::new();
+        for identity in self.declaration_order.iter().rev() {
+            if matches!(
+                self.resources.get(identity),
+                Some(ResourceState::Owned { .. })
+            ) {
+                self.resources
+                    .insert(identity.clone(), ResourceState::Destroyed);
+                destroyed.push(identity.clone());
+            }
+        }
+        destroyed
+    }
+
+    #[must_use]
+    pub fn state(&self, identity: &ResourceIdentity) -> Option<&ResourceState> {
+        self.resources.get(identity)
+    }
+}
+
+impl EffectRow {
+    #[must_use]
+    pub fn compose(&self, other: &Self) -> Option<Self> {
+        let tail = match (&self.tail, &other.tail) {
+            (Some(left), Some(right)) if left != right => return None,
+            (Some(tail), _) | (_, Some(tail)) => Some(tail.clone()),
+            (None, None) => None,
+        };
+        Some(Self {
+            known: self.known.union(&other.known),
+            tail,
+        })
+    }
+
+    #[must_use]
+    pub fn is_contained_by(&self, allowed: &Self) -> bool {
+        allowed.known.contains_all(&self.known)
+            && (self.tail.is_none() || self.tail == allowed.tail)
+    }
 }
 
 /// Stable relationship evidence retained by a typing derivation.
@@ -453,5 +750,128 @@ mod tests {
             .validate()
             .is_err()
         );
+    }
+
+    #[test]
+    fn effect_rows_compose_and_check_containment_canonically() {
+        let read = QualifiedName(vec!["app".into(), "read".into()]);
+        let write = QualifiedName(vec!["app".into(), "write".into()]);
+        let left = EffectRow {
+            known: EffectSet::from_effects([read.clone()]),
+            tail: Some("E".into()),
+        };
+        let right = EffectRow {
+            known: EffectSet::from_effects([write.clone()]),
+            tail: Some("E".into()),
+        };
+        let composed = left.compose(&right).unwrap();
+        assert_eq!(composed.known.iter().count(), 2);
+        assert!(left.is_contained_by(&composed));
+        assert!(right.is_contained_by(&composed));
+        assert!(
+            left.compose(&EffectRow {
+                known: EffectSet::default(),
+                tail: Some("Other".into()),
+            })
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn resource_moves_retain_one_obligation_and_cleanup_once() {
+        let first = ResourceIdentity(QualifiedName(vec!["resource".into(), "first".into()]));
+        let second = ResourceIdentity(QualifiedName(vec!["resource".into(), "second".into()]));
+        let mut tracker = ResourceTracker::default();
+        tracker.declare(first.clone(), "input", 1).unwrap();
+        tracker.declare(second.clone(), "other", 1).unwrap();
+        tracker.move_to(&first, "input", "output").unwrap();
+        assert!(tracker.move_to(&first, "input", "again").is_err());
+        assert!(matches!(
+            tracker.state(&first),
+            Some(ResourceState::Owned { binding, .. }) if binding == "output"
+        ));
+        assert_eq!(tracker.destroy_all(), vec![second.clone(), first.clone()]);
+        assert!(tracker.destroy_all().is_empty());
+        assert_eq!(tracker.state(&first), Some(&ResourceState::Destroyed));
+    }
+
+    #[test]
+    fn locations_separate_resources_and_validate_events() {
+        let resource = ResourceIdentity(QualifiedName(vec!["memory".into(), "buffer".into()]));
+        let location = Location {
+            resource: resource.clone(),
+            base: 16,
+            size: 8,
+            layout_size: 8,
+            alignment: 8,
+            rights: AccessRights {
+                read: true,
+                write: false,
+            },
+            lifetime: 1,
+            access_widths: BTreeSet::from([1, 2, 4, 8]),
+        };
+        assert_eq!(location.validate(), Ok(()));
+        assert_eq!(
+            MemoryEvent::Read {
+                location: location.clone(),
+                width: 4,
+            }
+            .validate(),
+            Ok(())
+        );
+        assert!(
+            MemoryEvent::Write {
+                location: location.clone(),
+                width: 4,
+                value_identity: "value".into(),
+            }
+            .validate()
+            .is_err()
+        );
+        let overlapping_other_resource = Location {
+            resource: ResourceIdentity(QualifiedName(vec!["memory".into(), "other".into()])),
+            ..location.clone()
+        };
+        assert!(!location.aliases(&overlapping_other_resource));
+        assert!(location.aliases(&Location {
+            base: 20,
+            size: 4,
+            layout_size: 4,
+            alignment: 4,
+            ..location.clone()
+        }));
+    }
+
+    #[test]
+    fn memory_execution_requires_order_for_conflicts() {
+        let location = Location {
+            resource: ResourceIdentity(QualifiedName(vec!["memory".into(), "shared".into()])),
+            base: 0,
+            size: 4,
+            layout_size: 4,
+            alignment: 4,
+            rights: AccessRights {
+                read: true,
+                write: true,
+            },
+            lifetime: 1,
+            access_widths: BTreeSet::from([4]),
+        };
+        let mut execution = MemoryExecution::default();
+        let write = execution
+            .record(MemoryEvent::Write {
+                location: location.clone(),
+                width: 4,
+                value_identity: "one".into(),
+            })
+            .unwrap();
+        let read = execution
+            .record(MemoryEvent::Read { location, width: 4 })
+            .unwrap();
+        assert!(execution.validate_race_free().is_err());
+        execution.order_before(write, read).unwrap();
+        assert_eq!(execution.validate_race_free(), Ok(()));
+        assert!(execution.order_before(read, write).is_err());
     }
 }
