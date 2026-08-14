@@ -558,9 +558,16 @@ fn line_column(source: &str, offset: usize) -> (usize, usize) {
 }
 
 fn print_transition(transition: &ExecutionTransition) {
+    let transaction = transition.transaction.map_or_else(String::new, |identity| {
+        format!(
+            " transaction={identity} sender={} receiver={}",
+            transition.sender.unwrap_or_default(),
+            transition.receiver.unwrap_or_default()
+        )
+    });
     println!(
-        "#{} {} [{}] {}",
-        transition.sequence, transition.event, transition.rule, transition.detail
+        "#{} {} [{}] {}{}",
+        transition.sequence, transition.event, transition.rule, transition.detail, transaction
     );
 }
 
@@ -571,9 +578,16 @@ fn print_history(history: &ExecutionHistory) {
         } else {
             " "
         };
+        let transaction = transition.transaction.map_or_else(String::new, |identity| {
+            format!(
+                " transaction={identity} sender={} receiver={}",
+                transition.sender.unwrap_or_default(),
+                transition.receiver.unwrap_or_default()
+            )
+        });
         println!(
-            "{marker} #{} {} [{}] {}",
-            transition.sequence, transition.event, transition.rule, transition.detail
+            "{marker} #{} {} [{}] {}{}",
+            transition.sequence, transition.event, transition.rule, transition.detail, transaction
         );
     }
 }

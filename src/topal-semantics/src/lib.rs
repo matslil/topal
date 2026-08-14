@@ -480,6 +480,104 @@ pub struct MessageLedger {
     admitted: BTreeMap<QualifiedName, usize>,
 }
 
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum DependencyNode {
+    Task(TaskIdentity),
+    Transaction(u64),
+    Resource(ResourceIdentity),
+    External(QualifiedName),
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DependencyGraph {
+    nodes: BTreeSet<DependencyNode>,
+    edges: BTreeSet<(DependencyNode, DependencyNode)>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScheduleEvidence {
+    pub order: Vec<DependencyNode>,
+}
+
+impl DependencyGraph {
+    pub fn add_node(&mut self, node: DependencyNode) {
+        self.nodes.insert(node);
+    }
+
+    /// Add one completion dependency.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless both nodes have been declared.
+    pub fn depends_on(
+        &mut self,
+        prerequisite: &DependencyNode,
+        dependent: &DependencyNode,
+    ) -> Result<(), &'static str> {
+        if !self.nodes.contains(prerequisite) || !self.nodes.contains(dependent) {
+            return Err("dependency edge names an unknown node");
+        }
+        self.edges.insert((prerequisite.clone(), dependent.clone()));
+        Ok(())
+    }
+
+    /// Produce the canonical source-independent topological schedule.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a closed internal dependency cycle. A cycle which
+    /// contains an explicitly external node is suspension and is retained.
+    pub fn schedule(&self) -> Result<ScheduleEvidence, &'static str> {
+        let mut remaining = self.nodes.clone();
+        let mut edges = self.edges.clone();
+        let mut order = Vec::new();
+        loop {
+            let ready = remaining
+                .iter()
+                .filter(|node| !edges.iter().any(|(_, dependent)| dependent == *node))
+                .cloned()
+                .collect::<Vec<_>>();
+            if ready.is_empty() {
+                break;
+            }
+            for node in ready {
+                remaining.remove(&node);
+                edges.retain(|(prerequisite, _)| prerequisite != &node);
+                order.push(node);
+            }
+        }
+        if remaining.is_empty() {
+            return Ok(ScheduleEvidence { order });
+        }
+        let suspended_only = remaining.iter().all(|start| {
+            let mut pending = vec![start.clone()];
+            let mut visited = BTreeSet::new();
+            while let Some(current) = pending.pop() {
+                if !visited.insert(current.clone()) {
+                    continue;
+                }
+                if matches!(current, DependencyNode::External(_)) {
+                    return true;
+                }
+                for (left, right) in &edges {
+                    if left == &current && remaining.contains(right) {
+                        pending.push(right.clone());
+                    }
+                    if right == &current && remaining.contains(left) {
+                        pending.push(left.clone());
+                    }
+                }
+            }
+            false
+        });
+        if suspended_only {
+            order.extend(remaining);
+            return Ok(ScheduleEvidence { order });
+        }
+        Err("closed internal dependency cycle would deadlock")
+    }
+}
+
 impl MessageLedger {
     /// Atomically admit one interaction without partially transferring payload.
     ///
@@ -1291,5 +1389,32 @@ mod tests {
             TransactionState::Streaming { values } if values == &["one", "two"]
         ));
         ledger.close(stream).unwrap();
+    }
+
+    #[test]
+    fn dependency_schedules_are_canonical_and_reject_internal_cycles() {
+        let first = DependencyNode::Task(TaskIdentity(1));
+        let second = DependencyNode::Task(TaskIdentity(2));
+        let transaction = DependencyNode::Transaction(3);
+        let mut graph = DependencyGraph::default();
+        for node in [second.clone(), transaction.clone(), first.clone()] {
+            graph.add_node(node);
+        }
+        graph.depends_on(&first, &transaction).unwrap();
+        graph.depends_on(&second, &transaction).unwrap();
+        assert_eq!(
+            graph.schedule().unwrap().order,
+            vec![first.clone(), second.clone(), transaction.clone()]
+        );
+        graph.depends_on(&transaction, &first).unwrap();
+        assert!(graph.schedule().is_err());
+
+        let external = DependencyNode::External(QualifiedName(vec!["network".into()]));
+        let mut suspended = DependencyGraph::default();
+        suspended.add_node(first.clone());
+        suspended.add_node(external.clone());
+        suspended.depends_on(&first, &external).unwrap();
+        suspended.depends_on(&external, &first).unwrap();
+        assert!(suspended.schedule().is_ok());
     }
 }
