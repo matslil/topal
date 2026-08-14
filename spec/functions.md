@@ -60,6 +60,26 @@ and return in that semantic order. The supported parameter and result
 classifiers are the same initial value classifiers admitted by
 `TOPAL-FUNCTION-STATIC-NULLARY-001`.
 
+### TOPAL-FUNCTION-EFFECT-BOUND-001 — Explicit effect upper bounds
+
+A function header may place `:` and an effect expression after its complete
+result type, on the same line or on a continued indented line. The expression
+shall be retained as the function's allowed effect row. The implementation's
+inferred row shall satisfy it under `TOPAL-EFFECT-CONTAIN-001`; declaration
+shall fail rather than erase or widen an unsatisfied bound. Static function
+views and tool traces shall retain the declared bound without performing its
+effects.
+
+### TOPAL-FUNCTION-PACKAGED-OPERAND-001 — Packaged operand patterns
+
+Either syntactic operand may be a parenthesized field package whose declarations
+use `name : Type`. A field may append `default expression`; defaults fill only
+omitted labeled associations and SHALL NOT make the complete syntactic operand
+optional. Invocation SHALL reject unknown or duplicate labels, require every
+nondefaulted field, validate every supplied or defaulted value against its
+declared classifier, and bind all field names in the one invocation scope.
+Parameter names SHALL be unique across all packaged and unpackaged operands.
+
 ### TOPAL-FUNCTION-STATIC-BINARY-001 — Static binary infix function execution
 
 A declaration `name is fn static ( left : L, right : R ) -> O` shall introduce

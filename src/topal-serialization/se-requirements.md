@@ -12,3 +12,16 @@ Malformed, unsupported, and resource-limit failures shall remain distinct and
 shall identify the protocol stage and byte offset. Golden vectors, round trips,
 all-prefix truncation, nonminimal encodings, trailing bytes, invalid revisions,
 and resource limits shall be covered by deterministic tests.
+
+Understood generic-description values shall be decoded recursively from their
+declared schema. The decoder shall not preserve unvalidated remaining frame
+bytes as an `ObjectDescription`; component counts, alternatives, and nested
+values shall be checked before the event is exposed.
+
+Recursive value decoding shall enforce a caller-supplied nesting limit before
+descending into a component or allocating its nested result.
+
+An Int definition whose `width-bits` is zero shall use canonical arbitrary-width
+sign-and-magnitude encoding. Encoders shall emit no magnitude octets for zero;
+decoders shall reject negative zero, leading zero magnitude octets, invalid sign
+octets, and a negative sign for an unsigned definition.

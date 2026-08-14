@@ -1922,3 +1922,33 @@ The interpreter shall use the shared GEIR boundary for artifact export,
 compiler lowering, and artifact optimization. It shall never assign runtime
 semantics to those operations and shall return the stable
 `E-COMPILER-ONLY` diagnostic if one is requested through an embedding API.
+
+## TOPAL-INTP-SUBSET-245 — Qualified static introspection foundation
+
+All source modes shall evaluate `lang context`, `lang version`, `lang identity`,
+`lang view`, `lang declaration`, `lang public-members`, and the implemented
+static object relations under `TOPAL-INTRO-QUALIFIED-001` through
+`TOPAL-INTRO-RELATION-001`. Runtime values shall not acquire reflection
+metadata, and inapplicable operands shall produce stable diagnostics.
+
+## TOPAL-INTP-SUBSET-246 — Native serialization operations
+
+All source modes shall support version-first `lang serialize`, its ordinary
+partial application, and `lang deserialize` under `TOPAL-SER-SCOPE-001` through
+`TOPAL-SER-DESER-001`. Deserialization shall accept only a validated native
+`SerializationStream`; unsupported source objects shall fail explicitly rather
+than silently losing semantic structure.
+
+## TOPAL-INTP-SUBSET-247 — Function effect upper bounds
+
+Function declarations shall accept same-line and continued explicit effect
+upper bounds under `TOPAL-FUNCTION-EFFECT-BOUND-001`, retain them in static
+function views, and expose their declaration in test traces and debugger
+history without performing the described effects.
+
+## TOPAL-INTP-SUBSET-248 — Packaged function operands
+
+Function declarations shall accept packaged operand fields and field defaults
+under `TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Calls shall support positional
+products and labeled records, fill omitted defaulted associations in the
+invocation scope, and trace whether each field was supplied or defaulted.

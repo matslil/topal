@@ -97,3 +97,15 @@ The source debugger shall share the interpreter's deterministic GEIR boundary.
 Artifact export, compiler lowering, and artifact optimization shall not become
 debuggee transitions and shall fail with `E-COMPILER-ONLY` through embedding
 interfaces.
+
+## TOPAL-DEBUG-INTROSPECTION-001 — Static introspection history
+
+Static introspection decisions shall appear in deterministic source-level
+history and remain reversible without turning their operands or results into
+runtime reflection metadata.
+
+## TOPAL-DEBUG-SERIALIZATION-001 — Native serialization history
+
+Native serialization and validated deserialization shall be deterministic,
+reversible source transitions. Reverse execution shall restore the prior
+semantic state without repeating serialization work or exposing authority.

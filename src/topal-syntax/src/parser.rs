@@ -87,10 +87,12 @@ pub struct ProductField {
     pub value: Expression,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionParameter {
     pub name: Span,
     pub classifier: Span,
+    pub fields: Vec<Self>,
+    pub default: Option<Expression>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -187,6 +189,7 @@ pub enum Statement {
         is_static: bool,
         parameters: Vec<FunctionParameter>,
         result: Span,
+        effect_bound: Option<Span>,
         body: Vec<Statement>,
         span: Span,
     },
@@ -327,7 +330,15 @@ impl Parser<'_> {
                 span,
             });
         }
-        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "lang" {
+        if first.kind == TokenKind::Identifier
+            && self.source.slice(first.span) == "lang"
+            && self.peek_nontrivia().is_some_and(|operation| {
+                matches!(
+                    self.source.slice(operation.span),
+                    "disable-warning" | "push-disable-warning" | "pop-disable-warning"
+                )
+            })
+        {
             return self.diagnostic_control(first);
         }
         if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "return" {
@@ -686,6 +697,7 @@ impl Parser<'_> {
         })
     }
 
+    #[allow(clippy::too_many_lines)] // Header continuations and body diagnostics remain localized.
     fn function(&mut self, name: Token) -> Option<Statement> {
         let function = self.take_nontrivia()?;
         let next = self.take_nontrivia()?;
@@ -726,6 +738,17 @@ impl Parser<'_> {
             self.skip_to_newline();
             return None;
         }
+        let effect_bound = if self
+            .peek_nontrivia()
+            .is_some_and(|token| token.kind == TokenKind::Colon)
+        {
+            self.function_effect_bound()
+        } else if self.effect_bound_on_following_line() {
+            self.cursor += 1;
+            self.function_effect_bound()
+        } else {
+            None
+        };
         if !self
             .peek()
             .is_some_and(|token| token.kind == TokenKind::Newline)
@@ -777,9 +800,44 @@ impl Parser<'_> {
             is_static,
             parameters,
             result,
+            effect_bound,
             span: Span::new(name.span.start, body_end),
             body,
         })
+    }
+
+    fn effect_bound_on_following_line(&self) -> bool {
+        if !self
+            .tokens
+            .get(self.cursor)
+            .is_some_and(|token| token.kind == TokenKind::Newline)
+        {
+            return false;
+        }
+        self.tokens[self.cursor + 1..]
+            .iter()
+            .take_while(|token| token.kind != TokenKind::Newline)
+            .find(|token| !token.kind.is_trivia())
+            .is_some_and(|token| token.kind == TokenKind::Colon)
+    }
+
+    fn function_effect_bound(&mut self) -> Option<Span> {
+        let colon = self.take_nontrivia()?;
+        debug_assert_eq!(colon.kind, TokenKind::Colon);
+        let first = self.take_nontrivia();
+        let Some(first) = first else {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-EFFECT-BOUND",
+                span: colon.span,
+                message: "expected an effect or resource bound after `:`".into(),
+            });
+            return None;
+        };
+        let mut end = first.span.end;
+        while let Some(token) = self.take_nontrivia() {
+            end = token.span.end;
+        }
+        Some(Span::new(first.span.start, end))
     }
 
     fn union(&mut self, name: Token) -> Option<Statement> {
@@ -1679,6 +1737,29 @@ impl Parser<'_> {
             if input.kind == TokenKind::RightParen {
                 break input;
             }
+            if input.kind == TokenKind::LeftParen {
+                let (fields, package_closing) = self.parameter_package(input)?;
+                let separator = self.take_nontrivia()?;
+                if !matches!(separator.kind, TokenKind::Comma | TokenKind::RightParen) {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-FUNCTION-PARAMETER-PACKAGE",
+                        span: separator.span,
+                        message: "expected `,` or `)` after packaged function operand".into(),
+                    });
+                    return None;
+                }
+                parameters.push(FunctionParameter {
+                    name: input.span,
+                    classifier: Span::new(input.span.start, package_closing.span.end),
+                    fields,
+                    default: None,
+                });
+                if separator.kind == TokenKind::RightParen {
+                    break separator;
+                }
+                input = self.take_nontrivia()?;
+                continue;
+            }
             let colon = self.take_nontrivia()?;
             let classifier_start = self.take_nontrivia()?;
             let classifier = self.classifier_from_first(classifier_start)?;
@@ -1704,6 +1785,8 @@ impl Parser<'_> {
             parameters.push(FunctionParameter {
                 name: input.span,
                 classifier,
+                fields: Vec::new(),
+                default: None,
             });
             if separator.kind == TokenKind::RightParen {
                 break separator;
@@ -1711,6 +1794,60 @@ impl Parser<'_> {
             input = self.take_nontrivia()?;
         };
         Some((parameters, closing))
+    }
+
+    fn parameter_package(&mut self, opening: Token) -> Option<(Vec<FunctionParameter>, Token)> {
+        self.delimiter_depth += 1;
+        let mut fields = Vec::new();
+        let closing = loop {
+            let name = self.take_nontrivia()?;
+            if name.kind == TokenKind::RightParen {
+                break name;
+            }
+            let colon = self.take_nontrivia()?;
+            let classifier_start = self.take_nontrivia()?;
+            let classifier = self.classifier_from_first(classifier_start)?;
+            if !matches!(name.kind, TokenKind::Identifier | TokenKind::Discard)
+                || colon.kind != TokenKind::Colon
+            {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-FUNCTION-PARAMETER-PACKAGE",
+                    span: Span::new(opening.span.start, classifier.end),
+                    message: "packaged parameters require `name : Type` fields".into(),
+                });
+                self.delimiter_depth -= 1;
+                return None;
+            }
+            let default = if self.peek_nontrivia().is_some_and(|token| {
+                token.kind == TokenKind::Identifier && self.source.slice(token.span) == "default"
+            }) {
+                self.take_nontrivia();
+                self.expression()
+            } else {
+                None
+            };
+            let separator = self.take_nontrivia()?;
+            fields.push(FunctionParameter {
+                name: name.span,
+                classifier,
+                fields: Vec::new(),
+                default,
+            });
+            if separator.kind == TokenKind::RightParen {
+                break separator;
+            }
+            if separator.kind != TokenKind::Comma {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-FUNCTION-PARAMETER-PACKAGE",
+                    span: separator.span,
+                    message: "expected `,` or `)` after packaged parameter field".into(),
+                });
+                self.delimiter_depth -= 1;
+                return None;
+            }
+        };
+        self.delimiter_depth -= 1;
+        Some((fields, closing))
     }
 
     fn expression(&mut self) -> Option<Expression> {
@@ -1745,7 +1882,7 @@ impl Parser<'_> {
             TokenKind::Integer => Some(Expression::Integer(token.span)),
             TokenKind::Rational => Some(Expression::Rational(token.span)),
             TokenKind::String => Some(Expression::String(token.span)),
-            TokenKind::Identifier => Some(Expression::Identifier(token.span)),
+            TokenKind::Identifier | TokenKind::Version => Some(Expression::Identifier(token.span)),
             TokenKind::At => {
                 let selected = self.take_nontrivia()?;
                 if selected.kind != TokenKind::Identifier {
@@ -2392,6 +2529,43 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn retains_same_line_and_continued_function_effect_bounds() {
+        for text in [
+            "read is fn ( value : Int ) -> Int : Effects ()\n  value\n",
+            "read is fn ( value : Int ) -> Int\n  : Effects ()\n  value\n",
+        ] {
+            let source = SourceText::new(text).unwrap();
+            let parsed = parse(&source, &lex(&source));
+            assert_eq!(parsed.diagnostics, []);
+            let Statement::Function {
+                effect_bound: Some(bound),
+                ..
+            } = parsed.statements[0]
+            else {
+                panic!("expected a function effect bound");
+            };
+            assert_eq!(source.slice(bound), "Effects ()");
+        }
+    }
+
+    #[test]
+    fn retains_packaged_operand_fields_and_defaults() {
+        let source = SourceText::new(
+            "choose is fn ( ( value : Int, fallback : Int default 0 ) ) -> Int\n  value\n",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert_eq!(parsed.diagnostics, []);
+        let Statement::Function { parameters, .. } = &parsed.statements[0] else {
+            panic!("expected function");
+        };
+        assert_eq!(parameters.len(), 1);
+        assert_eq!(parameters[0].fields.len(), 2);
+        assert!(parameters[0].fields[0].default.is_none());
+        assert!(parameters[0].fields[1].default.is_some());
     }
 
     #[test]

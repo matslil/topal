@@ -5,6 +5,11 @@ use std::fmt::{self, Write as _};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_semantics::{LanguageVersion, ObjectKind};
+use topal_serialization::{
+    Event as SerializedEvent, Header as SerializationHeader, Limits as SerializationLimits,
+    SerializedValue, Stream as SerializationStream, StreamByteOrder, TypeDefinition,
+    deserialize as deserialize_native, serialize as serialize_native,
+};
 use topal_source::{
     SourceText, Span, canonically_equal, case_fold, character_at, character_count, characters,
     lowercase, normalize_nfc, normalize_nfd, uppercase,
@@ -20,6 +25,9 @@ pub enum Value {
     Type(String),
     Effects(Vec<String>),
     Boolean(bool),
+    Version(LanguageVersion),
+    NativeSerializer(LanguageVersion),
+    SerializationStream(Vec<u8>),
     Int(BigInt),
     Rational(BigRational),
     IntRange {
@@ -102,6 +110,7 @@ pub enum Value {
     Constraint(Box<ConstraintValue>),
     Capability(Vec<BTreeSet<String>>),
     Interface(Box<InterfaceValue>),
+    Introspection(Box<IntrospectionValue>),
     Refined {
         constraint: String,
         base_classifier: String,
@@ -125,6 +134,50 @@ pub enum Value {
     Finish(Box<Self>),
     Completed,
     Unit,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum IntrospectionValue {
+    Identity {
+        kind: ObjectKind,
+        canonical: String,
+    },
+    TypeView {
+        form: String,
+        identity: String,
+    },
+    FunctionView {
+        identity: String,
+        inputs: Vec<String>,
+        output: String,
+        is_static: bool,
+        effects: Vec<String>,
+    },
+    ScopeView {
+        identity: String,
+        members: Vec<String>,
+    },
+    ConstraintView {
+        identity: String,
+        base: String,
+    },
+    EffectView {
+        identities: Vec<String>,
+    },
+    ProtocolView {
+        identity: String,
+        operations: Vec<String>,
+    },
+    DeclarationView {
+        name: Option<String>,
+        canonical_path: Option<String>,
+        language_version: LanguageVersion,
+    },
+    LanguageContext {
+        language: String,
+        version: LanguageVersion,
+        features: Vec<String>,
+    },
 }
 
 impl Value {
@@ -213,6 +266,7 @@ impl fmt::Display for Value {
         match self {
             Self::Type(name) => formatter.write_str(name),
             Self::Interface(interface) => write!(formatter, "<Interface {}>", interface.name),
+            Self::Introspection(value) => write!(formatter, "{value}"),
             Self::Capability(alternatives) => {
                 let text = alternatives
                     .iter()
@@ -229,6 +283,11 @@ impl fmt::Display for Value {
             }
             Self::Effects(effects) => write!(formatter, "Effects ({})", effects.join(", ")),
             Self::Boolean(value) => value.fmt(formatter),
+            Self::Version(value) => value.fmt(formatter),
+            Self::NativeSerializer(version) => write!(formatter, "<lang serialize {version}>"),
+            Self::SerializationStream(bytes) => {
+                write!(formatter, "SerializationStream ( {} bytes )", bytes.len())
+            }
             Self::Int(value) => value.fmt(formatter),
             Self::Rational(value) => {
                 write!(
@@ -371,6 +430,69 @@ impl fmt::Display for Value {
     }
 }
 
+impl fmt::Display for IntrospectionValue {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Identity { kind, canonical } => {
+                write!(
+                    formatter,
+                    "lang Identity ( kind is {kind:?}, path is {canonical} )"
+                )
+            }
+            Self::TypeView { form, identity } => {
+                write!(formatter, "lang {form} ( identity is {identity} )")
+            }
+            Self::FunctionView {
+                identity,
+                inputs,
+                output,
+                is_static,
+                effects,
+            } => write!(
+                formatter,
+                "lang FunctionView ( identity is {identity}, inputs is {inputs:?}, output is {output}, static is {is_static}, effects is {effects:?} )"
+            ),
+            Self::ScopeView { identity, members } => write!(
+                formatter,
+                "lang ScopeView ( identity is {identity}, members is {members:?} )"
+            ),
+            Self::ConstraintView { identity, base } => write!(
+                formatter,
+                "lang ConstraintView ( identity is {identity}, base is {base} )"
+            ),
+            Self::EffectView { identities } => {
+                write!(
+                    formatter,
+                    "lang EffectView ( identities is {identities:?} )"
+                )
+            }
+            Self::ProtocolView {
+                identity,
+                operations,
+            } => write!(
+                formatter,
+                "lang ProtocolView ( identity is {identity}, operations is {operations:?} )"
+            ),
+            Self::DeclarationView {
+                name,
+                canonical_path,
+                language_version,
+            } => write!(
+                formatter,
+                "lang DeclarationView ( name is {name:?}, path is {canonical_path:?}, version is {language_version} )"
+            ),
+            Self::LanguageContext {
+                language,
+                version,
+                features,
+            } => write!(
+                formatter,
+                "lang LanguageContext ( language is {language}, version is {version}, features is {features:?} )"
+            ),
+        }
+    }
+}
+
 fn display_collection(
     formatter: &mut fmt::Formatter<'_>,
     kind: &str,
@@ -462,11 +584,20 @@ struct UserFunction {
     source: SourceText,
     is_static: bool,
     parameters: Vec<(String, String)>,
+    parameter_packages: BTreeMap<usize, Vec<UserParameterField>>,
     result: String,
+    effect_bound: Option<String>,
     body: Vec<Statement>,
     bindings: BTreeMap<String, Value>,
     termination_rule: Option<&'static str>,
     recursion_target: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct UserParameterField {
+    name: String,
+    classifier: String,
+    default: Option<Expression>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -500,6 +631,7 @@ struct FunctionDeclaration<'a> {
     is_static: bool,
     parameters: &'a [FunctionParameter],
     result: Span,
+    effect_bound: Option<Span>,
     body: &'a [Statement],
     span: Span,
 }
@@ -528,6 +660,350 @@ enum BindingOutcome {
 }
 
 impl Session {
+    fn is_lang_operation(source: &SourceText, expression: &Expression, expected: &str) -> bool {
+        matches!(
+            expression,
+            Expression::Application { items, .. }
+                if matches!(items.as_slice(),
+                    [Expression::Identifier(lang), Expression::Identifier(operation)]
+                        if source.slice(*lang) == "lang" && source.slice(*operation) == expected)
+        )
+    }
+
+    fn is_native_serialization(&self, source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items,
+            [Expression::Identifier(lang), Expression::Identifier(operation), _]
+                if source.slice(*lang) == "lang" && source.slice(*operation) == "deserialize")
+            || matches!(items,
+                [Expression::Identifier(lang), Expression::Identifier(version), operation]
+                    if source.slice(*lang) == "lang" && source.slice(*version) == "version"
+                        && Self::is_lang_operation(source, operation, "serialize"))
+            || matches!(items, [_, operation, _] if Self::is_lang_operation(source, operation, "serialize"))
+            || matches!(items,
+                [Expression::Identifier(name), _]
+                    if matches!(self.bindings.get(source.slice(*name)), Some(Value::NativeSerializer(_))))
+    }
+
+    #[allow(clippy::too_many_lines)] // Protocol boundary diagnostics stay beside each source form.
+    fn evaluate_native_serialization(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if let [
+            Expression::Identifier(lang),
+            Expression::Identifier(operation),
+            stream,
+        ] = items
+            && source.slice(*lang) == "lang"
+            && source.slice(*operation) == "deserialize"
+        {
+            let Value::SerializationStream(bytes) =
+                self.evaluate_expression(source, stream, trace)?
+            else {
+                return Err(diagnostic(
+                    source,
+                    "E-DESERIALIZE-OPERAND",
+                    stream.span(),
+                    "lang deserialize requires a native SerializationStream",
+                ));
+            };
+            let decoded =
+                deserialize_native(&bytes, SerializationLimits::default()).map_err(|error| {
+                    diagnostic(
+                        source,
+                        "E-DESERIALIZATION",
+                        span,
+                        format!(
+                            "native stream rejected at {} byte {}: {}",
+                            error.stage, error.offset, error.message
+                        ),
+                    )
+                })?;
+            let event = decoded.events.first().ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-DESERIALIZATION",
+                    span,
+                    "native stream contains no value event",
+                )
+            })?;
+            let value = value_from_serialized(event, &decoded.types).ok_or_else(|| diagnostic(source, "E-DESERIALIZATION-OBJECT", span, "native value is understood but cannot be reconstructed by this interpreter revision"))?;
+            trace.record(TraceEvent {
+                event: "serialization.deserialized",
+                rule: "TOPAL-SER-DESER-001",
+                detail: "validated native event",
+            });
+            return Ok(value);
+        }
+
+        let (version, subject) = match items {
+            [
+                Expression::Identifier(lang),
+                Expression::Identifier(version),
+                operation,
+            ] if source.slice(*lang) == "lang"
+                && source.slice(*version) == "version"
+                && Self::is_lang_operation(source, operation, "serialize") =>
+            {
+                return Ok(Value::NativeSerializer(self.language_version));
+            }
+            [version, operation, subject]
+                if Self::is_lang_operation(source, operation, "serialize") =>
+            {
+                let Value::Version(version) = self.evaluate_expression(source, version, trace)?
+                else {
+                    return Err(diagnostic(
+                        source,
+                        "E-SERIALIZATION-VERSION",
+                        version.span(),
+                        "the left operand of lang serialize must be a Version",
+                    ));
+                };
+                (version, subject)
+            }
+            [Expression::Identifier(name), subject] => {
+                let Some(Value::NativeSerializer(version)) = self.bindings.get(source.slice(*name))
+                else {
+                    return Err(diagnostic(
+                        source,
+                        "E-SERIALIZATION-OPERATION",
+                        span,
+                        "expected a native serialization operation",
+                    ));
+                };
+                (*version, subject)
+            }
+            _ => {
+                return Err(diagnostic(
+                    source,
+                    "E-SERIALIZATION-OPERATION",
+                    span,
+                    "expected `version (lang serialize) value`",
+                ));
+            }
+        };
+        let value = self.evaluate_expression(source, subject, trace)?;
+        let stream = stream_for_value(version, &value).map_err(|message| {
+            diagnostic(source, "E-SERIALIZATION-VALUE", subject.span(), message)
+        })?;
+        let bytes = serialize_native(&stream)
+            .map_err(|error| diagnostic(source, "E-SERIALIZATION", span, error.message))?;
+        trace.record(TraceEvent {
+            event: "serialization.serialized",
+            rule: "TOPAL-SER-CANON-001",
+            detail: &format!("{} bytes", bytes.len()),
+        });
+        Ok(Value::SerializationStream(bytes))
+    }
+
+    fn is_lang_introspection(source: &SourceText, items: &[Expression]) -> bool {
+        let qualified_prefix = matches!(
+            (items.first(), items.get(1)),
+            (Some(Expression::Identifier(lang)), Some(Expression::Identifier(operation)))
+                if source.slice(*lang) == "lang"
+                    && matches!(source.slice(*operation),
+                        "context" | "version" | "identity" | "view" | "declaration" | "public-members")
+        );
+        let qualified_infix = matches!(
+            (items.get(1), items.get(2)),
+            (Some(Expression::Identifier(lang)), Some(Expression::Identifier(operation)))
+                if source.slice(*lang) == "lang"
+                    && matches!(source.slice(*operation),
+                        "same-object" | "equivalent-type" | "compatible-with" | "same-layout")
+        );
+        qualified_prefix || qualified_infix
+    }
+
+    #[allow(clippy::too_many_lines)] // Qualified static operations remain explicit and auditable.
+    fn evaluate_lang_introspection(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if let [
+            Expression::Identifier(lang),
+            Expression::Identifier(operation),
+        ] = items
+            && source.slice(*lang) == "lang"
+        {
+            return match source.slice(*operation) {
+                "context" => {
+                    trace.record(TraceEvent {
+                        event: "introspection.context.viewed",
+                        rule: "TOPAL-SYN-CONTEXT-001",
+                        detail: &self.language_version.to_string(),
+                    });
+                    Ok(Value::Introspection(Box::new(
+                        IntrospectionValue::LanguageContext {
+                            language: "topal".into(),
+                            version: self.language_version,
+                            features: Vec::new(),
+                        },
+                    )))
+                }
+                "version" => Ok(Value::Version(self.language_version)),
+                _ => Err(diagnostic(
+                    source,
+                    "E-INTROSPECTION-OPERATION",
+                    *operation,
+                    "unknown qualified static introspection operation",
+                )),
+            };
+        }
+        if let [
+            Expression::Identifier(lang),
+            Expression::Identifier(operation),
+            subject,
+        ] = items
+            && source.slice(*lang) == "lang"
+        {
+            let subject_span = subject.span();
+            let value = self.evaluate_expression(source, subject, trace)?;
+            let result = match source.slice(*operation) {
+                "identity" => Value::Introspection(Box::new(IntrospectionValue::Identity {
+                    kind: value.object_kind(),
+                    canonical: introspection_identity(&value).ok_or_else(|| {
+                        diagnostic(
+                            source,
+                            "E-STATIC-INTROSPECTION-SUBJECT",
+                            subject_span,
+                            "lang identity requires a statically known language object",
+                        )
+                    })?,
+                })),
+                "view" => introspection_view(source, value, subject_span)?,
+                "declaration" => {
+                    let name = match subject {
+                        Expression::Identifier(name) => Some(source.slice(*name).to_owned()),
+                        _ => None,
+                    };
+                    Value::Introspection(Box::new(IntrospectionValue::DeclarationView {
+                        canonical_path: name.as_ref().map(|name| format!("root.{name}")),
+                        name,
+                        language_version: self.language_version,
+                    }))
+                }
+                "public-members" => {
+                    let Value::Namespace(namespace) = value else {
+                        return Err(diagnostic(
+                            source,
+                            "E-INTROSPECTION-KIND",
+                            subject_span,
+                            "lang public-members requires a visible Scope",
+                        ));
+                    };
+                    let mut members = if namespace.name == "root" {
+                        self.published_names.iter().cloned().collect::<Vec<_>>()
+                    } else {
+                        namespace
+                            .bindings
+                            .keys()
+                            .chain(namespace.functions.keys())
+                            .chain(namespace.generators.keys())
+                            .cloned()
+                            .collect::<Vec<_>>()
+                    };
+                    members.sort();
+                    members.dedup();
+                    Value::Introspection(Box::new(IntrospectionValue::ScopeView {
+                        identity: namespace.name,
+                        members,
+                    }))
+                }
+                _ => {
+                    return Err(diagnostic(
+                        source,
+                        "E-INTROSPECTION-OPERATION",
+                        *operation,
+                        "unknown qualified static introspection operation",
+                    ));
+                }
+            };
+            trace.record(TraceEvent {
+                event: "introspection.object.viewed",
+                rule: "TOPAL-TYPE-KIND-001",
+                detail: source.slice(*operation),
+            });
+            return Ok(result);
+        }
+        if let [
+            left,
+            Expression::Identifier(lang),
+            Expression::Identifier(operation),
+            right,
+        ] = items
+            && source.slice(*lang) == "lang"
+        {
+            let left = self.evaluate_expression(source, left, trace)?;
+            let right = self.evaluate_expression(source, right, trace)?;
+            let relation = source.slice(*operation);
+            let result = match relation {
+                "same-object" => {
+                    let left = introspection_identity(&left);
+                    let right = introspection_identity(&right);
+                    match (left, right) {
+                        (Some(left), Some(right)) => left == right,
+                        _ => {
+                            return Err(diagnostic(
+                                source,
+                                "E-STATIC-INTROSPECTION-SUBJECT",
+                                span,
+                                "lang same-object requires statically known language objects",
+                            ));
+                        }
+                    }
+                }
+                "equivalent-type" | "compatible-with"
+                    if matches!(left, Value::Type(_) | Value::ModularType(_))
+                        && matches!(right, Value::Type(_) | Value::ModularType(_)) =>
+                {
+                    introspection_identity(&left) == introspection_identity(&right)
+                }
+                "equivalent-type" | "compatible-with" => {
+                    return Err(diagnostic(
+                        source,
+                        "E-INTROSPECTION-KIND",
+                        span,
+                        "this relation requires two statically known Type objects",
+                    ));
+                }
+                "same-layout" => {
+                    return Err(diagnostic(
+                        source,
+                        "E-INTROSPECTION-KIND",
+                        span,
+                        "lang same-layout requires two explicit Layout values",
+                    ));
+                }
+                _ => {
+                    return Err(diagnostic(
+                        source,
+                        "E-INTROSPECTION-RELATION",
+                        *operation,
+                        "unknown qualified introspection relation",
+                    ));
+                }
+            };
+            trace.record(TraceEvent {
+                event: "introspection.relation.compared",
+                rule: "TOPAL-TYPE-ID-001",
+                detail: relation,
+            });
+            return Ok(Value::Boolean(result));
+        }
+        Err(diagnostic(
+            source,
+            "E-INTROSPECTION-SYNTAX",
+            span,
+            "qualified introspection requires `lang operation subject`",
+        ))
+    }
+
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -1247,6 +1723,12 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if self.is_native_serialization(source, items) {
+                    return self.evaluate_native_serialization(source, items, *span, trace);
+                }
+                if Self::is_lang_introspection(source, items) {
+                    return self.evaluate_lang_introspection(source, items, *span, trace);
+                }
                 if Self::is_empty_effects(source, items) {
                     trace.record(TraceEvent {
                         event: "effects.empty.constructed",
@@ -1881,7 +2363,7 @@ impl Session {
                         .iter()
                         .find(|function| {
                             (!self.static_context || function.is_static)
-                                && function_accepts(&function.parameters, &argument)
+                                && user_function_accepts(function, &argument)
                         })
                         .cloned();
                     let Some(function) = function else {
@@ -1962,7 +2444,7 @@ impl Session {
                         });
                     }
                     let mut function_scope = Self {
-                        bindings: function.bindings,
+                        bindings: function.bindings.clone(),
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
@@ -1981,13 +2463,7 @@ impl Session {
                         termination_rule: function.termination_rule,
                         recursion_target: function.recursion_target.clone(),
                     });
-                    bind_function_arguments(
-                        &mut function_scope,
-                        &function.parameters,
-                        argument,
-                        trace,
-                        rule,
-                    );
+                    bind_function_arguments(&mut function_scope, &function, argument, trace, rule)?;
                     trace.record(TraceEvent {
                         event: "function.selected",
                         rule: "TOPAL-TYPE-CALL-001",
@@ -2704,6 +3180,9 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let name = source.slice(span);
+        if let Ok(version) = name.parse::<LanguageVersion>() {
+            return Ok(Value::Version(version));
+        }
         if matches!(name, "Little" | "Big") {
             trace.record(TraceEvent {
                 event: "layout.policy.resolved",
@@ -4980,6 +5459,7 @@ impl Execution {
             is_static,
             parameters,
             result,
+            effect_bound,
             body,
             span,
         } = declaration;
@@ -4995,6 +5475,7 @@ impl Execution {
             ));
         }
         let result_text = self.source.slice(result);
+        let effect_bound_text = effect_bound.map(|bound| self.source.slice(bound).to_owned());
         if !supported_value_classifier(result_text, &session.enum_types)
             && !session.union_types.contains_key(result_text)
         {
@@ -5006,9 +5487,45 @@ impl Execution {
             ));
         }
         validate_parameter_names(&self.source, parameters)?;
+        let mut parameter_packages = BTreeMap::new();
         let parameters = parameters
             .iter()
-            .map(|parameter| {
+            .enumerate()
+            .map(|(index, parameter)| {
+                if !parameter.fields.is_empty() {
+                    let fields = parameter
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let classifier = self.source.slice(field.classifier);
+                            if !supported_value_classifier(classifier, &session.enum_types)
+                                && !session.union_types.contains_key(classifier)
+                            {
+                                return Err(diagnostic(
+                                    &self.source,
+                                    "E-UNSUPPORTED-PARAMETER-CLASSIFIER",
+                                    field.classifier,
+                                    "the packaged parameter classifier is not supported by this interpreter subset",
+                                ));
+                            }
+                            Ok(UserParameterField {
+                                name: self.source.slice(field.name).to_owned(),
+                                classifier: classifier.to_owned(),
+                                default: field.default.clone(),
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    let classifier = format!(
+                        "({})",
+                        fields
+                            .iter()
+                            .map(|field| format!("{} is {}", field.name, field.classifier))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                    parameter_packages.insert(index, fields);
+                    return Ok((format!("$package{index}"), classifier));
+                }
                 let classifier = self.source.slice(parameter.classifier);
                 if !supported_value_classifier(classifier, &session.enum_types)
                     && !session.union_types.contains_key(classifier)
@@ -5057,7 +5574,9 @@ impl Execution {
             source: self.source.clone(),
             is_static,
             parameters,
+            parameter_packages,
             result: result_text.to_owned(),
+            effect_bound: effect_bound_text.clone(),
             body: body.to_vec(),
             bindings: session.bindings.clone(),
             termination_rule,
@@ -5078,6 +5597,13 @@ impl Execution {
             rule,
             detail: name_text,
         });
+        if let Some(effect_bound) = &effect_bound_text {
+            trace.record(TraceEvent {
+                event: "function.effect-bound.declared",
+                rule: "TOPAL-FUNCTION-EFFECT-BOUND-001",
+                detail: effect_bound,
+            });
+        }
         if result_success_classifier(result_text).is_some() {
             trace.record(TraceEvent {
                 event: "function.result.contract",
@@ -5285,6 +5811,7 @@ impl Execution {
                 is_static,
                 parameters,
                 result,
+                effect_bound,
                 body,
                 span,
             } => self.declare_function(
@@ -5295,6 +5822,7 @@ impl Execution {
                     is_static: *is_static,
                     parameters,
                     result: *result,
+                    effect_bound: *effect_bound,
                     body,
                     span: *span,
                 },
@@ -6928,20 +7456,75 @@ fn function_accepts(parameters: &[(String, String)], argument: &Value) -> bool {
     }
 }
 
+fn user_function_accepts(function: &UserFunction, argument: &Value) -> bool {
+    let arguments = match function.parameters.as_slice() {
+        [] => return matches!(argument, Value::Unit),
+        [_] => std::slice::from_ref(argument),
+        parameters => {
+            let Value::Tuple(arguments) = argument else {
+                return false;
+            };
+            if arguments.len() != parameters.len() {
+                return false;
+            }
+            arguments
+        }
+    };
+    function.parameters.iter().enumerate().zip(arguments).all(
+        |((index, (_, classifier)), argument)| {
+            function.parameter_packages.get(&index).map_or_else(
+                || value_has_classifier(argument, classifier),
+                |fields| package_accepts(fields, argument),
+            )
+        },
+    )
+}
+
+fn package_accepts(fields: &[UserParameterField], argument: &Value) -> bool {
+    match argument {
+        Value::Record(values) => {
+            values
+                .iter()
+                .all(|(label, _)| fields.iter().any(|field| field.name == *label))
+                && fields.iter().all(|field| {
+                    values
+                        .iter()
+                        .find(|(label, _)| *label == field.name)
+                        .map_or(field.default.is_some(), |(_, value)| {
+                            value_has_classifier(value, &field.classifier)
+                        })
+                })
+        }
+        Value::Tuple(values) => {
+            values.len() == fields.len()
+                && fields
+                    .iter()
+                    .zip(values)
+                    .all(|(field, value)| value_has_classifier(value, &field.classifier))
+        }
+        _ => false,
+    }
+}
+
 fn bind_function_arguments(
     scope: &mut Session,
-    parameters: &[(String, String)],
+    function: &UserFunction,
     argument: Value,
     trace: &mut impl TraceSink,
     rule: &'static str,
-) {
-    let arguments = match (parameters, argument) {
-        ([], Value::Unit) => return,
+) -> Result<(), Diagnostic> {
+    let arguments = match (function.parameters.as_slice(), argument) {
+        ([], Value::Unit) => return Ok(()),
         ([_], argument) => vec![argument],
         (_, Value::Tuple(arguments)) => arguments,
         _ => unreachable!("selected overload has already validated its argument"),
     };
-    for ((parameter, _), argument) in parameters.iter().zip(arguments) {
+    for (index, ((parameter, _), argument)) in function.parameters.iter().zip(arguments).enumerate()
+    {
+        if let Some(fields) = function.parameter_packages.get(&index) {
+            bind_package_fields(scope, &function.source, fields, argument, trace, rule)?;
+            continue;
+        }
         if parameter == "_" {
             trace.record(TraceEvent {
                 event: "function.argument.discarded",
@@ -6958,6 +7541,54 @@ fn bind_function_arguments(
             detail: parameter,
         });
     }
+    Ok(())
+}
+
+fn bind_package_fields(
+    scope: &mut Session,
+    source: &SourceText,
+    fields: &[UserParameterField],
+    argument: Value,
+    trace: &mut impl TraceSink,
+    rule: &'static str,
+) -> Result<(), Diagnostic> {
+    let supplied = match argument {
+        Value::Record(values) => values.into_iter().collect::<BTreeMap<_, _>>(),
+        Value::Tuple(values) => fields
+            .iter()
+            .map(|field| field.name.clone())
+            .zip(values)
+            .collect(),
+        _ => unreachable!("selected package has validated its argument"),
+    };
+    for field in fields {
+        let value = if let Some(value) = supplied.get(&field.name) {
+            value.clone()
+        } else {
+            let default = field
+                .default
+                .as_ref()
+                .expect("selected package requires a supplied field or default");
+            let value = scope.evaluate_expression(source, default, trace)?;
+            trace.record(TraceEvent {
+                event: "function.argument.defaulted",
+                rule: "TOPAL-FUNCTION-PACKAGED-OPERAND-001",
+                detail: &field.name,
+            });
+            value
+        };
+        if field.name == "_" {
+            continue;
+        }
+        scope.bindings.insert(field.name.clone(), value);
+        scope.declared_names.insert(field.name.clone());
+        trace.record(TraceEvent {
+            event: "function.argument.bound",
+            rule,
+            detail: &field.name,
+        });
+    }
+    Ok(())
 }
 
 fn bind_generator_arguments(
@@ -7128,12 +7759,22 @@ fn validate_parameter_names(
     source: &SourceText,
     parameters: &[FunctionParameter],
 ) -> Result<(), Diagnostic> {
-    for (index, parameter) in parameters.iter().enumerate() {
+    let flattened = parameters
+        .iter()
+        .flat_map(|parameter| {
+            if parameter.fields.is_empty() {
+                std::slice::from_ref(parameter)
+            } else {
+                parameter.fields.as_slice()
+            }
+        })
+        .collect::<Vec<_>>();
+    for (index, parameter) in flattened.iter().enumerate() {
         let name = source.slice(parameter.name);
         if name == "_" {
             continue;
         }
-        if parameters[..index]
+        if flattened[..index]
             .iter()
             .any(|earlier| source.slice(earlier.name) == name)
         {
@@ -7711,6 +8352,8 @@ fn record_result(trace: &mut impl TraceSink, value: &Value) {
 fn value_classifier(value: &Value) -> &'static str {
     match value {
         Value::Boolean(_) => "Boolean",
+        Value::Version(_) => "Version",
+        Value::SerializationStream(_) => "SerializationStream",
         Value::Type(_) | Value::ModularType(_) => "Type",
         Value::Effects(_) => "Effect",
         Value::Int(_) => "Int",
@@ -7718,7 +8361,10 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
-        Value::Callable(_) | Value::NamedFunction(_) | Value::AnonymousFunction(_) => "Function",
+        Value::Callable(_)
+        | Value::NamedFunction(_)
+        | Value::AnonymousFunction(_)
+        | Value::NativeSerializer(_) => "Function",
         Value::Namespace(_) => "Scope",
         Value::Array { .. } => "Array",
         Value::Set { .. } => "Set",
@@ -7760,6 +8406,17 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Constraint(_) => "Constraint",
         Value::Capability(_) => "Capability",
         Value::Interface(_) => "Interface",
+        Value::Introspection(value) => match value.as_ref() {
+            IntrospectionValue::Identity { .. } => "lang Identity",
+            IntrospectionValue::TypeView { .. } => "lang TypeView",
+            IntrospectionValue::FunctionView { .. } => "lang FunctionView",
+            IntrospectionValue::ScopeView { .. } => "lang ScopeView",
+            IntrospectionValue::ConstraintView { .. } => "lang ConstraintView",
+            IntrospectionValue::EffectView { .. } => "lang EffectView",
+            IntrospectionValue::ProtocolView { .. } => "lang ProtocolView",
+            IntrospectionValue::DeclarationView { .. } => "lang DeclarationView",
+            IntrospectionValue::LanguageContext { .. } => "lang LanguageContext",
+        },
         Value::Refined { .. } => "Refined",
         Value::Modular { .. } => "Modular",
         Value::ErrorDomain(_) => "ErrorDomain",
@@ -7820,6 +8477,266 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::Effects(_) => "Effect".into(),
         Value::ModularType(kind) => kind.name.clone().unwrap_or_else(|| "Type".into()),
         _ => value_classifier(value).to_owned(),
+    }
+}
+
+fn introspection_identity(value: &Value) -> Option<String> {
+    match value {
+        Value::Type(name) => Some(format!("type:{name}")),
+        Value::ModularType(kind) => Some(format!(
+            "type:{}:{}..{}",
+            if kind.signed { "ModInt" } else { "ModNat" },
+            kind.lower,
+            kind.upper
+        )),
+        Value::NamedFunction(function) => Some(format!("function:root.{}", function.name)),
+        Value::Callable(kind) => Some(format!("function:root.{}", callable_name(*kind))),
+        Value::Namespace(namespace) => Some(format!("scope:{}", namespace.name)),
+        Value::Constraint(constraint) => constraint
+            .name
+            .as_ref()
+            .map(|name| format!("constraint:root.{name}")),
+        Value::Capability(alternatives) => Some(format!("capability:{alternatives:?}")),
+        Value::Effects(effects) => Some(format!("effect-set:{effects:?}")),
+        Value::Interface(interface) => Some(format!("interface:root.{}", interface.name)),
+        Value::Introspection(value) => match value.as_ref() {
+            IntrospectionValue::Identity { canonical, .. } => Some(canonical.clone()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn introspection_view(source: &SourceText, value: Value, span: Span) -> Result<Value, Diagnostic> {
+    let view = match value {
+        Value::Type(identity) => IntrospectionValue::TypeView {
+            form: "PrimitiveType".into(),
+            identity,
+        },
+        Value::ModularType(kind) => IntrospectionValue::TypeView {
+            form: "RefinedType".into(),
+            identity: kind.name.clone().unwrap_or_else(|| {
+                format!(
+                    "{} {}..{}",
+                    if kind.signed { "ModInt" } else { "ModNat" },
+                    kind.lower,
+                    kind.upper
+                )
+            }),
+        },
+        Value::NamedFunction(function) => {
+            let Some(first) = function.candidates.first() else {
+                return Err(diagnostic(
+                    source,
+                    "E-INTROSPECTION-EMPTY-FUNCTION",
+                    span,
+                    "function view has no declared overload",
+                ));
+            };
+            IntrospectionValue::FunctionView {
+                identity: format!("root.{}", function.name),
+                inputs: first
+                    .parameters
+                    .iter()
+                    .map(|(_, classifier)| classifier.clone())
+                    .collect(),
+                output: first.result.clone(),
+                is_static: first.is_static,
+                effects: first.effect_bound.iter().cloned().collect(),
+            }
+        }
+        Value::Namespace(namespace) => {
+            let mut members = namespace
+                .bindings
+                .keys()
+                .chain(namespace.functions.keys())
+                .chain(namespace.generators.keys())
+                .cloned()
+                .collect::<Vec<_>>();
+            members.sort();
+            members.dedup();
+            IntrospectionValue::ScopeView {
+                identity: namespace.name,
+                members,
+            }
+        }
+        Value::Constraint(constraint) => IntrospectionValue::ConstraintView {
+            identity: constraint
+                .name
+                .clone()
+                .unwrap_or_else(|| constraint.base_classifier.clone()),
+            base: constraint.base_classifier,
+        },
+        Value::Effects(identities) => IntrospectionValue::EffectView { identities },
+        Value::Interface(interface) => IntrospectionValue::ProtocolView {
+            identity: format!("root.{}", interface.name),
+            operations: interface.functions.keys().cloned().collect(),
+        },
+        _ => {
+            return Err(diagnostic(
+                source,
+                "E-STATIC-INTROSPECTION-SUBJECT",
+                span,
+                "lang view requires a statically known Type, Function, Scope, Constraint, Effect, or Protocol",
+            ));
+        }
+    };
+    Ok(Value::Introspection(Box::new(view)))
+}
+
+fn stream_for_value(
+    version: LanguageVersion,
+    value: &Value,
+) -> Result<SerializationStream, &'static str> {
+    let mut types = Vec::new();
+    let mut identities = BTreeMap::new();
+    let (type_id, value) = serialize_language_value(value, &mut types, &mut identities)?;
+    Ok(SerializationStream {
+        header: SerializationHeader {
+            language_identity: "topal".into(),
+            language_version: version,
+            byte_order: if cfg!(target_endian = "little") {
+                StreamByteOrder::Little
+            } else {
+                StreamByteOrder::Big
+            },
+            streaming: false,
+        },
+        types,
+        events: vec![SerializedEvent { type_id, value }],
+    })
+}
+
+fn serialize_language_value(
+    value: &Value,
+    types: &mut Vec<TypeDefinition>,
+    identities: &mut BTreeMap<String, usize>,
+) -> Result<(usize, SerializedValue), &'static str> {
+    let (identity, definition, serialized) = match value {
+        Value::Unit => (
+            "Unit".to_owned(),
+            TypeDefinition::Unit {
+                identity: "Unit".into(),
+            },
+            SerializedValue::Unit,
+        ),
+        Value::Boolean(value) => (
+            "Boolean".to_owned(),
+            TypeDefinition::Boolean {
+                identity: "Boolean".into(),
+            },
+            SerializedValue::Boolean(*value),
+        ),
+        Value::Int(value) => (
+            "Int".to_owned(),
+            TypeDefinition::Int {
+                identity: "Int".into(),
+                signed: true,
+                width_bits: 0,
+            },
+            SerializedValue::ArbitraryInt(value.clone()),
+        ),
+        Value::String(value) => (
+            "String".to_owned(),
+            TypeDefinition::Text {
+                identity: "String".into(),
+            },
+            SerializedValue::Text(value.clone()),
+        ),
+        Value::Tuple(values) => {
+            let mut components = Vec::with_capacity(values.len());
+            let mut encoded = Vec::with_capacity(values.len());
+            for value in values {
+                let (id, value) = serialize_language_value(value, types, identities)?;
+                components.push(id);
+                encoded.push(value);
+            }
+            let identity = structural_value_classifier(value);
+            (
+                identity.clone(),
+                TypeDefinition::Tuple {
+                    identity,
+                    components,
+                },
+                SerializedValue::Product(encoded),
+            )
+        }
+        Value::Record(fields) => {
+            let mut definitions = Vec::with_capacity(fields.len());
+            let mut encoded = Vec::with_capacity(fields.len());
+            for (label, value) in fields {
+                let (id, value) = serialize_language_value(value, types, identities)?;
+                definitions.push((label.clone(), id));
+                encoded.push(value);
+            }
+            let identity = structural_value_classifier(value);
+            (
+                identity.clone(),
+                TypeDefinition::Record {
+                    identity,
+                    fields: definitions,
+                },
+                SerializedValue::Product(encoded),
+            )
+        }
+        _ => return Err("this language object does not yet have a native serialization schema"),
+    };
+    if let Some(id) = identities.get(&identity) {
+        return Ok((*id, serialized));
+    }
+    let id = types.len();
+    types.push(definition);
+    identities.insert(identity, id);
+    Ok((id, serialized))
+}
+
+fn value_from_serialized(event: &SerializedEvent, types: &[TypeDefinition]) -> Option<Value> {
+    deserialize_language_value(event.type_id, &event.value, types)
+}
+
+fn deserialize_language_value(
+    type_id: usize,
+    value: &SerializedValue,
+    types: &[TypeDefinition],
+) -> Option<Value> {
+    match (types.get(type_id)?, value) {
+        (TypeDefinition::Unit { .. }, SerializedValue::Unit) => Some(Value::Unit),
+        (TypeDefinition::Boolean { .. }, SerializedValue::Boolean(value)) => {
+            Some(Value::Boolean(*value))
+        }
+        (TypeDefinition::Int { .. }, SerializedValue::Int(value)) => {
+            Some(Value::Int(BigInt::from(*value)))
+        }
+        (TypeDefinition::Int { .. }, SerializedValue::ArbitraryInt(value)) => {
+            Some(Value::Int(value.clone()))
+        }
+        (TypeDefinition::Text { .. }, SerializedValue::Text(value)) => {
+            Some(Value::String(value.clone()))
+        }
+        (TypeDefinition::Tuple { components, .. }, SerializedValue::Product(values)) => {
+            Some(Value::Tuple(
+                components
+                    .iter()
+                    .zip(values)
+                    .map(|(id, value)| deserialize_language_value(*id, value, types))
+                    .collect::<Option<Vec<_>>>()?,
+            ))
+        }
+        (TypeDefinition::Record { fields, .. }, SerializedValue::Product(values)) => {
+            Some(Value::Record(
+                fields
+                    .iter()
+                    .zip(values)
+                    .map(|((label, id), value)| {
+                        Some((
+                            label.clone(),
+                            deserialize_language_value(*id, value, types)?,
+                        ))
+                    })
+                    .collect::<Option<Vec<_>>>()?,
+            ))
+        }
+        _ => None,
     }
 }
 
@@ -10439,6 +11356,9 @@ fn apply_negate(
             })
         }
         Value::Boolean(_)
+        | Value::Version(_)
+        | Value::NativeSerializer(_)
+        | Value::SerializationStream(_)
         | Value::Type(_)
         | Value::Effects(_)
         | Value::IntRange { .. }
@@ -10466,6 +11386,7 @@ fn apply_negate(
         | Value::Constraint(_)
         | Value::Capability(_)
         | Value::Interface(_)
+        | Value::Introspection(_)
         | Value::Refined { .. }
         | Value::ModularType(_)
         | Value::ErrorDomain(_)
@@ -10799,6 +11720,102 @@ mod tests {
 
     fn evaluate(source: &str) -> Result<Value, Diagnostic> {
         Session::new().evaluate(source, &mut std::io::sink())
+    }
+
+    #[test]
+    fn evaluates_qualified_static_introspection() {
+        assert!(matches!(
+            evaluate("lang context\n").unwrap(),
+            Value::Introspection(_)
+        ));
+        assert_eq!(
+            evaluate("lang version\n").unwrap(),
+            Value::Version(LanguageVersion::DESIGN_0)
+        );
+
+        let identity = evaluate("lang identity Int\n").unwrap();
+        assert!(matches!(
+            identity,
+            Value::Introspection(value)
+                if matches!(&*value, IntrospectionValue::Identity { canonical, .. } if canonical == "type:Int")
+        ));
+
+        let view = evaluate("lang view Int\n").unwrap();
+        assert!(matches!(
+            view,
+            Value::Introspection(value)
+                if matches!(&*value, IntrospectionValue::TypeView { form, identity } if form == "PrimitiveType" && identity == "Int")
+        ));
+
+        let effect = evaluate("lang view (Effects ())\n").unwrap();
+        assert!(matches!(
+            effect,
+            Value::Introspection(value)
+                if matches!(&*value, IntrospectionValue::EffectView { identities } if identities.is_empty())
+        ));
+    }
+
+    #[test]
+    fn evaluates_static_object_relations_without_runtime_reflection() {
+        assert_eq!(
+            evaluate("Int lang same-object Int\n").unwrap(),
+            Value::Boolean(true)
+        );
+        assert_eq!(
+            evaluate("Int lang equivalent-type Rational\n").unwrap(),
+            Value::Boolean(false)
+        );
+        let error = evaluate("lang view 42\n").unwrap_err();
+        assert_eq!(error.code, "E-STATIC-INTROSPECTION-SUBJECT");
+        let error = evaluate("1 lang same-object 1\n").unwrap_err();
+        assert_eq!(error.code, "E-STATIC-INTROSPECTION-SUBJECT");
+    }
+
+    #[test]
+    fn serializes_with_an_explicit_version_and_deserializes_validated_streams() {
+        let direct = evaluate("v0.1 (lang serialize) (answer is 42, ok is true)\n").unwrap();
+        assert!(matches!(direct, Value::SerializationStream(_)));
+
+        let round_trip = evaluate(
+            "serialize is lang version (lang serialize)\nstream is serialize (answer is 42, ok is true)\nlang deserialize stream\n",
+        )
+        .unwrap();
+        assert_eq!(round_trip.to_string(), "(answer is 42, ok is true)");
+
+        let huge = "1606938044258990275541962092341162602522202993782792835301376";
+        let round_trip = evaluate(&format!(
+            "stream is v0.1 (lang serialize) {huge}\nlang deserialize stream\n"
+        ))
+        .unwrap();
+        assert_eq!(round_trip.to_string(), huge);
+    }
+
+    #[test]
+    fn retains_explicit_function_effect_upper_bounds_for_static_views() {
+        let value = evaluate(
+            "identity is fn ( value : Int ) -> Int\n  : Effects ()\n  value\nlang view identity\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            value,
+            Value::Introspection(view)
+                if matches!(&*view, IntrospectionValue::FunctionView { effects, .. } if effects == &["Effects ()"])
+        ));
+    }
+
+    #[test]
+    fn binds_packaged_function_operands_and_fills_field_defaults() {
+        let value = evaluate(
+            "sum is fn ( ( value : Int, fallback : Int default 2 ) ) -> Int\n  value + fallback\nsum (value is 40)\n",
+        )
+        .unwrap();
+        assert_eq!(value, Value::Int(BigInt::from(42)));
+
+        let value = evaluate(
+            "sum is fn ( ( value : Int, fallback : Int default 2 ) ) -> Int\n  value + fallback\nsum (value is 40, fallback is 3)\n",
+        )
+        .unwrap();
+        assert_eq!(value, Value::Int(BigInt::from(43)));
     }
 
     #[test]

@@ -3241,3 +3241,95 @@ fn records_capability_composition() {
             .contains("capability.composed [TOPAL-CAPABILITY-EVIDENCE-001]")
     );
 }
+
+#[test]
+fn records_reversible_static_introspection() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}static-introspection.debug"),
+            &format!("{root}static-introspection.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("introspection.object.viewed"));
+    assert!(stdout.contains("lang Identity"));
+}
+
+#[test]
+fn records_reversible_native_serialization() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}native-serialization.debug"),
+            &format!("{root}native-serialization.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("serialization.serialized [TOPAL-SER-CANON-001]"));
+    assert!(stdout.contains("serialization.deserialized [TOPAL-SER-DESER-001]"));
+    assert!(stdout.contains("(answer is 42, accepted is true)"));
+}
+
+#[test]
+fn records_reversible_function_effect_bounds() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-effect-bound.debug"),
+            &format!("{root}function-effect-bound.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains(
+            "function.effect-bound.declared [TOPAL-FUNCTION-EFFECT-BOUND-001] Effects ()"
+        )
+    );
+    assert!(stdout.contains("\n42\n"));
+}
+
+#[test]
+fn records_reversible_packaged_function_defaults() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}packaged-function-operand.debug"),
+            &format!("{root}packaged-function-operand.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout
+            .contains("function.argument.defaulted [TOPAL-FUNCTION-PACKAGED-OPERAND-001] fallback")
+    );
+    assert!(stdout.contains("\n42\n"));
+}

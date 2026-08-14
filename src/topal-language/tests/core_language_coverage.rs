@@ -134,11 +134,23 @@ fn accepted_core_has_no_planned_rule_and_examples_explain_their_feature() {
         .expect("standard-library bootstrap contract must be readable");
     assert!(bootstrap.contains("`v0.1`"));
     assert!(bootstrap.contains("no implicit reflection"));
-    let planned = entries
+    let specification_planned = entries
         .iter()
         .filter_map(|(path, entry)| (entry.status != "complete").then_some(path))
         .collect::<Vec<_>>();
-    assert!(planned.is_empty(), "core rules remain planned: {planned:?}");
+    let corrections = fs::read_to_string(root.join("se/core-language-corrections.md"))
+        .expect("correction ledger must be readable");
+    let correction_planned = corrections
+        .lines()
+        .filter(|line| line.starts_with('|') && line.ends_with("| planned |"))
+        .count();
+    let completion_plan = fs::read_to_string(root.join("se/core-language-completion-plan.md"))
+        .expect("completion plan must be readable");
+    assert_eq!(
+        completion_plan.contains("**Completion record:**"),
+        specification_planned.is_empty() && correction_planned == 0,
+        "a completion record is valid only when both ledgers are terminal"
+    );
 
     let mut examples = fs::read_dir(root.join("examples/interpreter"))
         .expect("interpreter examples must be readable")
