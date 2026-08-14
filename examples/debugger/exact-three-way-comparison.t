@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible exact comparison and exhaustive Comparison decisions.
 describe is fn (value : Comparison) -> String
   value

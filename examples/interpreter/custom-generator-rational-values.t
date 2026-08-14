@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates exact Rational values across generator input, yield, suspension,
 # Unit resumption, and a distinct final return without finite conversion.
 next is generator ( initial : Rational )

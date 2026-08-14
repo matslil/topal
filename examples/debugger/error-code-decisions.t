@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible selection of a qualified Error-code pattern.
 divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)
   left / right

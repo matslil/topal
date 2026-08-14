@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible language-defined Comparison flow across suspension,
 # preserving nominal identity separately from the Less and Greater alternatives.
 order is generator ( initial : Comparison )

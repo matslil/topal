@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates generator-local enum and function declarations whose nominal and
 # captured state survives a Boolean yield and Unit resumption.
 describe is generator ( initial : Boolean )

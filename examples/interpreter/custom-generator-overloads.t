@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates ordered generator overload selection by complete initial-input
 # shape: the unary overload yields Int, while the binary overload yields String.
 select is generator ( value : Int )

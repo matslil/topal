@@ -1,4 +1,7 @@
 #!/usr/bin/env topal-debug
+use language (
+  version is v0.1
+)
 # Demonstrates reversible ordered List insertion, checked regions and removal,
 # explicit zip policies, traversal, entry views, and collection.
 values : List Int is Entry ( 1, Entry ( 2, Entry ( 3, Empty ) ) )

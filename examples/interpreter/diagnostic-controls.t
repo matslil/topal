@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates one-statement and scoped warning controls without changing the
 # value or execution decisions of the controlled statements.
 lang disable-warning example-warning

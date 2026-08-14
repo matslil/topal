@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates settled modular numeric families: checked canonical construction,
 # explicit reduction, wrapping arithmetic, canonical display, equality, and
 # ordering for unsigned and signed representative ranges.

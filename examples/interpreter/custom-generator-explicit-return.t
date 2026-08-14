@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates explicit return before the first yield. Foreach invokes no action
 # and directly produces the generator's declared final String.
 done is generator ( initial : String )

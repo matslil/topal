@@ -154,6 +154,10 @@ pub struct DecisionRule {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Statement {
+    LanguageSelection {
+        version: Span,
+        span: Span,
+    },
     Published {
         declaration: Box<Self>,
         span: Span,
@@ -270,6 +274,14 @@ impl Parser<'_> {
     fn ordinary_statement(&mut self) -> Option<Statement> {
         let checkpoint = self.cursor;
         let first = self.take_nontrivia()?;
+        if first.kind == TokenKind::Identifier
+            && self.source.slice(first.span) == "use"
+            && self.peek_nontrivia().is_some_and(|next| {
+                next.kind == TokenKind::Identifier && self.source.slice(next.span) == "language"
+            })
+        {
+            return self.language_selection(first);
+        }
         if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "pub" {
             let declaration = self.ordinary_statement()?;
             if !matches!(
@@ -392,6 +404,70 @@ impl Parser<'_> {
         }
         self.cursor = checkpoint;
         self.expression().map(Statement::Expression)
+    }
+
+    fn language_selection(&mut self, use_keyword: Token) -> Option<Statement> {
+        let language = self.take_nontrivia()?;
+        let opening = self.take_nontrivia()?;
+        if opening.kind != TokenKind::LeftParen {
+            self.error_current("E-LANGUAGE-SELECTION", "expected `(` after `use language`");
+            return None;
+        }
+        self.delimiter_depth += 1;
+        let mut version = None;
+        let closing = loop {
+            let field = self.take_nontrivia()?;
+            if field.kind == TokenKind::RightParen {
+                break field;
+            }
+            let separator = self.take_nontrivia()?;
+            let value = self.take_nontrivia()?;
+            if field.kind != TokenKind::Identifier
+                || separator.kind != TokenKind::Identifier
+                || self.source.slice(separator.span) != "is"
+            {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-LANGUAGE-SELECTION",
+                    span: Span::new(field.span.start, value.span.end),
+                    message: "expected `field is value` in the language record".into(),
+                });
+                self.delimiter_depth -= 1;
+                return None;
+            }
+            if self.source.slice(field.span) == "version"
+                && (value.kind != TokenKind::Version || version.replace(value.span).is_some())
+            {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-LANGUAGE-VERSION",
+                    span: value.span,
+                    message: "language selection requires one version value".into(),
+                });
+            }
+            while self.peek_nontrivia().is_some_and(|token| {
+                !matches!(token.kind, TokenKind::Comma | TokenKind::RightParen)
+            }) {
+                self.take_nontrivia();
+            }
+            if self
+                .peek_nontrivia()
+                .is_some_and(|token| token.kind == TokenKind::Comma)
+            {
+                self.take_nontrivia();
+            }
+        };
+        self.delimiter_depth -= 1;
+        let Some(version) = version else {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-LANGUAGE-VERSION",
+                span: language.span,
+                message: "language selection requires a `version` association".into(),
+            });
+            return None;
+        };
+        Some(Statement::LanguageSelection {
+            version,
+            span: Span::new(use_keyword.span.start, closing.span.end),
+        })
     }
 
     fn diagnostic_control(&mut self, lang: Token) -> Option<Statement> {
@@ -1897,7 +1973,8 @@ impl Parser<'_> {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => Span::new(name.start, value.span().end),
-        Statement::Published { span, .. }
+        Statement::LanguageSelection { span, .. }
+        | Statement::Published { span, .. }
         | Statement::DiagnosticControl { span, .. }
         | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
@@ -2834,5 +2911,17 @@ mod tests {
                 .iter()
                 .any(|error| error.code == "E-PUBLICATION-TARGET")
         );
+    }
+
+    #[test]
+    fn parses_brand_neutral_language_selection() {
+        let source = SourceText::new("use language (\n  version is v0.1\n)\n42").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(
+            parsed.statements.first(),
+            Some(Statement::LanguageSelection { version, .. })
+                if source.slice(*version) == "v0.1"
+        ));
     }
 }

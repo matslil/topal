@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible custom-continuation closure with lexical root domain
 # and separate root.pause-once generator provenance.
 pause-once is generator ( initial : Character )

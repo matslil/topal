@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates matching generator-closed by its qualified nominal code. Neither
 # lexical Error.domain nor root.handle-close-code provenance selects this rule.
 handle-close-code is generator ( initial : Character )

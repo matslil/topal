@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible preservation of an inclusive Range Int while its
 # generator continuation is suspended and resumed.
 narrow is generator ( initial : Range Int )

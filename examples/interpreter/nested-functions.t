@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates an invocation-local helper capturing the outer input. The helper
 # is declared and called inside `answer`; its name does not escape that call.
 answer is fn (input : Int) -> Int

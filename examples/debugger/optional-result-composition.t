@@ -1,4 +1,7 @@
 #!/usr/bin/env topal-debug
+use language (
+  version is v0.1
+)
 # Demonstrates reversible Optional decisions and Result propagation while
 # preserving the complete structured Error and its generated source location.
 divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)

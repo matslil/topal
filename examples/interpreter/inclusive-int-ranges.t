@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates inclusive Int ranges and both membership spellings. Reversed
 # bounds construct an empty predicate rather than enumerating backward.
 interval is 0 .. 10

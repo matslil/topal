@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible operand evaluation before comparison selection.
 within-next is fn (value : Int, limit : Int) -> Boolean
   value

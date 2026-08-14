@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates returning a Character-yielding, Unit-resumed continuation whose
 # distinct final Character remains available to caller-side foreach traversal.
 yield-return is generator ( initial : Character )

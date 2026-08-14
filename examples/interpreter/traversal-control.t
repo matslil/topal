@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates traversal-control construction. Continue carries a next state;
 # the fold action returns Finish immediately, leaving later entries unvisited.
 values : List Int is Entry (1, Entry (2, Entry (100, Empty)))

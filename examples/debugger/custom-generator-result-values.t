@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible Result flow from successful suspension to a structured
 # division-by-zero Error retaining its domain, code, and source position.
 attempt is generator ( initial : Result (Rational, lang arithmetic ArithmeticErrorCode) )

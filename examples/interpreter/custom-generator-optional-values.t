@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates that an Optional retains both its alternative and nominal Int
 # payload classifier across generator input, yield, suspension, and return.
 optional is generator ( initial : Optional Int )

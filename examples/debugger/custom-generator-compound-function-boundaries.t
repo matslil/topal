@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible product-classified generator ownership through an
 # ordinary function result and parameter before traversal and result binding.
 pairs is generator ( initial : (Int, String) )

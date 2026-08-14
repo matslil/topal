@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a generator handling abandonment. The suspended yield binding
 # receives generator-closed with Error.domain root, selects Error, and returns.
 handle-close is generator ( initial : Character )

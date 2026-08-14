@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates the remaining ordered List sequence vocabulary: insertion at a
 # boundary, checked regions and indexed removal, zipping policies, entry views,
 # reusable traversal, predicate removal, and explicit collection.

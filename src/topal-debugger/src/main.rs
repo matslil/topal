@@ -20,10 +20,10 @@ fn run() -> Result<(), String> {
     let arguments = parse_arguments(env::args().skip(1))?;
     let source = fs::read_to_string(&arguments.source)
         .map_err(|error| format!("cannot read {}: {error}", arguments.source))?;
-    let session = Session::new();
+    let mut session = Session::new();
     let mut history = ExecutionHistory::new();
     let execution = session
-        .prepare(&source, &mut history)
+        .prepare_source_file(&source, &mut history)
         .map_err(|error| error.render(&arguments.source))?;
     history.rewind();
     let mut debuggee = Debuggee {

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates construction of every fundamental homogeneous container from a
 # finite List: Array retains order and count, Set removes duplicates, Bag counts
 # them, and Map applies an explicit duplicate-key collision policy.

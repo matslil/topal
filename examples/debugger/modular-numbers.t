@@ -1,4 +1,7 @@
 #!/usr/bin/env topal-debug
+use language (
+  version is v0.1
+)
 # Demonstrates reversible modular construction, reduction, wrapping, equality,
 # and canonical-representative ordering for ModNat and ModInt.
 ByteCounter is ModNat (0 .. 255)

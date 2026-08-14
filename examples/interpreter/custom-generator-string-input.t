@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates that initial input is independent of yield/resume/return types.
 # A String predicate runs before the continuation yields one Character.
 from-text is generator ( initial : String )

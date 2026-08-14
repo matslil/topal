@@ -1,4 +1,7 @@
 #!/usr/bin/env topal-debug
+use language (
+  version is v0.1
+)
 # Demonstrates reversible List construction, fundamental operations including
 # total uncons, equality, and a decision binding the first value and remaining List.
 decide-first is fn ( values : List Int ) -> Optional Int

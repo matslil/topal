@@ -19,6 +19,7 @@ pub enum TokenKind {
     Boolean,
     Integer,
     Rational,
+    Version,
     String,
     LeftParen,
     RightParen,
@@ -188,6 +189,12 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
             let length = take_identifier(rest);
             (TokenKind::Identifier, length)
         }
+        'v' if rest[1..].starts_with(|character: char| character.is_ascii_digit()) => (
+            TokenKind::Version,
+            1 + take_while(&rest[1..], |character| {
+                character.is_ascii_digit() || matches!(character, '.' | '-')
+            }),
+        ),
         c if is_identifier_start(c) => {
             let length = take_identifier(rest);
             let kind = if matches!(&rest[..length], "true" | "false") {

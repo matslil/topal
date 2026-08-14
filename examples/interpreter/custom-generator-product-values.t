@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates preservation of positional product component order and types
 # across generator input, yield, suspension, and a distinct final product.
 pair is generator ( initial : (Int, String) )

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a custom generator declaration. Applying `once` binds its
 # Character input, yields that value once, accepts Unit resumption, then returns
 # Unit. Direct foreach consumes the fresh linear generator.

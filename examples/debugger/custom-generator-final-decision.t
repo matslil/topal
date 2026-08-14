@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible ordering from Boolean suspension through Unit
 # resumption and final decision selection to the distinct String return.
 describe is generator ( initial : Boolean )

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a Generator Int Unit String returned from one ordinary function,
 # transferred into another, traversed there, and propagated as a final String.
 numbers is generator ( initial : Int )

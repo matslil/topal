@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible declaration, start, yield, Unit resume, and return for
 # a custom single-yield generator.
 once is generator ( initial : Character )

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates direct application of anonymous function values. Unary input is
 # supplied directly; several inputs are packaged in one positional product.
 increment is { value } value + 1

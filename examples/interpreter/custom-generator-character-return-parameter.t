@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates transferring all generator directions through a function
 # parameter: Character yield, Unit resume, and distinct final Character return.
 yield-return is generator ( initial : Character )

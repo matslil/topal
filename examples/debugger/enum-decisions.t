@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible consideration and selection of exhaustive Enum cases.
 Color is Enum (Red, Green)
 name is fn (value : Color) -> String

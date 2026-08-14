@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible ownership transfer of a suspended custom continuation
 # through an ordinary function result and its later caller-side traversal.
 pause-once is generator ( initial : Character )

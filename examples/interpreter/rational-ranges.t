@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates exact Rational ranges, including canonical Int conversion for a
 # mixed endpoint and for membership without rounding.
 interval is 0 .. 2.5

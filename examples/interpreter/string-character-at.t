@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates zero-based indexing by user-perceived Unicode characters. The
 # combining sequence and emoji sequence stay whole; invalid indexes return None.
 # An Optional decision can consume the result without splitting the character.

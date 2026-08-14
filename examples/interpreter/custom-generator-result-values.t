@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a successful arithmetic Result crossing input and yield, followed
 # by a structured division-by-zero Error as the generator's final Result.
 attempt is generator ( initial : Result (Rational, lang arithmetic ArithmeticErrorCode) )

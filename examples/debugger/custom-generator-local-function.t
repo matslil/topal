@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible retention of generator-local enum and function
 # declarations across Boolean suspension and Unit resumption.
 describe is generator ( initial : Boolean )

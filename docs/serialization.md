@@ -47,7 +47,7 @@ numeric type deliberately does not admit textual prerelease or build
 identifiers.
 
 `lang version` is the version of the Topal language context active at that
-source location. A later `use lang topal` selection changes `lang version` only
+source location. A later `use language` selection changes `lang version` only
 for following declarations.
 
 ## Serialization operation

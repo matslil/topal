@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates binding a successful Unit resumption. `resumed` does not exist
 # while suspended; foreach supplies Unit, after which it becomes the return.
 bind-resume is generator ( initial : Character )

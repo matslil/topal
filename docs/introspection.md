@@ -368,7 +368,7 @@ lang LanguageContext is Record
 ```
 
 `lang version` directly returns the `version` field. The context changes after
-a later `use lang topal` construction; declarations which were already
+a later `use language` construction; declarations which were already
 completed retain their earlier context. This reports the exact constructor
 arguments at the inspection location. It does
 not report the compiler implementation version, claim compatibility with a

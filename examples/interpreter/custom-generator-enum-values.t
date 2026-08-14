@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates preservation of nominal enum identity across generator input,
 # yield, suspension, resumption, and a distinct alternative returned finally.
 Choice is Enum ( First, Second )

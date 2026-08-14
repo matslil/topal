@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible Continue and Finish construction while a fold action
 # stops immediately, before processing the remaining List entries.
 values : List Int is Entry (1, Entry (2, Entry (100, Empty)))

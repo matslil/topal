@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible qualified generator selection and traversal.
 once is generator (initial : Character)
   yields Character

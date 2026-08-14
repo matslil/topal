@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates direct recursion using positive literal steps larger than one in
 # both directions; inclusive bounds make overshooting safe.
 down-hops is fn (value : Int) -> Int

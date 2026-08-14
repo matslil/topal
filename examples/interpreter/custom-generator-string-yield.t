@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates String as the yield direction. Foreach receives each complete
 # String unchanged, tests it, and resumes the continuation with Unit.
 texts is generator ( initial : String )

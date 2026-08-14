@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates preservation of inclusive Range Int endpoints across generator
 # input, yield, suspension, and a narrowed final return.
 narrow is generator ( initial : Range Int )

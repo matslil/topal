@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible range construction and membership decisions.
 interval is 0 .. 10
 empty-interval is 10 .. 0

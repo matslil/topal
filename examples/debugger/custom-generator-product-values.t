@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible positional-product flow through a suspended generator,
 # preserving component order and classifiers.
 pair is generator ( initial : (Int, String) )

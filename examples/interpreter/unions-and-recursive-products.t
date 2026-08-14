@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a labeled sum with both Unit and recursively composed product
 # payloads. Matching a payload-bearing alternative binds its complete product.
 Message is Union

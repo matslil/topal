@@ -140,7 +140,7 @@ Selection values such as a language or package version use the same
 construction record as every other argument:
 
 ```topal
-use lang topal (
+use language (
   version is v1.5,
   features is ( testing )
 )
@@ -180,7 +180,7 @@ A language context may be constructed and named after the mandatory initial
 bootstrap selection:
 
 ```topal
-legacy is use lang topal (
+legacy is use language (
   version is v1.0,
   features is ()
 )
@@ -256,14 +256,14 @@ complete constructor arguments for one instance. In particular, a later
 language selection constructs a new language context:
 
 ```topal
-use lang topal (
+use language (
   version is v1.5,
   features is ( realtime )
 )
 
 production-declarations
 
-use lang topal (
+use language (
   version is v1.5,
   features is ( testing )
 )

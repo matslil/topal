@@ -142,6 +142,15 @@ language-context Unicode version through deterministic version output and test
 trace context selection. A dependency with different Unicode tables shall fail
 the build rather than silently change source acceptance.
 
+## TOPAL-INTP-CONTEXT-001 — Versioned source and interactive contexts
+
+Script and test modes shall require and honor the source file's initial
+language selection according to `TOPAL-SYN-CONTEXT-001`, including source read
+from standard input. `--language-version VERSION` shall select only the initial
+interactive context. With no interactive version option, the interpreter shall
+select its highest supported language version. Unsupported versions shall
+produce an actionable diagnostic rather than fall back to another version.
+
 ## TOPAL-INTP-SUBSET-015 — Unit product
 
 All interpreter modes shall parse and evaluate the zero-field product `()` as

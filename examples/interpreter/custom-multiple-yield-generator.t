@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates that a custom generator can yield repeatedly in source order.
 # Direct foreach resumes it with Unit after each Character and returns Unit.
 twice is generator ( initial : Character )

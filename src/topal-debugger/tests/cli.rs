@@ -24,11 +24,11 @@ fn navigates_recorded_execution_in_both_directions() {
     assert!(stdout.contains("#1 source.accepted [TOPAL-SYN-SOURCE-001]"));
     assert!(stdout.contains("> #0 context.selected"));
     assert!(stdout.contains("no value at current execution state"));
-    assert!(stdout.contains("basic-history.t:4:1"));
+    assert!(stdout.contains("basic-history.t:8:1"));
     assert!(stdout.contains("answer is 40"));
-    assert!(stdout.contains("breakpoint set at line 3"));
-    assert!(stdout.contains("breakpoint set at line 4"));
-    assert!(stdout.contains("breakpoint removed from line 3"));
+    assert!(stdout.contains("breakpoint set at line 7"));
+    assert!(stdout.contains("breakpoint set at line 8"));
+    assert!(stdout.contains("breakpoint removed from line 7"));
     assert!(stdout.contains("watchpoint set for answer"));
     assert!(stdout.contains("watchpoint removed for answer"));
     assert!(stdout.contains("checkpoint result saved"));

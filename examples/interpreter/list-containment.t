@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates the distinct List containment laws for one entry, a consecutive
 # sequence, and an ordered subsequence whose matching entries may have gaps.
 values : List Int is Entry ( 1, Entry ( 2, Entry ( 3, Entry ( 2, Entry ( 4, Empty ) ) ) ) )

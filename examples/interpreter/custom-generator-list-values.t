@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a List crossing generator input, yield, suspension, final-return,
 # ordinary function result, and ordinary function parameter boundaries.
 relay is generator ( initial : List Int )

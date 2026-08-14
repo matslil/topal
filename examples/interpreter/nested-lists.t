@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates recursive List classifiers: an outer List retains inner Lists of
 # positional products through construction, function boundaries, and equality.
 preserve is fn ( values : List List (Int, String) ) -> List List (Int, String)

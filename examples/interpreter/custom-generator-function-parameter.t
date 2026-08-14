@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates transferring a suspended custom continuation into a function.
 # The caller binding is consumed and the callee traverses that same state once.
 pause-once is generator ( initial : Character )

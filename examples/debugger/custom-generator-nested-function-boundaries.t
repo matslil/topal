@@ -1,4 +1,7 @@
 #!/usr/bin/env topal-debug
+use language (
+  version is v0.1
+)
 # Demonstrates reversible execution across ordinary function boundaries whose
 # generator classifier recursively contains Optional, product, and Result.
 pairs is generator ( initial : Optional (Int, String) )

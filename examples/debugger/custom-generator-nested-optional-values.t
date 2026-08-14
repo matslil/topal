@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible recursive classifier state for an Optional containing
 # a positional (Int, String) product across suspension and final return.
 pair is generator ( initial : Optional (Int, String) )

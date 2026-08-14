@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates complete Optional and Result decisions, contextual success
 # projection, propagation, and every structured Error field. This generated
 # arithmetic error has absent detail/cause and a present source location.

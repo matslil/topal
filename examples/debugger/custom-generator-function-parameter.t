@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible linear transfer of a suspended custom continuation
 # from its caller binding into an ordinary function parameter.
 pause-once is generator ( initial : Character )

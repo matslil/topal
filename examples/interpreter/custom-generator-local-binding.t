@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates generator-local state. The `copy` binding is created inside the
 # generator and is available to its later yield, but never leaks to the caller.
 copy-once is generator ( initial : Character )

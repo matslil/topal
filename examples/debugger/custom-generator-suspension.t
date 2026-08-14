@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible suspension and resumption, including a local binding
 # that cannot execute until after the first Unit resumption.
 pause-twice is generator ( initial : Character )

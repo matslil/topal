@@ -1,6 +1,71 @@
 //! Shared, deterministic semantic identities for every Topal source tool.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
+use std::str::FromStr;
+
+/// Source-visible immutable language revision.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct LanguageVersion {
+    pub major: u64,
+    pub minor: u64,
+    pub patch: u64,
+    pub build: u64,
+}
+
+impl LanguageVersion {
+    pub const DESIGN_0: Self = Self {
+        major: 0,
+        minor: 1,
+        patch: 0,
+        build: 0,
+    };
+}
+
+impl Default for LanguageVersion {
+    fn default() -> Self {
+        Self::DESIGN_0
+    }
+}
+
+impl fmt::Display for LanguageVersion {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.patch == 0 && self.build == 0 {
+            write!(formatter, "v{}.{}", self.major, self.minor)
+        } else if self.build == 0 {
+            write!(formatter, "v{}.{}.{}", self.major, self.minor, self.patch)
+        } else {
+            write!(
+                formatter,
+                "v{}.{}.{}-{}",
+                self.major, self.minor, self.patch, self.build
+            )
+        }
+    }
+}
+
+impl FromStr for LanguageVersion {
+    type Err = &'static str;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let body = text
+            .strip_prefix('v')
+            .ok_or("a language version begins with `v`")?;
+        let (release, build) = body.split_once('-').unwrap_or((body, "0"));
+        let components = release.split('.').collect::<Vec<_>>();
+        if !(2..=3).contains(&components.len()) {
+            return Err("a language version requires major and minor components");
+        }
+        Ok(Self {
+            major: components[0].parse().map_err(|_| "invalid major version")?,
+            minor: components[1].parse().map_err(|_| "invalid minor version")?,
+            patch: components.get(2).map_or(Ok(0), |value| {
+                value.parse().map_err(|_| "invalid patch version")
+            })?,
+            build: build.parse().map_err(|_| "invalid build version")?,
+        })
+    }
+}
 
 /// The closed object-kind vocabulary from `TOPAL-TYPE-KIND-001`.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -190,5 +255,12 @@ mod tests {
             },
         );
         assert_eq!(scope.candidates("choose")[0].value, "first");
+    }
+
+    #[test]
+    fn language_versions_expand_and_order_canonically() {
+        assert_eq!("v0.1".parse(), Ok(LanguageVersion::DESIGN_0));
+        assert_eq!(LanguageVersion::DESIGN_0.to_string(), "v0.1");
+        assert!("v0.2".parse::<LanguageVersion>().unwrap() > LanguageVersion::DESIGN_0);
     }
 }

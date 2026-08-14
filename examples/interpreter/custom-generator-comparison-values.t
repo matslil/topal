@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates preservation of the language-defined nominal Comparison identity
 # through a yielded Less alternative and a distinct final Greater alternative.
 order is generator ( initial : Comparison )

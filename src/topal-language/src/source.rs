@@ -4,7 +4,7 @@ use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use topal_semantics::ObjectKind;
+use topal_semantics::{LanguageVersion, ObjectKind};
 use topal_source::{
     SourceText, Span, canonically_equal, case_fold, character_at, character_count, characters,
     lowercase, normalize_nfc, normalize_nfd, uppercase,
@@ -423,6 +423,7 @@ pub struct Session {
     generators: BTreeMap<String, Vec<UserGenerator>>,
     declared_names: BTreeSet<String>,
     published_names: BTreeSet<String>,
+    language_version: LanguageVersion,
     consumed_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
@@ -507,6 +508,27 @@ impl Session {
         Self::default()
     }
 
+    /// Create an interactive evaluation context for a supported language version.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when this tool does not implement `language_version`.
+    pub fn for_language_version(language_version: LanguageVersion) -> Result<Self, &'static str> {
+        if language_version != LanguageVersion::DESIGN_0 {
+            return Err("the highest language version supported by this tool is v0.1");
+        }
+        Ok(Self {
+            language_version,
+            ..Self::default()
+        })
+    }
+
+    /// The highest source language version implemented by this evaluator.
+    #[must_use]
+    pub const fn highest_supported_language_version() -> LanguageVersion {
+        LanguageVersion::DESIGN_0
+    }
+
     /// Evaluate one source file as an isolated module and bind its published
     /// interface under `name` in this session.
     ///
@@ -534,7 +556,7 @@ impl Session {
             ));
         }
         let mut module = Self::new();
-        module.evaluate(input, trace)?;
+        module.evaluate_source_file(input, trace)?;
         self.attach_module(name, module, trace)
     }
 
@@ -636,6 +658,26 @@ impl Session {
         }
     }
 
+    /// Evaluate a complete source file, including its mandatory language header.
+    ///
+    /// # Errors
+    ///
+    /// Returns a diagnostic when the header is absent or the source is invalid.
+    pub fn evaluate_source_file(
+        &mut self,
+        input: &str,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let mut execution = self.prepare_source_file(input, trace)?;
+        loop {
+            match execution.step(self, trace)? {
+                ExecutionStep::Complete(value) => return Ok(value),
+                ExecutionStep::Advanced { .. } => {}
+                ExecutionStep::Returned { .. } => unreachable!("top-level return is rejected"),
+            }
+        }
+    }
+
     /// Prepare a source unit for resumable execution.
     ///
     /// # Errors
@@ -668,6 +710,58 @@ impl Session {
         })
     }
 
+    /// Prepare a complete source file and require its initial language selection.
+    ///
+    /// # Errors
+    ///
+    /// Returns a diagnostic when the header is absent or the source is invalid.
+    pub fn prepare_source_file(
+        &mut self,
+        input: &str,
+        trace: &mut impl TraceSink,
+    ) -> Result<Execution, Diagnostic> {
+        let mut execution = self.prepare(input, trace)?;
+        let Some(Statement::LanguageSelection { version, .. }) = execution.statements.first()
+        else {
+            return Err(diagnostic(
+                &execution.source,
+                "E-MISSING-LANGUAGE-VERSION",
+                Span::new(0, 0),
+                "source files begin with a language-version selection",
+            )
+            .with_help("add `use language (\n  version is v0.1\n)` at the start of the file"));
+        };
+        let requested = execution
+            .source
+            .slice(*version)
+            .parse::<LanguageVersion>()
+            .map_err(|message| {
+                diagnostic(&execution.source, "E-LANGUAGE-VERSION", *version, message)
+            })?;
+        if requested != Self::highest_supported_language_version() {
+            return Err(diagnostic(
+                &execution.source,
+                "E-UNSUPPORTED-LANGUAGE-VERSION",
+                *version,
+                format!(
+                    "language version `{requested}` is not supported; highest supported version is `{}`",
+                    Self::highest_supported_language_version()
+                ),
+            ));
+        }
+        self.language_version = requested;
+        execution.statements.remove(0);
+        if execution.statements.is_empty() {
+            return Err(expected_statement(input));
+        }
+        trace.record(TraceEvent {
+            event: "language.context.selected",
+            rule: "TOPAL-SYN-CONTEXT-001",
+            detail: &requested.to_string(),
+        });
+        Ok(execution)
+    }
+
     /// Evaluate one expression against an immutable binding snapshot.
     ///
     /// # Errors
@@ -685,6 +779,7 @@ impl Session {
             generators: BTreeMap::new(),
             declared_names: bindings.keys().cloned().collect(),
             published_names: BTreeSet::new(),
+            language_version: LanguageVersion::DESIGN_0,
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: BTreeMap::new(),
@@ -1001,6 +1096,7 @@ impl Session {
                         generators: self.generators.clone(),
                         declared_names: self.declared_names.clone(),
                         published_names: self.published_names.clone(),
+                        language_version: self.language_version,
                         consumed_names: self.consumed_names.clone(),
                         local_function_names: self.local_function_names.clone(),
                         enum_types: self.enum_types.clone(),
@@ -1649,6 +1745,7 @@ impl Session {
                         generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
                         published_names: BTreeSet::new(),
+                        language_version: self.language_version,
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
@@ -1816,6 +1913,7 @@ impl Session {
                         generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
                         published_names: BTreeSet::new(),
+                        language_version: self.language_version,
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
@@ -5057,6 +5155,33 @@ impl Execution {
     ) -> Result<ExecutionStep, Diagnostic> {
         let statement = &self.statements[self.cursor];
         let (value, span) = match statement {
+            Statement::LanguageSelection { version, span } => {
+                let requested = self
+                    .source
+                    .slice(*version)
+                    .parse::<LanguageVersion>()
+                    .map_err(|message| {
+                        diagnostic(&self.source, "E-LANGUAGE-VERSION", *version, message)
+                    })?;
+                if requested != LanguageVersion::DESIGN_0 {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-UNSUPPORTED-LANGUAGE-VERSION",
+                        *version,
+                        format!(
+                            "language version `{requested}` is not supported; highest supported version is `{}`",
+                            LanguageVersion::DESIGN_0
+                        ),
+                    ));
+                }
+                session.language_version = requested;
+                trace.record(TraceEvent {
+                    event: "language.context.selected",
+                    rule: "TOPAL-SYN-GRAMMAR-001",
+                    detail: &requested.to_string(),
+                });
+                (Value::Unit, *span)
+            }
             Statement::Published {
                 declaration, span, ..
             } => {
@@ -5774,7 +5899,8 @@ const fn cover(first: Span, second: Span) -> Span {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => cover(*name, value.span()),
-        Statement::Published { span, .. }
+        Statement::LanguageSelection { span, .. }
+        | Statement::Published { span, .. }
         | Statement::DiagnosticControl { span, .. }
         | Statement::Function { span, .. }
         | Statement::Generator { span, .. }

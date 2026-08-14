@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates reversible Euclidean modulo and dynamic zero failure.
 modulo is fn (left : Int, right : Int) -> Result (Int, lang arithmetic ArithmeticErrorCode)
   left % right

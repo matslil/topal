@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates abandonment of a suspended custom generator at function exit.
 # Error.domain is root; root.pause-once is retained separately as provenance.
 pause-once is generator ( initial : Character )

@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates numeric, string, tuple, and derived labeled-record comparisons.
 same-exact-value is 1 = 1.0
 different-text is "é" != "é"

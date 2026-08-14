@@ -1,4 +1,7 @@
 #!/usr/bin/env topal
+use language (
+  version is v0.1
+)
 # Demonstrates a closed mutual Nat cycle whose positive additions preserve Nat.
 even is fn (value : Nat) -> Boolean
   value

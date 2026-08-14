@@ -1,4 +1,7 @@
 #!/usr/bin/env topal-debug
+use language (
+  version is v0.1
+)
 # Demonstrates reversible inferred anonymous calls while mapping, selecting,
 # and folding a List. Captured bindings remain immutable at every checkpoint.
 factor : Int is 2
