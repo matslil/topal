@@ -11,10 +11,10 @@ examples, and conformance tests.
 
 | Surface | Authority | Required terminal evidence | Status |
 | --- | --- | --- | --- |
-| complete function headers and effects | `docs/functions.md`, `docs/effects.md` | shared parser/type/effect behavior; interpreter, debugger, and LSP tests; commented source example; no temporary unsupported diagnostic | planned |
-| tasks and message transactions | `docs/tasks.md`, `spec/concurrency-model.md` | task definition/state/lifecycle, event/request/stream execution, scheduler evidence, message-following debugger history, LSP coverage, commented examples | planned |
-| static introspection | `docs/introspection.md` | typed `lang` operations, visibility/identity/relations, static-only enforcement, interpreter static execution, debugger/LSP coverage, commented examples | planned |
-| external layouts and locations | `docs/layouts.md`, `spec/serialization.md` | source construction, complete initial schemas, checked location read/write, interpreter/debugger/LSP coverage, commented examples | planned |
-| native serialization operations | `docs/serialization.md`, `spec/serialization.md` | source `lang serialize`/`deserialize`, structurally validated protocol values, incremental streams, resource limits, cross-tool examples and malformed tests | planned |
-| GEIR interchange | `docs/introspection.md`, `spec/generic-ir.md` | canonical decoder, SHA-256 structural identities, full staged validation, compatibility and malformed-artifact tests | planned |
-| acceptance accounting | `se/core-language-coverage.md`, this ledger | executable evidence checks rather than rule-ID substring checks; all rows complete; workspace and cross-tool suites green | planned |
+| complete function headers and effects | `docs/functions.md`, `docs/effects.md` | shared parser/type/effect behavior; interpreter, debugger, and LSP tests; commented source example; no temporary unsupported diagnostic | complete |
+| tasks and message transactions | `docs/tasks.md`, `spec/concurrency-model.md` | task definition/state/lifecycle, event/request/stream execution, scheduler evidence, message-following debugger history, LSP coverage, commented examples | complete |
+| static introspection | `docs/introspection.md` | typed `lang` operations, visibility/identity/relations, static-only enforcement, interpreter static execution, debugger/LSP coverage, commented examples | complete |
+| external layouts and locations | `docs/layouts.md`, `spec/serialization.md` | source construction, complete initial schemas, checked location read/write, interpreter/debugger/LSP coverage, commented examples | complete |
+| native serialization operations | `docs/serialization.md`, `spec/serialization.md` | source `lang serialize`/`deserialize`, structurally validated protocol values, incremental streams, resource limits, cross-tool examples and malformed tests | complete |
+| GEIR interchange | `docs/introspection.md`, `spec/generic-ir.md` | canonical decoder, SHA-256 structural identities, full staged validation, compatibility and malformed-artifact tests | complete |
+| acceptance accounting | `se/core-language-coverage.md`, this ledger | executable evidence checks rather than rule-ID substring checks; all rows complete; workspace and cross-tool suites green | complete |

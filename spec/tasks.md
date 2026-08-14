@@ -35,6 +35,11 @@ state field has been initialized with a conforming value. Each produced
 instance has a distinct runtime identity even when its definition identity is
 shared.
 
+An optional `terminate` lifecycle handler is owner-only and executes at most
+once. After termination commits, queued/new Unit events are discarded and
+requests or streams which have not committed their final result produce
+`task-terminated` in the `lang task` error domain.
+
 ### TOPAL-TASK-MESSAGE-001 — Message transaction
 
 Applying `instance operation payload` shall select only a handler published by
@@ -44,6 +49,12 @@ State changes made by a successful handler become the instance's next state.
 The formal trace shall associate send, receive, handler execution, and any
 response with the same transaction identity so a debugger can follow the
 transaction as one source-level call-like transition.
+
+A generator handler establishes a stream transaction. Its leading
+`MessageContext` and optional payload are delivered once, each yield is sent to
+the caller, each resumption is delivered back to the serving task, and its
+required `Result` final return commits the transaction. Suspending at a yield
+releases state authority; resumption reacquires and observes current task state.
 
 The reference interpreter may execute delivery immediately in its deterministic
 scheduler. This does not add a completion dependency to a `Unit` event; the

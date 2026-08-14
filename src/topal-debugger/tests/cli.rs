@@ -3354,6 +3354,7 @@ fn follows_reversible_task_message_transactions() {
     assert!(stdout.contains("message.sent [TOPAL-CONC-INTERACT-001] transaction="));
     assert!(stdout.contains("message.received [TOPAL-DEBUG-MESSAGE-001] transaction="));
     assert!(stdout.contains("task.state.replaced [TOPAL-TASK-STATE-001] count"));
+    assert!(stdout.contains("message.stream.started [TOPAL-TASK-MESSAGE-001] transaction="));
     assert!(stdout.contains("\n42\n"));
 }
 

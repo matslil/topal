@@ -1956,9 +1956,10 @@ invocation scope, and trace whether each field was supplied or defaulted.
 ## TOPAL-INTP-SUBSET-249 — Stateful task message transactions
 
 All source modes shall construct specialized task types and definitions,
-initialize typed private state through `start`, and route event and request
+initialize typed private state through `start`, route event, request, and stream
 applications under `TOPAL-TASK-DEFINITION-001` through
-`TOPAL-TASK-MESSAGE-001`. Formal traces shall retain a stable transaction
+`TOPAL-TASK-MESSAGE-001`, and enforce owner lifecycle termination with the
+`lang task` `task-terminated` error. Formal traces shall retain a stable transaction
 identity across send and receive. LSP validation and reversible scripted
 debugger history shall cover a commented stateful task example.
 

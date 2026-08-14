@@ -131,6 +131,8 @@ pub enum Value {
         yield_classifier: String,
         return_classifier: String,
         origin: String,
+        task_state: Option<BTreeMap<String, Self>>,
+        task_owner: Option<String>,
     },
     String(String),
     Tuple(Vec<Self>),
@@ -691,6 +693,7 @@ pub struct TaskDefinitionValue {
     source: SourceText,
     state_fields: Vec<(String, String)>,
     handlers: BTreeMap<String, Vec<UserFunction>>,
+    streams: BTreeMap<String, Vec<UserGenerator>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -698,6 +701,7 @@ pub struct TaskInstanceValue {
     identity: u64,
     definition: TaskDefinitionValue,
     state: BTreeMap<String, Value>,
+    terminated: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1132,7 +1136,16 @@ impl Session {
             .iter()
             .map(|(name, _)| (name.clone(), Value::Unit))
             .collect();
-        let (_, state) = self.invoke_task_handler(&definition, &start, argument, state, trace)?;
+        let (start_result, state) =
+            self.invoke_task_handler(&definition, &start, argument, state, trace)?;
+        if matches!(start_result, Value::Error { .. }) {
+            trace.record(TraceEvent {
+                event: "task.start.failed",
+                rule: "TOPAL-TASK-LIFECYCLE-001",
+                detail: &definition.name,
+            });
+            return Ok(start_result);
+        }
         for (name, classifier) in &definition.state_fields {
             if !state
                 .get(name)
@@ -1152,6 +1165,7 @@ impl Session {
             identity,
             definition: *definition,
             state,
+            terminated: false,
         })));
         trace.record(TraceEvent {
             event: "task.started",
@@ -1196,6 +1210,20 @@ impl Session {
                 "start is a lifecycle handler and cannot receive a message",
             ));
         }
+        if instance_snapshot
+            .definition
+            .streams
+            .contains_key(operation_name)
+        {
+            return self.construct_task_stream(
+                source,
+                &instance_key,
+                operation_name,
+                payload,
+                span,
+                trace,
+            );
+        }
         let handler = instance_snapshot
             .definition
             .handlers
@@ -1210,7 +1238,51 @@ impl Session {
                     "task capability exposes no such message handler",
                 )
             })?;
+        if instance_snapshot.terminated {
+            if handler.result == "Unit" {
+                trace.record(TraceEvent {
+                    event: "message.discarded.terminated",
+                    rule: "TOPAL-TASK-LIFECYCLE-001",
+                    detail: operation_name,
+                });
+                return Ok(Value::Unit);
+            }
+            let position = source.position(operation.start);
+            return Ok(Value::Error {
+                domain: "lang task".into(),
+                code: "task-terminated".into(),
+                line: position.line,
+                column: position.column,
+            });
+        }
         let payload = self.evaluate_expression(source, payload, trace)?;
+        if operation_name == "terminate" {
+            if !function_accepts(&handler.parameters, &payload) {
+                return Err(diagnostic(
+                    source,
+                    "E-TASK-TERMINATE-ARGUMENT",
+                    span,
+                    "termination reason does not match the lifecycle handler",
+                ));
+            }
+            let (result, state) = self.invoke_task_handler(
+                &instance_snapshot.definition,
+                &handler,
+                payload,
+                instance_snapshot.state.clone(),
+                trace,
+            )?;
+            let mut updated = instance_snapshot;
+            updated.state = state;
+            updated.terminated = true;
+            *instance.borrow_mut() = updated;
+            trace.record(TraceEvent {
+                event: "task.terminated",
+                rule: "TOPAL-TASK-LIFECYCLE-001",
+                detail: &instance_key,
+            });
+            return Ok(result);
+        }
         let context = Value::Record(vec![
             (
                 "session-id".into(),
@@ -1275,6 +1347,138 @@ impl Session {
             detail: &detail,
         });
         Ok(result)
+    }
+
+    #[allow(clippy::too_many_lines)] // Initial delivery, suspension state, and transaction evidence remain together.
+    fn construct_task_stream(
+        &self,
+        source: &SourceText,
+        instance_name: &str,
+        operation: &str,
+        payload: &Expression,
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Some(Value::TaskInstance(instance)) = self.bindings.get(instance_name) else {
+            unreachable!("task stream owner was resolved before dispatch")
+        };
+        let snapshot = instance.borrow().clone();
+        if snapshot.terminated {
+            let position = source.position(span.start);
+            return Ok(Value::Error {
+                domain: "lang task".into(),
+                code: "task-terminated".into(),
+                line: position.line,
+                column: position.column,
+            });
+        }
+        let payload = self.evaluate_expression(source, payload, trace)?;
+        let context = Value::Record(vec![
+            (
+                "session-id".into(),
+                Value::Int(BigInt::from(self.next_transaction_identity.get())),
+            ),
+            ("sender".into(), Value::String("root".into())),
+        ]);
+        let candidates = &snapshot.definition.streams[operation];
+        let argument = if candidates
+            .iter()
+            .any(|candidate| candidate.parameters.len() == 2)
+        {
+            Value::Tuple(vec![context, payload])
+        } else {
+            context
+        };
+        let generator = candidates
+            .iter()
+            .find(|candidate| function_accepts(&candidate.parameters, &argument))
+            .cloned()
+            .ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-TASK-STREAM-ARGUMENT",
+                    span,
+                    "no stream handler accepts this payload",
+                )
+            })?;
+        let transaction = self.next_transaction_identity.get();
+        self.next_transaction_identity.set(transaction + 1);
+        let detail = format!(
+            "transaction={transaction};task={};operation={operation}",
+            snapshot.identity
+        );
+        trace.record(TraceEvent {
+            event: "message.sent",
+            rule: "TOPAL-CONC-INTERACT-001",
+            detail: &detail,
+        });
+        trace.record(TraceEvent {
+            event: "message.received",
+            rule: "TOPAL-DEBUG-MESSAGE-001",
+            detail: &detail,
+        });
+        let mut scope = Self {
+            bindings: generator.bindings.clone(),
+            functions: Box::new(snapshot.definition.handlers.clone()),
+            generators: Box::new(snapshot.definition.streams.clone()),
+            declared_names: BTreeSet::new(),
+            published_names: BTreeSet::new(),
+            language_version: self.language_version,
+            consumed_names: BTreeSet::new(),
+            local_function_names: BTreeSet::new(),
+            enum_types: self.enum_types.clone(),
+            union_types: self.union_types.clone(),
+            call_stack: Vec::new(),
+            static_context: false,
+            task_state: Some(snapshot.state),
+            next_task_identity: Cell::new(self.next_task_identity.get()),
+            next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
+        };
+        bind_generator_arguments(&mut scope, &generator.parameters, argument, trace);
+        let mut cursor = 0;
+        let mut pending_yield = None;
+        let mut resume_binding = None;
+        let mut returned = None;
+        advance_custom_generator(
+            &generator.source,
+            &generator.body,
+            &mut cursor,
+            &mut scope,
+            &mut pending_yield,
+            &mut resume_binding,
+            &mut returned,
+            &generator.yielded,
+            &generator.result,
+            operation,
+            trace,
+        )?;
+        sync_stream_task_state(self, Some(instance_name), scope.task_state.as_ref());
+        trace.record(TraceEvent {
+            event: "message.stream.started",
+            rule: "TOPAL-TASK-MESSAGE-001",
+            detail: &detail,
+        });
+        Ok(Value::SuspendedGenerator {
+            source: Box::new(generator.source),
+            body: Box::new(generator.body),
+            cursor,
+            bindings: Box::new(scope.bindings),
+            scope_state: Box::new(GeneratorScopeState {
+                functions: *scope.functions,
+                declared_names: scope.declared_names,
+                local_function_names: scope.local_function_names,
+                enum_types: scope.enum_types,
+                union_types: scope.union_types,
+            }),
+            pending_yield,
+            resume_binding,
+            returned: returned.map(Box::new),
+            yield_classifier: generator.yielded,
+            return_classifier: generator.result,
+            origin: format!("task.{operation}.transaction-{transaction}"),
+            task_state: scope.task_state,
+            task_owner: Some(instance_name.into()),
+        })
     }
 
     fn invoke_task_handler(
@@ -3134,6 +3338,8 @@ impl Session {
                         yield_classifier: generator.yielded,
                         return_classifier: generator.result,
                         origin,
+                        task_state: None,
+                        task_owner: None,
                     };
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
@@ -6160,6 +6366,8 @@ impl Execution {
             yield_classifier,
             return_classifier,
             origin,
+            ref mut task_state,
+            ref task_owner,
         } = generator
         else {
             unreachable!("caller selects a suspended generator")
@@ -6205,6 +6413,7 @@ impl Execution {
                     detail: "Unit",
                 });
                 let mut scope = session.clone();
+                scope.task_state = task_state.take();
                 scope.bindings = std::mem::take(bindings);
                 scope.functions = Box::new(std::mem::take(&mut scope_state.functions));
                 scope.declared_names = std::mem::take(&mut scope_state.declared_names);
@@ -6238,6 +6447,8 @@ impl Execution {
                 scope_state.declared_names = scope.declared_names;
                 scope_state.local_function_names = scope.local_function_names;
                 scope_state.enum_types = scope.enum_types;
+                *task_state = scope.task_state;
+                sync_stream_task_state(session, task_owner.as_deref(), task_state.as_ref());
                 *returned = next_returned.map(Box::new);
                 continue;
             }
@@ -6252,6 +6463,7 @@ impl Execution {
                 ),
                 detail: &return_classifier,
             });
+            sync_stream_task_state(session, task_owner.as_deref(), task_state.as_ref());
             return Ok((value, span));
         }
     }
@@ -6326,6 +6538,29 @@ impl Execution {
                         },
                     )?;
                 }
+                Statement::Generator {
+                    name,
+                    parameters,
+                    yielded,
+                    resumed,
+                    result,
+                    body,
+                    span,
+                } => {
+                    self.declare_generator(
+                        &mut handler_session,
+                        trace,
+                        GeneratorDeclaration {
+                            name: *name,
+                            parameters,
+                            yielded: *yielded,
+                            resumed: *resumed,
+                            result: *result,
+                            body,
+                            span: *span,
+                        },
+                    )?;
+                }
                 _ => {
                     return Err(diagnostic(
                         &self.source,
@@ -6349,6 +6584,19 @@ impl Execution {
                 _ => None,
             })
             .collect();
+        let streams: BTreeMap<String, Vec<UserGenerator>> = declarations
+            .iter()
+            .filter_map(|declaration| match declaration {
+                Statement::Generator { name, .. } => {
+                    let name = self.source.slice(*name).to_owned();
+                    Some((
+                        name.clone(),
+                        handler_session.generators.get(&name).cloned().unwrap(),
+                    ))
+                }
+                _ => None,
+            })
+            .collect();
         if !handlers.contains_key("start") {
             return Err(diagnostic(
                 &self.source,
@@ -6359,7 +6607,15 @@ impl Execution {
         }
         for (handler_name, candidates) in &handlers {
             for handler in candidates {
-                if handler_name == "start" {
+                if matches!(handler_name.as_str(), "start" | "terminate") {
+                    if result_success_classifier(&handler.result) == Some("Unit") {
+                        return Err(diagnostic(
+                            &self.source,
+                            "E-TASK-START-RESULT",
+                            name,
+                            "start cannot return Result with Unit success",
+                        ));
+                    }
                     continue;
                 }
                 if handler.parameters.is_empty()
@@ -6390,6 +6646,24 @@ impl Execution {
                 }
             }
         }
+        for (stream_name, candidates) in &streams {
+            for stream in candidates {
+                if stream.parameters.is_empty()
+                    || stream.parameters.len() > 2
+                    || stream.parameters[0].1 != "MessageContext"
+                    || result_success_classifier(&stream.result).is_none()
+                {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-TASK-STREAM-SHAPE",
+                        name,
+                        format!(
+                            "stream handler `{stream_name}` requires MessageContext, at most one payload, and a Result final return"
+                        ),
+                    ));
+                }
+            }
+        }
         let task_type = TaskTypeValue {
             name: classifier_name(&self.source, classifier),
             ..*task_type
@@ -6400,6 +6674,7 @@ impl Execution {
             source: self.source.clone(),
             state_fields,
             handlers,
+            streams,
         }));
         session
             .bindings
@@ -7678,6 +7953,7 @@ fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
                 Statement::Published { .. }
                     | Statement::DiagnosticControl { .. }
                     | Statement::Binding { .. }
+                    | Statement::ContextAssignment { .. }
                     | Statement::Discard { .. }
                     | Statement::Function { .. }
                     | Statement::Return { .. }
@@ -7712,6 +7988,12 @@ fn yielded_statement<'a>(
 ) -> Option<(Option<Span>, &'a Expression)> {
     if let Some(expression) = discarded_yield_expression(source, statement) {
         return Some((None, expression));
+    }
+    if let Statement::Expression(Expression::Application { items, .. }) = statement
+        && let [Expression::Identifier(keyword), yielded] = items.as_slice()
+        && source.slice(*keyword) == "yield"
+    {
+        return Some((None, yielded));
     }
     let Statement::Binding {
         name,
@@ -8260,6 +8542,13 @@ fn declare_variant(
 }
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
+    if classifier == "MessageContext"
+        && matches!(value, Value::Record(fields)
+            if fields.iter().any(|(name, _)| name == "session-id")
+                && fields.iter().any(|(name, _)| name == "sender"))
+    {
+        return true;
+    }
     if let Value::LayoutBacked { layout, value } = value {
         return classifier == layout.semantic || value_has_classifier(value, classifier);
     }
@@ -9465,6 +9754,21 @@ fn validate_layout_attributes(
         ));
     }
     Ok(())
+}
+
+fn sync_stream_task_state(
+    session: &Session,
+    owner: Option<&str>,
+    state: Option<&BTreeMap<String, Value>>,
+) {
+    let (Some(_), Some(state), Some(Value::TaskInstance(instance))) = (
+        owner,
+        state,
+        owner.and_then(|name| session.bindings.get(name)),
+    ) else {
+        return;
+    };
+    instance.borrow_mut().state = state.clone();
 }
 
 fn layout_access(layout: &LayoutValue) -> &str {
@@ -13492,6 +13796,64 @@ mod tests {
             trace
                 .iter()
                 .any(|event| event.contains("task.state.replaced"))
+        );
+    }
+
+    #[test]
+    fn task_termination_discards_events_and_fails_requests_in_task_domain() {
+        let source = "Counter is Task (identity is counter)\
+\nservice is Counter\
+\n  count : Nat\
+\n  start is fn (initial : Nat) -> Completed\
+\n    @ count is initial\
+\n    Completed\
+\n  ping is fn (_ : MessageContext, _ : Unit) -> Unit\
+\n    ()\
+\n  current is fn (_ : MessageContext, _ : Unit) -> Result (Nat, ())\
+\n    @ count\
+\n  terminate is fn (_ : String) -> Unit\
+\n    ()\
+\ninstance is service 1\
+\ninstance terminate \"done\"\
+\ninstance ping ()\
+\ninstance current ()\n";
+        assert!(matches!(
+            evaluate(source).unwrap(),
+            Value::Error { domain, code, .. }
+                if domain == "lang task" && code == "task-terminated"
+        ));
+    }
+
+    #[test]
+    fn task_streams_follow_transactions_and_reacquire_current_state() {
+        let source = "Counter is Task (identity is counter)\
+\nservice is Counter\
+\n  count : Nat\
+\n  start is fn (initial : Nat) -> Completed\
+\n    @ count is initial\
+\n    Completed\
+\n  values is generator (_ : MessageContext, _ : Unit)\
+\n    yields Nat\
+\n    resumes Unit\
+\n    -> Result (Unit, ())\
+\n    yield @ count\
+\n    @ count is @ count + 1\
+\n    yield @ count\
+\n    ()\
+\n  current is fn (_ : MessageContext, _ : Unit) -> Result (Nat, ())\
+\n    @ count\
+\ninstance is service 1\
+\nstream is instance values ()\
+\nstream foreach { value }\
+\n  ()\
+\ninstance current ()\n";
+        let mut trace = Vec::new();
+        let value = Session::new().evaluate(source, &mut trace).unwrap();
+        assert_eq!(value, Value::Int(BigInt::from(2)));
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("message.stream.started"))
         );
     }
 
