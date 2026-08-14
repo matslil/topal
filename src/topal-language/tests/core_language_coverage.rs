@@ -125,3 +125,37 @@ fn every_stable_specification_rule_has_a_completion_owner() {
         }
     }
 }
+
+#[test]
+fn accepted_core_has_no_planned_rule_and_examples_explain_their_feature() {
+    let root = workspace_root();
+    let entries = read_ledger(&root);
+    let planned = entries
+        .iter()
+        .filter_map(|(path, entry)| (entry.status != "complete").then_some(path))
+        .collect::<Vec<_>>();
+    assert!(planned.is_empty(), "core rules remain planned: {planned:?}");
+
+    let mut examples = fs::read_dir(root.join("examples/interpreter"))
+        .expect("interpreter examples must be readable")
+        .map(|entry| entry.expect("example entry must be readable").path())
+        .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
+        .collect::<Vec<_>>();
+    examples.sort();
+    assert!(!examples.is_empty());
+    for path in examples {
+        let source = fs::read_to_string(&path).expect("example source must be readable");
+        assert!(
+            source
+                .lines()
+                .any(|line| line.starts_with("# Demonstrates")),
+            "{} does not explain the demonstrated feature",
+            path.display()
+        );
+        assert!(
+            source.contains("version is v0.1"),
+            "{} does not select the accepted core revision",
+            path.display()
+        );
+    }
+}

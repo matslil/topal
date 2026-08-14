@@ -959,6 +959,14 @@ mod tests {
         let second = module.validate().unwrap().canonical_bytes();
         assert_eq!(first, second);
         assert!(first.starts_with(b"TOPALGEIR"));
+        assert_eq!(
+            first,
+            [
+                84, 79, 80, 65, 76, 71, 69, 73, 82, 1, 0, 1, 0, 0, 0, 1, 7, 101, 120, 97, 109, 112,
+                108, 101, 1, 4, 109, 97, 105, 110, 1, 6, 97, 110, 115, 119, 101, 114, 0, 1, 0, 0,
+                1, 0, 3, 73, 110, 116, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0,
+            ]
+        );
     }
 
     #[test]
