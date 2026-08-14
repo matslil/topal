@@ -26,6 +26,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/resources.md` | 3 | 6 | `topal-semantics`, shared execution tools | static, runtime | complete |
 | `spec/memory-model.md` | 9 | 6 | shared resource and memory semantics | static, runtime | complete |
 | `spec/concurrency-model.md` | 12 | 7 | shared execution scheduler | static, runtime | planned |
+| `spec/tasks.md` | 5 | 7 | `topal-syntax`, `topal-language`, shared execution tools | static, runtime | complete |
 | `spec/serialization.md` | 16 | 8 | shared layout and serialization codecs | artifact, runtime | planned |
 | `spec/generic-ir.md` | 10 | 9 | shared generic artifact model | artifact, compiler-only | planned |
 

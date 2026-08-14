@@ -1,3 +1,4 @@
+use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write as _};
@@ -28,6 +29,9 @@ pub enum Value {
     Version(LanguageVersion),
     NativeSerializer(LanguageVersion),
     SerializationStream(Vec<u8>),
+    TaskType(Box<TaskTypeValue>),
+    TaskDefinition(Box<TaskDefinitionValue>),
+    TaskInstance(Box<RefCell<TaskInstanceValue>>),
     Int(BigInt),
     Rational(BigRational),
     IntRange {
@@ -287,6 +291,20 @@ impl fmt::Display for Value {
             Self::NativeSerializer(version) => write!(formatter, "<lang serialize {version}>"),
             Self::SerializationStream(bytes) => {
                 write!(formatter, "SerializationStream ( {} bytes )", bytes.len())
+            }
+            Self::TaskType(task) => write!(
+                formatter,
+                "Task {}",
+                task.name.as_deref().unwrap_or("<specialized>")
+            ),
+            Self::TaskDefinition(task) => write!(formatter, "<TaskDefinition {}>", task.name),
+            Self::TaskInstance(task) => {
+                let task = task.borrow();
+                write!(
+                    formatter,
+                    "<Task {} #{}>",
+                    task.definition.name, task.identity
+                )
             }
             Self::Int(value) => value.fmt(formatter),
             Self::Rational(value) => {
@@ -577,6 +595,9 @@ pub struct Session {
     union_types: Box<BTreeMap<String, BTreeMap<String, Option<String>>>>,
     call_stack: Vec<ActiveCall>,
     static_context: bool,
+    task_state: Option<BTreeMap<String, Value>>,
+    next_task_identity: Cell<u64>,
+    next_transaction_identity: Cell<u64>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -598,6 +619,28 @@ struct UserParameterField {
     name: String,
     classifier: String,
     default: Option<Expression>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TaskTypeValue {
+    name: Option<String>,
+    options: Vec<(String, Value)>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TaskDefinitionValue {
+    name: String,
+    task_type: TaskTypeValue,
+    source: SourceText,
+    state_fields: Vec<(String, String)>,
+    handlers: BTreeMap<String, Vec<UserFunction>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TaskInstanceValue {
+    identity: u64,
+    definition: TaskDefinitionValue,
+    state: BTreeMap<String, Value>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -660,6 +703,248 @@ enum BindingOutcome {
 }
 
 impl Session {
+    fn construct_task_instance(
+        &self,
+        source: &SourceText,
+        definition_name: Span,
+        argument: &Expression,
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let Some(Value::TaskDefinition(definition)) =
+            self.bindings.get(source.slice(definition_name)).cloned()
+        else {
+            unreachable!("task definition was checked before construction");
+        };
+        let start = definition
+            .handlers
+            .get("start")
+            .and_then(|handlers| handlers.first())
+            .cloned()
+            .expect("task definitions require start");
+        let argument = self.evaluate_expression(source, argument, trace)?;
+        if !function_accepts(&start.parameters, &argument) {
+            return Err(diagnostic(
+                source,
+                "E-TASK-START-ARGUMENT",
+                span,
+                "task construction arguments do not match its start handler",
+            ));
+        }
+        let state = definition
+            .state_fields
+            .iter()
+            .map(|(name, _)| (name.clone(), Value::Unit))
+            .collect();
+        let (_, state) = self.invoke_task_handler(&definition, &start, argument, state, trace)?;
+        for (name, classifier) in &definition.state_fields {
+            if !state
+                .get(name)
+                .is_some_and(|value| value_has_classifier(value, classifier))
+            {
+                return Err(diagnostic(
+                    source,
+                    "E-TASK-STATE-INITIALIZATION",
+                    span,
+                    format!("start did not initialize `{name}` as `{classifier}`"),
+                ));
+            }
+        }
+        let identity = self.next_task_identity.get();
+        self.next_task_identity.set(identity + 1);
+        let value = Value::TaskInstance(Box::new(RefCell::new(TaskInstanceValue {
+            identity,
+            definition: *definition,
+            state,
+        })));
+        trace.record(TraceEvent {
+            event: "task.started",
+            rule: "TOPAL-TASK-LIFECYCLE-001",
+            detail: &identity.to_string(),
+        });
+        Ok(value)
+    }
+
+    fn evaluate_task_message(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [
+            Expression::Identifier(instance_name),
+            Expression::Identifier(operation),
+            payload,
+        ] = items
+        else {
+            return Err(diagnostic(
+                source,
+                "E-TASK-MESSAGE-SHAPE",
+                span,
+                "task messages require `task operation payload`",
+            ));
+        };
+        let instance_key = source.slice(*instance_name).to_owned();
+        let Some(Value::TaskInstance(instance)) = self.bindings.get(&instance_key) else {
+            unreachable!("task instance was checked before message execution");
+        };
+        let instance_snapshot = instance.borrow().clone();
+        let operation_name = source.slice(*operation);
+        if operation_name == "start" {
+            return Err(diagnostic(
+                source,
+                "E-TASK-START-PRIVATE",
+                *operation,
+                "start is a lifecycle handler and cannot receive a message",
+            ));
+        }
+        let handler = instance_snapshot
+            .definition
+            .handlers
+            .get(operation_name)
+            .and_then(|handlers| handlers.first())
+            .cloned()
+            .ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-TASK-HANDLER",
+                    *operation,
+                    "task capability exposes no such message handler",
+                )
+            })?;
+        let payload = self.evaluate_expression(source, payload, trace)?;
+        let context = Value::Record(vec![
+            (
+                "session-id".into(),
+                Value::Int(BigInt::from(self.next_transaction_identity.get())),
+            ),
+            ("sender".into(), Value::String("root".into())),
+        ]);
+        let argument = match handler.parameters.len() {
+            1 => context,
+            2 => Value::Tuple(vec![context, payload]),
+            _ => {
+                return Err(diagnostic(
+                    source,
+                    "E-TASK-HANDLER-SHAPE",
+                    *operation,
+                    "message handler requires MessageContext plus zero or one ordinary operand",
+                ));
+            }
+        };
+        let transaction = self.next_transaction_identity.get();
+        self.next_transaction_identity.set(transaction + 1);
+        let detail = format!(
+            "transaction={transaction};task={};operation={operation_name}",
+            instance_snapshot.identity
+        );
+        trace.record(TraceEvent {
+            event: "message.sent",
+            rule: "TOPAL-CONC-INTERACT-001",
+            detail: &detail,
+        });
+        trace.record(TraceEvent {
+            event: "message.received",
+            rule: "TOPAL-DEBUG-MESSAGE-001",
+            detail: &detail,
+        });
+        let (result, state) = self.invoke_task_handler(
+            &instance_snapshot.definition,
+            &handler,
+            argument,
+            instance_snapshot.state.clone(),
+            trace,
+        )?;
+        for (name, classifier) in &instance_snapshot.definition.state_fields {
+            if !state
+                .get(name)
+                .is_some_and(|value| value_has_classifier(value, classifier))
+            {
+                return Err(diagnostic(
+                    source,
+                    "E-TASK-STATE-REPLACEMENT",
+                    span,
+                    format!("message left `{name}` outside `{classifier}`"),
+                ));
+            }
+        }
+        let mut updated = instance_snapshot;
+        updated.state = state;
+        *instance.borrow_mut() = updated;
+        trace.record(TraceEvent {
+            event: "message.completed",
+            rule: "TOPAL-CONC-ORDER-001",
+            detail: &detail,
+        });
+        Ok(result)
+    }
+
+    fn invoke_task_handler(
+        &self,
+        definition: &TaskDefinitionValue,
+        function: &UserFunction,
+        argument: Value,
+        state: BTreeMap<String, Value>,
+        trace: &mut impl TraceSink,
+    ) -> Result<(Value, BTreeMap<String, Value>), Diagnostic> {
+        let mut scope = Self {
+            bindings: function.bindings.clone(),
+            functions: Box::new(definition.handlers.clone()),
+            generators: self.generators.clone(),
+            declared_names: BTreeSet::new(),
+            published_names: BTreeSet::new(),
+            language_version: self.language_version,
+            consumed_names: BTreeSet::new(),
+            local_function_names: BTreeSet::new(),
+            enum_types: self.enum_types.clone(),
+            union_types: self.union_types.clone(),
+            call_stack: vec![ActiveCall {
+                name: definition.name.clone(),
+                signature: function_signature(&definition.name, function),
+                termination_rule: None,
+                recursion_target: None,
+            }],
+            static_context: false,
+            task_state: Some(state),
+            next_task_identity: Cell::new(self.next_task_identity.get()),
+            next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
+        };
+        bind_function_arguments(
+            &mut scope,
+            function,
+            argument,
+            trace,
+            "TOPAL-FUNCTION-ORDINARY-001",
+        )?;
+        let mut execution = Execution {
+            source: definition.source.clone(),
+            statements: function.body.clone(),
+            cursor: 0,
+            return_classifier: Some(function.result.clone()),
+        };
+        let value = loop {
+            match execution.step(&mut scope, trace)? {
+                ExecutionStep::Advanced { .. } => {}
+                ExecutionStep::Complete(value) | ExecutionStep::Returned { value, .. } => {
+                    break value;
+                }
+            }
+        };
+        if !value_has_classifier(&value, &function.result) {
+            return Err(diagnostic(
+                &definition.source,
+                "E-TASK-HANDLER-RESULT",
+                statement_span(function.body.last().expect("handler body is nonempty")),
+                format!(
+                    "task handler returned a value outside `{}`",
+                    function.result
+                ),
+            ));
+        }
+        Ok((value, scope.task_state.unwrap_or_default()))
+    }
+
     fn is_lang_operation(source: &SourceText, expression: &Expression, expected: &str) -> bool {
         matches!(
             expression,
@@ -1288,6 +1573,9 @@ impl Session {
             union_types: Box::new(BTreeMap::new()),
             call_stack: Vec::new(),
             static_context: false,
+            task_state: None,
+            next_task_identity: Cell::new(0),
+            next_transaction_identity: Cell::new(0),
         };
         let mut execution = session.prepare(input, trace)?;
         if !matches!(execution.statements.as_slice(), [Statement::Expression(_)]) {
@@ -1605,6 +1893,9 @@ impl Session {
                         union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: self.static_context,
+                        task_state: self.task_state.clone(),
+                        next_task_identity: Cell::new(self.next_task_identity.get()),
+                        next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
                     };
                     branch.bindings.insert(name.to_owned(), subject);
                     trace.record(TraceEvent {
@@ -1687,7 +1978,7 @@ impl Session {
             Expression::String(span) => evaluate_string_literal(source, *span, trace),
             Expression::Identifier(span) => self.resolve_identifier(source, *span, trace),
             Expression::ContextIdentifier(span) => {
-                if self.call_stack.is_empty() {
+                if self.call_stack.is_empty() && self.task_state.is_none() {
                     return Err(diagnostic(
                         source,
                         "E-CONTEXT-SELECTION",
@@ -1695,7 +1986,12 @@ impl Session {
                         "`@` selects the defining context from inside a function",
                     ));
                 }
-                let value = self.resolve_identifier(source, *span, trace)?;
+                let value = self
+                    .task_state
+                    .as_ref()
+                    .and_then(|state| state.get(source.slice(*span)))
+                    .cloned()
+                    .map_or_else(|| self.resolve_identifier(source, *span, trace), Ok)?;
                 trace.record(TraceEvent {
                     event: "context.member.selected",
                     rule: "TOPAL-CONTEXT-SELECT-001",
@@ -1723,8 +2019,67 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if let [Expression::Identifier(task), options] = items.as_slice()
+                    && source.slice(*task) == "Task"
+                {
+                    let Expression::Product { fields, .. } = options else {
+                        return Err(diagnostic(
+                            source,
+                            "E-TASK-OPTIONS",
+                            options.span(),
+                            "Task requires one labeled option record",
+                        ));
+                    };
+                    let mut resolved_options = Vec::with_capacity(fields.len());
+                    for field in fields {
+                        let Some(label) = field.label else {
+                            return Err(diagnostic(
+                                source,
+                                "E-TASK-OPTIONS",
+                                field.value.span(),
+                                "Task options must be labeled",
+                            ));
+                        };
+                        let value = if source.slice(label) == "identity"
+                            && let Expression::Identifier(identity) = field.value
+                        {
+                            Value::String(source.slice(identity).to_owned())
+                        } else {
+                            self.evaluate_expression(source, &field.value, trace)?
+                        };
+                        resolved_options.push((source.slice(label).to_owned(), value));
+                    }
+                    trace.record(TraceEvent {
+                        event: "task.type.specialized",
+                        rule: "TOPAL-TASK-DEFINITION-001",
+                        detail: "Task",
+                    });
+                    return Ok(Value::TaskType(Box::new(TaskTypeValue {
+                        name: None,
+                        options: resolved_options,
+                    })));
+                }
                 if self.is_native_serialization(source, items) {
                     return self.evaluate_native_serialization(source, items, *span, trace);
+                }
+                if let [Expression::Identifier(definition), argument] = items.as_slice()
+                    && matches!(
+                        self.bindings.get(source.slice(*definition)),
+                        Some(Value::TaskDefinition(_))
+                    )
+                {
+                    return self.construct_task_instance(
+                        source,
+                        *definition,
+                        argument,
+                        *span,
+                        trace,
+                    );
+                }
+                if matches!(items.first(), Some(Expression::Identifier(instance))
+                    if matches!(self.bindings.get(source.slice(*instance)), Some(Value::TaskInstance(_))))
+                {
+                    return self.evaluate_task_message(source, items, *span, trace);
                 }
                 if Self::is_lang_introspection(source, items) {
                     return self.evaluate_lang_introspection(source, items, *span, trace);
@@ -2288,6 +2643,9 @@ impl Session {
                         union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: false,
+                        task_state: None,
+                        next_task_identity: Cell::new(self.next_task_identity.get()),
+                        next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
                     };
                     bind_generator_arguments(
                         &mut generator_scope,
@@ -2456,6 +2814,9 @@ impl Session {
                         union_types: self.union_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: function.is_static,
+                        task_state: None,
+                        next_task_identity: Cell::new(self.next_task_identity.get()),
+                        next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
                     };
                     function_scope.call_stack.push(ActiveCall {
                         name: name.to_owned(),
@@ -3262,7 +3623,15 @@ impl Session {
         }
         if matches!(
             name,
-            "Boolean" | "Completed" | "Int" | "Nat" | "Rational" | "Scope" | "String" | "Unit"
+            "Boolean"
+                | "Completed"
+                | "Int"
+                | "MessageContext"
+                | "Nat"
+                | "Rational"
+                | "Scope"
+                | "String"
+                | "Unit"
         ) && name != "Completed"
         {
             trace.record(TraceEvent {
@@ -5448,6 +5817,149 @@ impl Execution {
     }
 
     #[allow(clippy::too_many_lines)] // Declaration validation and trace setup stay auditable together.
+    fn declare_task_implementation(
+        &self,
+        session: &mut Session,
+        trace: &mut impl TraceSink,
+        name: Span,
+        classifier: &Expression,
+        declarations: &[Statement],
+        span: Span,
+    ) -> Result<(Value, Span), Diagnostic> {
+        let Value::TaskType(task_type) =
+            session.evaluate_expression(&self.source, classifier, trace)?
+        else {
+            return Err(diagnostic(
+                &self.source,
+                "E-TASK-IMPLEMENTATION-TYPE",
+                classifier.span(),
+                "an indented implementation requires a specialized Task type",
+            ));
+        };
+        let mut state_fields = Vec::new();
+        let mut handler_session = session.clone();
+        for declaration in declarations {
+            match declaration {
+                Statement::StateField {
+                    name: field,
+                    classifier,
+                } => state_fields.push((
+                    self.source.slice(*field).to_owned(),
+                    self.source.slice(*classifier).to_owned(),
+                )),
+                Statement::Function {
+                    name,
+                    is_static,
+                    parameters,
+                    result,
+                    effect_bound,
+                    body,
+                    span,
+                } => {
+                    self.declare_function(
+                        &mut handler_session,
+                        trace,
+                        FunctionDeclaration {
+                            name: *name,
+                            is_static: *is_static,
+                            parameters,
+                            result: *result,
+                            effect_bound: *effect_bound,
+                            body,
+                            span: *span,
+                        },
+                    )?;
+                }
+                _ => {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-TASK-IMPLEMENTATION-MEMBER",
+                        statement_span(declaration),
+                        "task implementations initially contain state fields and handlers",
+                    ));
+                }
+            }
+        }
+        let handlers: BTreeMap<String, Vec<UserFunction>> = declarations
+            .iter()
+            .filter_map(|declaration| match declaration {
+                Statement::Function { name, .. } => {
+                    let name = self.source.slice(*name).to_owned();
+                    Some((
+                        name.clone(),
+                        handler_session.functions.get(&name).cloned().unwrap(),
+                    ))
+                }
+                _ => None,
+            })
+            .collect();
+        if !handlers.contains_key("start") {
+            return Err(diagnostic(
+                &self.source,
+                "E-TASK-START-REQUIRED",
+                name,
+                "every task implementation requires a start handler",
+            ));
+        }
+        for (handler_name, candidates) in &handlers {
+            for handler in candidates {
+                if handler_name == "start" {
+                    continue;
+                }
+                if handler.parameters.is_empty()
+                    || handler.parameters.len() > 2
+                    || handler.parameters[0].1 != "MessageContext"
+                {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-TASK-HANDLER-SHAPE",
+                        name,
+                        format!(
+                            "message handler `{handler_name}` requires MessageContext plus zero or one ordinary operand"
+                        ),
+                    ));
+                }
+                if handler.result != "Unit"
+                    && result_success_classifier(&handler.result)
+                        .is_none_or(|success| success == "Unit")
+                {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-TASK-HANDLER-RESULT",
+                        name,
+                        format!(
+                            "message handler `{handler_name}` must return Unit or Result with a non-Unit success value"
+                        ),
+                    ));
+                }
+            }
+        }
+        let task_type = TaskTypeValue {
+            name: classifier_name(&self.source, classifier),
+            ..*task_type
+        };
+        let value = Value::TaskDefinition(Box::new(TaskDefinitionValue {
+            name: self.source.slice(name).to_owned(),
+            task_type,
+            source: self.source.clone(),
+            state_fields,
+            handlers,
+        }));
+        session
+            .bindings
+            .insert(self.source.slice(name).to_owned(), value.clone());
+        session
+            .declared_names
+            .insert(self.source.slice(name).to_owned());
+        trace.record(TraceEvent {
+            event: "task.definition.declared",
+            rule: "TOPAL-TASK-DEFINITION-001",
+            detail: self.source.slice(name),
+        });
+        Ok((value, span))
+    }
+
+    #[allow(clippy::too_many_lines)] // Declaration validation and trace setup stay auditable together.
     fn declare_function(
         &self,
         session: &mut Session,
@@ -5806,6 +6318,53 @@ impl Execution {
                     return Ok(ExecutionStep::Returned { value, span });
                 }
             },
+            Statement::Implementation {
+                name,
+                classifier,
+                declarations,
+                span,
+            } => self.declare_task_implementation(
+                session,
+                trace,
+                *name,
+                classifier,
+                declarations,
+                *span,
+            )?,
+            Statement::StateField { name, .. } => {
+                return Err(diagnostic(
+                    &self.source,
+                    "E-STATE-FIELD-CONTEXT",
+                    *name,
+                    "a task state field is valid only inside a task implementation",
+                ));
+            }
+            Statement::ContextAssignment { name, value, span } => {
+                let value = session.evaluate_expression(&self.source, value, trace)?;
+                let Some(state) = session.task_state.as_mut() else {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-TASK-STATE-CONTEXT",
+                        *name,
+                        "task state replacement requires an executing task handler",
+                    ));
+                };
+                if !state.contains_key(self.source.slice(*name)) {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-UNKNOWN-TASK-STATE",
+                        *name,
+                        "task implementation declares no such state field",
+                    ));
+                }
+                state.insert(self.source.slice(*name).to_owned(), value);
+                trace.record(TraceEvent {
+                    event: "task.state.replaced",
+                    rule: "TOPAL-TASK-STATE-001",
+                    detail: self.source.slice(*name),
+                });
+                (Value::Unit, *span)
+            }
             Statement::Function {
                 name,
                 is_static,
@@ -6053,14 +6612,6 @@ impl Execution {
                 return Ok(ExecutionStep::Returned { value, span });
             }
             Statement::Expression(expression) => {
-                if self.cursor + 1 != self.statements.len() {
-                    return Err(diagnostic(
-                        &self.source,
-                        "E-DISCARDED-VALUE",
-                        expression.span(),
-                        "a non-final expression value cannot be discarded",
-                    ));
-                }
                 let value = evaluate_expression_with_optional_context(
                     &self.source,
                     session,
@@ -6068,6 +6619,14 @@ impl Execution {
                     self.return_classifier.as_deref(),
                     trace,
                 )?;
+                if self.cursor + 1 != self.statements.len() && value != Value::Unit {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-DISCARDED-VALUE",
+                        expression.span(),
+                        "a non-final expression value cannot be discarded",
+                    ));
+                }
                 consume_generator_argument(&self.source, session, expression);
                 (value, expression.span())
             }
@@ -6619,12 +7178,15 @@ fn statement_span(statement: &Statement) -> Span {
         Statement::LanguageSelection { span, .. }
         | Statement::Published { span, .. }
         | Statement::DiagnosticControl { span, .. }
+        | Statement::Implementation { span, .. }
+        | Statement::ContextAssignment { span, .. }
         | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
         | Statement::Interface { span, .. }
         | Statement::InterfaceImplementation { span, .. }
         | Statement::Foreach { span, .. } => *span,
+        Statement::StateField { name, classifier } => cover(*name, *classifier),
         Statement::Discard { span, value } => cover(*span, value.span()),
         Statement::Return { keyword, value } => cover(*keyword, value.span()),
         Statement::Expression(expression) => expression.span(),
@@ -6634,6 +7196,7 @@ fn statement_span(statement: &Statement) -> Span {
 fn declaration_name<'a>(source: &'a SourceText, statement: &Statement) -> Option<&'a str> {
     let name = match statement {
         Statement::Binding { name, .. }
+        | Statement::Implementation { name, .. }
         | Statement::Function { name, .. }
         | Statement::Generator { name, .. }
         | Statement::Union { name, .. }
@@ -7343,6 +7906,7 @@ fn supported_generator_value_classifier(
             | "Constraint"
             | "Effect"
             | "Int"
+            | "MessageContext"
             | "Nat"
             | "Rational"
             | "Scope"
@@ -7380,7 +7944,11 @@ fn result_success_classifier(classifier: &str) -> Option<&str> {
     let comma = top_level_comma(contents)?;
     let (success, errors) = (&contents[..comma], &contents[comma + 1..]);
     let errors = errors.split_whitespace().collect::<Vec<_>>().join(" ");
-    (errors == "lang arithmetic ArithmeticErrorCode").then(|| success.trim())
+    matches!(
+        errors.as_str(),
+        "lang arithmetic ArithmeticErrorCode" | "()"
+    )
+    .then(|| success.trim())
 }
 
 fn optional_payload_classifier(classifier: &str) -> Option<&str> {
@@ -8221,6 +8789,7 @@ fn supported_value_classifier(
             | "Generator Character Unit String"
             | "Function"
             | "Int"
+            | "MessageContext"
             | "Nat"
             | "Range Int"
             | "Range Rational"
@@ -8354,6 +8923,9 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Boolean(_) => "Boolean",
         Value::Version(_) => "Version",
         Value::SerializationStream(_) => "SerializationStream",
+        Value::TaskType(_) => "Type",
+        Value::TaskDefinition(_) => "TaskDefinition",
+        Value::TaskInstance(_) => "Task",
         Value::Type(_) | Value::ModularType(_) => "Type",
         Value::Effects(_) => "Effect",
         Value::Int(_) => "Int",
@@ -8477,6 +9049,13 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::Effects(_) => "Effect".into(),
         Value::ModularType(kind) => kind.name.clone().unwrap_or_else(|| "Type".into()),
         _ => value_classifier(value).to_owned(),
+    }
+}
+
+fn classifier_name(source: &SourceText, expression: &Expression) -> Option<String> {
+    match expression {
+        Expression::Identifier(span) => Some(source.slice(*span).to_owned()),
+        _ => None,
     }
 }
 
@@ -11359,6 +11938,9 @@ fn apply_negate(
         | Value::Version(_)
         | Value::NativeSerializer(_)
         | Value::SerializationStream(_)
+        | Value::TaskType(_)
+        | Value::TaskDefinition(_)
+        | Value::TaskInstance(_)
         | Value::Type(_)
         | Value::Effects(_)
         | Value::IntRange { .. }
@@ -11816,6 +12398,33 @@ mod tests {
         )
         .unwrap();
         assert_eq!(value, Value::Int(BigInt::from(43)));
+    }
+
+    #[test]
+    fn constructs_tasks_and_routes_stateful_message_transactions() {
+        let source = "Counter is Task (queue-size is 10, identity is counter)\
+\ncounter-service is Counter\
+\n  count : Nat\
+\n  start is fn ( initial : Nat ) -> Completed\
+\n    @ count is initial\
+\n    Completed\
+\n  increment is fn ( _ : MessageContext, amount : Nat ) -> Unit\
+\n    @ count is @ count + amount\
+\n  current is fn ( _ : MessageContext, _ : Unit ) -> Result ( Nat, () )\
+\n    @ count\
+\ncounter is counter-service 40\
+\ncounter increment 2\
+\ncounter current ()\n";
+        let mut trace = Vec::new();
+        let value = Session::new().evaluate(source, &mut trace).unwrap();
+        assert_eq!(value, Value::Int(BigInt::from(42)));
+        assert!(trace.iter().any(|event| event.contains("message.sent")));
+        assert!(trace.iter().any(|event| event.contains("message.received")));
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("task.state.replaced"))
+        );
     }
 
     #[test]
