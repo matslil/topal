@@ -79,10 +79,10 @@ pub enum Value {
         step: Box<Self>,
     },
     SuspendedGenerator {
-        source: SourceText,
-        body: Vec<Statement>,
+        source: Box<SourceText>,
+        body: Box<Vec<Statement>>,
         cursor: usize,
-        bindings: BTreeMap<String, Self>,
+        bindings: Box<BTreeMap<String, Self>>,
         scope_state: Box<GeneratorScopeState>,
         pending_yield: Option<Box<Self>>,
         resume_binding: Option<String>,
@@ -444,8 +444,8 @@ impl Diagnostic {
 #[allow(clippy::box_collection)] // Keep recursive evaluator state below the tested stack-frame ceiling.
 pub struct Session {
     bindings: BTreeMap<String, Value>,
-    functions: BTreeMap<String, Vec<UserFunction>>,
-    generators: BTreeMap<String, Vec<UserGenerator>>,
+    functions: Box<BTreeMap<String, Vec<UserFunction>>>,
+    generators: Box<BTreeMap<String, Vec<UserGenerator>>>,
     declared_names: BTreeSet<String>,
     published_names: BTreeSet<String>,
     language_version: LanguageVersion,
@@ -801,8 +801,8 @@ impl Session {
     ) -> Result<Value, Diagnostic> {
         let mut session = Self {
             bindings: bindings.clone(),
-            functions: BTreeMap::new(),
-            generators: BTreeMap::new(),
+            functions: Box::new(BTreeMap::new()),
+            generators: Box::new(BTreeMap::new()),
             declared_names: bindings.keys().cloned().collect(),
             published_names: BTreeSet::new(),
             language_version: LanguageVersion::DESIGN_0,
@@ -1848,12 +1848,12 @@ impl Session {
                     )?;
                     let origin = format!("root.{name}");
                     let value = Value::SuspendedGenerator {
-                        source: generator.source,
-                        body: generator.body,
+                        source: Box::new(generator.source),
+                        body: Box::new(generator.body),
                         cursor,
-                        bindings: generator_scope.bindings,
+                        bindings: Box::new(generator_scope.bindings),
                         scope_state: Box::new(GeneratorScopeState {
-                            functions: generator_scope.functions,
+                            functions: *generator_scope.functions,
                             declared_names: generator_scope.declared_names,
                             local_function_names: generator_scope.local_function_names,
                             enum_types: generator_scope.enum_types,
@@ -1932,7 +1932,7 @@ impl Session {
                     {
                         return Err(diagnostic(
                             source,
-                            "E-RECURSION-NOT-YET-PROVEN",
+                            "E-UNPROVEN-RECURSION",
                             *name_span,
                             format!(
                                 "recursive cycle returning to `{name}` requires termination proof on every call edge"
@@ -2674,9 +2674,9 @@ impl Session {
         if labeled != 0 && labeled != fields.len() {
             return Err(diagnostic(
                 source,
-                "E-UNSUPPORTED-MIXED-PRODUCT",
+                "E-MIXED-PRODUCT-FIELDS",
                 span,
-                "mixed positional and labeled product fields are not yet implemented",
+                "a product cannot mix positional and labeled fields",
             ));
         }
         if labeled == 0 {
@@ -2813,8 +2813,8 @@ impl Session {
             return Ok(Value::Namespace(Box::new(NamespaceValue {
                 name: "root".into(),
                 bindings: self.bindings.clone(),
-                functions: self.functions.clone(),
-                generators: self.generators.clone(),
+                functions: (*self.functions).clone(),
+                generators: (*self.generators).clone(),
             })));
         }
         if name == "Completed" {
@@ -3061,8 +3061,8 @@ impl Session {
         });
         let mut qualified = self.clone();
         qualified.bindings = namespace.bindings.clone();
-        qualified.functions = namespace.functions.clone();
-        qualified.generators = namespace.generators.clone();
+        *qualified.functions = namespace.functions.clone();
+        *qualified.generators = namespace.generators.clone();
         if remainder.is_empty() {
             return qualified.resolve_identifier(source, *member, trace);
         }
@@ -4380,9 +4380,9 @@ impl Session {
         }
         Err(diagnostic(
             source,
-            "E-UNSUPPORTED-COLLECTION-APPLICATION",
+            "E-COLLECTION-APPLICATION",
             span,
-            "unsupported collection materialization form",
+            "collection materialization does not match a declared operation form",
         ))
     }
 
@@ -4902,7 +4902,7 @@ impl Execution {
                 });
                 let mut scope = session.clone();
                 scope.bindings = std::mem::take(bindings);
-                scope.functions = std::mem::take(&mut scope_state.functions);
+                scope.functions = Box::new(std::mem::take(&mut scope_state.functions));
                 scope.declared_names = std::mem::take(&mut scope_state.declared_names);
                 scope.local_function_names = std::mem::take(&mut scope_state.local_function_names);
                 scope.enum_types = std::mem::take(&mut scope_state.enum_types);
@@ -4929,8 +4929,8 @@ impl Execution {
                     origin.rsplit('.').next().unwrap_or(&origin),
                     trace,
                 )?;
-                *bindings = scope.bindings;
-                scope_state.functions = scope.functions;
+                **bindings = scope.bindings;
+                scope_state.functions = *scope.functions;
                 scope_state.declared_names = scope.declared_names;
                 scope_state.local_function_names = scope.local_function_names;
                 scope_state.enum_types = scope.enum_types;
@@ -6405,8 +6405,8 @@ fn close_remaining_character_generators(
                 .map_or(Span::new(0, 0), statement_span);
             let position = source.position(yield_span.start);
             let mut scope = session.clone();
-            scope.bindings = bindings;
-            scope.functions = scope_state.functions;
+            scope.bindings = *bindings;
+            *scope.functions = scope_state.functions;
             scope.declared_names = scope_state.declared_names;
             scope.local_function_names = scope_state.local_function_names;
             scope.enum_types = scope_state.enum_types;
@@ -11534,7 +11534,7 @@ fn proves_unit_step_nat_recursion_without_overshoot() {
             &mut std::io::sink(),
         )
         .unwrap_err();
-    assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+    assert_eq!(error.code, "E-UNPROVEN-RECURSION");
 }
 
 #[test]
@@ -11553,7 +11553,7 @@ fn proves_nat_decrement_when_the_bound_prevents_overshoot() {
             &mut std::io::sink(),
         )
         .unwrap_err();
-    assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+    assert_eq!(error.code, "E-UNPROVEN-RECURSION");
 }
 
 #[test]
@@ -11728,7 +11728,7 @@ fn nested_function_calls_preserve_staticness_and_detect_cycles() {
             &mut std::io::sink(),
         )
         .unwrap_err();
-    assert_eq!(recursion.code, "E-RECURSION-NOT-YET-PROVEN");
+    assert_eq!(recursion.code, "E-UNPROVEN-RECURSION");
 }
 
 #[test]
@@ -11864,7 +11864,7 @@ fn mutual_int_recursion_executes_only_when_every_cycle_edge_decreases() {
             &mut std::io::sink(),
         )
         .unwrap_err();
-    assert_eq!(invalid.code, "E-RECURSION-NOT-YET-PROVEN");
+    assert_eq!(invalid.code, "E-UNPROVEN-RECURSION");
 }
 
 #[test]
@@ -11884,7 +11884,7 @@ fn mutual_increasing_int_recursion_requires_one_direction_for_the_complete_cycle
             &mut std::io::sink(),
         )
         .unwrap_err();
-    assert_eq!(mixed.code, "E-RECURSION-NOT-YET-PROVEN");
+    assert_eq!(mixed.code, "E-UNPROVEN-RECURSION");
 }
 
 #[test]
@@ -11933,7 +11933,7 @@ fn bounded_int_recursion_accepts_only_positive_literal_progress() {
         let error = Session::new()
             .evaluate(&source, &mut std::io::sink())
             .unwrap_err();
-        assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+        assert_eq!(error.code, "E-UNPROVEN-RECURSION");
     }
 }
 
@@ -11961,7 +11961,7 @@ fn every_recursive_call_in_one_action_must_progress() {
             &mut std::io::sink(),
         )
         .unwrap_err();
-    assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+    assert_eq!(error.code, "E-UNPROVEN-RECURSION");
 }
 
 #[test]
@@ -11988,7 +11988,7 @@ fn every_call_on_one_mutual_edge_must_share_target_and_progress() {
             &mut std::io::sink(),
         )
         .unwrap_err();
-    assert_eq!(error.code, "E-RECURSION-NOT-YET-PROVEN");
+    assert_eq!(error.code, "E-UNPROVEN-RECURSION");
 
     let different_target = Session::new()
         .evaluate(
@@ -11996,7 +11996,7 @@ fn every_call_on_one_mutual_edge_must_share_target_and_progress() {
             &mut std::io::sink(),
         )
         .unwrap_err();
-    assert_eq!(different_target.code, "E-RECURSION-NOT-YET-PROVEN");
+    assert_eq!(different_target.code, "E-UNPROVEN-RECURSION");
 }
 
 #[test]
@@ -12044,7 +12044,7 @@ fn decreasing_int_recursion_executes_only_after_structural_proof() {
             &mut std::io::sink(),
         )
         .unwrap_err();
-    assert_eq!(unproven.code, "E-RECURSION-NOT-YET-PROVEN");
+    assert_eq!(unproven.code, "E-UNPROVEN-RECURSION");
 }
 
 #[test]
@@ -14110,7 +14110,7 @@ fn loaded_modules_expose_only_published_members() {
     session
         .load_module(
             "math",
-            "private-value is 40\npub answer is private-value + 2\n",
+            "use language (\n  version is v0.1\n)\nprivate-value is 40\npub answer is private-value + 2\n",
             &mut Vec::new(),
         )
         .unwrap();

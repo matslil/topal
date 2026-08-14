@@ -20,9 +20,10 @@ of one coherent model. Its goals include:
 - language semantics precise enough to support independent, interoperable
   tools.
 
-Topal is currently an experimental language project. It provides an early
-interpreter for a deliberately small subset, but no compiler or stable language
-release.
+Topal remains an experimental language project with no compiler or stable
+public release. Its `v0.1` (`design-0`) core is supported as the repository's
+standard-library development and interoperability baseline; see the
+[bootstrap contract](se/standard-library-bootstrap.md).
 
 ## Repository layout
 

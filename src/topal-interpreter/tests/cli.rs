@@ -1006,7 +1006,7 @@ fn every_mode_executes_proven_nat_recursion() {
     assert!(
         String::from_utf8(output.stderr)
             .unwrap()
-            .contains("E-RECURSION-NOT-YET-PROVEN")
+            .contains("E-UNPROVEN-RECURSION")
     );
 }
 
@@ -1028,7 +1028,7 @@ fn nat_recursion_accepts_only_bound_preserving_decrements() {
     assert!(
         String::from_utf8(output.stderr)
             .unwrap()
-            .contains("E-RECURSION-NOT-YET-PROVEN")
+            .contains("E-UNPROVEN-RECURSION")
     );
 }
 
@@ -1446,7 +1446,7 @@ fn every_mode_distinguishes_overloads_from_recursion() {
     let string = trace.find("describe (String)").unwrap();
     let integer = trace.find("describe (Int)").unwrap();
     assert!(string < integer);
-    assert!(!trace.contains("E-RECURSION-NOT-YET-PROVEN"));
+    assert!(!trace.contains("E-UNPROVEN-RECURSION"));
 }
 
 #[test]

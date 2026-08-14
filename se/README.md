@@ -14,6 +14,7 @@ formal specification.
 - [Toolchain architecture](toolchain-architecture.md)
 - [Traceability](traceability.md)
 - [Core-language completion plan](core-language-completion-plan.md)
+- [Standard-library bootstrap contract](standard-library-bootstrap.md)
 
 Stable IDs are permanent references. Retired statements keep their IDs and are
 marked retired rather than being silently reused.

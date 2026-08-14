@@ -18,6 +18,7 @@ pub struct Header {
     pub language_identity: String,
     pub language_version: LanguageVersion,
     pub byte_order: StreamByteOrder,
+    pub streaming: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -52,6 +53,11 @@ pub enum TypeDefinition {
         identity: String,
         element: usize,
     },
+    ObjectDescription {
+        identity: String,
+        kind: u8,
+        schema_payload: Vec<u8>,
+    },
 }
 
 impl TypeDefinition {
@@ -64,7 +70,8 @@ impl TypeDefinition {
             | Self::Tuple { identity, .. }
             | Self::Record { identity, .. }
             | Self::Variant { identity, .. }
-            | Self::Sequence { identity, .. } => identity,
+            | Self::Sequence { identity, .. }
+            | Self::ObjectDescription { identity, .. } => identity,
         }
     }
 }
@@ -81,6 +88,7 @@ pub enum SerializedValue {
         value: Box<Self>,
     },
     Sequence(Vec<Self>),
+    ObjectDescription(Vec<u8>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -167,7 +175,14 @@ pub fn serialize(stream: &Stream) -> Result<Vec<u8>, ProtocolError> {
     });
     put_uvarint(0, &mut output);
     put_uvarint(stream.types.len() as u64, &mut output);
-    put_uvarint(stream.events.len() as u64, &mut output);
+    put_uvarint(
+        if stream.header.streaming {
+            u64::MAX
+        } else {
+            stream.events.len() as u64
+        },
+        &mut output,
+    );
     for definition in &stream.types {
         encode_type(definition, &mut output)?;
     }
@@ -192,6 +207,9 @@ pub fn serialize(stream: &Stream) -> Result<Vec<u8>, ProtocolError> {
         put_uvarint(frame.len() as u64, &mut output);
         output.extend(frame);
     }
+    if stream.header.streaming {
+        output.push(0);
+    }
     Ok(output)
 }
 
@@ -201,6 +219,7 @@ pub fn serialize(stream: &Stream) -> Result<Vec<u8>, ProtocolError> {
 ///
 /// Returns a deterministic stage, byte offset, and error category before
 /// exposing an invalid event or exceeding a configured resource limit.
+#[allow(clippy::too_many_lines)] // The protocol stages remain in normative wire order.
 pub fn deserialize(bytes: &[u8], limits: Limits) -> Result<Stream, ProtocolError> {
     let mut reader = Reader { bytes, offset: 0 };
     if reader.take(8, "header")? != MAGIC {
@@ -238,14 +257,48 @@ pub fn deserialize(bytes: &[u8], limits: Limits) -> Result<Stream, ProtocolError
         return Err(reader.failure(ErrorKind::Unsupported, "header", "unknown header flags"));
     }
     let type_count = reader.count("header", limits.types)?;
-    let event_count = reader.count("header", limits.events)?;
+    let declared_events = reader.uvarint("header")?;
+    let streaming = declared_events == u64::MAX;
+    let event_count = if streaming {
+        0
+    } else {
+        usize::try_from(declared_events).map_err(|_| {
+            reader.failure(
+                ErrorKind::ResourceLimit,
+                "header",
+                "event count exceeds host limits",
+            )
+        })?
+    };
+    if !streaming && event_count > limits.events {
+        return Err(reader.failure(
+            ErrorKind::ResourceLimit,
+            "header",
+            "declared event count exceeds configured limit",
+        ));
+    }
     let mut types = Vec::with_capacity(type_count);
     for _ in 0..type_count {
         types.push(reader.type_definition(&types, limits.text_bytes)?);
     }
     validate_types(&types, reader.offset)?;
     let mut events = Vec::with_capacity(event_count);
-    for _ in 0..event_count {
+    loop {
+        if (!streaming && events.len() == event_count)
+            || (streaming && reader.bytes.get(reader.offset) == Some(&0))
+        {
+            if streaming {
+                reader.offset += 1;
+            }
+            break;
+        }
+        if events.len() >= limits.events {
+            return Err(reader.failure(
+                ErrorKind::ResourceLimit,
+                "event",
+                "event count exceeds configured limit",
+            ));
+        }
         let frame_length = reader.count("event", limits.frame_bytes)?;
         let frame_offset = reader.offset;
         let frame = reader.take(frame_length, "event")?;
@@ -281,6 +334,7 @@ pub fn deserialize(bytes: &[u8], limits: Limits) -> Result<Stream, ProtocolError
             language_identity,
             language_version,
             byte_order,
+            streaming,
         },
         types,
         events,
@@ -329,6 +383,22 @@ fn encode_type(definition: &TypeDefinition, output: &mut Vec<u8>) -> Result<(), 
             put_uvarint(*element as u64, &mut payload);
             10
         }
+        TypeDefinition::ObjectDescription {
+            kind,
+            schema_payload,
+            ..
+        } => {
+            if *kind > 16 || matches!(*kind, 0 | 1 | 2 | 4 | 6 | 7 | 8 | 10) {
+                return Err(error(
+                    ErrorKind::Malformed,
+                    "type table",
+                    output.len(),
+                    "invalid described type kind",
+                ));
+            }
+            payload.extend(schema_payload);
+            *kind
+        }
     };
     output.push(kind);
     put_uvarint(payload.len() as u64, output);
@@ -336,6 +406,7 @@ fn encode_type(definition: &TypeDefinition, output: &mut Vec<u8>) -> Result<(), 
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)] // Every protocol value kind remains visibly exhaustive.
 fn encode_value(
     value: &SerializedValue,
     definition: &TypeDefinition,
@@ -433,6 +504,10 @@ fn encode_value(
             }
             Ok(())
         }
+        (SerializedValue::ObjectDescription(bytes), TypeDefinition::ObjectDescription { .. }) => {
+            output.extend(bytes);
+            Ok(())
+        }
         _ => Err(error(
             ErrorKind::Malformed,
             "value",
@@ -508,6 +583,11 @@ fn validate_types(types: &[TypeDefinition], offset: usize) -> Result<(), Protoco
             TypeDefinition::Variant { alternatives, .. } => {
                 validate_labels(alternatives.iter().map(|(label, _)| label), offset)?;
             }
+            TypeDefinition::ObjectDescription {
+                kind,
+                schema_payload,
+                ..
+            } => validate_described_schema(*kind, schema_payload, index, usize::MAX, offset)?,
             _ => {}
         }
     }
@@ -615,6 +695,7 @@ impl<'a> Reader<'a> {
         Ok(text.to_owned())
     }
 
+    #[allow(clippy::too_many_lines)] // Kind decoding follows the stable numeric registry.
     fn type_definition(
         &mut self,
         previous: &[TypeDefinition],
@@ -700,12 +781,27 @@ impl<'a> Reader<'a> {
                 identity,
                 element: reader.count("type table", previous.len().saturating_sub(1))?,
             },
+            3 | 5 | 9 | 11..=16 => {
+                validate_described_schema(
+                    kind,
+                    payload,
+                    previous.len(),
+                    text_limit,
+                    payload_offset,
+                )?;
+                reader.offset = payload.len();
+                TypeDefinition::ObjectDescription {
+                    identity,
+                    kind,
+                    schema_payload: payload.to_vec(),
+                }
+            }
             _ => {
                 return Err(error(
-                    ErrorKind::Unsupported,
+                    ErrorKind::Malformed,
                     "type table",
                     payload_offset,
-                    "unsupported type kind",
+                    "unknown protocol 1.0 type kind",
                 ));
             }
         };
@@ -808,6 +904,11 @@ impl<'a> Reader<'a> {
                 }
                 Ok(SerializedValue::Sequence(values))
             }
+            TypeDefinition::ObjectDescription { .. } => {
+                let remaining = self.bytes[self.offset..].to_vec();
+                self.offset = self.bytes.len();
+                Ok(SerializedValue::ObjectDescription(remaining))
+            }
         }
     }
 
@@ -831,6 +932,72 @@ impl<'a> Reader<'a> {
     ) -> ProtocolError {
         error(kind, stage, self.offset, message)
     }
+}
+
+fn validate_described_schema(
+    kind: u8,
+    payload: &[u8],
+    prior: usize,
+    text_limit: usize,
+    offset: usize,
+) -> Result<(), ProtocolError> {
+    let mut reader = Reader {
+        bytes: payload,
+        offset: 0,
+    };
+    match kind {
+        3 => {
+            described_id(&mut reader, prior)?;
+            described_id(&mut reader, prior)?;
+        }
+        5 => {}
+        9 => {
+            let count = reader.count("type table", payload.len())?;
+            for _ in 0..count {
+                described_id(&mut reader, prior)?;
+            }
+        }
+        11 | 13 => {
+            described_id(&mut reader, prior)?;
+            reader.text("type table", text_limit)?;
+        }
+        12 => {
+            described_id(&mut reader, prior)?;
+            described_id(&mut reader, prior)?;
+            reader.text("type table", text_limit)?;
+        }
+        14 => {
+            described_id(&mut reader, prior)?;
+        }
+        15 => {
+            reader.text("type table", text_limit)?;
+            described_id(&mut reader, prior)?;
+        }
+        16 => {
+            reader.text("type table", text_limit)?;
+        }
+        _ => {
+            return Err(error(
+                ErrorKind::Malformed,
+                "type table",
+                offset,
+                "unknown described schema kind",
+            ));
+        }
+    }
+    if reader.offset != payload.len() {
+        return Err(error(
+            ErrorKind::Malformed,
+            "type table",
+            offset + reader.offset,
+            "described schema has trailing bytes",
+        ));
+    }
+    Ok(())
+}
+
+fn described_id(reader: &mut Reader<'_>, prior: usize) -> Result<usize, ProtocolError> {
+    reader.count("type table", prior.saturating_sub(1))
 }
 
 fn put_ids(ids: &[usize], output: &mut Vec<u8>) {
@@ -892,6 +1059,7 @@ mod tests {
                 language_identity: "topal".into(),
                 language_version: LanguageVersion::DESIGN_0,
                 byte_order: StreamByteOrder::Little,
+                streaming: false,
             },
             types: vec![
                 TypeDefinition::Boolean {
@@ -1023,6 +1191,58 @@ mod tests {
         assert_eq!(
             serialize(&overflowing).unwrap_err().message,
             "integer is outside its declared width"
+        );
+    }
+
+    #[test]
+    fn every_protocol_kind_is_preserved_as_a_safe_description() {
+        for kind in [3, 5, 9, 11, 12, 13, 14, 15, 16] {
+            let schema_payload = match kind {
+                3 => vec![0, 0],
+                5 => vec![],
+                9 => vec![1, 0],
+                11 => vec![0, 5, b'o', b'r', b'd', b'e', b'r'],
+                12 => vec![0, 0, 5, b'o', b'r', b'd', b'e', b'r'],
+                13 => vec![0, 4, b'p', b'r', b'e', b'd'],
+                14 => vec![0],
+                15 => vec![4, b'k', b'i', b'n', b'd', 0],
+                16 => vec![4, b's', b'e', b'l', b'f'],
+                _ => unreachable!(),
+            };
+            let stream = Stream {
+                header: sample().header,
+                types: vec![
+                    TypeDefinition::Unit {
+                        identity: "Unit".into(),
+                    },
+                    TypeDefinition::ObjectDescription {
+                        identity: format!("kind-{kind}"),
+                        kind,
+                        schema_payload,
+                    },
+                ],
+                events: vec![Event {
+                    type_id: 1,
+                    value: SerializedValue::ObjectDescription(vec![1, 2, 3]),
+                }],
+            };
+            let bytes = serialize(&stream).unwrap();
+            assert_eq!(deserialize(&bytes, Limits::default()).unwrap(), stream);
+        }
+    }
+
+    #[test]
+    fn unknown_count_streams_end_only_at_the_zero_frame_terminator() {
+        let mut stream = sample();
+        stream.header.streaming = true;
+        let bytes = serialize(&stream).unwrap();
+        assert_eq!(bytes.last(), Some(&0));
+        assert_eq!(deserialize(&bytes, Limits::default()).unwrap(), stream);
+
+        let truncated = &bytes[..bytes.len() - 1];
+        assert_eq!(
+            deserialize(truncated, Limits::default()).unwrap_err().kind,
+            ErrorKind::Malformed
         );
     }
 }

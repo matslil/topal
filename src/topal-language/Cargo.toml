@@ -6,7 +6,6 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-topal-geir = { path = "../topal-geir" }
 num-bigint = "0.4"
 num-rational = "0.4"
 topal-source = { path = "../topal-source" }

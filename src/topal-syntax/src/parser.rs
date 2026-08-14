@@ -263,7 +263,7 @@ pub fn parse(source: &SourceText, lexed: &Lexed) -> ParsedSource {
             .peek()
             .is_some_and(|token| token.kind != TokenKind::Newline)
         {
-            parser.error_current("E-UNSUPPORTED-SYNTAX", "unsupported token after expression");
+            parser.error_current("E-UNEXPECTED-TOKEN", "unexpected token after expression");
             parser.skip_to_newline();
         }
     }
@@ -1885,8 +1885,8 @@ impl Parser<'_> {
                 .is_some_and(|token| token.kind != TokenKind::Newline)
             {
                 block_parser.error_current(
-                    "E-UNSUPPORTED-SYNTAX",
-                    "unsupported token after block statement",
+                    "E-UNEXPECTED-TOKEN",
+                    "unexpected token after block statement",
                 );
                 block_parser.skip_to_newline();
             }
@@ -3039,7 +3039,7 @@ mod tests {
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
         assert!(matches!(
-            parsed.statements[0],
+            parsed.statements[1],
             Statement::DiagnosticControl {
                 operation: DiagnosticControlKind::DisableNext,
                 ..

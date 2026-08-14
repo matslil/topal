@@ -174,6 +174,59 @@ pub struct CapabilityEvidence {
     pub roles: BTreeMap<String, DeclarationIdentity>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EvidenceTrust {
+    Verified,
+    TrustedUnverified,
+    Refuted,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SafetyObligation {
+    OrdinaryLaw,
+    MemorySafety,
+    Totality,
+    RaceFreedom,
+    DeadlockFreedom,
+}
+
+/// Validate whether capability evidence may discharge an obligation.
+///
+/// # Errors
+///
+/// Refuted evidence never applies; safety-critical obligations require proof.
+pub const fn admit_evidence(
+    trust: EvidenceTrust,
+    obligation: SafetyObligation,
+) -> Result<(), &'static str> {
+    match (trust, obligation) {
+        (EvidenceTrust::Refuted, _) => Err("refuted capability evidence cannot be admitted"),
+        (EvidenceTrust::Verified, _)
+        | (EvidenceTrust::TrustedUnverified, SafetyObligation::OrdinaryLaw) => Ok(()),
+        (EvidenceTrust::TrustedUnverified, _) => {
+            Err("safety-critical capability evidence must be verified")
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExistentialPackage<W, V> {
+    witness: W,
+    value: V,
+}
+
+impl<W, V> ExistentialPackage<W, V> {
+    #[must_use]
+    pub const fn pack(witness: W, value: V) -> Self {
+        Self { witness, value }
+    }
+
+    /// Eliminate the package without exposing an independently owned witness.
+    pub fn eliminate<R>(&self, use_package: impl FnOnce(&W, &V) -> R) -> R {
+        use_package(&self.witness, &self.value)
+    }
+}
+
 /// A coherence-checked collection of capability proofs.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct CapabilitySet(BTreeMap<(QualifiedName, TypeIdentity), CapabilityEvidence>);
@@ -402,6 +455,87 @@ impl MemoryEvent {
 pub struct MemoryExecution {
     events: Vec<MemoryEvent>,
     order: BTreeSet<(usize, usize)>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerSynchronization {
+    Atomic,
+    Lock,
+    Transaction,
+    MessageQueue,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SynchronizationRefinement {
+    pub strategy: CompilerSynchronization,
+    pub source_visible: bool,
+    pub preserves_happens_before: bool,
+    pub preserves_coherence: bool,
+}
+
+impl SynchronizationRefinement {
+    /// Validate compiler-introduced synchronization against design-0.
+    ///
+    /// # Errors
+    ///
+    /// Rejects source-visible or memory-order-weakening synchronization.
+    pub const fn validate(&self) -> Result<(), &'static str> {
+        if self.source_visible {
+            return Err("compiler synchronization cannot be a design-0 source value");
+        }
+        if !self.preserves_happens_before || !self.preserves_coherence {
+            return Err("compiler synchronization does not refine the memory model");
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HardwareAccessPolicy {
+    pub volatile: bool,
+    pub widths: BTreeSet<u128>,
+    pub ordering: QualifiedName,
+}
+
+impl HardwareAccessPolicy {
+    /// Validate an explicit hardware access capability.
+    ///
+    /// # Errors
+    ///
+    /// Rejects capabilities without an access width or named ordering.
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.widths.is_empty() || self.widths.contains(&0) {
+            return Err("hardware access capability has no valid width");
+        }
+        if self.ordering.0.is_empty() {
+            return Err("hardware access capability has no ordering identity");
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ObservableMemoryOutcome {
+    Value(String),
+    Error(String),
+    ProtocolTransition(String),
+    Effect(String),
+}
+
+/// Check the observable proof obligation for a compiler transformation.
+///
+/// # Errors
+///
+/// Rejects any introduced, removed, or reordered observation.
+pub fn validate_optimization(
+    source: &[ObservableMemoryOutcome],
+    transformed: &[ObservableMemoryOutcome],
+) -> Result<(), &'static str> {
+    if source == transformed {
+        Ok(())
+    } else {
+        Err("optimization changes an observable memory outcome")
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -1390,6 +1524,31 @@ impl MemoryExecution {
         }
         Ok(())
     }
+
+    /// Select a deterministic coherence order consistent with happens-before.
+    ///
+    /// # Errors
+    ///
+    /// Rejects executions containing a race before selecting an order.
+    pub fn coherence_order(&self) -> Result<Vec<usize>, &'static str> {
+        self.validate_race_free()?;
+        let mut remaining = (0..self.events.len()).collect::<BTreeSet<_>>();
+        let mut result = Vec::with_capacity(remaining.len());
+        while !remaining.is_empty() {
+            let next = remaining
+                .iter()
+                .copied()
+                .find(|candidate| {
+                    !remaining
+                        .iter()
+                        .any(|prior| prior != candidate && self.happens_before(*prior, *candidate))
+                })
+                .ok_or("happens-before relation is cyclic")?;
+            remaining.remove(&next);
+            result.push(next);
+        }
+        Ok(result)
+    }
 }
 
 impl ResourceTracker {
@@ -1981,5 +2140,56 @@ mod tests {
             Ok(LayoutValue::Text("å".into()))
         );
         assert!(text.read(&[2, 0xff, 0xff], read_write).is_err());
+    }
+
+    #[test]
+    fn compiler_memory_choices_refine_unobservable_semantics() {
+        let refinement = SynchronizationRefinement {
+            strategy: CompilerSynchronization::MessageQueue,
+            source_visible: false,
+            preserves_happens_before: true,
+            preserves_coherence: true,
+        };
+        assert_eq!(refinement.validate(), Ok(()));
+        assert!(
+            SynchronizationRefinement {
+                source_visible: true,
+                ..refinement
+            }
+            .validate()
+            .is_err()
+        );
+
+        let policy = HardwareAccessPolicy {
+            volatile: true,
+            widths: BTreeSet::from([8, 16]),
+            ordering: QualifiedName(vec!["device".into(), "ordered".into()]),
+        };
+        assert_eq!(policy.validate(), Ok(()));
+        let observations = vec![ObservableMemoryOutcome::Effect("write device".into())];
+        assert_eq!(validate_optimization(&observations, &observations), Ok(()));
+        assert!(validate_optimization(&observations, &[]).is_err());
+    }
+
+    #[test]
+    fn capability_trust_and_existential_elimination_preserve_evidence() {
+        assert_eq!(
+            admit_evidence(EvidenceTrust::Verified, SafetyObligation::RaceFreedom),
+            Ok(())
+        );
+        assert!(
+            admit_evidence(
+                EvidenceTrust::TrustedUnverified,
+                SafetyObligation::MemorySafety
+            )
+            .is_err()
+        );
+        assert!(admit_evidence(EvidenceTrust::Refuted, SafetyObligation::OrdinaryLaw).is_err());
+
+        let package = ExistentialPackage::pack("private witness", 42);
+        assert_eq!(
+            package.eliminate(|witness, value| (witness.len(), *value)),
+            (15, 42)
+        );
     }
 }
