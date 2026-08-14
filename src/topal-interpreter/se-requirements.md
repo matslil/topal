@@ -1877,3 +1877,10 @@ decision.
 Typed function and generator inputs shall accept `_` under
 `TOPAL-TYPE-MATCH-001`, validate the corresponding argument classifier, and
 introduce no binding. Traces shall distinguish discarding from binding.
+
+## TOPAL-INTP-SUBSET-243 — Published root members
+
+A `pub` declaration shall execute with its ordinary declaration semantics and
+enter the current source module's published interface. Qualified lookup through
+the live `root` namespace shall resolve that member under
+`TOPAL-NAMESPACE-ROOT-001` without flattening it into another scope.

@@ -637,40 +637,7 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let value = match expression {
-            Expression::Block { statements, .. } => {
-                if statements.is_empty() {
-                    trace.record(TraceEvent {
-                        event: "block.empty.evaluated",
-                        rule: "TOPAL-SYN-GRAMMAR-001",
-                        detail: "Unit",
-                    });
-                    Ok(Value::Unit)
-                } else {
-                    let mut branch = self.clone();
-                    let mut execution = Execution {
-                        source: source.clone(),
-                        statements: statements.clone(),
-                        cursor: 0,
-                        return_classifier: None,
-                    };
-                    loop {
-                        match execution.step(&mut branch, trace)? {
-                            ExecutionStep::Complete(value) => {
-                                trace.record(TraceEvent {
-                                    event: "block.evaluated",
-                                    rule: "TOPAL-SYN-GRAMMAR-001",
-                                    detail: &structural_value_classifier(&value),
-                                });
-                                break Ok(value);
-                            }
-                            ExecutionStep::Advanced { .. } => {}
-                            ExecutionStep::Returned { .. } => unreachable!(
-                                "a standalone block rejects return without a function context"
-                            ),
-                        }
-                    }
-                }
-            }
+            Expression::Block { statements, .. } => self.evaluate_block(source, statements, trace),
             Expression::Boolean(span) => Ok(evaluate_boolean_literal(source, *span, trace)),
             Expression::Unit(_) => {
                 trace.record(TraceEvent {
@@ -2378,6 +2345,46 @@ impl Session {
         }?;
         self.checkpoint(trace, Some(&value), Some(expression.span()));
         Ok(value)
+    }
+
+    #[inline(never)]
+    fn evaluate_block(
+        &self,
+        source: &SourceText,
+        statements: &[Statement],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        if statements.is_empty() {
+            trace.record(TraceEvent {
+                event: "block.empty.evaluated",
+                rule: "TOPAL-SYN-GRAMMAR-001",
+                detail: "Unit",
+            });
+            return Ok(Value::Unit);
+        }
+        let mut branch = self.clone();
+        let mut execution = Execution {
+            source: source.clone(),
+            statements: statements.to_vec(),
+            cursor: 0,
+            return_classifier: None,
+        };
+        loop {
+            match execution.step(&mut branch, trace)? {
+                ExecutionStep::Complete(value) => {
+                    trace.record(TraceEvent {
+                        event: "block.evaluated",
+                        rule: "TOPAL-SYN-GRAMMAR-001",
+                        detail: &structural_value_classifier(&value),
+                    });
+                    return Ok(value);
+                }
+                ExecutionStep::Advanced { .. } => {}
+                ExecutionStep::Returned { .. } => {
+                    unreachable!("a standalone block rejects return without a function context")
+                }
+            }
+        }
     }
 
     fn evaluate_record(
@@ -4956,14 +4963,22 @@ impl Execution {
     ) -> Result<ExecutionStep, Diagnostic> {
         let statement = &self.statements[self.cursor];
         let (value, span) = match statement {
-            Statement::Published { span, .. } => {
-                return Err(diagnostic(
-                    &self.source,
-                    "E-UNSUPPORTED-PUBLICATION",
-                    *span,
-                    "published declarations require a loaded module context",
-                )
-                .with_help("execute this source as part of a module or remove `pub`"));
+            Statement::Published {
+                declaration, span, ..
+            } => {
+                trace.record(TraceEvent {
+                    event: "namespace.member.published",
+                    rule: "TOPAL-NAMESPACE-ROOT-001",
+                    detail: self.source.slice(*span),
+                });
+                match self.execute_published(session, trace, declaration)? {
+                    ExecutionStep::Complete(value) | ExecutionStep::Advanced { value, .. } => {
+                        (value, *span)
+                    }
+                    ExecutionStep::Returned { value, span } => {
+                        return Ok(ExecutionStep::Returned { value, span });
+                    }
+                }
             }
             Statement::DiagnosticControl { span, .. } => (Value::Unit, *span),
             Statement::Binding {
@@ -5126,6 +5141,22 @@ impl Execution {
             session.checkpoint(trace, Some(&value), Some(span));
             Ok(ExecutionStep::Advanced { value, span })
         }
+    }
+
+    #[inline(never)]
+    fn execute_published(
+        &self,
+        session: &mut Session,
+        trace: &mut impl TraceSink,
+        declaration: &Statement,
+    ) -> Result<ExecutionStep, Diagnostic> {
+        let mut published = Self {
+            source: self.source.clone(),
+            statements: vec![declaration.clone()],
+            cursor: 0,
+            return_classifier: self.return_classifier.clone(),
+        };
+        published.step(session, trace)
     }
 
     #[allow(clippy::too_many_lines)] // Declaration specializations remain ordered before ordinary projection.
