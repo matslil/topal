@@ -4,6 +4,10 @@ use crate::{Lexed, SyntaxDiagnostic, Token, TokenKind};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expression {
+    Block {
+        statements: Vec<Statement>,
+        span: Span,
+    },
     Unit(Span),
     Boolean(Span),
     Product {
@@ -67,6 +71,7 @@ impl Expression {
             | Self::Discard(span)
             | Self::Callable { span, .. }
             | Self::Product { span, .. }
+            | Self::Block { span, .. }
             | Self::DecisionTable { span, .. }
             | Self::AnonymousFunction { span, .. }
             | Self::Application { span, .. } => *span,
@@ -149,6 +154,15 @@ pub struct DecisionRule {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Statement {
+    Published {
+        declaration: Box<Self>,
+        span: Span,
+    },
+    DiagnosticControl {
+        operation: DiagnosticControlKind,
+        warning: Span,
+        span: Span,
+    },
     Binding {
         name: Span,
         classifier: Option<Span>,
@@ -194,6 +208,13 @@ pub enum Statement {
     Expression(Expression),
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DiagnosticControlKind {
+    DisableNext,
+    Push,
+    Pop,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ParsedSource {
     pub statements: Vec<Statement>,
@@ -222,6 +243,7 @@ pub fn parse(source: &SourceText, lexed: &Lexed) -> ParsedSource {
             parser.skip_to_newline();
         }
     }
+    validate_diagnostic_controls(source, &statements, &mut parser.diagnostics);
     ParsedSource {
         statements,
         diagnostics: parser.diagnostics,
@@ -244,9 +266,35 @@ impl Parser<'_> {
         self.ordinary_statement()
     }
 
+    #[allow(clippy::too_many_lines)] // Declaration forms retain localized diagnostics.
     fn ordinary_statement(&mut self) -> Option<Statement> {
         let checkpoint = self.cursor;
         let first = self.take_nontrivia()?;
+        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "pub" {
+            let declaration = self.ordinary_statement()?;
+            if !matches!(
+                declaration,
+                Statement::Binding { .. }
+                    | Statement::Function { .. }
+                    | Statement::Generator { .. }
+                    | Statement::Union { .. }
+            ) {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-PUBLICATION-TARGET",
+                    span: statement_span(&declaration),
+                    message: "`pub` requires a declaration".into(),
+                });
+                return None;
+            }
+            let span = Span::new(first.span.start, statement_span(&declaration).end);
+            return Some(Statement::Published {
+                declaration: Box::new(declaration),
+                span,
+            });
+        }
+        if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "lang" {
+            return self.diagnostic_control(first);
+        }
         if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "return" {
             let Some(value) = self.expression() else {
                 self.diagnostics.push(SyntaxDiagnostic {
@@ -344,6 +392,38 @@ impl Parser<'_> {
         }
         self.cursor = checkpoint;
         self.expression().map(Statement::Expression)
+    }
+
+    fn diagnostic_control(&mut self, lang: Token) -> Option<Statement> {
+        let operation = self.take_nontrivia()?;
+        let warning = self.take_nontrivia()?;
+        let kind = match self.source.slice(operation.span) {
+            "disable-warning" => DiagnosticControlKind::DisableNext,
+            "push-disable-warning" => DiagnosticControlKind::Push,
+            "pop-disable-warning" => DiagnosticControlKind::Pop,
+            _ => {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-DIAGNOSTIC-CONTROL",
+                    span: operation.span,
+                    message: "expected a diagnostic-control operation after `lang`".into(),
+                });
+                self.skip_to_newline();
+                return None;
+            }
+        };
+        if operation.kind != TokenKind::Identifier || warning.kind != TokenKind::Identifier {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-DIAGNOSTIC-CONTROL",
+                span: Span::new(lang.span.start, warning.span.end),
+                message: "expected `lang diagnostic-operation warning-name`".into(),
+            });
+            return None;
+        }
+        Some(Statement::DiagnosticControl {
+            operation: kind,
+            warning: warning.span,
+            span: Span::new(lang.span.start, warning.span.end),
+        })
     }
 
     fn foreach_separator_index(&self) -> Option<usize> {
@@ -1364,7 +1444,7 @@ impl Parser<'_> {
             let classifier_start = self.take_nontrivia()?;
             let classifier = self.classifier_from_first(classifier_start)?;
             let separator = self.take_nontrivia()?;
-            if input.kind != TokenKind::Identifier
+            if !matches!(input.kind, TokenKind::Identifier | TokenKind::Discard)
                 || colon.kind != TokenKind::Colon
                 || !matches!(
                     classifier_start.kind,
@@ -1376,7 +1456,7 @@ impl Parser<'_> {
                     code: "E-UNSUPPORTED-FUNCTION-HEADER",
                     span: Span::new(opening.span.start, separator.span.end),
                     message:
-                        "function parameters must have the form `name : Type`, separated by commas"
+                        "function parameters must have the form `pattern : Type`, separated by commas"
                             .into(),
                 });
                 self.skip_to_newline();
@@ -1494,7 +1574,7 @@ impl Parser<'_> {
                 self.delimiter_depth -= 1;
                 expression
             }
-            TokenKind::LeftBrace => self.anonymous_function(token),
+            TokenKind::LeftBrace => self.braced_expression(token),
             _ => {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-EXPECTED-EXPRESSION",
@@ -1505,6 +1585,90 @@ impl Parser<'_> {
                 None
             }
         }
+    }
+
+    fn braced_expression(&mut self, opening: Token) -> Option<Expression> {
+        let start = self.cursor;
+        let mut depth = 1_usize;
+        let mut closing_index = None;
+        for (offset, token) in self.tokens[start..].iter().enumerate() {
+            match token.kind {
+                TokenKind::LeftBrace => depth += 1,
+                TokenKind::RightBrace => {
+                    depth -= 1;
+                    if depth == 0 {
+                        closing_index = Some(start + offset);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let Some(closing_index) = closing_index else {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-RBRACE",
+                span: opening.span,
+                message: "expected a closing brace".into(),
+            });
+            return None;
+        };
+        if self.braces_introduce_anonymous_function(start, closing_index) {
+            return self.anonymous_function(opening);
+        }
+
+        let closing = self.tokens[closing_index];
+        let mut block_parser = Self {
+            source: self.source,
+            tokens: &self.tokens[start..closing_index],
+            cursor: 0,
+            delimiter_depth: 0,
+            diagnostics: Vec::new(),
+        };
+        let mut statements = Vec::new();
+        while block_parser.skip_separators() {
+            if let Some(statement) = block_parser.statement() {
+                statements.push(statement);
+            }
+            if block_parser
+                .peek()
+                .is_some_and(|token| token.kind != TokenKind::Newline)
+            {
+                block_parser.error_current(
+                    "E-UNSUPPORTED-SYNTAX",
+                    "unsupported token after block statement",
+                );
+                block_parser.skip_to_newline();
+            }
+        }
+        validate_diagnostic_controls(self.source, &statements, &mut block_parser.diagnostics);
+        self.diagnostics.extend(block_parser.diagnostics);
+        self.cursor = closing_index + 1;
+        Some(Expression::Block {
+            statements,
+            span: Span::new(opening.span.start, closing.span.end),
+        })
+    }
+
+    fn braces_introduce_anonymous_function(&self, start: usize, closing: usize) -> bool {
+        let content = self.tokens[start..closing]
+            .iter()
+            .filter(|token| !token.kind.is_trivia())
+            .collect::<Vec<_>>();
+        let parameters = !content.is_empty()
+            && content.iter().enumerate().all(|(index, token)| {
+                if index % 2 == 0 {
+                    token.kind == TokenKind::Identifier
+                } else {
+                    token.kind == TokenKind::Comma
+                }
+            });
+        if !parameters {
+            return false;
+        }
+        self.tokens[closing + 1..]
+            .iter()
+            .take_while(|token| token.kind != TokenKind::Newline)
+            .any(|token| !token.kind.is_trivia())
     }
 
     fn anonymous_function(&mut self, opening: Token) -> Option<Expression> {
@@ -1733,13 +1897,92 @@ impl Parser<'_> {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => Span::new(name.start, value.span().end),
-        Statement::Function { span, .. }
+        Statement::Published { span, .. }
+        | Statement::DiagnosticControl { span, .. }
+        | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
         | Statement::Foreach { span, .. }
         | Statement::Discard { span, .. } => *span,
         Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
         Statement::Expression(expression) => expression.span(),
+    }
+}
+
+fn validate_diagnostic_controls(
+    source: &SourceText,
+    statements: &[Statement],
+    diagnostics: &mut Vec<SyntaxDiagnostic>,
+) {
+    let mut stack = Vec::<Span>::new();
+    let mut pending = None;
+    for statement in statements {
+        match statement {
+            Statement::Published { declaration, .. } => {
+                pending = None;
+                validate_diagnostic_controls(
+                    source,
+                    std::slice::from_ref(declaration.as_ref()),
+                    diagnostics,
+                );
+            }
+            Statement::DiagnosticControl {
+                operation,
+                warning,
+                span,
+            } => match operation {
+                DiagnosticControlKind::DisableNext => pending = Some((*warning, *span)),
+                DiagnosticControlKind::Push => stack.push(*warning),
+                DiagnosticControlKind::Pop => match stack.last().copied() {
+                    None => diagnostics.push(SyntaxDiagnostic {
+                        code: "E-DIAGNOSTIC-CONTROL-UNDERFLOW",
+                        span: *span,
+                        message: "cannot pop an empty warning-suppression stack".into(),
+                    }),
+                    Some(active) if source.slice(active) != source.slice(*warning) => {
+                        diagnostics.push(SyntaxDiagnostic {
+                            code: "E-DIAGNOSTIC-CONTROL-MISMATCH",
+                            span: *warning,
+                            message: format!(
+                                "cannot pop warning `{}` while `{}` is active",
+                                source.slice(*warning),
+                                source.slice(active)
+                            ),
+                        });
+                    }
+                    Some(_) => {
+                        stack.pop();
+                    }
+                },
+            },
+            Statement::Function { body, .. }
+            | Statement::Generator { body, .. }
+            | Statement::Foreach { body, .. } => {
+                pending = None;
+                validate_diagnostic_controls(source, body, diagnostics);
+            }
+            _ => pending = None,
+        }
+    }
+    if let Some((warning, span)) = pending {
+        diagnostics.push(SyntaxDiagnostic {
+            code: "E-DIAGNOSTIC-CONTROL-TARGET",
+            span,
+            message: format!(
+                "warning suppression for `{}` has no following statement",
+                source.slice(warning)
+            ),
+        });
+    }
+    if let Some(warning) = stack.last().copied() {
+        diagnostics.push(SyntaxDiagnostic {
+            code: "E-DIAGNOSTIC-CONTROL-UNCLOSED",
+            span: warning,
+            message: format!(
+                "warning suppression for `{}` remains active at the context boundary",
+                source.slice(warning)
+            ),
+        });
     }
 }
 
@@ -2531,5 +2774,65 @@ mod tests {
                 let _ = parse(&source, &lex(&source));
             }
         }
+    }
+
+    #[test]
+    fn parses_balanced_diagnostic_controls() {
+        let source = SourceText::new(include_str!(
+            "../../../examples/interpreter/diagnostic-controls.t"
+        ))
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(
+            parsed.statements[0],
+            Statement::DiagnosticControl {
+                operation: DiagnosticControlKind::DisableNext,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn rejects_unbalanced_diagnostic_controls() {
+        for (input, code) in [
+            (
+                "lang pop-disable-warning unused",
+                "E-DIAGNOSTIC-CONTROL-UNDERFLOW",
+            ),
+            (
+                "lang push-disable-warning unused\n()",
+                "E-DIAGNOSTIC-CONTROL-UNCLOSED",
+            ),
+            ("lang disable-warning unused", "E-DIAGNOSTIC-CONTROL-TARGET"),
+        ] {
+            let source = SourceText::new(input).unwrap();
+            let parsed = parse(&source, &lex(&source));
+            assert!(parsed.diagnostics.iter().any(|error| error.code == code));
+        }
+    }
+
+    #[test]
+    fn preserves_publication_on_declarations() {
+        let source = SourceText::new("pub answer is 42").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(
+            parsed.statements.as_slice(),
+            [Statement::Published { declaration, .. }]
+                if matches!(declaration.as_ref(), Statement::Binding { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_publication_on_expressions() {
+        let source = SourceText::new("pub 42").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|error| error.code == "E-PUBLICATION-TARGET")
+        );
     }
 }

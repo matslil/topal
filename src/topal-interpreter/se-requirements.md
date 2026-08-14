@@ -1855,3 +1855,25 @@ coverage.
 Qualified lookup shall preserve namespace overload ordering under
 `TOPAL-NAMESPACE-OVERLOAD-001`, with interpreter, LSP, trace, and debugger
 coverage.
+
+## TOPAL-INTP-SUBSET-240 — Diagnostic controls
+
+All source modes shall accept balanced `lang` warning controls under
+`TOPAL-SYN-DIAG-001`. One-statement suppression shall require a following
+statement; scoped suppression shall reject stack underflow, mismatched pops,
+and a nonempty stack at every lexical context boundary. Controls shall not
+change program values or semantic decision traces.
+
+## TOPAL-INTP-SUBSET-241 — Lexical blocks
+
+All modes shall evaluate an empty block as Unit and a nonempty block in a fresh
+lexical scope under `TOPAL-SYN-GRAMMAR-001`. Statements execute in order, the
+final value becomes the block value, and local bindings do not escape. Test
+traces and debugger history shall retain block evaluation as a distinct source
+decision.
+
+## TOPAL-INTP-SUBSET-242 — Discard input patterns
+
+Typed function and generator inputs shall accept `_` under
+`TOPAL-TYPE-MATCH-001`, validate the corresponding argument classifier, and
+introduce no binding. Traces shall distinguish discarding from binding.

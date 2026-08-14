@@ -4,6 +4,7 @@ use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
+use topal_semantics::ObjectKind;
 use topal_source::{
     SourceText, Span, canonically_equal, case_fold, character_at, character_count, characters,
     lowercase, normalize_nfc, normalize_nfd, uppercase,
@@ -122,6 +123,23 @@ pub enum Value {
     Finish(Box<Self>),
     Completed,
     Unit,
+}
+
+impl Value {
+    /// Return the shared semantic kind without erasing this value's identity.
+    #[must_use]
+    pub const fn object_kind(&self) -> ObjectKind {
+        match self {
+            Self::Type(_) | Self::ModularType(_) => ObjectKind::Type,
+            Self::Effects(_) => ObjectKind::Effect,
+            Self::Callable(_) | Self::NamedFunction(_) | Self::AnonymousFunction(_) => {
+                ObjectKind::Function
+            }
+            Self::Namespace(_) => ObjectKind::Scope,
+            Self::Constraint(_) => ObjectKind::Constraint,
+            _ => ObjectKind::Value,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -619,6 +637,40 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         let value = match expression {
+            Expression::Block { statements, .. } => {
+                if statements.is_empty() {
+                    trace.record(TraceEvent {
+                        event: "block.empty.evaluated",
+                        rule: "TOPAL-SYN-GRAMMAR-001",
+                        detail: "Unit",
+                    });
+                    Ok(Value::Unit)
+                } else {
+                    let mut branch = self.clone();
+                    let mut execution = Execution {
+                        source: source.clone(),
+                        statements: statements.clone(),
+                        cursor: 0,
+                        return_classifier: None,
+                    };
+                    loop {
+                        match execution.step(&mut branch, trace)? {
+                            ExecutionStep::Complete(value) => {
+                                trace.record(TraceEvent {
+                                    event: "block.evaluated",
+                                    rule: "TOPAL-SYN-GRAMMAR-001",
+                                    detail: &structural_value_classifier(&value),
+                                });
+                                break Ok(value);
+                            }
+                            ExecutionStep::Advanced { .. } => {}
+                            ExecutionStep::Returned { .. } => unreachable!(
+                                "a standalone block rejects return without a function context"
+                            ),
+                        }
+                    }
+                }
+            }
             Expression::Boolean(span) => Ok(evaluate_boolean_literal(source, *span, trace)),
             Expression::Unit(_) => {
                 trace.record(TraceEvent {
@@ -4904,6 +4956,16 @@ impl Execution {
     ) -> Result<ExecutionStep, Diagnostic> {
         let statement = &self.statements[self.cursor];
         let (value, span) = match statement {
+            Statement::Published { span, .. } => {
+                return Err(diagnostic(
+                    &self.source,
+                    "E-UNSUPPORTED-PUBLICATION",
+                    *span,
+                    "published declarations require a loaded module context",
+                )
+                .with_help("execute this source as part of a module or remove `pub`"));
+            }
+            Statement::DiagnosticControl { span, .. } => (Value::Unit, *span),
             Statement::Binding {
                 name,
                 classifier,
@@ -5306,6 +5368,15 @@ fn evaluate_list_expression(
 
 fn expression_is_closed(expression: &Expression) -> bool {
     match expression {
+        Expression::Block { statements, .. } => {
+            statements.iter().all(|statement| match statement {
+                Statement::Binding { value, .. }
+                | Statement::Discard { value, .. }
+                | Statement::Return { value, .. }
+                | Statement::Expression(value) => expression_is_closed(value),
+                _ => false,
+            })
+        }
         Expression::Unit(_)
         | Expression::Boolean(_)
         | Expression::Integer(_)
@@ -5573,7 +5644,9 @@ const fn cover(first: Span, second: Span) -> Span {
 fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => cover(*name, value.span()),
-        Statement::Function { span, .. }
+        Statement::Published { span, .. }
+        | Statement::DiagnosticControl { span, .. }
+        | Statement::Function { span, .. }
         | Statement::Generator { span, .. }
         | Statement::Union { span, .. }
         | Statement::Foreach { span, .. } => *span,
@@ -5594,7 +5667,9 @@ fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
         if yielded_statement(source, statement).is_none()
             && !matches!(
                 statement,
-                Statement::Binding { .. }
+                Statement::Published { .. }
+                    | Statement::DiagnosticControl { .. }
+                    | Statement::Binding { .. }
                     | Statement::Discard { .. }
                     | Statement::Function { .. }
                     | Statement::Return { .. }
@@ -6233,6 +6308,17 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
                 .zip(classifiers)
                 .all(|(value, classifier)| value_has_classifier(value, classifier));
     }
+    let requested_kind = match classifier {
+        "Type" => Some(ObjectKind::Type),
+        "Function" => Some(ObjectKind::Function),
+        "Constraint" => Some(ObjectKind::Constraint),
+        "Effect" => Some(ObjectKind::Effect),
+        "Scope" => Some(ObjectKind::Scope),
+        _ => None,
+    };
+    if let Some(requested_kind) = requested_kind {
+        return value.object_kind().satisfies(requested_kind);
+    }
     match (value, classifier) {
         (Value::Boolean(_), "Boolean")
         | (Value::Int(_), "Int")
@@ -6242,14 +6328,6 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
-        | (Value::Namespace(_), "Scope")
-        | (Value::Type(_), "Type")
-        | (Value::Effects(_), "Effect")
-        | (
-            Value::Callable(_) | Value::NamedFunction(_) | Value::AnonymousFunction(_),
-            "Function",
-        )
-        | (Value::Constraint(_), "Constraint")
         | (Value::Continue(_) | Value::Finish(_), "TraversalControl")
         | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,
@@ -6403,6 +6481,14 @@ fn bind_function_arguments(
         _ => unreachable!("selected overload has already validated its argument"),
     };
     for ((parameter, _), argument) in parameters.iter().zip(arguments) {
+        if parameter == "_" {
+            trace.record(TraceEvent {
+                event: "function.argument.discarded",
+                rule: "TOPAL-TYPE-MATCH-001",
+                detail: "_",
+            });
+            continue;
+        }
         scope.bindings.insert(parameter.clone(), argument);
         scope.declared_names.insert(parameter.clone());
         trace.record(TraceEvent {
@@ -6425,6 +6511,14 @@ fn bind_generator_arguments(
         _ => unreachable!("selected generator overload has validated its argument"),
     };
     for ((parameter, _), argument) in parameters.iter().zip(arguments) {
+        if parameter == "_" {
+            trace.record(TraceEvent {
+                event: "generator.argument.discarded",
+                rule: "TOPAL-TYPE-MATCH-001",
+                detail: "_",
+            });
+            continue;
+        }
         scope.bindings.insert(parameter.clone(), argument);
         scope.declared_names.insert(parameter.clone());
         trace.record(TraceEvent {
@@ -6575,6 +6669,9 @@ fn validate_parameter_names(
 ) -> Result<(), Diagnostic> {
     for (index, parameter) in parameters.iter().enumerate() {
         let name = source.slice(parameter.name);
+        if name == "_" {
+            continue;
+        }
         if parameters[..index]
             .iter()
             .any(|earlier| source.slice(earlier.name) == name)

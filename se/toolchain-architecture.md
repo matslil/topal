@@ -26,7 +26,7 @@ resolved semantic model and typed representation
 The source layer owns decoding, normalization, byte ranges, and line/column
 mapping. The syntax layer retains tokens and trivia even for malformed or
 incomplete input; it reports diagnostics without requiring evaluation. The
-semantic layer will own names, types, capabilities, effects, and stable
+semantic layer owns names, types, capabilities, effects, and stable
 relationships. Execution engines consume semantic output rather than embedding
 their own source grammar.
 

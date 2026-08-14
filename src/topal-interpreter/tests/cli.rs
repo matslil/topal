@@ -42,7 +42,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 176);
+    assert_eq!(examples.len(), 179);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4042,6 +4042,24 @@ fn every_mode_resolves_payload_placement() {
 #[test]
 fn every_mode_resolves_layout_absence_policies() {
     let source = include_str!("../../../examples/interpreter/layout-absence-policies.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        assert!(run(arguments, source).status.success());
+    }
+}
+
+#[test]
+fn every_mode_accepts_balanced_diagnostic_controls() {
+    let source = include_str!("../../../examples/interpreter/diagnostic-controls.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+}
+
+#[test]
+fn every_mode_evaluates_empty_blocks() {
+    let source = include_str!("../../../examples/interpreter/empty-block.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }

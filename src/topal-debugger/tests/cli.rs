@@ -3125,3 +3125,52 @@ fn records_fundamental_type_values_reversibly() {
             .contains("TOPAL-ABSTRACTION-TYPE-VALUE-001")
     );
 }
+
+#[test]
+fn steps_over_diagnostic_controls_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}diagnostic-controls.debug"),
+            &format!("{root}diagnostic-controls.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+}
+
+#[test]
+fn steps_through_lexical_blocks_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}empty-block.debug"),
+            &format!("{root}empty-block.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+}
+
+#[test]
+fn steps_through_discard_input_patterns() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}discard-function-pattern.debug"),
+            &format!("{root}discard-function-pattern.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("function.argument.discarded")
+    );
+}
