@@ -164,6 +164,47 @@ pub struct InstantiationEvidence {
     pub result: TypeIdentity,
 }
 
+/// Canonical proof that one subject provides an atomic capability.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CapabilityEvidence {
+    pub capability: QualifiedName,
+    pub subject: TypeIdentity,
+    pub roles: BTreeMap<String, DeclarationIdentity>,
+}
+
+/// A coherence-checked collection of capability proofs.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct CapabilitySet(BTreeMap<(QualifiedName, TypeIdentity), CapabilityEvidence>);
+
+impl CapabilitySet {
+    /// Insert evidence, accepting an identical proof and rejecting ambiguity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the same capability and subject have different roles.
+    pub fn insert(&mut self, evidence: CapabilityEvidence) -> Result<(), &'static str> {
+        let key = (evidence.capability.clone(), evidence.subject.clone());
+        if let Some(existing) = self.0.get(&key) {
+            return if existing == &evidence {
+                Ok(())
+            } else {
+                Err("conflicting canonical capability evidence")
+            };
+        }
+        self.0.insert(key, evidence);
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn select(
+        &self,
+        capability: &QualifiedName,
+        subject: &TypeIdentity,
+    ) -> Option<&CapabilityEvidence> {
+        self.0.get(&(capability.clone(), subject.clone()))
+    }
+}
+
 /// Conservative, canonically ordered effect row.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EffectSet(BTreeSet<QualifiedName>);
@@ -323,5 +364,26 @@ mod tests {
             ])))
         );
         assert!(pattern.instantiate(&BTreeMap::new()).is_none());
+    }
+
+    #[test]
+    fn capability_evidence_is_coherent_per_exact_subject() {
+        let subject = TypeIdentity::Fundamental("Int");
+        let capability = QualifiedName(vec!["lang".into(), "Equality".into()]);
+        let evidence = CapabilityEvidence {
+            capability: capability.clone(),
+            subject: subject.clone(),
+            roles: BTreeMap::from([("equal".into(), declaration("equal-int", 0))]),
+        };
+        let mut set = CapabilitySet::default();
+        assert_eq!(set.insert(evidence.clone()), Ok(()));
+        assert_eq!(set.insert(evidence.clone()), Ok(()));
+        assert_eq!(set.select(&capability, &subject), Some(&evidence));
+
+        let conflicting = CapabilityEvidence {
+            roles: BTreeMap::from([("equal".into(), declaration("other-equal", 1))]),
+            ..evidence
+        };
+        assert!(set.insert(conflicting).is_err());
     }
 }
