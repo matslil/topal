@@ -4,6 +4,7 @@ use std::fmt::{self, Write as _};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
+use topal_semantics::ObjectKind;
 use topal_source::{
     SourceText, Span, canonically_equal, case_fold, character_at, character_count, characters,
     lowercase, normalize_nfc, normalize_nfd, uppercase,
@@ -122,6 +123,23 @@ pub enum Value {
     Finish(Box<Self>),
     Completed,
     Unit,
+}
+
+impl Value {
+    /// Return the shared semantic kind without erasing this value's identity.
+    #[must_use]
+    pub const fn object_kind(&self) -> ObjectKind {
+        match self {
+            Self::Type(_) | Self::ModularType(_) => ObjectKind::Type,
+            Self::Effects(_) => ObjectKind::Effect,
+            Self::Callable(_) | Self::NamedFunction(_) | Self::AnonymousFunction(_) => {
+                ObjectKind::Function
+            }
+            Self::Namespace(_) => ObjectKind::Scope,
+            Self::Constraint(_) => ObjectKind::Constraint,
+            _ => ObjectKind::Value,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -6236,6 +6254,17 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
                 .zip(classifiers)
                 .all(|(value, classifier)| value_has_classifier(value, classifier));
     }
+    let requested_kind = match classifier {
+        "Type" => Some(ObjectKind::Type),
+        "Function" => Some(ObjectKind::Function),
+        "Constraint" => Some(ObjectKind::Constraint),
+        "Effect" => Some(ObjectKind::Effect),
+        "Scope" => Some(ObjectKind::Scope),
+        _ => None,
+    };
+    if let Some(requested_kind) = requested_kind {
+        return value.object_kind().satisfies(requested_kind);
+    }
     match (value, classifier) {
         (Value::Boolean(_), "Boolean")
         | (Value::Int(_), "Int")
@@ -6245,14 +6274,6 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
-        | (Value::Namespace(_), "Scope")
-        | (Value::Type(_), "Type")
-        | (Value::Effects(_), "Effect")
-        | (
-            Value::Callable(_) | Value::NamedFunction(_) | Value::AnonymousFunction(_),
-            "Function",
-        )
-        | (Value::Constraint(_), "Constraint")
         | (Value::Continue(_) | Value::Finish(_), "TraversalControl")
         | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,

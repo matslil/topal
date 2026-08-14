@@ -165,6 +165,7 @@ version = "0.1.0"
 dependencies = [
  "num-bigint",
  "num-rational",
+ "topal-semantics",
  "topal-source",
  "topal-syntax",
 ]
@@ -177,6 +178,10 @@ dependencies = [
  "topal-source",
  "topal-syntax",
 ]
+
+[[package]]
+name = "topal-semantics"
+version = "0.1.0"
 
 [[package]]
 name = "topal-source"
