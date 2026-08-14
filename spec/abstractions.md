@@ -28,3 +28,18 @@ restart unqualified overload resolution.
 For one capability and exact subject, a static context shall contain at most one
 canonical role assignment. Repeating identical evidence is idempotent;
 conflicting assignments are an ambiguity error before execution.
+
+### TOPAL-INTERFACE-SHAPE-001 — Implementation-independent call shapes
+
+An interface shall retain its nominal declaration identity and a uniquely named
+set of function or generator operation shapes. A function shape contains its
+classified inputs and result; a generator shape additionally contains its
+yielded and resumed classifiers. Shapes do not select implementation locations.
+
+### TOPAL-INTERFACE-IMPLEMENTATION-001 — Intentional complete implementation
+
+An interface implementation shall explicitly identify the interface and supply
+exactly one ordinary declaration identity for each operation role, with no
+missing or additional roles. Matching declarations outside that construction
+do not establish conformance. Packaging retains both the interface identity and
+the selected declaration identities.

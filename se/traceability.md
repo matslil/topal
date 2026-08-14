@@ -66,6 +66,7 @@ domains. Test and implementation columns will be added with those artifacts.
 | constructed defining contexts | `TOPAL-CONTEXT-SELECT-001`, `TOPAL-NAMESPACE-USE-001`, `TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001` | shared evaluator unit tests; `src/topal-interpreter/tests/cli.rs`; `src/topal-debugger/tests/cli.rs`; `examples/interpreter/constructed-context.t` | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-debugger`, `topal-lsp` |
 | generic instantiation foundation | `TOPAL-ABSTRACTION-PATTERN-001`, `TOPAL-ABSTRACTION-EVIDENCE-001`, `TOPAL-TYPE-ID-001` | `topal-semantics` unit tests | `topal-semantics` |
 | capability evidence foundation | `TOPAL-CAPABILITY-EVIDENCE-001`, `TOPAL-CAPABILITY-COHERENCE-001` | `topal-semantics` unit tests | `topal-semantics` |
+| interface shape foundation | `TOPAL-INTERFACE-SHAPE-001`, `TOPAL-INTERFACE-IMPLEMENTATION-001` | `topal-semantics` unit tests | `topal-semantics` |
 | `TOPAL-INTP-SUBSET-015` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-PRODUCT-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-syntax` | `topal-syntax`, `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-SUBSET-016` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-PRODUCT-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-syntax` | `topal-syntax`, `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-SUBSET-017` | `TOPAL-SYN-INDENT-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` and unit tests in `topal-syntax` | `topal-syntax`, `topal-language`, `topal-interpreter` |

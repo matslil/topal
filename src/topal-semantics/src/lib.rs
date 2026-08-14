@@ -205,6 +205,47 @@ impl CapabilitySet {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InterfaceOperation {
+    Function {
+        inputs: Vec<TypeIdentity>,
+        result: TypeIdentity,
+    },
+    Generator {
+        inputs: Vec<TypeIdentity>,
+        yielded: TypeIdentity,
+        resumed: TypeIdentity,
+        result: TypeIdentity,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InterfaceShape {
+    pub identity: DeclarationIdentity,
+    pub operations: BTreeMap<String, InterfaceOperation>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InterfaceImplementation {
+    pub interface: InterfaceShape,
+    pub operations: BTreeMap<String, DeclarationIdentity>,
+}
+
+impl InterfaceImplementation {
+    /// Validate that an implementation supplies exactly the interface roles.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a missing or additional operation role.
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.interface.operations.keys().eq(self.operations.keys()) {
+            Ok(())
+        } else {
+            Err("interface implementation roles do not match the interface")
+        }
+    }
+}
+
 /// Conservative, canonically ordered effect row.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EffectSet(BTreeSet<QualifiedName>);
@@ -385,5 +426,32 @@ mod tests {
             ..evidence
         };
         assert!(set.insert(conflicting).is_err());
+    }
+
+    #[test]
+    fn interface_implementation_requires_exact_roles() {
+        let shape = InterfaceShape {
+            identity: declaration("Parser", 0),
+            operations: BTreeMap::from([(
+                "parse".into(),
+                InterfaceOperation::Function {
+                    inputs: vec![TypeIdentity::Fundamental("String")],
+                    result: TypeIdentity::Fundamental("Boolean"),
+                },
+            )]),
+        };
+        let complete = InterfaceImplementation {
+            interface: shape.clone(),
+            operations: BTreeMap::from([("parse".into(), declaration("parse", 1))]),
+        };
+        assert_eq!(complete.validate(), Ok(()));
+        assert!(
+            InterfaceImplementation {
+                interface: shape,
+                operations: BTreeMap::new(),
+            }
+            .validate()
+            .is_err()
+        );
     }
 }
