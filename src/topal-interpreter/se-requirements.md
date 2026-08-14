@@ -1871,3 +1871,9 @@ lexical scope under `TOPAL-SYN-GRAMMAR-001`. Statements execute in order, the
 final value becomes the block value, and local bindings do not escape. Test
 traces and debugger history shall retain block evaluation as a distinct source
 decision.
+
+## TOPAL-INTP-SUBSET-242 — Discard input patterns
+
+Typed function and generator inputs shall accept `_` under
+`TOPAL-TYPE-MATCH-001`, validate the corresponding argument classifier, and
+introduce no binding. Traces shall distinguish discarding from binding.

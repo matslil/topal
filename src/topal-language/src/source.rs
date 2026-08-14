@@ -6481,6 +6481,14 @@ fn bind_function_arguments(
         _ => unreachable!("selected overload has already validated its argument"),
     };
     for ((parameter, _), argument) in parameters.iter().zip(arguments) {
+        if parameter == "_" {
+            trace.record(TraceEvent {
+                event: "function.argument.discarded",
+                rule: "TOPAL-TYPE-MATCH-001",
+                detail: "_",
+            });
+            continue;
+        }
         scope.bindings.insert(parameter.clone(), argument);
         scope.declared_names.insert(parameter.clone());
         trace.record(TraceEvent {
@@ -6503,6 +6511,14 @@ fn bind_generator_arguments(
         _ => unreachable!("selected generator overload has validated its argument"),
     };
     for ((parameter, _), argument) in parameters.iter().zip(arguments) {
+        if parameter == "_" {
+            trace.record(TraceEvent {
+                event: "generator.argument.discarded",
+                rule: "TOPAL-TYPE-MATCH-001",
+                detail: "_",
+            });
+            continue;
+        }
         scope.bindings.insert(parameter.clone(), argument);
         scope.declared_names.insert(parameter.clone());
         trace.record(TraceEvent {
@@ -6653,6 +6669,9 @@ fn validate_parameter_names(
 ) -> Result<(), Diagnostic> {
     for (index, parameter) in parameters.iter().enumerate() {
         let name = source.slice(parameter.name);
+        if name == "_" {
+            continue;
+        }
         if parameters[..index]
             .iter()
             .any(|earlier| source.slice(earlier.name) == name)

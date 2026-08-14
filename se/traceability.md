@@ -323,3 +323,4 @@ pending until message passing exists in the shared execution machine.
 | `TOPAL-INTP-SUBSET-240` | `TOPAL-SYN-DIAG-001` | syntax tests; interpreter, LSP, and scripted debugger tests; diagnostic-control examples | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | shared semantic identities | `TOPAL-TYPE-KIND-001`, `TOPAL-TYPE-JUDGE-001`, `TOPAL-TYPE-ID-001`, `TOPAL-SYN-ORDER-001` | unit tests in `topal-semantics`; existing classifier and overload conformance suites | `topal-semantics`, `topal-language` |
 | `TOPAL-INTP-SUBSET-241` | `TOPAL-SYN-GRAMMAR-001` | syntax and interpreter tests; lexical-block examples | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
+| `TOPAL-INTP-SUBSET-242` | `TOPAL-TYPE-MATCH-001` | syntax, language, interpreter, and LSP example tests; discard-function-pattern example | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |

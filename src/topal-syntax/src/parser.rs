@@ -1444,7 +1444,7 @@ impl Parser<'_> {
             let classifier_start = self.take_nontrivia()?;
             let classifier = self.classifier_from_first(classifier_start)?;
             let separator = self.take_nontrivia()?;
-            if input.kind != TokenKind::Identifier
+            if !matches!(input.kind, TokenKind::Identifier | TokenKind::Discard)
                 || colon.kind != TokenKind::Colon
                 || !matches!(
                     classifier_start.kind,
@@ -1456,7 +1456,7 @@ impl Parser<'_> {
                     code: "E-UNSUPPORTED-FUNCTION-HEADER",
                     span: Span::new(opening.span.start, separator.span.end),
                     message:
-                        "function parameters must have the form `name : Type`, separated by commas"
+                        "function parameters must have the form `pattern : Type`, separated by commas"
                             .into(),
                 });
                 self.skip_to_newline();
