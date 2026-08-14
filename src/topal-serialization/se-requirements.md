@@ -17,3 +17,6 @@ Understood generic-description values shall be decoded recursively from their
 declared schema. The decoder shall not preserve unvalidated remaining frame
 bytes as an `ObjectDescription`; component counts, alternatives, and nested
 values shall be checked before the event is exposed.
+
+Recursive value decoding shall enforce a caller-supplied nesting limit before
+descending into a component or allocating its nested result.

@@ -138,6 +138,7 @@ pub struct Limits {
     pub events: usize,
     pub frame_bytes: usize,
     pub text_bytes: usize,
+    pub nesting_depth: usize,
 }
 
 impl Default for Limits {
@@ -147,6 +148,7 @@ impl Default for Limits {
             events: 1_000_000,
             frame_bytes: 16 * 1_024 * 1_024,
             text_bytes: 1_024 * 1_024,
+            nesting_depth: 256,
         }
     }
 }
@@ -316,7 +318,14 @@ pub fn deserialize(bytes: &[u8], limits: Limits) -> Result<Stream, ProtocolError
                 "event references an unknown type",
             )
         })?;
-        let value = frame_reader.value(definition, &types, byte_order, limits.text_bytes)?;
+        let value = frame_reader.value(
+            definition,
+            &types,
+            byte_order,
+            limits.text_bytes,
+            0,
+            limits.nesting_depth,
+        )?;
         if frame_reader.offset != frame.len() {
             return Err(error(
                 ErrorKind::Malformed,
@@ -925,13 +934,23 @@ impl<'a> Reader<'a> {
             .collect()
     }
 
+    #[allow(clippy::too_many_lines)] // Each wire kind remains explicit at the validation boundary.
     fn value(
         &mut self,
         definition: &TypeDefinition,
         types: &[TypeDefinition],
         order: StreamByteOrder,
         text_limit: usize,
+        depth: usize,
+        depth_limit: usize,
     ) -> Result<SerializedValue, ProtocolError> {
+        if depth > depth_limit {
+            return Err(self.failure(
+                ErrorKind::ResourceLimit,
+                "value",
+                "value nesting exceeds configured limit",
+            ));
+        }
         match definition {
             TypeDefinition::Unit { .. } => Ok(SerializedValue::Unit),
             TypeDefinition::Boolean { .. } => match self.byte("value")? {
@@ -976,14 +995,21 @@ impl<'a> Reader<'a> {
             TypeDefinition::Text { .. } => {
                 Ok(SerializedValue::Text(self.text("value", text_limit)?))
             }
-            TypeDefinition::Tuple { components, .. } => Ok(SerializedValue::Product(
-                self.values(components, types, order, text_limit)?,
-            )),
+            TypeDefinition::Tuple { components, .. } => Ok(SerializedValue::Product(self.values(
+                components,
+                types,
+                order,
+                text_limit,
+                depth + 1,
+                depth_limit,
+            )?)),
             TypeDefinition::Record { fields, .. } => Ok(SerializedValue::Product(self.values(
                 &fields.iter().map(|(_, id)| *id).collect::<Vec<_>>(),
                 types,
                 order,
                 text_limit,
+                depth + 1,
+                depth_limit,
             )?)),
             TypeDefinition::Variant { alternatives, .. } => {
                 let alternative = self.count("value", alternatives.len().saturating_sub(1))?;
@@ -992,6 +1018,8 @@ impl<'a> Reader<'a> {
                     types,
                     order,
                     text_limit,
+                    depth + 1,
+                    depth_limit,
                 )?;
                 Ok(SerializedValue::Variant {
                     alternative,
@@ -1002,7 +1030,14 @@ impl<'a> Reader<'a> {
                 let count = self.count("value", 1_000_000)?;
                 let mut values = Vec::with_capacity(count);
                 for _ in 0..count {
-                    values.push(self.value(&types[*element], types, order, text_limit)?);
+                    values.push(self.value(
+                        &types[*element],
+                        types,
+                        order,
+                        text_limit,
+                        depth + 1,
+                        depth_limit,
+                    )?);
                 }
                 Ok(SerializedValue::Sequence(values))
             }
@@ -1010,10 +1045,19 @@ impl<'a> Reader<'a> {
                 kind,
                 schema_payload,
                 ..
-            } => self.described_value(*kind, schema_payload, types, order, text_limit),
+            } => self.described_value(
+                *kind,
+                schema_payload,
+                types,
+                order,
+                text_limit,
+                depth + 1,
+                depth_limit,
+            ),
         }
     }
 
+    #[allow(clippy::too_many_arguments)] // Recursive bounds accompany the schema-decoding context.
     fn described_value(
         &mut self,
         kind: u8,
@@ -1021,18 +1065,28 @@ impl<'a> Reader<'a> {
         types: &[TypeDefinition],
         order: StreamByteOrder,
         text_limit: usize,
+        depth: usize,
+        depth_limit: usize,
     ) -> Result<SerializedValue, ProtocolError> {
         let references = described_references(kind, schema, types.len(), text_limit, self.offset)?;
         let values = match kind {
-            3 | 13..=15 => self.values(&references, types, order, text_limit)?,
+            3 | 13..=15 => {
+                self.values(&references, types, order, text_limit, depth, depth_limit)?
+            }
             5 => {
                 let length = self.count("value", self.bytes.len().saturating_sub(self.offset))?;
                 vec![SerializedValue::Bytes(self.take(length, "value")?.to_vec())]
             }
             9 => {
                 let alternative = self.count("value", references.len().saturating_sub(1))?;
-                let value =
-                    self.value(&types[references[alternative]], types, order, text_limit)?;
+                let value = self.value(
+                    &types[references[alternative]],
+                    types,
+                    order,
+                    text_limit,
+                    depth,
+                    depth_limit,
+                )?;
                 vec![SerializedValue::Variant {
                     alternative,
                     value: Box::new(value),
@@ -1042,7 +1096,14 @@ impl<'a> Reader<'a> {
                 let count = self.count("value", 1_000_000)?;
                 let mut entries = Vec::with_capacity(count);
                 for _ in 0..count {
-                    entries.push(self.value(&types[references[0]], types, order, text_limit)?);
+                    entries.push(self.value(
+                        &types[references[0]],
+                        types,
+                        order,
+                        text_limit,
+                        depth,
+                        depth_limit,
+                    )?);
                 }
                 vec![SerializedValue::Sequence(entries)]
             }
@@ -1055,6 +1116,8 @@ impl<'a> Reader<'a> {
                         types,
                         order,
                         text_limit,
+                        depth,
+                        depth_limit,
                     )?));
                 }
                 vec![SerializedValue::Sequence(entries)]
@@ -1083,9 +1146,11 @@ impl<'a> Reader<'a> {
         types: &[TypeDefinition],
         order: StreamByteOrder,
         text_limit: usize,
+        depth: usize,
+        depth_limit: usize,
     ) -> Result<Vec<SerializedValue>, ProtocolError> {
         ids.iter()
-            .map(|id| self.value(&types[*id], types, order, text_limit))
+            .map(|id| self.value(&types[*id], types, order, text_limit, depth, depth_limit))
             .collect()
     }
 
@@ -1310,6 +1375,37 @@ mod tests {
         trailing.push(0);
         let error = deserialize(&trailing, Limits::default()).unwrap_err();
         assert_eq!((error.kind, error.stage), (ErrorKind::Malformed, "stream"));
+    }
+
+    #[test]
+    fn configured_nesting_limit_precedes_recursive_value_allocation() {
+        let stream = Stream {
+            header: sample().header,
+            types: vec![
+                TypeDefinition::Unit {
+                    identity: "Unit".into(),
+                },
+                TypeDefinition::Sequence {
+                    identity: "Units".into(),
+                    element: 0,
+                },
+            ],
+            events: vec![Event {
+                type_id: 1,
+                value: SerializedValue::Sequence(vec![SerializedValue::Unit]),
+            }],
+        };
+        let bytes = serialize(&stream).unwrap();
+        let error = deserialize(
+            &bytes,
+            Limits {
+                nesting_depth: 0,
+                ..Limits::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::ResourceLimit);
+        assert_eq!(error.stage, "value");
     }
 
     #[test]
