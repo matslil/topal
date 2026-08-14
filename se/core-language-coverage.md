@@ -15,11 +15,11 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/type-system.md` | 45 | 2 | `topal-language` shared semantics | static, runtime | planned |
 | `spec/functions.md` | 29 | 2 | `topal-language` execution | runtime | planned |
 | `spec/decisions.md` | 6 | 2 | `topal-syntax`, `topal-language` | static, runtime | planned |
-| `spec/numbers.md` | 40 | 3 | `topal-language` value domains | runtime | planned |
-| `spec/ranges.md` | 7 | 3 | `topal-language` value domains | runtime | planned |
-| `spec/strings.md` | 24 | 3 | `topal-source`, `topal-language` | static, runtime | planned |
-| `spec/containers.md` | 45 | 3 | `topal-language` value domains | runtime | planned |
-| `spec/generators.md` | 27 | 3 | `topal-language` execution | runtime | planned |
+| `spec/numbers.md` | 40 | 3 | `topal-language` value domains | runtime | complete |
+| `spec/ranges.md` | 7 | 3 | `topal-language` value domains | runtime | complete |
+| `spec/strings.md` | 24 | 3 | `topal-source`, `topal-language` | static, runtime | complete |
+| `spec/containers.md` | 45 | 3 | `topal-language` value domains | runtime | complete |
+| `spec/generators.md` | 27 | 3 | `topal-language` execution | runtime | complete |
 | `spec/modules.md` | 10 | 4 | shared loader and `topal-language` | static, runtime | planned |
 | `spec/memory-model.md` | 9 | 6 | shared resource and memory semantics | static, runtime | planned |
 | `spec/concurrency-model.md` | 12 | 7 | shared execution scheduler | static, runtime | planned |
