@@ -130,6 +130,10 @@ fn every_stable_specification_rule_has_a_completion_owner() {
 fn accepted_core_has_no_planned_rule_and_examples_explain_their_feature() {
     let root = workspace_root();
     let entries = read_ledger(&root);
+    let bootstrap = fs::read_to_string(root.join("se/standard-library-bootstrap.md"))
+        .expect("standard-library bootstrap contract must be readable");
+    assert!(bootstrap.contains("`v0.1`"));
+    assert!(bootstrap.contains("no implicit reflection"));
     let planned = entries
         .iter()
         .filter_map(|(path, entry)| (entry.status != "complete").then_some(path))

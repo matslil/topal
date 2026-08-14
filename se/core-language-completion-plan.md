@@ -1,5 +1,9 @@
 # Core-language completion plan
 
+**Completion record:** all ten phases are implemented for the `v0.1`
+(`design-0`) standard-library development baseline. The terminal ledger and
+bootstrap handoff are maintained by Phase 10 acceptance tests.
+
 This plan closes the gap between Topal's approved `design-0` language and the
 executable toolchain needed before broad standard-library development. It does
 not introduce language semantics. Human-readable design in `docs/`, the system
