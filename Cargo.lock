@@ -184,6 +184,14 @@ name = "topal-semantics"
 version = "0.1.0"
 
 [[package]]
+name = "topal-serialization"
+version = "0.1.0"
+dependencies = [
+ "topal-semantics",
+ "topal-source",
+]
+
+[[package]]
 name = "topal-source"
 version = "0.1.0"
 dependencies = [

@@ -6,6 +6,7 @@ members = [
     "src/topal-lsp",
     "src/topal-semantics",
     "src/topal-source",
+    "src/topal-serialization",
     "src/topal-syntax",
 ]
 resolver = "3"
