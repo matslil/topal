@@ -60,6 +60,16 @@ and return in that semantic order. The supported parameter and result
 classifiers are the same initial value classifiers admitted by
 `TOPAL-FUNCTION-STATIC-NULLARY-001`.
 
+### TOPAL-FUNCTION-EFFECT-BOUND-001 — Explicit effect upper bounds
+
+A function header may place `:` and an effect expression after its complete
+result type, on the same line or on a continued indented line. The expression
+shall be retained as the function's allowed effect row. The implementation's
+inferred row shall satisfy it under `TOPAL-EFFECT-CONTAIN-001`; declaration
+shall fail rather than erase or widen an unsatisfied bound. Static function
+views and tool traces shall retain the declared bound without performing its
+effects.
+
 ### TOPAL-FUNCTION-STATIC-BINARY-001 — Static binary infix function execution
 
 A declaration `name is fn static ( left : L, right : R ) -> O` shall introduce

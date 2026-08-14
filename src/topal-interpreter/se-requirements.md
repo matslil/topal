@@ -1938,3 +1938,10 @@ partial application, and `lang deserialize` under `TOPAL-SER-SCOPE-001` through
 `TOPAL-SER-DESER-001`. Deserialization shall accept only a validated native
 `SerializationStream`; unsupported source objects shall fail explicitly rather
 than silently losing semantic structure.
+
+## TOPAL-INTP-SUBSET-247 — Function effect upper bounds
+
+Function declarations shall accept same-line and continued explicit effect
+upper bounds under `TOPAL-FUNCTION-EFFECT-BOUND-001`, retain them in static
+function views, and expose their declaration in test traces and debugger
+history without performing the described effects.

@@ -585,6 +585,7 @@ struct UserFunction {
     is_static: bool,
     parameters: Vec<(String, String)>,
     result: String,
+    effect_bound: Option<String>,
     body: Vec<Statement>,
     bindings: BTreeMap<String, Value>,
     termination_rule: Option<&'static str>,
@@ -622,6 +623,7 @@ struct FunctionDeclaration<'a> {
     is_static: bool,
     parameters: &'a [FunctionParameter],
     result: Span,
+    effect_bound: Option<Span>,
     body: &'a [Statement],
     span: Span,
 }
@@ -5455,6 +5457,7 @@ impl Execution {
             is_static,
             parameters,
             result,
+            effect_bound,
             body,
             span,
         } = declaration;
@@ -5470,6 +5473,7 @@ impl Execution {
             ));
         }
         let result_text = self.source.slice(result);
+        let effect_bound_text = effect_bound.map(|bound| self.source.slice(bound).to_owned());
         if !supported_value_classifier(result_text, &session.enum_types)
             && !session.union_types.contains_key(result_text)
         {
@@ -5533,6 +5537,7 @@ impl Execution {
             is_static,
             parameters,
             result: result_text.to_owned(),
+            effect_bound: effect_bound_text.clone(),
             body: body.to_vec(),
             bindings: session.bindings.clone(),
             termination_rule,
@@ -5553,6 +5558,13 @@ impl Execution {
             rule,
             detail: name_text,
         });
+        if let Some(effect_bound) = &effect_bound_text {
+            trace.record(TraceEvent {
+                event: "function.effect-bound.declared",
+                rule: "TOPAL-FUNCTION-EFFECT-BOUND-001",
+                detail: effect_bound,
+            });
+        }
         if result_success_classifier(result_text).is_some() {
             trace.record(TraceEvent {
                 event: "function.result.contract",
@@ -5760,6 +5772,7 @@ impl Execution {
                 is_static,
                 parameters,
                 result,
+                effect_bound,
                 body,
                 span,
             } => self.declare_function(
@@ -5770,6 +5783,7 @@ impl Execution {
                     is_static: *is_static,
                     parameters,
                     result: *result,
+                    effect_bound: *effect_bound,
                     body,
                     span: *span,
                 },
@@ -8376,7 +8390,7 @@ fn introspection_view(source: &SourceText, value: Value, span: Span) -> Result<V
                     .collect(),
                 output: first.result.clone(),
                 is_static: first.is_static,
-                effects: Vec::new(),
+                effects: first.effect_bound.iter().cloned().collect(),
             }
         }
         Value::Namespace(namespace) => {
@@ -11622,6 +11636,19 @@ mod tests {
         ))
         .unwrap();
         assert_eq!(round_trip.to_string(), huge);
+    }
+
+    #[test]
+    fn retains_explicit_function_effect_upper_bounds_for_static_views() {
+        let value = evaluate(
+            "identity is fn ( value : Int ) -> Int\n  : Effects ()\n  value\nlang view identity\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            value,
+            Value::Introspection(view)
+                if matches!(&*view, IntrospectionValue::FunctionView { effects, .. } if effects == &["Effects ()"])
+        ));
     }
 
     #[test]

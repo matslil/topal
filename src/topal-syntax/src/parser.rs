@@ -187,6 +187,7 @@ pub enum Statement {
         is_static: bool,
         parameters: Vec<FunctionParameter>,
         result: Span,
+        effect_bound: Option<Span>,
         body: Vec<Statement>,
         span: Span,
     },
@@ -694,6 +695,7 @@ impl Parser<'_> {
         })
     }
 
+    #[allow(clippy::too_many_lines)] // Header continuations and body diagnostics remain localized.
     fn function(&mut self, name: Token) -> Option<Statement> {
         let function = self.take_nontrivia()?;
         let next = self.take_nontrivia()?;
@@ -734,6 +736,17 @@ impl Parser<'_> {
             self.skip_to_newline();
             return None;
         }
+        let effect_bound = if self
+            .peek_nontrivia()
+            .is_some_and(|token| token.kind == TokenKind::Colon)
+        {
+            self.function_effect_bound()
+        } else if self.effect_bound_on_following_line() {
+            self.cursor += 1;
+            self.function_effect_bound()
+        } else {
+            None
+        };
         if !self
             .peek()
             .is_some_and(|token| token.kind == TokenKind::Newline)
@@ -785,9 +798,44 @@ impl Parser<'_> {
             is_static,
             parameters,
             result,
+            effect_bound,
             span: Span::new(name.span.start, body_end),
             body,
         })
+    }
+
+    fn effect_bound_on_following_line(&self) -> bool {
+        if !self
+            .tokens
+            .get(self.cursor)
+            .is_some_and(|token| token.kind == TokenKind::Newline)
+        {
+            return false;
+        }
+        self.tokens[self.cursor + 1..]
+            .iter()
+            .take_while(|token| token.kind != TokenKind::Newline)
+            .find(|token| !token.kind.is_trivia())
+            .is_some_and(|token| token.kind == TokenKind::Colon)
+    }
+
+    fn function_effect_bound(&mut self) -> Option<Span> {
+        let colon = self.take_nontrivia()?;
+        debug_assert_eq!(colon.kind, TokenKind::Colon);
+        let first = self.take_nontrivia();
+        let Some(first) = first else {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-EFFECT-BOUND",
+                span: colon.span,
+                message: "expected an effect or resource bound after `:`".into(),
+            });
+            return None;
+        };
+        let mut end = first.span.end;
+        while let Some(token) = self.take_nontrivia() {
+            end = token.span.end;
+        }
+        Some(Span::new(first.span.start, end))
     }
 
     fn union(&mut self, name: Token) -> Option<Statement> {
@@ -2400,6 +2448,26 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn retains_same_line_and_continued_function_effect_bounds() {
+        for text in [
+            "read is fn ( value : Int ) -> Int : Effects ()\n  value\n",
+            "read is fn ( value : Int ) -> Int\n  : Effects ()\n  value\n",
+        ] {
+            let source = SourceText::new(text).unwrap();
+            let parsed = parse(&source, &lex(&source));
+            assert_eq!(parsed.diagnostics, []);
+            let Statement::Function {
+                effect_bound: Some(bound),
+                ..
+            } = parsed.statements[0]
+            else {
+                panic!("expected a function effect bound");
+            };
+            assert_eq!(source.slice(bound), "Effects ()");
+        }
     }
 
     #[test]
