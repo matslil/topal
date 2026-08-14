@@ -21,6 +21,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/containers.md` | 45 | 3 | `topal-language` value domains | runtime | complete |
 | `spec/generators.md` | 27 | 3 | `topal-language` execution | runtime | complete |
 | `spec/modules.md` | 11 | 4 | shared loader and `topal-language` | static, runtime | complete |
+| `spec/abstractions.md` | 2 | 5 | `topal-semantics`, shared source tools | static | planned |
 | `spec/memory-model.md` | 9 | 6 | shared resource and memory semantics | static, runtime | planned |
 | `spec/concurrency-model.md` | 12 | 7 | shared execution scheduler | static, runtime | planned |
 | `spec/serialization.md` | 16 | 8 | shared layout and serialization codecs | artifact, runtime | planned |

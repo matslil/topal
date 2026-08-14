@@ -124,6 +124,46 @@ pub struct DeclarationIdentity {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct QualifiedName(pub Vec<String>);
 
+/// A generic type pattern whose parameters are replaced simultaneously.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TypePattern {
+    Parameter(String),
+    Concrete(TypeIdentity),
+    Tuple(Vec<Self>),
+    Record(Vec<(String, Self)>),
+}
+
+impl TypePattern {
+    /// Instantiate this pattern without discarding the substitution evidence.
+    #[must_use]
+    pub fn instantiate(&self, arguments: &BTreeMap<String, TypeIdentity>) -> Option<TypeIdentity> {
+        match self {
+            Self::Parameter(name) => arguments.get(name).cloned(),
+            Self::Concrete(identity) => Some(identity.clone()),
+            Self::Tuple(fields) => Some(TypeIdentity::Structural(StructuralType::Tuple(
+                fields
+                    .iter()
+                    .map(|field| field.instantiate(arguments))
+                    .collect::<Option<Vec<_>>>()?,
+            ))),
+            Self::Record(fields) => Some(TypeIdentity::Structural(StructuralType::Record(
+                fields
+                    .iter()
+                    .map(|(label, field)| Some((label.clone(), field.instantiate(arguments)?)))
+                    .collect::<Option<Vec<_>>>()?,
+            ))),
+        }
+    }
+}
+
+/// Canonical evidence retained by one successful generic instantiation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InstantiationEvidence {
+    pub declaration: DeclarationIdentity,
+    pub arguments: BTreeMap<String, TypeIdentity>,
+    pub result: TypeIdentity,
+}
+
 /// Conservative, canonically ordered effect row.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EffectSet(BTreeSet<QualifiedName>);
@@ -262,5 +302,26 @@ mod tests {
         assert_eq!("v0.1".parse(), Ok(LanguageVersion::DESIGN_0));
         assert_eq!(LanguageVersion::DESIGN_0.to_string(), "v0.1");
         assert!("v0.2".parse::<LanguageVersion>().unwrap() > LanguageVersion::DESIGN_0);
+    }
+
+    #[test]
+    fn generic_patterns_preserve_exact_substitutions() {
+        let pattern = TypePattern::Record(vec![
+            ("first".into(), TypePattern::Parameter("T".into())),
+            ("second".into(), TypePattern::Parameter("T".into())),
+        ]);
+        let nominal = TypeIdentity::Nominal {
+            declaration: declaration("UserId", 2),
+            parameters: Vec::new(),
+        };
+        let arguments = BTreeMap::from([("T".into(), nominal.clone())]);
+        assert_eq!(
+            pattern.instantiate(&arguments),
+            Some(TypeIdentity::Structural(StructuralType::Record(vec![
+                ("first".into(), nominal.clone()),
+                ("second".into(), nominal),
+            ])))
+        );
+        assert!(pattern.instantiate(&BTreeMap::new()).is_none());
     }
 }
