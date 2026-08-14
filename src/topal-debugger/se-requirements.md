@@ -53,6 +53,11 @@ Replay shall follow the recorded receiver selection and response rather than
 sending the message again. Step-over shall treat the transaction as one logical
 operation while still retaining its nested history for later inspection.
 
+Recorded message transitions shall carry the stable transaction identity and
+sender/receiver task identities. Forward semantic stepping from a send shall
+follow its matching receive, and reverse stepping from that receive shall
+return to the matching send even when unrelated scheduler transitions exist.
+
 ## TOPAL-DEBUG-TRACE-001 — Toolchain-comparable history
 
 Debugger transitions shall use a versioned event representation that can be

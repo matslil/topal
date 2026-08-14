@@ -36,6 +36,9 @@ pub struct ExecutionTransition {
     pub event: &'static str,
     pub rule: &'static str,
     pub detail: String,
+    pub transaction: Option<u64>,
+    pub sender: Option<u64>,
+    pub receiver: Option<u64>,
 }
 
 /// A cursor-addressable record of semantic execution transitions.
@@ -153,6 +156,17 @@ impl ExecutionHistory {
             return None;
         }
         self.cursor += 1;
+        if self
+            .current()
+            .is_some_and(|transition| transition.event == "message.sent")
+            && let Some(transaction) = self.current().and_then(|transition| transition.transaction)
+            && let Some(received) = self.transitions.iter().find(|transition| {
+                transition.event == "message.received"
+                    && transition.transaction == Some(transaction)
+            })
+        {
+            self.cursor = received.sequence + 1;
+        }
         self.current()
     }
 
@@ -160,12 +174,47 @@ impl ExecutionHistory {
         if self.cursor == 0 {
             return None;
         }
+        if self
+            .current()
+            .is_some_and(|transition| transition.event == "message.received")
+            && let Some(transaction) = self.current().and_then(|transition| transition.transaction)
+            && let Some(sent) = self.transitions.iter().find(|transition| {
+                transition.event == "message.sent" && transition.transaction == Some(transaction)
+            })
+        {
+            self.cursor = sent.sequence + 1;
+            return self.current();
+        }
         self.cursor -= 1;
         self.current()
     }
 
     pub const fn rewind(&mut self) {
         self.cursor = 0;
+    }
+
+    /// Record one complete message transfer using debugger-comparable events.
+    pub fn record_message_transfer(
+        &mut self,
+        transaction: u64,
+        sender: u64,
+        receiver: u64,
+        detail: impl Into<String>,
+    ) {
+        let detail = detail.into();
+        for event in ["message.sent", "message.received"] {
+            let sequence = self.transitions.len();
+            self.transitions.push(ExecutionTransition {
+                sequence,
+                event,
+                rule: "TOPAL-CONC-ORDER-001",
+                detail: detail.clone(),
+                transaction: Some(transaction),
+                sender: Some(sender),
+                receiver: Some(receiver),
+            });
+        }
+        self.cursor = self.transitions.len();
     }
 }
 
@@ -177,6 +226,9 @@ impl TraceSink for ExecutionHistory {
             event: event.event,
             rule: event.rule,
             detail: event.detail.to_owned(),
+            transaction: None,
+            sender: None,
+            receiver: None,
         });
         self.cursor = self.transitions.len();
     }
@@ -261,5 +313,23 @@ mod tests {
         let result_cursor = history.cursor();
         history.step_source_backward().unwrap();
         assert!(history.cursor() < result_cursor);
+    }
+
+    #[test]
+    fn stepping_follows_and_reverses_message_transactions() {
+        let mut history = ExecutionHistory::new();
+        history.record(TraceEvent {
+            event: "before",
+            rule: "TEST",
+            detail: "sender",
+        });
+        history.record_message_transfer(7, 1, 2, "request query");
+        history.rewind();
+        assert_eq!(history.step_forward().unwrap().event, "before");
+        let received = history.step_forward().unwrap();
+        assert_eq!(received.event, "message.received");
+        assert_eq!(received.transaction, Some(7));
+        assert_eq!((received.sender, received.receiver), (Some(1), Some(2)));
+        assert_eq!(history.step_backward().unwrap().event, "message.sent");
     }
 }

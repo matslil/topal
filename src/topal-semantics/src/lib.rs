@@ -402,6 +402,448 @@ pub struct MemoryExecution {
     order: BTreeSet<(usize, usize)>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct TaskIdentity(pub u64);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TaskState {
+    Constructed,
+    Runnable,
+    Waiting { external: bool },
+    Closing,
+    Completed,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct TaskRecord {
+    parent: Option<TaskIdentity>,
+    children: BTreeSet<TaskIdentity>,
+    state: TaskState,
+    cancellation_requested: bool,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct TaskScheduler {
+    next_identity: u64,
+    tasks: BTreeMap<TaskIdentity, TaskRecord>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InteractionKind {
+    Event,
+    Request,
+    Stream,
+    DirectCall,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum AdmissionPolicy {
+    Wait,
+    Reject,
+    ContainedDiagnosticLoss,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TransactionState {
+    Enqueued,
+    Received,
+    Replied { result_identity: String },
+    Streaming { values: Vec<String> },
+    Closed,
+    Rejected,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MessageTransaction {
+    pub identity: u64,
+    pub sender: TaskIdentity,
+    pub receiver: TaskIdentity,
+    pub endpoint: QualifiedName,
+    pub kind: InteractionKind,
+    pub payload_identity: String,
+    pub state: TransactionState,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MessageSend {
+    pub sender: TaskIdentity,
+    pub receiver: TaskIdentity,
+    pub endpoint: QualifiedName,
+    pub kind: InteractionKind,
+    pub payload_identity: String,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct MessageLedger {
+    next_identity: u64,
+    transactions: BTreeMap<u64, MessageTransaction>,
+    admitted: BTreeMap<QualifiedName, usize>,
+}
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum DependencyNode {
+    Task(TaskIdentity),
+    Transaction(u64),
+    Resource(ResourceIdentity),
+    External(QualifiedName),
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DependencyGraph {
+    nodes: BTreeSet<DependencyNode>,
+    edges: BTreeSet<(DependencyNode, DependencyNode)>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScheduleEvidence {
+    pub order: Vec<DependencyNode>,
+}
+
+impl DependencyGraph {
+    pub fn add_node(&mut self, node: DependencyNode) {
+        self.nodes.insert(node);
+    }
+
+    /// Add one completion dependency.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless both nodes have been declared.
+    pub fn depends_on(
+        &mut self,
+        prerequisite: &DependencyNode,
+        dependent: &DependencyNode,
+    ) -> Result<(), &'static str> {
+        if !self.nodes.contains(prerequisite) || !self.nodes.contains(dependent) {
+            return Err("dependency edge names an unknown node");
+        }
+        self.edges.insert((prerequisite.clone(), dependent.clone()));
+        Ok(())
+    }
+
+    /// Produce the canonical source-independent topological schedule.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a closed internal dependency cycle. A cycle which
+    /// contains an explicitly external node is suspension and is retained.
+    pub fn schedule(&self) -> Result<ScheduleEvidence, &'static str> {
+        let mut remaining = self.nodes.clone();
+        let mut edges = self.edges.clone();
+        let mut order = Vec::new();
+        loop {
+            let ready = remaining
+                .iter()
+                .filter(|node| !edges.iter().any(|(_, dependent)| dependent == *node))
+                .cloned()
+                .collect::<Vec<_>>();
+            if ready.is_empty() {
+                break;
+            }
+            for node in ready {
+                remaining.remove(&node);
+                edges.retain(|(prerequisite, _)| prerequisite != &node);
+                order.push(node);
+            }
+        }
+        if remaining.is_empty() {
+            return Ok(ScheduleEvidence { order });
+        }
+        let suspended_only = remaining.iter().all(|start| {
+            let mut pending = vec![start.clone()];
+            let mut visited = BTreeSet::new();
+            while let Some(current) = pending.pop() {
+                if !visited.insert(current.clone()) {
+                    continue;
+                }
+                if matches!(current, DependencyNode::External(_)) {
+                    return true;
+                }
+                for (left, right) in &edges {
+                    if left == &current && remaining.contains(right) {
+                        pending.push(right.clone());
+                    }
+                    if right == &current && remaining.contains(left) {
+                        pending.push(left.clone());
+                    }
+                }
+            }
+            false
+        });
+        if suspended_only {
+            order.extend(remaining);
+            return Ok(ScheduleEvidence { order });
+        }
+        Err("closed internal dependency cycle would deadlock")
+    }
+}
+
+impl MessageLedger {
+    /// Atomically admit one interaction without partially transferring payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when bounded rejection applies or contained loss is
+    /// requested for a non-event interaction.
+    pub fn send(
+        &mut self,
+        send: MessageSend,
+        capacity: usize,
+        policy: &AdmissionPolicy,
+    ) -> Result<u64, &'static str> {
+        let occupied = self.admitted.get(&send.endpoint).copied().unwrap_or(0);
+        if occupied >= capacity {
+            return match policy {
+                AdmissionPolicy::Wait => Err("interaction is waiting for endpoint capacity"),
+                AdmissionPolicy::Reject => Err("interaction was rejected before transfer"),
+                AdmissionPolicy::ContainedDiagnosticLoss if send.kind == InteractionKind::Event => {
+                    Err("contained diagnostic event was not admitted")
+                }
+                AdmissionPolicy::ContainedDiagnosticLoss => {
+                    Err("contained loss is valid only for diagnostic events")
+                }
+            };
+        }
+        let identity = self.next_identity;
+        self.next_identity += 1;
+        *self.admitted.entry(send.endpoint.clone()).or_default() += 1;
+        self.transactions.insert(
+            identity,
+            MessageTransaction {
+                identity,
+                sender: send.sender,
+                receiver: send.receiver,
+                endpoint: send.endpoint,
+                kind: send.kind,
+                payload_identity: send.payload_identity,
+                state: TransactionState::Enqueued,
+            },
+        );
+        Ok(identity)
+    }
+
+    /// Transfer an admitted interaction to its receiver.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless the transaction is enqueued.
+    pub fn receive(&mut self, identity: u64) -> Result<(), &'static str> {
+        let transaction = self
+            .transactions
+            .get_mut(&identity)
+            .ok_or("message transaction does not exist")?;
+        if transaction.state != TransactionState::Enqueued {
+            return Err("message transaction cannot be received twice");
+        }
+        transaction.state = match transaction.kind {
+            InteractionKind::Stream => TransactionState::Streaming { values: Vec::new() },
+            _ => TransactionState::Received,
+        };
+        Ok(())
+    }
+
+    /// Complete exactly one request reply.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for non-requests, duplicate replies, or unknown transactions.
+    pub fn reply(
+        &mut self,
+        identity: u64,
+        result_identity: impl Into<String>,
+    ) -> Result<(), &'static str> {
+        let transaction = self
+            .transactions
+            .get_mut(&identity)
+            .ok_or("message transaction does not exist")?;
+        if transaction.kind != InteractionKind::Request
+            || transaction.state != TransactionState::Received
+        {
+            return Err("request is not awaiting exactly one reply");
+        }
+        transaction.state = TransactionState::Replied {
+            result_identity: result_identity.into(),
+        };
+        Self::release_capacity(&mut self.admitted, &transaction.endpoint);
+        Ok(())
+    }
+
+    /// Append one ordered stream result.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless the transaction is an open stream.
+    pub fn yield_stream(
+        &mut self,
+        identity: u64,
+        value_identity: impl Into<String>,
+    ) -> Result<(), &'static str> {
+        let transaction = self
+            .transactions
+            .get_mut(&identity)
+            .ok_or("message transaction does not exist")?;
+        let TransactionState::Streaming { values } = &mut transaction.state else {
+            return Err("message transaction is not an open stream");
+        };
+        values.push(value_identity.into());
+        Ok(())
+    }
+
+    /// Close an event, direct call, or stream and release capacity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the transaction cannot close from its current state.
+    pub fn close(&mut self, identity: u64) -> Result<(), &'static str> {
+        let transaction = self
+            .transactions
+            .get_mut(&identity)
+            .ok_or("message transaction does not exist")?;
+        if !matches!(
+            transaction.state,
+            TransactionState::Received | TransactionState::Streaming { .. }
+        ) {
+            return Err("message transaction is not ready to close");
+        }
+        transaction.state = TransactionState::Closed;
+        Self::release_capacity(&mut self.admitted, &transaction.endpoint);
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn transaction(&self, identity: u64) -> Option<&MessageTransaction> {
+        self.transactions.get(&identity)
+    }
+
+    fn release_capacity(admitted: &mut BTreeMap<QualifiedName, usize>, endpoint: &QualifiedName) {
+        if let Some(occupied) = admitted.get_mut(endpoint) {
+            *occupied = occupied.saturating_sub(1);
+        }
+    }
+}
+
+impl TaskScheduler {
+    /// Construct a task in one structured parent scope.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the parent does not exist or is already closing.
+    pub fn construct(
+        &mut self,
+        parent: Option<TaskIdentity>,
+    ) -> Result<TaskIdentity, &'static str> {
+        if let Some(parent) = parent {
+            let Some(record) = self.tasks.get(&parent) else {
+                return Err("task parent does not exist");
+            };
+            if matches!(record.state, TaskState::Closing | TaskState::Completed) {
+                return Err("cannot add a child to a closing task scope");
+            }
+        }
+        let identity = TaskIdentity(self.next_identity);
+        self.next_identity += 1;
+        self.tasks.insert(
+            identity,
+            TaskRecord {
+                parent,
+                children: BTreeSet::new(),
+                state: TaskState::Constructed,
+                cancellation_requested: false,
+            },
+        );
+        if let Some(parent) = parent {
+            let Some(parent_record) = self.tasks.get_mut(&parent) else {
+                return Err("task parent disappeared during construction");
+            };
+            parent_record.children.insert(identity);
+        }
+        Ok(identity)
+    }
+
+    /// Start a newly constructed task.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless the task is constructed.
+    pub fn start(&mut self, task: TaskIdentity) -> Result<(), &'static str> {
+        let record = self.tasks.get_mut(&task).ok_or("task does not exist")?;
+        if record.state != TaskState::Constructed {
+            return Err("only a constructed task may start");
+        }
+        record.state = TaskState::Runnable;
+        Ok(())
+    }
+
+    /// Begin structured cancellation for a task and every child.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the task does not exist.
+    pub fn cancel(&mut self, task: TaskIdentity) -> Result<(), &'static str> {
+        let children = self
+            .tasks
+            .get(&task)
+            .ok_or("task does not exist")?
+            .children
+            .iter()
+            .copied()
+            .collect::<Vec<_>>();
+        for child in children {
+            self.cancel(child)?;
+        }
+        let Some(record) = self.tasks.get_mut(&task) else {
+            return Err("task disappeared during cancellation");
+        };
+        record.cancellation_requested = true;
+        record.state = TaskState::Closing;
+        Ok(())
+    }
+
+    /// Begin ordinary scope closure; children retain their own completion path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an unknown or already completed task.
+    pub fn begin_close(&mut self, task: TaskIdentity) -> Result<(), &'static str> {
+        let record = self.tasks.get_mut(&task).ok_or("task does not exist")?;
+        if record.state == TaskState::Completed {
+            return Err("completed task cannot close again");
+        }
+        record.state = TaskState::Closing;
+        Ok(())
+    }
+
+    /// Acknowledge closure after every child has completed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error while a child remains incomplete or before closure.
+    pub fn acknowledge_closed(&mut self, task: TaskIdentity) -> Result<(), &'static str> {
+        let record = self.tasks.get(&task).ok_or("task does not exist")?;
+        if record.state != TaskState::Closing {
+            return Err("task has not begun closing");
+        }
+        if record.children.iter().any(|child| {
+            !matches!(
+                self.tasks.get(child).map(|record| &record.state),
+                Some(TaskState::Completed)
+            )
+        }) {
+            return Err("task scope still has a live child");
+        }
+        let Some(record) = self.tasks.get_mut(&task) else {
+            return Err("task disappeared during closure");
+        };
+        record.state = TaskState::Completed;
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn state(&self, task: TaskIdentity) -> Option<&TaskState> {
+        self.tasks.get(&task).map(|record| &record.state)
+    }
+}
+
 impl MemoryExecution {
     /// Append one validated event and return its stable execution index.
     ///
@@ -873,5 +1315,106 @@ mod tests {
         execution.order_before(write, read).unwrap();
         assert_eq!(execution.validate_race_free(), Ok(()));
         assert!(execution.order_before(read, write).is_err());
+    }
+
+    #[test]
+    fn task_cancellation_closes_children_before_parent() {
+        let mut scheduler = TaskScheduler::default();
+        let parent = scheduler.construct(None).unwrap();
+        scheduler.start(parent).unwrap();
+        let child = scheduler.construct(Some(parent)).unwrap();
+        scheduler.start(child).unwrap();
+        scheduler.cancel(parent).unwrap();
+        assert_eq!(scheduler.state(child), Some(&TaskState::Closing));
+        assert!(scheduler.acknowledge_closed(parent).is_err());
+        scheduler.acknowledge_closed(child).unwrap();
+        scheduler.acknowledge_closed(parent).unwrap();
+        assert_eq!(scheduler.state(parent), Some(&TaskState::Completed));
+    }
+
+    #[test]
+    fn requests_reply_once_and_streams_preserve_order() {
+        let endpoint = QualifiedName(vec!["service".into(), "query".into()]);
+        let mut ledger = MessageLedger::default();
+        let request = ledger
+            .send(
+                MessageSend {
+                    sender: TaskIdentity(1),
+                    receiver: TaskIdentity(2),
+                    endpoint: endpoint.clone(),
+                    kind: InteractionKind::Request,
+                    payload_identity: "question".into(),
+                },
+                1,
+                &AdmissionPolicy::Reject,
+            )
+            .unwrap();
+        assert!(
+            ledger
+                .send(
+                    MessageSend {
+                        sender: TaskIdentity(1),
+                        receiver: TaskIdentity(2),
+                        endpoint: endpoint.clone(),
+                        kind: InteractionKind::Request,
+                        payload_identity: "second".into(),
+                    },
+                    1,
+                    &AdmissionPolicy::Reject,
+                )
+                .is_err()
+        );
+        ledger.receive(request).unwrap();
+        ledger.reply(request, "answer").unwrap();
+        assert!(ledger.reply(request, "duplicate").is_err());
+
+        let stream = ledger
+            .send(
+                MessageSend {
+                    sender: TaskIdentity(1),
+                    receiver: TaskIdentity(2),
+                    endpoint,
+                    kind: InteractionKind::Stream,
+                    payload_identity: "range".into(),
+                },
+                1,
+                &AdmissionPolicy::Wait,
+            )
+            .unwrap();
+        ledger.receive(stream).unwrap();
+        ledger.yield_stream(stream, "one").unwrap();
+        ledger.yield_stream(stream, "two").unwrap();
+        assert!(matches!(
+            &ledger.transaction(stream).unwrap().state,
+            TransactionState::Streaming { values } if values == &["one", "two"]
+        ));
+        ledger.close(stream).unwrap();
+    }
+
+    #[test]
+    fn dependency_schedules_are_canonical_and_reject_internal_cycles() {
+        let first = DependencyNode::Task(TaskIdentity(1));
+        let second = DependencyNode::Task(TaskIdentity(2));
+        let transaction = DependencyNode::Transaction(3);
+        let mut graph = DependencyGraph::default();
+        for node in [second.clone(), transaction.clone(), first.clone()] {
+            graph.add_node(node);
+        }
+        graph.depends_on(&first, &transaction).unwrap();
+        graph.depends_on(&second, &transaction).unwrap();
+        assert_eq!(
+            graph.schedule().unwrap().order,
+            vec![first.clone(), second.clone(), transaction.clone()]
+        );
+        graph.depends_on(&transaction, &first).unwrap();
+        assert!(graph.schedule().is_err());
+
+        let external = DependencyNode::External(QualifiedName(vec!["network".into()]));
+        let mut suspended = DependencyGraph::default();
+        suspended.add_node(first.clone());
+        suspended.add_node(external.clone());
+        suspended.depends_on(&first, &external).unwrap();
+        suspended.depends_on(&external, &first).unwrap();
+        assert!(suspended.schedule().is_ok());
     }
 }
