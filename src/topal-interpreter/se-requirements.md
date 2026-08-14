@@ -33,11 +33,12 @@ Trace collection shall not change the program result, accepted language, or
 decision order. Tests shall compare semantic event fields rather than runtime
 addresses, elapsed time, or implementation-specific debug output.
 
-## TOPAL-INTP-SUBSET-001 — Explicit revision subset
+## TOPAL-INTP-SUBSET-001 — Explicit revision boundary
 
-The interpreter shall reject valid `design-0` syntax which it does not yet
-implement with an explicit unsupported-syntax diagnostic. It shall not guess
-semantics for syntax absent from the formal language revision.
+The interpreter shall implement every runtime-applicable, non-deferred
+`design-0` rule recorded as complete in the core-language coverage ledger. It
+shall diagnose syntax absent from the selected formal language revision and
+shall never guess semantics for another revision.
 
 ## TOPAL-INTP-SUBSET-002 — Immutable bindings
 

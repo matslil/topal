@@ -106,6 +106,7 @@ fn every_stable_specification_rule_has_a_completion_owner() {
         );
         if entry.status == "complete" {
             let specification = fs::read_to_string(root.join(&path)).unwrap();
+            let mut missing = Vec::new();
             for line in specification.lines() {
                 let Some(rule) = line
                     .strip_prefix("### ")
@@ -113,11 +114,14 @@ fn every_stable_specification_rule_has_a_completion_owner() {
                 else {
                     continue;
                 };
-                assert!(
-                    implementation_coverage.contains(rule.0),
-                    "completed rule {rule:?} from {path} lacks implementation evidence"
-                );
+                if !implementation_coverage.contains(rule.0) {
+                    missing.push(rule.0);
+                }
             }
+            assert!(
+                missing.is_empty(),
+                "completed rules from {path} lack implementation evidence: {missing:?}"
+            );
         }
     }
 }
