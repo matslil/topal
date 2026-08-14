@@ -73,6 +73,13 @@ Topal source example and an automated debugger scenario exercising that
 capability. Language-feature increments shall continue to update LSP coverage
 and interpreter examples under their existing requirements.
 
+## TOPAL-DEBUG-LOCATION-001 — Follow ordered location access
+
+The scripted debugger shall retain each checked location read and write as a
+reversible ordered transition. Inspection before and after the transition shall
+preserve the exact layout-backed value without performing an additional
+external access.
+
 ## TOPAL-DEBUG-MODE-001 — Scripted command mode
 
 `--script COMMANDS FILE` shall debug `FILE` by reading debugger commands from

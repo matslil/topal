@@ -32,6 +32,30 @@ pub enum Value {
     TaskType(Box<TaskTypeValue>),
     TaskDefinition(Box<TaskDefinitionValue>),
     TaskInstance(Box<RefCell<TaskInstanceValue>>),
+    SizeBits(BigInt),
+    AddressRangeType(Vec<(String, Value)>),
+    AddressRange {
+        attributes: Vec<(String, Value)>,
+        lower: BigInt,
+        upper: BigInt,
+    },
+    AddressOffsetType(Vec<(String, Value)>),
+    AddressOffset {
+        attributes: Vec<(String, Value)>,
+        offset: BigInt,
+    },
+    LayoutType(Box<LayoutValue>),
+    LayoutFactory(Vec<(String, Value)>),
+    LayoutBacked {
+        layout: Box<LayoutValue>,
+        value: Box<Value>,
+    },
+    LocationType(Box<LayoutValue>),
+    Location {
+        layout: Box<LayoutValue>,
+        offset: Box<Value>,
+        storage: Box<RefCell<Option<Value>>>,
+    },
     Int(BigInt),
     Rational(BigRational),
     IntRange {
@@ -264,6 +288,12 @@ pub struct ModularType {
     upper: BigInt,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LayoutValue {
+    semantic: String,
+    attributes: Vec<(String, Value)>,
+}
+
 impl fmt::Display for Value {
     #[allow(clippy::too_many_lines)] // Every runtime value keeps an explicit stable source representation.
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -287,6 +317,20 @@ impl fmt::Display for Value {
             }
             Self::Effects(effects) => write!(formatter, "Effects ({})", effects.join(", ")),
             Self::Boolean(value) => value.fmt(formatter),
+            Self::SizeBits(bits) => write!(formatter, "{bits}[b]"),
+            Self::AddressRangeType(_) => formatter.write_str("AddressRange <subtype>"),
+            Self::AddressRange { lower, upper, .. } => write!(formatter, "{lower} .. {upper}"),
+            Self::AddressOffsetType(_) => formatter.write_str("AddressOffset <subtype>"),
+            Self::AddressOffset { offset, .. } => offset.fmt(formatter),
+            Self::LayoutType(layout) => write!(formatter, "Layout {}", layout.semantic),
+            Self::LayoutFactory(_) => formatter.write_str("Layout <subtype constructor>"),
+            Self::LayoutBacked { value, .. } => value.fmt(formatter),
+            Self::LocationType(layout) => {
+                write!(formatter, "Location (Layout {})", layout.semantic)
+            }
+            Self::Location { layout, offset, .. } => {
+                write!(formatter, "Location {} {offset}", layout.semantic)
+            }
             Self::Version(value) => value.fmt(formatter),
             Self::NativeSerializer(version) => write!(formatter, "<lang serialize {version}>"),
             Self::SerializationStream(bytes) => {
@@ -703,6 +747,344 @@ enum BindingOutcome {
 }
 
 impl Session {
+    fn layout_attributes(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        trace: &mut impl TraceSink,
+    ) -> Result<Vec<(String, Value)>, Diagnostic> {
+        let Value::Record(attributes) = self.evaluate_expression(source, expression, trace)? else {
+            return Err(diagnostic(
+                source,
+                "E-LAYOUT-ATTRIBUTES",
+                expression.span(),
+                "layout attributes require a labeled record",
+            ));
+        };
+        Ok(attributes)
+    }
+
+    fn evaluate_layout_application(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Option<Result<Value, Diagnostic>> {
+        let identifier = |expression: &Expression| match expression {
+            Expression::Identifier(name) => Some(source.slice(*name)),
+            _ => None,
+        };
+        if let [operation, location] = items
+            && identifier(operation) == Some("read")
+            && let Some(name) = identifier(location)
+            && let Some(Value::Location {
+                layout, storage, ..
+            }) = self.bindings.get(name)
+        {
+            if matches!(layout_access(layout), "WriteOnly" | "Reserved") {
+                return Some(Err(diagnostic(
+                    source,
+                    "E-LAYOUT-NOT-READABLE",
+                    span,
+                    "location layout does not permit reads",
+                )));
+            }
+            let result = storage.borrow().clone().ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-LAYOUT-UNINITIALIZED",
+                    span,
+                    "location has no stored layout value",
+                )
+            });
+            if result.is_ok() {
+                trace.record(TraceEvent {
+                    event: "location.read",
+                    rule: "TOPAL-LOCATION-READ-001",
+                    detail: name,
+                });
+            }
+            return Some(result);
+        }
+        if let [location, operation, value] = items
+            && identifier(operation) == Some("write")
+            && let Some(name) = identifier(location)
+            && let Some(Value::Location {
+                layout, storage, ..
+            }) = self.bindings.get(name)
+        {
+            if matches!(layout_access(layout), "ReadOnly" | "Reserved") {
+                return Some(Err(diagnostic(
+                    source,
+                    "E-LAYOUT-NOT-WRITABLE",
+                    span,
+                    "location layout does not permit writes",
+                )));
+            }
+            let value_span = value.span();
+            let result = self
+                .evaluate_expression(source, value, trace)
+                .and_then(|value| {
+                    let stored = coerce_layout_value(source, value_span, layout, value)?;
+                    *storage.borrow_mut() = Some(stored);
+                    trace.record(TraceEvent {
+                        event: "location.written",
+                        rule: "TOPAL-LOCATION-WRITE-001",
+                        detail: name,
+                    });
+                    Ok(Value::Unit)
+                });
+            return Some(result);
+        }
+        if let [attributes, constructor, semantic @ ..] = items
+            && identifier(constructor) == Some("Layout")
+            && !semantic.is_empty()
+        {
+            let result = self
+                .layout_attributes(source, attributes, trace)
+                .and_then(|attributes| {
+                    let semantic_span = Span::new(
+                        semantic.first().expect("checked nonempty").span().start,
+                        semantic.last().expect("checked nonempty").span().end,
+                    );
+                    let semantic = source.slice(semantic_span).trim();
+                    validate_layout_attributes(source, span, semantic, &attributes)?;
+                    trace.record(TraceEvent {
+                        event: "layout.constructed",
+                        rule: "TOPAL-LAYOUT-CONSTRUCT-001",
+                        detail: semantic,
+                    });
+                    Ok(Value::LayoutType(Box::new(LayoutValue {
+                        semantic: semantic.into(),
+                        attributes,
+                    })))
+                });
+            return Some(result);
+        }
+        if let [constructor, semantic] = items
+            && identifier(constructor) == Some("Layout")
+        {
+            if matches!(semantic, Expression::Product { .. }) {
+                return Some(
+                    self.layout_attributes(source, semantic, trace)
+                        .map(Value::LayoutFactory),
+                );
+            }
+            let semantic = source.slice(semantic.span()).trim();
+            let attributes = if semantic == "Unit" {
+                vec![
+                    ("storage-size".into(), Value::SizeBits(BigInt::from(0))),
+                    (
+                        "encoding".into(),
+                        Value::Enum {
+                            type_name: "LayoutEncoding".into(),
+                            alternative: "Empty".into(),
+                        },
+                    ),
+                ]
+            } else {
+                return Some(Err(diagnostic(
+                    source,
+                    "E-LAYOUT-ATTRIBUTES",
+                    span,
+                    "this semantic type requires explicit layout attributes",
+                )));
+            };
+            return Some(Ok(Value::LayoutType(Box::new(LayoutValue {
+                semantic: semantic.into(),
+                attributes,
+            }))));
+        }
+        if let [name, semantic @ ..] = items
+            && !semantic.is_empty()
+            && let Some(name) = identifier(name)
+            && let Some(Value::LayoutFactory(attributes)) = self.bindings.get(name)
+        {
+            let semantic_span = Span::new(
+                semantic.first().unwrap().span().start,
+                semantic.last().unwrap().span().end,
+            );
+            let semantic = source.slice(semantic_span).trim();
+            return Some(
+                validate_layout_attributes(source, span, semantic, attributes).map(|()| {
+                    Value::LayoutType(Box::new(LayoutValue {
+                        semantic: semantic.into(),
+                        attributes: attributes.clone(),
+                    }))
+                }),
+            );
+        }
+        if let [constructor, attributes] = items
+            && matches!(
+                identifier(constructor),
+                Some("AddressRange" | "AddressOffset")
+            )
+        {
+            let kind = identifier(constructor).unwrap();
+            return Some(
+                self.layout_attributes(source, attributes, trace)
+                    .map(|attributes| {
+                        if kind == "AddressRange" {
+                            Value::AddressRangeType(attributes)
+                        } else {
+                            Value::AddressOffsetType(attributes)
+                        }
+                    }),
+            );
+        }
+        if let [attributes, constructor, argument] = items
+            && matches!(
+                identifier(constructor),
+                Some("AddressRange" | "AddressOffset")
+            )
+        {
+            let kind = identifier(constructor).unwrap();
+            return Some(self.layout_attributes(source, attributes, trace).and_then(
+                |attributes| {
+                    let value = self.evaluate_expression(source, argument, trace)?;
+                    if kind == "AddressRange" {
+                        match value {
+                            Value::IntRange { lower, upper } if lower >= BigInt::from(0) => {
+                                Ok(Value::AddressRange {
+                                    attributes,
+                                    lower,
+                                    upper,
+                                })
+                            }
+                            _ => Err(diagnostic(
+                                source,
+                                "E-ADDRESS-RANGE",
+                                argument.span(),
+                                "AddressRange requires a nonnegative Nat range",
+                            )),
+                        }
+                    } else {
+                        match value {
+                            Value::Int(offset) if offset >= BigInt::from(0) => {
+                                validate_address_offset(
+                                    source,
+                                    argument.span(),
+                                    &attributes,
+                                    &offset,
+                                )?;
+                                Ok(Value::AddressOffset { attributes, offset })
+                            }
+                            _ => Err(diagnostic(
+                                source,
+                                "E-ADDRESS-OFFSET",
+                                argument.span(),
+                                "AddressOffset requires a Nat byte offset",
+                            )),
+                        }
+                    }
+                },
+            ));
+        }
+        if let [constructor, layout] = items
+            && identifier(constructor) == Some("Location")
+        {
+            return Some(self.evaluate_expression(source, layout, trace).and_then(
+                |value| match value {
+                    Value::LayoutType(layout) => Ok(Value::LocationType(layout)),
+                    _ => Err(diagnostic(
+                        source,
+                        "E-LOCATION-LAYOUT",
+                        layout.span(),
+                        "Location requires an explicit Layout value",
+                    )),
+                },
+            ));
+        }
+        if let [name, argument] = items
+            && let Some(name) = identifier(name)
+            && let Some(constructor) = self.bindings.get(name)
+        {
+            let result = match constructor {
+                Value::AddressRangeType(attributes) => Some(
+                    self.evaluate_expression(source, argument, trace).and_then(
+                        |value| match value {
+                            Value::IntRange { lower, upper } if lower >= BigInt::from(0) => {
+                                Ok(Value::AddressRange {
+                                    attributes: attributes.clone(),
+                                    lower,
+                                    upper,
+                                })
+                            }
+                            _ => Err(diagnostic(
+                                source,
+                                "E-ADDRESS-RANGE",
+                                argument.span(),
+                                "AddressRange requires a nonnegative Nat range",
+                            )),
+                        },
+                    ),
+                ),
+                Value::AddressOffsetType(attributes) => Some(
+                    self.evaluate_expression(source, argument, trace).and_then(
+                        |value| match value {
+                            Value::Int(offset) if offset >= BigInt::from(0) => {
+                                validate_address_offset(
+                                    source,
+                                    argument.span(),
+                                    attributes,
+                                    &offset,
+                                )?;
+                                Ok(Value::AddressOffset {
+                                    attributes: attributes.clone(),
+                                    offset,
+                                })
+                            }
+                            _ => Err(diagnostic(
+                                source,
+                                "E-ADDRESS-OFFSET",
+                                argument.span(),
+                                "AddressOffset requires a Nat byte offset",
+                            )),
+                        },
+                    ),
+                ),
+                Value::LocationType(layout) => Some(
+                    self.evaluate_expression(source, argument, trace).and_then(
+                        |offset| match offset {
+                            Value::AddressOffset { attributes, offset } => {
+                                validate_location_fit(
+                                    source,
+                                    argument.span(),
+                                    layout,
+                                    &attributes,
+                                    &offset,
+                                )?;
+                                Ok(Value::Location {
+                                    layout: layout.clone(),
+                                    offset: Box::new(Value::AddressOffset { attributes, offset }),
+                                    storage: Box::new(RefCell::new(None)),
+                                })
+                            }
+                            _ => Err(diagnostic(
+                                source,
+                                "E-LOCATION-OFFSET",
+                                argument.span(),
+                                "a location requires an AddressOffset value",
+                            )),
+                        },
+                    ),
+                ),
+                Value::LayoutType(layout) => Some(
+                    self.evaluate_expression(source, argument, trace)
+                        .and_then(|value| {
+                            coerce_layout_value(source, argument.span(), layout, value)
+                        }),
+                ),
+                _ => None,
+            };
+            if result.is_some() {
+                return result;
+            }
+        }
+        None
+    }
+
     fn construct_task_instance(
         &self,
         source: &SourceText,
@@ -1615,6 +1997,35 @@ impl Session {
         let value = match expression {
             Expression::Block { statements, .. } => self.evaluate_block(source, statements, trace),
             Expression::Boolean(span) => Ok(evaluate_boolean_literal(source, *span, trace)),
+            Expression::Measured { value, unit, span } => {
+                let amount = parse_integer(source.slice(*value)).ok_or_else(|| {
+                    diagnostic(
+                        source,
+                        "E-SIZE-LITERAL",
+                        *span,
+                        "size must use a Nat literal",
+                    )
+                })?;
+                if amount < BigInt::from(0) || !matches!(source.slice(*unit), "b" | "B") {
+                    return Err(diagnostic(
+                        source,
+                        "E-SIZE-LITERAL",
+                        *span,
+                        "size must be nonnegative and use `[b]` or `[B]`",
+                    ));
+                }
+                let bits = if source.slice(*unit) == "B" {
+                    amount * 8
+                } else {
+                    amount
+                };
+                trace.record(TraceEvent {
+                    event: "layout.size.constructed",
+                    rule: "TOPAL-LAYOUT-SIZE-001",
+                    detail: source.slice(*span),
+                });
+                Ok(Value::SizeBits(bits))
+            }
             Expression::Unit(_) => {
                 trace.record(TraceEvent {
                     event: "product.unit",
@@ -2019,6 +2430,9 @@ impl Session {
                 Ok(Value::Callable(*kind))
             }
             Expression::Application { items, span } => {
+                if let Some(value) = self.evaluate_layout_application(source, items, *span, trace) {
+                    return value;
+                }
                 if let [Expression::Identifier(task), options] = items.as_slice()
                     && source.slice(*task) == "Task"
                 {
@@ -3618,6 +4032,33 @@ impl Session {
             });
             return Ok(Value::Enum {
                 type_name: "LayoutPolicy".into(),
+                alternative: name.into(),
+            });
+        }
+        if matches!(
+            name,
+            "Empty"
+                | "BooleanBits"
+                | "RawBits"
+                | "UnsignedBinary"
+                | "TwosComplement"
+                | "OnesComplement"
+                | "SignMagnitude"
+                | "BiasedBinary"
+                | "Ratio"
+                | "Utf8"
+                | "Utf16"
+                | "Utf32"
+                | "Ascii"
+                | "Tagged"
+                | "NoPadding"
+                | "Cached"
+                | "Uncached"
+                | "Memory"
+                | "MMIO"
+        ) {
+            return Ok(Value::Enum {
+                type_name: "LayoutEncoding".into(),
                 alternative: name.into(),
             });
         }
@@ -6910,6 +7351,7 @@ fn expression_is_closed(expression: &Expression) -> bool {
         Expression::Unit(_)
         | Expression::Boolean(_)
         | Expression::Integer(_)
+        | Expression::Measured { .. }
         | Expression::Rational(_)
         | Expression::String(_)
         | Expression::Callable { .. } => true,
@@ -7803,6 +8245,9 @@ fn declare_variant(
 }
 
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
+    if let Value::LayoutBacked { layout, value } = value {
+        return classifier == layout.semantic || value_has_classifier(value, classifier);
+    }
     if let Value::Refined {
         constraint,
         base_classifier,
@@ -8918,6 +9363,231 @@ fn record_result(trace: &mut impl TraceSink, value: &Value) {
     });
 }
 
+fn validate_layout_attributes(
+    source: &SourceText,
+    span: Span,
+    semantic: &str,
+    attributes: &[(String, Value)],
+) -> Result<(), Diagnostic> {
+    const COMMON: &[&str] = &["storage-size", "encoding", "endian", "access", "alignment"];
+    const EXTRA: &[&str] = &[
+        "bit-order",
+        "unit-size",
+        "canonical",
+        "length",
+        "false-pattern",
+        "true-pattern",
+        "bias",
+        "numerator-layout",
+        "denominator-layout",
+        "integer-layout",
+        "quantum",
+        "exponent-bits",
+        "fraction-bits",
+        "exponent-bias",
+        "subnormal",
+        "infinity",
+        "signed-zero",
+        "nan",
+        "termination",
+        "padding",
+        "packing",
+        "field-order",
+        "tag-layout",
+        "tags",
+        "payload-placement",
+        "element-layout",
+        "stride",
+        "entry-layout",
+        "ordering",
+        "measurement-unit",
+    ];
+    for (name, _) in attributes {
+        if !COMMON.contains(&name.as_str()) && !EXTRA.contains(&name.as_str()) {
+            return Err(diagnostic(
+                source,
+                "E-LAYOUT-UNKNOWN-FIELD",
+                span,
+                format!("`{name}` is not a layout attribute"),
+            ));
+        }
+    }
+    let field = |name: &str| {
+        attributes
+            .iter()
+            .find(|(field, _)| field == name)
+            .map(|(_, value)| value)
+    };
+    if let Some(size) = field("storage-size")
+        && !matches!(size, Value::SizeBits(bits) if bits >= &BigInt::from(0))
+    {
+        return Err(diagnostic(
+            source,
+            "E-LAYOUT-STORAGE-SIZE",
+            span,
+            "storage-size requires a nonnegative bit or byte size",
+        ));
+    }
+    if semantic == "Unit" {
+        if field("storage-size").is_some_and(|value| value != &Value::SizeBits(BigInt::from(0))) {
+            return Err(diagnostic(
+                source,
+                "E-LAYOUT-UNIT-SIZE",
+                span,
+                "Layout Unit has exactly 0[b] storage",
+            ));
+        }
+    } else if matches!(
+        semantic,
+        "Boolean" | "Nat" | "Int" | "Rational" | "String" | "Character"
+    ) && field("encoding").is_none()
+    {
+        return Err(diagnostic(
+            source,
+            "E-LAYOUT-ENCODING",
+            span,
+            format!("Layout {semantic} requires an encoding"),
+        ));
+    }
+    Ok(())
+}
+
+fn layout_access(layout: &LayoutValue) -> &str {
+    layout
+        .attributes
+        .iter()
+        .find_map(|(name, value)| {
+            (name == "access")
+                .then_some(value)
+                .and_then(|value| match value {
+                    Value::Enum { alternative, .. } => Some(alternative.as_str()),
+                    _ => None,
+                })
+        })
+        .unwrap_or("ReadWrite")
+}
+
+fn validate_address_offset(
+    source: &SourceText,
+    span: Span,
+    attributes: &[(String, Value)],
+    offset: &BigInt,
+) -> Result<(), Diagnostic> {
+    if let Some(Value::Int(alignment)) = attributes
+        .iter()
+        .find_map(|(name, value)| (name == "alignment").then_some(value))
+        && (alignment <= &BigInt::from(0) || offset % alignment != BigInt::from(0))
+    {
+        return Err(diagnostic(
+            source,
+            "E-ADDRESS-OFFSET-ALIGNMENT",
+            span,
+            "address offset does not satisfy its byte alignment",
+        ));
+    }
+    if let Some(Value::AddressRange { lower, upper, .. }) = attributes
+        .iter()
+        .find_map(|(name, value)| (name == "range").then_some(value))
+        && offset > &(upper - lower)
+    {
+        return Err(diagnostic(
+            source,
+            "E-ADDRESS-OFFSET-RANGE",
+            span,
+            "address offset lies outside its associated range",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_location_fit(
+    source: &SourceText,
+    span: Span,
+    layout: &LayoutValue,
+    offset_attributes: &[(String, Value)],
+    offset: &BigInt,
+) -> Result<(), Diagnostic> {
+    let size_bits = layout.attributes.iter().find_map(|(name, value)| {
+        (name == "storage-size")
+            .then_some(value)
+            .and_then(|value| match value {
+                Value::SizeBits(bits) => Some(bits),
+                _ => None,
+            })
+    });
+    if let (Some(bits), Some(Value::AddressRange { lower, upper, .. })) = (
+        size_bits,
+        offset_attributes
+            .iter()
+            .find_map(|(name, value)| (name == "range").then_some(value)),
+    ) {
+        let bytes = (bits + BigInt::from(7)) / BigInt::from(8);
+        if offset + bytes > upper - lower + BigInt::from(1) {
+            return Err(diagnostic(
+                source,
+                "E-LOCATION-RANGE",
+                span,
+                "layout does not fit in the associated address range",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn coerce_layout_value(
+    source: &SourceText,
+    span: Span,
+    layout: &LayoutValue,
+    value: Value,
+) -> Result<Value, Diagnostic> {
+    if let Value::LayoutBacked {
+        layout: existing, ..
+    } = &value
+        && existing.as_ref() == layout
+    {
+        return Ok(value);
+    }
+    if !value_has_classifier(&value, &layout.semantic) {
+        return Err(diagnostic(
+            source,
+            "E-LAYOUT-SEMANTIC-VALUE",
+            span,
+            format!(
+                "Layout {} requires a {} value",
+                layout.semantic, layout.semantic
+            ),
+        ));
+    }
+    if let Value::Int(integer) = &value
+        && let Some(Value::SizeBits(bits)) = layout
+            .attributes
+            .iter()
+            .find_map(|(name, value)| (name == "storage-size").then_some(value))
+    {
+        let unsigned = layout.attributes.iter().any(|(name, value)| {
+            name == "encoding"
+                && matches!(value, Value::Enum { alternative, .. } if alternative == "UnsignedBinary")
+        });
+        let limit = usize::try_from(bits)
+            .ok()
+            .map(|width| BigInt::from(1_u8) << width);
+        if unsigned
+            && (integer < &BigInt::from(0) || limit.as_ref().is_some_and(|limit| integer >= limit))
+        {
+            return Err(diagnostic(
+                source,
+                "E-LAYOUT-NOT-REPRESENTABLE",
+                span,
+                "integer is not representable by the selected layout",
+            ));
+        }
+    }
+    Ok(Value::LayoutBacked {
+        layout: Box::new(layout.clone()),
+        value: Box::new(value),
+    })
+}
+
 fn value_classifier(value: &Value) -> &'static str {
     match value {
         Value::Boolean(_) => "Boolean",
@@ -8926,6 +9596,16 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::TaskType(_) => "Type",
         Value::TaskDefinition(_) => "TaskDefinition",
         Value::TaskInstance(_) => "Task",
+        Value::SizeBits(_) => "Size",
+        Value::AddressRangeType(_)
+        | Value::AddressOffsetType(_)
+        | Value::LayoutType(_)
+        | Value::LayoutFactory(_)
+        | Value::LocationType(_) => "Type",
+        Value::AddressRange { .. } => "AddressRange",
+        Value::AddressOffset { .. } => "AddressOffset",
+        Value::Location { .. } => "Location",
+        Value::LayoutBacked { .. } => "Layout",
         Value::Type(_) | Value::ModularType(_) => "Type",
         Value::Effects(_) => "Effect",
         Value::Int(_) => "Int",
@@ -9048,6 +9728,7 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::Type(name) => name.clone(),
         Value::Effects(_) => "Effect".into(),
         Value::ModularType(kind) => kind.name.clone().unwrap_or_else(|| "Type".into()),
+        Value::LayoutBacked { layout, .. } => layout.semantic.clone(),
         _ => value_classifier(value).to_owned(),
     }
 }
@@ -11915,6 +12596,12 @@ fn apply_negate(
             });
             Ok(Value::Rational(-operand))
         }
+        Value::SizeBits(_) => Err(diagnostic(
+            source,
+            "E-NEGATE-OPERAND",
+            span,
+            "a storage size cannot be negated",
+        )),
         Value::Modular {
             type_name,
             lower,
@@ -11971,6 +12658,15 @@ fn apply_negate(
         | Value::Introspection(_)
         | Value::Refined { .. }
         | Value::ModularType(_)
+        | Value::AddressRangeType(_)
+        | Value::AddressRange { .. }
+        | Value::AddressOffsetType(_)
+        | Value::AddressOffset { .. }
+        | Value::LayoutType(_)
+        | Value::LayoutFactory(_)
+        | Value::LayoutBacked { .. }
+        | Value::LocationType(_)
+        | Value::Location { .. }
         | Value::ErrorDomain(_)
         | Value::Error { .. }
         | Value::Continue(_)
@@ -12424,6 +13120,24 @@ mod tests {
             trace
                 .iter()
                 .any(|event| event.contains("task.state.replaced"))
+        );
+    }
+
+    #[test]
+    fn constructs_external_layouts_ranges_offsets_and_locations() {
+        let source = "UInt32LE is (storage-size is 32[b], encoding is UnsignedBinary, endian is Little) Layout Nat\
+\nDeviceAddresses is AddressRange (caching is Uncached, minimum-access-size is 32[b], medium is MMIO)\
+\ndevice is DeviceAddresses (0x40000000 .. 0x4000ffff)\
+\nDeviceOffset is AddressOffset (range is device, alignment is 4)\
+\ncontrol-offset is DeviceOffset 32\
+\nControlLocation is Location UInt32LE\
+\ncontrol is ControlLocation control-offset\
+\nstored is UInt32LE 42\
+\ncontrol write stored\
+\nread control\n";
+        let value = evaluate(source).unwrap();
+        assert!(
+            matches!(value, Value::LayoutBacked { value, .. } if *value == Value::Int(BigInt::from(42)))
         );
     }
 

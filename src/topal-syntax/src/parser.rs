@@ -20,6 +20,11 @@ pub enum Expression {
         span: Span,
     },
     Integer(Span),
+    Measured {
+        value: Span,
+        unit: Span,
+        span: Span,
+    },
     Rational(Span),
     String(Span),
     Identifier(Span),
@@ -77,6 +82,7 @@ impl Expression {
             | Self::DecisionTable { span, .. }
             | Self::AnonymousFunction { span, .. }
             | Self::Application { span, .. } => *span,
+            Self::Measured { span, .. } => *span,
         }
     }
 }
@@ -1957,7 +1963,32 @@ impl Parser<'_> {
         let token = self.take_nontrivia()?;
         match token.kind {
             TokenKind::Boolean => Some(Expression::Boolean(token.span)),
-            TokenKind::Integer => Some(Expression::Integer(token.span)),
+            TokenKind::Integer => {
+                if self
+                    .peek_nontrivia()
+                    .is_some_and(|next| next.kind == TokenKind::LeftBracket)
+                {
+                    self.take_nontrivia();
+                    let unit = self.take_nontrivia()?;
+                    let closing = self.take_nontrivia()?;
+                    if unit.kind != TokenKind::Identifier || closing.kind != TokenKind::RightBracket
+                    {
+                        self.diagnostics.push(SyntaxDiagnostic {
+                            code: "E-MEASUREMENT-SUFFIX",
+                            span: Span::new(token.span.start, closing.span.end),
+                            message: "a size suffix has the form `[b]` or `[B]`".into(),
+                        });
+                        return None;
+                    }
+                    Some(Expression::Measured {
+                        value: token.span,
+                        unit: unit.span,
+                        span: Span::new(token.span.start, closing.span.end),
+                    })
+                } else {
+                    Some(Expression::Integer(token.span))
+                }
+            }
             TokenKind::Rational => Some(Expression::Rational(token.span)),
             TokenKind::String => Some(Expression::String(token.span)),
             TokenKind::Identifier | TokenKind::Version => Some(Expression::Identifier(token.span)),

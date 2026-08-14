@@ -3356,3 +3356,25 @@ fn follows_reversible_task_message_transactions() {
     assert!(stdout.contains("task.state.replaced [TOPAL-TASK-STATE-001] count"));
     assert!(stdout.contains("\n42\n"));
 }
+
+#[test]
+fn records_reversible_checked_location_access() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}external-layout-location.debug"),
+            &format!("{root}external-layout-location.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("location.written [TOPAL-LOCATION-WRITE-001] control"));
+    assert!(stdout.contains("location.read [TOPAL-LOCATION-READ-001] control"));
+    assert!(stdout.contains("\n42\n"));
+}

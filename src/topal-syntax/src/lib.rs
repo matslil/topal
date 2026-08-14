@@ -25,6 +25,8 @@ pub enum TokenKind {
     RightParen,
     LeftBrace,
     RightBrace,
+    LeftBracket,
+    RightBracket,
     Comma,
     Colon,
     Arrow,
@@ -162,6 +164,8 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         ')' => (TokenKind::RightParen, 1),
         '{' => (TokenKind::LeftBrace, 1),
         '}' => (TokenKind::RightBrace, 1),
+        '[' => (TokenKind::LeftBracket, 1),
+        ']' => (TokenKind::RightBracket, 1),
         ',' => (TokenKind::Comma, 1),
         ':' => (TokenKind::Colon, 1),
         '=' => (TokenKind::Equals, 1),
@@ -560,6 +564,24 @@ mod tests {
                 TokenKind::Range,
                 TokenKind::Whitespace,
                 TokenKind::Integer,
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_exact_storage_size_suffixes() {
+        assert_eq!(
+            kinds("32[b] 4[B]"),
+            vec![
+                TokenKind::Integer,
+                TokenKind::LeftBracket,
+                TokenKind::Identifier,
+                TokenKind::RightBracket,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+                TokenKind::LeftBracket,
+                TokenKind::Identifier,
+                TokenKind::RightBracket,
             ]
         );
     }

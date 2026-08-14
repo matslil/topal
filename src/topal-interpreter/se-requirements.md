@@ -1961,3 +1961,12 @@ applications under `TOPAL-TASK-DEFINITION-001` through
 `TOPAL-TASK-MESSAGE-001`. Formal traces shall retain a stable transaction
 identity across send and receive. LSP validation and reversible scripted
 debugger history shall cover a commented stateful task example.
+
+## TOPAL-INTP-SUBSET-250 — External layouts and checked locations
+
+All source modes shall construct exact bit/byte sizes, closed scalar, text,
+product, sum, and sequence layout descriptions, address ranges, aligned byte
+offsets, layout-backed values, and checked locations under `TOPAL-LAYOUT-*`,
+`TOPAL-ADDRESS-RANGE-001`, and `TOPAL-LOCATION-*`. Reads and writes shall retain
+layout evidence and stable ordered trace decisions. LSP validation and
+reversible scripted-debugger history shall cover a commented example.
