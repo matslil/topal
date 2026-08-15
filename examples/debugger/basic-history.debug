@@ -1,3 +1,7 @@
+use language ( version is v0.1, features is ( debug ) )
+
+# Demonstrates that a deterministic debugger command file explicitly selects
+# the debug language variant; every following command is a function in lang debug.
 step
 why
 step

@@ -1,6 +1,7 @@
 //! Shared, deterministic semantic identities for every Topal source tool.
 
 pub mod introspection;
+pub mod tracing;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;

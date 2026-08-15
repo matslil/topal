@@ -174,6 +174,7 @@ pub struct DecisionRule {
 pub enum Statement {
     LanguageSelection {
         version: Span,
+        features: Vec<Span>,
         span: Span,
     },
     Published {
@@ -568,6 +569,7 @@ impl Parser<'_> {
         }
         self.delimiter_depth += 1;
         let mut version = None;
+        let mut features = Vec::new();
         let closing = loop {
             let field = self.take_nontrivia()?;
             if field.kind == TokenKind::RightParen {
@@ -596,10 +598,44 @@ impl Parser<'_> {
                     message: "language selection requires one version value".into(),
                 });
             }
-            while self.peek_nontrivia().is_some_and(|token| {
-                !matches!(token.kind, TokenKind::Comma | TokenKind::RightParen)
-            }) {
-                self.take_nontrivia();
+            if self.source.slice(field.span) == "features" {
+                if value.kind == TokenKind::LeftParen {
+                    let mut depth = 1_usize;
+                    while depth > 0 {
+                        let Some(item) = self.take_nontrivia() else {
+                            self.diagnostics.push(SyntaxDiagnostic {
+                                code: "E-LANGUAGE-FEATURES",
+                                span: value.span,
+                                message: "language feature collection is not closed".into(),
+                            });
+                            self.delimiter_depth -= 1;
+                            return None;
+                        };
+                        match item.kind {
+                            TokenKind::LeftParen => depth += 1,
+                            TokenKind::RightParen => depth -= 1,
+                            TokenKind::Identifier if depth == 1 => features.push(item.span),
+                            TokenKind::Comma => {}
+                            _ => self.diagnostics.push(SyntaxDiagnostic {
+                                code: "E-LANGUAGE-FEATURES",
+                                span: item.span,
+                                message: "language features must be identifiers".into(),
+                            }),
+                        }
+                    }
+                } else {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-LANGUAGE-FEATURES",
+                        span: value.span,
+                        message: "language features require a parenthesized collection".into(),
+                    });
+                }
+            } else {
+                while self.peek_nontrivia().is_some_and(|token| {
+                    !matches!(token.kind, TokenKind::Comma | TokenKind::RightParen)
+                }) {
+                    self.take_nontrivia();
+                }
             }
             if self
                 .peek_nontrivia()
@@ -619,6 +655,7 @@ impl Parser<'_> {
         };
         Some(Statement::LanguageSelection {
             version,
+            features,
             span: Span::new(use_keyword.span.start, closing.span.end),
         })
     }
@@ -3412,6 +3449,22 @@ mod tests {
             parsed.statements.first(),
             Some(Statement::LanguageSelection { version, .. })
                 if source.slice(*version) == "v0.1"
+        ));
+    }
+
+    #[test]
+    fn preserves_language_variant_features() {
+        let source = SourceText::new(
+            "use language (\n  version is v0.1,\n  features is ( debug, testing )\n)\n42",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(
+            parsed.statements.first(),
+            Some(Statement::LanguageSelection { features, .. })
+                if features.iter().map(|span| source.slice(*span)).collect::<Vec<_>>()
+                    == ["debug", "testing"]
         ));
     }
 

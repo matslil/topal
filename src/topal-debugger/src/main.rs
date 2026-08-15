@@ -1,10 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
-use std::io::{self, BufRead, BufReader, IsTerminal, Write};
+use std::io::{self, BufRead, Cursor, IsTerminal, Read, Write};
 use std::process::ExitCode;
 
 use topal_language::{Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session};
+use topal_source::SourceText;
+use topal_syntax::{Statement, lex, parse};
 
 fn main() -> ExitCode {
     match run() {
@@ -39,24 +41,32 @@ fn run() -> Result<(), String> {
     );
     if let Some(commands) = arguments.commands {
         if commands == "-" {
+            let mut script = String::new();
+            io::stdin().read_to_string(&mut script).map_err(|error| {
+                format!("cannot read debugger script from standard input: {error}")
+            })?;
+            let (body, header_lines) = debug_script_body(&script, "<stdin>")?;
             command_loop(
-                io::stdin().lock(),
+                Cursor::new(body),
                 &mut debuggee,
                 &source,
                 &arguments.source,
                 Some("<stdin>"),
                 false,
+                header_lines,
             )
         } else {
-            let file = fs::File::open(&commands)
+            let script = fs::read_to_string(&commands)
                 .map_err(|error| format!("cannot read command script {commands}: {error}"))?;
+            let (body, header_lines) = debug_script_body(&script, &commands)?;
             command_loop(
-                BufReader::new(file),
+                Cursor::new(body),
                 &mut debuggee,
                 &source,
                 &arguments.source,
                 Some(&commands),
                 false,
+                header_lines,
             )
         }
     } else {
@@ -68,6 +78,7 @@ fn run() -> Result<(), String> {
             &arguments.source,
             None,
             prompt,
+            0,
         )
     }
 }
@@ -75,6 +86,51 @@ fn run() -> Result<(), String> {
 struct Arguments {
     source: String,
     commands: Option<String>,
+}
+
+fn debug_script_body(script: &str, name: &str) -> Result<(String, usize), String> {
+    let source = SourceText::new(script).map_err(|error| format!("{name}: {error}"))?;
+    let parsed = parse(&source, &lex(&source));
+    if let Some(error) = parsed.diagnostics.first() {
+        let position = source.position(error.span.start);
+        return Err(format!(
+            "{name}:{}:{}: error[{}]: {}",
+            position.line, position.column, error.code, error.message
+        ));
+    }
+    let Some(Statement::LanguageSelection {
+        version,
+        features,
+        span,
+    }) = parsed.statements.first()
+    else {
+        return Err(format!(
+            "{name}:1:1: error[D-MISSING-DEBUG-LANGUAGE]: debugger scripts begin with `use language ( version is v0.1, features is ( debug ) )`"
+        ));
+    };
+    if source.slice(*version) != "v0.1" {
+        let position = source.position(version.start);
+        return Err(format!(
+            "{name}:{}:{}: error[D-DEBUG-LANGUAGE-VERSION]: debugger supports language version v0.1",
+            position.line, position.column
+        ));
+    }
+    if !features
+        .iter()
+        .any(|feature| source.slice(*feature) == "debug")
+    {
+        let position = source.position(span.start);
+        return Err(format!(
+            "{name}:{}:{}: error[D-MISSING-DEBUG-VARIANT]: debugger scripts select the `debug` language feature",
+            position.line, position.column
+        ));
+    }
+    let header_lines = source.position(span.end).line;
+    let body = source.as_str()[span.end..]
+        .strip_prefix('\n')
+        .unwrap_or(&source.as_str()[span.end..])
+        .to_owned();
+    Ok((body, header_lines))
 }
 
 struct Debuggee {
@@ -115,6 +171,7 @@ fn command_loop(
     source_name: &str,
     script_name: Option<&str>,
     prompt: bool,
+    initial_line_number: usize,
 ) -> Result<(), String> {
     let Debuggee {
         session,
@@ -125,13 +182,27 @@ fn command_loop(
     let mut breakpoints = BTreeSet::new();
     let mut watchpoints = BTreeSet::new();
     let mut checkpoints = BTreeMap::new();
-    let mut line_number = 0;
+    let mut line_number = initial_line_number;
     loop {
         let Some(command) = read_command(&mut input, prompt)? else {
             return Ok(());
         };
         line_number += 1;
-        match command.trim() {
+        let command = if prompt {
+            match resolve_prompt_command(command.trim()) {
+                Ok(command) => command,
+                Err(message) => {
+                    println!("{message}");
+                    continue;
+                }
+            }
+        } else {
+            let command = resolve_script_command(command.trim());
+            reject_script_shortcut(&command, script_name, line_number)?;
+            command
+        };
+        match command.as_str() {
+            command if command.starts_with("# ") => {}
             command
                 if handle_source_command(
                     command,
@@ -236,6 +307,109 @@ fn command_loop(
         }
         io::stdout().flush().map_err(|error| error.to_string())?;
     }
+}
+
+const DEBUG_COMMANDS: &[&str] = &[
+    "backtrace",
+    "bindings",
+    "break",
+    "breakpoints",
+    "checkpoint",
+    "checkpoints",
+    "continue",
+    "delete",
+    "delete-checkpoint",
+    "expression-step",
+    "finish",
+    "help",
+    "history",
+    "next",
+    "print",
+    "quit",
+    "restore",
+    "reverse-continue",
+    "reverse-finish",
+    "reverse-next",
+    "reverse-source-step",
+    "reverse-step",
+    "source-step",
+    "step",
+    "unwatch",
+    "watch",
+    "watchpoints",
+    "where",
+    "why",
+];
+
+const PROMPT_ALIASES: &[(&str, &str)] = &[
+    ("bt", "backtrace"),
+    ("c", "continue"),
+    ("es", "expression-step"),
+    ("h", "help"),
+    ("n", "next"),
+    ("p", "print"),
+    ("q", "quit"),
+    ("rc", "reverse-continue"),
+    ("rf", "reverse-finish"),
+    ("rn", "reverse-next"),
+    ("rs", "reverse-step"),
+    ("rss", "reverse-source-step"),
+    ("s", "step"),
+    ("ss", "source-step"),
+    ("w", "where"),
+];
+
+fn resolve_prompt_command(input: &str) -> Result<String, String> {
+    let (head, tail) = input.split_once(' ').unwrap_or((input, ""));
+    if head.is_empty() || DEBUG_COMMANDS.contains(&head) {
+        return Ok(input.to_owned());
+    }
+    if let Some((_, command)) = PROMPT_ALIASES.iter().find(|(alias, _)| *alias == head) {
+        return Ok(join_command(command, tail));
+    }
+    let matches = DEBUG_COMMANDS
+        .iter()
+        .copied()
+        .filter(|command| command.starts_with(head))
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [command] => Ok(join_command(command, tail)),
+        [] => Ok(input.to_owned()),
+        _ => Err(format!(
+            "ambiguous debugger command `{head}`: {}",
+            matches.join(", ")
+        )),
+    }
+}
+
+fn join_command(command: &str, arguments: &str) -> String {
+    if arguments.is_empty() {
+        command.to_owned()
+    } else {
+        format!("{command} {arguments}")
+    }
+}
+
+fn resolve_script_command(input: &str) -> String {
+    input
+        .strip_prefix("lang debug ")
+        .unwrap_or(input)
+        .to_owned()
+}
+
+fn reject_script_shortcut(
+    input: &str,
+    script_name: Option<&str>,
+    line: usize,
+) -> Result<(), String> {
+    let head = input.split_once(' ').map_or(input, |(head, _)| head);
+    let Some((_, command)) = PROMPT_ALIASES.iter().find(|(alias, _)| *alias == head) else {
+        return Ok(());
+    };
+    Err(format!(
+        "{}:{line}: error[D-SCRIPT-SHORTCUT]: debugger scripts use the complete function name `{command}`",
+        script_name.unwrap_or("<script>")
+    ))
 }
 
 fn handle_source_command(
@@ -589,5 +763,32 @@ fn print_history(history: &ExecutionHistory) {
             "{marker} #{} {} [{}] {}{}",
             transition.sequence, transition.event, transition.rule, transition.detail, transaction
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn prompt_expands_unique_commands_and_aliases() {
+        assert_eq!(
+            resolve_prompt_command("reverse-f").unwrap(),
+            "reverse-finish"
+        );
+        assert_eq!(resolve_prompt_command("p answer").unwrap(), "print answer");
+    }
+
+    #[test]
+    fn prompt_reports_ambiguous_recursive_lookup() {
+        let error = resolve_prompt_command("bre").unwrap_err();
+        assert!(error.contains("break"));
+        assert!(error.contains("breakpoints"));
+    }
+
+    #[test]
+    fn scripts_resolve_complete_names_from_lang_debug() {
+        assert_eq!(resolve_script_command("step"), "step");
+        assert_eq!(resolve_script_command("lang debug break 42"), "break 42");
     }
 }

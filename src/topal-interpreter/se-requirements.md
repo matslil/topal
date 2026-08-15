@@ -29,6 +29,10 @@ decision events to standard error as JSON Lines using the versioned
 the governing specification rule, and deterministic decision detail suitable
 for comparison with a future compiler trace.
 
+The envelope shall contain `profiles` including `debugging` and `testing`.
+Testing adds decision evidence and shall reuse an overlapping authoritative
+debugging event rather than emitting a duplicate.
+
 Trace collection shall not change the program result, accepted language, or
 decision order. Tests shall compare semantic event fields rather than runtime
 addresses, elapsed time, or implementation-specific debug output.

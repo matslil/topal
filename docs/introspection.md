@@ -23,7 +23,7 @@ unqualified into source files.
 
 ## Static phase
 
-Every introspection operation is static. Its input must be a statically known
+Every ordinary introspection operation is static. Its input must be a statically known
 language object, and its result exists only during compilation unless ordinary
 code deliberately converts selected information into runtime data:
 
@@ -50,6 +50,13 @@ are retained at runtime merely because static introspection is available.
 The language-provided [serialization](serialization.md) operation is a
 standardized instance of such derivation. Its qualified `lang serialize`
 operation does not make runtime reflection implicit for ordinary values.
+
+`lang trace` is the deliberate observational extension. It statically
+constructs a typed observer over selected runtime semantic events; it does not
+give ordinary code reflection over arbitrary values. The observer receives only
+the typed event arguments declared by the construction and executes outside the
+observed application's authority and dependency graph. See
+[tracing](tracing.md#introspective-trace-observers).
 
 ## Typed views
 

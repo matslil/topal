@@ -56,6 +56,15 @@ When an operation accepts a finite set of implemented static arguments, its
 detail shall name those arguments so completion does not imply support for
 planned alternatives.
 
+## TOPAL-LSP-VARIANT-001 — Domain-specific language contexts
+
+The language server shall preserve language feature selections, recognize the
+`debug` variant without treating its vocabulary as global, and provide
+completion for `lang debug` only in applicable constructed contexts.
+Debugger-script examples shall receive the same shared syntax diagnostics and
+semantic tokens as other Topal source. `lang trace` completion shall be added
+when its source construction is executable rather than advertised prematurely.
+
 ## TOPAL-LSP-COMPILER-BOUNDARY-001 — Analysis-only artifact boundary
 
 The language server may inspect typed static views but shall not export, lower,

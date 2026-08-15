@@ -4,6 +4,8 @@ use crate::ExecutionSnapshot;
 
 /// Stable interpreter/compiler comparison envelope.
 pub const TEST_TRACE_SCHEMA: &str = "topal.test-trace/1";
+pub const DEBUGGING_PROFILE: &str = "debugging";
+pub const TESTING_PROFILE: &str = "testing";
 
 /// One stable, machine-readable interpreter decision.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -30,8 +32,21 @@ impl TraceEvent<'_> {
     /// Serialize the stable trace envelope as one JSON Lines record.
     #[must_use]
     pub fn to_json_line(&self) -> String {
+        self.to_json_line_with_profiles(&[DEBUGGING_PROFILE, TESTING_PROFILE])
+    }
+
+    #[must_use]
+    pub fn to_json_line_with_profiles(&self, profiles: &[&str]) -> String {
+        let mut profiles = profiles.to_vec();
+        profiles.sort_unstable();
+        profiles.dedup();
+        let profiles = profiles
+            .iter()
+            .map(|profile| format!("\"{}\"", escape(profile)))
+            .collect::<Vec<_>>()
+            .join(",");
         format!(
-            "{{\"schema\":\"{TEST_TRACE_SCHEMA}\",\"event\":\"{}\",\"rule\":\"{}\",\"detail\":\"{}\"}}",
+            "{{\"schema\":\"{TEST_TRACE_SCHEMA}\",\"event\":\"{}\",\"rule\":\"{}\",\"detail\":\"{}\",\"profiles\":[{profiles}]}}",
             escape(self.event),
             escape(self.rule),
             escape(self.detail)
@@ -42,19 +57,40 @@ impl TraceEvent<'_> {
 /// A trace sink backed by a writer.
 pub struct JsonLines<W> {
     writer: W,
+    profiles: Vec<&'static str>,
 }
 
 impl<W> JsonLines<W> {
     #[must_use]
     pub const fn new(writer: W) -> Self {
-        Self { writer }
+        Self {
+            writer,
+            profiles: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_profiles(writer: W, profiles: impl IntoIterator<Item = &'static str>) -> Self {
+        let mut profiles = profiles.into_iter().collect::<Vec<_>>();
+        profiles.sort_unstable();
+        profiles.dedup();
+        Self { writer, profiles }
     }
 }
 
 impl<W: Write> TraceSink for JsonLines<W> {
     fn record(&mut self, event: TraceEvent<'_>) {
         // Trace I/O cannot alter language execution. The CLI checks stderr itself.
-        let _ = writeln!(self.writer, "{}", event.to_json_line());
+        let profiles = if self.profiles.is_empty() {
+            &[DEBUGGING_PROFILE, TESTING_PROFILE][..]
+        } else {
+            &self.profiles
+        };
+        let _ = writeln!(
+            self.writer,
+            "{}",
+            event.to_json_line_with_profiles(profiles)
+        );
     }
 }
 
@@ -94,6 +130,7 @@ mod tests {
         }
         .to_json_line();
         assert!(line.contains(TEST_TRACE_SCHEMA));
+        assert!(line.contains("\"profiles\":[\"debugging\",\"testing\"]"));
     }
 
     #[test]

@@ -12,6 +12,78 @@ connected, inspect trace configuration, observe channel rejection, enable
 events, or change authorization policy. Tracing may affect elapsed execution
 time but cannot change application values, failures, or control flow.
 
+## Purposes and profiles
+
+One trace stream may serve several purposes. Its envelope therefore contains a
+`profiles` collection rather than one exclusive profile. The initial profiles
+are `debugging` and `testing`. Format is independent: a native, CTF, Google
+Trace Event, or other adapter encodes the same selected semantic stream.
+
+Debugging events are authoritative when profiles overlap. Enabling `testing`
+adds decision evidence, such as binding and candidate-selection events, but
+does not emit a second copy of a debugging event. An interpreter test run uses
+at least `( debugging, testing )`; an ordinary debugger uses `debugging` and may
+select additional profiles.
+
+## Fundamental debugging events
+
+The language-defined debugging foundation contains only these event cases:
+
+- `lang ValueEvent create`, when a semantic value begins to exist;
+- `lang ValueEvent destroy`, when that semantic value's lifetime ends;
+- `lang ValueEvent access`, when that value is read or supplied to a function;
+- `lang FunctionEvent entry`, immediately before a function executes; and
+- `lang FunctionEvent exit`, after its result exists and before control returns.
+
+An operator is a function supplied by the core language and uses the same
+`entry` and `exit` events. Create and destroy describe semantic lifetime, not
+allocation and deallocation. Access does not expose whether the implementation
+borrowed, moved, copied, or shared a representation; a debugger may display
+that decision as additional evidence after stopping.
+
+Bindings are aliases and do not add a fundamental debugging event. The testing
+profile may record `bind` evidence to verify name resolution and execution
+decisions. Resources, messages, scheduler transitions, function failure, and
+transaction states are not extra fundamental kinds. Typed higher-level events
+derive them from value and function events. Compiler-owned hidden functions
+use ordinary structured Topal identities, for example `lang task switch-to`,
+so they remain distinguishable from a source-defined `switch-to`.
+
+## Introspective trace observers
+
+`lang trace` constructs a constrained observational task. Its typed inputs
+declare the fundamental or already-derived events and statically supplied
+configuration values it may inspect. Its handlers use ordinary Topal
+conditions, matches, functions, task state, enums, and unions. Returning an
+event enum value publishes that typed value as a derived trace event; returning
+`None` publishes nothing.
+
+The task analogy defines event delivery, private recognition state, and
+ordering. It does not require a physical task. An implementation may lower a
+stateless observer to a filter or a stateful observer to an optimized state
+machine. Equivalent input streams and initial configurations must produce the
+same derived stream.
+
+Observer introspection is non-observing: inspecting an event argument does not
+itself produce `access`, `entry`, or `exit`. An observer cannot mutate or send a
+message to the observed application, change its scheduling or result, acquire
+application authority, or observe whether an adapter is attached. Its state
+depends only on its configuration and ordered input events. Derived-observer
+dependencies are acyclic; loss invalidating stateful recognition is reported.
+
+The emitted event's enum type supplies its event group, its alternative
+supplies the event kind, and its associated value supplies the payload. The
+stream adds sequence, provenance, source location, task, execution-lane,
+active-profile, language-version, and schema information. Adapters decide
+whether to store, display, count, or break on the event.
+
+Source locations, qualified function identities, type identities, and similar
+typed static values may configure observers. A debugger can consequently
+instantiate an observer which derives an event when execution reaches a
+command-line-selected source location. Declaring such a reusable observer in
+ordinary source is harmless: it remains dormant unless selected by authorized
+trace control.
+
 ## Compiled support
 
 Every compiled artifact normally contains:

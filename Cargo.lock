@@ -348,6 +348,8 @@ name = "topal-debugger"
 version = "0.1.0"
 dependencies = [
  "topal-language",
+ "topal-source",
+ "topal-syntax",
 ]
 
 [[package]]

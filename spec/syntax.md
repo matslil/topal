@@ -28,8 +28,11 @@ diagnostics shall not change lexical acceptance or program semantics.
 ### TOPAL-SYN-CONTEXT-001 — Source language selection
 
 Every source file shall begin, after an optional hashbang, comments, and blank
-lines, with `use language ( version is V )`, where line breaks are permitted by
-the ordinary product grammar and `V` is a `Version` literal. The stable
+lines, with `use language ( version is V, features is F )`, where `features`
+may be omitted when empty, line breaks are permitted by the ordinary product
+grammar, `V` is a `Version` literal, and `F` is a finite collection of feature
+identities. A tool shall preserve the selected feature identities in the
+constructed language context. The stable
 `design-0` context is identified by `v0.1`, canonically `v0.1.0-0`. A source
 tool shall use that selection for the file even when its command line selected
 a different interactive default, and shall diagnose unsupported versions.
@@ -38,6 +41,12 @@ An interactive source session may select its initial language version through
 a tool option. When no version is supplied, every source tool shall select the
 highest language version that tool implements. This default does not override
 the mandatory selection in a source file.
+
+A domain-specific language variant shall be constructed through `features`,
+not through a second bootstrap grammar. A debugger command file shall select
+`debug`; interactive debugger prompt evaluation selects that feature
+implicitly. Selection adds only the variant's vocabulary and authority to that
+source context.
 
 ### TOPAL-SYN-LEX-001 — Tokens
 
