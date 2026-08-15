@@ -33,9 +33,23 @@ server implementation or its explicit conformance coverage so editor behavior
 recognizes, diagnoses, and presents the feature consistently with batch tools.
 
 Each such increment shall add or extend at least one runnable Topal source file
-under `examples/`. Related features should share a coherent example where that
-improves learning; unrelated demonstrations should remain separate. Automated
-tests shall execute applicable examples with the interpreter and open them
-through the language server, requiring no shared-frontend diagnostics and
-verifying relevant editor features. Examples supplement focused conformance
-tests and do not replace invalid, boundary, trace, or recovery cases.
+under `examples/language/`. These source examples are tool-neutral fixtures:
+the interpreter, source debugger, language server, and future compiler shall
+consume the same file whenever they exercise that language feature. Related
+features should share a coherent example where that improves learning;
+unrelated demonstrations should remain separate. Tool-specific directories may
+contain source only when the source itself demonstrates tool control, history,
+failure, or another tool-specific concern. Debugger command scripts and similar
+non-source inputs remain tool-specific.
+
+Shared malformed or failing source belongs under
+`examples/language-diagnostics/` when several tools exercise the same language
+diagnostic. These files are excluded from the successful runnable corpus but
+shall be consumed directly by the applicable interpreter, debugger, language
+server, and future compiler tests.
+
+Automated tests shall execute applicable shared examples with the interpreter,
+open them through the language server, and use them in debugger or compiler
+scenarios where relevant, requiring no shared-frontend diagnostics and
+verifying relevant tool behavior. Examples supplement focused conformance tests
+and do not replace invalid, boundary, trace, or recovery cases.

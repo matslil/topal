@@ -3,15 +3,25 @@
 These files are runnable programs for the currently implemented language
 subset. They are both learning material and automated compatibility fixtures.
 
-Run an interpreter example from the repository root with:
+Programs under `language/` demonstrate language features independently of the
+tool which consumes them. The interpreter, source debugger, language server,
+and future compiler conformance suites share these source files rather than
+maintaining tool-specific copies. Run one with the interpreter from the
+repository root using:
 
 ```sh
-cargo run -q -p topal-interpreter --bin topal -- examples/interpreter/exact-arithmetic.t
+cargo run -q -p topal-interpreter --bin topal -- examples/language/exact-arithmetic.t
 ```
 
-Every language-feature increment adds to a related example or introduces a
-coherent new one. The interpreter executes every file, and the language server
-opens every file to check diagnostics and editor presentation.
+Every language-feature increment adds to a related shared example or introduces
+a coherent new one. The interpreter executes every file, the language server
+opens every file to check diagnostics and editor presentation, and applicable
+debugger scenarios select the same file.
 
-Programs under `debugger/` exercise source-debugger scenarios. They remain
-ordinary runnable Topal source.
+Source files remain under `debugger/` only when they demonstrate debugger
+control, history, or failure behavior rather than a language feature. Debugger
+command scripts are necessarily tool-specific and also remain there.
+
+Programs under `language-diagnostics/` are shared malformed or failing language
+examples. Tools use them to compare diagnostics and retained failure behavior;
+they are kept outside the successful `language/` corpus intentionally.

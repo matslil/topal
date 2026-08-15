@@ -16621,7 +16621,7 @@ fn custom_generator_preserves_product_values() {
 fn custom_generator_returns_structured_result_error() {
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/custom-generator-result-values.t"),
+            include_str!("../../../examples/language/custom-generator-result-values.t"),
             &mut Vec::new(),
         )
         .unwrap();
@@ -16638,7 +16638,7 @@ fn custom_generator_preserves_comparison_identity() {
 fn custom_generator_preserves_nested_optional_product() {
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/custom-generator-nested-optional-values.t"),
+            include_str!("../../../examples/language/custom-generator-nested-optional-values.t"),
             &mut Vec::new(),
         )
         .unwrap();
@@ -16649,7 +16649,7 @@ fn custom_generator_preserves_nested_optional_product() {
 fn custom_generator_preserves_nested_result_product() {
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/custom-generator-nested-result-values.t"),
+            include_str!("../../../examples/language/custom-generator-nested-result-values.t"),
             &mut Vec::new(),
         )
         .unwrap();
@@ -16660,7 +16660,7 @@ fn custom_generator_preserves_nested_result_product() {
 fn custom_generator_preserves_nested_absent_optional() {
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/custom-generator-nested-none-values.t"),
+            include_str!("../../../examples/language/custom-generator-nested-none-values.t"),
             &mut Vec::new(),
         )
         .unwrap();
@@ -16673,9 +16673,7 @@ fn custom_generator_preserves_nested_absent_optional() {
 fn custom_generators_preserve_recursive_nominal_classifiers() {
     let value = Session::new()
         .evaluate(
-            include_str!(
-                "../../../examples/interpreter/custom-generator-recursive-nominal-values.t"
-            ),
+            include_str!("../../../examples/language/custom-generator-recursive-nominal-values.t"),
             &mut Vec::new(),
         )
         .unwrap();
@@ -16687,7 +16685,7 @@ fn custom_generator_selects_final_decision_after_resuming() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/custom-generator-final-decision.t"),
+            include_str!("../../../examples/language/custom-generator-final-decision.t"),
             &mut trace,
         )
         .unwrap();
@@ -16726,7 +16724,7 @@ fn custom_generator_retains_local_function_across_resumption() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/custom-generator-local-function.t"),
+            include_str!("../../../examples/language/custom-generator-local-function.t"),
             &mut trace,
         )
         .unwrap();
@@ -16751,7 +16749,7 @@ fn custom_generator_restores_local_declarations_during_close() {
     let mut trace = Vec::new();
     Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/custom-generator-local-close-handler.t"),
+            include_str!("../../../examples/language/custom-generator-local-close-handler.t"),
             &mut trace,
         )
         .unwrap();
@@ -16775,7 +16773,7 @@ fn custom_generator_selects_unary_and_binary_overloads() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/custom-generator-overloads.t"),
+            include_str!("../../../examples/language/custom-generator-overloads.t"),
             &mut trace,
         )
         .unwrap();
@@ -16844,7 +16842,7 @@ fn custom_generator_crosses_generic_function_boundaries() {
     let value = Session::new()
         .evaluate(
             include_str!(
-                "../../../examples/interpreter/custom-generator-generic-function-boundaries.t"
+                "../../../examples/language/custom-generator-generic-function-boundaries.t"
             ),
             &mut trace,
         )
@@ -16867,7 +16865,7 @@ fn compound_generator_crosses_function_boundaries() {
     let value = Session::new()
         .evaluate(
             include_str!(
-                "../../../examples/interpreter/custom-generator-compound-function-boundaries.t"
+                "../../../examples/language/custom-generator-compound-function-boundaries.t"
             ),
             &mut Vec::new(),
         )
@@ -16881,7 +16879,7 @@ fn nested_generator_crosses_function_boundaries() {
     let value = Session::new()
         .evaluate(
             include_str!(
-                "../../../examples/interpreter/custom-generator-nested-function-boundaries.t"
+                "../../../examples/language/custom-generator-nested-function-boundaries.t"
             ),
             &mut trace,
         )
@@ -16901,7 +16899,7 @@ fn list_generator_crosses_function_boundaries() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/custom-generator-list-values.t"),
+            include_str!("../../../examples/language/custom-generator-list-values.t"),
             &mut trace,
         )
         .unwrap();
@@ -16981,7 +16979,7 @@ fn lists_construct_compare_and_decompose() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/lists.t"),
+            include_str!("../../../examples/language/lists.t"),
             &mut trace,
         )
         .unwrap();
@@ -17032,7 +17030,7 @@ fn first_and_rest_reject_non_lists() {
 fn recursive_list_classifiers_cross_function_boundaries() {
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/nested-lists.t"),
+            include_str!("../../../examples/language/nested-lists.t"),
             &mut Vec::new(),
         )
         .unwrap();
@@ -17047,7 +17045,7 @@ fn list_containment_distinguishes_entry_sequence_and_subsequence() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/list-containment.t"),
+            include_str!("../../../examples/language/list-containment.t"),
             &mut trace,
         )
         .unwrap();
@@ -17078,7 +17076,7 @@ fn list_value_removal_preserves_retained_order() {
     let mut trace = Vec::new();
     let value = Session::new()
         .evaluate(
-            include_str!("../../../examples/interpreter/list-removal.t"),
+            include_str!("../../../examples/language/list-removal.t"),
             &mut trace,
         )
         .unwrap();

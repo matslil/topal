@@ -1,6 +1,20 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
+fn language_example(name: &str) -> String {
+    format!(
+        "{}/../../examples/language/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    )
+}
+
+fn language_diagnostic(name: &str) -> String {
+    format!(
+        "{}/../../examples/language-diagnostics/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    )
+}
+
 #[test]
 fn navigates_recorded_execution_in_both_directions() {
     let source = concat!(
@@ -104,7 +118,7 @@ fn records_reversible_static_function_call_decisions() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}static-function-call.t"),
+            &language_example("static-nullary-functions.t"),
         ])
         .output()
         .unwrap();
@@ -119,7 +133,7 @@ fn records_reversible_static_function_call_decisions() {
     let body = stdout.find("root.+(Int,Int)").unwrap();
     let returned = stdout.find("function.returned").unwrap();
     assert!(declaration < entered && entered < body && body < returned);
-    assert!(stdout.contains("\n42\n"));
+    assert!(stdout.contains("(42, 42)"));
 }
 
 #[test]
@@ -129,7 +143,7 @@ fn records_reversible_static_function_argument_binding() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}static-unary-function.t"),
+            &language_example("static-nullary-functions.t"),
         ])
         .output()
         .unwrap();
@@ -140,11 +154,11 @@ fn records_reversible_static_function_argument_binding() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     let bound = stdout.find("function.argument.bound").unwrap();
-    let entered = stdout.find("function.entered").unwrap();
-    let body = stdout.find("root.+(Int,Int)").unwrap();
-    let returned = stdout.find("function.returned").unwrap();
+    let entered = bound + stdout[bound..].find("function.entered").unwrap();
+    let body = bound + stdout[bound..].find("root.+(Int,Int)").unwrap();
+    let returned = bound + stdout[bound..].find("function.returned").unwrap();
     assert!(bound < entered && entered < body && body < returned);
-    assert!(stdout.contains("\n42\n"));
+    assert!(stdout.contains("(42, 42)"));
 }
 
 #[test]
@@ -154,7 +168,7 @@ fn records_reversible_static_product_argument_bindings() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}static-product-function.t"),
+            &language_example("static-product-functions.t"),
         ])
         .output()
         .unwrap();
@@ -188,7 +202,7 @@ fn records_reversible_explicit_function_return() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}function-return.t"),
+            &language_example("function-return.t"),
         ])
         .output()
         .unwrap();
@@ -212,7 +226,7 @@ fn records_reversible_ordinary_function_execution() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}ordinary-function.t"),
+            &language_example("ordinary-functions.t"),
         ])
         .output()
         .unwrap();
@@ -234,7 +248,7 @@ fn records_reversible_nat_function_execution() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}nat-functions.t"),
+            &language_example("nat-functions.t"),
         ])
         .output()
         .unwrap();
@@ -252,7 +266,7 @@ fn records_reversible_nat_recursion() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}nat-recursion.t"),
+            &language_example("nat-recursion.t"),
         ])
         .output()
         .unwrap();
@@ -274,7 +288,7 @@ fn records_reversible_increasing_nat_recursion() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}nat-increasing-recursion.t"),
+            &language_example("nat-increasing-recursion.t"),
         ])
         .output()
         .unwrap();
@@ -296,7 +310,7 @@ fn records_reversible_mutual_nat_recursion() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}nat-mutual-recursion.t"),
+            &language_example("nat-mutual-recursion.t"),
         ])
         .output()
         .unwrap();
@@ -318,7 +332,7 @@ fn records_reversible_mutual_increasing_nat_recursion() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}nat-mutual-increasing-recursion.t"),
+            &language_example("nat-mutual-increasing-recursion.t"),
         ])
         .output()
         .unwrap();
@@ -340,7 +354,7 @@ fn records_reversible_enum_values() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}enum-values.t"),
+            &language_example("enum-values.t"),
         ])
         .output()
         .unwrap();
@@ -361,7 +375,7 @@ fn records_reversible_enum_function_classification() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}enum-functions.t"),
+            &language_example("enum-functions.t"),
         ])
         .output()
         .unwrap();
@@ -382,7 +396,7 @@ fn records_reversible_exhaustive_enum_decision() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}enum-decisions.t"),
+            &language_example("enum-decisions.t"),
         ])
         .output()
         .unwrap();
@@ -404,7 +418,7 @@ fn records_reversible_arithmetic_error_code_selection() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}arithmetic-error-codes.t"),
+            &language_example("arithmetic-error-codes.t"),
         ])
         .output()
         .unwrap();
@@ -429,7 +443,7 @@ fn records_reversible_successful_result_contract() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}result-success.t"),
+            &language_example("result-success.t"),
         ])
         .output()
         .unwrap();
@@ -450,7 +464,7 @@ fn records_reversible_dynamic_division_error() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}result-division-error.t"),
+            &language_example("result-division-error.t"),
         ])
         .output()
         .unwrap();
@@ -473,7 +487,7 @@ fn records_reversible_negative_rational_exponentiation() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}rational-negative-exponent.t"),
+            &language_example("rational-negative-exponent.t"),
         ])
         .output()
         .unwrap();
@@ -494,7 +508,7 @@ fn records_reversible_dynamic_negative_power_error() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}result-negative-power-error.t"),
+            &language_example("result-negative-power-error.t"),
         ])
         .output()
         .unwrap();
@@ -515,7 +529,7 @@ fn records_reversible_result_error_propagation() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}result-error-propagation.t"),
+            &language_example("result-error-propagation.t"),
         ])
         .output()
         .unwrap();
@@ -537,7 +551,7 @@ fn records_reversible_result_decisions() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}result-decisions.t"),
+            &language_example("result-decisions.t"),
         ])
         .output()
         .unwrap();
@@ -559,7 +573,7 @@ fn records_reversible_error_field_selection() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}error-field-selection.t"),
+            &language_example("error-field-selection.t"),
         ])
         .output()
         .unwrap();
@@ -581,7 +595,7 @@ fn records_reversible_error_code_decisions() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}error-code-decisions.t"),
+            &language_example("error-code-decisions.t"),
         ])
         .output()
         .unwrap();
@@ -599,7 +613,7 @@ fn records_reversible_result_success_projection() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}result-success-projection.t"),
+            &language_example("result-success-projection.t"),
         ])
         .output()
         .unwrap();
@@ -617,7 +631,7 @@ fn records_reversible_exhaustive_error_code_decision() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}exhaustive-error-code-decisions.t"),
+            &language_example("exhaustive-error-code-decisions.t"),
         ])
         .output()
         .unwrap();
@@ -635,7 +649,7 @@ fn records_reversible_character_classification() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}character-classification.t"),
+            &language_example("character-classification.t"),
         ])
         .output()
         .unwrap();
@@ -653,7 +667,7 @@ fn records_reversible_int_euclidean_modulo() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}int-euclidean-modulo.t"),
+            &language_example("int-euclidean-modulo.t"),
         ])
         .output()
         .unwrap();
@@ -673,7 +687,7 @@ fn records_reversible_exact_numeric_absolute() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}exact-numeric-absolute.t"),
+            &language_example("exact-numeric-absolute.t"),
         ])
         .output()
         .unwrap();
@@ -691,7 +705,7 @@ fn records_reversible_named_exact_numeric_negation() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}exact-numeric-negate.t"),
+            &language_example("exact-numeric-negate.t"),
         ])
         .output()
         .unwrap();
@@ -709,7 +723,7 @@ fn records_reversible_exact_numeric_zero() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}exact-numeric-zero.t"),
+            &language_example("exact-numeric-zero.t"),
         ])
         .output()
         .unwrap();
@@ -731,7 +745,7 @@ fn records_reversible_exact_three_way_comparison() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}exact-three-way-comparison.t"),
+            &language_example("exact-three-way-comparison.t"),
         ])
         .output()
         .unwrap();
@@ -750,7 +764,7 @@ fn records_reversible_exact_rational_int_narrowing() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}exact-rational-int-narrowing.t"),
+            &language_example("exact-rational-int-narrowing.t"),
         ])
         .output()
         .unwrap();
@@ -768,7 +782,7 @@ fn records_reversible_dynamic_rational_int_validation() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}dynamic-rational-int-validation.t"),
+            &language_example("dynamic-rational-int-validation.t"),
         ])
         .output()
         .unwrap();
@@ -789,7 +803,7 @@ fn records_reversible_checked_int_construction() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}int-checked-construction.t"),
+            &language_example("int-checked-construction.t"),
         ])
         .output()
         .unwrap();
@@ -812,7 +826,7 @@ fn records_reversible_checked_nat_construction() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}nat-checked-construction.t"),
+            &language_example("nat-checked-construction.t"),
         ])
         .output()
         .unwrap();
@@ -831,7 +845,7 @@ fn records_reversible_canonical_rational_construction() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}rational-exact-construction.t"),
+            &language_example("rational-exact-construction.t"),
         ])
         .output()
         .unwrap();
@@ -854,7 +868,7 @@ fn records_reversible_dynamic_rational_construction() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}dynamic-rational-construction.t"),
+            &language_example("dynamic-rational-construction.t"),
         ])
         .output()
         .unwrap();
@@ -873,7 +887,7 @@ fn records_reversible_inclusive_int_ranges() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}inclusive-int-ranges.t"),
+            &language_example("inclusive-int-ranges.t"),
         ])
         .output()
         .unwrap();
@@ -894,7 +908,7 @@ fn records_reversible_rational_ranges() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}rational-ranges.t"),
+            &language_example("rational-ranges.t"),
         ])
         .output()
         .unwrap();
@@ -913,7 +927,7 @@ fn records_reversible_boolean_not() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}boolean-logic.t"),
+            &language_example("boolean-logic.t"),
         ])
         .output()
         .unwrap();
@@ -937,7 +951,7 @@ fn records_reversible_explicit_optional_construction() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}optional-values.t"),
+            &language_example("optional-values.t"),
         ])
         .output()
         .unwrap();
@@ -964,7 +978,7 @@ fn records_reversible_string_character_indexing() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-character-at.t"),
+            &language_example("string-character-at.t"),
         ])
         .output()
         .unwrap();
@@ -986,7 +1000,7 @@ fn records_reversible_universal_unicode_uppercase() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-uppercase.t"),
+            &language_example("string-uppercase.t"),
         ])
         .output()
         .unwrap();
@@ -1004,7 +1018,7 @@ fn records_reversible_universal_unicode_lowercase() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-lowercase.t"),
+            &language_example("string-lowercase.t"),
         ])
         .output()
         .unwrap();
@@ -1022,7 +1036,7 @@ fn records_reversible_full_unicode_case_folding() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-case-fold.t"),
+            &language_example("string-case-fold.t"),
         ])
         .output()
         .unwrap();
@@ -1040,7 +1054,7 @@ fn records_reversible_canonical_string_equality() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-canonical-equality.t"),
+            &language_example("string-canonical-equality.t"),
         ])
         .output()
         .unwrap();
@@ -1058,7 +1072,7 @@ fn records_reversible_character_traversal_collection() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-character-traversal.t"),
+            &language_example("string-character-traversal.t"),
         ])
         .output()
         .unwrap();
@@ -1076,7 +1090,7 @@ fn records_reversible_character_generator_foreach() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-character-foreach.t"),
+            &language_example("string-character-foreach.t"),
         ])
         .output()
         .unwrap();
@@ -1095,7 +1109,7 @@ fn records_reversible_named_character_generator_consumption() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-named-character-generator.t"),
+            &language_example("string-named-character-generator.t"),
         ])
         .output()
         .unwrap();
@@ -1113,7 +1127,7 @@ fn records_reversible_returned_character_generator() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-character-generator-result.t"),
+            &language_example("string-character-generator-result.t"),
         ])
         .output()
         .unwrap();
@@ -1131,7 +1145,7 @@ fn records_reversible_generator_parameter_transfer() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-character-generator-parameter.t"),
+            &language_example("string-character-generator-parameter.t"),
         ])
         .output()
         .unwrap();
@@ -1149,7 +1163,7 @@ fn records_reversible_abandoned_generator_close() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}string-character-generator-close.t"),
+            &language_example("string-character-generator-close.t"),
         ])
         .output()
         .unwrap();
@@ -1167,7 +1181,7 @@ fn records_reversible_generator_error_code_selection() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}generator-error-codes.t"),
+            &language_example("generator-error-codes.t"),
         ])
         .output()
         .unwrap();
@@ -1184,7 +1198,7 @@ fn records_custom_multiple_yield_generator_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-multiple-yield-generator.t"),
+            &language_example("custom-multiple-yield-generator.t"),
         ])
         .output()
         .unwrap();
@@ -1205,7 +1219,7 @@ fn records_custom_generator_local_binding_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-local-binding.t"),
+            &language_example("custom-generator-local-binding.t"),
         ])
         .output()
         .unwrap();
@@ -1223,7 +1237,7 @@ fn records_generator_return_before_yield_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-early-return.t"),
+            &language_example("custom-generator-early-return.t"),
         ])
         .output()
         .unwrap();
@@ -1241,7 +1255,7 @@ fn records_distinct_generator_final_character_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-final-character.t"),
+            &language_example("custom-generator-final-character.t"),
         ])
         .output()
         .unwrap();
@@ -1259,7 +1273,7 @@ fn records_custom_generator_suspension_order_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-suspension.t"),
+            &language_example("custom-generator-suspension.t"),
         ])
         .output()
         .unwrap();
@@ -1276,7 +1290,7 @@ fn records_unit_resume_binding_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-resume-binding.t"),
+            &language_example("custom-generator-resume-binding.t"),
         ])
         .output()
         .unwrap();
@@ -1293,7 +1307,7 @@ fn records_abandoned_custom_generator_close_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-close.t"),
+            &language_example("custom-generator-close.t"),
         ])
         .output()
         .unwrap();
@@ -1310,7 +1324,7 @@ fn records_custom_generator_close_handler_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-close-handler.t"),
+            &language_example("custom-generator-close-handler.t"),
         ])
         .output()
         .unwrap();
@@ -1328,7 +1342,7 @@ fn records_qualified_generator_close_code_match_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-close-code-pattern.t"),
+            &language_example("custom-generator-close-code-pattern.t"),
         ])
         .output()
         .unwrap();
@@ -1345,7 +1359,7 @@ fn records_custom_generator_function_result_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-function-result.t"),
+            &language_example("custom-generator-function-result.t"),
         ])
         .output()
         .unwrap();
@@ -1363,7 +1377,7 @@ fn records_custom_generator_function_parameter_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-function-parameter.t"),
+            &language_example("custom-generator-function-parameter.t"),
         ])
         .output()
         .unwrap();
@@ -1381,7 +1395,7 @@ fn records_unconsumed_custom_generator_parameter_close_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-parameter-close.t"),
+            &language_example("custom-generator-parameter-close.t"),
         ])
         .output()
         .unwrap();
@@ -1399,7 +1413,7 @@ fn records_character_returning_generator_parameter_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-character-return-parameter.t"),
+            &language_example("custom-generator-character-return-parameter.t"),
         ])
         .output()
         .unwrap();
@@ -1417,7 +1431,7 @@ fn records_character_returning_generator_function_result_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-character-return-result.t"),
+            &language_example("custom-generator-character-return-result.t"),
         ])
         .output()
         .unwrap();
@@ -1435,7 +1449,7 @@ fn records_custom_generator_string_input_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-string-input.t"),
+            &language_example("custom-generator-string-input.t"),
         ])
         .output()
         .unwrap();
@@ -1452,7 +1466,7 @@ fn records_custom_string_yields_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-string-yield.t"),
+            &language_example("custom-generator-string-yield.t"),
         ])
         .output()
         .unwrap();
@@ -1469,7 +1483,7 @@ fn records_distinct_generator_final_string_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-string-return.t"),
+            &language_example("custom-generator-string-return.t"),
         ])
         .output()
         .unwrap();
@@ -1487,7 +1501,7 @@ fn records_discarded_computation_between_yields_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-discard-between-yields.t"),
+            &language_example("custom-generator-discard-between-yields.t"),
         ])
         .output()
         .unwrap();
@@ -1504,7 +1518,7 @@ fn records_explicit_generator_return_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-explicit-return.t"),
+            &language_example("custom-generator-explicit-return.t"),
         ])
         .output()
         .unwrap();
@@ -1522,7 +1536,7 @@ fn records_explicit_return_after_generator_resumption_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-return-after-yield.t"),
+            &language_example("custom-generator-return-after-yield.t"),
         ])
         .output()
         .unwrap();
@@ -1541,7 +1555,7 @@ fn records_boolean_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-boolean-values.t"),
+            &language_example("custom-generator-boolean-values.t"),
         ])
         .output()
         .unwrap();
@@ -1559,7 +1573,7 @@ fn records_int_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-int-values.t"),
+            &language_example("custom-generator-int-values.t"),
         ])
         .output()
         .unwrap();
@@ -1576,7 +1590,7 @@ fn records_rational_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-rational-values.t"),
+            &language_example("custom-generator-rational-values.t"),
         ])
         .output()
         .unwrap();
@@ -1593,7 +1607,7 @@ fn records_unit_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-unit-values.t"),
+            &language_example("custom-generator-unit-values.t"),
         ])
         .output()
         .unwrap();
@@ -1610,7 +1624,7 @@ fn records_optional_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-optional-values.t"),
+            &language_example("custom-generator-optional-values.t"),
         ])
         .output()
         .unwrap();
@@ -1628,7 +1642,7 @@ fn records_range_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-range-values.t"),
+            &language_example("custom-generator-range-values.t"),
         ])
         .output()
         .unwrap();
@@ -1645,7 +1659,7 @@ fn records_nat_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-nat-values.t"),
+            &language_example("custom-generator-nat-values.t"),
         ])
         .output()
         .unwrap();
@@ -1662,7 +1676,7 @@ fn records_enum_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-enum-values.t"),
+            &language_example("custom-generator-enum-values.t"),
         ])
         .output()
         .unwrap();
@@ -1680,7 +1694,7 @@ fn records_product_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-product-values.t"),
+            &language_example("custom-generator-product-values.t"),
         ])
         .output()
         .unwrap();
@@ -1697,7 +1711,7 @@ fn records_result_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-result-values.t"),
+            &language_example("custom-generator-result-values.t"),
         ])
         .output()
         .unwrap();
@@ -1714,7 +1728,7 @@ fn records_comparison_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-comparison-values.t"),
+            &language_example("custom-generator-comparison-values.t"),
         ])
         .output()
         .unwrap();
@@ -1732,7 +1746,7 @@ fn records_nested_optional_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-nested-optional-values.t"),
+            &language_example("custom-generator-nested-optional-values.t"),
         ])
         .output()
         .unwrap();
@@ -1749,7 +1763,7 @@ fn records_nested_result_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-nested-result-values.t"),
+            &language_example("custom-generator-nested-result-values.t"),
         ])
         .output()
         .unwrap();
@@ -1766,7 +1780,7 @@ fn records_nested_absent_optional_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-nested-none-values.t"),
+            &language_example("custom-generator-nested-none-values.t"),
         ])
         .output()
         .unwrap();
@@ -1783,7 +1797,7 @@ fn records_recursive_nominal_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-recursive-nominal-values.t"),
+            &language_example("custom-generator-recursive-nominal-values.t"),
         ])
         .output()
         .unwrap();
@@ -1801,7 +1815,7 @@ fn records_generator_final_decision_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-final-decision.t"),
+            &language_example("custom-generator-final-decision.t"),
         ])
         .output()
         .unwrap();
@@ -1821,7 +1835,7 @@ fn records_generator_local_function_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-local-function.t"),
+            &language_example("custom-generator-local-function.t"),
         ])
         .output()
         .unwrap();
@@ -1841,7 +1855,7 @@ fn records_generator_local_close_handler_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-local-close-handler.t"),
+            &language_example("custom-generator-local-close-handler.t"),
         ])
         .output()
         .unwrap();
@@ -1861,7 +1875,7 @@ fn records_generator_overload_selection_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-overloads.t"),
+            &language_example("custom-generator-overloads.t"),
         ])
         .output()
         .unwrap();
@@ -1880,7 +1894,7 @@ fn records_generic_generator_function_boundaries_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-generic-function-boundaries.t"),
+            &language_example("custom-generator-generic-function-boundaries.t"),
         ])
         .output()
         .unwrap();
@@ -1899,7 +1913,7 @@ fn records_compound_generator_function_boundaries_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-compound-function-boundaries.t"),
+            &language_example("custom-generator-compound-function-boundaries.t"),
         ])
         .output()
         .unwrap();
@@ -1916,7 +1930,7 @@ fn records_nested_generator_function_boundaries_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-nested-function-boundaries.t"),
+            &language_example("custom-generator-nested-function-boundaries.t"),
         ])
         .output()
         .unwrap();
@@ -1933,7 +1947,7 @@ fn records_list_generator_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-list-values.t"),
+            &language_example("custom-generator-list-values.t"),
         ])
         .output()
         .unwrap();
@@ -1951,7 +1965,7 @@ fn records_yield_after_custom_close_failure_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}custom-generator-yield-after-close.t"),
+            &language_diagnostic("custom-generator-yield-after-close.t"),
         ])
         .output()
         .unwrap();
@@ -1968,7 +1982,7 @@ fn records_consumed_generator_failure_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}generator-consumed.t"),
+            &language_diagnostic("generator-consumed.t"),
         ])
         .output()
         .unwrap();
@@ -1986,7 +2000,7 @@ fn records_reversible_nested_function_call_order() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}function-call-chain.t"),
+            &language_example("function-call-chains.t"),
         ])
         .output()
         .unwrap();
@@ -2019,7 +2033,7 @@ fn records_reversible_function_local_shadowing() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}function-local-shadowing.t"),
+            &language_example("function-local-shadowing.t"),
         ])
         .output()
         .unwrap();
@@ -2046,7 +2060,7 @@ fn records_reversible_function_overload_reasons() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}function-overloads.t"),
+            &language_example("function-overloads.t"),
         ])
         .output()
         .unwrap();
@@ -2073,7 +2087,7 @@ fn records_reversible_boolean_decision_selection() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}boolean-decision.t"),
+            &language_example("boolean-decisions.t"),
         ])
         .output()
         .unwrap();
@@ -2100,7 +2114,7 @@ fn records_reversible_exhaustive_boolean_decision_selection() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}exhaustive-boolean-decision.t"),
+            &language_example("exhaustive-boolean-decisions.t"),
         ])
         .output()
         .unwrap();
@@ -2127,7 +2141,7 @@ fn records_reversible_call_to_later_function_declaration() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}forward-function-declaration.t"),
+            &language_example("forward-function-declarations.t"),
         ])
         .output()
         .unwrap();
@@ -2154,7 +2168,7 @@ fn records_reversible_mutual_int_recursion_proof() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}mutual-int-recursion.t"),
+            &language_example("mutual-int-recursion.t"),
         ])
         .output()
         .unwrap();
@@ -2178,7 +2192,7 @@ fn records_reversible_mutual_increasing_int_recursion_proof() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}mutual-increasing-int-recursion.t"),
+            &language_example("mutual-increasing-int-recursion.t"),
         ])
         .output()
         .unwrap();
@@ -2200,7 +2214,7 @@ fn records_reversible_calls_between_distinct_overloads() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}overload-recursion-identity.t"),
+            &language_example("overload-recursion-identity.t"),
         ])
         .output()
         .unwrap();
@@ -2223,7 +2237,7 @@ fn records_reversible_positive_literal_recursion_steps() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}positive-recursion-steps.t"),
+            &language_example("positive-recursion-steps.t"),
         ])
         .output()
         .unwrap();
@@ -2245,7 +2259,7 @@ fn records_reversible_multiple_recursive_calls() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}multiple-recursive-calls.t"),
+            &language_example("multiple-recursive-calls.t"),
         ])
         .output()
         .unwrap();
@@ -2266,7 +2280,7 @@ fn records_reversible_multiple_calls_on_a_mutual_edge() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}mutual-multiple-recursive-calls.t"),
+            &language_example("mutual-multiple-recursive-calls.t"),
         ])
         .output()
         .unwrap();
@@ -2287,7 +2301,7 @@ fn records_reversible_rational_natural_exponentiation() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}rational-exponentiation.t"),
+            &language_example("rational-exponentiation.t"),
         ])
         .output()
         .unwrap();
@@ -2309,7 +2323,7 @@ fn records_reversible_comparison_decision_selection() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}comparison-decision.t"),
+            &language_example("comparison-decisions.t"),
         ])
         .output()
         .unwrap();
@@ -2331,7 +2345,7 @@ fn records_reversible_decreasing_int_recursion() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}decreasing-int-recursion.t"),
+            &language_example("decreasing-int-recursion.t"),
         ])
         .output()
         .unwrap();
@@ -2356,7 +2370,7 @@ fn records_reversible_increasing_int_recursion() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}increasing-int-recursion.t"),
+            &language_example("increasing-int-recursion.t"),
         ])
         .output()
         .unwrap();
@@ -2380,7 +2394,7 @@ fn records_reversible_comparison_operand_expression() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}decision-operand-expression.t"),
+            &language_example("decision-operand-expressions.t"),
         ])
         .output()
         .unwrap();
@@ -2403,7 +2417,7 @@ fn records_reversible_nested_lexical_function() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}nested-function.t"),
+            &language_example("nested-functions.t"),
         ])
         .output()
         .unwrap();
@@ -2511,7 +2525,7 @@ fn records_list_construction_and_decomposition_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}lists.t"),
+            &language_example("lists.t"),
         ])
         .output()
         .unwrap();
@@ -2537,7 +2551,7 @@ fn records_recursive_list_classifiers_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}nested-lists.t"),
+            &language_example("nested-lists.t"),
         ])
         .output()
         .unwrap();
@@ -2554,7 +2568,7 @@ fn records_list_containment_laws_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}list-containment.t"),
+            &language_example("list-containment.t"),
         ])
         .output()
         .unwrap();
@@ -2573,7 +2587,7 @@ fn records_list_value_removal_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}list-removal.t"),
+            &language_example("list-removal.t"),
         ])
         .output()
         .unwrap();
@@ -2590,7 +2604,7 @@ fn records_contextual_anonymous_list_functions_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}anonymous-list-functions.t"),
+            &language_example("anonymous-list-functions.t"),
         ])
         .output()
         .unwrap();
@@ -2607,7 +2621,7 @@ fn records_list_sequence_operations_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}list-sequence-operations.t"),
+            &language_example("list-sequence-operations.t"),
         ])
         .output()
         .unwrap();
@@ -2624,7 +2638,7 @@ fn records_fundamental_container_collection_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}fundamental-containers.t"),
+            &language_example("fundamental-containers.t"),
         ])
         .output()
         .unwrap();
@@ -2641,7 +2655,7 @@ fn records_payload_union_decisions_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}unions-and-recursive-products.t"),
+            &language_example("unions-and-recursive-products.t"),
         ])
         .output()
         .unwrap();
@@ -2658,7 +2672,7 @@ fn records_constraint_evidence_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}constraints-and-derived-capabilities.t"),
+            &language_example("constraints-and-derived-capabilities.t"),
         ])
         .output()
         .unwrap();
@@ -2675,7 +2689,7 @@ fn records_optional_result_composition_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}optional-result-composition.t"),
+            &language_example("optional-result-composition.t"),
         ])
         .output()
         .unwrap();
@@ -2692,7 +2706,7 @@ fn records_modular_arithmetic_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}modular-numbers.t"),
+            &language_example("modular-numbers.t"),
         ])
         .output()
         .unwrap();
@@ -2709,7 +2723,7 @@ fn records_range_selection_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}range-selection.t"),
+            &language_example("range-selection.t"),
         ])
         .output()
         .unwrap();
@@ -2726,7 +2740,7 @@ fn records_completion_evidence_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}completed-evidence.t"),
+            &language_example("completed-evidence.t"),
         ])
         .output()
         .unwrap();
@@ -2743,7 +2757,7 @@ fn records_immutable_reconstruction_reversibly() {
         .args([
             "--script",
             &format!("{root}record-reconstruction.debug"),
-            &format!("{root}record-reconstruction.t"),
+            &language_example("record-reconstruction.t"),
         ])
         .output()
         .unwrap();
@@ -2760,7 +2774,7 @@ fn records_bound_anonymous_function_values_reversibly() {
         .args([
             "--script",
             &format!("{root}bound-anonymous-functions.debug"),
-            &format!("{root}bound-anonymous-functions.t"),
+            &language_example("bound-anonymous-functions.t"),
         ])
         .output()
         .unwrap();
@@ -2777,7 +2791,7 @@ fn records_direct_anonymous_function_application_reversibly() {
         .args([
             "--script",
             &format!("{root}anonymous-function-application.debug"),
-            &format!("{root}anonymous-function-application.t"),
+            &language_example("anonymous-function-application.t"),
         ])
         .output()
         .unwrap();
@@ -2794,7 +2808,7 @@ fn records_short_circuiting_traversal_control_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}traversal-control.t"),
+            &language_example("traversal-control.t"),
         ])
         .output()
         .unwrap();
@@ -2811,7 +2825,7 @@ fn records_symbolic_callable_values_reversibly() {
         .args([
             "--script",
             &format!("{root}callable-values.debug"),
-            &format!("{root}callable-values.t"),
+            &language_example("callable-values.t"),
         ])
         .output()
         .unwrap();
@@ -2828,7 +2842,7 @@ fn records_named_function_values_reversibly() {
         .args([
             "--script",
             &format!("{root}named-function-values.debug"),
-            &format!("{root}named-function-values.t"),
+            &language_example("named-function-values.t"),
         ])
         .output()
         .unwrap();
@@ -2845,7 +2859,7 @@ fn records_lazy_iterate_construction_reversibly() {
         .args([
             "--script",
             &format!("{root}iterate-generator.debug"),
-            &format!("{root}iterate-generator.t"),
+            &language_example("iterate-generator.t"),
         ])
         .output()
         .unwrap();
@@ -2862,7 +2876,7 @@ fn records_lazy_take_while_construction_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-print-digits.debug"),
-            &format!("{root}iterate-take-while.t"),
+            &language_example("iterate-take-while.t"),
         ])
         .output()
         .unwrap();
@@ -2879,7 +2893,7 @@ fn records_generated_foreach_reversibly() {
         .args([
             "--script",
             &format!("{root}generated-foreach.debug"),
-            &format!("{root}generated-foreach.t"),
+            &language_example("generated-foreach.t"),
         ])
         .output()
         .unwrap();
@@ -2896,7 +2910,7 @@ fn records_generated_collection_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-print-digits.debug"),
-            &format!("{root}generated-collect.t"),
+            &language_example("generated-collect.t"),
         ])
         .output()
         .unwrap();
@@ -2913,7 +2927,7 @@ fn records_lazy_unfold_construction_reversibly() {
         .args([
             "--script",
             &format!("{root}unfold-generator.debug"),
-            &format!("{root}unfold-generator.t"),
+            &language_example("unfold-generator.t"),
         ])
         .output()
         .unwrap();
@@ -2930,7 +2944,7 @@ fn records_unfold_collection_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}unfold-collect.t"),
+            &language_example("unfold-collect.t"),
         ])
         .output()
         .unwrap();
@@ -2947,7 +2961,7 @@ fn records_root_namespace_resolution_reversibly() {
         .args([
             "--script",
             &format!("{root}root-namespace.debug"),
-            &format!("{root}root-namespace.t"),
+            &language_example("root-namespace.t"),
         ])
         .output()
         .unwrap();
@@ -2964,7 +2978,7 @@ fn records_namespace_alias_resolution_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-print-current.debug"),
-            &format!("{root}namespace-alias.t"),
+            &language_example("namespace-alias.t"),
         ])
         .output()
         .unwrap();
@@ -2981,7 +2995,7 @@ fn records_namespace_use_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-print-current.debug"),
-            &format!("{root}use-namespace.t"),
+            &language_example("use-namespace.t"),
         ])
         .output()
         .unwrap();
@@ -3000,7 +3014,7 @@ fn records_namespace_snapshot_visibility_reversibly() {
         .args([
             "--script",
             &format!("{root}namespace-snapshot.debug"),
-            &format!("{root}namespace-snapshot.t"),
+            &language_example("namespace-snapshot.t"),
         ])
         .output()
         .unwrap();
@@ -3019,7 +3033,7 @@ fn records_namespace_overload_selection_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-print-api.debug"),
-            &format!("{root}namespace-overloads.t"),
+            &language_example("namespace-overloads.t"),
         ])
         .output()
         .unwrap();
@@ -3038,7 +3052,7 @@ fn records_qualified_namespace_generators_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-print-api.debug"),
-            &format!("{root}namespace-generator.t"),
+            &language_example("namespace-generator.t"),
         ])
         .output()
         .unwrap();
@@ -3057,7 +3071,7 @@ fn records_scope_classification_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-print-api.debug"),
-            &format!("{root}scope-classifier.t"),
+            &language_example("scope-classifier.t"),
         ])
         .output()
         .unwrap();
@@ -3076,7 +3090,7 @@ fn records_namespace_alias_chains_reversibly() {
         .args([
             "--script",
             &format!("{root}namespace-alias-chain.debug"),
-            &format!("{root}namespace-alias-chain.t"),
+            &language_example("namespace-alias-chain.t"),
         ])
         .output()
         .unwrap();
@@ -3095,7 +3109,7 @@ fn records_scope_function_parameters_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}namespace-function-parameter.t"),
+            &language_example("namespace-function-parameter.t"),
         ])
         .output()
         .unwrap();
@@ -3114,7 +3128,7 @@ fn records_fundamental_type_values_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}type-values.t"),
+            &language_example("type-values.t"),
         ])
         .output()
         .unwrap();
@@ -3133,7 +3147,7 @@ fn steps_over_diagnostic_controls_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}diagnostic-controls.t"),
+            &language_example("diagnostic-controls.t"),
         ])
         .output()
         .unwrap();
@@ -3148,7 +3162,7 @@ fn steps_through_lexical_blocks_reversibly() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}empty-block.t"),
+            &language_example("empty-block.t"),
         ])
         .output()
         .unwrap();
@@ -3163,7 +3177,7 @@ fn steps_through_discard_input_patterns() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}discard-function-pattern.t"),
+            &language_example("discard-function-pattern.t"),
         ])
         .output()
         .unwrap();
@@ -3182,7 +3196,7 @@ fn records_defining_context_selection() {
         .args([
             "--script",
             &format!("{root}scripts/source-step-history.debug"),
-            &format!("{root}constructed-context.t"),
+            &language_example("constructed-context.t"),
         ])
         .output()
         .unwrap();
@@ -3203,7 +3217,7 @@ fn records_function_interface_declaration() {
         .args([
             "--script",
             &format!("{root}scripts/source-step-history.debug"),
-            &format!("{root}function-interface.t"),
+            &language_example("function-interface.t"),
         ])
         .output()
         .unwrap();
@@ -3226,7 +3240,7 @@ fn records_capability_composition() {
         .args([
             "--script",
             &format!("{root}scripts/source-step-history.debug"),
-            &format!("{root}capability-composition.t"),
+            &language_example("capability-composition.t"),
         ])
         .output()
         .unwrap();
@@ -3249,7 +3263,7 @@ fn records_reversible_static_introspection() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}static-introspection.t"),
+            &language_example("static-introspection.t"),
         ])
         .output()
         .unwrap();
@@ -3260,7 +3274,8 @@ fn records_reversible_static_introspection() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("introspection.object.viewed"));
-    assert!(stdout.contains("lang Identity"));
+    assert!(stdout.contains("introspection.context.viewed"));
+    assert!(stdout.contains("(true, false, v0.1)"));
 }
 
 #[test]
@@ -3270,7 +3285,7 @@ fn records_reversible_native_serialization() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}native-serialization.t"),
+            &language_example("native-serialization.t"),
         ])
         .output()
         .unwrap();
@@ -3292,7 +3307,7 @@ fn records_reversible_function_effect_bounds() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}function-effect-bound.t"),
+            &language_example("function-effect-bound.t"),
         ])
         .output()
         .unwrap();
@@ -3317,7 +3332,7 @@ fn records_reversible_packaged_function_defaults() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}packaged-function-operand.t"),
+            &language_example("packaged-function-operand.t"),
         ])
         .output()
         .unwrap();
@@ -3341,7 +3356,7 @@ fn follows_reversible_task_message_transactions() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}task-message-transactions.t"),
+            &language_example("task-message-transactions.t"),
         ])
         .output()
         .unwrap();
@@ -3365,7 +3380,7 @@ fn records_reversible_checked_location_access() {
         .args([
             "--script",
             &format!("{root}scripts/finish-and-reverse.debug"),
-            &format!("{root}external-layout-location.t"),
+            &language_example("external-layout-location.t"),
         ])
         .output()
         .unwrap();
@@ -3387,7 +3402,7 @@ fn records_reversible_broad_unicode_identifier_bindings() {
         .args([
             "--script",
             &format!("{root}unicode-identifiers.debug"),
-            &format!("{root}unicode-identifiers.t"),
+            &language_example("unicode-identifiers.t"),
         ])
         .output()
         .unwrap();
