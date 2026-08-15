@@ -20,6 +20,10 @@ fn run(arguments: &[&str], input: &str) -> std::process::Output {
     } else if arguments.contains(&"--version") || arguments.contains(&"--help") {
         input.to_owned()
     } else {
+        let input = input
+            .strip_prefix("#!")
+            .and_then(|after_marker| after_marker.split_once('\n').map(|(_, body)| body))
+            .unwrap_or(input);
         format!("use language (\n  version is v0.1\n)\n{input}")
     };
     child
@@ -49,7 +53,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 189);
+    assert_eq!(examples.len(), 190);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -648,7 +652,7 @@ fn interactive_mode_evaluates_each_input() {
 
 #[test]
 fn interactive_mode_recovers_after_diagnostic() {
-    let output = run(&["--interactive"], "1 & 2\n2\n");
+    let output = run(&["--interactive"], "1 \u{200b} 2\n2\n");
     assert!(output.status.success());
     assert_eq!(output.stdout, b"2\n");
     assert!(
@@ -680,7 +684,7 @@ fn test_mode_emits_stable_decisions() {
 
 #[test]
 fn unsupported_syntax_is_explicit() {
-    let output = run(&[], "1 & 2\n");
+    let output = run(&[], "1 \u{200b} 2\n");
     assert!(!output.status.success());
     assert!(
         String::from_utf8(output.stderr)
@@ -691,12 +695,12 @@ fn unsupported_syntax_is_explicit() {
 
 #[test]
 fn script_diagnostic_shows_source_marker_and_help() {
-    let output = run(&[], "value + ?\n");
+    let output = run(&[], "value + \u{200b}\n");
     assert!(!output.status.success());
     let diagnostic = String::from_utf8(output.stderr).unwrap();
     assert!(diagnostic.contains("error[E-UNKNOWN-TOKEN]"));
     assert!(diagnostic.contains(" --> <stdin>:4:9"));
-    assert!(diagnostic.contains("4 | value + ?"));
+    assert!(diagnostic.contains("4 | value + \u{200b}"));
     assert!(diagnostic.contains("  |         ^"));
     assert!(diagnostic.contains("= help: remove this character"));
 }
@@ -4184,5 +4188,19 @@ fn every_mode_composes_capability_promises() {
                 .unwrap()
                 .contains("Equality and Ordering")
         );
+    }
+}
+
+#[test]
+fn every_mode_accepts_broad_unicode_identifiers() {
+    let source = include_str!("../../../examples/interpreter/unicode-identifiers.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
     }
 }

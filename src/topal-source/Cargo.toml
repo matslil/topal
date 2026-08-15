@@ -6,8 +6,8 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+icu_properties = "=2.3.0"
 unicode-casefold = "=0.2.0"
-unicode-ident = "=1.0.24"
 unicode-normalization = "=0.1.25"
 unicode-segmentation = "=1.13.3"
 

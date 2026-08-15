@@ -3379,3 +3379,26 @@ fn records_reversible_checked_location_access() {
     assert!(stdout.contains("location.read [TOPAL-LOCATION-READ-001] control"));
     assert!(stdout.contains("\n42\n"));
 }
+
+#[test]
+fn records_reversible_broad_unicode_identifier_bindings() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}unicode-identifiers.debug"),
+            &format!("{root}unicode-identifiers.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("binding.created [TOPAL-SYN-BIND-001] 🙂"));
+    assert!(stdout.contains("binding.created [TOPAL-SYN-BIND-001] left+right"));
+    assert!(stdout.contains("\n40\n"));
+    assert!(stdout.contains("\n2\n"));
+}

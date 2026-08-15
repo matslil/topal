@@ -331,8 +331,9 @@ binding or introduce implicit normalization elsewhere. Test mode shall record
 operation selection and whether normalization changed the preserved sequence.
 ## TOPAL-INTP-SUBSET-032 — String emptiness predicate
 
-The shared frontend shall accept a single terminal `?` as part of a predicate
-identifier according to `TOPAL-SYN-LEX-001`. All interpreter modes shall
+The shared frontend shall accept `?` as a printable identifier character under
+the broad Unicode profile of `TOPAL-SYN-LEX-001`; `empty?` remains the
+conventional predicate spelling without giving `?` a separate token role. All interpreter modes shall
 evaluate `empty? text` for a plain `String` according to
 `TOPAL-STRING-EMPTY-PREDICATE-001`. Test mode shall record predicate selection
 and its Boolean result independently.

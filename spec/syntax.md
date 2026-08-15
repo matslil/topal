@@ -41,31 +41,40 @@ the mandatory selection in a source file.
 
 ### TOPAL-SYN-LEX-001 — Tokens
 
-Let `XID_Start` and `XID_Continue` be the Unicode 17.0.0 identifier properties
-fixed by `TOPAL-SYN-UNICODE-001`.
+Let `printable` contain every assigned Unicode 17.0.0 scalar whose General
+Category is not Control, Format, Private Use, Unassigned, Space Separator, Line
+Separator, or Paragraph Separator and which does not have the
+Default_Ignorable_Code_Point property. Let `structural` contain `"`, `#`, `(`,
+`)`, `{`, `}`, `[`, `]`, and `,`. Let `identifier-character` be a `printable`
+scalar which is not `structural`.
 
 ```ebnf
-identifier       ::= identifier-start identifier-continue* [ "?" ] ;
+identifier       ::= identifier-start identifier-character* ;
 version          ::= "v" natural "." natural [ "." natural [ "-" natural ] ] ;
-identifier-start ::= XID_Start | "_" ;
-identifier-continue ::= XID_Continue | "-" ;
+identifier-start ::= identifier-character - Unicode-decimal-digit ;
 discard          ::= "_" ;
 boolean          ::= "true" | "false" ;
 symbol           ::= "(" | ")" | "[" | "]" | "{" | "}" | ","
-                   | ":" | "." | "=" | "!=" | "<" | ">" | "<=" | ">="
-                   | "->" | "..."
-                   | "+" | "-" | "*" | "/" | "^" ;
+                   | ":" | "." | "=" | "!" | "!=" | "<" | ">" | "<=" | ">="
+                   | "<=>" | "->" | ".." | "..."
+                   | "+" | "-" | "*" | "/" | "/%" | "%" | "^" | "@" ;
 newline          ::= "\n" ;
-comment          ::= "#" { any-scalar-except-newline } ;
+comment          ::= "# " { any-scalar-except-newline } ;
 ```
 
-The complete spelling `_` is always `discard`, never an identifier. A terminal
-`?` marks a predicate name and is part of its identifier token; it may occur
-only once and only at the end. A hyphen is permitted only
-between identifier continuation characters; leading, trailing, and repeated
-hyphens are invalid. Keywords are recognized from an identifier token by the
-grammar position. The scanner selects the longest declared symbol. No other
-punctuation run forms a token.
+An identifier shall be in Unicode Normalization Form C. A spelling beginning
+with `v` followed by a Unicode decimal digit shall not be an identifier. When
+the digit is ASCII, the spelling begins a `version`; other decimal digits are
+rejected because version and numeric literal digits are ASCII.
+The complete spelling `_` is always `discard`, never an identifier. Keywords
+are recognized from an identifier token by grammar position.
+
+A declared symbolic operator is selected only when its complete spelling is a
+token delimited by whitespace, `structural`, or a source boundary. Otherwise
+its characters participate in an identifier. Thus `left + right` contains the
+operator `+`, whereas `left+right` is one identifier. The scanner selects the
+longest declared symbolic operator among the complete-token candidates. A
+quote gives `literal-tag` recognition precedence over identifier recognition.
 
 The complete ASCII lexemes `true` and `false` are reserved `boolean` literals,
 not identifiers. They cannot be bindings or be shadowed. A longer identifier
@@ -76,8 +85,10 @@ one signed numeric literal. With intervening whitespace it emits the callable
 symbol `-`. `+Infinity` and `-Infinity` are reserved numeric constants; no
 other leading plus forms part of a literal.
 
-Comments extend to but exclude the newline. Comment text has no syntactic
-effect. Blank and comment-only lines do not affect indentation.
+Comments begin only with `# ` and extend to but exclude the newline. A `#`
+without the separating space is rejected rather than beginning a comment.
+Comment text has no syntactic effect. Blank and comment-only lines do not
+affect indentation.
 
 ### TOPAL-SYN-INDENT-001 — Layout
 
@@ -119,8 +130,8 @@ literal-tag   ::= tag-character+ ;
 ```
 
 The two `literal-tag` occurrences shall be the same nonempty NFC Unicode
-sequence. A tag character is any scalar except `"`, whitespace, or the
-structural delimiters `()`, `{}`, and `[]`. In the empty-tag form, the next `"`
+sequence. A tag character is an `identifier-character`; unlike an identifier,
+a tag may begin with a Unicode decimal digit. In the empty-tag form, the next `"`
 closes the literal. In the tagged form, only the exact sequence `"` followed by
 the opening tag closes it; other quotes belong to the contents.
 

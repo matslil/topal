@@ -376,12 +376,14 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
         | TokenKind::Colon
         | TokenKind::Arrow
         | TokenKind::Equals
+        | TokenKind::Bang
         | TokenKind::NotEquals
         | TokenKind::Less
         | TokenKind::Greater
         | TokenKind::LessEqual
         | TokenKind::Compare
         | TokenKind::Range
+        | TokenKind::Ellipsis
         | TokenKind::GreaterEqual
         | TokenKind::Plus
         | TokenKind::Minus
@@ -389,7 +391,8 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
         | TokenKind::Slash
         | TokenKind::SlashPercent
         | TokenKind::Percent
-        | TokenKind::Caret => Some(5),
+        | TokenKind::Caret
+        | TokenKind::Dot => Some(5),
         TokenKind::Whitespace | TokenKind::Newline | TokenKind::Unknown => None,
     }
 }
@@ -625,6 +628,17 @@ mod tests {
         assert_eq!(
             semantic_tokens("return 42")["data"],
             json!([0, 0, 6, 4, 0, 0, 7, 2, 1, 0])
+        );
+    }
+
+    #[test]
+    fn highlights_broad_unicode_identifiers_as_single_variables() {
+        assert_eq!(
+            semantic_tokens("🙂 is 40\nleft+right is 2")["data"],
+            json!([
+                0, 0, 2, 0, 0, 0, 3, 2, 4, 0, 0, 3, 2, 1, 0, 1, 0, 10, 0, 0, 0, 11, 2, 4, 0, 0, 3,
+                1, 1, 0
+            ])
         );
     }
 

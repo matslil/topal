@@ -50,6 +50,7 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-INTP-SUBSET-002` | `TOPAL-SYN-BIND-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
 | `TOPAL-INTP-SUBSET-003` | `TOPAL-SYN-NUM-001`, `TOPAL-NUM-LITERAL-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
 | `TOPAL-REQ-SHARED-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-GRAMMAR-001` | unit tests in `topal-source` and `topal-syntax` | `topal-source`, `topal-syntax` |
+| broad Unicode identifier profile | `TOPAL-SYN-UNICODE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-STRING-001`, `TOPAL-SYN-BIND-001` | source and syntax unit tests; interpreter, LSP, and scripted debugger tests; `examples/interpreter/unicode-identifiers.t`; `examples/debugger/unicode-identifiers.t` | `topal-source`, `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-debugger`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-004` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-NUM-ADD-001` | `src/topal-interpreter/tests/cli.rs` | `topal-source`, `topal-syntax`, `topal-language` |
 | `TOPAL-INTP-SUBSET-005` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-NUM-NEG-001`, `TOPAL-NUM-SUB-001` | `src/topal-interpreter/tests/cli.rs` | `topal-syntax`, `topal-language` |
 | `TOPAL-INTP-SUBSET-006` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-NUM-MUL-001` | `src/topal-interpreter/tests/cli.rs` | `topal-syntax`, `topal-language` |
