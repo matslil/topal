@@ -1,6 +1,8 @@
 //! Lossless, recovery-friendly Topal tokenization shared by language tools.
 
-use topal_source::{SourceText, Span, is_identifier_continue, is_identifier_start, is_nfc};
+use topal_source::{
+    SourceText, Span, is_decimal_digit, is_identifier_character, is_identifier_start, is_nfc,
+};
 
 mod parser;
 pub use parser::{
@@ -31,12 +33,14 @@ pub enum TokenKind {
     Colon,
     Arrow,
     Equals,
+    Bang,
     NotEquals,
     Less,
     Greater,
     LessEqual,
     Compare,
     Range,
+    Ellipsis,
     GreaterEqual,
     Plus,
     Minus,
@@ -46,6 +50,7 @@ pub enum TokenKind {
     Percent,
     Caret,
     At,
+    Dot,
     Unknown,
 }
 
@@ -88,7 +93,12 @@ pub fn lex(source: &SourceText) -> Lexed {
         let (kind, length) = if offset == 0 && rest.starts_with("#!") {
             (TokenKind::Hashbang, rest.find('\n').unwrap_or(rest.len()))
         } else {
-            next_token(rest)
+            let left_delimited = offset == 0
+                || text[..offset]
+                    .chars()
+                    .next_back()
+                    .is_some_and(is_token_boundary);
+            next_token(rest, left_delimited)
         };
         let span = Span::new(offset, offset + length);
         result.tokens.push(Token { kind, span });
@@ -127,31 +137,7 @@ pub fn lex(source: &SourceText) -> Lexed {
     result
 }
 
-fn next_token(rest: &str) -> (TokenKind, usize) {
-    if let Some(length) = take_string(rest) {
-        return (TokenKind::String, length);
-    }
-    if rest.starts_with("!=") {
-        return (TokenKind::NotEquals, 2);
-    }
-    if rest.starts_with("<=>") {
-        return (TokenKind::Compare, 3);
-    }
-    if rest.starts_with("..") {
-        return (TokenKind::Range, 2);
-    }
-    if rest.starts_with("<=") {
-        return (TokenKind::LessEqual, 2);
-    }
-    if rest.starts_with(">=") {
-        return (TokenKind::GreaterEqual, 2);
-    }
-    if rest.starts_with("->") {
-        return (TokenKind::Arrow, 2);
-    }
-    if rest.starts_with("/%") {
-        return (TokenKind::SlashPercent, 2);
-    }
+fn next_token(rest: &str, left_delimited: bool) -> (TokenKind, usize) {
     let first = rest.chars().next().expect("nonempty source");
     match first {
         ' ' | '\t' => (
@@ -159,7 +145,10 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
             take_while(rest, |c| matches!(c, ' ' | '\t')),
         ),
         '\n' => (TokenKind::Newline, 1),
-        '#' => (TokenKind::Comment, rest.find('\n').unwrap_or(rest.len())),
+        '#' if rest.starts_with("# ") => {
+            (TokenKind::Comment, rest.find('\n').unwrap_or(rest.len()))
+        }
+        '#' => (TokenKind::Unknown, 1),
         '(' => (TokenKind::LeftParen, 1),
         ')' => (TokenKind::RightParen, 1),
         '{' => (TokenKind::LeftBrace, 1),
@@ -167,46 +156,39 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
         '[' => (TokenKind::LeftBracket, 1),
         ']' => (TokenKind::RightBracket, 1),
         ',' => (TokenKind::Comma, 1),
-        ':' => (TokenKind::Colon, 1),
-        '=' => (TokenKind::Equals, 1),
-        '<' => (TokenKind::Less, 1),
-        '>' => (TokenKind::Greater, 1),
-        '+' => (TokenKind::Plus, 1),
+        _ => {
+            if let Some(length) = take_string(rest) {
+                return (TokenKind::String, length);
+            }
+            next_nonstructural_token(rest, first, left_delimited)
+        }
+    }
+}
+
+fn next_nonstructural_token(rest: &str, first: char, left_delimited: bool) -> (TokenKind, usize) {
+    match first {
         '-' if rest[1..].starts_with(|c: char| c.is_ascii_digit()) => {
             let (kind, length) = take_number(&rest[1..]);
             (kind, length + 1)
         }
-        '-' => (TokenKind::Minus, 1),
-        '*' => (TokenKind::Star, 1),
-        '/' => (TokenKind::Slash, 1),
-        '%' => (TokenKind::Percent, 1),
-        '^' => (TokenKind::Caret, 1),
-        '@' => (TokenKind::At, 1),
         c if c.is_ascii_digit() => take_number(rest),
-        '_' if rest.len() == 1
-            || rest[1..]
-                .chars()
-                .next()
-                .is_none_or(|next| !is_identifier_continue(next) && !matches!(next, '-' | '?')) =>
-        {
-            (TokenKind::Discard, 1)
-        }
-        '_' => {
-            let length = take_identifier(rest);
-            (TokenKind::Identifier, length)
-        }
         'v' if rest[1..].starts_with(|character: char| character.is_ascii_digit()) => (
             TokenKind::Version,
             1 + take_while(&rest[1..], |character| {
                 character.is_ascii_digit() || matches!(character, '.' | '-')
             }),
         ),
+        'v' if rest[1..].starts_with(is_decimal_digit) => {
+            (TokenKind::Unknown, take_identifier(rest))
+        }
+        c if is_decimal_digit(c) => (TokenKind::Unknown, take_identifier(rest)),
+        _ if let Some(symbol) = left_delimited.then(|| standalone_symbol(rest)).flatten() => symbol,
         c if is_identifier_start(c) => {
             let length = take_identifier(rest);
-            let kind = if matches!(&rest[..length], "true" | "false") {
-                TokenKind::Boolean
-            } else {
-                TokenKind::Identifier
+            let kind = match &rest[..length] {
+                "_" => TokenKind::Discard,
+                "true" | "false" => TokenKind::Boolean,
+                _ => TokenKind::Identifier,
             };
             (kind, length)
         }
@@ -215,11 +197,47 @@ fn next_token(rest: &str) -> (TokenKind, usize) {
 }
 
 fn take_identifier(text: &str) -> usize {
-    let mut length = take_while(text, |value| is_identifier_continue(value) || value == '-');
-    if text[length..].starts_with('?') {
-        length += 1;
-    }
-    length
+    take_while(text, is_identifier_character)
+}
+
+fn standalone_symbol(text: &str) -> Option<(TokenKind, usize)> {
+    const SYMBOLS: &[(&str, TokenKind)] = &[
+        ("<=>", TokenKind::Compare),
+        ("...", TokenKind::Ellipsis),
+        ("!=", TokenKind::NotEquals),
+        ("..", TokenKind::Range),
+        ("<=", TokenKind::LessEqual),
+        (">=", TokenKind::GreaterEqual),
+        ("->", TokenKind::Arrow),
+        ("/%", TokenKind::SlashPercent),
+        (":", TokenKind::Colon),
+        ("=", TokenKind::Equals),
+        ("!", TokenKind::Bang),
+        ("<", TokenKind::Less),
+        (">", TokenKind::Greater),
+        ("+", TokenKind::Plus),
+        ("-", TokenKind::Minus),
+        ("*", TokenKind::Star),
+        ("/", TokenKind::Slash),
+        ("%", TokenKind::Percent),
+        ("^", TokenKind::Caret),
+        ("@", TokenKind::At),
+        (".", TokenKind::Dot),
+    ];
+
+    SYMBOLS.iter().find_map(|(spelling, kind)| {
+        text.strip_prefix(spelling)
+            .is_some_and(|remaining| remaining.chars().next().is_none_or(is_token_boundary))
+            .then_some((*kind, spelling.len()))
+    })
+}
+
+fn is_token_boundary(character: char) -> bool {
+    character.is_whitespace()
+        || matches!(
+            character,
+            '"' | '#' | '(' | ')' | '{' | '}' | '[' | ']' | ','
+        )
 }
 
 fn take_string(text: &str) -> Option<usize> {
@@ -238,9 +256,7 @@ fn take_string(text: &str) -> Option<usize> {
 }
 
 fn valid_tag_character(character: char) -> bool {
-    character != '"'
-        && !character.is_whitespace()
-        && !matches!(character, '(' | ')' | '{' | '}' | '[' | ']')
+    is_identifier_character(character)
 }
 
 fn string_is_terminated(text: &str) -> bool {
@@ -334,6 +350,10 @@ mod tests {
                 TokenKind::Comment,
                 TokenKind::Newline,
             ]
+        );
+        assert_eq!(
+            kinds("#comment"),
+            vec![TokenKind::Unknown, TokenKind::Identifier]
         );
     }
 
@@ -463,8 +483,14 @@ mod tests {
     #[test]
     fn distinguishes_rational_literals_from_operators_and_based_digits() {
         assert_eq!(
-            kinds("-1.25e+3+0xCAFE"),
-            vec![TokenKind::Rational, TokenKind::Plus, TokenKind::Integer]
+            kinds("-1.25e+3 + 0xCAFE"),
+            vec![
+                TokenKind::Rational,
+                TokenKind::Whitespace,
+                TokenKind::Plus,
+                TokenKind::Whitespace,
+                TokenKind::Integer
+            ]
         );
     }
 
@@ -501,15 +527,81 @@ mod tests {
     }
 
     #[test]
-    fn predicate_question_mark_is_a_terminal_identifier_suffix() {
-        let source = SourceText::new("empty? value?? _?").unwrap();
+    fn accepts_printable_symbols_anywhere_in_identifiers() {
+        let source = SourceText::new("empty? value?? _? left+right 🙂").unwrap();
         let lexed = lex(&source);
         assert_eq!(source.slice(lexed.tokens[0].span), "empty?");
         assert_eq!(lexed.tokens[0].kind, TokenKind::Identifier);
-        assert_eq!(source.slice(lexed.tokens[2].span), "value?");
-        assert_eq!(lexed.tokens[3].kind, TokenKind::Unknown);
-        assert_eq!(source.slice(lexed.tokens[5].span), "_?");
-        assert_eq!(lexed.tokens[5].kind, TokenKind::Identifier);
+        assert_eq!(source.slice(lexed.tokens[2].span), "value??");
+        assert_eq!(source.slice(lexed.tokens[4].span), "_?");
+        assert_eq!(source.slice(lexed.tokens[6].span), "left+right");
+        assert_eq!(source.slice(lexed.tokens[8].span), "🙂");
+        assert!(lexed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn rejects_identifiers_beginning_with_unicode_decimal_digits() {
+        let source = SourceText::new("٧lives v٧.١").unwrap();
+        let lexed = lex(&source);
+        assert_eq!(lexed.tokens[0].kind, TokenKind::Unknown);
+        assert_eq!(source.slice(lexed.tokens[0].span), "٧lives");
+        assert_eq!(lexed.tokens[2].kind, TokenKind::Unknown);
+        assert_eq!(source.slice(lexed.tokens[2].span), "v٧.١");
+        assert_eq!(lexed.diagnostics.len(), 2);
+    }
+
+    #[test]
+    fn recognizes_only_complete_delimited_operator_spellings() {
+        assert_eq!(
+            kinds("left + right left+right : field field:value ! bang!name ... path.name ."),
+            vec![
+                TokenKind::Identifier,
+                TokenKind::Whitespace,
+                TokenKind::Plus,
+                TokenKind::Whitespace,
+                TokenKind::Identifier,
+                TokenKind::Whitespace,
+                TokenKind::Identifier,
+                TokenKind::Whitespace,
+                TokenKind::Colon,
+                TokenKind::Whitespace,
+                TokenKind::Identifier,
+                TokenKind::Whitespace,
+                TokenKind::Identifier,
+                TokenKind::Whitespace,
+                TokenKind::Bang,
+                TokenKind::Whitespace,
+                TokenKind::Identifier,
+                TokenKind::Whitespace,
+                TokenKind::Ellipsis,
+                TokenKind::Whitespace,
+                TokenKind::Identifier,
+                TokenKind::Whitespace,
+                TokenKind::Dot,
+            ]
+        );
+
+        let source = SourceText::new("1 + 2 1+ 2 1 +2 true+false").unwrap();
+        let tokens = lex(&source)
+            .tokens
+            .into_iter()
+            .filter(|token| !token.kind.is_trivia())
+            .map(|token| (token.kind, source.slice(token.span)))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            tokens,
+            vec![
+                (TokenKind::Integer, "1"),
+                (TokenKind::Plus, "+"),
+                (TokenKind::Integer, "2"),
+                (TokenKind::Integer, "1"),
+                (TokenKind::Identifier, "+"),
+                (TokenKind::Integer, "2"),
+                (TokenKind::Integer, "1"),
+                (TokenKind::Identifier, "+2"),
+                (TokenKind::Identifier, "true+false"),
+            ]
+        );
     }
 
     #[test]
@@ -588,7 +680,7 @@ mod tests {
 
     #[test]
     fn covers_every_source_byte() {
-        let source = SourceText::new("#!/usr/bin/env topal\nα + ?").unwrap();
+        let source = SourceText::new("#!/usr/bin/env topal\nα + \u{200b}").unwrap();
         let lexed = lex(&source);
         let reconstructed = lexed
             .tokens

@@ -45,6 +45,29 @@ arbitrary runs of punctuation.
 at the end of an open structural record pattern; it is not a general spread,
 rest, range, or wildcard operator.
 
+Identifiers use a broad Unicode profile rather than restricting names to
+letter-like Unicode identifier properties. Any assigned, printable Unicode
+character may participate, including symbols and emoji. Identifier spelling is
+NFC-normalized. Whitespace, control characters, private-use and unassigned
+characters, default-ignorable characters, and the structural delimiters `"`,
+`#`, `(`, `)`, `{`, `}`, `[`, `]`, and `,` cannot occur in an identifier.
+
+An identifier cannot begin with a Unicode decimal digit or with `v` followed by
+a Unicode decimal digit, because those forms are reserved from identifiers for
+numeric and language-version literal recognition.
+Complete reserved literals and complete operator spellings are likewise not
+identifiers. Symbolic operators are recognized as operators only when they are
+complete tokens separated by whitespace or structural delimiters. Consequently
+`left + right` applies `+`, while `left+right` is one identifier. This permits
+descriptive symbolic names, including `🙂`, without making punctuation inside a
+name behave as an implicit operator. The reserved spellings `:`, `!`, and `+`
+therefore remain symbols when separated, while those characters remain usable
+inside longer identifiers.
+
+A quote still gives string-literal recognition precedence. Text immediately
+before the quote is a literal delimiter tag when it satisfies the tag rules;
+it is not an identifier followed by a string.
+
 The ASCII spellings `true` and `false` are reserved Boolean literals. They are
 not identifiers and cannot introduce or resolve bindings. Longer identifiers
 such as `true-value` remain ordinary identifiers.
@@ -272,8 +295,10 @@ message is text"He said "hello"."text
 punctuation is ---"Quotes such as " and "" remain literal."---
 ```
 
-The two occurrences of the tag must have exactly the same Unicode sequence.
-There is no escape processing inside a tagged literal. A different tag handles
+The two occurrences of the tag must have exactly the same NFC Unicode sequence.
+Tags use the printable identifier-character profile, although unlike an
+identifier they may begin with a digit. Structural delimiters cannot occur in
+a tag. There is no escape processing inside a tagged literal. A different tag handles
 the otherwise conflicting sequence:
 
 ```topal

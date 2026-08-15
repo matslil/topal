@@ -2,13 +2,13 @@
 
 use std::fmt;
 
+use icu_properties::props::{DefaultIgnorableCodePoint, GeneralCategory};
+use icu_properties::{CodePointMapData, CodePointSetData};
+
 /// Unicode data version fixed by the initial Topal language context.
 pub const UNICODE_VERSION: (u8, u8, u8) = (17, 0, 0);
 
 const _: () = {
-    assert!(unicode_ident::UNICODE_VERSION.0 == UNICODE_VERSION.0);
-    assert!(unicode_ident::UNICODE_VERSION.1 == UNICODE_VERSION.1);
-    assert!(unicode_ident::UNICODE_VERSION.2 == UNICODE_VERSION.2);
     assert!(unicode_normalization::UNICODE_VERSION.0 == UNICODE_VERSION.0);
     assert!(unicode_normalization::UNICODE_VERSION.1 == UNICODE_VERSION.1);
     assert!(unicode_normalization::UNICODE_VERSION.2 == UNICODE_VERSION.2);
@@ -40,12 +40,34 @@ pub fn normalize_nfd(text: &str) -> String {
 
 #[must_use]
 pub fn is_identifier_start(character: char) -> bool {
-    unicode_ident::is_xid_start(character)
+    is_identifier_character(character) && !is_decimal_digit(character)
 }
 
 #[must_use]
-pub fn is_identifier_continue(character: char) -> bool {
-    unicode_ident::is_xid_continue(character)
+pub fn is_decimal_digit(character: char) -> bool {
+    CodePointMapData::<GeneralCategory>::new().get(character) == GeneralCategory::DecimalNumber
+}
+
+#[must_use]
+pub fn is_identifier_character(character: char) -> bool {
+    if matches!(
+        character,
+        '"' | '#' | '(' | ')' | '{' | '}' | '[' | ']' | ','
+    ) || CodePointSetData::new::<DefaultIgnorableCodePoint>().contains(character)
+    {
+        return false;
+    }
+
+    !matches!(
+        CodePointMapData::<GeneralCategory>::new().get(character),
+        GeneralCategory::Control
+            | GeneralCategory::Format
+            | GeneralCategory::PrivateUse
+            | GeneralCategory::Unassigned
+            | GeneralCategory::SpaceSeparator
+            | GeneralCategory::LineSeparator
+            | GeneralCategory::ParagraphSeparator
+    )
 }
 
 /// Counts extended grapheme clusters under the language context's Unicode data.
@@ -222,6 +244,15 @@ mod tests {
         assert!(is_nfc("é"));
         assert!(!is_nfc("e\u{301}"));
         assert!(is_identifier_start('\u{1c89}'));
+        assert!(is_identifier_start('🙂'));
+        assert!(is_identifier_character('+'));
+        assert!(!is_identifier_start('7'));
+        assert!(!is_identifier_start('٧'));
+        assert!(is_decimal_digit('٧'));
+        assert!(!is_identifier_character('#'));
+        assert!(!is_identifier_character('\u{200b}'));
+        assert!(!is_identifier_character('\u{e000}'));
+        assert!(!is_identifier_character('\u{0378}'));
     }
 
     #[test]
