@@ -70,8 +70,13 @@ storage are not comparison fields.
 
 Each implemented debugger capability increment shall add or extend a runnable
 Topal source example and an automated debugger scenario exercising that
-capability. Language-feature increments shall continue to update LSP coverage
-and interpreter examples under their existing requirements.
+capability. A language-feature scenario shall consume its tool-neutral source
+from `examples/language/`; source remains debugger-specific only when it
+demonstrates debugger control, history, or failure behavior. Language-feature
+increments shall continue to update the shared example and LSP coverage under
+their existing requirements. Shared malformed or failing language scenarios
+shall use `examples/language-diagnostics/` rather than a debugger-owned source
+copy.
 
 ## TOPAL-DEBUG-LOCATION-001 — Follow ordered location access
 

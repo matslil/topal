@@ -541,7 +541,7 @@ mod tests {
 
     #[test]
     fn accepts_and_highlights_function_interfaces() {
-        let source = include_str!("../../../examples/interpreter/function-interface.t");
+        let source = include_str!("../../../examples/language/function-interface.t");
         assert!(diagnostics(source).is_empty());
         assert_eq!(
             semantic_token_type(TokenKind::Identifier, "Interface"),
@@ -661,7 +661,7 @@ mod tests {
 
     #[test]
     fn every_interpreter_example_has_clean_diagnostics_and_highlighting() {
-        let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/interpreter");
+        let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language");
         let mut examples = std::fs::read_dir(directory)
             .unwrap()
             .map(|entry| entry.unwrap().path())
@@ -699,8 +699,9 @@ mod tests {
 
     #[test]
     fn accepts_yield_after_close_diagnostic_example_syntax() {
-        let source =
-            include_str!("../../../examples/debugger/custom-generator-yield-after-close.t");
+        let source = include_str!(
+            "../../../examples/language-diagnostics/custom-generator-yield-after-close.t"
+        );
         assert!(diagnostics(source).is_empty());
     }
 }

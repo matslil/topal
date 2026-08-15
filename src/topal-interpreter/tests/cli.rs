@@ -46,7 +46,7 @@ fn run_file(path: &Path) -> std::process::Output {
 
 #[test]
 fn every_interpreter_example_is_an_executable_script() {
-    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/interpreter");
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language");
     let mut examples = std::fs::read_dir(directory)
         .unwrap()
         .map(|entry| entry.unwrap().path())
@@ -69,7 +69,7 @@ fn every_interpreter_example_is_an_executable_script() {
 
 #[test]
 fn every_interpreter_example_documents_its_feature() {
-    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/interpreter");
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language");
     for entry in std::fs::read_dir(directory).unwrap() {
         let path = entry.unwrap().path();
         if path.extension().is_some_and(|extension| extension == "t") {
@@ -2037,7 +2037,7 @@ fn infallible_projection_diagnostic_explains_available_repairs() {
 
 #[test]
 fn every_mode_accepts_exhaustive_arithmetic_code_decision() {
-    let source = include_str!("../../../examples/interpreter/exhaustive-error-code-decisions.t");
+    let source = include_str!("../../../examples/language/exhaustive-error-code-decisions.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2091,7 +2091,7 @@ fn rule_after_otherwise_has_ordering_help() {
 
 #[test]
 fn every_mode_classifies_unicode_characters() {
-    let source = include_str!("../../../examples/interpreter/character-classification.t");
+    let source = include_str!("../../../examples/language/character-classification.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2117,7 +2117,7 @@ fn character_classifier_diagnostic_reports_observed_count() {
 
 #[test]
 fn every_mode_executes_euclidean_int_modulo() {
-    let source = include_str!("../../../examples/interpreter/int-euclidean-modulo.t");
+    let source = include_str!("../../../examples/language/int-euclidean-modulo.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2134,7 +2134,7 @@ fn every_mode_executes_euclidean_int_modulo() {
 
 #[test]
 fn every_mode_executes_exact_numeric_absolute() {
-    let source = include_str!("../../../examples/interpreter/exact-numeric-absolute.t");
+    let source = include_str!("../../../examples/language/exact-numeric-absolute.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2151,7 +2151,7 @@ fn every_mode_executes_exact_numeric_absolute() {
 
 #[test]
 fn every_mode_executes_named_exact_numeric_negation() {
-    let source = include_str!("../../../examples/interpreter/exact-numeric-negate.t");
+    let source = include_str!("../../../examples/language/exact-numeric-negate.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2168,7 +2168,7 @@ fn every_mode_executes_named_exact_numeric_negation() {
 
 #[test]
 fn every_mode_constructs_exact_numeric_zero() {
-    let source = include_str!("../../../examples/interpreter/exact-numeric-zero.t");
+    let source = include_str!("../../../examples/language/exact-numeric-zero.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2189,7 +2189,7 @@ fn every_mode_constructs_exact_numeric_zero() {
 
 #[test]
 fn every_mode_executes_exact_three_way_comparison() {
-    let source = include_str!("../../../examples/interpreter/exact-three-way-comparison.t");
+    let source = include_str!("../../../examples/language/exact-three-way-comparison.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2207,7 +2207,7 @@ fn every_mode_executes_exact_three_way_comparison() {
 
 #[test]
 fn every_mode_narrows_closed_exact_rational_to_int() {
-    let source = include_str!("../../../examples/interpreter/exact-rational-int-narrowing.t");
+    let source = include_str!("../../../examples/language/exact-rational-int-narrowing.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2226,7 +2226,7 @@ fn every_mode_narrows_closed_exact_rational_to_int() {
 
 #[test]
 fn every_mode_validates_dynamic_rational_to_int() {
-    let source = include_str!("../../../examples/interpreter/dynamic-rational-int-validation.t");
+    let source = include_str!("../../../examples/language/dynamic-rational-int-validation.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2243,7 +2243,7 @@ fn every_mode_validates_dynamic_rational_to_int() {
 
 #[test]
 fn every_mode_executes_checked_int_construction() {
-    let source = include_str!("../../../examples/interpreter/int-checked-construction.t");
+    let source = include_str!("../../../examples/language/int-checked-construction.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2260,7 +2260,7 @@ fn every_mode_executes_checked_int_construction() {
 
 #[test]
 fn every_mode_executes_checked_nat_construction() {
-    let source = include_str!("../../../examples/interpreter/nat-checked-construction.t");
+    let source = include_str!("../../../examples/language/nat-checked-construction.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2284,7 +2284,7 @@ fn every_mode_executes_checked_nat_construction() {
 
 #[test]
 fn every_mode_constructs_canonical_rationals() {
-    let source = include_str!("../../../examples/interpreter/rational-exact-construction.t");
+    let source = include_str!("../../../examples/language/rational-exact-construction.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2305,7 +2305,7 @@ fn every_mode_constructs_canonical_rationals() {
 
 #[test]
 fn every_mode_constructs_dynamic_rationals() {
-    let source = include_str!("../../../examples/interpreter/dynamic-rational-construction.t");
+    let source = include_str!("../../../examples/language/dynamic-rational-construction.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2330,7 +2330,7 @@ fn every_mode_constructs_dynamic_rationals() {
 
 #[test]
 fn every_mode_constructs_inclusive_int_ranges() {
-    let source = include_str!("../../../examples/interpreter/inclusive-int-ranges.t");
+    let source = include_str!("../../../examples/language/inclusive-int-ranges.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2352,7 +2352,7 @@ fn every_mode_constructs_inclusive_int_ranges() {
 
 #[test]
 fn every_mode_constructs_and_tests_rational_ranges() {
-    let source = include_str!("../../../examples/interpreter/rational-ranges.t");
+    let source = include_str!("../../../examples/language/rational-ranges.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2375,7 +2375,7 @@ fn every_mode_constructs_and_tests_rational_ranges() {
 
 #[test]
 fn every_mode_evaluates_boolean_not() {
-    let source = include_str!("../../../examples/interpreter/boolean-logic.t");
+    let source = include_str!("../../../examples/language/boolean-logic.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2398,7 +2398,7 @@ fn every_mode_evaluates_boolean_not() {
 
 #[test]
 fn every_mode_constructs_explicit_optional_values() {
-    let source = include_str!("../../../examples/interpreter/optional-values.t");
+    let source = include_str!("../../../examples/language/optional-values.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2426,7 +2426,7 @@ fn every_mode_constructs_explicit_optional_values() {
 
 #[test]
 fn every_mode_indexes_user_perceived_string_characters() {
-    let source = include_str!("../../../examples/interpreter/string-character-at.t");
+    let source = include_str!("../../../examples/language/string-character-at.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2447,7 +2447,7 @@ fn every_mode_indexes_user_perceived_string_characters() {
 
 #[test]
 fn every_mode_applies_universal_unicode_uppercase() {
-    let source = include_str!("../../../examples/interpreter/string-uppercase.t");
+    let source = include_str!("../../../examples/language/string-uppercase.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2460,7 +2460,7 @@ fn every_mode_applies_universal_unicode_uppercase() {
 
 #[test]
 fn every_mode_applies_universal_unicode_lowercase() {
-    let source = include_str!("../../../examples/interpreter/string-lowercase.t");
+    let source = include_str!("../../../examples/language/string-lowercase.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2473,7 +2473,7 @@ fn every_mode_applies_universal_unicode_lowercase() {
 
 #[test]
 fn every_mode_applies_full_universal_unicode_case_folding() {
-    let source = include_str!("../../../examples/interpreter/string-case-fold.t");
+    let source = include_str!("../../../examples/language/string-case-fold.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2486,7 +2486,7 @@ fn every_mode_applies_full_universal_unicode_case_folding() {
 
 #[test]
 fn every_mode_compares_canonical_string_equivalence() {
-    let source = include_str!("../../../examples/interpreter/string-canonical-equality.t");
+    let source = include_str!("../../../examples/language/string-canonical-equality.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2502,7 +2502,7 @@ fn every_mode_compares_canonical_string_equivalence() {
 
 #[test]
 fn every_mode_collects_unicode_character_traversal() {
-    let source = include_str!("../../../examples/interpreter/string-character-traversal.t");
+    let source = include_str!("../../../examples/language/string-character-traversal.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2515,7 +2515,7 @@ fn every_mode_collects_unicode_character_traversal() {
 
 #[test]
 fn every_mode_foreach_consumes_character_generator() {
-    let source = include_str!("../../../examples/interpreter/string-character-foreach.t");
+    let source = include_str!("../../../examples/language/string-character-foreach.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2548,7 +2548,7 @@ fn every_mode_rejects_non_unit_foreach_action() {
 
 #[test]
 fn every_mode_consumes_named_character_generator() {
-    let source = include_str!("../../../examples/interpreter/string-named-character-generator.t");
+    let source = include_str!("../../../examples/language/string-named-character-generator.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2560,7 +2560,7 @@ fn every_mode_consumes_named_character_generator() {
 
 #[test]
 fn every_mode_consumes_returned_character_generator() {
-    let source = include_str!("../../../examples/interpreter/string-character-generator-result.t");
+    let source = include_str!("../../../examples/language/string-character-generator-result.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2571,8 +2571,7 @@ fn every_mode_consumes_returned_character_generator() {
 
 #[test]
 fn every_mode_transfers_generator_parameter() {
-    let source =
-        include_str!("../../../examples/interpreter/string-character-generator-parameter.t");
+    let source = include_str!("../../../examples/language/string-character-generator-parameter.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2583,7 +2582,7 @@ fn every_mode_transfers_generator_parameter() {
 
 #[test]
 fn every_mode_closes_abandoned_generator_parameter() {
-    let source = include_str!("../../../examples/interpreter/string-character-generator-close.t");
+    let source = include_str!("../../../examples/language/string-character-generator-close.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2595,7 +2594,7 @@ fn every_mode_closes_abandoned_generator_parameter() {
 
 #[test]
 fn every_mode_constructs_qualified_generator_error_code() {
-    let source = include_str!("../../../examples/interpreter/generator-error-codes.t");
+    let source = include_str!("../../../examples/language/generator-error-codes.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2608,7 +2607,7 @@ fn every_mode_constructs_qualified_generator_error_code() {
 
 #[test]
 fn every_mode_traverses_custom_multiple_yield_generator() {
-    let source = include_str!("../../../examples/interpreter/custom-multiple-yield-generator.t");
+    let source = include_str!("../../../examples/language/custom-multiple-yield-generator.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2630,7 +2629,7 @@ fn every_mode_traverses_custom_multiple_yield_generator() {
 
 #[test]
 fn every_mode_uses_custom_generator_local_binding() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-local-binding.t");
+    let source = include_str!("../../../examples/language/custom-generator-local-binding.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2643,7 +2642,7 @@ fn every_mode_uses_custom_generator_local_binding() {
 
 #[test]
 fn every_mode_traverses_generator_returning_before_yield() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-early-return.t");
+    let source = include_str!("../../../examples/language/custom-generator-early-return.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2657,7 +2656,7 @@ fn every_mode_traverses_generator_returning_before_yield() {
 
 #[test]
 fn every_mode_observes_distinct_generator_final_character() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-final-character.t");
+    let source = include_str!("../../../examples/language/custom-generator-final-character.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2670,7 +2669,7 @@ fn every_mode_observes_distinct_generator_final_character() {
 
 #[test]
 fn every_mode_suspends_custom_generator_between_yields() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-suspension.t");
+    let source = include_str!("../../../examples/language/custom-generator-suspension.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2686,7 +2685,7 @@ fn every_mode_suspends_custom_generator_between_yields() {
 
 #[test]
 fn every_mode_binds_successful_unit_resumption() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-resume-binding.t");
+    let source = include_str!("../../../examples/language/custom-generator-resume-binding.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2700,7 +2699,7 @@ fn every_mode_binds_successful_unit_resumption() {
 
 #[test]
 fn every_mode_closes_abandoned_custom_generator() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-close.t");
+    let source = include_str!("../../../examples/language/custom-generator-close.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2711,7 +2710,7 @@ fn every_mode_closes_abandoned_custom_generator() {
 
 #[test]
 fn every_mode_runs_custom_generator_close_handler() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-close-handler.t");
+    let source = include_str!("../../../examples/language/custom-generator-close-handler.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2724,8 +2723,7 @@ fn every_mode_runs_custom_generator_close_handler() {
 
 #[test]
 fn every_mode_matches_qualified_generator_close_code() {
-    let source =
-        include_str!("../../../examples/interpreter/custom-generator-close-code-pattern.t");
+    let source = include_str!("../../../examples/language/custom-generator-close-code-pattern.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2737,7 +2735,7 @@ fn every_mode_matches_qualified_generator_close_code() {
 
 #[test]
 fn every_mode_consumes_custom_generator_returned_by_function() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-function-result.t");
+    let source = include_str!("../../../examples/language/custom-generator-function-result.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2749,8 +2747,7 @@ fn every_mode_consumes_custom_generator_returned_by_function() {
 
 #[test]
 fn every_mode_transfers_custom_generator_function_parameter() {
-    let source =
-        include_str!("../../../examples/interpreter/custom-generator-function-parameter.t");
+    let source = include_str!("../../../examples/language/custom-generator-function-parameter.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2762,7 +2759,7 @@ fn every_mode_transfers_custom_generator_function_parameter() {
 
 #[test]
 fn every_mode_closes_unconsumed_custom_generator_parameter() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-parameter-close.t");
+    let source = include_str!("../../../examples/language/custom-generator-parameter-close.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2775,7 +2772,7 @@ fn every_mode_closes_unconsumed_custom_generator_parameter() {
 #[test]
 fn every_mode_transfers_character_returning_generator_parameter() {
     let source =
-        include_str!("../../../examples/interpreter/custom-generator-character-return-parameter.t");
+        include_str!("../../../examples/language/custom-generator-character-return-parameter.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2789,7 +2786,7 @@ fn every_mode_transfers_character_returning_generator_parameter() {
 #[test]
 fn every_mode_consumes_character_returning_generator_function_result() {
     let source =
-        include_str!("../../../examples/interpreter/custom-generator-character-return-result.t");
+        include_str!("../../../examples/language/custom-generator-character-return-result.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2802,7 +2799,7 @@ fn every_mode_consumes_character_returning_generator_function_result() {
 
 #[test]
 fn every_mode_starts_custom_generator_with_string_input() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-string-input.t");
+    let source = include_str!("../../../examples/language/custom-generator-string-input.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2813,7 +2810,7 @@ fn every_mode_starts_custom_generator_with_string_input() {
 
 #[test]
 fn every_mode_traverses_custom_string_yields() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-string-yield.t");
+    let source = include_str!("../../../examples/language/custom-generator-string-yield.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2825,7 +2822,7 @@ fn every_mode_traverses_custom_string_yields() {
 
 #[test]
 fn every_mode_observes_distinct_generator_final_string() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-string-return.t");
+    let source = include_str!("../../../examples/language/custom-generator-string-return.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2839,7 +2836,7 @@ fn every_mode_observes_distinct_generator_final_string() {
 #[test]
 fn every_mode_executes_discarded_computation_between_yields() {
     let source =
-        include_str!("../../../examples/interpreter/custom-generator-discard-between-yields.t");
+        include_str!("../../../examples/language/custom-generator-discard-between-yields.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2852,7 +2849,7 @@ fn every_mode_executes_discarded_computation_between_yields() {
 
 #[test]
 fn every_mode_executes_explicit_generator_return() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-explicit-return.t");
+    let source = include_str!("../../../examples/language/custom-generator-explicit-return.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2865,8 +2862,7 @@ fn every_mode_executes_explicit_generator_return() {
 
 #[test]
 fn every_mode_returns_explicitly_after_generator_resumption() {
-    let source =
-        include_str!("../../../examples/interpreter/custom-generator-return-after-yield.t");
+    let source = include_str!("../../../examples/language/custom-generator-return-after-yield.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2881,7 +2877,7 @@ fn every_mode_returns_explicitly_after_generator_resumption() {
 
 #[test]
 fn every_mode_traverses_boolean_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-boolean-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-boolean-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2895,7 +2891,7 @@ fn every_mode_traverses_boolean_generator_values() {
 
 #[test]
 fn every_mode_traverses_arbitrary_precision_int_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-int-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-int-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2909,7 +2905,7 @@ fn every_mode_traverses_arbitrary_precision_int_generator_values() {
 
 #[test]
 fn every_mode_traverses_exact_rational_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-rational-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-rational-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2919,7 +2915,7 @@ fn every_mode_traverses_exact_rational_generator_values() {
 
 #[test]
 fn every_mode_traverses_unit_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-unit-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-unit-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -2930,7 +2926,7 @@ fn every_mode_traverses_unit_generator_values() {
 
 #[test]
 fn every_mode_traverses_optional_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-optional-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-optional-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2943,7 +2939,7 @@ fn every_mode_traverses_optional_generator_values() {
 
 #[test]
 fn every_mode_traverses_range_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-range-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-range-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2957,7 +2953,7 @@ fn every_mode_traverses_range_generator_values() {
 
 #[test]
 fn every_mode_traverses_nat_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-nat-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-nat-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2967,7 +2963,7 @@ fn every_mode_traverses_nat_generator_values() {
 
 #[test]
 fn every_mode_traverses_enum_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-enum-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-enum-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2977,7 +2973,7 @@ fn every_mode_traverses_enum_generator_values() {
 
 #[test]
 fn every_mode_traverses_product_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-product-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-product-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2987,7 +2983,7 @@ fn every_mode_traverses_product_generator_values() {
 
 #[test]
 fn every_mode_traverses_result_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-result-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-result-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -2997,7 +2993,7 @@ fn every_mode_traverses_result_generator_values() {
 
 #[test]
 fn every_mode_traverses_comparison_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-comparison-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-comparison-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3008,7 +3004,7 @@ fn every_mode_traverses_comparison_generator_values() {
 #[test]
 fn every_mode_traverses_nested_optional_generator_values() {
     let source =
-        include_str!("../../../examples/interpreter/custom-generator-nested-optional-values.t");
+        include_str!("../../../examples/language/custom-generator-nested-optional-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3018,8 +3014,7 @@ fn every_mode_traverses_nested_optional_generator_values() {
 
 #[test]
 fn every_mode_traverses_nested_result_generator_values() {
-    let source =
-        include_str!("../../../examples/interpreter/custom-generator-nested-result-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-nested-result-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3029,8 +3024,7 @@ fn every_mode_traverses_nested_result_generator_values() {
 
 #[test]
 fn every_mode_traverses_nested_absent_optional_values() {
-    let source =
-        include_str!("../../../examples/interpreter/custom-generator-nested-none-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-nested-none-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3041,7 +3035,7 @@ fn every_mode_traverses_nested_absent_optional_values() {
 #[test]
 fn every_mode_traverses_recursive_nominal_generator_values() {
     let source =
-        include_str!("../../../examples/interpreter/custom-generator-recursive-nominal-values.t");
+        include_str!("../../../examples/language/custom-generator-recursive-nominal-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3054,7 +3048,7 @@ fn every_mode_traverses_recursive_nominal_generator_values() {
 
 #[test]
 fn every_mode_selects_generator_final_decision() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-final-decision.t");
+    let source = include_str!("../../../examples/language/custom-generator-final-decision.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3079,7 +3073,7 @@ fn generator_classifier_error_is_actionable_in_script_mode() {
 
 #[test]
 fn every_mode_retains_generator_local_function() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-local-function.t");
+    let source = include_str!("../../../examples/language/custom-generator-local-function.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3094,8 +3088,7 @@ fn every_mode_retains_generator_local_function() {
 
 #[test]
 fn every_mode_restores_generator_local_close_handler() {
-    let source =
-        include_str!("../../../examples/interpreter/custom-generator-local-close-handler.t");
+    let source = include_str!("../../../examples/language/custom-generator-local-close-handler.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -3109,7 +3102,7 @@ fn every_mode_restores_generator_local_close_handler() {
 
 #[test]
 fn every_mode_selects_generator_overloads() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-overloads.t");
+    let source = include_str!("../../../examples/language/custom-generator-overloads.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3124,9 +3117,8 @@ fn every_mode_selects_generator_overloads() {
 
 #[test]
 fn every_mode_transfers_generic_generator_function_boundaries() {
-    let source = include_str!(
-        "../../../examples/interpreter/custom-generator-generic-function-boundaries.t"
-    );
+    let source =
+        include_str!("../../../examples/language/custom-generator-generic-function-boundaries.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3141,9 +3133,8 @@ fn every_mode_transfers_generic_generator_function_boundaries() {
 
 #[test]
 fn every_mode_transfers_compound_generator_function_boundaries() {
-    let source = include_str!(
-        "../../../examples/interpreter/custom-generator-compound-function-boundaries.t"
-    );
+    let source =
+        include_str!("../../../examples/language/custom-generator-compound-function-boundaries.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3158,7 +3149,7 @@ fn every_mode_transfers_compound_generator_function_boundaries() {
 #[test]
 fn every_mode_transfers_nested_generator_function_boundaries() {
     let source =
-        include_str!("../../../examples/interpreter/custom-generator-nested-function-boundaries.t");
+        include_str!("../../../examples/language/custom-generator-nested-function-boundaries.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3176,7 +3167,7 @@ fn every_mode_transfers_nested_generator_function_boundaries() {
 
 #[test]
 fn every_mode_transfers_list_generator_values() {
-    let source = include_str!("../../../examples/interpreter/custom-generator-list-values.t");
+    let source = include_str!("../../../examples/language/custom-generator-list-values.t");
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3195,7 +3186,8 @@ fn every_mode_transfers_list_generator_values() {
 
 #[test]
 fn every_mode_rejects_yield_after_custom_close() {
-    let source = include_str!("../../../examples/debugger/custom-generator-yield-after-close.t");
+    let source =
+        include_str!("../../../examples/language-diagnostics/custom-generator-yield-after-close.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         let rendered = format!(
@@ -3210,7 +3202,7 @@ fn every_mode_rejects_yield_after_custom_close() {
 
 #[test]
 fn script_mode_explains_consumed_generator_reuse() {
-    let source = include_str!("../../../examples/debugger/generator-consumed.t");
+    let source = include_str!("../../../examples/language-diagnostics/generator-consumed.t");
     let output = run(&[], source);
     assert!(!output.status.success());
     let diagnostic = String::from_utf8(output.stderr).unwrap();
@@ -3272,7 +3264,7 @@ fn rational_zero_division_trace_refutes_obligation() {
 
 #[test]
 fn every_mode_constructs_compares_and_decomposes_lists() {
-    let source = include_str!("../../../examples/interpreter/lists.t");
+    let source = include_str!("../../../examples/language/lists.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3307,7 +3299,7 @@ fn script_mode_explains_invalid_list_entries() {
 
 #[test]
 fn every_mode_preserves_recursive_list_classifiers() {
-    let source = include_str!("../../../examples/interpreter/nested-lists.t");
+    let source = include_str!("../../../examples/language/nested-lists.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3324,7 +3316,7 @@ fn every_mode_preserves_recursive_list_classifiers() {
 
 #[test]
 fn every_mode_distinguishes_list_containment_laws() {
-    let source = include_str!("../../../examples/interpreter/list-containment.t");
+    let source = include_str!("../../../examples/language/list-containment.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3342,7 +3334,7 @@ fn every_mode_distinguishes_list_containment_laws() {
 
 #[test]
 fn every_mode_removes_list_values_by_explicit_law() {
-    let source = include_str!("../../../examples/interpreter/list-removal.t");
+    let source = include_str!("../../../examples/language/list-removal.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3359,7 +3351,7 @@ fn every_mode_removes_list_values_by_explicit_law() {
 
 #[test]
 fn every_mode_executes_contextual_anonymous_list_functions() {
-    let source = include_str!("../../../examples/interpreter/anonymous-list-functions.t");
+    let source = include_str!("../../../examples/language/anonymous-list-functions.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3374,7 +3366,7 @@ fn every_mode_executes_contextual_anonymous_list_functions() {
 
 #[test]
 fn every_mode_executes_complete_list_sequence_operations() {
-    let source = include_str!("../../../examples/interpreter/list-sequence-operations.t");
+    let source = include_str!("../../../examples/language/list-sequence-operations.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3407,7 +3399,7 @@ fn closed_invalid_list_boundary_has_source_help() {
 
 #[test]
 fn every_mode_collects_fundamental_containers() {
-    let source = include_str!("../../../examples/interpreter/fundamental-containers.t");
+    let source = include_str!("../../../examples/language/fundamental-containers.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3430,7 +3422,7 @@ fn every_mode_collects_fundamental_containers() {
 
 #[test]
 fn every_mode_executes_recursive_products_variants_and_unions() {
-    let source = include_str!("../../../examples/interpreter/unions-and-recursive-products.t");
+    let source = include_str!("../../../examples/language/unions-and-recursive-products.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3448,8 +3440,7 @@ fn every_mode_executes_recursive_products_variants_and_unions() {
 
 #[test]
 fn every_mode_validates_constraints_and_derives_base_capabilities() {
-    let source =
-        include_str!("../../../examples/interpreter/constraints-and-derived-capabilities.t");
+    let source = include_str!("../../../examples/language/constraints-and-derived-capabilities.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3479,7 +3470,7 @@ fn closed_constraint_rejection_has_source_help() {
 
 #[test]
 fn every_mode_composes_optional_result_and_error_fields() {
-    let source = include_str!("../../../examples/interpreter/optional-result-composition.t");
+    let source = include_str!("../../../examples/language/optional-result-composition.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3495,7 +3486,7 @@ fn every_mode_composes_optional_result_and_error_fields() {
 
 #[test]
 fn every_mode_executes_settled_modular_numbers() {
-    let source = include_str!("../../../examples/interpreter/modular-numbers.t");
+    let source = include_str!("../../../examples/language/modular-numbers.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3527,7 +3518,7 @@ fn closed_modular_construction_rejection_is_source_located() {
 
 #[test]
 fn every_mode_selects_values_and_indexes_by_range() {
-    let source = include_str!("../../../examples/interpreter/range-selection.t");
+    let source = include_str!("../../../examples/language/range-selection.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3542,7 +3533,7 @@ fn every_mode_selects_values_and_indexes_by_range() {
 
 #[test]
 fn every_mode_returns_explicit_completion_evidence() {
-    let source = include_str!("../../../examples/interpreter/completed-evidence.t");
+    let source = include_str!("../../../examples/language/completed-evidence.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3559,7 +3550,7 @@ fn every_mode_returns_explicit_completion_evidence() {
 
 #[test]
 fn every_mode_reconstructs_records_immutably() {
-    let source = include_str!("../../../examples/interpreter/record-reconstruction.t");
+    let source = include_str!("../../../examples/language/record-reconstruction.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3575,7 +3566,7 @@ fn every_mode_reconstructs_records_immutably() {
 
 #[test]
 fn every_mode_passes_bound_anonymous_function_values() {
-    let source = include_str!("../../../examples/interpreter/bound-anonymous-functions.t");
+    let source = include_str!("../../../examples/language/bound-anonymous-functions.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3590,7 +3581,7 @@ fn every_mode_passes_bound_anonymous_function_values() {
 
 #[test]
 fn every_mode_directly_applies_anonymous_function_values() {
-    let source = include_str!("../../../examples/interpreter/anonymous-function-application.t");
+    let source = include_str!("../../../examples/language/anonymous-function-application.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3606,7 +3597,7 @@ fn every_mode_directly_applies_anonymous_function_values() {
 
 #[test]
 fn every_mode_short_circuits_fold_with_traversal_control() {
-    let source = include_str!("../../../examples/interpreter/traversal-control.t");
+    let source = include_str!("../../../examples/language/traversal-control.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3624,7 +3615,7 @@ fn every_mode_short_circuits_fold_with_traversal_control() {
 
 #[test]
 fn every_mode_applies_bound_symbolic_callable_values() {
-    let source = include_str!("../../../examples/interpreter/callable-values.t");
+    let source = include_str!("../../../examples/language/callable-values.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3641,7 +3632,7 @@ fn every_mode_applies_bound_symbolic_callable_values() {
 
 #[test]
 fn every_mode_applies_bound_named_function_values() {
-    let source = include_str!("../../../examples/interpreter/named-function-values.t");
+    let source = include_str!("../../../examples/language/named-function-values.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3654,7 +3645,7 @@ fn every_mode_applies_bound_named_function_values() {
 
 #[test]
 fn every_mode_constructs_lazy_iterate_generators() {
-    let source = include_str!("../../../examples/interpreter/iterate-generator.t");
+    let source = include_str!("../../../examples/language/iterate-generator.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3671,7 +3662,7 @@ fn every_mode_constructs_lazy_iterate_generators() {
 
 #[test]
 fn every_mode_constructs_lazy_take_while_prefixes() {
-    let source = include_str!("../../../examples/interpreter/iterate-take-while.t");
+    let source = include_str!("../../../examples/language/iterate-take-while.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3688,7 +3679,7 @@ fn every_mode_constructs_lazy_take_while_prefixes() {
 
 #[test]
 fn every_mode_traverses_bounded_generated_prefixes() {
-    let source = include_str!("../../../examples/interpreter/generated-foreach.t");
+    let source = include_str!("../../../examples/language/generated-foreach.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3704,7 +3695,7 @@ fn every_mode_traverses_bounded_generated_prefixes() {
 
 #[test]
 fn every_mode_collects_finite_generated_traversals() {
-    let source = include_str!("../../../examples/interpreter/generated-collect.t");
+    let source = include_str!("../../../examples/language/generated-collect.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3720,7 +3711,7 @@ fn every_mode_collects_finite_generated_traversals() {
 
 #[test]
 fn every_mode_constructs_lazy_unfold_generators() {
-    let source = include_str!("../../../examples/interpreter/unfold-generator.t");
+    let source = include_str!("../../../examples/language/unfold-generator.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3737,7 +3728,7 @@ fn every_mode_constructs_lazy_unfold_generators() {
 
 #[test]
 fn every_mode_collects_finite_unfold_generators() {
-    let source = include_str!("../../../examples/interpreter/unfold-collect.t");
+    let source = include_str!("../../../examples/language/unfold-collect.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3754,7 +3745,7 @@ fn every_mode_collects_finite_unfold_generators() {
 
 #[test]
 fn every_mode_resolves_the_root_namespace_explicitly() {
-    let source = include_str!("../../../examples/interpreter/root-namespace.t");
+    let source = include_str!("../../../examples/language/root-namespace.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3771,7 +3762,7 @@ fn every_mode_resolves_the_root_namespace_explicitly() {
 
 #[test]
 fn every_mode_resolves_members_through_namespace_aliases() {
-    let source = include_str!("../../../examples/interpreter/namespace-alias.t");
+    let source = include_str!("../../../examples/language/namespace-alias.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3784,7 +3775,7 @@ fn every_mode_resolves_members_through_namespace_aliases() {
 
 #[test]
 fn every_mode_makes_namespaces_available_with_use() {
-    let source = include_str!("../../../examples/interpreter/use-namespace.t");
+    let source = include_str!("../../../examples/language/use-namespace.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3799,7 +3790,7 @@ fn every_mode_makes_namespaces_available_with_use() {
 
 #[test]
 fn every_mode_preserves_namespace_capture_visibility() {
-    let source = include_str!("../../../examples/interpreter/namespace-snapshot.t");
+    let source = include_str!("../../../examples/language/namespace-snapshot.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3813,7 +3804,7 @@ fn every_mode_preserves_namespace_capture_visibility() {
 
 #[test]
 fn every_mode_preserves_namespace_overload_sets() {
-    let source = include_str!("../../../examples/interpreter/namespace-overloads.t");
+    let source = include_str!("../../../examples/language/namespace-overloads.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3834,7 +3825,7 @@ fn every_mode_preserves_namespace_overload_sets() {
 
 #[test]
 fn every_mode_applies_qualified_namespace_generators() {
-    let source = include_str!("../../../examples/interpreter/namespace-generator.t");
+    let source = include_str!("../../../examples/language/namespace-generator.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -3845,7 +3836,7 @@ fn every_mode_applies_qualified_namespace_generators() {
 
 #[test]
 fn every_mode_classifies_namespaces_as_scope() {
-    let source = include_str!("../../../examples/interpreter/scope-classifier.t");
+    let source = include_str!("../../../examples/language/scope-classifier.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3864,7 +3855,7 @@ fn missing_namespace_member_suggests_only_a_member() {
 
 #[test]
 fn every_mode_preserves_namespace_alias_chains() {
-    let source = include_str!("../../../examples/interpreter/namespace-alias-chain.t");
+    let source = include_str!("../../../examples/language/namespace-alias-chain.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3874,7 +3865,7 @@ fn every_mode_preserves_namespace_alias_chains() {
 
 #[test]
 fn every_mode_passes_namespaces_through_scope_parameters() {
-    let source = include_str!("../../../examples/interpreter/namespace-function-parameter.t");
+    let source = include_str!("../../../examples/language/namespace-function-parameter.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -3884,7 +3875,7 @@ fn every_mode_passes_namespaces_through_scope_parameters() {
 
 #[test]
 fn every_mode_resolves_fundamental_type_values() {
-    let source = include_str!("../../../examples/interpreter/type-values.t");
+    let source = include_str!("../../../examples/language/type-values.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -3899,7 +3890,7 @@ fn every_mode_resolves_fundamental_type_values() {
 
 #[test]
 fn every_mode_compares_type_identity() {
-    let source = include_str!("../../../examples/interpreter/type-identity.t");
+    let source = include_str!("../../../examples/language/type-identity.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(
             String::from_utf8(run(arguments, source).stdout)
@@ -3911,7 +3902,7 @@ fn every_mode_compares_type_identity() {
 
 #[test]
 fn every_mode_classifies_type_values() {
-    let source = include_str!("../../../examples/interpreter/type-classifier.t");
+    let source = include_str!("../../../examples/language/type-classifier.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(
             String::from_utf8(run(arguments, source).stdout)
@@ -3923,7 +3914,7 @@ fn every_mode_classifies_type_values() {
 
 #[test]
 fn every_mode_classifies_function_values() {
-    let source = include_str!("../../../examples/interpreter/function-classifier.t");
+    let source = include_str!("../../../examples/language/function-classifier.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(
             String::from_utf8(run(arguments, source).stdout)
@@ -3935,7 +3926,7 @@ fn every_mode_classifies_function_values() {
 
 #[test]
 fn every_mode_classifies_constraint_values() {
-    let source = include_str!("../../../examples/interpreter/constraint-classifier.t");
+    let source = include_str!("../../../examples/language/constraint-classifier.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -3943,7 +3934,7 @@ fn every_mode_classifies_constraint_values() {
 
 #[test]
 fn every_mode_passes_type_values_through_functions() {
-    let source = include_str!("../../../examples/interpreter/type-function-boundary.t");
+    let source = include_str!("../../../examples/language/type-function-boundary.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(
             String::from_utf8(run(arguments, source).stdout)
@@ -3955,7 +3946,7 @@ fn every_mode_passes_type_values_through_functions() {
 
 #[test]
 fn every_mode_passes_callable_values_through_functions() {
-    let source = include_str!("../../../examples/interpreter/function-value-boundary.t");
+    let source = include_str!("../../../examples/language/function-value-boundary.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(
             String::from_utf8(run(arguments, source).stdout)
@@ -3967,7 +3958,7 @@ fn every_mode_passes_callable_values_through_functions() {
 
 #[test]
 fn every_mode_constructs_empty_effect_rows() {
-    let source = include_str!("../../../examples/interpreter/empty-effects.t");
+    let source = include_str!("../../../examples/language/empty-effects.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -3975,7 +3966,7 @@ fn every_mode_constructs_empty_effect_rows() {
 
 #[test]
 fn every_mode_classifies_effect_rows() {
-    let source = include_str!("../../../examples/interpreter/effect-classifier.t");
+    let source = include_str!("../../../examples/language/effect-classifier.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -3983,7 +3974,7 @@ fn every_mode_classifies_effect_rows() {
 
 #[test]
 fn every_mode_compares_effect_rows() {
-    let source = include_str!("../../../examples/interpreter/effect-identity.t");
+    let source = include_str!("../../../examples/language/effect-identity.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(
             String::from_utf8(run(arguments, source).stdout)
@@ -3995,7 +3986,7 @@ fn every_mode_compares_effect_rows() {
 
 #[test]
 fn every_mode_passes_effect_values_through_functions() {
-    let source = include_str!("../../../examples/interpreter/effect-function-boundary.t");
+    let source = include_str!("../../../examples/language/effect-function-boundary.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4003,7 +3994,7 @@ fn every_mode_passes_effect_values_through_functions() {
 
 #[test]
 fn every_mode_packages_effect_products() {
-    let source = include_str!("../../../examples/interpreter/effect-products.t");
+    let source = include_str!("../../../examples/language/effect-products.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4011,7 +4002,7 @@ fn every_mode_packages_effect_products() {
 
 #[test]
 fn every_mode_retains_effect_lists() {
-    let source = include_str!("../../../examples/interpreter/effect-list.t");
+    let source = include_str!("../../../examples/language/effect-list.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4019,7 +4010,7 @@ fn every_mode_retains_effect_lists() {
 
 #[test]
 fn every_mode_composes_completion_with_effect_values() {
-    let source = include_str!("../../../examples/interpreter/completion-effect-value.t");
+    let source = include_str!("../../../examples/language/completion-effect-value.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4027,7 +4018,7 @@ fn every_mode_composes_completion_with_effect_values() {
 
 #[test]
 fn every_mode_keeps_unit_distinct_beside_effect_values() {
-    let source = include_str!("../../../examples/interpreter/unit-effect-value.t");
+    let source = include_str!("../../../examples/language/unit-effect-value.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4035,7 +4026,7 @@ fn every_mode_keeps_unit_distinct_beside_effect_values() {
 
 #[test]
 fn every_mode_resolves_layout_endian_policies() {
-    let source = include_str!("../../../examples/interpreter/layout-endian.t");
+    let source = include_str!("../../../examples/language/layout-endian.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4043,7 +4034,7 @@ fn every_mode_resolves_layout_endian_policies() {
 
 #[test]
 fn every_mode_resolves_layout_access_policies() {
-    let source = include_str!("../../../examples/interpreter/layout-access.t");
+    let source = include_str!("../../../examples/language/layout-access.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4051,7 +4042,7 @@ fn every_mode_resolves_layout_access_policies() {
 
 #[test]
 fn every_mode_resolves_layout_bit_order() {
-    let source = include_str!("../../../examples/interpreter/layout-bit-order.t");
+    let source = include_str!("../../../examples/language/layout-bit-order.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4059,7 +4050,7 @@ fn every_mode_resolves_layout_bit_order() {
 
 #[test]
 fn every_mode_resolves_layout_packing() {
-    let source = include_str!("../../../examples/interpreter/layout-packing.t");
+    let source = include_str!("../../../examples/language/layout-packing.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4067,7 +4058,7 @@ fn every_mode_resolves_layout_packing() {
 
 #[test]
 fn every_mode_resolves_declared_field_order() {
-    let source = include_str!("../../../examples/interpreter/layout-field-order.t");
+    let source = include_str!("../../../examples/language/layout-field-order.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4075,7 +4066,7 @@ fn every_mode_resolves_declared_field_order() {
 
 #[test]
 fn every_mode_resolves_payload_placement() {
-    let source = include_str!("../../../examples/interpreter/layout-payload-placement.t");
+    let source = include_str!("../../../examples/language/layout-payload-placement.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4083,7 +4074,7 @@ fn every_mode_resolves_payload_placement() {
 
 #[test]
 fn every_mode_resolves_layout_absence_policies() {
-    let source = include_str!("../../../examples/interpreter/layout-absence-policies.t");
+    let source = include_str!("../../../examples/language/layout-absence-policies.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4091,7 +4082,7 @@ fn every_mode_resolves_layout_absence_policies() {
 
 #[test]
 fn every_mode_accepts_balanced_diagnostic_controls() {
-    let source = include_str!("../../../examples/interpreter/diagnostic-controls.t");
+    let source = include_str!("../../../examples/language/diagnostic-controls.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
@@ -4101,7 +4092,7 @@ fn every_mode_accepts_balanced_diagnostic_controls() {
 
 #[test]
 fn every_mode_evaluates_empty_blocks() {
-    let source = include_str!("../../../examples/interpreter/empty-block.t");
+    let source = include_str!("../../../examples/language/empty-block.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         assert!(run(arguments, source).status.success());
     }
@@ -4147,7 +4138,7 @@ fn script_and_test_modes_preserve_nested_module_paths() {
 
 #[test]
 fn every_mode_selects_defining_context_members() {
-    let source = include_str!("../../../examples/interpreter/constructed-context.t");
+    let source = include_str!("../../../examples/language/constructed-context.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(
@@ -4161,7 +4152,7 @@ fn every_mode_selects_defining_context_members() {
 
 #[test]
 fn every_mode_declares_function_interfaces() {
-    let source = include_str!("../../../examples/interpreter/function-interface.t");
+    let source = include_str!("../../../examples/language/function-interface.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(
@@ -4175,7 +4166,7 @@ fn every_mode_declares_function_interfaces() {
 
 #[test]
 fn every_mode_composes_capability_promises() {
-    let source = include_str!("../../../examples/interpreter/capability-composition.t");
+    let source = include_str!("../../../examples/language/capability-composition.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(
@@ -4193,7 +4184,7 @@ fn every_mode_composes_capability_promises() {
 
 #[test]
 fn every_mode_accepts_broad_unicode_identifiers() {
-    let source = include_str!("../../../examples/interpreter/unicode-identifiers.t");
+    let source = include_str!("../../../examples/language/unicode-identifiers.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(

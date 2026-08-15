@@ -242,9 +242,11 @@ tuple-ordering decision separately from numeric comparison.
 ## TOPAL-INTP-EXAMPLE-001 — Executable feature examples
 
 Every implemented language-feature increment shall add or extend a related
-runnable source file under `examples/interpreter/`. The interpreter functional
-suite shall execute every such source file successfully in default script mode,
-including its hashbang when present, so examples cannot silently drift from the
+runnable, commented, tool-neutral source file under `examples/language/`.
+Interpreter, debugger, LSP, and future compiler tests shall consume that shared
+source wherever the feature applies. The interpreter functional suite shall
+execute every such source file successfully in default script mode, including
+its hashbang when present, so examples cannot silently drift from the
 implemented language.
 
 ## TOPAL-INTP-SUBSET-023 — Discard declarations

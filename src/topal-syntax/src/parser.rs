@@ -3178,7 +3178,7 @@ mod tests {
     #[test]
     fn parses_result_generator_classifiers() {
         let source = SourceText::new(include_str!(
-            "../../../examples/interpreter/custom-generator-result-values.t"
+            "../../../examples/language/custom-generator-result-values.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));
@@ -3188,7 +3188,7 @@ mod tests {
     #[test]
     fn parses_compound_generator_function_classifiers() {
         let source = SourceText::new(include_str!(
-            "../../../examples/interpreter/custom-generator-compound-function-boundaries.t"
+            "../../../examples/language/custom-generator-compound-function-boundaries.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));
@@ -3198,7 +3198,7 @@ mod tests {
     #[test]
     fn parses_nested_generator_function_classifiers() {
         let source = SourceText::new(include_str!(
-            "../../../examples/interpreter/custom-generator-nested-function-boundaries.t"
+            "../../../examples/language/custom-generator-nested-function-boundaries.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));
@@ -3208,7 +3208,7 @@ mod tests {
     #[test]
     fn parses_list_generator_function_classifiers() {
         let source = SourceText::new(include_str!(
-            "../../../examples/interpreter/custom-generator-list-values.t"
+            "../../../examples/language/custom-generator-list-values.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));
@@ -3218,7 +3218,7 @@ mod tests {
     #[test]
     fn parses_nested_optional_generator_classifiers() {
         let source = SourceText::new(include_str!(
-            "../../../examples/interpreter/custom-generator-nested-optional-values.t"
+            "../../../examples/language/custom-generator-nested-optional-values.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));
@@ -3301,8 +3301,7 @@ mod tests {
 
     #[test]
     fn parses_list_construction_and_total_decomposition() {
-        let source =
-            SourceText::new(include_str!("../../../examples/interpreter/lists.t")).unwrap();
+        let source = SourceText::new(include_str!("../../../examples/language/lists.t")).unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     }
@@ -3310,7 +3309,7 @@ mod tests {
     #[test]
     fn parses_recursive_list_classifiers() {
         let source =
-            SourceText::new(include_str!("../../../examples/interpreter/nested-lists.t")).unwrap();
+            SourceText::new(include_str!("../../../examples/language/nested-lists.t")).unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     }
@@ -3318,7 +3317,7 @@ mod tests {
     #[test]
     fn parses_contextual_anonymous_list_functions() {
         let source = SourceText::new(include_str!(
-            "../../../examples/interpreter/anonymous-list-functions.t"
+            "../../../examples/language/anonymous-list-functions.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));
@@ -3328,7 +3327,7 @@ mod tests {
     #[test]
     fn parses_payload_unions_and_positional_variants() {
         let source = SourceText::new(include_str!(
-            "../../../examples/interpreter/unions-and-recursive-products.t"
+            "../../../examples/language/unions-and-recursive-products.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));
@@ -3347,7 +3346,7 @@ mod tests {
     #[test]
     fn parses_balanced_diagnostic_controls() {
         let source = SourceText::new(include_str!(
-            "../../../examples/interpreter/diagnostic-controls.t"
+            "../../../examples/language/diagnostic-controls.t"
         ))
         .unwrap();
         let parsed = parse(&source, &lex(&source));

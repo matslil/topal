@@ -152,7 +152,7 @@ fn accepted_core_has_no_planned_rule_and_examples_explain_their_feature() {
         "a completion record is valid only when both ledgers are terminal"
     );
 
-    let mut examples = fs::read_dir(root.join("examples/interpreter"))
+    let mut examples = fs::read_dir(root.join("examples/language"))
         .expect("interpreter examples must be readable")
         .map(|entry| entry.expect("example entry must be readable").path())
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
