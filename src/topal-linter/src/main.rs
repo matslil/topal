@@ -19,7 +19,7 @@ const USAGE: &str = "usage: topal-lint [OPTIONS] SOURCE...\n\
   --enable SELECTOR              enable an identity, namespace:PATH, or tag:ID\n\
   --disable SELECTOR             disable an identity, namespace:PATH, or tag:ID\n\
   --severity SELECTOR=LEVEL      set warning, error, or off\n\
-  --format terminal|json         select finding presentation";
+  --format terminal|json|sarif   select finding presentation";
 
 fn parse_severity(value: &str) -> Result<Option<Severity>, String> {
     match value {
@@ -34,6 +34,7 @@ fn parse_severity(value: &str) -> Result<Option<Severity>, String> {
 enum Format {
     Terminal,
     Json,
+    Sarif,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -156,6 +157,95 @@ impl<'a> JsonDiagnostic<'a> {
     }
 }
 
+struct Emitter {
+    format: Format,
+    sarif: Vec<(String, Diagnostic)>,
+}
+
+impl Emitter {
+    const fn new(format: Format) -> Self {
+        Self {
+            format,
+            sarif: Vec::new(),
+        }
+    }
+
+    fn emit(&mut self, diagnostic: &Diagnostic, path: &Path) -> Result<(), String> {
+        let source = path.to_str().unwrap_or("<source>");
+        match self.format {
+            Format::Terminal => eprintln!("{}", diagnostic.render(source)),
+            Format::Json => println!(
+                "{}",
+                serde_json::to_string(&JsonDiagnostic::from_diagnostic(diagnostic, source))
+                    .map_err(|error| error.to_string())?
+            ),
+            Format::Sarif => self.sarif.push((source.to_owned(), diagnostic.clone())),
+        }
+        Ok(())
+    }
+
+    fn finish(self) -> Result<(), String> {
+        if self.format != Format::Sarif {
+            return Ok(());
+        }
+        let results = self
+            .sarif
+            .iter()
+            .map(|(source, diagnostic)| sarif_result(source, diagnostic))
+            .collect::<Vec<_>>();
+        let report = serde_json::json!({
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [{
+                "tool": { "driver": { "name": "topal-lint" } },
+                "results": results
+            }]
+        });
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&report).map_err(|error| error.to_string())?
+        );
+        Ok(())
+    }
+}
+
+fn sarif_result(source: &str, diagnostic: &Diagnostic) -> serde_json::Value {
+    let mut properties = serde_json::Map::new();
+    if let Some(best_practice) = &diagnostic.best_practice {
+        properties.insert(
+            "bestPractice".into(),
+            serde_json::Value::String(best_practice.identity.clone()),
+        );
+        properties.insert(
+            "bestPracticeVersion".into(),
+            serde_json::Value::String(best_practice.version.clone()),
+        );
+        properties.insert(
+            "ruleVersion".into(),
+            serde_json::Value::String(best_practice.rule_version.clone()),
+        );
+    }
+    let mut result = serde_json::json!({
+        "ruleId": diagnostic.code,
+        "level": diagnostic.severity.label(),
+        "message": { "text": diagnostic.message },
+        "locations": [{
+            "physicalLocation": {
+                "artifactLocation": { "uri": source },
+                "region": {
+                    "startLine": diagnostic.line,
+                    "startColumn": diagnostic.column
+                }
+            }
+        }],
+        "properties": properties
+    });
+    if let Some(help) = &diagnostic.help {
+        result["help"] = serde_json::json!({ "text": help });
+    }
+    result
+}
+
 fn main() -> ExitCode {
     match run(env::args().skip(1)) {
         Ok(has_error) => ExitCode::from(u8::from(has_error)),
@@ -203,10 +293,12 @@ fn run(arguments: impl Iterator<Item = String>) -> Result<bool, String> {
         return Err("at least one source path is required".into());
     }
     let format = options.format.unwrap_or(Format::Terminal);
+    let mut emitter = Emitter::new(format);
     let mut has_error = false;
     for path in &options.sources {
-        has_error |= lint_source(path, &catalog, &options.overrides, format)?;
+        has_error |= lint_source(path, &catalog, &options.overrides, &mut emitter)?;
     }
+    emitter.finish()?;
     Ok(has_error)
 }
 
@@ -257,6 +349,7 @@ fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, Str
                 options.format = Some(match next_value(&mut arguments, "--format")?.as_str() {
                     "terminal" => Format::Terminal,
                     "json" => Format::Json,
+                    "sarif" => Format::Sarif,
                     value => return Err(format!("unknown output format `{value}`")),
                 });
             }
@@ -471,7 +564,7 @@ fn lint_source(
     path: &Path,
     catalog: &Catalog,
     overrides: &[Override],
-    format: Format,
+    emitter: &mut Emitter,
 ) -> Result<bool, String> {
     let text = fs::read_to_string(path)
         .map_err(|error| format!("cannot read source {}: {error}", path.display()))?;
@@ -479,7 +572,7 @@ fn lint_source(
         Ok(source) => source,
         Err(error) => {
             let diagnostic = source_diagnostic(&text, error.span, error.code, error.message);
-            emit(&diagnostic, path, format)?;
+            emitter.emit(&diagnostic, path)?;
             return Ok(true);
         }
     };
@@ -492,7 +585,7 @@ fn lint_source(
     diagnostics.extend(parsed.diagnostics.iter());
     for diagnostic in diagnostics {
         if seen.insert((diagnostic.code, diagnostic.span.start, diagnostic.span.end)) {
-            emit_syntax(path, &source, diagnostic, format)?;
+            emit_syntax(path, &source, diagnostic, emitter)?;
             has_error = true;
         }
     }
@@ -537,7 +630,7 @@ fn lint_source(
                         &entry.version,
                         &rule.version,
                     );
-                    emit(&diagnostic, path, format)?;
+                    emitter.emit(&diagnostic, path)?;
                     has_error |= entry_policy.severity == Severity::Error;
                 }
             }
@@ -760,7 +853,7 @@ fn emit_syntax(
     path: &Path,
     source: &SourceText,
     diagnostic: &SyntaxDiagnostic,
-    format: Format,
+    emitter: &mut Emitter,
 ) -> Result<(), String> {
     let position = source.position(diagnostic.span.start);
     let diagnostic = Diagnostic::error(
@@ -777,7 +870,7 @@ fn emit_syntax(
             .map(str::to_owned),
         diagnostic.span.end.saturating_sub(diagnostic.span.start),
     );
-    emit(&diagnostic, path, format)
+    emitter.emit(&diagnostic, path)
 }
 
 fn source_diagnostic(
@@ -803,19 +896,6 @@ fn byte_position(text: &str, offset: usize) -> (usize, usize) {
         .count()
         + 1;
     (line, column)
-}
-
-fn emit(diagnostic: &Diagnostic, path: &Path, format: Format) -> Result<(), String> {
-    let source = path.to_str().unwrap_or("<source>");
-    match format {
-        Format::Terminal => eprintln!("{}", diagnostic.render(source)),
-        Format::Json => println!(
-            "{}",
-            serde_json::to_string(&JsonDiagnostic::from_diagnostic(diagnostic, source))
-                .map_err(|error| error.to_string())?
-        ),
-    }
-    Ok(())
 }
 
 #[cfg(test)]
