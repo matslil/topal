@@ -1193,26 +1193,31 @@ mod tests {
     }
 
     #[test]
-    fn accepts_the_first_standard_library_source() {
-        let path =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/fundamental/ordering.t");
-        let text = std::fs::read_to_string(&path).unwrap();
-        let mut server = Server::default();
-        let output = server.handle(&json!({
-            "method": "textDocument/didOpen",
-            "params": { "textDocument": {
-                "uri": format!("file://{}", path.display()),
-                "languageId": "topal",
-                "version": 1,
-                "text": text
-            } }
-        }));
-        assert!(
-            output[0]["params"]["diagnostics"]
-                .as_array()
-                .unwrap()
-                .is_empty()
-        );
+    fn accepts_the_standard_library_fundamental_sources() {
+        for name in ["boolean.t", "ordering.t", "unit.t"] {
+            let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../library/fundamental")
+                .join(name);
+            let text = std::fs::read_to_string(&path).unwrap();
+            let mut server = Server::default();
+            let output = server.handle(&json!({
+                "method": "textDocument/didOpen",
+                "params": { "textDocument": {
+                    "uri": format!("file://{}", path.display()),
+                    "languageId": "topal",
+                    "version": 1,
+                    "text": text
+                } }
+            }));
+            assert!(
+                output[0]["params"]["diagnostics"]
+                    .as_array()
+                    .unwrap()
+                    .is_empty(),
+                "{}",
+                path.display()
+            );
+        }
     }
 
     #[test]

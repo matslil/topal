@@ -9,3 +9,11 @@ pub minimum is fn (left : Int, right : Int) -> Int
   left
     < right then left
     otherwise right
+
+pub maximum is fn (left : Int, right : Int) -> Int
+  left
+    > right then left
+    otherwise right
+
+pub between-inclusive is fn (value : Int, bounds : Range Int) -> Boolean
+  value in bounds
