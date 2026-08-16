@@ -391,6 +391,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "topal-linter"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "topal-best-practices",
+ "topal-source",
+ "topal-syntax",
+]
+
+[[package]]
 name = "topal-lsp"
 version = "0.1.0"
 dependencies = [

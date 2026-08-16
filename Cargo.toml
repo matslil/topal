@@ -5,6 +5,7 @@ members = [
     "src/topal-debugger",
     "src/topal-geir",
     "src/topal-language",
+    "src/topal-linter",
     "src/topal-lsp",
     "src/topal-semantics",
     "src/topal-source",
