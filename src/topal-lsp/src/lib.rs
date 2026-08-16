@@ -3,14 +3,14 @@
 use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
-use topal_linter::lint_text;
+use topal_linter::{LintControl, lint_text_with_controls};
 use topal_source::{Diagnostic, Severity, SourceText};
 use topal_syntax::{Statement, TokenKind, lex, parse};
 
 #[derive(Default)]
 pub struct Server {
     documents: BTreeMap<String, String>,
-    lint_enabled: Vec<String>,
+    lint_controls: Vec<LintControl>,
     shutdown: bool,
     exit: bool,
 }
@@ -52,35 +52,15 @@ impl Server {
     }
 
     fn initialize(&mut self, id: Option<Value>, message: &Value) -> Vec<Value> {
-        let enabled = message
-            .pointer("/params/initializationOptions/lint/enable")
-            .and_then(Value::as_array)
-            .map_or_else(Vec::new, |entries| {
-                entries
-                    .iter()
-                    .filter_map(Value::as_str)
-                    .map(str::to_owned)
-                    .collect()
-            });
-        if message
-            .pointer("/params/initializationOptions/lint/enable")
-            .is_some_and(|value| {
-                value
-                    .as_array()
-                    .is_none_or(|entries| entries.iter().any(|entry| entry.as_str().is_none()))
-            })
+        let controls = match lint_controls(message) {
+            Ok(controls) => controls,
+            Err(error) => return vec![error_response(id, -32602, &error)],
+        };
+        if let Err(error) = lint_text_with_controls("use language ( version is v0.1 )\n", &controls)
         {
-            return vec![error_response(
-                id,
-                -32602,
-                "initializationOptions.lint.enable must be an array of identities",
-            )];
-        }
-        let enabled_refs = enabled.iter().map(String::as_str).collect::<Vec<_>>();
-        if let Err(error) = lint_text("use language ( version is v0.1 )\n", &enabled_refs) {
             return vec![error_response(id, -32602, &error)];
         }
-        self.lint_enabled = enabled;
+        self.lint_controls = controls;
         vec![response(
             id,
             &json!({
@@ -136,7 +116,7 @@ impl Server {
             return Vec::new();
         };
         self.documents.insert(uri.to_owned(), text.to_owned());
-        vec![publish_diagnostics(uri, text, &self.lint_enabled)]
+        vec![publish_diagnostics(uri, text, &self.lint_controls)]
     }
 
     fn did_change(&mut self, message: &Value) -> Vec<Value> {
@@ -156,7 +136,7 @@ impl Server {
             return Vec::new();
         };
         self.documents.insert(uri.to_owned(), text.to_owned());
-        vec![publish_diagnostics(uri, text, &self.lint_enabled)]
+        vec![publish_diagnostics(uri, text, &self.lint_controls)]
     }
 
     fn did_close(&mut self, message: &Value) -> Vec<Value> {
@@ -328,8 +308,8 @@ fn error_response(id: Option<Value>, code: i32, message: &str) -> Value {
     })
 }
 
-fn publish_diagnostics(uri: &str, text: &str, enabled: &[String]) -> Value {
-    let diagnostics = diagnostics_with_lint(text, enabled);
+fn publish_diagnostics(uri: &str, text: &str, controls: &[LintControl]) -> Value {
+    let diagnostics = diagnostics_with_lint(text, controls);
     json!({
         "jsonrpc": "2.0",
         "method": "textDocument/publishDiagnostics",
@@ -342,9 +322,8 @@ fn diagnostics(text: &str) -> Vec<Value> {
     diagnostics_with_lint(text, &[])
 }
 
-fn diagnostics_with_lint(text: &str, enabled: &[String]) -> Vec<Value> {
-    let enabled = enabled.iter().map(String::as_str).collect::<Vec<_>>();
-    match lint_text(text, &enabled) {
+fn diagnostics_with_lint(text: &str, controls: &[LintControl]) -> Vec<Value> {
+    match lint_text_with_controls(text, controls) {
         Ok(report) => {
             let normalized = SourceText::new(text).ok();
             let coordinate_text = normalized.as_ref().map_or(text, SourceText::as_str);
@@ -359,6 +338,53 @@ fn diagnostics_with_lint(text: &str, enabled: &[String]) -> Vec<Value> {
             &Diagnostic::error("L-LINT-ENGINE", 1, 1, error),
         )],
     }
+}
+
+fn lint_controls(message: &Value) -> Result<Vec<LintControl>, String> {
+    let mut controls = Vec::new();
+    for (name, enable) in [("enable", true), ("disable", false)] {
+        let Some(value) = message.pointer(&format!("/params/initializationOptions/lint/{name}"))
+        else {
+            continue;
+        };
+        let entries = value.as_array().ok_or_else(|| {
+            format!("initializationOptions.lint.{name} must be an array of selectors")
+        })?;
+        for entry in entries {
+            let selector = entry.as_str().ok_or_else(|| {
+                format!("initializationOptions.lint.{name} must contain only selectors")
+            })?;
+            controls.push(if enable {
+                LintControl::Enable(selector.to_owned())
+            } else {
+                LintControl::Disable(selector.to_owned())
+            });
+        }
+    }
+    if let Some(value) = message.pointer("/params/initializationOptions/lint/severity") {
+        let settings = value.as_object().ok_or_else(|| {
+            "initializationOptions.lint.severity must map selectors to levels".to_string()
+        })?;
+        for (selector, level) in settings {
+            controls.push(match level.as_str() {
+                Some("warning") => LintControl::Severity {
+                    selector: selector.clone(),
+                    severity: Severity::Warning,
+                },
+                Some("error") => LintControl::Severity {
+                    selector: selector.clone(),
+                    severity: Severity::Error,
+                },
+                Some("off") => LintControl::Off(selector.clone()),
+                _ => {
+                    return Err(format!(
+                        "initializationOptions.lint.severity level for `{selector}` must be warning, error, or off"
+                    ));
+                }
+            });
+        }
+    }
+    Ok(controls)
 }
 
 fn protocol_diagnostic(text: &str, diagnostic: &Diagnostic) -> Value {
@@ -749,6 +775,69 @@ mod tests {
                 .as_str()
                 .unwrap()
                 .contains("matches no best-practice")
+        );
+    }
+
+    #[test]
+    fn applies_shared_lint_selector_and_severity_policy() {
+        let mut server = Server::default();
+        let initialized = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 22, "method": "initialize",
+            "params": { "initializationOptions": { "lint": {
+                "enable": ["tag:lang best-practice tag architecture"],
+                "severity": { "lang best-practice task state-machine": "error" }
+            } } }
+        }));
+        assert!(initialized[0].get("error").is_none());
+        let source = "use language (\n  version is v0.1\n)\nCounter is Task (queue-size is 2)\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n";
+        let opened = server.handle(&json!({
+            "jsonrpc": "2.0", "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///policy.t", "languageId": "topal", "version": 1,
+                "text": source
+            } }
+        }));
+        assert_eq!(opened[0]["params"]["diagnostics"][0]["severity"], 1);
+
+        let mut disabled = Server::default();
+        let initialized = disabled.handle(&json!({
+            "jsonrpc": "2.0", "id": 23, "method": "initialize",
+            "params": { "initializationOptions": { "lint": {
+                "enable": ["tag:lang best-practice tag architecture"],
+                "disable": ["lang best-practice task state-machine"]
+            } } }
+        }));
+        assert!(initialized[0].get("error").is_none());
+        let opened = disabled.handle(&json!({
+            "jsonrpc": "2.0", "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///disabled.t", "languageId": "topal", "version": 1,
+                "text": source
+            } }
+        }));
+        assert!(
+            opened[0]["params"]["diagnostics"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn rejects_malformed_lsp_lint_policy() {
+        let mut server = Server::default();
+        let response = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 24, "method": "initialize",
+            "params": { "initializationOptions": { "lint": {
+                "severity": { "lang best-practice task state-machine": "fatal" }
+            } } }
+        }));
+        assert_eq!(response[0]["error"]["code"], -32602);
+        assert!(
+            response[0]["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("warning, error, or off")
         );
     }
 

@@ -721,6 +721,20 @@ pub struct LintReport {
     pub has_errors: bool,
 }
 
+/// One ordered lint-policy control shared by command, editor, and embedding
+/// adapters. Selectors use the same identity, `namespace:`, and `tag:` forms
+/// as the command-line interface.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum LintControl {
+    Enable(String),
+    Disable(String),
+    Severity {
+        selector: String,
+        severity: Severity,
+    },
+    Off(String),
+}
+
 /// Lint normalized in-memory Topal source with explicitly enabled built-in
 /// best-practices. Proposed entries remain disabled unless named here.
 ///
@@ -729,17 +743,51 @@ pub struct LintReport {
 /// Returns an error when a requested identity is unknown or a selected rule
 /// cannot be admitted or executed in its contained view.
 pub fn lint_text(text: &str, enabled_identities: &[&str]) -> Result<LintReport, String> {
+    let controls = enabled_identities
+        .iter()
+        .map(|identity| LintControl::Enable((*identity).to_owned()))
+        .collect::<Vec<_>>();
+    lint_text_with_controls(text, &controls)
+}
+
+/// Lint normalized in-memory Topal source using ordered selector controls.
+///
+/// # Errors
+///
+/// Returns an error when a selector is malformed or unknown, or when a
+/// selected rule cannot be admitted or executed in its contained view.
+pub fn lint_text_with_controls(text: &str, controls: &[LintControl]) -> Result<LintReport, String> {
     let catalog = Catalog::builtin();
-    let overrides = enabled_identities
+    let overrides = controls
         .iter()
         .enumerate()
-        .map(|(order, identity)| Override {
-            selector: Selector::Identity((*identity).to_owned()),
-            enabled: Some(true),
-            severity: SeveritySetting::Keep,
-            order,
+        .map(|(order, control)| match control {
+            LintControl::Enable(selector) => Ok(Override {
+                selector: Selector::parse(selector)?,
+                enabled: Some(true),
+                severity: SeveritySetting::Keep,
+                order,
+            }),
+            LintControl::Disable(selector) => Ok(Override {
+                selector: Selector::parse(selector)?,
+                enabled: Some(false),
+                severity: SeveritySetting::Keep,
+                order,
+            }),
+            LintControl::Severity { selector, severity } => Ok(Override {
+                selector: Selector::parse(selector)?,
+                enabled: None,
+                severity: SeveritySetting::Set(*severity),
+                order,
+            }),
+            LintControl::Off(selector) => Ok(Override {
+                selector: Selector::parse(selector)?,
+                enabled: None,
+                severity: SeveritySetting::Off,
+                order,
+            }),
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, String>>()?;
     validate_overrides(&catalog, &overrides)?;
     analyze_text(text, &catalog, &overrides)
 }
@@ -1380,6 +1428,35 @@ mod tests {
                 .suggestion
                 .is_some()
         );
+    }
+
+    #[test]
+    fn in_memory_controls_share_selector_precedence_and_severity() {
+        let source = "use language (\n  version is v0.1\n)\nCounter is Task (queue-size is 2)\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n";
+        let identity = "lang best-practice task state-machine";
+        let report = lint_text_with_controls(
+            source,
+            &[
+                LintControl::Enable("tag:lang best-practice tag architecture".into()),
+                LintControl::Severity {
+                    selector: identity.into(),
+                    severity: Severity::Error,
+                },
+            ],
+        )
+        .unwrap();
+        assert!(report.has_errors);
+        assert_eq!(report.diagnostics[0].severity, Severity::Error);
+
+        let report = lint_text_with_controls(
+            source,
+            &[
+                LintControl::Enable("tag:lang best-practice tag architecture".into()),
+                LintControl::Disable(identity.into()),
+            ],
+        )
+        .unwrap();
+        assert!(report.diagnostics.is_empty());
     }
 
     #[test]
