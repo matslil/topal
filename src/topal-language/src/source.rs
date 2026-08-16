@@ -1694,7 +1694,7 @@ impl Session {
             (Some(Expression::Identifier(lang)), Some(Expression::Identifier(operation)))
                 if source.slice(*lang) == "lang"
                     && matches!(source.slice(*operation),
-                        "context" | "version" | "identity" | "view" | "declaration" | "public-members")
+                        "context" | "version" | "lint" | "identity" | "view" | "declaration" | "public-members")
         );
         let qualified_infix = matches!(
             (items.get(1), items.get(2)),
@@ -1736,6 +1736,27 @@ impl Session {
                     )))
                 }
                 "version" => Ok(Value::Version(self.language_version)),
+                "lint" => {
+                    if !self.language_features.contains("lint") {
+                        return Err(diagnostic(
+                            source,
+                            "E-LINT-VARIANT",
+                            *operation,
+                            "the `lang lint` namespace requires the `lint` language feature",
+                        ));
+                    }
+                    trace.record(TraceEvent {
+                        event: "lint.context.viewed",
+                        rule: "TOPAL-SYN-CONTEXT-001",
+                        detail: "lang lint",
+                    });
+                    Ok(Value::Namespace(Box::new(NamespaceValue {
+                        name: "lang lint".into(),
+                        bindings: BTreeMap::new(),
+                        functions: BTreeMap::new(),
+                        generators: BTreeMap::new(),
+                    })))
+                }
                 _ => Err(diagnostic(
                     source,
                     "E-INTROSPECTION-OPERATION",
@@ -13715,7 +13736,7 @@ mod tests {
     fn preserves_constructed_language_variant_features() {
         let value = Session::new()
             .evaluate_source_file(
-                "use language ( version is v0.1, features is ( debug ) )\nlang context\n",
+                "use language ( version is v0.1, features is ( debug, lint ) )\nlang context\n",
                 &mut std::io::sink(),
             )
             .unwrap();
@@ -13723,8 +13744,27 @@ mod tests {
             value,
             Value::Introspection(context)
                 if matches!(&*context, IntrospectionValue::LanguageContext { features, .. }
-                    if features == &["debug"])
+                    if features == &["debug", "lint"])
         ));
+    }
+
+    #[test]
+    fn exposes_lint_namespace_only_in_the_lint_variant() {
+        let value = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.1, features is ( lint ) )\nlang lint\n",
+                &mut std::io::sink(),
+            )
+            .unwrap();
+        assert!(matches!(value, Value::Namespace(namespace) if namespace.name == "lang lint"));
+
+        let error = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\nlang lint\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "E-LINT-VARIANT");
     }
 
     #[test]

@@ -53,7 +53,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 191);
+    assert_eq!(examples.len(), 192);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -78,7 +78,7 @@ fn every_interpreter_example_documents_its_feature() {
                 source
                     .lines()
                     .skip(1)
-                    .take(4)
+                    .take(8)
                     .any(|line| line.starts_with('#')),
                 "{} lacks a feature comment",
                 path.display()

@@ -186,3 +186,76 @@ fn shared_task_order_example_conforms_when_the_proposed_rule_is_enabled() {
     assert!(output.stdout.is_empty());
     assert!(output.stderr.is_empty());
 }
+
+#[test]
+fn validates_explicit_lint_variant_rule_modules() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let valid = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg("--check-rule")
+        .arg(root.join("examples/linter/task-declaration-order-rule.t"))
+        .output()
+        .unwrap();
+    assert!(
+        valid.status.success(),
+        "{}",
+        String::from_utf8_lossy(&valid.stderr)
+    );
+
+    let path = temporary_source(
+        "missing-lint-variant",
+        "use language ( version is v0.1, features is ( debug ) )\nrule is fn static () -> Unit\n  ()\n",
+    );
+    let rejected = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg("--check-rule")
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert_eq!(rejected.status.code(), Some(2));
+    assert!(
+        String::from_utf8(rejected.stderr)
+            .unwrap()
+            .contains("L-RULE-VARIANT")
+    );
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn rule_entry_point_must_exist_and_be_static() {
+    let path = temporary_source(
+        "ordinary-rule",
+        "use language ( version is v0.1, features is ( lint ) )\ncheck is fn () -> Unit\n  ()\n",
+    );
+    let rejected = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args(["--check-rule"])
+        .arg(&path)
+        .args(["--entry-point", "check"])
+        .output()
+        .unwrap();
+    assert_eq!(rejected.status.code(), Some(2));
+    assert!(
+        String::from_utf8(rejected.stderr)
+            .unwrap()
+            .contains("L-RULE-STATIC")
+    );
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn lint_rule_module_cannot_acquire_debugger_authority() {
+    let path = temporary_source(
+        "debug-authority",
+        "use language ( version is v0.1, features is ( lint, debug ) )\nrule is fn static () -> Unit\n  ()\n",
+    );
+    let rejected = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg("--check-rule")
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert_eq!(rejected.status.code(), Some(2));
+    assert!(
+        String::from_utf8(rejected.stderr)
+            .unwrap()
+            .contains("L-RULE-AUTHORITY")
+    );
+    fs::remove_file(path).unwrap();
+}

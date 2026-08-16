@@ -10,6 +10,8 @@ use topal_source::{SourceText, Span};
 use topal_syntax::{Statement, SyntaxDiagnostic, lex, parse};
 
 const USAGE: &str = "usage: topal-lint [OPTIONS] SOURCE...\n\
+  --check-rule PATH              validate a Topal lint-variant rule module\n\
+  --entry-point NAME             rule function for --check-rule (default: rule)\n\
   --list                         list selected best-practices\n\
   --explain ID                   explain one stable identity\n\
   --catalog PATH                 explicitly load an external catalog\n\
@@ -123,6 +125,8 @@ struct Options {
     overrides: Vec<Override>,
     format: Option<Format>,
     sources: Vec<PathBuf>,
+    check_rule: Option<PathBuf>,
+    entry_point: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -164,6 +168,23 @@ fn run(arguments: impl Iterator<Item = String>) -> Result<bool, String> {
     if options.help {
         return Ok(false);
     }
+    if let Some(path) = &options.check_rule {
+        if options.list
+            || options.explain.is_some()
+            || !options.sources.is_empty()
+            || !options.catalogs.is_empty()
+            || !options.overrides.is_empty()
+        {
+            return Err(
+                "--check-rule cannot be combined with catalog queries or source linting".into(),
+            );
+        }
+        validate_rule_module(path, options.entry_point.as_deref().unwrap_or("rule"))?;
+        return Ok(false);
+    }
+    if options.entry_point.is_some() {
+        return Err("--entry-point requires --check-rule".into());
+    }
     let catalog = load_catalogs(&options.catalogs)?;
     validate_overrides(&catalog, &options.overrides)?;
     if options.list {
@@ -192,6 +213,12 @@ fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, Str
     let mut order = 0;
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
+            "--check-rule" => {
+                options.check_rule = Some(next_value(&mut arguments, "--check-rule")?.into());
+            }
+            "--entry-point" => {
+                options.entry_point = Some(next_value(&mut arguments, "--entry-point")?);
+            }
             "--list" => options.list = true,
             "--explain" => options.explain = Some(next_value(&mut arguments, "--explain")?),
             "--catalog" => options
@@ -240,6 +267,86 @@ fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, Str
         }
     }
     Ok(options)
+}
+
+fn validate_rule_module(path: &Path, entry_point: &str) -> Result<(), String> {
+    let text = fs::read_to_string(path)
+        .map_err(|error| format!("cannot read lint rule {}: {error}", path.display()))?;
+    let source =
+        SourceText::new(&text).map_err(|error| format!("{}: {}", error.code, error.message))?;
+    let lexed = lex(&source);
+    let parsed = parse(&source, &lexed);
+    if let Some(diagnostic) = lexed.diagnostics.first().or(parsed.diagnostics.first()) {
+        let position = source.position(diagnostic.span.start);
+        return Err(format!(
+            "{}:{}:{}: {}: {}",
+            path.display(),
+            position.line,
+            position.column,
+            diagnostic.code,
+            diagnostic.message
+        ));
+    }
+    let Some(Statement::LanguageSelection {
+        version, features, ..
+    }) = parsed.statements.first()
+    else {
+        return Err("L-RULE-LANGUAGE: lint rule modules begin with `use language`".into());
+    };
+    if source.slice(*version) != "v0.1" {
+        return Err(format!(
+            "L-RULE-VERSION: unsupported lint rule language version `{}`",
+            source.slice(*version)
+        ));
+    }
+    let selected: BTreeSet<_> = features.iter().map(|span| source.slice(*span)).collect();
+    if !selected.contains("lint") {
+        return Err("L-RULE-VARIANT: lint rule modules select `features is ( lint )`".into());
+    }
+    if selected.contains("debug") {
+        return Err("L-RULE-AUTHORITY: lint rule modules cannot select the `debug` feature".into());
+    }
+    let mut found = None;
+    visit_rule_functions(&source, &parsed.statements[1..], entry_point, &mut found)?;
+    match found {
+        Some(true) => Ok(()),
+        Some(false) => Err(format!(
+            "L-RULE-STATIC: lint rule entry point `{entry_point}` must be static"
+        )),
+        None => Err(format!(
+            "L-RULE-ENTRY: lint rule module does not declare entry point `{entry_point}`"
+        )),
+    }
+}
+
+fn visit_rule_functions(
+    source: &SourceText,
+    statements: &[Statement],
+    entry_point: &str,
+    found: &mut Option<bool>,
+) -> Result<(), String> {
+    for statement in statements {
+        match statement {
+            Statement::Published { declaration, .. } => visit_rule_functions(
+                source,
+                std::slice::from_ref(declaration.as_ref()),
+                entry_point,
+                found,
+            )?,
+            Statement::Function {
+                name, is_static, ..
+            } if source.slice(*name) == entry_point => {
+                if found.is_some() {
+                    return Err(format!(
+                        "L-RULE-ENTRY: lint rule entry point `{entry_point}` is ambiguous"
+                    ));
+                }
+                *found = Some(*is_static);
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 fn next_value(
