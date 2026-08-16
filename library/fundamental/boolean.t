@@ -3,9 +3,7 @@ use language (
   version is v0.1
 )
 
-# Demonstrates Boolean composition expressed entirely as ordinary Topal source.
+# Logical implication is a named, reusable Boolean relation whose intent is
+# clearer than repeating its primitive expansion at every call site.
 pub implies is fn (premise : Boolean, consequence : Boolean) -> Boolean
   (not premise) or consequence
-
-pub equivalent is fn (left : Boolean, right : Boolean) -> Boolean
-  left = right
