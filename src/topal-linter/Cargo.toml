@@ -1,0 +1,20 @@
+[package]
+name = "topal-linter"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "topal-lint"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "=1.0.151"
+topal-best-practices = { path = "../topal-best-practices" }
+topal-source = { path = "../topal-source" }
+topal-syntax = { path = "../topal-syntax" }
+
+[lints]
+workspace = true
