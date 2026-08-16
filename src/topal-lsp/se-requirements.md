@@ -75,10 +75,12 @@ reflection metadata.
 
 ## TOPAL-LSP-LINT-001 — Shared live best-practice findings
 
-Initialization options may explicitly enable best-practices by stable identity
-through `initializationOptions.lint.enable`. The language server shall reject
-unknown identities during initialization and shall run the shared in-memory
-linter engine on every open or full-content change. Published findings shall
-preserve lint severity, stable code, UTF-16 location, best-practice and rule
-versions, and structured rectification data. Proposed entries shall remain
-disabled unless explicitly enabled.
+Initialization options may explicitly enable or disable best-practices by
+stable identity, namespace, or tag through
+`initializationOptions.lint.enable` and `.disable`, and may override selector
+severity through `.severity`. The language server shall reject malformed or
+unknown selectors and levels during initialization and shall run the shared
+in-memory linter engine on every open or full-content change. Published
+findings shall preserve lint severity, stable code, UTF-16 location,
+best-practice and rule versions, and structured rectification data. Proposed
+entries shall remain disabled unless explicitly enabled.
