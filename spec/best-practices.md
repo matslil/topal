@@ -48,3 +48,12 @@ and reject an unknown engine or stage before executing the attachment; rule
 execution SHALL NOT require ambient access to the catalog producer's files.
 Consumers SHALL reject a view name or revision they do not implement before
 executing the rule.
+
+### TOPAL-BEST-PRACTICE-RULE-CONTAINMENT-001 — Bounded rule admission
+
+A lint-rule consumer SHALL validate deterministic source-size and syntax-tree
+budgets before executing Topal rule code. It SHALL reject declarations or
+expressions outside the pure subset implemented for the selected read-only
+view. Rejection SHALL precede application-state access and SHALL use a stable
+diagnostic code which distinguishes resource exhaustion from unsupported
+authority or syntax.
