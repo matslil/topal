@@ -1,6 +1,8 @@
 use std::fs;
 use std::process::Command;
 
+use topal_best_practices::Catalog;
+
 fn temporary_source(name: &str, source: &str) -> std::path::PathBuf {
     let path = std::env::temp_dir().join(format!("topal-lint-{}-{name}.t", std::process::id()));
     fs::write(&path, source).unwrap();
@@ -35,8 +37,59 @@ fn lists_and_explains_the_built_in_catalog() {
     assert!(
         String::from_utf8(explain.stdout)
             .unwrap()
-            .contains("class: recommended")
+            .contains("class: recommended\nrecommendation: Start an event-driven state machine")
     );
+}
+
+#[test]
+fn explains_lifecycle_applicability_and_rule_attachment() {
+    let mut catalog = Catalog::builtin();
+    catalog.entries.truncate(1);
+    let entry = &mut catalog.entries[0];
+    entry.identity = "org.example best-practice historical order".into();
+    entry.status.kind = "obsolete".into();
+    entry.status.since_language_version = Some("v0.2".into());
+    entry.status.explanation = Some("the language now orders these declarations".into());
+    entry.status.replacement = Some(vec!["org.example".into(), "compiler-check".into()]);
+    let path = std::env::temp_dir().join(format!(
+        "topal-lint-explain-catalog-{}.json",
+        std::process::id()
+    ));
+    fs::write(&path, serde_json::to_vec(&catalog).unwrap()).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg("--catalog")
+        .arg(&path)
+        .args(["--explain", "org.example best-practice historical order"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let output = String::from_utf8(output.stdout).unwrap();
+    assert!(output.contains("obsolete since: v0.2"));
+    assert!(output.contains("status explanation: the language now orders"));
+    assert!(output.contains("replacement: org.example compiler-check"));
+    assert!(output.contains("required features: task"));
+    assert!(output.contains("excluded features: none"));
+    assert!(output.contains("rule: topal rule v0.1 syntax task-declaration-order/1"));
+
+    let entry = &mut catalog.entries[0];
+    entry.status.kind = "deprecated".into();
+    entry.status.since_language_version = None;
+    entry.status.explanation = Some("a clearer recommendation replaced this one".into());
+    entry.lint_rule = None;
+    fs::write(&path, serde_json::to_vec(&catalog).unwrap()).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg("--catalog")
+        .arg(&path)
+        .args(["--explain", "org.example best-practice historical order"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let output = String::from_utf8(output.stdout).unwrap();
+    assert!(output.contains("status: deprecated"));
+    assert!(output.contains("status explanation: a clearer recommendation"));
+    assert!(output.contains("rule: none"));
+    assert!(!output.contains("obsolete since:"));
+    fs::remove_file(path).unwrap();
 }
 
 #[test]

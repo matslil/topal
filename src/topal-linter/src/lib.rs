@@ -697,12 +697,51 @@ fn explain_entry(catalog: &Catalog, identity: &str, overrides: &[Override]) -> R
     println!("identity: {}", entry.identity);
     println!("version: {}", entry.version);
     println!("status: {}", entry.status.kind);
+    if let Some(version) = &entry.status.since_language_version {
+        println!("obsolete since: {version}");
+    }
+    if let Some(explanation) = &entry.status.explanation {
+        println!("status explanation: {explanation}");
+    }
+    if let Some(replacement) = &entry.status.replacement {
+        println!("replacement: {}", replacement.join(" "));
+    }
     println!("class: {}", entry.class);
+    println!("recommendation: {}", entry.recommendation);
     println!("enabled: {}", policy.enabled);
     println!("severity: {}", policy.severity.label());
     println!("language: {} {}", entry.language, entry.language_versions);
+    println!(
+        "required features: {}",
+        display_values(&entry.required_features)
+    );
+    println!(
+        "excluded features: {}",
+        display_values(&entry.excluded_features)
+    );
     println!("tags: {}", entry.tags.join(", "));
+    if let Some(rule) = &entry.lint_rule {
+        println!(
+            "rule: {} {} {} {} {} {}",
+            rule.engine,
+            rule.entry_point,
+            rule.version,
+            rule.stage,
+            rule.view,
+            rule.diagnostic_code
+        );
+    } else {
+        println!("rule: none");
+    }
     Ok(())
+}
+
+fn display_values(values: &[String]) -> String {
+    if values.is_empty() {
+        "none".into()
+    } else {
+        values.join(", ")
+    }
 }
 
 fn lint_source(
