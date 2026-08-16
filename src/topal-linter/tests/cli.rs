@@ -211,20 +211,24 @@ fn accepts_clean_shared_language_source() {
 }
 
 #[test]
-fn accepts_the_first_standard_library_source() {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../library/fundamental/ordering.t");
-    let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
-        .arg(path)
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(output.stdout.is_empty());
-    assert!(output.stderr.is_empty());
+fn accepts_the_standard_library_fundamental_sources() {
+    for name in ["boolean.t", "ordering.t", "unit.t"] {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../library/fundamental")
+            .join(name);
+        let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+            .arg(&path)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}: {}",
+            path.display(),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.is_empty());
+        assert!(output.stderr.is_empty());
+    }
 }
 
 #[test]
