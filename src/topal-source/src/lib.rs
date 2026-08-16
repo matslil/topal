@@ -189,7 +189,8 @@ pub struct Diagnostic {
     pub code: String,
     pub line: usize,
     pub column: usize,
-    pub message: String,
+    pub message: Box<str>,
+    pub source_span: Option<Box<Span>>,
     pub source_line: Option<Box<str>>,
     pub marker_width: usize,
     pub help: Option<Box<str>>,
@@ -209,7 +210,8 @@ impl Diagnostic {
             code: code.into(),
             line,
             column,
-            message: message.into(),
+            message: message.into().into_boxed_str(),
+            source_span: None,
             source_line: None,
             marker_width: 1,
             help: None,
@@ -234,6 +236,12 @@ impl Diagnostic {
     pub fn with_source_excerpt(mut self, source_line: Option<String>, marker_width: usize) -> Self {
         self.source_line = source_line.map(String::into_boxed_str);
         self.marker_width = marker_width.max(1);
+        self
+    }
+
+    #[must_use]
+    pub fn with_source_span(mut self, span: Span) -> Self {
+        self.source_span = Some(Box::new(span));
         self
     }
 

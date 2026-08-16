@@ -1182,6 +1182,7 @@ fn shared_syntax_diagnostic(source: &SourceText, diagnostic: &SyntaxDiagnostic) 
         position.column,
         &diagnostic.message,
     )
+    .with_source_span(diagnostic.span)
     .with_source_excerpt(
         source
             .as_str()
@@ -1199,10 +1200,12 @@ fn source_diagnostic(
     message: impl Into<String>,
 ) -> Diagnostic {
     let (line, column) = byte_position(text, span.start);
-    Diagnostic::error(code, line, column, message).with_source_excerpt(
-        text.lines().nth(line - 1).map(str::to_owned),
-        span.end.saturating_sub(span.start),
-    )
+    Diagnostic::error(code, line, column, message)
+        .with_source_span(span)
+        .with_source_excerpt(
+            text.lines().nth(line - 1).map(str::to_owned),
+            span.end.saturating_sub(span.start),
+        )
 }
 
 fn byte_position(text: &str, offset: usize) -> (usize, usize) {
