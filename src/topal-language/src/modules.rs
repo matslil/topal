@@ -96,7 +96,7 @@ mod tests {
         load_module_tree(&mut session, &root, &mut trace).unwrap();
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )\nminimum is fundamental ordering minimum\nminimum (4, 2)",
+                "use language ( version is v0.1 )\nmin is fundamental ordering min\nmin (4, 2)",
                 &mut trace,
             )
             .unwrap();
@@ -112,7 +112,7 @@ mod tests {
         load_module_tree(&mut session, &root, &mut trace).unwrap();
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )\nminimum is fundamental ordering minimum\nminimum ((1, 3), (1, 2))",
+                "use language ( version is v0.1 )\nmin is fundamental ordering min\nmin ((1, 3), (1, 2))",
                 &mut trace,
             )
             .unwrap();
@@ -125,10 +125,7 @@ mod tests {
         );
 
         let error = session
-            .evaluate_source_file(
-                "use language ( version is v0.1 )\nminimum (1, 1.0)",
-                &mut trace,
-            )
+            .evaluate_source_file("use language ( version is v0.1 )\nmin (1, 1.0)", &mut trace)
             .unwrap_err();
         assert_eq!(error.code, "E-FUNCTION-ARGUMENT-TYPE");
     }

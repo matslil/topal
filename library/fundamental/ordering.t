@@ -4,12 +4,17 @@ use language (
 )
 # Select the lesser or greater of two values through their shared TotalOrder
 # evidence without imposing a concrete representation.
-pub minimum is fn (left : (Value : TotalOrder), right : Value) -> Value
+pub min is fn (left : (Value : TotalOrder), right : Value) -> Value
   left
-    < right then left
+    <= right then left
     otherwise right
 
-pub maximum is fn (left : (Value : TotalOrder), right : Value) -> Value
+pub max is fn (left : (Value : TotalOrder), right : Value) -> Value
   left
-    > right then left
+    >= right then left
     otherwise right
+
+pub min-max is fn (left : (Value : TotalOrder), right : Value) -> (Value, Value)
+  left
+    <= right then (left, right)
+    otherwise (right, left)
