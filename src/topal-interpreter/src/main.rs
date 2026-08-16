@@ -184,7 +184,7 @@ fn interactive(
             }
             Err(error)
                 if matches!(
-                    error.code,
+                    error.code.as_str(),
                     "E-UNTERMINATED-STRING"
                         | "E-EXPECTED-RPAREN"
                         | "E-EXPECTED-FUNCTION-BODY"

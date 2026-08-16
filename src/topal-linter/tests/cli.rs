@@ -50,11 +50,10 @@ fn emits_shared_style_terminal_and_json_syntax_diagnostics() {
         .output()
         .unwrap();
     assert_eq!(terminal.status.code(), Some(1));
-    assert!(
-        String::from_utf8(terminal.stderr)
-            .unwrap()
-            .contains("error[E-UNKNOWN-TOKEN]")
-    );
+    let terminal = String::from_utf8(terminal.stderr).unwrap();
+    assert!(terminal.contains("error[E-UNKNOWN-TOKEN]"));
+    assert!(terminal.contains("3 | value is #"));
+    assert!(terminal.contains("|          ^"));
 
     let json = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
         .args(["--format", "json"])

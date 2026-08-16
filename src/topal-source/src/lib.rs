@@ -155,6 +155,153 @@ impl fmt::Display for SourceError {
 
 impl std::error::Error for SourceError {}
 
+/// Tool-independent severity used by every Topal diagnostic adapter.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Severity {
+    Warning,
+    Error,
+}
+
+impl Severity {
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Warning => "warning",
+            Self::Error => "error",
+        }
+    }
+}
+
+/// Best-practice provenance attached to a linter diagnostic.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BestPracticeDiagnostic {
+    pub identity: String,
+    pub version: String,
+    pub rule_version: String,
+}
+
+/// Shared diagnostic data rendered by interpreter, compiler, linter, and LSP
+/// adapters. Locations are one-based human source coordinates.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Diagnostic {
+    pub severity: Severity,
+    pub code: String,
+    pub line: usize,
+    pub column: usize,
+    pub message: String,
+    pub source_line: Option<Box<str>>,
+    pub marker_width: usize,
+    pub help: Option<Box<str>>,
+    pub best_practice: Option<Box<BestPracticeDiagnostic>>,
+}
+
+impl Diagnostic {
+    #[must_use]
+    pub fn error(
+        code: impl Into<String>,
+        line: usize,
+        column: usize,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            severity: Severity::Error,
+            code: code.into(),
+            line,
+            column,
+            message: message.into(),
+            source_line: None,
+            marker_width: 1,
+            help: None,
+            best_practice: None,
+        }
+    }
+
+    #[must_use]
+    pub fn warning(
+        code: impl Into<String>,
+        line: usize,
+        column: usize,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            severity: Severity::Warning,
+            ..Self::error(code, line, column, message)
+        }
+    }
+
+    #[must_use]
+    pub fn with_source_excerpt(mut self, source_line: Option<String>, marker_width: usize) -> Self {
+        self.source_line = source_line.map(String::into_boxed_str);
+        self.marker_width = marker_width.max(1);
+        self
+    }
+
+    #[must_use]
+    pub fn with_help(mut self, help: impl Into<String>) -> Self {
+        self.help = Some(help.into().into_boxed_str());
+        self
+    }
+
+    #[must_use]
+    pub fn with_best_practice(
+        mut self,
+        identity: impl Into<String>,
+        version: impl Into<String>,
+        rule_version: impl Into<String>,
+    ) -> Self {
+        self.best_practice = Some(Box::new(BestPracticeDiagnostic {
+            identity: identity.into(),
+            version: version.into(),
+            rule_version: rule_version.into(),
+        }));
+        self
+    }
+
+    #[must_use]
+    pub fn render(&self, source_name: &str) -> String {
+        let mut rendered = format!(
+            "{}[{}]: {}\n --> {source_name}:{}:{}",
+            self.severity.label(),
+            self.code,
+            self.message,
+            self.line,
+            self.column
+        );
+        if let Some(source_line) = &self.source_line {
+            let gutter_width = self.line.to_string().len();
+            let _ = fmt::Write::write_fmt(
+                &mut rendered,
+                format_args!(
+                    "\n{empty:>gutter_width$} |\n{line:>gutter_width$} | {source_line}\n{empty:>gutter_width$} | {padding}{markers}",
+                    empty = "",
+                    line = self.line,
+                    padding = " ".repeat(self.column.saturating_sub(1)),
+                    markers = "^".repeat(self.marker_width),
+                ),
+            );
+        }
+        if let Some(help) = &self.help {
+            let _ = fmt::Write::write_fmt(
+                &mut rendered,
+                format_args!(
+                    "\n{empty:>width$} |\n{empty:>width$} = help: {help}",
+                    empty = "",
+                    width = self.line.to_string().len()
+                ),
+            );
+        }
+        rendered
+    }
+}
+
+impl fmt::Display for Diagnostic {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.render("<input>"))
+    }
+}
+
+impl std::error::Error for Diagnostic {}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SourceText {
     text: String,
@@ -311,5 +458,31 @@ mod tests {
         assert_eq!(character_count("a\u{301}"), 1);
         assert_eq!(character_count("👩‍🔬"), 1);
         assert_eq!(character_count("🇸🇪!"), 2);
+    }
+
+    #[test]
+    fn shared_diagnostic_renders_rust_style_source_context() {
+        let diagnostic = Diagnostic::error("E-EXAMPLE", 2, 3, "example failed")
+            .with_source_excerpt(Some("  value".into()), 5)
+            .with_help("replace the value");
+        assert_eq!(
+            diagnostic.render("example.t"),
+            "error[E-EXAMPLE]: example failed\n --> example.t:2:3\n  |\n2 |   value\n  |   ^^^^^\n  |\n  = help: replace the value"
+        );
+    }
+
+    #[test]
+    fn shared_diagnostic_retains_best_practice_provenance() {
+        let diagnostic = Diagnostic::warning("L-EXAMPLE", 1, 1, "consider this")
+            .with_best_practice("lang best-practice example", "v0.2", "v0.3");
+        assert_eq!(diagnostic.severity, Severity::Warning);
+        assert_eq!(
+            diagnostic.best_practice,
+            Some(Box::new(BestPracticeDiagnostic {
+                identity: "lang best-practice example".into(),
+                version: "v0.2".into(),
+                rule_version: "v0.3".into(),
+            }))
+        );
     }
 }

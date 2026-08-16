@@ -25,3 +25,8 @@ embed authenticated Topal source in the generated catalog, so execution does
 not grant an external catalog ambient filesystem access. The first rule
 receives adjacent task-declaration phases as read-only integer facts and
 returns a Boolean decision; the host remains responsible for diagnostics.
+
+Source, syntax, and best-practice findings use `topal-source`'s shared
+diagnostic record. Terminal and JSON output are presentation adapters over
+that record; best-practice identity and both catalog and rule versions remain
+structured provenance rather than text embedded in the message.

@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::{self, Write as _};
+use std::fmt;
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -12,8 +12,8 @@ use topal_serialization::{
     deserialize as deserialize_native, serialize as serialize_native,
 };
 use topal_source::{
-    SourceText, Span, canonically_equal, case_fold, character_at, character_count, characters,
-    lowercase, normalize_nfc, normalize_nfd, uppercase,
+    Diagnostic, SourceText, Span, canonically_equal, case_fold, character_at, character_count,
+    characters, lowercase, normalize_nfc, normalize_nfd, uppercase,
 };
 use topal_syntax::{
     CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, lex, parse,
@@ -583,60 +583,6 @@ fn display_collection(
         write!(formatter, "{entry}")?;
     }
     formatter.write_str(")")
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Diagnostic {
-    pub code: &'static str,
-    pub line: usize,
-    pub column: usize,
-    pub message: String,
-    source_line: Option<String>,
-    marker_width: usize,
-    help: Option<String>,
-}
-
-impl fmt::Display for Diagnostic {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(&self.render("<input>"))
-    }
-}
-
-impl std::error::Error for Diagnostic {}
-
-impl Diagnostic {
-    #[must_use]
-    pub fn render(&self, source_name: &str) -> String {
-        let mut rendered = format!(
-            "error[{}]: {}\n --> {source_name}:{}:{}",
-            self.code, self.message, self.line, self.column
-        );
-        if let Some(source_line) = &self.source_line {
-            let gutter_width = self.line.to_string().len();
-            let _ = write!(
-                rendered,
-                "\n{empty:>gutter_width$} |\n{line:>gutter_width$} | {source_line}\n{empty:>gutter_width$} | {padding}{markers}",
-                empty = "",
-                line = self.line,
-                padding = " ".repeat(self.column.saturating_sub(1)),
-                markers = "^".repeat(self.marker_width.max(1)),
-            );
-        }
-        if let Some(help) = &self.help {
-            let _ = write!(
-                rendered,
-                "\n{empty:>width$} |\n{empty:>width$} = help: {help}",
-                empty = "",
-                width = self.line.to_string().len()
-            );
-        }
-        rendered
-    }
-
-    fn with_help(mut self, help: impl Into<String>) -> Self {
-        self.help = Some(help.into());
-        self
-    }
 }
 
 #[derive(Clone, Default)]
@@ -1983,15 +1929,12 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
         if self.declared_names.contains(name) {
-            return Err(Diagnostic {
-                code: "E-DUPLICATE-MODULE",
-                message: format!("module `{name}` is already declared"),
-                line: 1,
-                column: 1,
-                marker_width: 1,
-                source_line: None,
-                help: None,
-            });
+            return Err(Diagnostic::error(
+                "E-DUPLICATE-MODULE",
+                1,
+                1,
+                format!("module `{name}` is already declared"),
+            ));
         }
         let namespace = module.into_published_namespace(name);
         self.bindings.insert(name.to_owned(), namespace.clone());
@@ -9692,15 +9635,15 @@ fn parenthesized_end(text: &str) -> Option<usize> {
 fn accepted_source(input: &str, trace: &mut impl TraceSink) -> Result<SourceText, Diagnostic> {
     let source = SourceText::new(input).map_err(|error| {
         let (line, column) = raw_position(input, error.span.start);
-        Diagnostic {
-            code: error.code,
-            line,
-            column,
-            message: error.message.into(),
-            source_line: raw_source_line(input, line),
-            marker_width: marker_width(input, error.span),
-            help: diagnostic_help(error.code).map(str::to_owned),
+        let mut diagnostic = Diagnostic::error(error.code, line, column, error.message)
+            .with_source_excerpt(
+                raw_source_line(input, line),
+                marker_width(input, error.span),
+            );
+        if let Some(help) = diagnostic_help(error.code) {
+            diagnostic = diagnostic.with_help(help);
         }
+        diagnostic
     })?;
     trace.record(TraceEvent {
         event: "source.accepted",
@@ -9711,15 +9654,12 @@ fn accepted_source(input: &str, trace: &mut impl TraceSink) -> Result<SourceText
 }
 
 fn expected_statement(input: &str) -> Diagnostic {
-    Diagnostic {
-        code: "E-EXPECTED-EXPRESSION",
-        line: 1,
-        column: 1,
-        message: "expected a statement".into(),
-        source_line: raw_source_line(input, 1),
-        marker_width: 1,
-        help: diagnostic_help("E-EXPECTED-EXPRESSION").map(str::to_owned),
-    }
+    Diagnostic::error("E-EXPECTED-EXPRESSION", 1, 1, "expected a statement")
+        .with_source_excerpt(raw_source_line(input, 1), 1)
+        .with_help(
+            diagnostic_help("E-EXPECTED-EXPRESSION")
+                .expect("expected-expression diagnostic has stable help"),
+        )
 }
 
 fn record_result(trace: &mut impl TraceSink, value: &Value) {
@@ -13407,19 +13347,19 @@ fn diagnostic(
     message: impl Into<String>,
 ) -> Diagnostic {
     let position = source.position(span.start);
-    Diagnostic {
-        code,
-        line: position.line,
-        column: position.column,
-        message: message.into(),
-        source_line: source
-            .as_str()
-            .lines()
-            .nth(position.line - 1)
-            .map(str::to_owned),
-        marker_width: marker_width(source.as_str(), span),
-        help: diagnostic_help(code).map(str::to_owned),
+    let mut diagnostic = Diagnostic::error(code, position.line, position.column, message)
+        .with_source_excerpt(
+            source
+                .as_str()
+                .lines()
+                .nth(position.line - 1)
+                .map(str::to_owned),
+            marker_width(source.as_str(), span),
+        );
+    if let Some(help) = diagnostic_help(code) {
+        diagnostic = diagnostic.with_help(help);
     }
+    diagnostic
 }
 
 fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) -> Option<&'a str> {
