@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-pub const SUPPORTED_SCHEMA: u64 = 4;
+pub const SUPPORTED_SCHEMA: u64 = 5;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -21,6 +21,7 @@ pub struct CatalogEntry {
     pub authoritative_sha256: String,
     pub status: Status,
     pub class: String,
+    pub recommendation: String,
     pub default_enabled: bool,
     pub default_severity: String,
     pub language: String,
@@ -150,6 +151,12 @@ fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
     ) {
         return Err(format!("unknown best-practice class `{}`", entry.class));
     }
+    if entry.recommendation.is_empty() {
+        return Err(format!(
+            "best-practice `{}` has no recommendation guidance",
+            entry.identity
+        ));
+    }
     validate_status(entry)?;
     if !matches!(entry.default_severity.as_str(), "warning" | "error") {
         return Err(format!(
@@ -277,6 +284,12 @@ mod tests {
             catalog
                 .entries
                 .is_sorted_by(|left, right| left.identity <= right.identity)
+        );
+        assert!(
+            catalog
+                .entries
+                .iter()
+                .all(|entry| !entry.recommendation.is_empty())
         );
     }
 
