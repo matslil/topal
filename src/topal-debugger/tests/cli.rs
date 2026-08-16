@@ -25,7 +25,7 @@ fn executes_the_standard_library_example_from_its_shared_module_tree() {
     assert!(stdout.contains("decision #"));
     assert!(stdout.contains("evaluation.result"));
     assert!(stdout.contains(
-        "((Int, Int, Boolean, Boolean, Unit, Int, Rational, Boolean, Int, Int, Rational))"
+        "((Int, Int, Boolean, Boolean, Unit, Int, Rational, Boolean, Int, Int, Rational, Range Int, Boolean, ByteRing))"
     ));
 }
 
