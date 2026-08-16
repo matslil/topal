@@ -146,4 +146,32 @@ mod tests {
                 if values.len() == 2 && values.iter().all(|value| matches!(value, Value::Rational(_)))
         ));
     }
+
+    #[test]
+    fn shared_optional_functions_preserve_related_generic_types() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        load_module_tree(&mut session, &root, &mut trace).unwrap();
+        let value = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )
+present? is fundamental optional present?
+absent? is fundamental optional absent?
+map is fundamental optional map
+chain is fundamental optional chain
+filter is fundamental optional filter
+value-or is fundamental optional value-or
+or-else is fundamental optional or-else
+zip is fundamental optional zip
+flatten is fundamental optional flatten
+(present? (Some 1), absent? (None String), map ((Some 4), { value } value + 1), chain ((Some 4), { value } Some (value + 2)), filter ((Some 4), { value } value > 2), filter ((Some 1), { value } value > 2), value-or ((None Int), 9), or-else ((None String), (Some \"fallback\")), zip ((Some 2), (Some \"items\")), flatten (Some (Some 7)))",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(
+            value.to_string(),
+            "(true, true, Some 5, Some 6, Some 4, None, 9, Some \"fallback\", Some (2, \"items\"), Some 7)"
+        );
+    }
 }

@@ -599,6 +599,7 @@ pub struct Session {
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
     union_types: Box<BTreeMap<String, BTreeMap<String, Option<String>>>>,
+    generic_types: BTreeMap<String, String>,
     call_stack: Vec<ActiveCall>,
     static_context: bool,
     task_state: Option<BTreeMap<String, Value>>,
@@ -613,6 +614,7 @@ struct UserFunction {
     parameters: Vec<(String, String)>,
     parameter_packages: BTreeMap<usize, Vec<UserParameterField>>,
     result: String,
+    generic_names: BTreeSet<String>,
     effect_bound: Option<String>,
     body: Vec<Statement>,
     bindings: BTreeMap<String, Value>,
@@ -1376,6 +1378,7 @@ impl Session {
             local_function_names: BTreeSet::new(),
             enum_types: self.enum_types.clone(),
             union_types: self.union_types.clone(),
+            generic_types: self.generic_types.clone(),
             call_stack: Vec::new(),
             static_context: false,
             task_state: Some(snapshot.state),
@@ -1449,6 +1452,7 @@ impl Session {
             local_function_names: BTreeSet::new(),
             enum_types: self.enum_types.clone(),
             union_types: self.union_types.clone(),
+            generic_types: self.generic_types.clone(),
             call_stack: vec![ActiveCall {
                 name: definition.name.clone(),
                 signature: function_signature(&definition.name, function),
@@ -2158,6 +2162,7 @@ impl Session {
             local_function_names: BTreeSet::new(),
             enum_types: BTreeMap::new(),
             union_types: Box::new(BTreeMap::new()),
+            generic_types: BTreeMap::new(),
             call_stack: Vec::new(),
             static_context: false,
             task_state: None,
@@ -2508,6 +2513,7 @@ impl Session {
                         local_function_names: self.local_function_names.clone(),
                         enum_types: self.enum_types.clone(),
                         union_types: self.union_types.clone(),
+                        generic_types: self.generic_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: self.static_context,
                         task_state: self.task_state.clone(),
@@ -2851,8 +2857,10 @@ impl Session {
                 }
                 if let [Expression::Identifier(constructor), domain] = items.as_slice()
                     && source.slice(*constructor) == "None"
-                    && let Some(payload_classifier) = classifier_expression(source, domain)
+                    && let Some(mut payload_classifier) = classifier_expression(source, domain)
                 {
+                    payload_classifier =
+                        substitute_classifier(&payload_classifier, &self.generic_types);
                     trace.record(TraceEvent {
                         event: "optional.none.constructed",
                         rule: "TOPAL-TYPE-OPTIONAL-CONSTRUCT-001",
@@ -3262,6 +3270,7 @@ impl Session {
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
                         union_types: self.union_types.clone(),
+                        generic_types: self.generic_types.clone(),
                         call_stack: self.call_stack.clone(),
                         static_context: false,
                         task_state: None,
@@ -3436,6 +3445,7 @@ impl Session {
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
                         union_types: self.union_types.clone(),
+                        generic_types: BTreeMap::new(),
                         call_stack: self.call_stack.clone(),
                         static_context: function.is_static,
                         task_state: None,
@@ -3449,6 +3459,15 @@ impl Session {
                         recursion_target: function.recursion_target.clone(),
                     });
                     bind_function_arguments(&mut function_scope, &function, argument, trace, rule)?;
+                    for (parameter, classifier) in &function.parameters {
+                        if let Some(argument) = function_scope.bindings.get(parameter).cloned() {
+                            let _ = generic_parameter_accepts(
+                                &argument,
+                                classifier,
+                                &mut function_scope.generic_types,
+                            );
+                        }
+                    }
                     trace.record(TraceEvent {
                         event: "function.selected",
                         rule: "TOPAL-TYPE-CALL-001",
@@ -6708,13 +6727,14 @@ impl Execution {
         }
         let result_text = self.source.slice(result);
         let effect_bound_text = effect_bound.map(|bound| self.source.slice(bound).to_owned());
-        let generic_names = parameters
-            .iter()
-            .filter_map(|parameter| {
-                generic_capability_classifier(self.source.slice(parameter.classifier))
-                    .map(|(name, _)| name.to_owned())
-            })
-            .collect::<BTreeSet<_>>();
+        let mut generic_names = BTreeSet::new();
+        for parameter in parameters {
+            collect_generic_names(
+                self.source.slice(parameter.classifier),
+                &session.enum_types,
+                &mut generic_names,
+            );
+        }
         if !supported_generic_classifier(result_text, &generic_names, &session.enum_types)
             && !session.union_types.contains_key(result_text)
         {
@@ -6769,6 +6789,11 @@ impl Execution {
                 if !supported_value_classifier(classifier, &session.enum_types)
                     && generic_capability_classifier(classifier).is_none()
                     && !generic_names.contains(classifier)
+                    && !supported_generic_classifier(
+                        classifier,
+                        &generic_names,
+                        &session.enum_types,
+                    )
                     && !session.union_types.contains_key(classifier)
                 {
                     return Err(diagnostic(
@@ -6817,6 +6842,7 @@ impl Execution {
             parameters,
             parameter_packages,
             result: result_text.to_owned(),
+            generic_names,
             effect_bound: effect_bound_text.clone(),
             body: body.to_vec(),
             bindings: session.bindings.clone(),
@@ -7556,6 +7582,10 @@ fn evaluate_expression_with_optional_context(
     let Some(payload_classifier) = contextual_none else {
         return session.evaluate_expression(source, expression, trace);
     };
+    let payload_classifier = session
+        .generic_types
+        .get(payload_classifier)
+        .map_or(payload_classifier, String::as_str);
     trace.record(TraceEvent {
         event: "optional.none.constructed",
         rule: "TOPAL-TYPE-OPTIONAL-CONTEXT-001",
@@ -8839,11 +8869,75 @@ fn generic_parameter_accepts(
     if let Some(expected) = generic_types.get(classifier) {
         return structural_value_classifier(argument) == *expected;
     }
+    if let Some(payload_classifier) = applied_classifier(classifier, "Optional") {
+        let Value::Optional {
+            payload_classifier: actual,
+            ..
+        } = argument
+        else {
+            return false;
+        };
+        return generic_classifier_accepts_name(actual, payload_classifier, generic_types);
+    }
+    if function_classifier_parts(classifier).is_some() {
+        return value_classifier(argument) == "Function";
+    }
     value_has_classifier(argument, classifier)
+}
+
+fn generic_classifier_accepts_name(
+    actual: &str,
+    expected: &str,
+    generic_types: &mut BTreeMap<String, String>,
+) -> bool {
+    if let Some((name, _)) = generic_capability_classifier(expected) {
+        return generic_types
+            .insert(name.to_owned(), actual.to_owned())
+            .is_none_or(|existing| existing == actual);
+    }
+    if let Some(bound) = generic_types.get(expected) {
+        return bound == actual;
+    }
+    if let (Some(actual_payload), Some(expected_payload)) = (
+        applied_classifier(actual, "Optional"),
+        applied_classifier(expected, "Optional"),
+    ) {
+        return generic_classifier_accepts_name(actual_payload, expected_payload, generic_types);
+    }
+    if let (Some(actual_items), Some(expected_items)) =
+        (tuple_classifiers(actual), tuple_classifiers(expected))
+    {
+        return actual_items.len() == expected_items.len()
+            && actual_items
+                .into_iter()
+                .zip(expected_items)
+                .all(|(actual, expected)| {
+                    generic_classifier_accepts_name(actual, expected, generic_types)
+                });
+    }
+    actual == substitute_classifier(expected, generic_types)
+}
+
+fn substitute_classifier(classifier: &str, generic_types: &BTreeMap<String, String>) -> String {
+    if let Some(concrete) = generic_types.get(classifier) {
+        return concrete.clone();
+    }
+    if let Some(items) = tuple_classifiers(classifier) {
+        return format!(
+            "({})",
+            items
+                .into_iter()
+                .map(|item| substitute_classifier(item, generic_types))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
+    classifier.to_owned()
 }
 
 fn value_has_capability(value: &Value, capability: &str) -> bool {
     match capability {
+        "Type" => true,
         "Equality" => values_equal(value.clone(), value.clone(), &mut Vec::new()).is_some(),
         "PartialOrder" | "TotalOrder" | "Ordering" => {
             values_compare(value.clone(), value.clone(), &mut Vec::new()).is_some()
@@ -8853,30 +8947,60 @@ fn value_has_capability(value: &Value, capability: &str) -> bool {
 }
 
 fn generic_result_accepts(function: &UserFunction, scope: &Session, value: &Value) -> bool {
-    let generic_types = function
-        .parameters
-        .iter()
-        .filter_map(|(parameter, classifier)| {
-            let (name, _) = generic_capability_classifier(classifier)?;
-            let value = scope.bindings.get(parameter)?;
-            Some((name.to_owned(), structural_value_classifier(value)))
-        })
-        .collect::<BTreeMap<_, _>>();
-    value_matches_substituted_classifier(value, &function.result, &generic_types)
+    let mut generic_types = BTreeMap::new();
+    for (parameter, classifier) in &function.parameters {
+        if let Some(argument) = scope.bindings.get(parameter) {
+            let _ = generic_parameter_accepts(argument, classifier, &mut generic_types);
+        }
+    }
+    value_matches_substituted_classifier(
+        value,
+        &function.result,
+        &function.generic_names,
+        &mut generic_types,
+    )
 }
 
 fn value_matches_substituted_classifier(
     value: &Value,
     classifier: &str,
-    generic_types: &BTreeMap<String, String>,
+    generic_names: &BTreeSet<String>,
+    generic_types: &mut BTreeMap<String, String>,
 ) -> bool {
     if let Some(expected) = generic_types.get(classifier) {
         return structural_value_classifier(value) == *expected;
     }
+    if generic_names.contains(classifier) {
+        generic_types.insert(classifier.to_owned(), structural_value_classifier(value));
+        return true;
+    }
+    if let Some(expected_payload) = applied_classifier(classifier, "Optional") {
+        let Value::Optional {
+            payload_classifier, ..
+        } = value
+        else {
+            return false;
+        };
+        if generic_names.contains(expected_payload) && !generic_types.contains_key(expected_payload)
+        {
+            generic_types.insert(expected_payload.to_owned(), payload_classifier.clone());
+            return true;
+        }
+        return generic_classifier_accepts_name(
+            payload_classifier,
+            expected_payload,
+            generic_types,
+        );
+    }
     if let (Value::Tuple(values), Some(classifiers)) = (value, tuple_classifiers(classifier)) {
         return values.len() == classifiers.len()
             && values.iter().zip(classifiers).all(|(value, classifier)| {
-                value_matches_substituted_classifier(value, classifier, generic_types)
+                value_matches_substituted_classifier(
+                    value,
+                    classifier,
+                    generic_names,
+                    generic_types,
+                )
             });
     }
     value_has_classifier(value, classifier)
@@ -8889,11 +9013,104 @@ fn supported_generic_classifier(
 ) -> bool {
     supported_value_classifier(classifier, enum_types)
         || generic_names.contains(classifier)
+        || applied_classifier(classifier, "Optional").is_some_and(|payload| {
+            supported_generic_classifier(payload, generic_names, enum_types)
+                || generic_capability_classifier(payload).is_some()
+        })
+        || function_classifier_parts(classifier).is_some_and(|(input, result)| {
+            supported_generic_classifier(input, generic_names, enum_types)
+                && supported_generic_classifier(result, generic_names, enum_types)
+        })
         || tuple_classifiers(classifier).is_some_and(|items| {
             items
                 .into_iter()
                 .all(|item| supported_generic_classifier(item, generic_names, enum_types))
         })
+}
+
+fn applied_classifier<'a>(classifier: &'a str, constructor: &str) -> Option<&'a str> {
+    let payload = classifier
+        .trim()
+        .strip_prefix(constructor)?
+        .strip_prefix(' ')
+        .map(str::trim)
+        .filter(|payload| !payload.is_empty())?;
+    Some(strip_classifier_group(payload))
+}
+
+fn strip_classifier_group(classifier: &str) -> &str {
+    let Some(inner) = classifier
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+    else {
+        return classifier;
+    };
+    let mut depth = 0_i32;
+    for character in inner.chars() {
+        match character {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ',' | ':' if depth == 0 => return classifier,
+            _ => {}
+        }
+    }
+    if depth == 0 { inner.trim() } else { classifier }
+}
+
+fn function_classifier_parts(classifier: &str) -> Option<(&str, &str)> {
+    let classifier = classifier
+        .trim()
+        .strip_prefix("static ")
+        .unwrap_or(classifier.trim());
+    let signature = classifier.strip_prefix("fn (")?;
+    let boundary = signature.rfind(") -> ")?;
+    Some((
+        signature[..boundary].trim(),
+        signature[boundary + 5..].trim(),
+    ))
+}
+
+fn collect_generic_names(
+    classifier: &str,
+    enum_types: &BTreeMap<String, BTreeSet<String>>,
+    names: &mut BTreeSet<String>,
+) {
+    if let Some((name, _)) = generic_capability_classifier(classifier) {
+        names.insert(name.to_owned());
+        return;
+    }
+    if let Some(payload) = applied_classifier(classifier, "Optional") {
+        collect_generic_names(payload, enum_types, names);
+        return;
+    }
+    if let Some((input, result)) = function_classifier_parts(classifier) {
+        collect_generic_names(input, enum_types, names);
+        collect_function_result_generic_names(result, enum_types, names);
+        return;
+    }
+    if let Some(items) = tuple_classifiers(classifier) {
+        for item in items {
+            collect_generic_names(item, enum_types, names);
+        }
+    }
+}
+
+fn collect_function_result_generic_names(
+    classifier: &str,
+    enum_types: &BTreeMap<String, BTreeSet<String>>,
+    names: &mut BTreeSet<String>,
+) {
+    if let Some(payload) = applied_classifier(classifier, "Optional") {
+        collect_function_result_generic_names(payload, enum_types, names);
+    } else if let Some(items) = tuple_classifiers(classifier) {
+        for item in items {
+            collect_function_result_generic_names(item, enum_types, names);
+        }
+    } else if !supported_value_classifier(classifier, enum_types)
+        && classifier.chars().all(char::is_alphanumeric)
+    {
+        names.insert(classifier.to_owned());
+    }
 }
 
 fn package_accepts(fields: &[UserParameterField], argument: &Value) -> bool {
