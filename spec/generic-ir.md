@@ -116,6 +116,15 @@ published identities. It shall reject unsupported input before instantiation.
 No revision may reinterpret an existing opcode or field; changed meaning
 requires a new revision or new opcode.
 
+### TOPAL-GIR-SOURCE-KEY-001 — Reproducible source-package key
+
+A checked source-package cache key SHALL include its exact language revision,
+Unicode revision, artifact revision, canonical package-relative source paths
+and contents, and the identities and digests of every dependency. Canonical
+path and dependency ordering SHALL make the key independent of filesystem
+enumeration order. A difference in any covered input SHALL prevent reuse of a
+cached checked-source or GEIR artifact.
+
 ## Graphical presentation
 
 ```mermaid

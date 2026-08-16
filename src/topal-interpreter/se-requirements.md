@@ -1921,7 +1921,10 @@ ordinary `.t` files, and nested directories under the source-layout rules in
 `docs/modules.md`. Each ordinary filename and directory shall form one
 qualified module component, only `pub` members shall enter a file interface,
 and `application.t` shall execute after all recursively nested interfaces are
-available without flattening their canonical paths.
+available without flattening their canonical paths. Filesystem traversal and
+module attachment shall use the shared package-loader implementation rather
+than an interpreter-private module graph, so a compiler frontend can consume
+the same canonical source layout.
 
 ## TOPAL-INTP-COMPILER-BOUNDARY-001 — Compiler-only static operations
 

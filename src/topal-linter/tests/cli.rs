@@ -211,6 +211,23 @@ fn accepts_clean_shared_language_source() {
 }
 
 #[test]
+fn accepts_the_first_standard_library_source() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../library/fundamental/ordering.t");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg(path)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stdout.is_empty());
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
 fn external_catalogs_are_explicit_and_cannot_replace_owned_identities() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
