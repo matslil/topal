@@ -4132,7 +4132,10 @@ fn script_and_test_modes_execute_the_shared_standard_library_example() {
             "{}",
             String::from_utf8_lossy(&output.stderr)
         );
-        assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), "2");
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap().trim(),
+            "(2, 4, true, true, ())"
+        );
     }
 }
 
