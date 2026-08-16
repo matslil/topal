@@ -6,8 +6,9 @@ use topal_source::{
 
 mod parser;
 pub use parser::{
-    CallableKind, DecisionMatcher, DecisionRule, Expression, FunctionParameter, InterfaceFunction,
-    ParsedSource, ProductField, Statement, UnionAlternative, parse,
+    CallableKind, DecisionMatcher, DecisionRule, DiagnosticControlKind, Expression,
+    FunctionParameter, InterfaceFunction, ParsedSource, ProductField, Statement, UnionAlternative,
+    parse,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

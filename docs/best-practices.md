@@ -57,8 +57,16 @@ review: every apparent exception must have a reasonably clean compliant form.
 Every entry separately states whether it is enabled by default and its default
 severity. Projects may override severity or disable entries individually, by
 owned namespace, or by tag. Exact entry configuration takes precedence over a
-broader tag or namespace setting. Scoped suppression uses the same diagnostic
-control model as compiler warnings and names the stable best-practice identity.
+broader tag or namespace setting. Scoped suppression is severity-neutral and
+names the stable best-practice identity explicitly:
+
+```topal
+lang disable-diagnostic ( lang best-practice task state-machine )
+```
+
+The one-statement and matched push/pop forms use the shared diagnostic-control
+model, so changing a finding between warning and error does not invalidate a
+source suppression.
 
 ## Checkability
 

@@ -883,6 +883,33 @@ mod tests {
     }
 
     #[test]
+    fn honors_structured_source_suppression_after_severity_policy() {
+        let mut server = Server::default();
+        let initialized = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 27, "method": "initialize",
+            "params": { "initializationOptions": { "lint": {
+                "enable": ["lang best-practice task state-machine"],
+                "severity": { "lang best-practice task state-machine": "error" }
+            } } }
+        }));
+        assert!(initialized[0].get("error").is_none());
+        let source = "use language (\n  version is v0.1\n)\nCounter is Task (queue-size is 2)\nlang disable-diagnostic ( lang best-practice task state-machine )\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n";
+        let opened = server.handle(&json!({
+            "jsonrpc": "2.0", "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///source-suppressed.t", "languageId": "topal", "version": 1,
+                "text": source
+            } }
+        }));
+        assert!(
+            opened[0]["params"]["diagnostics"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
     fn rejects_malformed_lsp_lint_policy() {
         let mut server = Server::default();
         let response = server.handle(&json!({

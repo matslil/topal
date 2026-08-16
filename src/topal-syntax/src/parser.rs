@@ -183,7 +183,7 @@ pub enum Statement {
     },
     DiagnosticControl {
         operation: DiagnosticControlKind,
-        warning: Span,
+        identity: Vec<Span>,
         span: Span,
     },
     Binding {
@@ -359,7 +359,12 @@ impl Parser<'_> {
             && self.peek_nontrivia().is_some_and(|operation| {
                 matches!(
                     self.source.slice(operation.span),
-                    "disable-warning" | "push-disable-warning" | "pop-disable-warning"
+                    "disable-warning"
+                        | "push-disable-warning"
+                        | "pop-disable-warning"
+                        | "disable-diagnostic"
+                        | "push-disable-diagnostic"
+                        | "pop-disable-diagnostic"
                 )
             })
         {
@@ -662,11 +667,11 @@ impl Parser<'_> {
 
     fn diagnostic_control(&mut self, lang: Token) -> Option<Statement> {
         let operation = self.take_nontrivia()?;
-        let warning = self.take_nontrivia()?;
-        let kind = match self.source.slice(operation.span) {
-            "disable-warning" => DiagnosticControlKind::DisableNext,
-            "push-disable-warning" => DiagnosticControlKind::Push,
-            "pop-disable-warning" => DiagnosticControlKind::Pop,
+        let operation_text = self.source.slice(operation.span);
+        let kind = match operation_text {
+            "disable-warning" | "disable-diagnostic" => DiagnosticControlKind::DisableNext,
+            "push-disable-warning" | "push-disable-diagnostic" => DiagnosticControlKind::Push,
+            "pop-disable-warning" | "pop-disable-diagnostic" => DiagnosticControlKind::Pop,
             _ => {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-DIAGNOSTIC-CONTROL",
@@ -677,18 +682,73 @@ impl Parser<'_> {
                 return None;
             }
         };
-        if operation.kind != TokenKind::Identifier || warning.kind != TokenKind::Identifier {
+        let structured = operation_text.ends_with("-diagnostic");
+        let mut identity = Vec::new();
+        let end = if structured {
+            let opening = self.take_nontrivia()?;
+            if opening.kind != TokenKind::LeftParen {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-DIAGNOSTIC-CONTROL",
+                    span: opening.span,
+                    message: "expected a parenthesized diagnostic identity".into(),
+                });
+                return None;
+            }
+            loop {
+                let Some(token) = self.take_nontrivia() else {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-DIAGNOSTIC-CONTROL",
+                        span: opening.span,
+                        message: "expected `)` after diagnostic identity".into(),
+                    });
+                    return None;
+                };
+                if token.kind == TokenKind::RightParen {
+                    if identity.len() < 2 {
+                        self.diagnostics.push(SyntaxDiagnostic {
+                            code: "E-DIAGNOSTIC-CONTROL",
+                            span: Span::new(opening.span.start, token.span.end),
+                            message: "diagnostic identity requires a namespace and name".into(),
+                        });
+                        return None;
+                    }
+                    break token.span.end;
+                }
+                if token.kind != TokenKind::Identifier {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-DIAGNOSTIC-CONTROL",
+                        span: token.span,
+                        message: "diagnostic identity contains only identifier components".into(),
+                    });
+                    return None;
+                }
+                identity.push(token.span);
+            }
+        } else {
+            let warning = self.take_nontrivia()?;
+            if warning.kind != TokenKind::Identifier {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-DIAGNOSTIC-CONTROL",
+                    span: Span::new(lang.span.start, warning.span.end),
+                    message: "expected `lang diagnostic-operation warning-name`".into(),
+                });
+                return None;
+            }
+            identity.push(warning.span);
+            warning.span.end
+        };
+        if operation.kind != TokenKind::Identifier {
             self.diagnostics.push(SyntaxDiagnostic {
                 code: "E-DIAGNOSTIC-CONTROL",
-                span: Span::new(lang.span.start, warning.span.end),
-                message: "expected `lang diagnostic-operation warning-name`".into(),
+                span: operation.span,
+                message: "expected a diagnostic-control operation after `lang`".into(),
             });
             return None;
         }
         Some(Statement::DiagnosticControl {
             operation: kind,
-            warning: warning.span,
-            span: Span::new(lang.span.start, warning.span.end),
+            identity,
+            span: Span::new(lang.span.start, end),
         })
     }
 
@@ -2464,7 +2524,7 @@ fn validate_diagnostic_controls(
     statements: &[Statement],
     diagnostics: &mut Vec<SyntaxDiagnostic>,
 ) {
-    let mut stack = Vec::<Span>::new();
+    let mut stack = Vec::<Vec<Span>>::new();
     let mut pending = None;
     for statement in statements {
         match statement {
@@ -2478,25 +2538,25 @@ fn validate_diagnostic_controls(
             }
             Statement::DiagnosticControl {
                 operation,
-                warning,
+                identity,
                 span,
             } => match operation {
-                DiagnosticControlKind::DisableNext => pending = Some((*warning, *span)),
-                DiagnosticControlKind::Push => stack.push(*warning),
-                DiagnosticControlKind::Pop => match stack.last().copied() {
+                DiagnosticControlKind::DisableNext => pending = Some((identity.clone(), *span)),
+                DiagnosticControlKind::Push => stack.push(identity.clone()),
+                DiagnosticControlKind::Pop => match stack.last() {
                     None => diagnostics.push(SyntaxDiagnostic {
                         code: "E-DIAGNOSTIC-CONTROL-UNDERFLOW",
                         span: *span,
-                        message: "cannot pop an empty warning-suppression stack".into(),
+                        message: "cannot pop an empty diagnostic-suppression stack".into(),
                     }),
-                    Some(active) if source.slice(active) != source.slice(*warning) => {
+                    Some(active) if !diagnostic_identities_equal(source, active, identity) => {
                         diagnostics.push(SyntaxDiagnostic {
                             code: "E-DIAGNOSTIC-CONTROL-MISMATCH",
-                            span: *warning,
+                            span: identity[0],
                             message: format!(
-                                "cannot pop warning `{}` while `{}` is active",
-                                source.slice(*warning),
-                                source.slice(active)
+                                "cannot pop diagnostic `{}` while `{}` is active",
+                                diagnostic_identity(source, identity),
+                                diagnostic_identity(source, active)
                             ),
                         });
                     }
@@ -2514,26 +2574,42 @@ fn validate_diagnostic_controls(
             _ => pending = None,
         }
     }
-    if let Some((warning, span)) = pending {
+    if let Some((identity, span)) = pending {
         diagnostics.push(SyntaxDiagnostic {
             code: "E-DIAGNOSTIC-CONTROL-TARGET",
             span,
             message: format!(
-                "warning suppression for `{}` has no following statement",
-                source.slice(warning)
+                "diagnostic suppression for `{}` has no following statement",
+                diagnostic_identity(source, &identity)
             ),
         });
     }
-    if let Some(warning) = stack.last().copied() {
+    if let Some(identity) = stack.last() {
         diagnostics.push(SyntaxDiagnostic {
             code: "E-DIAGNOSTIC-CONTROL-UNCLOSED",
-            span: warning,
+            span: identity[0],
             message: format!(
-                "warning suppression for `{}` remains active at the context boundary",
-                source.slice(warning)
+                "diagnostic suppression for `{}` remains active at the context boundary",
+                diagnostic_identity(source, identity)
             ),
         });
     }
+}
+
+fn diagnostic_identity(source: &SourceText, identity: &[Span]) -> String {
+    identity
+        .iter()
+        .map(|component| source.slice(*component))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn diagnostic_identities_equal(source: &SourceText, left: &[Span], right: &[Span]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| source.slice(*left) == source.slice(*right))
 }
 
 const fn matcher_span(matcher: &DecisionMatcher) -> Span {
@@ -3414,6 +3490,21 @@ mod tests {
             let parsed = parse(&source, &lex(&source));
             assert!(parsed.diagnostics.iter().any(|error| error.code == code));
         }
+    }
+
+    #[test]
+    fn requires_matching_structured_diagnostic_identities() {
+        let source = SourceText::new(
+            "lang push-disable-diagnostic ( lang best-practice task state-machine )\n()\nlang pop-disable-diagnostic ( lang best-practice task declaration-order )",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|error| error.code == "E-DIAGNOSTIC-CONTROL-MISMATCH")
+        );
     }
 
     #[test]

@@ -387,6 +387,32 @@ fn topal_state_machine_rule_finds_state_without_a_message_transition() {
 }
 
 #[test]
+fn source_suppression_uses_identity_instead_of_configured_severity() {
+    let path = temporary_source(
+        "source-suppression",
+        "use language (\n  version is v0.1\n)\n# Demonstrates severity-neutral suppression of one lint finding.\nCounter is Task (queue-size is 2)\nlang disable-diagnostic ( lang best-practice task state-machine )\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n",
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args([
+            "--enable",
+            "lang best-practice task state-machine",
+            "--severity",
+            "lang best-practice task state-machine=error",
+        ])
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stdout.is_empty());
+    assert!(output.stderr.is_empty());
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
 fn validates_explicit_lint_variant_rule_modules() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let valid = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
