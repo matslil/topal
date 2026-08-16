@@ -69,6 +69,57 @@ fn emits_shared_style_terminal_and_json_syntax_diagnostics() {
 }
 
 #[test]
+fn aggregates_shared_diagnostics_as_sarif() {
+    let syntax_path = temporary_source(
+        "sarif-syntax",
+        "#!/usr/bin/env topal\n# Demonstrates SARIF syntax diagnostics.\nvalue is #\n",
+    );
+    let rule_path = temporary_source(
+        "sarif-rule",
+        "use language (\n  version is v0.1\n)\n# Demonstrates SARIF best-practice provenance.\nCounter is Task (queue-size is 2)\nservice is Counter\n  start is fn (initial : Nat) -> Completed\n    Completed\n  increment is fn (_ : MessageContext, amount : Nat) -> Unit\n    ()\n  count : Nat\n",
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args([
+            "--enable",
+            "lang best-practice task declaration-order",
+            "--format",
+            "sarif",
+        ])
+        .arg(&syntax_path)
+        .arg(&rule_path)
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stderr.is_empty());
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["version"], "2.1.0");
+    assert_eq!(report["runs"][0]["tool"]["driver"]["name"], "topal-lint");
+    let results = report["runs"][0]["results"].as_array().unwrap();
+    let syntax = results
+        .iter()
+        .find(|result| result["ruleId"] == "E-UNKNOWN-TOKEN")
+        .unwrap();
+    assert_eq!(syntax["level"], "error");
+    assert_eq!(
+        syntax["locations"][0]["physicalLocation"]["region"]["startLine"],
+        3
+    );
+    let best_practice = results
+        .iter()
+        .find(|result| result["ruleId"] == "L-TASK-DECLARATION-ORDER")
+        .unwrap();
+    assert_eq!(best_practice["level"], "warning");
+    assert_eq!(
+        best_practice["properties"]["bestPractice"],
+        "lang best-practice task declaration-order"
+    );
+    assert_eq!(best_practice["properties"]["bestPracticeVersion"], "v0.1");
+    assert_eq!(best_practice["properties"]["ruleVersion"], "v0.1");
+    fs::remove_file(syntax_path).unwrap();
+    fs::remove_file(rule_path).unwrap();
+}
+
+#[test]
 fn accepts_clean_shared_language_source() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))

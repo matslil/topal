@@ -7,6 +7,7 @@ source/syntax layers and provides deterministic catalog selection:
 ```text
 topal-lint source.t
 topal-lint --format json source.t
+topal-lint --format sarif source.t
 topal-lint --list
 topal-lint --explain "lang best-practice task state-machine"
 topal-lint --enable "namespace:lang" --disable "tag:lang best-practice tag style" --list
@@ -30,3 +31,5 @@ Source, syntax, and best-practice findings use `topal-source`'s shared
 diagnostic record. Terminal and JSON output are presentation adapters over
 that record; best-practice identity and both catalog and rule versions remain
 structured provenance rather than text embedded in the message.
+SARIF output aggregates every named source into one SARIF 2.1.0 run suitable
+for CI ingestion and preserves the same provenance in result properties.
