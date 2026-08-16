@@ -13,6 +13,14 @@ independently provide the capability. A result classified by `T` SHALL retain
 the bound classifier without erasing refinements or substituting a concrete
 fallback type.
 
+### TOPAL-FUNCTION-GENERIC-HEADER-001 — Generic header preservation
+
+Source frontends SHALL preserve the complete structure of construction
+patterns such as `Optional (Input : Type)` and higher-order classifiers such as
+`fn (Input) -> Output`, including every nested type variable and relationship,
+for later semantic matching. A frontend SHALL NOT truncate a function
+classifier at `fn` or reinterpret its operand types as named declarations.
+
 ### TOPAL-EXEC-COMPLETED-001 — Completion evidence
 
 The identifier `Completed` in expression position shall evaluate to the
