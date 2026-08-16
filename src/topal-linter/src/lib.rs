@@ -135,6 +135,8 @@ struct JsonDiagnostic<'a> {
     source: &'a str,
     line: usize,
     column: usize,
+    end_line: usize,
+    end_column: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     best_practice: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -163,6 +165,8 @@ impl<'a> JsonDiagnostic<'a> {
             source,
             line: diagnostic.line,
             column: diagnostic.column,
+            end_line: diagnostic.line,
+            end_column: diagnostic.column + diagnostic.marker_width,
             best_practice: best_practice.map(|context| context.identity.as_str()),
             best_practice_version: best_practice.map(|context| context.version.as_str()),
             rule_version: best_practice.map(|context| context.rule_version.as_str()),
@@ -263,7 +267,9 @@ fn sarif_result(source: &str, diagnostic: &Diagnostic) -> serde_json::Value {
                 "artifactLocation": { "uri": source },
                 "region": {
                     "startLine": diagnostic.line,
-                    "startColumn": diagnostic.column
+                    "startColumn": diagnostic.column,
+                    "endLine": diagnostic.line,
+                    "endColumn": diagnostic.column + diagnostic.marker_width
                 }
             }
         }],
@@ -893,20 +899,30 @@ fn analyze_text(
                     }
                 };
                 for rule_finding in rule_findings {
+                    let position = source.position(rule_finding.span.start);
                     let diagnostic = match entry_policy.severity {
                         Severity::Warning => Diagnostic::warning(
                             &rule.diagnostic_code,
-                            rule_finding.line,
-                            rule_finding.column,
+                            position.line,
+                            position.column,
                             rule_finding.message,
                         ),
                         Severity::Error => Diagnostic::error(
                             &rule.diagnostic_code,
-                            rule_finding.line,
-                            rule_finding.column,
+                            position.line,
+                            position.column,
                             rule_finding.message,
                         ),
                     }
+                    .with_source_span(rule_finding.span)
+                    .with_source_excerpt(
+                        source
+                            .as_str()
+                            .lines()
+                            .nth(position.line - 1)
+                            .map(str::to_owned),
+                        source.slice(rule_finding.span).chars().count(),
+                    )
                     .with_best_practice_suggestion(
                         &entry.identity,
                         &entry.version,
@@ -1008,10 +1024,8 @@ fn visit_topal_task_state_machine(
                         has_state,
                         has_transition,
                     )? {
-                        let position = source.position(name.start);
                         findings.push(RuleFinding {
-                            line: position.line,
-                            column: position.column,
+                            span: *name,
                             message: "stateful task declares no explicit message transition",
                             suggestion: "update task-owned state in the handler for each state-changing event",
                         });
@@ -1139,10 +1153,8 @@ fn check_topal_task_order(
         if let Some(previous_phase) = previous
             && !evaluate_topal_phase_rule(rule_source, entry_point, previous_phase, phase)?
         {
-            let position = source.position(span.start);
             findings.push(RuleFinding {
-                line: position.line,
-                column: position.column,
+                span,
                 message: "task declaration is outside the recommended lifecycle section",
                 suggestion: expected,
             });
@@ -1242,8 +1254,7 @@ fn parse_version(version: &str) -> Result<(u64, u64), String> {
 }
 
 struct RuleFinding {
-    line: usize,
-    column: usize,
+    span: Span,
     message: &'static str,
     suggestion: &'static str,
 }
