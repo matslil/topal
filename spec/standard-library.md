@@ -22,3 +22,10 @@ revisions selected by its source contexts. Cached checked-source or GEIR
 artifacts with a different source-package key SHALL be rejected rather than
 silently reinterpreted. An unsupported source revision SHALL produce a version
 diagnostic before any declaration from that context becomes visible.
+
+### TOPAL-LIB-SUBSTITUTION-001 — Optional compiler substitution
+
+A compiler MAY replace a standard-library declaration only after matching its
+exact structural identity and required capability evidence. The replacement
+SHALL be observationally equivalent to executing the authoritative Topal
+source. Absence of a substitution SHALL NOT affect program correctness.
