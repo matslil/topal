@@ -6715,8 +6715,7 @@ impl Execution {
                     .map(|(name, _)| name.to_owned())
             })
             .collect::<BTreeSet<_>>();
-        if !supported_value_classifier(result_text, &session.enum_types)
-            && !generic_names.contains(result_text)
+        if !supported_generic_classifier(result_text, &generic_names, &session.enum_types)
             && !session.union_types.contains_key(result_text)
         {
             return Err(diagnostic(
@@ -8854,19 +8853,47 @@ fn value_has_capability(value: &Value, capability: &str) -> bool {
 }
 
 fn generic_result_accepts(function: &UserFunction, scope: &Session, value: &Value) -> bool {
-    let expected = function
+    let generic_types = function
         .parameters
         .iter()
-        .find_map(|(parameter, classifier)| {
+        .filter_map(|(parameter, classifier)| {
             let (name, _) = generic_capability_classifier(classifier)?;
-            (name == function.result)
-                .then(|| scope.bindings.get(parameter))
-                .flatten()
-        });
-    expected.map_or_else(
-        || value_has_classifier(value, &function.result),
-        |expected| structural_value_classifier(expected) == structural_value_classifier(value),
-    )
+            let value = scope.bindings.get(parameter)?;
+            Some((name.to_owned(), structural_value_classifier(value)))
+        })
+        .collect::<BTreeMap<_, _>>();
+    value_matches_substituted_classifier(value, &function.result, &generic_types)
+}
+
+fn value_matches_substituted_classifier(
+    value: &Value,
+    classifier: &str,
+    generic_types: &BTreeMap<String, String>,
+) -> bool {
+    if let Some(expected) = generic_types.get(classifier) {
+        return structural_value_classifier(value) == *expected;
+    }
+    if let (Value::Tuple(values), Some(classifiers)) = (value, tuple_classifiers(classifier)) {
+        return values.len() == classifiers.len()
+            && values.iter().zip(classifiers).all(|(value, classifier)| {
+                value_matches_substituted_classifier(value, classifier, generic_types)
+            });
+    }
+    value_has_classifier(value, classifier)
+}
+
+fn supported_generic_classifier(
+    classifier: &str,
+    generic_names: &BTreeSet<String>,
+    enum_types: &BTreeMap<String, BTreeSet<String>>,
+) -> bool {
+    supported_value_classifier(classifier, enum_types)
+        || generic_names.contains(classifier)
+        || tuple_classifiers(classifier).is_some_and(|items| {
+            items
+                .into_iter()
+                .all(|item| supported_generic_classifier(item, generic_names, enum_types))
+        })
 }
 
 fn package_accepts(fields: &[UserParameterField], argument: &Value) -> bool {

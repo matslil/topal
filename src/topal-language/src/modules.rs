@@ -132,4 +132,21 @@ mod tests {
             .unwrap_err();
         assert_eq!(error.code, "E-FUNCTION-ARGUMENT-TYPE");
     }
+
+    #[test]
+    fn capability_generic_result_substitutes_inside_a_product() {
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        let value = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\nmin-max is fn (left : (Value : TotalOrder), right : Value) -> (Value, Value)\n  left\n    < right then (left, right)\n    otherwise (right, left)\nmin-max (4.5, 2.5)",
+                &mut trace,
+            )
+            .unwrap();
+        assert!(matches!(
+            value,
+            Value::Tuple(values)
+                if values.len() == 2 && values.iter().all(|value| matches!(value, Value::Rational(_)))
+        ));
+    }
 }
