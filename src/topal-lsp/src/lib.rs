@@ -3,12 +3,14 @@
 use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
-use topal_source::{Diagnostic, Severity, SourceText, Span};
-use topal_syntax::{Statement, SyntaxDiagnostic, TokenKind, lex, parse};
+use topal_linter::lint_text;
+use topal_source::{Diagnostic, Severity, SourceText};
+use topal_syntax::{Statement, TokenKind, lex, parse};
 
 #[derive(Default)]
 pub struct Server {
     documents: BTreeMap<String, String>,
+    lint_enabled: Vec<String>,
     shutdown: bool,
     exit: bool,
 }
@@ -19,29 +21,7 @@ impl Server {
         let method = message.get("method").and_then(Value::as_str);
         let id = message.get("id").cloned();
         match method {
-            Some("initialize") => vec![response(
-                id,
-                &json!({
-                    "capabilities": {
-                        "positionEncoding": "utf-16",
-                        "textDocumentSync": { "openClose": true, "change": 1 },
-                        "completionProvider": {},
-                        "semanticTokensProvider": {
-                            "legend": {
-                                "tokenTypes": [
-                                    "variable", "number", "string", "comment", "keyword", "operator"
-                                ],
-                                "tokenModifiers": []
-                            },
-                            "full": true
-                        }
-                    },
-                    "serverInfo": {
-                        "name": "topal-lsp",
-                        "version": env!("CARGO_PKG_VERSION")
-                    }
-                }),
-            )],
+            Some("initialize") => self.initialize(id, message),
             Some("initialized") => Vec::new(),
             Some("shutdown") => {
                 self.shutdown = true;
@@ -69,6 +49,61 @@ impl Server {
             Some(_) if id.is_some() => vec![error_response(id, -32601, "method not found")],
             Some(_) | None => Vec::new(),
         }
+    }
+
+    fn initialize(&mut self, id: Option<Value>, message: &Value) -> Vec<Value> {
+        let enabled = message
+            .pointer("/params/initializationOptions/lint/enable")
+            .and_then(Value::as_array)
+            .map_or_else(Vec::new, |entries| {
+                entries
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(str::to_owned)
+                    .collect()
+            });
+        if message
+            .pointer("/params/initializationOptions/lint/enable")
+            .is_some_and(|value| {
+                value
+                    .as_array()
+                    .is_none_or(|entries| entries.iter().any(|entry| entry.as_str().is_none()))
+            })
+        {
+            return vec![error_response(
+                id,
+                -32602,
+                "initializationOptions.lint.enable must be an array of identities",
+            )];
+        }
+        let enabled_refs = enabled.iter().map(String::as_str).collect::<Vec<_>>();
+        if let Err(error) = lint_text("use language ( version is v0.1 )\n", &enabled_refs) {
+            return vec![error_response(id, -32602, &error)];
+        }
+        self.lint_enabled = enabled;
+        vec![response(
+            id,
+            &json!({
+                "capabilities": {
+                    "positionEncoding": "utf-16",
+                    "textDocumentSync": { "openClose": true, "change": 1 },
+                    "completionProvider": {},
+                    "semanticTokensProvider": {
+                        "legend": {
+                            "tokenTypes": [
+                                "variable", "number", "string", "comment", "keyword", "operator"
+                            ],
+                            "tokenModifiers": []
+                        },
+                        "full": true
+                    }
+                },
+                "serverInfo": {
+                    "name": "topal-lsp",
+                    "version": env!("CARGO_PKG_VERSION")
+                }
+            }),
+        )]
     }
 
     #[must_use]
@@ -101,7 +136,7 @@ impl Server {
             return Vec::new();
         };
         self.documents.insert(uri.to_owned(), text.to_owned());
-        vec![publish_diagnostics(uri, text)]
+        vec![publish_diagnostics(uri, text, &self.lint_enabled)]
     }
 
     fn did_change(&mut self, message: &Value) -> Vec<Value> {
@@ -121,7 +156,7 @@ impl Server {
             return Vec::new();
         };
         self.documents.insert(uri.to_owned(), text.to_owned());
-        vec![publish_diagnostics(uri, text)]
+        vec![publish_diagnostics(uri, text, &self.lint_enabled)]
     }
 
     fn did_close(&mut self, message: &Value) -> Vec<Value> {
@@ -293,8 +328,8 @@ fn error_response(id: Option<Value>, code: i32, message: &str) -> Value {
     })
 }
 
-fn publish_diagnostics(uri: &str, text: &str) -> Value {
-    let diagnostics = diagnostics(text);
+fn publish_diagnostics(uri: &str, text: &str, enabled: &[String]) -> Value {
+    let diagnostics = diagnostics_with_lint(text, enabled);
     json!({
         "jsonrpc": "2.0",
         "method": "textDocument/publishDiagnostics",
@@ -302,56 +337,86 @@ fn publish_diagnostics(uri: &str, text: &str) -> Value {
     })
 }
 
+#[cfg(test)]
 fn diagnostics(text: &str) -> Vec<Value> {
-    let source = match SourceText::new(text) {
-        Ok(source) => source,
-        Err(error) => {
-            let diagnostic = shared_diagnostic(text, error.span, error.code, error.message);
-            return vec![protocol_diagnostic(text, error.span, &diagnostic)];
+    diagnostics_with_lint(text, &[])
+}
+
+fn diagnostics_with_lint(text: &str, enabled: &[String]) -> Vec<Value> {
+    let enabled = enabled.iter().map(String::as_str).collect::<Vec<_>>();
+    match lint_text(text, &enabled) {
+        Ok(report) => {
+            let normalized = SourceText::new(text).ok();
+            let coordinate_text = normalized.as_ref().map_or(text, SourceText::as_str);
+            report
+                .diagnostics
+                .iter()
+                .map(|diagnostic| protocol_diagnostic(coordinate_text, diagnostic))
+                .collect()
         }
-    };
-    let lexed = lex(&source);
-    parse(&source, &lexed)
-        .diagnostics
-        .iter()
-        .map(|diagnostic| syntax_diagnostic(&source, diagnostic))
-        .collect()
+        Err(error) => vec![protocol_diagnostic(
+            text,
+            &Diagnostic::error("L-LINT-ENGINE", 1, 1, error),
+        )],
+    }
 }
 
-fn syntax_diagnostic(source: &SourceText, diagnostic: &SyntaxDiagnostic) -> Value {
-    let shared = shared_diagnostic(
-        source.as_str(),
-        diagnostic.span,
-        diagnostic.code,
-        &diagnostic.message,
+fn protocol_diagnostic(text: &str, diagnostic: &Diagnostic) -> Value {
+    let start_offset = diagnostic.source_span.as_deref().map_or_else(
+        || byte_offset(text, diagnostic.line, diagnostic.column),
+        |span| span.start,
     );
-    protocol_diagnostic(source.as_str(), diagnostic.span, &shared)
-}
-
-fn shared_diagnostic(
-    text: &str,
-    span: Span,
-    code: impl Into<String>,
-    message: impl Into<String>,
-) -> Diagnostic {
-    let (line, character) = protocol_coordinates(text, span.start);
-    Diagnostic::error(code, line + 1, character + 1, message)
-}
-
-fn protocol_diagnostic(text: &str, span: Span, diagnostic: &Diagnostic) -> Value {
-    json!({
+    let end_offset = diagnostic
+        .source_span
+        .as_deref()
+        .map_or(start_offset, |span| span.end);
+    let source = if diagnostic.best_practice.is_some() {
+        "topal-lint"
+    } else {
+        "topal"
+    };
+    let mut result = json!({
         "range": {
-            "start": protocol_position(text, span.start),
-            "end": protocol_position(text, span.end)
+            "start": protocol_position(text, start_offset),
+            "end": protocol_position(text, end_offset)
         },
         "severity": match diagnostic.severity {
             Severity::Error => 1,
             Severity::Warning => 2,
         },
         "code": diagnostic.code,
-        "source": "topal",
+        "source": source,
         "message": diagnostic.message
-    })
+    });
+    if let Some(best_practice) = &diagnostic.best_practice {
+        result["data"] = json!({
+            "bestPractice": best_practice.identity,
+            "bestPracticeVersion": best_practice.version,
+            "ruleVersion": best_practice.rule_version,
+            "rectification": best_practice.suggestion.as_deref().map(|message| json!({
+                "kind": "suggestion",
+                "message": message
+            })),
+            "help": diagnostic.help.as_deref()
+        });
+    }
+    result
+}
+
+fn byte_offset(text: &str, line: usize, column: usize) -> usize {
+    let line_start = match line {
+        0 | 1 => 0,
+        _ => text
+            .match_indices('\n')
+            .nth(line - 2)
+            .map_or(0, |(offset, _)| offset + 1),
+    };
+    line_start
+        + text[line_start..]
+            .chars()
+            .take(column.saturating_sub(1))
+            .map(char::len_utf8)
+            .sum::<usize>()
 }
 
 fn protocol_position(text: &str, offset: usize) -> Value {
@@ -619,6 +684,71 @@ mod tests {
                 .as_array()
                 .unwrap()
                 .is_empty()
+        );
+    }
+
+    #[test]
+    fn publishes_explicitly_enabled_shared_lint_findings() {
+        let mut server = Server::default();
+        let initialized = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 20, "method": "initialize",
+            "params": { "initializationOptions": { "lint": { "enable": [
+                "lang best-practice task state-machine"
+            ] } } }
+        }));
+        assert_eq!(initialized[0]["result"]["serverInfo"]["name"], "topal-lsp");
+        let source = "use language (\n  version is v0.1\n)\nCounter is Task (queue-size is 2)\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n";
+        let opened = server.handle(&json!({
+            "jsonrpc": "2.0", "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///state-machine.t", "languageId": "topal", "version": 1,
+                "text": source
+            } }
+        }));
+        let diagnostics = opened[0]["params"]["diagnostics"].as_array().unwrap();
+        assert_eq!(diagnostics.len(), 1);
+        let diagnostic = &diagnostics[0];
+        assert_eq!(diagnostic["code"], "L-TASK-STATE-MACHINE");
+        assert_eq!(diagnostic["severity"], 2);
+        assert_eq!(diagnostic["source"], "topal-lint");
+        assert_eq!(
+            diagnostic["data"]["bestPractice"],
+            "lang best-practice task state-machine"
+        );
+        assert_eq!(diagnostic["data"]["rectification"]["kind"], "suggestion");
+        assert_eq!(diagnostic["range"]["start"]["line"], 4);
+
+        let corrected = "use language (\r\n  version is v0.1\r\n)\r\nCounter is Task (queue-size is 2)\r\nservice is Counter\r\n  count : Nat\r\n  start is fn (initial : Nat) -> Completed\r\n    @ count is initial\r\n    Completed\r\n  increment is fn (_ : MessageContext, amount : Nat) -> Unit\r\n    @ count is @ count + amount\r\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\r\n    @ count\r\n";
+        let changed = server.handle(&json!({
+            "jsonrpc": "2.0", "method": "textDocument/didChange",
+            "params": {
+                "textDocument": { "uri": "file:///state-machine.t", "version": 2 },
+                "contentChanges": [{ "text": corrected }]
+            }
+        }));
+        assert!(
+            changed[0]["params"]["diagnostics"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_lint_identity_during_initialization() {
+        let mut server = Server::default();
+        let response = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 21, "method": "initialize",
+            "params": { "initializationOptions": { "lint": { "enable": [
+                "lang best-practice missing"
+            ] } } }
+        }));
+        assert_eq!(response[0]["error"]["code"], -32602);
+        assert!(
+            response[0]["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("matches no best-practice")
         );
     }
 

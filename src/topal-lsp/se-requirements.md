@@ -72,3 +72,13 @@ The language server may inspect typed static views but shall not export, lower,
 or optimize GEIR artifacts. Requests through shared embedding interfaces shall
 return `E-COMPILER-ONLY` without executing source or retaining runtime
 reflection metadata.
+
+## TOPAL-LSP-LINT-001 — Shared live best-practice findings
+
+Initialization options may explicitly enable best-practices by stable identity
+through `initializationOptions.lint.enable`. The language server shall reject
+unknown identities during initialization and shall run the shared in-memory
+linter engine on every open or full-content change. Published findings shall
+preserve lint severity, stable code, UTF-16 location, best-practice and rule
+versions, and structured rectification data. Proposed entries shall remain
+disabled unless explicitly enabled.

@@ -13,6 +13,7 @@ path = "src/main.rs"
 serde_json = "=1.0.151"
 topal-source = { path = "../topal-source" }
 topal-syntax = { path = "../topal-syntax" }
+topal-linter = { path = "../topal-linter" }
 
 [lints]
 workspace = true
