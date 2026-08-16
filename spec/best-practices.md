@@ -42,5 +42,7 @@ digest, and be regenerated with every authoritative change. Conformance
 validation SHALL fail when regeneration differs from committed output.
 An executable lint attachment in the catalog SHALL identify its contained
 engine, entry point, independent rule version, required analysis stage, and
-stable `L-...` diagnostic code. A catalog consumer SHALL reject an unknown
-engine or stage before executing the attachment.
+stable `L-...` diagnostic code. A Topal attachment SHALL embed its source and
+SHA-256 digest in the generated catalog. A consumer SHALL verify that digest
+and reject an unknown engine or stage before executing the attachment; rule
+execution SHALL NOT require ambient access to the catalog producer's files.

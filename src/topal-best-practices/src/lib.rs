@@ -1,8 +1,9 @@
 //! Versioned best-practice catalog model shared by Topal tools.
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
-pub const SUPPORTED_SCHEMA: u64 = 2;
+pub const SUPPORTED_SCHEMA: u64 = 3;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -47,6 +48,8 @@ pub struct RuleAttachment {
     pub version: String,
     pub stage: String,
     pub diagnostic_code: String,
+    pub source_sha256: String,
+    pub source_text: String,
 }
 
 impl Catalog {
@@ -165,8 +168,11 @@ fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
         return Err(format!("best-practice `{}` has no tags", entry.identity));
     }
     if let Some(rule) = &entry.lint_rule {
-        if !matches!(rule.engine.as_str(), "builtin" | "topal") {
+        if rule.engine != "topal" {
             return Err(format!("unknown lint-rule engine `{}`", rule.engine));
+        }
+        if rule.source_text.is_empty() || rule.source_sha256 != sha256(&rule.source_text) {
+            return Err("Topal lint-rule attachment requires authenticated embedded source".into());
         }
         if !matches!(
             rule.stage.as_str(),
@@ -186,6 +192,12 @@ fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn sha256(source: &str) -> String {
+    let mut digest = Sha256::new();
+    digest.update(source.as_bytes());
+    format!("{:x}", digest.finalize())
 }
 
 #[cfg(test)]
@@ -229,6 +241,23 @@ mod tests {
             Catalog::from_json(&source)
                 .unwrap_err()
                 .contains("unknown lint-rule engine")
+        );
+    }
+
+    #[test]
+    fn modified_embedded_rule_source_is_rejected() {
+        let mut catalog = Catalog::builtin();
+        let rule = catalog
+            .entries
+            .iter_mut()
+            .find_map(|entry| entry.lint_rule.as_mut())
+            .unwrap();
+        rule.source_text.push_str("# untrusted modification\n");
+        let source = serde_json::to_string(&catalog).unwrap();
+        assert!(
+            Catalog::from_json(&source)
+                .unwrap_err()
+                .contains("authenticated embedded source")
         );
     }
 }

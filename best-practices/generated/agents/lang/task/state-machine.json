@@ -1,7 +1,7 @@
 {
-  "generated_by": "topal-best-practices/2",
-  "schema": 2,
-  "authoritative_sha256": "975b35970170a3e39f6de787728f84d427a2665cc6b2d2a38d4813754cd283f6",
+  "generated_by": "topal-best-practices/3",
+  "schema": 3,
+  "authoritative_sha256": "ded6d668d09efa4647fc6b72610d440f404f340aa30cb7c405e1cc57f07f0730",
   "identity": "lang best-practice task state-machine",
   "version": "v0.1",
   "status": {

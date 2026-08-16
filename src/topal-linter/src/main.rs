@@ -6,6 +6,7 @@ use std::process::ExitCode;
 
 use serde::Serialize;
 use topal_best_practices::{Catalog, CatalogEntry};
+use topal_language::{Session, Value as LanguageValue};
 use topal_source::{SourceText, Span};
 use topal_syntax::{Statement, SyntaxDiagnostic, lex, parse};
 
@@ -272,19 +273,24 @@ fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, Str
 fn validate_rule_module(path: &Path, entry_point: &str) -> Result<(), String> {
     let text = fs::read_to_string(path)
         .map_err(|error| format!("cannot read lint rule {}: {error}", path.display()))?;
+    validate_rule_text(&text, &path.display().to_string(), entry_point, false)
+}
+
+fn validate_rule_text(
+    text: &str,
+    source_name: &str,
+    entry_point: &str,
+    require_phase_signature: bool,
+) -> Result<(), String> {
     let source =
-        SourceText::new(&text).map_err(|error| format!("{}: {}", error.code, error.message))?;
+        SourceText::new(text).map_err(|error| format!("{}: {}", error.code, error.message))?;
     let lexed = lex(&source);
     let parsed = parse(&source, &lexed);
     if let Some(diagnostic) = lexed.diagnostics.first().or(parsed.diagnostics.first()) {
         let position = source.position(diagnostic.span.start);
         return Err(format!(
             "{}:{}:{}: {}: {}",
-            path.display(),
-            position.line,
-            position.column,
-            diagnostic.code,
-            diagnostic.message
+            source_name, position.line, position.column, diagnostic.code, diagnostic.message
         ));
     }
     let Some(Statement::LanguageSelection {
@@ -309,9 +315,13 @@ fn validate_rule_module(path: &Path, entry_point: &str) -> Result<(), String> {
     let mut found = None;
     visit_rule_functions(&source, &parsed.statements[1..], entry_point, &mut found)?;
     match found {
-        Some(true) => Ok(()),
-        Some(false) => Err(format!(
+        Some((true, true | false)) if !require_phase_signature => Ok(()),
+        Some((true, true)) => Ok(()),
+        Some((false, _)) => Err(format!(
             "L-RULE-STATIC: lint rule entry point `{entry_point}` must be static"
+        )),
+        Some((true, false)) => Err(format!(
+            "L-RULE-SIGNATURE: lint rule entry point `{entry_point}` must accept two Int phase facts and return Boolean"
         )),
         None => Err(format!(
             "L-RULE-ENTRY: lint rule module does not declare entry point `{entry_point}`"
@@ -323,7 +333,7 @@ fn visit_rule_functions(
     source: &SourceText,
     statements: &[Statement],
     entry_point: &str,
-    found: &mut Option<bool>,
+    found: &mut Option<(bool, bool)>,
 ) -> Result<(), String> {
     for statement in statements {
         match statement {
@@ -334,14 +344,23 @@ fn visit_rule_functions(
                 found,
             )?,
             Statement::Function {
-                name, is_static, ..
+                name,
+                is_static,
+                parameters,
+                result,
+                ..
             } if source.slice(*name) == entry_point => {
                 if found.is_some() {
                     return Err(format!(
                         "L-RULE-ENTRY: lint rule entry point `{entry_point}` is ambiguous"
                     ));
                 }
-                *found = Some(*is_static);
+                let signature_matches = parameters.len() == 2
+                    && parameters
+                        .iter()
+                        .all(|parameter| source.slice(parameter.classifier) == "Int")
+                    && source.slice(*result) == "Boolean";
+                *found = Some((*is_static, signature_matches));
             }
             _ => {}
         }
@@ -486,13 +505,16 @@ fn lint_source(
                 continue;
             }
             if let Some(rule) = &entry.lint_rule {
-                if rule.engine != "builtin" {
-                    return Err(format!(
-                        "lint rule {} uses unsupported engine `{}`",
-                        entry.identity, rule.engine
-                    ));
-                }
-                for rule_finding in builtin_rule(entry, &source, &parsed.statements)? {
+                let rule_findings = match rule.engine.as_str() {
+                    "topal" => topal_rule(entry, &source, &parsed.statements)?,
+                    other => {
+                        return Err(format!(
+                            "lint rule {} uses unsupported engine `{other}`",
+                            entry.identity
+                        ));
+                    }
+                };
+                for rule_finding in rule_findings {
                     let finding = Finding {
                         severity: entry_policy.severity,
                         code: &rule.diagnostic_code,
@@ -512,6 +534,127 @@ fn lint_source(
         }
     }
     Ok(has_error)
+}
+
+fn topal_rule(
+    entry: &CatalogEntry,
+    source: &SourceText,
+    statements: &[Statement],
+) -> Result<Vec<RuleFinding>, String> {
+    let rule = entry.lint_rule.as_ref().expect("caller checks attachment");
+    let rule_source = &rule.source_text;
+    validate_rule_text(rule_source, "<embedded lint rule>", &rule.entry_point, true)?;
+    match rule.entry_point.as_str() {
+        "rule" if entry.identity == "lang best-practice task declaration-order" => {
+            topal_task_declaration_order(rule_source, &rule.entry_point, source, statements)
+        }
+        other => Err(format!(
+            "best-practice {} has no host view adapter for Topal entry point `{other}`",
+            entry.identity
+        )),
+    }
+}
+
+fn topal_task_declaration_order(
+    rule_source: &str,
+    entry_point: &str,
+    source: &SourceText,
+    statements: &[Statement],
+) -> Result<Vec<RuleFinding>, String> {
+    let mut findings = Vec::new();
+    visit_topal_task_order(rule_source, entry_point, source, statements, &mut findings)?;
+    Ok(findings)
+}
+
+fn visit_topal_task_order(
+    rule_source: &str,
+    entry_point: &str,
+    source: &SourceText,
+    statements: &[Statement],
+    findings: &mut Vec<RuleFinding>,
+) -> Result<(), String> {
+    for statement in statements {
+        match statement {
+            Statement::Published { declaration, .. } => visit_topal_task_order(
+                rule_source,
+                entry_point,
+                source,
+                std::slice::from_ref(declaration.as_ref()),
+                findings,
+            )?,
+            Statement::Implementation { declarations, .. } => {
+                if is_task_definition(source, declarations) {
+                    check_topal_task_order(
+                        rule_source,
+                        entry_point,
+                        source,
+                        declarations,
+                        findings,
+                    )?;
+                }
+                visit_topal_task_order(rule_source, entry_point, source, declarations, findings)?;
+            }
+            Statement::Function { body, .. }
+            | Statement::Generator { body, .. }
+            | Statement::Foreach { body, .. } => {
+                visit_topal_task_order(rule_source, entry_point, source, body, findings)?;
+            }
+            Statement::InterfaceImplementation { declarations, .. } => {
+                visit_topal_task_order(rule_source, entry_point, source, declarations, findings)?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn check_topal_task_order(
+    rule_source: &str,
+    entry_point: &str,
+    source: &SourceText,
+    declarations: &[Statement],
+    findings: &mut Vec<RuleFinding>,
+) -> Result<(), String> {
+    let mut previous = None;
+    for declaration in declarations {
+        let Some((phase, span, expected)) = declaration_phase(source, declaration) else {
+            continue;
+        };
+        if let Some(previous_phase) = previous
+            && !evaluate_topal_phase_rule(rule_source, entry_point, previous_phase, phase)?
+        {
+            let position = source.position(span.start);
+            findings.push(RuleFinding {
+                line: position.line,
+                column: position.column,
+                message: "task declaration is outside the recommended lifecycle section",
+                help: expected,
+            });
+        }
+        previous = Some(phase);
+    }
+    Ok(())
+}
+
+fn evaluate_topal_phase_rule(
+    rule_source: &str,
+    entry_point: &str,
+    previous: u8,
+    current: u8,
+) -> Result<bool, String> {
+    let program = format!(
+        "{}\n{previous} {entry_point} {current}\n",
+        rule_source.trim_end()
+    );
+    let value = Session::new()
+        .evaluate_source_file(&program, &mut std::io::sink())
+        .map_err(|diagnostic| format!("Topal lint rule failed: {diagnostic}"))?;
+    match value {
+        LanguageValue::Boolean(decision) => Ok(decision),
+        other => Err(format!(
+            "Topal lint rule `{entry_point}` returned {other}, expected Boolean"
+        )),
+    }
 }
 
 fn selected_language_version<'a>(
@@ -565,60 +708,6 @@ struct RuleFinding {
     help: &'static str,
 }
 
-fn builtin_rule(
-    entry: &CatalogEntry,
-    source: &SourceText,
-    statements: &[Statement],
-) -> Result<Vec<RuleFinding>, String> {
-    let rule = entry.lint_rule.as_ref().expect("caller checks attachment");
-    match rule.entry_point.as_str() {
-        "task-declaration-order" => Ok(task_declaration_order(source, statements)),
-        other => Err(format!(
-            "best-practice {} names unavailable built-in lint rule `{other}`",
-            entry.identity
-        )),
-    }
-}
-
-fn task_declaration_order(source: &SourceText, statements: &[Statement]) -> Vec<RuleFinding> {
-    let mut findings = Vec::new();
-    visit_task_declaration_order(source, statements, &mut findings);
-    findings
-}
-
-fn visit_task_declaration_order(
-    source: &SourceText,
-    statements: &[Statement],
-    findings: &mut Vec<RuleFinding>,
-) {
-    for statement in statements {
-        match statement {
-            Statement::Published { declaration, .. } => {
-                visit_task_declaration_order(
-                    source,
-                    std::slice::from_ref(declaration.as_ref()),
-                    findings,
-                );
-            }
-            Statement::Implementation { declarations, .. } => {
-                if is_task_definition(source, declarations) {
-                    check_task_order(source, declarations, findings);
-                }
-                visit_task_declaration_order(source, declarations, findings);
-            }
-            Statement::Function { body, .. }
-            | Statement::Generator { body, .. }
-            | Statement::Foreach { body, .. } => {
-                visit_task_declaration_order(source, body, findings);
-            }
-            Statement::InterfaceImplementation { declarations, .. } => {
-                visit_task_declaration_order(source, declarations, findings);
-            }
-            _ => {}
-        }
-    }
-}
-
 fn is_task_definition(source: &SourceText, declarations: &[Statement]) -> bool {
     declarations
         .iter()
@@ -626,30 +715,6 @@ fn is_task_definition(source: &SourceText, declarations: &[Statement]) -> bool {
         && declarations.iter().any(|declaration| {
             matches!(declaration, Statement::Function { name, .. } if source.slice(*name) == "start")
         })
-}
-
-fn check_task_order(
-    source: &SourceText,
-    declarations: &[Statement],
-    findings: &mut Vec<RuleFinding>,
-) {
-    let mut highest_phase = 0;
-    for declaration in declarations {
-        let Some((phase, span, expected)) = declaration_phase(source, declaration) else {
-            continue;
-        };
-        if phase < highest_phase {
-            let position = source.position(span.start);
-            findings.push(RuleFinding {
-                line: position.line,
-                column: position.column,
-                message: "task declaration is outside the recommended lifecycle section",
-                help: expected,
-            });
-        } else {
-            highest_phase = phase;
-        }
-    }
 }
 
 fn declaration_phase(
@@ -820,30 +885,18 @@ mod tests {
     }
 
     #[test]
-    fn task_order_rule_reports_every_lifecycle_regression() {
-        let source = SourceText::new(
-            "service is Counter\n  event is fn (_ : MessageContext, _ : Unit) -> Unit\n    ()\n  start is fn (_ : Unit) -> Completed\n    Completed\n  terminate is fn (_ : String) -> Unit\n    ()\n  request is fn (_ : MessageContext, _ : Unit) -> Result (Unit, ())\n    ()\n  state : Nat\n",
-        )
-        .unwrap();
-        let parsed = parse(&source, &lex(&source));
-        assert!(parsed.diagnostics.is_empty());
-        let findings = task_declaration_order(&source, &parsed.statements);
-        assert_eq!(findings.len(), 3);
-        assert!(
-            findings
-                .iter()
-                .any(|finding| finding.help.contains("`start`"))
-        );
-        assert!(
-            findings
-                .iter()
-                .any(|finding| finding.help.contains("`terminate`"))
-        );
-        assert!(
-            findings
-                .iter()
-                .any(|finding| finding.help.contains("state field"))
-        );
+    fn topal_rule_decides_adjacent_phase_order() {
+        let entry = Catalog::builtin()
+            .entries
+            .into_iter()
+            .find(|entry| entry.identity.ends_with("declaration-order"))
+            .unwrap();
+        let rule = entry.lint_rule.unwrap();
+        let source = rule.source_text;
+        assert!(evaluate_topal_phase_rule(&source, &rule.entry_point, 0, 1).unwrap());
+        assert!(evaluate_topal_phase_rule(&source, &rule.entry_point, 2, 3).unwrap());
+        assert!(!evaluate_topal_phase_rule(&source, &rule.entry_point, 2, 1).unwrap());
+        assert!(!evaluate_topal_phase_rule(&source, &rule.entry_point, 3, 0).unwrap());
     }
 
     #[test]
