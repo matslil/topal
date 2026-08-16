@@ -1218,8 +1218,12 @@ mod tests {
                 path.display()
             );
         }
-        let numeric = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/numeric/exact.t");
-        assert!(diagnostics(&std::fs::read_to_string(numeric).unwrap()).is_empty());
+        for name in ["exact.t", "ranges.t"] {
+            let numeric = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../library/numeric")
+                .join(name);
+            assert!(diagnostics(&std::fs::read_to_string(numeric).unwrap()).is_empty());
+        }
     }
 
     #[test]
