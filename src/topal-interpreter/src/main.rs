@@ -4,7 +4,9 @@ use std::io::{self, BufRead, IsTerminal, Read, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
-use topal_language::{JsonLines, LanguageVersion, Session, TraceSink, UNICODE_VERSION};
+use topal_language::{
+    JsonLines, LanguageVersion, Session, TraceSink, UNICODE_VERSION, load_module_tree,
+};
 
 enum Mode {
     Script,
@@ -237,7 +239,7 @@ fn evaluate_directory(
     directory: &Path,
     trace: &mut impl TraceSink,
 ) -> Result<(), String> {
-    load_directory_children(session, directory, trace)?;
+    load_module_tree(session, directory, trace)?;
     let entry = directory.join("application.t");
     if !entry.is_file() {
         return Err(format!("{} has no application.t", directory.display()));
@@ -245,50 +247,4 @@ fn evaluate_directory(
     let source = fs::read_to_string(&entry)
         .map_err(|error| format!("cannot read {}: {error}", entry.display()))?;
     evaluate_and_print(session, &source, &entry.display().to_string(), trace)
-}
-
-fn load_directory_children(
-    session: &mut Session,
-    directory: &Path,
-    trace: &mut impl TraceSink,
-) -> Result<(), String> {
-    let mut paths = fs::read_dir(directory)
-        .map_err(|error| format!("cannot read {}: {error}", directory.display()))?
-        .map(|entry| entry.map(|entry| entry.path()))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| error.to_string())?;
-    paths.sort();
-    for path in &paths {
-        if path.is_dir() {
-            let mut child = Session::new();
-            let descriptor = path.join("module.t");
-            if descriptor.is_file() {
-                let source = fs::read_to_string(&descriptor)
-                    .map_err(|error| format!("cannot read {}: {error}", descriptor.display()))?;
-                child
-                    .evaluate_source_file(&source, trace)
-                    .map_err(|error| error.render(&descriptor.display().to_string()))?;
-            }
-            load_directory_children(&mut child, path, trace)?;
-            let name = path.file_name().unwrap().to_string_lossy();
-            session
-                .attach_module(&name, child, trace)
-                .map_err(|error| error.render(&path.display().to_string()))?;
-        } else if path.extension().is_some_and(|extension| extension == "t")
-            && path.file_name().is_some_and(|name| {
-                !matches!(
-                    name.to_str(),
-                    Some("application.t" | "package.t" | "library.t" | "module.t")
-                )
-            })
-        {
-            let name = path.file_stem().unwrap().to_string_lossy();
-            let source = fs::read_to_string(path)
-                .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
-            session
-                .load_module(&name, &source, trace)
-                .map_err(|error| error.render(&path.display().to_string()))?;
-        }
-    }
-    Ok(())
 }

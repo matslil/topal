@@ -2,6 +2,7 @@
 
 mod concurrency;
 mod execution;
+mod modules;
 mod source;
 mod trace;
 
@@ -12,6 +13,7 @@ pub use concurrency::{
 pub use execution::{
     ExecutionHistory, ExecutionSnapshot, ExecutionState, ExecutionTransition, SourceRange,
 };
+pub use modules::load_module_tree;
 pub use source::{Execution, ExecutionStep, Session, Value};
 pub use topal_semantics::LanguageVersion;
 pub use topal_source::Diagnostic;

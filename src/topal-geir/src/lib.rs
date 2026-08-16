@@ -11,6 +11,52 @@ pub const ARTIFACT_REVISION: u64 = 1;
 
 pub const COMPILER_ONLY_ERROR_CODE: &str = "E-COMPILER-ONLY";
 
+/// Reproducible identity of a checked source package before compiler lowering.
+/// Paths are canonical package-relative names; source and dependency ordering
+/// do not affect the resulting digest.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SourcePackageKey {
+    pub language_revision: LanguageVersion,
+    pub unicode_revision: String,
+    pub artifact_revision: u64,
+    pub digest: [u8; 32],
+}
+
+impl SourcePackageKey {
+    #[must_use]
+    pub fn derive(
+        language_revision: LanguageVersion,
+        unicode_revision: impl Into<String>,
+        sources: &BTreeMap<String, String>,
+        dependencies: &BTreeMap<String, [u8; 32]>,
+    ) -> Self {
+        let unicode_revision = unicode_revision.into();
+        let mut hasher = Sha256::new();
+        hash_field(&mut hasher, &language_revision.to_string());
+        hash_field(&mut hasher, &unicode_revision);
+        hasher.update(ARTIFACT_REVISION.to_be_bytes());
+        for (path, source) in sources {
+            hash_field(&mut hasher, path);
+            hash_field(&mut hasher, source);
+        }
+        for (identity, digest) in dependencies {
+            hash_field(&mut hasher, identity);
+            hasher.update(digest);
+        }
+        Self {
+            language_revision,
+            unicode_revision,
+            artifact_revision: ARTIFACT_REVISION,
+            digest: hasher.finalize().into(),
+        }
+    }
+}
+
+fn hash_field(hasher: &mut Sha256, value: &str) {
+    hasher.update(value.len().to_be_bytes());
+    hasher.update(value.as_bytes());
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ToolRole {
     Compiler,
@@ -1634,6 +1680,28 @@ mod tests {
                 0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b,
                 0x78, 0x52, 0xb8, 0x55,
             ]
+        );
+    }
+
+    #[test]
+    fn source_package_key_covers_every_reproducibility_boundary() {
+        let sources = BTreeMap::from([
+            ("fundamental/ordering.t".into(), "minimum".into()),
+            ("library.t".into(), "ordering".into()),
+        ]);
+        let dependencies = BTreeMap::from([("example.base".into(), [7; 32])]);
+        let key =
+            SourcePackageKey::derive(LanguageVersion::DESIGN_0, "17.0.0", &sources, &dependencies);
+        assert_eq!(key.artifact_revision, ARTIFACT_REVISION);
+        assert_ne!(
+            key,
+            SourcePackageKey::derive(LanguageVersion::DESIGN_0, "18.0.0", &sources, &dependencies,)
+        );
+        let mut changed = sources;
+        changed.insert("fundamental/ordering.t".into(), "maximum".into());
+        assert_ne!(
+            key,
+            SourcePackageKey::derive(LanguageVersion::DESIGN_0, "17.0.0", &changed, &dependencies,)
         );
     }
 
