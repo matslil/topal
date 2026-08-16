@@ -1,0 +1,32 @@
+{
+  "generated_by": "topal-best-practices/1",
+  "schema": 1,
+  "entries": [
+    {
+      "identity": "lang best-practice task state-machine",
+      "version": "v0.1",
+      "authoritative_sha256": "7fe8db69ab2480fe9b10d093f134bfea6f75e3c75e9861f49c88204330846859",
+      "status": {
+        "kind": "proposed",
+        "since_language_version": null,
+        "explanation": null,
+        "replacement": null
+      },
+      "class": "recommended",
+      "default_enabled": false,
+      "default_severity": "warning",
+      "language": "topal",
+      "language_versions": ">=v0.1",
+      "required_features": [
+        "task",
+        "message"
+      ],
+      "excluded_features": [],
+      "tags": [
+        "lang best-practice tag architecture",
+        "lang best-practice tag concurrency",
+        "lang best-practice tag readability"
+      ]
+    }
+  ]
+}

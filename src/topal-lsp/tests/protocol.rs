@@ -45,7 +45,7 @@ fn stdio_transcript_initializes_publishes_and_shuts_down() {
         json!({
             "jsonrpc": "2.0", "method": "textDocument/didOpen",
             "params": { "textDocument": {
-                "uri": "file:///test.t", "languageId": "topal", "version": 1, "text": "?"
+                "uri": "file:///test.t", "languageId": "topal", "version": 1, "text": "#"
             }}
         }),
         json!({

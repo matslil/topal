@@ -18,4 +18,4 @@ The design currently covers:
 - containers, strings, numbers, ranges, units, and serialization;
 - layouts, addressed storage, sensitive values, tracing, debugger scripting,
   and performance; and
-- unit testing and structural path coverage.
+- unit testing, structural path coverage, and the best-practice database.

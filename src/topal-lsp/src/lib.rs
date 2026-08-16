@@ -558,7 +558,7 @@ mod tests {
             "method": "textDocument/didOpen",
             "params": { "textDocument": {
                 "uri": "file:///unicode.t", "languageId": "topal", "version": 1,
-                "text": "𐐀 ?"
+                "text": "𐐀 #"
             }}
         }));
         let diagnostic = &output[0]["params"]["diagnostics"][0];

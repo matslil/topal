@@ -1,0 +1,42 @@
+{
+  "generated_by": "topal-best-practices/1",
+  "schema": 1,
+  "authoritative_sha256": "7fe8db69ab2480fe9b10d093f134bfea6f75e3c75e9861f49c88204330846859",
+  "identity": "lang best-practice task state-machine",
+  "version": "v0.1",
+  "status": {
+    "kind": "proposed",
+    "since_language_version": null,
+    "explanation": null,
+    "replacement": null
+  },
+  "class": "recommended",
+  "title": "Model event-driven state machines as tasks",
+  "summary": "A task naturally owns state and serializes the messages which represent its events.",
+  "recommendation": "Start an event-driven state machine as a task whose accepted messages describe events and whose private value describes the current state.",
+  "rationale": "Task isolation makes event ordering and state ownership explicit while keeping transitions close to the messages which trigger them.",
+  "applicability": {
+    "language": "topal",
+    "versions": ">=v0.1",
+    "required_features": [
+      "task",
+      "message"
+    ],
+    "excluded_features": []
+  },
+  "exceptions": [
+    "Prefer a pure transition function when no persistent task identity, asynchronous event source, or isolated mutable state is required."
+  ],
+  "default_enabled": false,
+  "default_severity": "warning",
+  "checkability": "heuristic",
+  "rectification": "suggestion",
+  "tags": [
+    "lang best-practice tag architecture",
+    "lang best-practice tag concurrency",
+    "lang best-practice tag readability"
+  ],
+  "examples": [
+    "examples/language/task-message-transactions.t"
+  ]
+}

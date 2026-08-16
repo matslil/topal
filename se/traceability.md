@@ -11,8 +11,8 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-GOAL-EXPLICIT-001` | `TOPAL-REQ-EFFECT-001`, `TOPAL-REQ-RESOURCE-001`, `TOPAL-REQ-SERIAL-001` |
 | `TOPAL-GOAL-ZEROCOST-001` | `TOPAL-REQ-DETERMINISM-001`, `TOPAL-REQ-RESOURCE-001` |
 | `TOPAL-GOAL-PRECISE-001` | `TOPAL-REQ-GENERIC-001`, `TOPAL-REQ-SERIAL-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001` |
-| `TOPAL-GOAL-EVOLVE-001` | `TOPAL-REQ-TRACE-001`, `TOPAL-REQ-TOOLS-001` |
-| `TOPAL-GOAL-TOOLCHAIN-001` | `TOPAL-REQ-SHARED-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001` |
+| `TOPAL-GOAL-EVOLVE-001` | `TOPAL-REQ-TRACE-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-BEST-PRACTICE-001` |
+| `TOPAL-GOAL-TOOLCHAIN-001` | `TOPAL-REQ-SHARED-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001`, `TOPAL-REQ-BEST-PRACTICE-001`, `TOPAL-REQ-LINT-001` |
 
 | Requirement | Governing specification rules |
 | --- | --- |
@@ -29,6 +29,8 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-REQ-INTEROP-001` | `TOPAL-TYPE-SOUND-001`, `TOPAL-NUM-ADD-001`, `TOPAL-NUM-NEG-001`, `TOPAL-NUM-SUB-001`, `TOPAL-NUM-MUL-001`, `TOPAL-NUM-RATIONAL-001`, `TOPAL-NUM-DIV-001`, `TOPAL-NUM-POW-001`, `TOPAL-NUM-INT-RATIONAL-CONVERT-001`, `TOPAL-MEM-OPT-001`, `TOPAL-CONC-DETERMINISM-001` |
 | `TOPAL-REQ-TRACE-001` | all stable `TOPAL-*` specification rules |
 | `TOPAL-REQ-SHARED-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-UNICODE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-INDENT-001`, `TOPAL-SYN-GRAMMAR-001` |
+| `TOPAL-REQ-BEST-PRACTICE-001` | `TOPAL-BEST-PRACTICE-IDENTITY-001`, `TOPAL-BEST-PRACTICE-STATUS-001`, `TOPAL-BEST-PRACTICE-CLASS-001`, `TOPAL-BEST-PRACTICE-APPLICABILITY-001`, `TOPAL-BEST-PRACTICE-GENERATED-001` |
+| `TOPAL-REQ-LINT-001` | staged by `src/topal-linter/se-requirements.md`; formal lint execution rules follow implementation |
 
 ## Maintenance rules
 
@@ -50,6 +52,7 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-INTP-SUBSET-002` | `TOPAL-SYN-BIND-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
 | `TOPAL-INTP-SUBSET-003` | `TOPAL-SYN-NUM-001`, `TOPAL-NUM-LITERAL-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
 | `TOPAL-REQ-SHARED-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-GRAMMAR-001` | unit tests in `topal-source` and `topal-syntax` | `topal-source`, `topal-syntax` |
+| `TOPAL-BEST-PRACTICE-TOOL-001` through `TOPAL-BEST-PRACTICE-TOOL-003` | `TOPAL-BEST-PRACTICE-IDENTITY-001`, `TOPAL-BEST-PRACTICE-STATUS-001`, `TOPAL-BEST-PRACTICE-CLASS-001`, `TOPAL-BEST-PRACTICE-APPLICABILITY-001`, `TOPAL-BEST-PRACTICE-GENERATED-001` | `topal-best-practices` unit tests and repository catalog check | `topal-best-practices` |
 | broad Unicode identifier profile | `TOPAL-SYN-UNICODE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-STRING-001`, `TOPAL-SYN-BIND-001` | source and syntax unit tests; interpreter, LSP, and scripted debugger tests; `examples/language/unicode-identifiers.t` | `topal-source`, `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-debugger`, `topal-lsp` |
 | `TOPAL-INTP-SUBSET-004` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-NUM-ADD-001` | `src/topal-interpreter/tests/cli.rs` | `topal-source`, `topal-syntax`, `topal-language` |
 | `TOPAL-INTP-SUBSET-005` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-NUM-NEG-001`, `TOPAL-NUM-SUB-001` | `src/topal-interpreter/tests/cli.rs` | `topal-syntax`, `topal-language` |

@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "src/topal-best-practices",
     "src/topal-interpreter",
     "src/topal-debugger",
     "src/topal-geir",

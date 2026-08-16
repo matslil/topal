@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://topal.dev/schema/best-practice-v1.json",
+  "title": "Topal best-practice bootstrap record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "identity", "version", "status", "class", "title", "summary",
+    "recommendation", "rationale", "language", "language_versions",
+    "required_features", "excluded_features", "default_enabled",
+    "default_severity", "checkability", "rectification", "tags", "exceptions",
+    "examples", "specification_rules", "provenance", "license"
+  ],
+  "properties": {
+    "schema": { "const": 1 },
+    "identity": { "$ref": "#/$defs/identity" },
+    "version": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "since_language_version", "explanation", "replacement"],
+      "properties": {
+        "kind": { "enum": ["proposed", "active", "obsolete", "deprecated"] },
+        "since_language_version": { "type": ["string", "null"] },
+        "explanation": { "type": ["string", "null"] },
+        "replacement": { "anyOf": [{ "$ref": "#/$defs/identity" }, { "type": "null" }] }
+      }
+    },
+    "class": { "enum": ["template", "recommended", "best-practice"] },
+    "title": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "recommendation": { "type": "string", "minLength": 1 },
+    "rationale": { "type": "string", "minLength": 1 },
+    "language": { "type": "string", "minLength": 1 },
+    "language_versions": { "type": "string", "minLength": 1 },
+    "required_features": { "$ref": "#/$defs/strings" },
+    "excluded_features": { "$ref": "#/$defs/strings" },
+    "default_enabled": { "type": "boolean" },
+    "default_severity": { "enum": ["warning", "error"] },
+    "checkability": { "enum": ["guidance-only", "heuristic", "semantic", "formally-decidable"] },
+    "rectification": { "enum": ["unavailable", "suggestion", "automatic"] },
+    "tags": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/identity" } },
+    "exceptions": { "$ref": "#/$defs/strings" },
+    "examples": { "$ref": "#/$defs/strings" },
+    "specification_rules": { "$ref": "#/$defs/strings" },
+    "provenance": { "type": "string", "minLength": 1 },
+    "license": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "identity": { "type": "array", "minItems": 2, "items": { "type": "string", "minLength": 1 } },
+    "strings": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  }
+}

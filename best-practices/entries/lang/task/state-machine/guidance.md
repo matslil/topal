@@ -1,0 +1,10 @@
+Tasks are the natural starting point for event-driven state machines. Keep the
+state as a value owned by one task, model incoming events as message variants,
+and make each message handler perform an explicit transition. This gives the
+programmer, runtime tracer, and debugger the same visible event boundary.
+
+The shared `task-message-transactions.t` example demonstrates a task receiving
+state-changing messages and returning a result from a transaction. The
+recommendation is architectural rather than universal: a pure transition
+function is clearer when the computation needs neither task identity nor an
+asynchronous event boundary.
