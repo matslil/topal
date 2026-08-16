@@ -40,3 +40,7 @@ Generated human, agent, and lint-catalog projections SHALL remain version
 controlled, identify generator/schema/source versions and authoritative input
 digest, and be regenerated with every authoritative change. Conformance
 validation SHALL fail when regeneration differs from committed output.
+An executable lint attachment in the catalog SHALL identify its contained
+engine, entry point, independent rule version, required analysis stage, and
+stable `L-...` diagnostic code. A catalog consumer SHALL reject an unknown
+engine or stage before executing the attachment.
