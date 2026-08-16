@@ -21,6 +21,14 @@ declared, versioned, read-only token, syntax, semantic, dependency, or supplied
 trace views. Execution shall be deterministic and resource-bounded, without
 ambient filesystem, network, process, debugger, or application authority.
 
+## TOPAL-LINT-VARIANT-001 — Rule-module admission
+
+Before execution, a Topal lint-rule module shall explicitly select the `lint`
+language feature, use a supported source language version, and expose its named
+entry point as a static function. Lint-rule modules shall not combine `lint`
+with the privileged `debug` feature. Admission shall parse through the shared
+source and syntax layers and fail before loading catalog or application state.
+
 ## TOPAL-LINT-FIX-001 — Safe rectification
 
 The linter shall expose a rectification when an entry supplies one. Automatic

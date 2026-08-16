@@ -59,8 +59,9 @@ planned alternatives.
 ## TOPAL-LSP-VARIANT-001 — Domain-specific language contexts
 
 The language server shall preserve language feature selections, recognize the
-`debug` variant without treating its vocabulary as global, and provide
-completion for `lang debug` only in applicable constructed contexts.
+`debug` and `lint` variants without treating their vocabulary as global, and
+provide completion for `lang debug` or the `lang lint` namespace only in the
+applicable constructed context.
 Debugger-script examples shall receive the same shared syntax diagnostics and
 semantic tokens as other Topal source. `lang trace` completion shall be added
 when its source construction is executable rather than advertised prematurely.

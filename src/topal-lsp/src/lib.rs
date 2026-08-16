@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
 use topal_source::{SourceText, Span};
-use topal_syntax::{SyntaxDiagnostic, TokenKind, lex, parse};
+use topal_syntax::{Statement, SyntaxDiagnostic, TokenKind, lex, parse};
 
 #[derive(Default)]
 pub struct Server {
@@ -60,7 +60,10 @@ impl Server {
             Some("textDocument/completion") => {
                 vec![response(
                     id,
-                    &completion_items(self.is_debug_document(message)),
+                    &completion_items(
+                        self.document_has_feature(message, "debug"),
+                        self.document_has_feature(message, "lint"),
+                    ),
                 )]
             }
             Some(_) if id.is_some() => vec![error_response(id, -32601, "method not found")],
@@ -78,16 +81,13 @@ impl Server {
         self.shutdown
     }
 
-    fn is_debug_document(&self, message: &Value) -> bool {
+    fn document_has_feature(&self, message: &Value, expected: &str) -> bool {
         let Some(uri) = message["params"]["textDocument"]["uri"].as_str() else {
             return false;
         };
-        self.documents.get(uri).is_some_and(|text| {
-            text.contains("features is")
-                && text
-                    .split_once("features is")
-                    .is_some_and(|(_, features)| features.contains("debug"))
-        })
+        self.documents
+            .get(uri)
+            .is_some_and(|text| source_has_feature(text, expected))
     }
 
     fn did_open(&mut self, message: &Value) -> Vec<Value> {
@@ -152,8 +152,20 @@ impl Server {
     }
 }
 
+fn source_has_feature(text: &str, expected: &str) -> bool {
+    let Ok(source) = SourceText::new(text) else {
+        return false;
+    };
+    let parsed = parse(&source, &lex(&source));
+    matches!(
+        parsed.statements.first(),
+        Some(Statement::LanguageSelection { features, .. })
+            if features.iter().any(|feature| source.slice(*feature) == expected)
+    )
+}
+
 #[allow(clippy::too_many_lines)] // Keep the deterministic completion catalog together.
-fn completion_items(debug_variant: bool) -> Value {
+fn completion_items(debug_variant: bool, lint_variant: bool) -> Value {
     let mut result = json!({
         "isIncomplete": false,
         "items": [
@@ -258,6 +270,13 @@ fn completion_items(debug_variant: bool) -> Value {
                 "detail": "debug language variant command"
             }));
         }
+    }
+    if lint_variant {
+        result["items"].as_array_mut().unwrap().push(json!({
+            "label": "lang lint",
+            "kind": 9,
+            "detail": "lint language variant namespace"
+        }));
     }
     result
 }
@@ -548,6 +567,37 @@ mod tests {
                 .iter()
                 .any(|item| item["label"] == "lang debug break")
         );
+    }
+
+    #[test]
+    fn completes_lint_namespace_only_in_the_lint_variant() {
+        let mut server = Server::default();
+        let opened = server.handle(&json!({
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///rule.t",
+                "languageId": "topal",
+                "version": 1,
+                "text": include_str!("../../../examples/linter/task-declaration-order-rule.t")
+            }}
+        }));
+        assert!(
+            opened[0]["params"]["diagnostics"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        let output = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 9, "method": "textDocument/completion",
+            "params": {
+                "textDocument": { "uri": "file:///rule.t" },
+                "position": { "line": 1, "character": 0 }
+            }
+        }));
+        let items = output[0]["result"]["items"].as_array().unwrap();
+        assert!(items.iter().any(|item| item["label"] == "lang lint"));
+        assert!(!items.iter().any(|item| item["label"] == "lang debug step"));
     }
 
     #[test]

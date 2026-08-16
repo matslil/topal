@@ -25,3 +25,8 @@ command scripts are necessarily tool-specific and also remain there.
 Programs under `language-diagnostics/` are shared malformed or failing language
 examples. Tools use them to compare diagnostics and retained failure behavior;
 they are kept outside the successful `language/` corpus intentionally.
+
+Programs under `linter/` are Topal rule modules rather than applications. They
+explicitly select the `lint` language variant and are admitted by `topal-lint`
+before contained rule execution; the language server opens the same files for
+variant-aware editing support.
