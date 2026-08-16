@@ -12,5 +12,6 @@ SHALL NOT define a competing finding model.
 
 Terminal, JSON, SARIF, and LSP adapters SHALL preserve the shared diagnostic's
 severity, code, message, location, help, and best-practice provenance whenever
-the target protocol can represent those fields. Changing an adapter SHALL NOT
+the target protocol can represent those fields. Structured rectification SHALL
+remain distinguishable from explanatory help. Changing an adapter SHALL NOT
 change diagnostic selection or program evaluation.

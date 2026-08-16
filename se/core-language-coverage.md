@@ -31,7 +31,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/generic-ir.md` | 10 | 9 | shared generic artifact model | artifact, compiler-only | complete |
 | `spec/tracing.md` | 4 | 9 | shared semantic tracing and adapters | static, runtime, artifact | complete |
 | `spec/debugger-scripting.md` | 2 | 9 | `topal-debugger`, shared language variants | static, runtime | complete |
-| `spec/best-practices.md` | 6 | 9 | `topal-best-practices` catalog model and `topal-linter` contained executor | static, artifact | complete |
+| `spec/best-practices.md` | 7 | 9 | `topal-best-practices` catalog model and `topal-linter` contained executor | static, artifact | complete |
 | `spec/diagnostics.md` | 2 | 9 | `topal-source`, source-facing tool adapters | static, presentation | complete |
 
 ## Cross-tool evidence

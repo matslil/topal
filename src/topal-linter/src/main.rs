@@ -143,6 +143,14 @@ struct JsonDiagnostic<'a> {
     rule_version: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     help: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rectification: Option<JsonRectification<'a>>,
+}
+
+#[derive(Serialize)]
+struct JsonRectification<'a> {
+    kind: &'static str,
+    message: &'a str,
 }
 
 impl<'a> JsonDiagnostic<'a> {
@@ -159,6 +167,15 @@ impl<'a> JsonDiagnostic<'a> {
             best_practice_version: best_practice.map(|context| context.version.as_str()),
             rule_version: best_practice.map(|context| context.rule_version.as_str()),
             help: diagnostic.help.as_deref(),
+            rectification: best_practice.and_then(|context| {
+                context
+                    .suggestion
+                    .as_deref()
+                    .map(|message| JsonRectification {
+                        kind: "suggestion",
+                        message,
+                    })
+            }),
         }
     }
 }
@@ -230,6 +247,12 @@ fn sarif_result(source: &str, diagnostic: &Diagnostic) -> serde_json::Value {
             "ruleVersion".into(),
             serde_json::Value::String(best_practice.rule_version.clone()),
         );
+        if let Some(suggestion) = &best_practice.suggestion {
+            properties.insert(
+                "rectification".into(),
+                serde_json::json!({ "kind": "suggestion", "message": suggestion }),
+            );
+        }
     }
     let mut result = serde_json::json!({
         "ruleId": diagnostic.code,
@@ -739,11 +762,11 @@ fn lint_source(
                             rule_finding.message,
                         ),
                     }
-                    .with_help(rule_finding.help)
-                    .with_best_practice(
+                    .with_best_practice_suggestion(
                         &entry.identity,
                         &entry.version,
                         &rule.version,
+                        rule_finding.suggestion,
                     );
                     emitter.emit(&diagnostic, path)?;
                     has_error |= entry_policy.severity == Severity::Error;
@@ -842,7 +865,7 @@ fn visit_topal_task_state_machine(
                             line: position.line,
                             column: position.column,
                             message: "stateful task declares no explicit message transition",
-                            help: "update task-owned state in the handler for each state-changing event",
+                            suggestion: "update task-owned state in the handler for each state-changing event",
                         });
                     }
                 }
@@ -973,7 +996,7 @@ fn check_topal_task_order(
                 line: position.line,
                 column: position.column,
                 message: "task declaration is outside the recommended lifecycle section",
-                help: expected,
+                suggestion: expected,
             });
         }
         previous = Some(phase);
@@ -1056,7 +1079,7 @@ struct RuleFinding {
     line: usize,
     column: usize,
     message: &'static str,
-    help: &'static str,
+    suggestion: &'static str,
 }
 
 fn is_task_definition(source: &SourceText, declarations: &[Statement]) -> bool {
