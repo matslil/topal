@@ -735,6 +735,51 @@ pub enum LintControl {
     Off(String),
 }
 
+/// A contained lint engine with a catalog assembled explicitly by its host.
+/// Catalog JSON is parsed and authenticated before any source is inspected;
+/// lint rules receive no access to the paths or storage used by the host.
+pub struct LintEngine {
+    catalog: Catalog,
+}
+
+impl Default for LintEngine {
+    fn default() -> Self {
+        Self::builtin()
+    }
+}
+
+impl LintEngine {
+    #[must_use]
+    pub fn builtin() -> Self {
+        Self {
+            catalog: Catalog::builtin(),
+        }
+    }
+
+    /// Add one explicitly supplied external catalog projection.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for malformed or unsupported catalogs, unauthenticated
+    /// rule attachments, or stable identities already owned by another loaded
+    /// catalog.
+    pub fn add_catalog_json(&mut self, source: &str) -> Result<(), String> {
+        self.catalog.merge(Catalog::from_json(source)?)
+    }
+
+    /// Lint source using this engine's catalogs and ordered controls.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for malformed or unknown selectors, or when a selected
+    /// contained rule cannot be admitted or executed.
+    pub fn lint_text(&self, text: &str, controls: &[LintControl]) -> Result<LintReport, String> {
+        let overrides = policy_overrides(controls)?;
+        validate_overrides(&self.catalog, &overrides)?;
+        analyze_text(text, &self.catalog, &overrides)
+    }
+}
+
 /// Lint normalized in-memory Topal source with explicitly enabled built-in
 /// best-practices. Proposed entries remain disabled unless named here.
 ///
@@ -757,8 +802,11 @@ pub fn lint_text(text: &str, enabled_identities: &[&str]) -> Result<LintReport, 
 /// Returns an error when a selector is malformed or unknown, or when a
 /// selected rule cannot be admitted or executed in its contained view.
 pub fn lint_text_with_controls(text: &str, controls: &[LintControl]) -> Result<LintReport, String> {
-    let catalog = Catalog::builtin();
-    let overrides = controls
+    LintEngine::builtin().lint_text(text, controls)
+}
+
+fn policy_overrides(controls: &[LintControl]) -> Result<Vec<Override>, String> {
+    controls
         .iter()
         .enumerate()
         .map(|(order, control)| match control {
@@ -787,9 +835,7 @@ pub fn lint_text_with_controls(text: &str, controls: &[LintControl]) -> Result<L
                 order,
             }),
         })
-        .collect::<Result<Vec<_>, String>>()?;
-    validate_overrides(&catalog, &overrides)?;
-    analyze_text(text, &catalog, &overrides)
+        .collect()
 }
 
 fn analyze_text(
@@ -1457,6 +1503,34 @@ mod tests {
         )
         .unwrap();
         assert!(report.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn in_memory_engine_requires_explicit_noncolliding_external_catalogs() {
+        let mut external = Catalog::builtin();
+        external.entries.truncate(1);
+        external.entries[0].identity = "org.example best-practice task order".into();
+        let source = serde_json::to_string(&external).unwrap();
+        let mut engine = LintEngine::builtin();
+        engine.add_catalog_json(&source).unwrap();
+        assert!(
+            engine
+                .lint_text(
+                    "use language ( version is v0.1 )\nvalue is 1\n",
+                    &[LintControl::Enable(
+                        "org.example best-practice task order".into()
+                    )]
+                )
+                .is_ok()
+        );
+
+        let duplicate = serde_json::to_string(&Catalog::builtin()).unwrap();
+        assert!(
+            engine
+                .add_catalog_json(&duplicate)
+                .unwrap_err()
+                .contains("more than one catalog")
+        );
     }
 
     #[test]

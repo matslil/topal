@@ -15,5 +15,8 @@ topal-source = { path = "../topal-source" }
 topal-syntax = { path = "../topal-syntax" }
 topal-linter = { path = "../topal-linter" }
 
+[dev-dependencies]
+topal-best-practices = { path = "../topal-best-practices" }
+
 [lints]
 workspace = true
