@@ -178,6 +178,8 @@ pub struct BestPracticeDiagnostic {
     pub identity: String,
     pub version: String,
     pub rule_version: String,
+    pub checkability: Option<Box<str>>,
+    pub confidence: Option<Box<str>>,
     pub suggestion: Option<Box<str>>,
 }
 
@@ -262,6 +264,8 @@ impl Diagnostic {
             identity: identity.into(),
             version: version.into(),
             rule_version: rule_version.into(),
+            checkability: None,
+            confidence: None,
             suggestion: None,
         }));
         self
@@ -279,8 +283,23 @@ impl Diagnostic {
             identity: identity.into(),
             version: version.into(),
             rule_version: rule_version.into(),
+            checkability: None,
+            confidence: None,
             suggestion: Some(suggestion.into().into_boxed_str()),
         }));
+        self
+    }
+
+    #[must_use]
+    pub fn with_best_practice_checkability(
+        mut self,
+        checkability: impl Into<String>,
+        confidence: Option<&str>,
+    ) -> Self {
+        if let Some(context) = &mut self.best_practice {
+            context.checkability = Some(checkability.into().into_boxed_str());
+            context.confidence = confidence.map(Into::into);
+        }
         self
     }
 
@@ -312,6 +331,22 @@ impl Diagnostic {
                 &mut rendered,
                 format_args!(
                     "\n{empty:>width$} |\n{empty:>width$} = help: {help}",
+                    empty = "",
+                    width = self.line.to_string().len()
+                ),
+            );
+        }
+        if let Some(context) = &self.best_practice
+            && let Some(checkability) = &context.checkability
+        {
+            let detail = context.confidence.as_deref().map_or_else(
+                || format!("{checkability}"),
+                |confidence| format!("{checkability}: {confidence}"),
+            );
+            let _ = fmt::Write::write_fmt(
+                &mut rendered,
+                format_args!(
+                    "\n{empty:>width$} = checkability: {detail}",
                     empty = "",
                     width = self.line.to_string().len()
                 ),
@@ -520,7 +555,8 @@ mod tests {
                 "v0.2",
                 "v0.3",
                 "apply the documented structure",
-            );
+            )
+            .with_best_practice_checkability("heuristic", Some("indirect calls are not resolved"));
         assert_eq!(diagnostic.severity, Severity::Warning);
         assert_eq!(
             diagnostic.best_practice,
@@ -528,6 +564,8 @@ mod tests {
                 identity: "lang best-practice example".into(),
                 version: "v0.2".into(),
                 rule_version: "v0.3".into(),
+                checkability: Some("heuristic".into()),
+                confidence: Some("indirect calls are not resolved".into()),
                 suggestion: Some("apply the documented structure".into()),
             }))
         );
@@ -535,6 +573,11 @@ mod tests {
             diagnostic
                 .render("example.t")
                 .contains("= suggestion: apply the documented structure")
+        );
+        assert!(
+            diagnostic
+                .render("example.t")
+                .contains("= checkability: heuristic: indirect calls are not resolved")
         );
     }
 }

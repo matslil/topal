@@ -1,5 +1,5 @@
 {
-  "schema": 5,
+  "schema": 6,
   "identity": ["lang", "best-practice", "task", "declaration-order"],
   "version": "v0.1",
   "status": {
@@ -20,6 +20,7 @@
   "default_enabled": false,
   "default_severity": "warning",
   "checkability": "formally-decidable",
+  "confidence": null,
   "rectification": "suggestion",
   "tags": [
     ["lang", "best-practice", "tag", "style"],

@@ -1,7 +1,7 @@
 {
-  "generated_by": "topal-best-practices/5",
-  "schema": 5,
-  "authoritative_sha256": "3d922b05df51ab94d109d18f92dab39734df570edefb1ae6bfcd7d41ce6aa9dd",
+  "generated_by": "topal-best-practices/6",
+  "schema": 6,
+  "authoritative_sha256": "c5e284c8fab471c1731420b75cc12e8f93d5ec1a2ef109258ac9654648099adc",
   "identity": "lang best-practice task state-machine",
   "version": "v0.1",
   "status": {
@@ -30,6 +30,7 @@
   "default_enabled": false,
   "default_severity": "warning",
   "checkability": "heuristic",
+  "confidence": "High confidence that the task has no syntactically explicit state update in a message handler; the syntax view does not resolve indirect transitions through called functions.",
   "rectification": "suggestion",
   "tags": [
     "lang best-practice tag architecture",

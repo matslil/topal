@@ -460,6 +460,8 @@ fn protocol_diagnostic(text: &str, diagnostic: &Diagnostic) -> Value {
             "bestPractice": best_practice.identity,
             "bestPracticeVersion": best_practice.version,
             "ruleVersion": best_practice.rule_version,
+            "checkability": best_practice.checkability.as_deref(),
+            "confidence": best_practice.confidence.as_deref(),
             "rectification": best_practice.suggestion.as_deref().map(|message| json!({
                 "kind": "suggestion",
                 "message": message
@@ -789,6 +791,13 @@ mod tests {
                 .as_str()
                 .unwrap()
                 .contains("Start an event-driven state machine")
+        );
+        assert_eq!(diagnostic["data"]["checkability"], "heuristic");
+        assert!(
+            diagnostic["data"]["confidence"]
+                .as_str()
+                .unwrap()
+                .contains("indirect transitions")
         );
         assert_eq!(diagnostic["range"]["start"]["line"], 4);
         assert_eq!(diagnostic["range"]["start"]["character"], 0);

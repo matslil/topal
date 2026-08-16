@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://topal.dev/schema/best-practice-v5.json",
+  "$id": "https://topal.dev/schema/best-practice-v6.json",
   "title": "Topal best-practice bootstrap record",
   "type": "object",
   "additionalProperties": false,
@@ -8,11 +8,11 @@
     "schema", "identity", "version", "status", "class", "title", "summary",
     "recommendation", "rationale", "language", "language_versions",
     "required_features", "excluded_features", "default_enabled",
-    "default_severity", "checkability", "rectification", "tags", "exceptions",
+    "default_severity", "checkability", "confidence", "rectification", "tags", "exceptions",
     "examples", "specification_rules", "lint_rule", "provenance", "license"
   ],
   "properties": {
-    "schema": { "const": 5 },
+    "schema": { "const": 6 },
     "identity": { "$ref": "#/$defs/identity" },
     "version": { "type": "string", "minLength": 1 },
     "status": {
@@ -38,6 +38,7 @@
     "default_enabled": { "type": "boolean" },
     "default_severity": { "enum": ["warning", "error"] },
     "checkability": { "enum": ["guidance-only", "heuristic", "semantic", "formally-decidable"] },
+    "confidence": { "type": ["string", "null"] },
     "rectification": { "enum": ["unavailable", "suggestion", "automatic"] },
     "tags": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/identity" } },
     "exceptions": { "$ref": "#/$defs/strings" },

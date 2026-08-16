@@ -144,6 +144,10 @@ struct JsonDiagnostic<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     rule_version: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    checkability: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    confidence: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     help: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     rectification: Option<JsonRectification<'a>>,
@@ -170,6 +174,8 @@ impl<'a> JsonDiagnostic<'a> {
             best_practice: best_practice.map(|context| context.identity.as_str()),
             best_practice_version: best_practice.map(|context| context.version.as_str()),
             rule_version: best_practice.map(|context| context.rule_version.as_str()),
+            checkability: best_practice.and_then(|context| context.checkability.as_deref()),
+            confidence: best_practice.and_then(|context| context.confidence.as_deref()),
             help: diagnostic.help.as_deref(),
             rectification: best_practice.and_then(|context| {
                 context
@@ -251,6 +257,18 @@ fn sarif_result(source: &str, diagnostic: &Diagnostic) -> serde_json::Value {
             "ruleVersion".into(),
             serde_json::Value::String(best_practice.rule_version.clone()),
         );
+        if let Some(checkability) = &best_practice.checkability {
+            properties.insert(
+                "checkability".into(),
+                serde_json::Value::String(checkability.to_string()),
+            );
+        }
+        if let Some(confidence) = &best_practice.confidence {
+            properties.insert(
+                "confidence".into(),
+                serde_json::Value::String(confidence.to_string()),
+            );
+        }
         if let Some(suggestion) = &best_practice.suggestion {
             properties.insert(
                 "rectification".into(),
@@ -708,6 +726,10 @@ fn explain_entry(catalog: &Catalog, identity: &str, overrides: &[Override]) -> R
     }
     println!("class: {}", entry.class);
     println!("recommendation: {}", entry.recommendation);
+    println!("checkability: {}", entry.checkability);
+    if let Some(confidence) = &entry.confidence {
+        println!("confidence: {confidence}");
+    }
     println!("enabled: {}", policy.enabled);
     println!("severity: {}", policy.severity.label());
     println!("language: {} {}", entry.language, entry.language_versions);
@@ -964,6 +986,10 @@ fn analyze_text(
                         &entry.version,
                         &rule.version,
                         rule_finding.suggestion,
+                    )
+                    .with_best_practice_checkability(
+                        &entry.checkability,
+                        entry.confidence.as_deref(),
                     );
                     findings.push(diagnostic);
                     has_error |= entry_policy.severity == Severity::Error;
