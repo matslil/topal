@@ -918,13 +918,9 @@ fn analyze_text(
         }
     }
     if seen.is_empty() {
-        let selected_version = selected_language_version(&source, &parsed.statements);
         for entry in &catalog.entries {
             let entry_policy = policy(entry, overrides)?;
             if !entry_policy.enabled {
-                continue;
-            }
-            if !entry_applies(entry, selected_version)? {
                 continue;
             }
             if let Some(rule) = &entry.lint_rule {
@@ -1006,46 +1002,65 @@ fn topal_rule(
     )?;
     match rule.view.as_str() {
         "task-declaration-order/1" => {
-            topal_task_declaration_order(rule_source, &rule.entry_point, source, statements)
+            topal_task_declaration_order(entry, rule_source, &rule.entry_point, source, statements)
         }
         "task-state-machine/1" => {
-            topal_task_state_machine(rule_source, &rule.entry_point, source, statements)
+            topal_task_state_machine(entry, rule_source, &rule.entry_point, source, statements)
         }
         _ => unreachable!("view checked above"),
     }
 }
 
 fn topal_task_state_machine(
+    entry: &CatalogEntry,
     rule_source: &str,
     entry_point: &str,
     source: &SourceText,
     statements: &[Statement],
 ) -> Result<Vec<RuleFinding>, String> {
     let mut findings = Vec::new();
-    visit_topal_task_state_machine(rule_source, entry_point, source, statements, &mut findings)?;
+    visit_topal_task_state_machine(
+        entry,
+        rule_source,
+        entry_point,
+        source,
+        statements,
+        &mut ApplicabilityContext::default(),
+        &mut findings,
+    )?;
     Ok(findings)
 }
 
 fn visit_topal_task_state_machine(
+    entry: &CatalogEntry,
     rule_source: &str,
     entry_point: &str,
     source: &SourceText,
     statements: &[Statement],
+    context: &mut ApplicabilityContext,
     findings: &mut Vec<RuleFinding>,
 ) -> Result<(), String> {
     for statement in statements {
         match statement {
+            Statement::LanguageSelection {
+                version, features, ..
+            } => context.select(source, *version, features),
             Statement::Published { declaration, .. } => visit_topal_task_state_machine(
+                entry,
                 rule_source,
                 entry_point,
                 source,
                 std::slice::from_ref(declaration.as_ref()),
+                context,
                 findings,
             )?,
             Statement::Implementation {
                 name, declarations, ..
             } => {
-                if is_task_definition(source, declarations) {
+                let features = task_features(source, declarations, context);
+                if is_task_definition(source, declarations)
+                    && entry_applies(entry, context.version.as_deref(), &features)?
+                {
                     let has_state = declarations
                         .iter()
                         .any(|declaration| matches!(declaration, Statement::StateField { .. }));
@@ -1072,24 +1087,36 @@ fn visit_topal_task_state_machine(
                     }
                 }
                 visit_topal_task_state_machine(
+                    entry,
                     rule_source,
                     entry_point,
                     source,
                     declarations,
+                    &mut context.clone(),
                     findings,
                 )?;
             }
             Statement::Function { body, .. }
             | Statement::Generator { body, .. }
             | Statement::Foreach { body, .. } => {
-                visit_topal_task_state_machine(rule_source, entry_point, source, body, findings)?;
+                visit_topal_task_state_machine(
+                    entry,
+                    rule_source,
+                    entry_point,
+                    source,
+                    body,
+                    &mut context.clone(),
+                    findings,
+                )?;
             }
             Statement::InterfaceImplementation { declarations, .. } => {
                 visit_topal_task_state_machine(
+                    entry,
                     rule_source,
                     entry_point,
                     source,
                     declarations,
+                    &mut context.clone(),
                     findings,
                 )?;
             }
@@ -1126,34 +1153,53 @@ fn evaluate_topal_boolean_rule(
 }
 
 fn topal_task_declaration_order(
+    entry: &CatalogEntry,
     rule_source: &str,
     entry_point: &str,
     source: &SourceText,
     statements: &[Statement],
 ) -> Result<Vec<RuleFinding>, String> {
     let mut findings = Vec::new();
-    visit_topal_task_order(rule_source, entry_point, source, statements, &mut findings)?;
+    visit_topal_task_order(
+        entry,
+        rule_source,
+        entry_point,
+        source,
+        statements,
+        &mut ApplicabilityContext::default(),
+        &mut findings,
+    )?;
     Ok(findings)
 }
 
 fn visit_topal_task_order(
+    entry: &CatalogEntry,
     rule_source: &str,
     entry_point: &str,
     source: &SourceText,
     statements: &[Statement],
+    context: &mut ApplicabilityContext,
     findings: &mut Vec<RuleFinding>,
 ) -> Result<(), String> {
     for statement in statements {
         match statement {
+            Statement::LanguageSelection {
+                version, features, ..
+            } => context.select(source, *version, features),
             Statement::Published { declaration, .. } => visit_topal_task_order(
+                entry,
                 rule_source,
                 entry_point,
                 source,
                 std::slice::from_ref(declaration.as_ref()),
+                context,
                 findings,
             )?,
             Statement::Implementation { declarations, .. } => {
-                if is_task_definition(source, declarations) {
+                let features = task_features(source, declarations, context);
+                if is_task_definition(source, declarations)
+                    && entry_applies(entry, context.version.as_deref(), &features)?
+                {
                     check_topal_task_order(
                         rule_source,
                         entry_point,
@@ -1162,15 +1208,39 @@ fn visit_topal_task_order(
                         findings,
                     )?;
                 }
-                visit_topal_task_order(rule_source, entry_point, source, declarations, findings)?;
+                visit_topal_task_order(
+                    entry,
+                    rule_source,
+                    entry_point,
+                    source,
+                    declarations,
+                    &mut context.clone(),
+                    findings,
+                )?;
             }
             Statement::Function { body, .. }
             | Statement::Generator { body, .. }
             | Statement::Foreach { body, .. } => {
-                visit_topal_task_order(rule_source, entry_point, source, body, findings)?;
+                visit_topal_task_order(
+                    entry,
+                    rule_source,
+                    entry_point,
+                    source,
+                    body,
+                    &mut context.clone(),
+                    findings,
+                )?;
             }
             Statement::InterfaceImplementation { declarations, .. } => {
-                visit_topal_task_order(rule_source, entry_point, source, declarations, findings)?;
+                visit_topal_task_order(
+                    entry,
+                    rule_source,
+                    entry_point,
+                    source,
+                    declarations,
+                    &mut context.clone(),
+                    findings,
+                )?;
             }
             _ => {}
         }
@@ -1231,17 +1301,47 @@ fn evaluate_topal_rule_application(
     }
 }
 
-fn selected_language_version<'a>(
-    source: &'a SourceText,
-    statements: &'a [Statement],
-) -> Option<&'a str> {
-    statements.first().and_then(|statement| match statement {
-        Statement::LanguageSelection { version, .. } => Some(source.slice(*version)),
-        _ => None,
-    })
+#[derive(Clone, Default)]
+struct ApplicabilityContext {
+    version: Option<String>,
+    selected_features: BTreeSet<String>,
 }
 
-fn entry_applies(entry: &CatalogEntry, selected_version: Option<&str>) -> Result<bool, String> {
+impl ApplicabilityContext {
+    fn select(&mut self, source: &SourceText, version: Span, features: &[Span]) {
+        self.version = Some(source.slice(version).to_owned());
+        self.selected_features = features
+            .iter()
+            .map(|feature| source.slice(*feature).to_owned())
+            .collect();
+    }
+}
+
+fn task_features(
+    source: &SourceText,
+    declarations: &[Statement],
+    context: &ApplicabilityContext,
+) -> BTreeSet<String> {
+    let mut features = context.selected_features.clone();
+    features.insert("task".into());
+    if declarations.iter().any(|declaration| match declaration {
+        Statement::Function { parameters, .. } | Statement::Generator { parameters, .. } => {
+            parameters
+                .iter()
+                .any(|parameter| source.slice(parameter.classifier) == "MessageContext")
+        }
+        _ => false,
+    }) {
+        features.insert("message".into());
+    }
+    features
+}
+
+fn entry_applies(
+    entry: &CatalogEntry,
+    selected_version: Option<&str>,
+    features: &BTreeSet<String>,
+) -> Result<bool, String> {
     if entry.language != "topal" {
         return Ok(false);
     }
@@ -1255,6 +1355,17 @@ fn entry_applies(entry: &CatalogEntry, selected_version: Option<&str>) -> Result
         selected == parse_version(&entry.language_versions)?
     };
     if !version_matches {
+        return Ok(false);
+    }
+    if !entry
+        .required_features
+        .iter()
+        .all(|feature| features.contains(feature))
+        || entry
+            .excluded_features
+            .iter()
+            .any(|feature| features.contains(feature))
+    {
         return Ok(false);
     }
     if entry.status.kind == "obsolete" {
@@ -1591,16 +1702,43 @@ mod tests {
             .into_iter()
             .find(|entry| entry.identity.ends_with("declaration-order"))
             .unwrap();
-        assert!(entry_applies(&entry, Some("v0.1")).unwrap());
-        assert!(entry_applies(&entry, Some("v0.2")).unwrap());
-        assert!(!entry_applies(&entry, None).unwrap());
+        let features = BTreeSet::from(["task".to_string()]);
+        assert!(entry_applies(&entry, Some("v0.1"), &features).unwrap());
+        assert!(entry_applies(&entry, Some("v0.2"), &features).unwrap());
+        assert!(!entry_applies(&entry, None, &features).unwrap());
 
         entry.status.kind = "obsolete".into();
         entry.status.since_language_version = Some("v0.2".into());
         entry.status.explanation = Some("covered by the language".into());
-        assert!(entry_applies(&entry, Some("v0.1")).unwrap());
-        assert!(!entry_applies(&entry, Some("v0.2")).unwrap());
-        assert!(!entry_applies(&entry, Some("v0.3")).unwrap());
+        assert!(entry_applies(&entry, Some("v0.1"), &features).unwrap());
+        assert!(!entry_applies(&entry, Some("v0.2"), &features).unwrap());
+        assert!(!entry_applies(&entry, Some("v0.3"), &features).unwrap());
+    }
+
+    #[test]
+    fn applicability_tracks_each_selected_context_and_used_feature() {
+        let mut external = Catalog::builtin();
+        external
+            .entries
+            .retain(|entry| entry.identity.ends_with("declaration-order"));
+        external.entries[0].identity = "org.example best-practice selected task order".into();
+        external.entries[0].required_features = vec!["task".into(), "experimental".into()];
+        external.entries[0].excluded_features = vec!["legacy".into()];
+        let mut engine = LintEngine::builtin();
+        engine
+            .add_catalog_json(&serde_json::to_string(&external).unwrap())
+            .unwrap();
+        let source = "use language ( version is v0.1 )\nFirst is Task (queue-size is 1)\nfirst is First\n  start is fn (initial : Nat) -> Completed\n    Completed\n  count : Nat\nuse language ( version is v0.1, features is ( experimental ) )\nSecond is Task (queue-size is 1)\nsecond is Second\n  start is fn (initial : Nat) -> Completed\n    Completed\n  count : Nat\nuse language ( version is v0.1, features is ( experimental, legacy ) )\nThird is Task (queue-size is 1)\nthird is Third\n  start is fn (initial : Nat) -> Completed\n    Completed\n  count : Nat\n";
+        let report = engine
+            .lint_text(
+                source,
+                &[LintControl::Enable(
+                    "org.example best-practice selected task order".into(),
+                )],
+            )
+            .unwrap();
+        assert_eq!(report.diagnostics.len(), 1);
+        assert_eq!(report.diagnostics[0].line, 12);
     }
 
     #[test]
