@@ -29,6 +29,8 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/tasks.md` | 5 | 7 | `topal-syntax`, `topal-language`, shared execution tools | static, runtime | complete |
 | `spec/serialization.md` | 22 | 8 | shared layout and serialization codecs | artifact, runtime | complete |
 | `spec/generic-ir.md` | 10 | 9 | shared generic artifact model | artifact, compiler-only | complete |
+| `spec/tracing.md` | 4 | 9 | shared semantic tracing and adapters | static, runtime, artifact | complete |
+| `spec/debugger-scripting.md` | 2 | 9 | `topal-debugger`, shared language variants | static, runtime | complete |
 
 ## Cross-tool evidence
 
