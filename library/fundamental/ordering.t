@@ -2,14 +2,14 @@
 use language (
   version is v0.1
 )
-# Select the lesser or greater of two Int values without introducing a sorting
-# or collection dependency.
-pub minimum is fn (left : Int, right : Int) -> Int
+# Select the lesser or greater of two values through their shared TotalOrder
+# evidence without imposing a concrete representation.
+pub minimum is fn (left : (Value : TotalOrder), right : Value) -> Value
   left
     < right then left
     otherwise right
 
-pub maximum is fn (left : Int, right : Int) -> Int
+pub maximum is fn (left : (Value : TotalOrder), right : Value) -> Value
   left
     > right then left
     otherwise right

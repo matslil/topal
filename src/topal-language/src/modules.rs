@@ -103,4 +103,33 @@ mod tests {
         assert_eq!(value, Value::Int(BigInt::from(2)));
         assert!(trace.iter().any(|event| event.contains("module.loaded")));
     }
+
+    #[test]
+    fn shared_library_ordering_retains_one_exact_generic_type() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        load_module_tree(&mut session, &root, &mut trace).unwrap();
+        let value = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\nminimum is fundamental ordering minimum\nminimum ((1, 3), (1, 2))",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(
+            value,
+            Value::Tuple(vec![
+                Value::Int(BigInt::from(1)),
+                Value::Int(BigInt::from(2))
+            ])
+        );
+
+        let error = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\nminimum (1, 1.0)",
+                &mut trace,
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "E-FUNCTION-ARGUMENT-TYPE");
+    }
 }

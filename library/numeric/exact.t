@@ -11,5 +11,14 @@ pub sign is fn (value : Int) -> Int
     > 0 then 1
     otherwise 0
 
+pub sign is fn (value : Rational) -> Int
+  value
+    < 0 then -1
+    > 0 then 1
+    otherwise 0
+
 pub distance is fn (left : Int, right : Int) -> Nat
+  absolute (left - right)
+
+pub distance is fn (left : Rational, right : Rational) -> Rational
   absolute (left - right)

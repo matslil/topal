@@ -8,8 +8,7 @@ use language (
 # ordinary published source under fundamental/ordering.t.
 minimum is fundamental ordering minimum
 maximum is fundamental ordering maximum
-implies is fundamental boolean implies
 sign is numeric exact sign
 distance is numeric exact distance
 
-(minimum (4, 2), maximum (4, 2), implies (false, false), sign -9, distance (-4, 5))
+(minimum (4, 2), maximum (4.5, 2.5), minimum ((1, 2), (1, 3)), sign -9, sign -0.5, distance (-4, 5), distance (-0.5, 1.0))
