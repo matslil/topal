@@ -43,6 +43,12 @@ Entries declaring suggestion rectification emit a structured rectification
 object in JSON and SARIF and a separate `suggestion` line in terminal output;
 the advice is not treated as an automatic edit.
 
+`--fix` applies only structured automatic rectifications classified as
+presentation-only, syntax-preserving, or semantics-proven. It rejects invalid
+or overlapping edits, reparses and re-lints the complete candidate, and then
+replaces the source atomically. Suggestion and review-required rectifications
+remain output-only.
+
 The `topal-linter` library exposes the same engine through `lint_text` for
 in-memory consumers such as the language server. It returns shared diagnostic
 records and never formats output or reads a source path; the binary remains a

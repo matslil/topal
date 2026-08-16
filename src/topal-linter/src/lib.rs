@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 use std::env;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -26,6 +27,7 @@ const USAGE: &str = "usage: topal-lint [OPTIONS] SOURCE...\n\
   --enable SELECTOR              enable an identity, namespace:PATH, or tag:ID\n\
   --disable SELECTOR             disable an identity, namespace:PATH, or tag:ID\n\
   --severity SELECTOR=LEVEL      set warning, error, or off\n\
+  --fix                          apply eligible automatic rectifications\n\
   --format terminal|json|sarif   select finding presentation";
 
 fn parse_severity(value: &str) -> Result<Option<Severity>, String> {
@@ -117,6 +119,7 @@ struct Options {
     catalogs: Vec<PathBuf>,
     overrides: Vec<Override>,
     format: Option<Format>,
+    fix: bool,
     sources: Vec<PathBuf>,
     check_rule: Option<PathBuf>,
     entry_point: Option<String>,
@@ -322,6 +325,7 @@ fn run(arguments: impl Iterator<Item = String>) -> Result<bool, String> {
             || !options.sources.is_empty()
             || !options.catalogs.is_empty()
             || !options.overrides.is_empty()
+            || options.fix
         {
             return Err(
                 "--check-rule cannot be combined with catalog queries or source linting".into(),
@@ -351,7 +355,13 @@ fn run(arguments: impl Iterator<Item = String>) -> Result<bool, String> {
     let mut emitter = Emitter::new(format);
     let mut has_error = false;
     for path in &options.sources {
-        has_error |= lint_source(path, &catalog, &options.overrides, &mut emitter)?;
+        has_error |= lint_source(
+            path,
+            &catalog,
+            &options.overrides,
+            options.fix,
+            &mut emitter,
+        )?;
     }
     emitter.finish()?;
     Ok(has_error)
@@ -400,6 +410,7 @@ fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, Str
                 });
                 order += 1;
             }
+            "--fix" => options.fix = true,
             "--format" => {
                 options.format = Some(match next_value(&mut arguments, "--format")?.as_str() {
                     "terminal" => Format::Terminal,
@@ -771,15 +782,106 @@ fn lint_source(
     path: &Path,
     catalog: &Catalog,
     overrides: &[Override],
+    fix: bool,
     emitter: &mut Emitter,
 ) -> Result<bool, String> {
     let text = fs::read_to_string(path)
         .map_err(|error| format!("cannot read source {}: {error}", path.display()))?;
-    let report = analyze_text(&text, catalog, overrides)?;
+    let mut report = analyze_text(&text, catalog, overrides)?;
+    if fix && report.rectifications.iter().any(SourceEdit::is_eligible) {
+        let changed = apply_source_edits(&text, &report.rectifications)?;
+        require_clean_syntax(&changed)?;
+        report = analyze_text(&changed, catalog, overrides)?;
+        if report.rectifications.iter().any(SourceEdit::is_eligible) {
+            return Err(format!(
+                "automatic rectification did not converge for {}",
+                path.display()
+            ));
+        }
+        replace_source_atomically(path, &changed)?;
+    }
     for diagnostic in &report.diagnostics {
         emitter.emit(diagnostic, path)?;
     }
     Ok(report.has_errors)
+}
+
+/// Apply eligible rectifications transactionally in memory.
+///
+/// # Errors
+///
+/// Returns an error when a span is outside the source, splits a UTF-8 scalar,
+/// or overlaps another eligible edit. Review-required edits are not applied.
+pub fn apply_source_edits(text: &str, edits: &[SourceEdit]) -> Result<String, String> {
+    let mut eligible = edits
+        .iter()
+        .filter(|edit| edit.is_eligible())
+        .collect::<Vec<_>>();
+    eligible.sort_by_key(|edit| (edit.span.start, edit.span.end));
+    let mut previous_end = 0;
+    for edit in &eligible {
+        if edit.span.start > edit.span.end
+            || edit.span.end > text.len()
+            || !text.is_char_boundary(edit.span.start)
+            || !text.is_char_boundary(edit.span.end)
+        {
+            return Err("automatic rectification has an invalid source span".into());
+        }
+        if edit.span.start < previous_end {
+            return Err("automatic rectifications overlap".into());
+        }
+        previous_end = edit.span.end;
+    }
+    let mut changed = text.to_owned();
+    for edit in eligible.into_iter().rev() {
+        changed.replace_range(edit.span.start..edit.span.end, &edit.replacement);
+    }
+    Ok(changed)
+}
+
+fn require_clean_syntax(text: &str) -> Result<(), String> {
+    let source = SourceText::new(text)
+        .map_err(|error| format!("rectified source is invalid: {}", error.message))?;
+    let lexed = lex(&source);
+    let parsed = parse(&source, &lexed);
+    if let Some(diagnostic) = lexed.diagnostics.first().or(parsed.diagnostics.first()) {
+        return Err(format!(
+            "rectified source failed reparse with {}: {}",
+            diagnostic.code, diagnostic.message
+        ));
+    }
+    Ok(())
+}
+
+fn replace_source_atomically(path: &Path, text: &str) -> Result<(), String> {
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| format!("source path {} has no file name", path.display()))?;
+    let temporary = path.with_file_name(format!(".{file_name}.topal-fix-{}", std::process::id()));
+    let metadata = fs::metadata(path)
+        .map_err(|error| format!("cannot inspect source {}: {error}", path.display()))?;
+    let mut output = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .map_err(|error| format!("cannot create rectification transaction: {error}"))?;
+    let result = (|| {
+        output
+            .write_all(text.as_bytes())
+            .map_err(|error| format!("cannot write rectified source: {error}"))?;
+        output
+            .sync_all()
+            .map_err(|error| format!("cannot synchronize rectified source: {error}"))?;
+        fs::set_permissions(&temporary, metadata.permissions())
+            .map_err(|error| format!("cannot preserve source permissions: {error}"))?;
+        fs::rename(&temporary, path)
+            .map_err(|error| format!("cannot replace source {}: {error}", path.display()))
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&temporary);
+    }
+    result
 }
 
 /// Diagnostics produced by one in-memory linter analysis.
@@ -787,6 +889,30 @@ fn lint_source(
 pub struct LintReport {
     pub diagnostics: Vec<Diagnostic>,
     pub has_errors: bool,
+    pub rectifications: Vec<SourceEdit>,
+}
+
+/// A half-open replacement in normalized UTF-8 source coordinates.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SourceEdit {
+    pub span: Span,
+    pub replacement: String,
+    pub safety: RectificationSafety,
+}
+
+impl SourceEdit {
+    const fn is_eligible(&self) -> bool {
+        !matches!(self.safety, RectificationSafety::ReviewRequired)
+    }
+}
+
+/// Evidence level controlling whether `--fix` may apply an edit.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RectificationSafety {
+    PresentationOnly,
+    SyntaxPreserving,
+    SemanticsProven,
+    ReviewRequired,
 }
 
 /// One ordered lint-policy control shared by command, editor, and embedding
@@ -912,25 +1038,15 @@ fn analyze_text(
     overrides: &[Override],
 ) -> Result<LintReport, String> {
     let mut findings = Vec::new();
-    let source = match SourceText::new(text) {
+    let source = match normalized_lint_source(text) {
         Ok(source) => source,
-        Err(error) => {
-            findings.push(source_diagnostic(
-                text,
-                error.span,
-                error.code,
-                error.message,
-            ));
-            return Ok(LintReport {
-                diagnostics: findings,
-                has_errors: true,
-            });
-        }
+        Err(report) => return Ok(report),
     };
     let lexed = lex(&source);
     let parsed = parse(&source, &lexed);
     let mut seen = BTreeSet::new();
     let mut has_error = false;
+    let mut rectifications = Vec::new();
     let mut diagnostics = Vec::new();
     diagnostics.extend(lexed.diagnostics.iter());
     diagnostics.extend(parsed.diagnostics.iter());
@@ -964,6 +1080,9 @@ fn analyze_text(
                         rule_finding.span,
                     ) {
                         continue;
+                    }
+                    if let Some(rectification) = rule_finding.rectification.clone() {
+                        rectifications.push(rectification);
                     }
                     let position = source.position(rule_finding.span.start);
                     let diagnostic = match entry_policy.severity {
@@ -1009,6 +1128,20 @@ fn analyze_text(
     Ok(LintReport {
         diagnostics: findings,
         has_errors: has_error,
+        rectifications,
+    })
+}
+
+fn normalized_lint_source(text: &str) -> Result<SourceText, LintReport> {
+    SourceText::new(text).map_err(|error| LintReport {
+        diagnostics: vec![source_diagnostic(
+            text,
+            error.span,
+            error.code,
+            error.message,
+        )],
+        has_errors: true,
+        rectifications: Vec::new(),
     })
 }
 
@@ -1210,6 +1343,7 @@ fn visit_topal_task_state_machine(
                             span: *name,
                             message: "stateful task declares no explicit message transition",
                             suggestion: "update task-owned state in the handler for each state-changing event",
+                            rectification: None,
                         });
                     }
                 }
@@ -1394,6 +1528,7 @@ fn check_topal_task_order(
                 span,
                 message: "task declaration is outside the recommended lifecycle section",
                 suggestion: expected,
+                rectification: None,
             });
         }
         previous = Some(phase);
@@ -1535,6 +1670,7 @@ struct RuleFinding {
     span: Span,
     message: &'static str,
     suggestion: &'static str,
+    rectification: Option<SourceEdit>,
 }
 
 fn is_task_definition(source: &SourceText, declarations: &[Statement]) -> bool {
@@ -1624,6 +1760,65 @@ fn byte_position(text: &str, offset: usize) -> (usize, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn automatic_edits_are_ordered_and_review_required_edits_are_ignored() {
+        let edits = [
+            SourceEdit {
+                span: Span::new(4, 5),
+                replacement: "B".into(),
+                safety: RectificationSafety::SyntaxPreserving,
+            },
+            SourceEdit {
+                span: Span::new(0, 1),
+                replacement: "A".into(),
+                safety: RectificationSafety::SemanticsProven,
+            },
+            SourceEdit {
+                span: Span::new(2, 3),
+                replacement: "ignored".into(),
+                safety: RectificationSafety::ReviewRequired,
+            },
+        ];
+        assert_eq!(apply_source_edits("01245", &edits).unwrap(), "A124B");
+    }
+
+    #[test]
+    fn automatic_edits_reject_overlap_and_invalid_utf8_boundaries() {
+        let edit = |span| SourceEdit {
+            span,
+            replacement: String::new(),
+            safety: RectificationSafety::PresentationOnly,
+        };
+        assert!(
+            apply_source_edits("abcd", &[edit(Span::new(0, 2)), edit(Span::new(1, 3))])
+                .unwrap_err()
+                .contains("overlap")
+        );
+        assert!(
+            apply_source_edits("å", &[edit(Span::new(1, 2))])
+                .unwrap_err()
+                .contains("invalid source span")
+        );
+    }
+
+    #[test]
+    fn rectified_candidate_must_reparse_before_replacement() {
+        assert!(require_clean_syntax("value is 1").is_ok());
+        assert!(require_clean_syntax("value is #").is_err());
+    }
+
+    #[test]
+    fn accepted_candidate_replaces_the_complete_file_transactionally() {
+        let path = std::env::temp_dir().join(format!(
+            "topal-lint-rectification-transaction-{}.t",
+            std::process::id()
+        ));
+        fs::write(&path, "value is 1\n").unwrap();
+        replace_source_atomically(&path, "value is 2\n").unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), "value is 2\n");
+        fs::remove_file(path).unwrap();
+    }
 
     fn entry() -> CatalogEntry {
         Catalog::builtin().entries.remove(0)

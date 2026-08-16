@@ -64,3 +64,12 @@ When an entry declares suggestion rectification, each finding SHALL carry the
 suggestion as structured rectification data distinct from general explanatory
 help. Presentation adapters SHALL preserve that distinction. A suggestion
 SHALL NOT be represented or applied as an automatic source edit.
+
+An automatic rectification SHALL consist of half-open normalized-source spans,
+replacement text, and one of `presentation-only`, `syntax-preserving`,
+`semantics-proven`, or `review-required`. Default fixing SHALL apply only the
+first three classes. Before changing a source file, the tool SHALL reject
+invalid or overlapping eligible spans, apply the complete edit set in memory,
+reparse and recheck the result, reject a non-convergent edit set, and replace
+the file as one transaction.
+`review-required` edits SHALL remain unapplied.
