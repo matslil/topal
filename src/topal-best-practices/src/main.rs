@@ -331,11 +331,26 @@ fn validate_checkability(record: &BestPractice) -> Result<(), String> {
         return Err("unknown best-practice checkability".into());
     }
     match (record.checkability.as_str(), record.confidence.as_deref()) {
-        ("heuristic", Some(confidence)) if !confidence.is_empty() => Ok(()),
-        ("heuristic", _) => Err("a heuristic best-practice explains its confidence".into()),
-        (_, None) => Ok(()),
-        _ => Err("only a heuristic best-practice records confidence".into()),
+        ("heuristic", Some(confidence)) if !confidence.is_empty() => {}
+        ("heuristic", _) => {
+            return Err("a heuristic best-practice explains its confidence".into());
+        }
+        (_, None) => {}
+        _ => return Err("only a heuristic best-practice records confidence".into()),
     }
+    if record.lint_rule.is_some()
+        && record.default_severity == "error"
+        && !matches!(
+            record.checkability.as_str(),
+            "semantic" | "formally-decidable"
+        )
+    {
+        return Err(
+            "an executable default-error best-practice requires semantic or formally-decidable checkability"
+                .into(),
+        );
+    }
+    Ok(())
 }
 
 fn generate(root: &Path, entries: &[Entry]) -> Result<(), String> {
@@ -715,6 +730,21 @@ mod tests {
             validate(&root, &entry.directory, &record)
                 .unwrap_err()
                 .contains("storage path")
+        );
+    }
+
+    #[test]
+    fn executable_default_error_requires_sound_checkability() {
+        let (root, entry) = first_entry();
+        let mut record = entry.record.clone();
+        record.class = "best-practice".into();
+        record.default_severity = "error".into();
+        record.checkability = "heuristic".into();
+        record.confidence = Some("the syntax view may produce false positives".into());
+        assert!(
+            validate(&root, &entry.directory, &record)
+                .unwrap_err()
+                .contains("requires semantic or formally-decidable")
         );
     }
 }

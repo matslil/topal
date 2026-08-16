@@ -153,6 +153,17 @@ fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
     ) {
         return Err(format!("unknown best-practice class `{}`", entry.class));
     }
+    let expected_severity = match entry.class.as_str() {
+        "template" | "recommended" => "warning",
+        "best-practice" => "error",
+        _ => unreachable!("class checked above"),
+    };
+    if entry.default_severity != expected_severity {
+        return Err(format!(
+            "best-practice `{}` class {} requires default severity {expected_severity}",
+            entry.identity, entry.class
+        ));
+    }
     if entry.recommendation.is_empty() {
         return Err(format!(
             "best-practice `{}` has no recommendation guidance",
@@ -187,6 +198,17 @@ fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
         return Err(format!("best-practice `{}` has no tags", entry.identity));
     }
     if let Some(rule) = &entry.lint_rule {
+        if entry.default_severity == "error"
+            && !matches!(
+                entry.checkability.as_str(),
+                "semantic" | "formally-decidable"
+            )
+        {
+            return Err(format!(
+                "executable default-error best-practice `{}` requires semantic or formally-decidable checkability",
+                entry.identity
+            ));
+        }
         if rule.engine != "topal" {
             return Err(format!("unknown lint-rule engine `{}`", rule.engine));
         }
@@ -411,6 +433,22 @@ mod tests {
             Catalog::from_json(&source)
                 .unwrap_err()
                 .contains("has no confidence explanation")
+        );
+    }
+
+    #[test]
+    fn external_catalog_rejects_unsound_automated_default_errors() {
+        let mut catalog = Catalog::builtin();
+        let entry = catalog.entries.first_mut().unwrap();
+        entry.class = "best-practice".into();
+        entry.default_severity = "error".into();
+        entry.checkability = "heuristic".into();
+        entry.confidence = Some("the syntax view may produce false positives".into());
+        let source = serde_json::to_string(&catalog).unwrap();
+        assert!(
+            Catalog::from_json(&source)
+                .unwrap_err()
+                .contains("requires semantic or formally-decidable")
         );
     }
 }
