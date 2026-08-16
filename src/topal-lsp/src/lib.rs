@@ -1,15 +1,17 @@
 //! Minimal editor-facing Topal language server state and protocol handling.
 
 use std::collections::BTreeMap;
+use std::fs;
 
 use serde_json::{Value, json};
-use topal_linter::{LintControl, lint_text_with_controls};
+use topal_linter::{LintControl, LintEngine};
 use topal_source::{Diagnostic, Severity, SourceText};
 use topal_syntax::{Statement, TokenKind, lex, parse};
 
 #[derive(Default)]
 pub struct Server {
     documents: BTreeMap<String, String>,
+    lint_engine: LintEngine,
     lint_controls: Vec<LintControl>,
     shutdown: bool,
     exit: bool,
@@ -56,10 +58,14 @@ impl Server {
             Ok(controls) => controls,
             Err(error) => return vec![error_response(id, -32602, &error)],
         };
-        if let Err(error) = lint_text_with_controls("use language ( version is v0.1 )\n", &controls)
-        {
+        let mut lint_engine = LintEngine::builtin();
+        if let Err(error) = load_lint_catalogs(message, &mut lint_engine) {
             return vec![error_response(id, -32602, &error)];
         }
+        if let Err(error) = lint_engine.lint_text("use language ( version is v0.1 )\n", &controls) {
+            return vec![error_response(id, -32602, &error)];
+        }
+        self.lint_engine = lint_engine;
         self.lint_controls = controls;
         vec![response(
             id,
@@ -116,7 +122,12 @@ impl Server {
             return Vec::new();
         };
         self.documents.insert(uri.to_owned(), text.to_owned());
-        vec![publish_diagnostics(uri, text, &self.lint_controls)]
+        vec![publish_diagnostics(
+            uri,
+            text,
+            &self.lint_engine,
+            &self.lint_controls,
+        )]
     }
 
     fn did_change(&mut self, message: &Value) -> Vec<Value> {
@@ -136,7 +147,12 @@ impl Server {
             return Vec::new();
         };
         self.documents.insert(uri.to_owned(), text.to_owned());
-        vec![publish_diagnostics(uri, text, &self.lint_controls)]
+        vec![publish_diagnostics(
+            uri,
+            text,
+            &self.lint_engine,
+            &self.lint_controls,
+        )]
     }
 
     fn did_close(&mut self, message: &Value) -> Vec<Value> {
@@ -308,8 +324,13 @@ fn error_response(id: Option<Value>, code: i32, message: &str) -> Value {
     })
 }
 
-fn publish_diagnostics(uri: &str, text: &str, controls: &[LintControl]) -> Value {
-    let diagnostics = diagnostics_with_lint(text, controls);
+fn publish_diagnostics(
+    uri: &str,
+    text: &str,
+    engine: &LintEngine,
+    controls: &[LintControl],
+) -> Value {
+    let diagnostics = diagnostics_with_lint(text, engine, controls);
     json!({
         "jsonrpc": "2.0",
         "method": "textDocument/publishDiagnostics",
@@ -319,11 +340,11 @@ fn publish_diagnostics(uri: &str, text: &str, controls: &[LintControl]) -> Value
 
 #[cfg(test)]
 fn diagnostics(text: &str) -> Vec<Value> {
-    diagnostics_with_lint(text, &[])
+    diagnostics_with_lint(text, &LintEngine::builtin(), &[])
 }
 
-fn diagnostics_with_lint(text: &str, controls: &[LintControl]) -> Vec<Value> {
-    match lint_text_with_controls(text, controls) {
+fn diagnostics_with_lint(text: &str, engine: &LintEngine, controls: &[LintControl]) -> Vec<Value> {
+    match engine.lint_text(text, controls) {
         Ok(report) => {
             let normalized = SourceText::new(text).ok();
             let coordinate_text = normalized.as_ref().map_or(text, SourceText::as_str);
@@ -338,6 +359,26 @@ fn diagnostics_with_lint(text: &str, controls: &[LintControl]) -> Vec<Value> {
             &Diagnostic::error("L-LINT-ENGINE", 1, 1, error),
         )],
     }
+}
+
+fn load_lint_catalogs(message: &Value, engine: &mut LintEngine) -> Result<(), String> {
+    let Some(value) = message.pointer("/params/initializationOptions/lint/catalogs") else {
+        return Ok(());
+    };
+    let paths = value.as_array().ok_or_else(|| {
+        "initializationOptions.lint.catalogs must be an array of paths".to_string()
+    })?;
+    for value in paths {
+        let path = value.as_str().ok_or_else(|| {
+            "initializationOptions.lint.catalogs must contain only paths".to_string()
+        })?;
+        let source = fs::read_to_string(path)
+            .map_err(|error| format!("cannot read lint catalog `{path}`: {error}"))?;
+        engine
+            .add_catalog_json(&source)
+            .map_err(|error| format!("invalid lint catalog `{path}`: {error}"))?;
+    }
+    Ok(())
 }
 
 fn lint_controls(message: &Value) -> Result<Vec<LintControl>, String> {
@@ -556,6 +597,7 @@ mod tests {
     use std::path::Path;
 
     use super::*;
+    use topal_best_practices::Catalog;
 
     #[test]
     fn initializes_with_full_utf16_document_sync() {
@@ -838,6 +880,61 @@ mod tests {
                 .as_str()
                 .unwrap()
                 .contains("warning, error, or off")
+        );
+    }
+
+    #[test]
+    fn loads_only_explicit_external_lint_catalogs() {
+        let mut catalog = Catalog::builtin();
+        catalog
+            .entries
+            .retain(|entry| entry.identity.ends_with("state-machine"));
+        catalog.entries[0].identity = "org.example best-practice task state-machine".into();
+        let path = std::env::temp_dir().join(format!(
+            "topal-lsp-external-catalog-{}.json",
+            std::process::id()
+        ));
+        fs::write(&path, serde_json::to_vec(&catalog).unwrap()).unwrap();
+
+        let mut server = Server::default();
+        let initialized = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 25, "method": "initialize",
+            "params": { "initializationOptions": { "lint": {
+                "catalogs": [path.to_str().unwrap()],
+                "enable": ["org.example best-practice task state-machine"]
+            } } }
+        }));
+        assert!(initialized[0].get("error").is_none());
+        let source = "use language (\n  version is v0.1\n)\nCounter is Task (queue-size is 2)\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n";
+        let opened = server.handle(&json!({
+            "jsonrpc": "2.0", "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///external.t", "languageId": "topal", "version": 1,
+                "text": source
+            } }
+        }));
+        assert_eq!(
+            opened[0]["params"]["diagnostics"][0]["data"]["bestPractice"],
+            "org.example best-practice task state-machine"
+        );
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn rejects_unreadable_external_lint_catalog_path() {
+        let mut server = Server::default();
+        let response = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 26, "method": "initialize",
+            "params": { "initializationOptions": { "lint": {
+                "catalogs": ["/topal-test/catalog-does-not-exist.json"]
+            } } }
+        }));
+        assert_eq!(response[0]["error"]["code"], -32602);
+        assert!(
+            response[0]["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("cannot read lint catalog")
         );
     }
 

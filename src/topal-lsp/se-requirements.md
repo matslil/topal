@@ -84,3 +84,9 @@ in-memory linter engine on every open or full-content change. Published
 findings shall preserve lint severity, stable code, UTF-16 location,
 best-practice and rule versions, and structured rectification data. Proposed
 entries shall remain disabled unless explicitly enabled.
+
+External catalog paths may be supplied explicitly through
+`initializationOptions.lint.catalogs`. The language server shall load and
+validate their generated JSON projections before accepting lint selectors.
+Loading a catalog shall not grant its contained rule access to the catalog
+path, editor process, filesystem, or other ambient authority.

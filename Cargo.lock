@@ -407,6 +407,7 @@ name = "topal-lsp"
 version = "0.1.0"
 dependencies = [
  "serde_json",
+ "topal-best-practices",
  "topal-linter",
  "topal-source",
  "topal-syntax",
