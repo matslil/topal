@@ -238,6 +238,51 @@ fn shared_task_order_example_conforms_when_the_proposed_rule_is_enabled() {
 }
 
 #[test]
+fn topal_state_machine_rule_finds_state_without_a_message_transition() {
+    let path = temporary_source(
+        "task-state-machine",
+        "use language (\n  version is v0.1\n)\n# Demonstrates a stateful task without an event transition.\nCounter is Task (queue-size is 2)\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n",
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args([
+            "--enable",
+            "lang best-practice task state-machine",
+            "--format",
+            "json",
+        ])
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let finding: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(finding["code"], "L-TASK-STATE-MACHINE");
+    assert_eq!(
+        finding["best_practice"],
+        "lang best-practice task state-machine"
+    );
+    assert!(
+        finding["help"]
+            .as_str()
+            .unwrap()
+            .contains("state-changing event")
+    );
+    fs::remove_file(path).unwrap();
+
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let conforming = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args(["--enable", "lang best-practice task state-machine"])
+        .arg(root.join("examples/language/task-message-transactions.t"))
+        .output()
+        .unwrap();
+    assert!(
+        conforming.status.success(),
+        "{}",
+        String::from_utf8_lossy(&conforming.stderr)
+    );
+    assert!(conforming.stderr.is_empty());
+}
+
+#[test]
 fn validates_explicit_lint_variant_rule_modules() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let valid = Command::new(env!("CARGO_BIN_EXE_topal-lint"))

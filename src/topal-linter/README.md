@@ -26,6 +26,9 @@ embed authenticated Topal source in the generated catalog, so execution does
 not grant an external catalog ambient filesystem access. The first rule
 receives adjacent task-declaration phases as read-only integer facts and
 returns a Boolean decision; the host remains responsible for diagnostics.
+Attachments name that input contract explicitly, such as
+`task-declaration-order/1` or `task-state-machine/1`, so incompatible view
+revisions are rejected before execution.
 
 Source, syntax, and best-practice findings use `topal-source`'s shared
 diagnostic record. Terminal and JSON output are presentation adapters over

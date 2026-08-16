@@ -368,14 +368,14 @@ fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, Str
 fn validate_rule_module(path: &Path, entry_point: &str) -> Result<(), String> {
     let text = fs::read_to_string(path)
         .map_err(|error| format!("cannot read lint rule {}: {error}", path.display()))?;
-    validate_rule_text(&text, &path.display().to_string(), entry_point, false)
+    validate_rule_text(&text, &path.display().to_string(), entry_point, None)
 }
 
 fn validate_rule_text(
     text: &str,
     source_name: &str,
     entry_point: &str,
-    require_phase_signature: bool,
+    expected_parameters: Option<&[&str]>,
 ) -> Result<(), String> {
     let source =
         SourceText::new(text).map_err(|error| format!("{}: {}", error.code, error.message))?;
@@ -408,15 +408,20 @@ fn validate_rule_text(
         return Err("L-RULE-AUTHORITY: lint rule modules cannot select the `debug` feature".into());
     }
     let mut found = None;
-    visit_rule_functions(&source, &parsed.statements[1..], entry_point, &mut found)?;
+    visit_rule_functions(
+        &source,
+        &parsed.statements[1..],
+        entry_point,
+        expected_parameters,
+        &mut found,
+    )?;
     match found {
-        Some((true, true | false)) if !require_phase_signature => Ok(()),
         Some((true, true)) => Ok(()),
         Some((false, _)) => Err(format!(
             "L-RULE-STATIC: lint rule entry point `{entry_point}` must be static"
         )),
         Some((true, false)) => Err(format!(
-            "L-RULE-SIGNATURE: lint rule entry point `{entry_point}` must accept two Int phase facts and return Boolean"
+            "L-RULE-SIGNATURE: lint rule entry point `{entry_point}` does not match view parameters and Boolean result"
         )),
         None => Err(format!(
             "L-RULE-ENTRY: lint rule module does not declare entry point `{entry_point}`"
@@ -428,6 +433,7 @@ fn visit_rule_functions(
     source: &SourceText,
     statements: &[Statement],
     entry_point: &str,
+    expected_parameters: Option<&[&str]>,
     found: &mut Option<(bool, bool)>,
 ) -> Result<(), String> {
     for statement in statements {
@@ -436,6 +442,7 @@ fn visit_rule_functions(
                 source,
                 std::slice::from_ref(declaration.as_ref()),
                 entry_point,
+                expected_parameters,
                 found,
             )?,
             Statement::Function {
@@ -450,11 +457,16 @@ fn visit_rule_functions(
                         "L-RULE-ENTRY: lint rule entry point `{entry_point}` is ambiguous"
                     ));
                 }
-                let signature_matches = parameters.len() == 2
-                    && parameters
-                        .iter()
-                        .all(|parameter| source.slice(parameter.classifier) == "Int")
-                    && source.slice(*result) == "Boolean";
+                let signature_matches = expected_parameters.is_none_or(|expected| {
+                    parameters.len() == expected.len()
+                        && parameters
+                            .iter()
+                            .zip(expected)
+                            .all(|(parameter, expected)| {
+                                source.slice(parameter.classifier) == *expected
+                            })
+                        && source.slice(*result) == "Boolean"
+                });
                 *found = Some((*is_static, signature_matches));
             }
             _ => {}
@@ -646,16 +658,143 @@ fn topal_rule(
 ) -> Result<Vec<RuleFinding>, String> {
     let rule = entry.lint_rule.as_ref().expect("caller checks attachment");
     let rule_source = &rule.source_text;
-    validate_rule_text(rule_source, "<embedded lint rule>", &rule.entry_point, true)?;
-    match rule.entry_point.as_str() {
-        "rule" if entry.identity == "lang best-practice task declaration-order" => {
+    let expected_parameters: &[&str] = match rule.view.as_str() {
+        "task-declaration-order/1" => &["Int", "Int"],
+        "task-state-machine/1" => &["Boolean", "Boolean"],
+        other => {
+            return Err(format!(
+                "best-practice {} requires unsupported read-only view `{other}`",
+                entry.identity
+            ));
+        }
+    };
+    validate_rule_text(
+        rule_source,
+        "<embedded lint rule>",
+        &rule.entry_point,
+        Some(expected_parameters),
+    )?;
+    match rule.view.as_str() {
+        "task-declaration-order/1" => {
             topal_task_declaration_order(rule_source, &rule.entry_point, source, statements)
         }
-        other => Err(format!(
-            "best-practice {} has no host view adapter for Topal entry point `{other}`",
-            entry.identity
-        )),
+        "task-state-machine/1" => {
+            topal_task_state_machine(rule_source, &rule.entry_point, source, statements)
+        }
+        _ => unreachable!("view checked above"),
     }
+}
+
+fn topal_task_state_machine(
+    rule_source: &str,
+    entry_point: &str,
+    source: &SourceText,
+    statements: &[Statement],
+) -> Result<Vec<RuleFinding>, String> {
+    let mut findings = Vec::new();
+    visit_topal_task_state_machine(rule_source, entry_point, source, statements, &mut findings)?;
+    Ok(findings)
+}
+
+fn visit_topal_task_state_machine(
+    rule_source: &str,
+    entry_point: &str,
+    source: &SourceText,
+    statements: &[Statement],
+    findings: &mut Vec<RuleFinding>,
+) -> Result<(), String> {
+    for statement in statements {
+        match statement {
+            Statement::Published { declaration, .. } => visit_topal_task_state_machine(
+                rule_source,
+                entry_point,
+                source,
+                std::slice::from_ref(declaration.as_ref()),
+                findings,
+            )?,
+            Statement::Implementation {
+                name, declarations, ..
+            } => {
+                if is_task_definition(source, declarations) {
+                    let has_state = declarations
+                        .iter()
+                        .any(|declaration| matches!(declaration, Statement::StateField { .. }));
+                    let has_transition = declarations.iter().any(|declaration| match declaration {
+                        Statement::Function { name, body, .. }
+                            if !matches!(source.slice(*name), "start" | "terminate") =>
+                        {
+                            contains_context_assignment(body)
+                        }
+                        Statement::Generator { body, .. } => contains_context_assignment(body),
+                        _ => false,
+                    });
+                    if !evaluate_topal_boolean_rule(
+                        rule_source,
+                        entry_point,
+                        has_state,
+                        has_transition,
+                    )? {
+                        let position = source.position(name.start);
+                        findings.push(RuleFinding {
+                            line: position.line,
+                            column: position.column,
+                            message: "stateful task declares no explicit message transition",
+                            help: "update task-owned state in the handler for each state-changing event",
+                        });
+                    }
+                }
+                visit_topal_task_state_machine(
+                    rule_source,
+                    entry_point,
+                    source,
+                    declarations,
+                    findings,
+                )?;
+            }
+            Statement::Function { body, .. }
+            | Statement::Generator { body, .. }
+            | Statement::Foreach { body, .. } => {
+                visit_topal_task_state_machine(rule_source, entry_point, source, body, findings)?;
+            }
+            Statement::InterfaceImplementation { declarations, .. } => {
+                visit_topal_task_state_machine(
+                    rule_source,
+                    entry_point,
+                    source,
+                    declarations,
+                    findings,
+                )?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn contains_context_assignment(statements: &[Statement]) -> bool {
+    statements.iter().any(|statement| match statement {
+        Statement::ContextAssignment { .. } => true,
+        Statement::Published { declaration, .. } => {
+            contains_context_assignment(std::slice::from_ref(declaration.as_ref()))
+        }
+        Statement::Function { body, .. }
+        | Statement::Generator { body, .. }
+        | Statement::Foreach { body, .. } => contains_context_assignment(body),
+        Statement::Implementation { declarations, .. }
+        | Statement::InterfaceImplementation { declarations, .. } => {
+            contains_context_assignment(declarations)
+        }
+        _ => false,
+    })
+}
+
+fn evaluate_topal_boolean_rule(
+    rule_source: &str,
+    entry_point: &str,
+    left: bool,
+    right: bool,
+) -> Result<bool, String> {
+    evaluate_topal_rule_application(rule_source, entry_point, left, right)
 }
 
 fn topal_task_declaration_order(
@@ -745,10 +884,16 @@ fn evaluate_topal_phase_rule(
     previous: u8,
     current: u8,
 ) -> Result<bool, String> {
-    let program = format!(
-        "{}\n{previous} {entry_point} {current}\n",
-        rule_source.trim_end()
-    );
+    evaluate_topal_rule_application(rule_source, entry_point, previous, current)
+}
+
+fn evaluate_topal_rule_application(
+    rule_source: &str,
+    entry_point: &str,
+    left: impl std::fmt::Display,
+    right: impl std::fmt::Display,
+) -> Result<bool, String> {
+    let program = format!("{}\n{left} {entry_point} {right}\n", rule_source.trim_end());
     let value = Session::new()
         .evaluate_source_file(&program, &mut std::io::sink())
         .map_err(|diagnostic| format!("Topal lint rule failed: {diagnostic}"))?;
@@ -971,6 +1116,44 @@ mod tests {
         assert!(evaluate_topal_phase_rule(&source, &rule.entry_point, 2, 3).unwrap());
         assert!(!evaluate_topal_phase_rule(&source, &rule.entry_point, 2, 1).unwrap());
         assert!(!evaluate_topal_phase_rule(&source, &rule.entry_point, 3, 0).unwrap());
+    }
+
+    #[test]
+    fn topal_rule_decides_whether_state_has_a_message_transition() {
+        let entry = Catalog::builtin()
+            .entries
+            .into_iter()
+            .find(|entry| entry.identity.ends_with("state-machine"))
+            .unwrap();
+        let rule = entry.lint_rule.unwrap();
+        assert!(
+            evaluate_topal_boolean_rule(&rule.source_text, &rule.entry_point, false, false)
+                .unwrap()
+        );
+        assert!(
+            evaluate_topal_boolean_rule(&rule.source_text, &rule.entry_point, true, true).unwrap()
+        );
+        assert!(
+            !evaluate_topal_boolean_rule(&rule.source_text, &rule.entry_point, true, false)
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn unsupported_read_only_view_revision_is_rejected_before_rule_execution() {
+        let mut entry = Catalog::builtin()
+            .entries
+            .into_iter()
+            .find(|entry| entry.identity.ends_with("state-machine"))
+            .unwrap();
+        entry.lint_rule.as_mut().unwrap().view = "task-state-machine/2".into();
+        let source = SourceText::new("use language ( version is v0.1 )\n").unwrap();
+        let lexed = lex(&source);
+        let parsed = parse(&source, &lexed);
+        let Err(error) = topal_rule(&entry, &source, &parsed.statements) else {
+            panic!("unsupported view revision was accepted");
+        };
+        assert!(error.contains("unsupported read-only view"));
     }
 
     #[test]

@@ -1,11 +1,11 @@
 {
-  "generated_by": "topal-best-practices/3",
-  "schema": 3,
+  "generated_by": "topal-best-practices/4",
+  "schema": 4,
   "entries": [
     {
       "identity": "lang best-practice task declaration-order",
       "version": "v0.1",
-      "authoritative_sha256": "6796f8801f976c90ab2bdfa070e2d23bd9b0093ae4481f5b4db29e813a661e68",
+      "authoritative_sha256": "59550f3a1eb769e6ae5e2e8fe8dd6360ac6da0463a6e0bf72c4a5aa4977aa4ca",
       "status": {
         "kind": "proposed",
         "since_language_version": null,
@@ -31,6 +31,7 @@
         "entry_point": "rule",
         "version": "v0.1",
         "stage": "syntax",
+        "view": "task-declaration-order/1",
         "diagnostic_code": "L-TASK-DECLARATION-ORDER",
         "source_sha256": "1b0eee080f89437e64d3c85ef825eeb99e695157e47fabcdafac7f9b19911576",
         "source_text": "use language (\n  version is v0.1,\n  features is ( lint )\n)\n# Demonstrates a contained Topal-authored lint rule. The host supplies adjacent\n# read-only task declaration phases as Int values; true preserves their order.\nrule is fn static (previous : Int, current : Int) -> Boolean\n  previous <= current\n"
@@ -39,7 +40,7 @@
     {
       "identity": "lang best-practice task state-machine",
       "version": "v0.1",
-      "authoritative_sha256": "ded6d668d09efa4647fc6b72610d440f404f340aa30cb7c405e1cc57f07f0730",
+      "authoritative_sha256": "b8053241f4e1d61f783dc9146cec75bc584594386c5313bc208d4137823f6b2d",
       "status": {
         "kind": "proposed",
         "since_language_version": null,
@@ -61,7 +62,16 @@
         "lang best-practice tag concurrency",
         "lang best-practice tag readability"
       ],
-      "lint_rule": null
+      "lint_rule": {
+        "engine": "topal",
+        "entry_point": "rule",
+        "version": "v0.1",
+        "stage": "syntax",
+        "view": "task-state-machine/1",
+        "diagnostic_code": "L-TASK-STATE-MACHINE",
+        "source_sha256": "4010419803a21c7eb2a1de1127d323ea065ca0cec8e82461de7172d916d280e7",
+        "source_text": "use language (\n  version is v0.1,\n  features is ( lint )\n)\n# Demonstrates an assistive Topal-authored rule. The host reports whether a task\n# has private state and whether one of its message handlers explicitly updates it.\nrule is fn static (has-state : Boolean, has-transition : Boolean) -> Boolean\n  has-state\n    true then has-transition\n    otherwise true\n"
+      }
     }
   ]
 }
