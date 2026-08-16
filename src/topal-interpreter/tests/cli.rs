@@ -4119,6 +4119,24 @@ fn script_and_test_modes_load_directory_applications() {
 }
 
 #[test]
+fn script_and_test_modes_execute_the_shared_standard_library_example() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+    for arguments in [&[][..], &["--test"][..]] {
+        let output = Command::new(env!("CARGO_BIN_EXE_topal"))
+            .args(arguments)
+            .arg(&directory)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), "2");
+    }
+}
+
+#[test]
 fn script_and_test_modes_preserve_nested_module_paths() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../examples/applications/nested-module-loading");

@@ -1,0 +1,8 @@
+#!/usr/bin/env topal-debug
+use language ( version is v0.1, features is ( debug ) )
+
+# Drives the shared standard-library example to completion in debugger script
+# mode, then records the semantic reason for its final transition.
+lang debug finish
+lang debug why
+lang debug quit
