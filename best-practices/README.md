@@ -10,4 +10,6 @@ model documented in `docs/best-practices.md` and `spec/best-practices.md`.
 
 Run `cargo run -p topal-best-practices -- generate` after changing an entry.
 Run `cargo run -p topal-best-practices -- check` to verify all committed human,
-agent, and lint-catalog projections and reject obsolete generated files.
+agent, and lint-catalog projections and reject obsolete generated files. A
+generated executable attachment embeds its Topal source and SHA-256 digest;
+consumers verify the source without reopening the authoritative path.

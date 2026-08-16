@@ -6,8 +6,8 @@ use std::process::ExitCode;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-const GENERATOR_VERSION: &str = "topal-best-practices/2";
-const SCHEMA_VERSION: u64 = 2;
+const GENERATOR_VERSION: &str = "topal-best-practices/3";
+const SCHEMA_VERSION: u64 = 3;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -55,6 +55,7 @@ struct RuleAttachment {
     version: String,
     stage: String,
     diagnostic_code: String,
+    source: String,
 }
 
 struct Entry {
@@ -63,6 +64,7 @@ struct Entry {
     guidance_path: PathBuf,
     record_source: String,
     guidance: String,
+    rule_source: Option<String>,
     record: BestPractice,
 }
 
@@ -134,12 +136,20 @@ fn load_entry(root: &Path, record_path: PathBuf) -> Result<Entry, String> {
     let record: BestPractice = serde_json::from_str(&record_source)
         .map_err(|error| format!("invalid {}: {error}", record_path.display()))?;
     validate(root, &directory, &record)?;
+    let rule_source = match record.lint_rule.as_ref() {
+        Some(rule) => Some(
+            fs::read_to_string(root.join(&rule.source))
+                .map_err(|error| format!("cannot read lint rule {}: {error}", rule.source))?,
+        ),
+        None => None,
+    };
     Ok(Entry {
         directory,
         record_path,
         guidance_path,
         record_source,
         guidance,
+        rule_source,
         record,
     })
 }
@@ -210,8 +220,19 @@ fn validate(root: &Path, directory: &Path, record: &BestPractice) -> Result<(), 
         return Err("best-practice provenance and license are required".into());
     }
     if let Some(rule) = &record.lint_rule {
-        if !matches!(rule.engine.as_str(), "builtin" | "topal") {
+        if rule.engine != "topal" {
             return Err(format!("unknown lint-rule engine `{}`", rule.engine));
+        }
+        let path = Path::new(&rule.source);
+        if path.is_absolute()
+            || path
+                .components()
+                .any(|component| matches!(component, std::path::Component::ParentDir))
+            || !root.join(path).is_file()
+        {
+            return Err(
+                "Topal lint-rule source must be an existing repository-relative file".into(),
+            );
         }
         if rule.entry_point.is_empty() || rule.version.is_empty() {
             return Err("lint-rule entry point and version cannot be empty".into());
@@ -387,6 +408,10 @@ fn digest(entry: &Entry) -> String {
     digest.update(entry.record_source.as_bytes());
     digest.update([0]);
     digest.update(entry.guidance.as_bytes());
+    if let Some(rule_source) = &entry.rule_source {
+        digest.update([0]);
+        digest.update(rule_source.as_bytes());
+    }
     format!("{:x}", digest.finalize())
 }
 
@@ -467,7 +492,7 @@ struct AgentProjection<'a> {
     rectification: &'a str,
     tags: Vec<String>,
     examples: &'a [String],
-    lint_rule: &'a Option<RuleAttachment>,
+    lint_rule: Option<RuleProjection<'a>>,
 }
 
 #[derive(Serialize)]
@@ -505,7 +530,7 @@ fn agent_projection(entry: &Entry) -> Result<String, String> {
         rectification: &record.rectification,
         tags: record.tags.iter().map(|tag| tag.join(" ")).collect(),
         examples: &record.examples,
-        lint_rule: &record.lint_rule,
+        lint_rule: projected_rule(entry),
     };
     serde_json::to_string_pretty(&projection)
         .map(|json| format!("{json}\n"))
@@ -533,7 +558,7 @@ struct CatalogEntry<'a> {
     required_features: &'a [String],
     excluded_features: &'a [String],
     tags: Vec<String>,
-    lint_rule: &'a Option<RuleAttachment>,
+    lint_rule: Option<RuleProjection<'a>>,
 }
 
 fn catalog_projection(entries: &[Entry]) -> Result<String, String> {
@@ -555,13 +580,47 @@ fn catalog_projection(entries: &[Entry]) -> Result<String, String> {
                 required_features: &entry.record.required_features,
                 excluded_features: &entry.record.excluded_features,
                 tags: entry.record.tags.iter().map(|tag| tag.join(" ")).collect(),
-                lint_rule: &entry.record.lint_rule,
+                lint_rule: projected_rule(entry),
             })
             .collect(),
     };
     serde_json::to_string_pretty(&projection)
         .map(|json| format!("{json}\n"))
         .map_err(|error| error.to_string())
+}
+
+#[derive(Serialize)]
+struct RuleProjection<'a> {
+    engine: &'a str,
+    entry_point: &'a str,
+    version: &'a str,
+    stage: &'a str,
+    diagnostic_code: &'a str,
+    source_sha256: String,
+    source_text: &'a str,
+}
+
+fn projected_rule(entry: &Entry) -> Option<RuleProjection<'_>> {
+    entry.record.lint_rule.as_ref().map(|rule| RuleProjection {
+        engine: &rule.engine,
+        entry_point: &rule.entry_point,
+        version: &rule.version,
+        stage: &rule.stage,
+        diagnostic_code: &rule.diagnostic_code,
+        source_sha256: {
+            let source = entry
+                .rule_source
+                .as_ref()
+                .expect("Topal rule source loaded during entry validation");
+            let mut digest = Sha256::new();
+            digest.update(source.as_bytes());
+            format!("{:x}", digest.finalize())
+        },
+        source_text: entry
+            .rule_source
+            .as_deref()
+            .expect("Topal rule source loaded during entry validation"),
+    })
 }
 
 #[cfg(test)]

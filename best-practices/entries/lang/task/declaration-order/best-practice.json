@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "identity": ["lang", "best-practice", "task", "declaration-order"],
   "version": "v0.1",
   "status": {
@@ -30,11 +30,12 @@
   "examples": ["examples/language/task-declaration-order.t"],
   "specification_rules": ["TOPAL-TASK-DEFINITION-001", "TOPAL-TASK-LIFECYCLE-001"],
   "lint_rule": {
-    "engine": "builtin",
-    "entry_point": "task-declaration-order",
+    "engine": "topal",
+    "entry_point": "rule",
     "version": "v0.1",
     "stage": "syntax",
-    "diagnostic_code": "L-TASK-DECLARATION-ORDER"
+    "diagnostic_code": "L-TASK-DECLARATION-ORDER",
+    "source": "examples/linter/task-declaration-order-rule.t"
   },
   "provenance": "Initial mechanically decidable catalog template proposed 2026-08-16",
   "license": "MIT"

@@ -1,7 +1,7 @@
 {
-  "generated_by": "topal-best-practices/2",
-  "schema": 2,
-  "authoritative_sha256": "508c008f60c465436ff8a316ce96b1952d8d4edf0f7912664fb2b304d5e604e8",
+  "generated_by": "topal-best-practices/3",
+  "schema": 3,
+  "authoritative_sha256": "6796f8801f976c90ab2bdfa070e2d23bd9b0093ae4481f5b4db29e813a661e68",
   "identity": "lang best-practice task declaration-order",
   "version": "v0.1",
   "status": {
@@ -37,10 +37,12 @@
     "examples/language/task-declaration-order.t"
   ],
   "lint_rule": {
-    "engine": "builtin",
-    "entry_point": "task-declaration-order",
+    "engine": "topal",
+    "entry_point": "rule",
     "version": "v0.1",
     "stage": "syntax",
-    "diagnostic_code": "L-TASK-DECLARATION-ORDER"
+    "diagnostic_code": "L-TASK-DECLARATION-ORDER",
+    "source_sha256": "1b0eee080f89437e64d3c85ef825eeb99e695157e47fabcdafac7f9b19911576",
+    "source_text": "use language (\n  version is v0.1,\n  features is ( lint )\n)\n# Demonstrates a contained Topal-authored lint rule. The host supplies adjacent\n# read-only task declaration phases as Int values; true preserves their order.\nrule is fn static (previous : Int, current : Int) -> Boolean\n  previous <= current\n"
   }
 }

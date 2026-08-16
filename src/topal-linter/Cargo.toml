@@ -13,6 +13,7 @@ path = "src/main.rs"
 serde = { version = "1", features = ["derive"] }
 serde_json = "=1.0.151"
 topal-best-practices = { path = "../topal-best-practices" }
+topal-language = { path = "../topal-language" }
 topal-source = { path = "../topal-source" }
 topal-syntax = { path = "../topal-syntax" }
 
