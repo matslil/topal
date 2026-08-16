@@ -86,7 +86,7 @@ fn retains_inspectable_history_when_live_execution_fails() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("error[E-UNBOUND-NAME]: name is not bound"));
     assert!(stdout.contains("answer = 40"));
-    assert!(stdout.contains("binding.created [TOPAL-SYN-BIND-001] answer"));
+    assert!(stdout.contains("binding.bind [TOPAL-SYN-BIND-001] answer"));
     assert!(stdout.contains("no value at current execution state"));
 }
 
@@ -129,9 +129,9 @@ fn records_reversible_static_function_call_decisions() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     let declaration = stdout.find("function.declared").unwrap();
-    let entered = stdout.find("function.entered").unwrap();
+    let entered = stdout.find("function.entry").unwrap();
     let body = stdout.find("root.+(Int,Int)").unwrap();
-    let returned = stdout.find("function.returned").unwrap();
+    let returned = stdout.find("function.exit").unwrap();
     assert!(declaration < entered && entered < body && body < returned);
     assert!(stdout.contains("(42, 42)"));
 }
@@ -154,9 +154,9 @@ fn records_reversible_static_function_argument_binding() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     let bound = stdout.find("function.argument.bound").unwrap();
-    let entered = bound + stdout[bound..].find("function.entered").unwrap();
+    let entered = bound + stdout[bound..].find("function.entry").unwrap();
     let body = bound + stdout[bound..].find("root.+(Int,Int)").unwrap();
-    let returned = bound + stdout[bound..].find("function.returned").unwrap();
+    let returned = bound + stdout[bound..].find("function.exit").unwrap();
     assert!(bound < entered && entered < body && body < returned);
     assert!(stdout.contains("(42, 42)"));
 }
@@ -184,9 +184,9 @@ fn records_reversible_static_product_argument_bindings() {
     let right = stdout
         .find("function.argument.bound [TOPAL-FUNCTION-STATIC-BINARY-001] right")
         .unwrap();
-    let entered = stdout.find("function.entered").unwrap();
+    let entered = stdout.find("function.entry").unwrap();
     let created = stdout
-        .find("binding.created [TOPAL-SYN-BIND-001] sum")
+        .find("binding.bind [TOPAL-SYN-BIND-001] sum")
         .unwrap();
     let resolved = stdout
         .find("binding.resolved [TOPAL-SYN-BIND-001] sum")
@@ -213,7 +213,7 @@ fn records_reversible_explicit_function_return() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     let explicit = stdout.find("function.return.explicit").unwrap();
-    let returned = stdout.find("function.returned").unwrap();
+    let returned = stdout.find("function.exit").unwrap();
     assert!(explicit < returned);
     assert!(!stdout.contains("binding.resolved [TOPAL-SYN-BIND-001] missing"));
     assert!(stdout.contains("\n42\n"));
@@ -236,8 +236,8 @@ fn records_reversible_ordinary_function_execution() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("function.entered [TOPAL-FUNCTION-ORDINARY-001] subtract"));
-    assert!(stdout.contains("function.returned [TOPAL-FUNCTION-ORDINARY-001] subtract"));
+    assert!(stdout.contains("function.entry [TOPAL-FUNCTION-ORDINARY-001] subtract"));
+    assert!(stdout.contains("function.exit [TOPAL-FUNCTION-ORDINARY-001] subtract"));
     assert!(stdout.contains("\n42\n"));
 }
 
@@ -255,7 +255,7 @@ fn records_reversible_nat_function_execution() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("identity (Nat)"));
-    assert!(stdout.contains("function.entered [TOPAL-FUNCTION-ORDINARY-001] identity"));
+    assert!(stdout.contains("function.entry [TOPAL-FUNCTION-ORDINARY-001] identity"));
     assert!(stdout.contains("\n42\n"));
 }
 
@@ -1134,7 +1134,7 @@ fn records_reversible_returned_character_generator() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-STRING-CHARACTERS-RESULT-001"));
-    assert!(stdout.contains("function.returned"));
+    assert!(stdout.contains("function.exit"));
     assert!(stdout.contains("generator.consumed"));
 }
 
@@ -1225,7 +1225,7 @@ fn records_custom_generator_local_binding_reversibly() {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("binding.created"));
+    assert!(stdout.contains("binding.bind"));
     assert!(stdout.contains("generator.yielded"));
     assert!(stdout.contains("TOPAL-GENERATOR-FOREACH-001"));
 }
@@ -1366,7 +1366,7 @@ fn records_custom_generator_function_result_reversibly() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-GENERATOR-FUNCTION-RESULT-001"));
-    assert!(stdout.contains("generator.function.returned"));
+    assert!(stdout.contains("generator.result.transferred"));
     assert!(stdout.contains("generator.yielded"));
 }
 
@@ -1843,7 +1843,7 @@ fn records_generator_local_function_reversibly() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     let declared_enum = stdout.find("enum.declared").unwrap();
     let resumed = stdout.find("generator.resumed").unwrap();
-    let entered = stdout.rfind("function.entered").unwrap();
+    let entered = stdout.rfind("function.entry").unwrap();
     assert!(declared_enum < resumed && resumed < entered);
     assert!(stdout.contains("\"accepted\""));
 }
@@ -1862,7 +1862,7 @@ fn records_generator_local_close_handler_reversibly() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     let close_bound = stdout.find("generator.close.bound").unwrap();
-    let entered = stdout.rfind("function.entered").unwrap();
+    let entered = stdout.rfind("function.entry").unwrap();
     let closed = stdout.find("generator.closed").unwrap();
     assert!(close_bound < entered && entered < closed);
     assert!(stdout.contains("CloseChoice"));
@@ -1901,7 +1901,7 @@ fn records_generic_generator_function_boundaries_reversibly() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("Generator Int Unit String"));
-    assert!(stdout.contains("generator.function.returned"));
+    assert!(stdout.contains("generator.result.transferred"));
     assert!(stdout.contains("generator.parameter.transferred"));
     assert!(stdout.contains("\"done\""));
 }
@@ -2011,16 +2011,16 @@ fn records_reversible_nested_function_call_order() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     let outer_entry = stdout
-        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] answer")
+        .find("function.entry [TOPAL-FUNCTION-ORDINARY-001] answer")
         .unwrap();
     let inner_entry = stdout
-        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] increment")
+        .find("function.entry [TOPAL-FUNCTION-ORDINARY-001] increment")
         .unwrap();
     let inner_return = stdout
-        .find("function.returned [TOPAL-FUNCTION-ORDINARY-001] increment")
+        .find("function.exit [TOPAL-FUNCTION-ORDINARY-001] increment")
         .unwrap();
     let outer_return = stdout
-        .find("function.returned [TOPAL-FUNCTION-ORDINARY-001] answer")
+        .find("function.exit [TOPAL-FUNCTION-ORDINARY-001] answer")
         .unwrap();
     assert!(outer_entry < inner_entry && inner_entry < inner_return && inner_return < outer_return);
     assert!(stdout.contains("\n42\n"));
@@ -2043,12 +2043,12 @@ fn records_reversible_function_local_shadowing() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let entered = stdout.find("function.entered").unwrap();
+    let entered = stdout.find("function.entry").unwrap();
     let local = stdout[entered..]
-        .find("binding.created [TOPAL-SYN-BIND-001] value")
+        .find("binding.bind [TOPAL-SYN-BIND-001] value")
         .unwrap()
         + entered;
-    let returned = stdout.find("function.returned").unwrap();
+    let returned = stdout.find("function.exit").unwrap();
     assert!(entered < local && local < returned);
     assert!(stdout.contains("\n(42, 40)\n"));
 }
@@ -2152,10 +2152,10 @@ fn records_reversible_call_to_later_function_declaration() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     let render = stdout
-        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] render")
+        .find("function.entry [TOPAL-FUNCTION-ORDINARY-001] render")
         .unwrap();
     let decorate = stdout
-        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] decorate")
+        .find("function.entry [TOPAL-FUNCTION-ORDINARY-001] decorate")
         .unwrap();
     assert!(render < decorate);
     assert!(stdout.contains("\n\"[Topal]\"\n"));
@@ -2357,7 +2357,7 @@ fn records_reversible_decreasing_int_recursion() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     let proven = stdout.find("function.recursion.proven").unwrap();
     let descended = stdout.find("function.recursion.descended").unwrap();
-    let nested = stdout[descended..].find("function.entered").unwrap() + descended;
+    let nested = stdout[descended..].find("function.entry").unwrap() + descended;
     assert!(proven < descended && descended < nested);
     assert_eq!(stdout.matches("function.recursion.descended").count(), 5);
     assert!(stdout.contains("\n15\n"));
@@ -2428,13 +2428,13 @@ fn records_reversible_nested_lexical_function() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     let outer = stdout
-        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] answer")
+        .find("function.entry [TOPAL-FUNCTION-ORDINARY-001] answer")
         .unwrap();
     let declared = stdout
         .find("function.declared [TOPAL-FUNCTION-ORDINARY-001] add-input")
         .unwrap();
     let nested = stdout
-        .find("function.entered [TOPAL-FUNCTION-ORDINARY-001] add-input")
+        .find("function.entry [TOPAL-FUNCTION-ORDINARY-001] add-input")
         .unwrap();
     assert!(outer < declared && declared < nested);
     assert!(stdout.contains("\n42\n"));
@@ -2493,15 +2493,48 @@ fn script_mode_rejects_unknown_commands_with_a_line_diagnostic() {
         .stdin
         .as_mut()
         .unwrap()
-        .write_all(b"step\nnot-a-command\n")
+        .write_all(
+            b"use language ( version is v0.1, features is ( debug ) )\nstep\nnot-a-command\n",
+        )
         .unwrap();
     let output = child.wait_with_output().unwrap();
     assert!(!output.status.success());
     assert!(
         String::from_utf8(output.stderr).unwrap().contains(
-            "<stdin>:2: error[D-UNKNOWN-COMMAND]: unknown debugger command `not-a-command`"
+            "<stdin>:3: error[D-UNKNOWN-COMMAND]: unknown debugger command `not-a-command`"
         )
     );
+}
+
+#[test]
+fn script_mode_requires_the_debug_language_variant() {
+    let source = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/debugger/basic-history.t"
+    );
+    for (script, code) in [
+        ("step\n", "D-MISSING-DEBUG-LANGUAGE"),
+        (
+            "use language ( version is v0.1 )\nstep\n",
+            "D-MISSING-DEBUG-VARIANT",
+        ),
+    ] {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+            .args(["--script", "-", source])
+            .stdin(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(script.as_bytes())
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(!output.status.success());
+        assert!(String::from_utf8(output.stderr).unwrap().contains(code));
+    }
 }
 
 #[test]
@@ -3412,8 +3445,8 @@ fn records_reversible_broad_unicode_identifier_bindings() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("binding.created [TOPAL-SYN-BIND-001] 🙂"));
-    assert!(stdout.contains("binding.created [TOPAL-SYN-BIND-001] left+right"));
+    assert!(stdout.contains("binding.bind [TOPAL-SYN-BIND-001] 🙂"));
+    assert!(stdout.contains("binding.bind [TOPAL-SYN-BIND-001] left+right"));
     assert!(stdout.contains("\n40\n"));
     assert!(stdout.contains("\n2\n"));
 }

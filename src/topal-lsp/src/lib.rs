@@ -57,7 +57,12 @@ impl Server {
             Some("textDocument/semanticTokens/full") => {
                 vec![response(id, &self.semantic_tokens(message))]
             }
-            Some("textDocument/completion") => vec![response(id, &completion_items())],
+            Some("textDocument/completion") => {
+                vec![response(
+                    id,
+                    &completion_items(self.is_debug_document(message)),
+                )]
+            }
             Some(_) if id.is_some() => vec![error_response(id, -32601, "method not found")],
             Some(_) | None => Vec::new(),
         }
@@ -71,6 +76,18 @@ impl Server {
     #[must_use]
     pub const fn shutdown_requested(&self) -> bool {
         self.shutdown
+    }
+
+    fn is_debug_document(&self, message: &Value) -> bool {
+        let Some(uri) = message["params"]["textDocument"]["uri"].as_str() else {
+            return false;
+        };
+        self.documents.get(uri).is_some_and(|text| {
+            text.contains("features is")
+                && text
+                    .split_once("features is")
+                    .is_some_and(|(_, features)| features.contains("debug"))
+        })
     }
 
     fn did_open(&mut self, message: &Value) -> Vec<Value> {
@@ -135,8 +152,9 @@ impl Server {
     }
 }
 
-fn completion_items() -> Value {
-    json!({
+#[allow(clippy::too_many_lines)] // Keep the deterministic completion catalog together.
+fn completion_items(debug_variant: bool) -> Value {
+    let mut result = json!({
         "isIncomplete": false,
         "items": [
             {
@@ -225,7 +243,23 @@ fn completion_items() -> Value {
                 "detail": "Type -> Value"
             }
         ]
-    })
+    });
+    if debug_variant {
+        let items = result["items"].as_array_mut().unwrap();
+        for command in [
+            "lang debug break",
+            "lang debug continue",
+            "lang debug reverse-step",
+            "lang debug step",
+        ] {
+            items.push(json!({
+                "label": command,
+                "kind": 3,
+                "detail": "debug language variant command"
+            }));
+        }
+    }
+    result
 }
 
 fn response(id: Option<Value>, result: &Value) -> Value {
@@ -484,6 +518,35 @@ mod tests {
                 .unwrap()
                 .iter()
                 .all(|item| item["kind"] == 3)
+        );
+    }
+
+    #[test]
+    fn completes_debug_commands_only_in_the_debug_variant() {
+        let mut server = Server::default();
+        let _ = server.handle(&json!({
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": "file:///commands.debug",
+                "languageId": "topal",
+                "version": 1,
+                "text": "use language ( version is v0.1, features is ( debug ) )\n"
+            }}
+        }));
+        let output = server.handle(&json!({
+            "jsonrpc": "2.0", "id": 8, "method": "textDocument/completion",
+            "params": {
+                "textDocument": { "uri": "file:///commands.debug" },
+                "position": { "line": 1, "character": 0 }
+            }
+        }));
+        assert!(
+            output[0]["result"]["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|item| item["label"] == "lang debug break")
         );
     }
 

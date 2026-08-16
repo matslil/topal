@@ -155,6 +155,22 @@ There is no second positional `version` syntax. For language bootstrap, the
 stable parser recognizes this same record notation before the selected language
 assigns the fields their types and full meaning.
 
+A feature may construct a domain-specific language variant. Such a variant
+adds qualified vocabulary and execution authority only to the context which
+selected it. For example, a debugger command file selects the `debug` variant:
+
+```topal
+use language (
+  version is v0.1,
+  features is ( debug )
+)
+```
+
+That context provides debugger functions under `lang debug`; it does not grant
+the debugged application debugger authority. Future lint-rule and build-script
+variants use the same language-construction mechanism rather than separate
+command grammars.
+
 An instance may be given a local name when more than one configuration is
 needed:
 

@@ -15,4 +15,6 @@ pub use execution::{
 pub use source::{Diagnostic, Execution, ExecutionStep, Session, Value};
 pub use topal_semantics::LanguageVersion;
 pub use topal_source::UNICODE_VERSION;
-pub use trace::{JsonLines, TEST_TRACE_SCHEMA, TraceEvent, TraceSink};
+pub use trace::{
+    DEBUGGING_PROFILE, JsonLines, TEST_TRACE_SCHEMA, TESTING_PROFILE, TraceEvent, TraceSink,
+};

@@ -161,6 +161,7 @@ fn test_mode_records_discard_after_its_initializer() {
     assert!(output.status.success());
     assert_eq!(output.stdout, b"7\n");
     let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("\"profiles\":[\"debugging\",\"testing\"]"));
     let initializer = trace.find("root.+(Int,Int)").unwrap();
     let discard = trace.find("\"event\":\"binding.discarded\"").unwrap();
     assert!(initializer < discard);
@@ -766,9 +767,9 @@ fn every_mode_declares_and_calls_static_nullary_functions() {
     let output = run(&["--test"], source);
     let trace = String::from_utf8(output.stderr).unwrap();
     let declared = trace.find("function.declared").unwrap();
-    let entered = trace.find("function.entered").unwrap();
+    let entered = trace.find("function.entry").unwrap();
     let body = trace.find("root.+(Int,Int)").unwrap();
-    let returned = trace.find("function.returned").unwrap();
+    let returned = trace.find("function.exit").unwrap();
     assert!(declared < entered && entered < body && body < returned);
 }
 
@@ -804,9 +805,9 @@ fn every_mode_declares_and_calls_static_unary_functions() {
     let trace = String::from_utf8(output.stderr).unwrap();
     let bound = trace.find("function.argument.bound").unwrap();
     let selected = trace.find("function.selected").unwrap();
-    let entered = trace.find("function.entered").unwrap();
+    let entered = trace.find("function.entry").unwrap();
     let body = trace.find("root.+(Int,Int)").unwrap();
-    let returned = trace.find("function.returned").unwrap();
+    let returned = trace.find("function.exit").unwrap();
     assert!(bound < selected && selected < entered && entered < body && body < returned);
 }
 
@@ -845,7 +846,7 @@ fn every_mode_calls_static_product_functions() {
     let trace = String::from_utf8(output.stderr).unwrap();
     let left = trace.find("\"detail\":\"left\"").unwrap();
     let right = trace.find("\"detail\":\"right\"").unwrap();
-    let entered = trace.find("function.entered").unwrap();
+    let entered = trace.find("function.entry").unwrap();
     assert!(left < right && right < entered);
 }
 
@@ -888,10 +889,10 @@ fn every_mode_executes_multi_statement_function_bodies() {
 
     let output = run(&["--test"], source);
     let trace = String::from_utf8(output.stderr).unwrap();
-    let entered = trace.find("function.entered").unwrap();
-    let created = trace.find("binding.created").unwrap();
+    let entered = trace.find("function.entry").unwrap();
+    let created = trace.find("binding.bind").unwrap();
     let resolved = trace.find("binding.resolved").unwrap();
-    let returned = trace.find("function.returned").unwrap();
+    let returned = trace.find("function.exit").unwrap();
     assert!(entered < created && created < resolved && resolved < returned);
 }
 
@@ -922,7 +923,7 @@ fn every_mode_returns_early_from_functions() {
     );
     let trace = String::from_utf8(output.stderr).unwrap();
     let explicit = trace.find("function.return.explicit").unwrap();
-    let returned = trace.find("function.returned").unwrap();
+    let returned = trace.find("function.exit").unwrap();
     assert!(explicit < returned);
     assert!(!trace.contains("missing"));
 }
@@ -976,7 +977,7 @@ fn every_mode_validates_nat_function_boundaries() {
     assert!(!negative_argument.status.success());
     let error = String::from_utf8(negative_argument.stderr).unwrap();
     assert!(error.contains("E-FUNCTION-ARGUMENT-TYPE"));
-    assert!(!error.contains("function.entered"));
+    assert!(!error.contains("function.entry"));
 
     let negative_result = run(&[], "negative is fn () -> Nat\n  -1\nnegative ()\n");
     assert!(!negative_result.status.success());
@@ -1232,9 +1233,9 @@ fn every_mode_executes_nested_function_calls() {
 
     let output = run(&["--test"], source);
     let trace = String::from_utf8(output.stderr).unwrap();
-    let outer_entry = trace.find("\"event\":\"function.entered\"").unwrap();
+    let outer_entry = trace.find("\"event\":\"function.entry\"").unwrap();
     let inner_entry = trace[outer_entry + 1..]
-        .find("\"event\":\"function.entered\"")
+        .find("\"event\":\"function.entry\"")
         .unwrap()
         + outer_entry
         + 1;
@@ -1373,10 +1374,10 @@ fn every_mode_calls_a_later_function_declaration() {
     let output = run(&["--test"], source);
     let trace = String::from_utf8(output.stderr).unwrap();
     let render = trace
-        .find("function.entered\",\"rule\":\"TOPAL-FUNCTION-ORDINARY-001\",\"detail\":\"render")
+        .find("function.entry\",\"rule\":\"TOPAL-FUNCTION-ORDINARY-001\",\"detail\":\"render")
         .unwrap();
     let decorate = trace
-        .find("function.entered\",\"rule\":\"TOPAL-FUNCTION-ORDINARY-001\",\"detail\":\"decorate")
+        .find("function.entry\",\"rule\":\"TOPAL-FUNCTION-ORDINARY-001\",\"detail\":\"decorate")
         .unwrap();
     assert!(render < decorate);
 }
@@ -1659,7 +1660,7 @@ fn test_trace_explains_binding_decisions() {
     let output = run(&["--test"], "answer is 42\nanswer\n");
     assert!(output.status.success());
     let trace = String::from_utf8(output.stderr).unwrap();
-    assert!(trace.contains("\"event\":\"binding.created\""));
+    assert!(trace.contains("\"event\":\"binding.bind\""));
     assert!(trace.contains("\"event\":\"binding.resolved\""));
     assert!(trace.contains("\"rule\":\"TOPAL-SYN-BIND-001\""));
 }
@@ -2565,7 +2566,7 @@ fn every_mode_consumes_returned_character_generator() {
         assert!(run(arguments, source).status.success());
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
-    assert!(trace.contains("function.returned"));
+    assert!(trace.contains("function.exit"));
     assert!(trace.contains("generator.consumed"));
 }
 
@@ -2636,7 +2637,7 @@ fn every_mode_uses_custom_generator_local_binding() {
         assert!(!String::from_utf8_lossy(&output.stderr).contains("error["));
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
-    assert!(trace.contains("binding.created"));
+    assert!(trace.contains("binding.bind"));
     assert!(trace.contains("TOPAL-GENERATOR-FOREACH-001"));
 }
 
@@ -2677,7 +2678,7 @@ fn every_mode_suspends_custom_generator_between_yields() {
     assert_eq!(trace.matches("generator.suspended").count(), 2);
     let resumed = trace.find("generator.resumed").unwrap();
     let local = trace
-        .find("\"event\":\"binding.created\",\"rule\":\"TOPAL-SYN-BIND-001\",\"detail\":\"copy\"")
+        .find("\"event\":\"binding.bind\",\"rule\":\"TOPAL-SYN-BIND-001\",\"detail\":\"copy\"")
         .unwrap();
     let second_suspend = trace.rfind("generator.suspended").unwrap();
     assert!(resumed < local && local < second_suspend);
@@ -2741,7 +2742,7 @@ fn every_mode_consumes_custom_generator_returned_by_function() {
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-GENERATOR-FUNCTION-RESULT-001"));
-    assert!(trace.contains("generator.function.returned"));
+    assert!(trace.contains("generator.result.transferred"));
     assert!(trace.contains("generator.yielded"));
 }
 
@@ -3082,7 +3083,7 @@ fn every_mode_retains_generator_local_function() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     let declared_enum = trace.find("enum.declared").unwrap();
     let resumed = trace.find("generator.resumed").unwrap();
-    let entered = trace.rfind("function.entered").unwrap();
+    let entered = trace.rfind("function.entry").unwrap();
     assert!(declared_enum < resumed && resumed < entered);
 }
 
@@ -3094,7 +3095,7 @@ fn every_mode_restores_generator_local_close_handler() {
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     let close_bound = trace.find("generator.close.bound").unwrap();
-    let entered = trace.rfind("function.entered").unwrap();
+    let entered = trace.rfind("function.entry").unwrap();
     let closed = trace.find("generator.closed").unwrap();
     assert!(close_bound < entered && entered < closed);
     assert!(trace.contains("domain=root;code=generator-closed;generator=root.handle-close"));
@@ -3126,7 +3127,7 @@ fn every_mode_transfers_generic_generator_function_boundaries() {
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("Generator Int Unit String"));
-    assert!(trace.contains("generator.function.returned"));
+    assert!(trace.contains("generator.result.transferred"));
     assert!(trace.contains("generator.parameter.transferred"));
     assert!(trace.contains("generator.foreach.result.bound"));
 }
@@ -3142,7 +3143,7 @@ fn every_mode_transfers_compound_generator_function_boundaries() {
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("Generator (Int, String) Unit (Int, String)"));
-    assert!(trace.contains("generator.function.returned"));
+    assert!(trace.contains("generator.result.transferred"));
     assert!(trace.contains("generator.parameter.transferred"));
 }
 
@@ -3158,7 +3159,7 @@ fn every_mode_transfers_nested_generator_function_boundaries() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     let classifier = "Generator Optional (Int, String) Unit Result ((Int, String), lang arithmetic ArithmeticErrorCode)";
     assert!(trace.contains(&format!(
-        "\"event\":\"generator.function.returned\",\"rule\":\"TOPAL-GENERATOR-FUNCTION-RESULT-001\",\"detail\":\"{classifier}\""
+        "\"event\":\"generator.result.transferred\",\"rule\":\"TOPAL-GENERATOR-FUNCTION-RESULT-001\",\"detail\":\"{classifier}\""
     )));
     assert!(trace.contains(&format!(
         "\"event\":\"generator.parameter.transferred\",\"rule\":\"TOPAL-GENERATOR-FUNCTION-PARAMETER-001\",\"detail\":\"{classifier}\""
@@ -3179,7 +3180,7 @@ fn every_mode_transfers_list_generator_values() {
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("Generator List Int Unit List Int"));
-    assert!(trace.contains("generator.function.returned"));
+    assert!(trace.contains("generator.result.transferred"));
     assert!(trace.contains("generator.parameter.transferred"));
     assert!(trace.contains("TOPAL-LIST-APPEND-001"));
 }
@@ -3545,7 +3546,7 @@ fn every_mode_returns_explicit_completion_evidence() {
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-EXEC-COMPLETED-001"));
-    assert!(trace.contains("function.return"));
+    assert!(trace.contains("function.exit"));
 }
 
 #[test]
@@ -3640,7 +3641,7 @@ fn every_mode_applies_bound_named_function_values() {
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("TOPAL-FUNCTION-VALUE-001"));
-    assert!(trace.contains("function.entered"));
+    assert!(trace.contains("function.entry"));
 }
 
 #[test]

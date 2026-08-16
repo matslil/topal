@@ -94,6 +94,22 @@ standard output and actionable diagnostics on standard error with a nonzero
 status. The debugger functional suite shall exercise debugger behavior through
 this mode so the tested interface is also available to users and other tools.
 
+Command files shall select the `debug` language variant through their initial
+language construction. Interactive prompt evaluation selects it implicitly.
+Debugger commands are functions in `lang debug`; scripts use strict Topal name
+resolution, while the prompt may expand one unambiguous shortcut to its
+canonical function application. The debugger shall reject ambiguous shortcuts
+and retain canonical command identity for replay.
+
+## TOPAL-DEBUG-SEMANTIC-EVENT-001 — Semantic event breakpoints
+
+The debugger shall consume the shared fundamental and derived trace stream. It
+shall support breakpoints on typed events and conditions composed from value
+`create`, `destroy`, and `access` and function `entry` and `exit`. Its live
+adapter shall be able to stop at a selected event without making that stop part
+of application semantics. Reverse navigation shall retain the same event and
+observer-state identity.
+
 ## TOPAL-DEBUG-FAILURE-001 — Inspectable partial failure history
 
 When a diagnostic stops live execution, the debugger shall retain every

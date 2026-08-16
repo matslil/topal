@@ -648,6 +648,7 @@ pub struct Session {
     declared_names: BTreeSet<String>,
     published_names: BTreeSet<String>,
     language_version: LanguageVersion,
+    language_features: BTreeSet<String>,
     consumed_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
@@ -1424,6 +1425,7 @@ impl Session {
             declared_names: BTreeSet::new(),
             published_names: BTreeSet::new(),
             language_version: self.language_version,
+            language_features: self.language_features.clone(),
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: self.enum_types.clone(),
@@ -1496,6 +1498,7 @@ impl Session {
             declared_names: BTreeSet::new(),
             published_names: BTreeSet::new(),
             language_version: self.language_version,
+            language_features: self.language_features.clone(),
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: self.enum_types.clone(),
@@ -1728,7 +1731,7 @@ impl Session {
                         IntrospectionValue::LanguageContext {
                             language: "topal".into(),
                             version: self.language_version,
-                            features: Vec::new(),
+                            features: self.language_features.iter().cloned().collect(),
                         },
                     )))
                 }
@@ -2109,7 +2112,9 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Execution, Diagnostic> {
         let mut execution = self.prepare(input, trace)?;
-        let Some(Statement::LanguageSelection { version, .. }) = execution.statements.first()
+        let Some(Statement::LanguageSelection {
+            version, features, ..
+        }) = execution.statements.first()
         else {
             return Err(diagnostic(
                 &execution.source,
@@ -2119,6 +2124,7 @@ impl Session {
             )
             .with_help("add `use language (\n  version is v0.1\n)` at the start of the file"));
         };
+        let features = features.clone();
         let requested = execution
             .source
             .slice(*version)
@@ -2138,14 +2144,29 @@ impl Session {
             ));
         }
         self.language_version = requested;
+        self.language_features = features
+            .iter()
+            .map(|feature| execution.source.slice(*feature).to_owned())
+            .collect();
         execution.statements.remove(0);
         if execution.statements.is_empty() {
             return Err(expected_statement(input));
         }
+        let feature_names = self
+            .language_features
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(",");
+        let detail = if feature_names.is_empty() {
+            requested.to_string()
+        } else {
+            format!("{requested};features={feature_names}")
+        };
         trace.record(TraceEvent {
             event: "language.context.selected",
             rule: "TOPAL-SYN-CONTEXT-001",
-            detail: &requested.to_string(),
+            detail: &detail,
         });
         Ok(execution)
     }
@@ -2168,6 +2189,7 @@ impl Session {
             declared_names: bindings.keys().cloned().collect(),
             published_names: BTreeSet::new(),
             language_version: LanguageVersion::DESIGN_0,
+            language_features: BTreeSet::new(),
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: BTreeMap::new(),
@@ -2517,6 +2539,7 @@ impl Session {
                         declared_names: self.declared_names.clone(),
                         published_names: self.published_names.clone(),
                         language_version: self.language_version,
+                        language_features: self.language_features.clone(),
                         consumed_names: self.consumed_names.clone(),
                         local_function_names: self.local_function_names.clone(),
                         enum_types: self.enum_types.clone(),
@@ -3270,6 +3293,7 @@ impl Session {
                         declared_names: BTreeSet::new(),
                         published_names: BTreeSet::new(),
                         language_version: self.language_version,
+                        language_features: self.language_features.clone(),
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
@@ -3443,6 +3467,7 @@ impl Session {
                         declared_names: BTreeSet::new(),
                         published_names: BTreeSet::new(),
                         language_version: self.language_version,
+                        language_features: self.language_features.clone(),
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
@@ -3466,7 +3491,7 @@ impl Session {
                         detail: &signature,
                     });
                     trace.record(TraceEvent {
-                        event: "function.entered",
+                        event: "function.entry",
                         rule,
                         detail: name,
                     });
@@ -3522,7 +3547,7 @@ impl Session {
                     ) {
                         let classifier = structural_value_classifier(&value);
                         trace.record(TraceEvent {
-                            event: "generator.function.returned",
+                            event: "generator.result.transferred",
                             rule: if matches!(value, Value::SuspendedGenerator { .. }) {
                                 "TOPAL-GENERATOR-FUNCTION-RESULT-001"
                             } else {
@@ -3532,7 +3557,7 @@ impl Session {
                         });
                     }
                     trace.record(TraceEvent {
-                        event: "function.returned",
+                        event: "function.exit",
                         rule,
                         detail: name,
                     });
@@ -6989,7 +7014,11 @@ impl Execution {
     ) -> Result<ExecutionStep, Diagnostic> {
         let statement = &self.statements[self.cursor];
         let (value, span) = match statement {
-            Statement::LanguageSelection { version, span } => {
+            Statement::LanguageSelection {
+                version,
+                features,
+                span,
+            } => {
                 let requested = self
                     .source
                     .slice(*version)
@@ -7009,10 +7038,24 @@ impl Execution {
                     ));
                 }
                 session.language_version = requested;
+                session.language_features = features
+                    .iter()
+                    .map(|feature| self.source.slice(*feature).to_owned())
+                    .collect();
+                let feature_names = features
+                    .iter()
+                    .map(|feature| self.source.slice(*feature))
+                    .collect::<Vec<_>>()
+                    .join(",");
+                let detail = if feature_names.is_empty() {
+                    requested.to_string()
+                } else {
+                    format!("{requested};features={feature_names}")
+                };
                 trace.record(TraceEvent {
                     event: "language.context.selected",
                     rule: "TOPAL-SYN-GRAMMAR-001",
-                    detail: &requested.to_string(),
+                    detail: &detail,
                 });
                 (Value::Unit, *span)
             }
@@ -7492,7 +7535,7 @@ impl Execution {
         session.functions.remove(name_text);
         session.declared_names.insert(name_text.to_owned());
         trace.record(TraceEvent {
-            event: "binding.created",
+            event: "binding.bind",
             rule: "TOPAL-SYN-BIND-001",
             detail: name_text,
         });
@@ -13669,6 +13712,22 @@ mod tests {
     }
 
     #[test]
+    fn preserves_constructed_language_variant_features() {
+        let value = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.1, features is ( debug ) )\nlang context\n",
+                &mut std::io::sink(),
+            )
+            .unwrap();
+        assert!(matches!(
+            value,
+            Value::Introspection(context)
+                if matches!(&*context, IntrospectionValue::LanguageContext { features, .. }
+                    if features == &["debug"])
+        ));
+    }
+
+    #[test]
     fn evaluates_static_object_relations_without_runtime_reflection() {
         assert_eq!(
             evaluate("Int lang same-object Int\n").unwrap(),
@@ -14400,11 +14459,11 @@ fn declares_and_calls_static_nullary_functions() {
         .unwrap();
     let entered = trace
         .iter()
-        .position(|event| event.contains("function.entered"))
+        .position(|event| event.contains("function.entry"))
         .unwrap();
     let returned = trace
         .iter()
-        .position(|event| event.contains("function.returned"))
+        .position(|event| event.contains("function.exit"))
         .unwrap();
     assert!(declared < entered && entered < returned);
 }
@@ -14492,7 +14551,7 @@ fn function_block_bindings_are_local_to_each_invocation() {
     assert_eq!(value.to_string(), "42");
     let created = trace
         .iter()
-        .position(|event| event.contains("binding.created") && event.contains("local"))
+        .position(|event| event.contains("binding.bind") && event.contains("local"))
         .unwrap();
     let resolved = trace
         .iter()
@@ -14780,19 +14839,19 @@ fn nested_function_calls_preserve_staticness_and_detect_cycles() {
     assert_eq!(value.to_string(), "42");
     let outer_entry = trace
         .iter()
-        .position(|event| event.contains("function.entered") && event.contains("answer"))
+        .position(|event| event.contains("function.entry") && event.contains("answer"))
         .unwrap();
     let inner_entry = trace
         .iter()
-        .position(|event| event.contains("function.entered") && event.contains("increment"))
+        .position(|event| event.contains("function.entry") && event.contains("increment"))
         .unwrap();
     let inner_return = trace
         .iter()
-        .position(|event| event.contains("function.returned") && event.contains("increment"))
+        .position(|event| event.contains("function.exit") && event.contains("increment"))
         .unwrap();
     let outer_return = trace
         .iter()
-        .position(|event| event.contains("function.returned") && event.contains("answer"))
+        .position(|event| event.contains("function.exit") && event.contains("answer"))
         .unwrap();
     assert!(outer_entry < inner_entry && inner_entry < inner_return && inner_return < outer_return);
 
@@ -14903,11 +14962,11 @@ fn earlier_function_body_calls_later_declaration() {
     assert_eq!(value.to_string(), "42");
     let first = trace
         .iter()
-        .position(|event| event.contains("function.entered") && event.contains("first"))
+        .position(|event| event.contains("function.entry") && event.contains("first"))
         .unwrap();
     let second = trace
         .iter()
-        .position(|event| event.contains("function.entered") && event.contains("second"))
+        .position(|event| event.contains("function.entry") && event.contains("second"))
         .unwrap();
     assert!(first < second);
 }
@@ -15178,7 +15237,7 @@ fn nested_function_captures_outer_parameter_without_leaking() {
     assert_eq!(value.to_string(), "42");
     let outer_entry = trace
         .iter()
-        .position(|event| event.contains("function.entered") && event.contains("answer"))
+        .position(|event| event.contains("function.entry") && event.contains("answer"))
         .unwrap();
     let nested_declaration = trace
         .iter()
@@ -15186,7 +15245,7 @@ fn nested_function_captures_outer_parameter_without_leaking() {
         .unwrap();
     let nested_entry = trace
         .iter()
-        .position(|event| event.contains("function.entered") && event.contains("add-input"))
+        .position(|event| event.contains("function.entry") && event.contains("add-input"))
         .unwrap();
     assert!(outer_entry < nested_declaration && nested_declaration < nested_entry);
 
@@ -16151,7 +16210,7 @@ fn named_generator_yield_reads_local_binding() {
         )
         .unwrap();
     assert_eq!(value, Value::Unit);
-    assert!(trace.iter().any(|event| event.contains("binding.created")));
+    assert!(trace.iter().any(|event| event.contains("binding.bind")));
     assert_eq!(
         trace
             .iter()
@@ -16220,7 +16279,7 @@ fn custom_generator_defers_post_yield_binding_until_resume() {
         .unwrap();
     let local = trace
         .iter()
-        .position(|event| event.contains("binding.created") && event.contains("copy"))
+        .position(|event| event.contains("binding.bind") && event.contains("copy"))
         .unwrap();
     let second_suspend = trace
         .iter()
@@ -16739,7 +16798,7 @@ fn custom_generator_retains_local_function_across_resumption() {
         .unwrap();
     let called = trace
         .iter()
-        .rposition(|event| event.contains("function.entered"))
+        .rposition(|event| event.contains("function.entry"))
         .unwrap();
     assert!(declared_enum < resumed && resumed < called);
 }
@@ -16759,7 +16818,7 @@ fn custom_generator_restores_local_declarations_during_close() {
         .unwrap();
     let entered = trace
         .iter()
-        .rposition(|event| event.contains("function.entered"))
+        .rposition(|event| event.contains("function.entry"))
         .unwrap();
     let closed = trace
         .iter()
@@ -16851,7 +16910,7 @@ fn custom_generator_crosses_generic_function_boundaries() {
     assert!(
         trace
             .iter()
-            .any(|event| event.contains("generator.function.returned"))
+            .any(|event| event.contains("generator.result.transferred"))
     );
     assert!(
         trace
@@ -16887,7 +16946,7 @@ fn nested_generator_crosses_function_boundaries() {
     assert_eq!(value.to_string(), "(8, \"done\")");
     let classifier = "Generator Optional (Int, String) Unit Result ((Int, String), lang arithmetic ArithmeticErrorCode)";
     assert!(trace.iter().any(|event| {
-        event.contains("generator.function.returned") && event.contains(classifier)
+        event.contains("generator.result.transferred") && event.contains(classifier)
     }));
     assert!(trace.iter().any(|event| {
         event.contains("generator.parameter.transferred") && event.contains(classifier)
@@ -16905,7 +16964,7 @@ fn list_generator_crosses_function_boundaries() {
         .unwrap();
     assert_eq!(value.to_string(), "Entry ( 7, Entry ( 9, Empty ) )");
     assert!(trace.iter().any(|event| {
-        event.contains("generator.function.returned")
+        event.contains("generator.result.transferred")
             && event.contains("Generator List Int Unit List Int")
     }));
     assert!(trace.iter().any(|event| {

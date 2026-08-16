@@ -21,6 +21,25 @@ typed static value. A conforming implementation SHALL reject an attempt to
 inspect an arbitrary runtime value and SHALL NOT retain descriptors solely to
 support runtime reflection.
 
+`lang trace` is not an exception granting runtime reflection to ordinary code.
+It SHALL statically construct an observational task whose declared typed inputs
+are supplied by the trace system. The observer SHALL NOT inspect runtime values
+or events outside those inputs.
+
+## TOPAL-INTRO-TRACE-001 — Typed trace observers
+
+`lang trace` SHALL construct a deterministic observational task over declared
+fundamental or derived event inputs and static configuration. Returning a
+typed event value SHALL emit that value as one derived event; returning `None`
+SHALL emit no event. Observer inspection SHALL NOT itself emit value or
+function events. Observer state and output SHALL depend only on its initial
+configuration and ordered inputs, and observer execution SHALL NOT alter the
+observed application's values, dependencies, errors, authority, or scheduling.
+
+An implementation MAY realize an observer as a task, filter, state machine,
+debugger evaluator, or replay transform when the resulting typed stream is
+equivalent. Dependencies between derived observers SHALL be acyclic.
+
 ## TOPAL-INTRO-VIEW-001 — Kind-preserving views
 
 `lang view` SHALL select its result type from the semantic kind of its operand.

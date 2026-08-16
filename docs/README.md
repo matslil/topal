@@ -16,5 +16,6 @@ The design currently covers:
 - syntax, execution, errors, effects, functions, and generators;
 - modules, constructed contexts, resources, tasks, and interfaces;
 - containers, strings, numbers, ranges, units, and serialization;
-- layouts, addressed storage, sensitive values, tracing, and performance; and
+- layouts, addressed storage, sensitive values, tracing, debugger scripting,
+  and performance; and
 - unit testing and structural path coverage.
