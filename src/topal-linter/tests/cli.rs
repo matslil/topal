@@ -314,6 +314,24 @@ fn proposed_task_order_rule_is_off_by_default_and_configurable() {
     let terminal = String::from_utf8(as_error.stderr).unwrap();
     assert!(terminal.contains("error[L-TASK-DECLARATION-ORDER]"));
     assert!(terminal.contains("= suggestion:"));
+
+    let before = fs::read_to_string(&path).unwrap();
+    let suggestion_only = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args([
+            "--fix",
+            "--enable",
+            "lang best-practice task declaration-order",
+        ])
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(suggestion_only.status.success());
+    assert!(
+        String::from_utf8(suggestion_only.stderr)
+            .unwrap()
+            .contains("= suggestion:")
+    );
+    assert_eq!(fs::read_to_string(&path).unwrap(), before);
     fs::remove_file(path).unwrap();
 }
 
