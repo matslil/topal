@@ -765,7 +765,7 @@ mod tests {
             ] } } }
         }));
         assert_eq!(initialized[0]["result"]["serverInfo"]["name"], "topal-lsp");
-        let source = "use language (\n  version is v0.1\n)\nCounter is Task (queue-size is 2)\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n";
+        let source = "use language (\n  version is v0.1\n)\nCounter is Task (queue-size is 2)\n😀 is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n";
         let opened = server.handle(&json!({
             "jsonrpc": "2.0", "method": "textDocument/didOpen",
             "params": { "textDocument": {
@@ -785,6 +785,8 @@ mod tests {
         );
         assert_eq!(diagnostic["data"]["rectification"]["kind"], "suggestion");
         assert_eq!(diagnostic["range"]["start"]["line"], 4);
+        assert_eq!(diagnostic["range"]["start"]["character"], 0);
+        assert_eq!(diagnostic["range"]["end"]["character"], 2);
 
         let corrected = "use language (\r\n  version is v0.1\r\n)\r\nCounter is Task (queue-size is 2)\r\nservice is Counter\r\n  count : Nat\r\n  start is fn (initial : Nat) -> Completed\r\n    @ count is initial\r\n    Completed\r\n  increment is fn (_ : MessageContext, amount : Nat) -> Unit\r\n    @ count is @ count + amount\r\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\r\n    @ count\r\n";
         let changed = server.handle(&json!({

@@ -115,6 +115,14 @@ fn aggregates_shared_diagnostics_as_sarif() {
     );
     assert_eq!(best_practice["properties"]["bestPracticeVersion"], "v0.1");
     assert_eq!(best_practice["properties"]["ruleVersion"], "v0.1");
+    assert!(
+        best_practice["locations"][0]["physicalLocation"]["region"]["endColumn"]
+            .as_u64()
+            .unwrap()
+            > best_practice["locations"][0]["physicalLocation"]["region"]["startColumn"]
+                .as_u64()
+                .unwrap()
+    );
     assert_eq!(
         best_practice["properties"]["rectification"]["kind"],
         "suggestion"
@@ -203,6 +211,8 @@ fn proposed_task_order_rule_is_off_by_default_and_configurable() {
     assert_eq!(finding["best_practice_version"], "v0.1");
     assert_eq!(finding["rule_version"], "v0.1");
     assert_eq!(finding["code"], "L-TASK-DECLARATION-ORDER");
+    assert_eq!(finding["end_line"], finding["line"]);
+    assert!(finding["end_column"].as_u64().unwrap() > finding["column"].as_u64().unwrap());
     assert_eq!(finding["rectification"]["kind"], "suggestion");
     assert!(
         finding["rectification"]["message"]
@@ -210,6 +220,15 @@ fn proposed_task_order_rule_is_off_by_default_and_configurable() {
             .unwrap()
             .contains("before `start`")
     );
+
+    let terminal = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args(["--enable", "lang best-practice task declaration-order"])
+        .arg(&path)
+        .output()
+        .unwrap();
+    let terminal = String::from_utf8(terminal.stderr).unwrap();
+    assert!(terminal.contains("10 |   count : Nat"));
+    assert!(terminal.contains("|   ^^^^^"));
 
     let as_error = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
         .args([
