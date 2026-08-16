@@ -5,6 +5,13 @@ These tool requirements refine `TOPAL-REQ-TOOLS-001`,
 interpreter. The three modes and their command-line selection record the
 implementation intent approved for the initial interpreter work.
 
+## TOPAL-INTP-LIBRARY-GENERICS-001 — Capability-generic library calls
+
+The interpreter shall execute capability-constrained standard-library
+functions with the exact type variable selected from their first constrained
+operand, enforce that identity on later operands and results, and expose the
+same overload decision to testing and debugging traces.
+
 ## TOPAL-INTP-MODE-001 — Script mode
 
 The interpreter shall use script mode by default. It shall read one named

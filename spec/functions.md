@@ -2,6 +2,17 @@
 
 ## Formal text
 
+### TOPAL-FUNCTION-CAPABILITY-GENERIC-001 — Capability-constrained type variables
+
+In a function header, `value : (T : Capability)` SHALL bind `T` to the exact
+classifier of the accepted value and require that classifier to provide the
+named capability. Every other parameter or result classified by `T` in the
+same header SHALL use that identical classifier. Selection SHALL reject a call
+whose later `T` argument has a different classifier even if both classifiers
+independently provide the capability. A result classified by `T` SHALL retain
+the bound classifier without erasing refinements or substituting a concrete
+fallback type.
+
 ### TOPAL-EXEC-COMPLETED-001 — Completion evidence
 
 The identifier `Completed` in expression position shall evaluate to the

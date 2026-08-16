@@ -3482,7 +3482,7 @@ impl Session {
                     if !function.result.starts_with("Generator ") {
                         close_remaining_character_generators(&mut function_scope, trace)?;
                     }
-                    if !value_has_classifier(&value, &function.result) {
+                    if !generic_result_accepts(&function, &function_scope, &value) {
                         return Err(diagnostic(
                             &function.source,
                             "E-FUNCTION-RESULT-TYPE",
@@ -6708,7 +6708,15 @@ impl Execution {
         }
         let result_text = self.source.slice(result);
         let effect_bound_text = effect_bound.map(|bound| self.source.slice(bound).to_owned());
+        let generic_names = parameters
+            .iter()
+            .filter_map(|parameter| {
+                generic_capability_classifier(self.source.slice(parameter.classifier))
+                    .map(|(name, _)| name.to_owned())
+            })
+            .collect::<BTreeSet<_>>();
         if !supported_value_classifier(result_text, &session.enum_types)
+            && !generic_names.contains(result_text)
             && !session.union_types.contains_key(result_text)
         {
             return Err(diagnostic(
@@ -6760,6 +6768,8 @@ impl Execution {
                 }
                 let classifier = self.source.slice(parameter.classifier);
                 if !supported_value_classifier(classifier, &session.enum_types)
+                    && generic_capability_classifier(classifier).is_none()
+                    && !generic_names.contains(classifier)
                     && !session.union_types.contains_key(classifier)
                 {
                     return Err(diagnostic(
@@ -8794,13 +8804,68 @@ fn user_function_accepts(function: &UserFunction, argument: &Value) -> bool {
             arguments
         }
     };
+    let mut generic_types = BTreeMap::new();
     function.parameters.iter().enumerate().zip(arguments).all(
         |((index, (_, classifier)), argument)| {
             function.parameter_packages.get(&index).map_or_else(
-                || value_has_classifier(argument, classifier),
+                || generic_parameter_accepts(argument, classifier, &mut generic_types),
                 |fields| package_accepts(fields, argument),
             )
         },
+    )
+}
+
+fn generic_capability_classifier(classifier: &str) -> Option<(&str, &str)> {
+    let contents = classifier.trim().strip_prefix('(')?.strip_suffix(')')?;
+    let (name, capability) = contents.split_once(':')?;
+    let name = name.trim();
+    let capability = capability.trim();
+    (!name.is_empty() && !capability.is_empty()).then_some((name, capability))
+}
+
+fn generic_parameter_accepts(
+    argument: &Value,
+    classifier: &str,
+    generic_types: &mut BTreeMap<String, String>,
+) -> bool {
+    if let Some((name, capability)) = generic_capability_classifier(classifier) {
+        if !value_has_capability(argument, capability) {
+            return false;
+        }
+        let actual = structural_value_classifier(argument);
+        return generic_types
+            .insert(name.to_owned(), actual.clone())
+            .is_none_or(|existing| existing == actual);
+    }
+    if let Some(expected) = generic_types.get(classifier) {
+        return structural_value_classifier(argument) == *expected;
+    }
+    value_has_classifier(argument, classifier)
+}
+
+fn value_has_capability(value: &Value, capability: &str) -> bool {
+    match capability {
+        "Equality" => values_equal(value.clone(), value.clone(), &mut Vec::new()).is_some(),
+        "PartialOrder" | "TotalOrder" | "Ordering" => {
+            values_compare(value.clone(), value.clone(), &mut Vec::new()).is_some()
+        }
+        _ => false,
+    }
+}
+
+fn generic_result_accepts(function: &UserFunction, scope: &Session, value: &Value) -> bool {
+    let expected = function
+        .parameters
+        .iter()
+        .find_map(|(parameter, classifier)| {
+            let (name, _) = generic_capability_classifier(classifier)?;
+            (name == function.result)
+                .then(|| scope.bindings.get(parameter))
+                .flatten()
+        });
+    expected.map_or_else(
+        || value_has_classifier(value, &function.result),
+        |expected| structural_value_classifier(expected) == structural_value_classifier(value),
     )
 }
 
