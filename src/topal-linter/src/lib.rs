@@ -641,7 +641,7 @@ fn policy(entry: &CatalogEntry, overrides: &[Override]) -> Result<Policy, String
     let default_severity = parse_severity(&entry.default_severity)?
         .ok_or_else(|| "catalog default severity cannot be off".to_string())?;
     let mut policy = Policy {
-        enabled: entry.default_enabled,
+        enabled: entry.default_enabled && entry.status.kind != "deprecated",
         severity: default_severity,
     };
     let mut matching: Vec<_> = overrides
@@ -1103,10 +1103,28 @@ fn entry_applies(entry: &CatalogEntry, selected_version: Option<&str>) -> Result
         return Ok(false);
     };
     let selected = parse_version(selected_version)?;
-    if let Some(minimum) = entry.language_versions.strip_prefix(">=") {
-        return Ok(selected >= parse_version(minimum)?);
+    let version_matches = if let Some(minimum) = entry.language_versions.strip_prefix(">=") {
+        selected >= parse_version(minimum)?
+    } else {
+        selected == parse_version(&entry.language_versions)?
+    };
+    if !version_matches {
+        return Ok(false);
     }
-    Ok(selected == parse_version(&entry.language_versions)?)
+    if entry.status.kind == "obsolete" {
+        let cutoff = entry
+            .status
+            .since_language_version
+            .as_deref()
+            .ok_or_else(|| {
+                format!(
+                    "obsolete best-practice `{}` has no language-version cutoff",
+                    entry.identity
+                )
+            })?;
+        return Ok(selected < parse_version(cutoff)?);
+    }
+    Ok(true)
 }
 
 fn parse_version(version: &str) -> Result<(u64, u64), String> {
@@ -1366,7 +1384,7 @@ mod tests {
 
     #[test]
     fn applicability_uses_the_selected_source_language_version() {
-        let entry = Catalog::builtin()
+        let mut entry = Catalog::builtin()
             .entries
             .into_iter()
             .find(|entry| entry.identity.ends_with("declaration-order"))
@@ -1374,5 +1392,29 @@ mod tests {
         assert!(entry_applies(&entry, Some("v0.1")).unwrap());
         assert!(entry_applies(&entry, Some("v0.2")).unwrap());
         assert!(!entry_applies(&entry, None).unwrap());
+
+        entry.status.kind = "obsolete".into();
+        entry.status.since_language_version = Some("v0.2".into());
+        entry.status.explanation = Some("covered by the language".into());
+        assert!(entry_applies(&entry, Some("v0.1")).unwrap());
+        assert!(!entry_applies(&entry, Some("v0.2")).unwrap());
+        assert!(!entry_applies(&entry, Some("v0.3")).unwrap());
+    }
+
+    #[test]
+    fn deprecated_entries_are_off_by_default_but_remain_selectable() {
+        let mut entry = entry();
+        entry.status.kind = "deprecated".into();
+        entry.status.explanation = Some("superseded guidance".into());
+        entry.default_enabled = true;
+        assert!(!policy(&entry, &[]).unwrap().enabled);
+
+        let settings = [Override {
+            selector: Selector::Identity(entry.identity.clone()),
+            enabled: Some(true),
+            severity: SeveritySetting::Keep,
+            order: 0,
+        }];
+        assert!(policy(&entry, &settings).unwrap().enabled);
     }
 }

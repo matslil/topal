@@ -150,15 +150,7 @@ fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
     ) {
         return Err(format!("unknown best-practice class `{}`", entry.class));
     }
-    if !matches!(
-        entry.status.kind.as_str(),
-        "proposed" | "active" | "obsolete" | "deprecated"
-    ) {
-        return Err(format!(
-            "unknown best-practice status `{}`",
-            entry.status.kind
-        ));
-    }
+    validate_status(entry)?;
     if !matches!(entry.default_severity.as_str(), "warning" | "error") {
         return Err(format!(
             "unknown default severity `{}` for {}",
@@ -194,6 +186,64 @@ fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
                 rule.diagnostic_code
             ));
         }
+    }
+    Ok(())
+}
+
+fn validate_status(entry: &CatalogEntry) -> Result<(), String> {
+    match entry.status.kind.as_str() {
+        "proposed" | "active" => {
+            if entry.status.since_language_version.is_some() {
+                return Err(format!(
+                    "best-practice `{}` records an obsolete-since version without obsolete status",
+                    entry.identity
+                ));
+            }
+        }
+        "obsolete" => {
+            if entry
+                .status
+                .since_language_version
+                .as_deref()
+                .is_none_or(str::is_empty)
+            {
+                return Err(format!(
+                    "obsolete best-practice `{}` requires a language version",
+                    entry.identity
+                ));
+            }
+            if entry
+                .status
+                .explanation
+                .as_deref()
+                .is_none_or(str::is_empty)
+            {
+                return Err(format!(
+                    "obsolete best-practice `{}` requires an explanation",
+                    entry.identity
+                ));
+            }
+        }
+        "deprecated" => {
+            if entry.status.since_language_version.is_some() {
+                return Err(format!(
+                    "deprecated best-practice `{}` cannot use a language-version cutoff",
+                    entry.identity
+                ));
+            }
+            if entry
+                .status
+                .explanation
+                .as_deref()
+                .is_none_or(str::is_empty)
+            {
+                return Err(format!(
+                    "deprecated best-practice `{}` requires an explanation",
+                    entry.identity
+                ));
+            }
+        }
+        other => return Err(format!("unknown best-practice status `{other}`")),
     }
     Ok(())
 }
@@ -289,6 +339,29 @@ mod tests {
             Catalog::from_json(&source)
                 .unwrap_err()
                 .contains("stable `name/version`")
+        );
+    }
+
+    #[test]
+    fn malformed_external_lifecycle_metadata_is_rejected() {
+        let mut catalog = Catalog::builtin();
+        catalog.entries[0].status.kind = "obsolete".into();
+        catalog.entries[0].status.since_language_version = None;
+        catalog.entries[0].status.explanation = Some("the language now enforces this".into());
+        let source = serde_json::to_string(&catalog).unwrap();
+        assert!(
+            Catalog::from_json(&source)
+                .unwrap_err()
+                .contains("requires a language version")
+        );
+
+        catalog.entries[0].status.kind = "deprecated".into();
+        catalog.entries[0].status.since_language_version = Some("v0.2".into());
+        let source = serde_json::to_string(&catalog).unwrap();
+        assert!(
+            Catalog::from_json(&source)
+                .unwrap_err()
+                .contains("cannot use a language-version cutoff")
         );
     }
 }
