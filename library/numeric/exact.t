@@ -3,8 +3,8 @@ use language (
   version is v0.1
 )
 
-# Demonstrates derived algorithms over exact, arbitrary-precision numbers.
-# Parsing and presentation policy intentionally remain outside this module.
+# Derived algorithms over exact, arbitrary-precision numbers. Parsing and
+# presentation policy intentionally remain outside this module.
 pub sign is fn (value : Int) -> Int
   value
     < 0 then -1
@@ -13,6 +13,3 @@ pub sign is fn (value : Int) -> Int
 
 pub distance is fn (left : Int, right : Int) -> Nat
   absolute (left - right)
-
-pub square is fn (value : Rational) -> Rational
-  value ^ 2

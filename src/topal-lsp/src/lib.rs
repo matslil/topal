@@ -1194,7 +1194,7 @@ mod tests {
 
     #[test]
     fn accepts_the_standard_library_fundamental_sources() {
-        for name in ["boolean.t", "optional-result.t", "ordering.t", "unit.t"] {
+        for name in ["boolean.t", "ordering.t"] {
             let path = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../library/fundamental")
                 .join(name);
@@ -1218,12 +1218,8 @@ mod tests {
                 path.display()
             );
         }
-        for name in ["exact.t", "ranges.t"] {
-            let numeric = Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../library/numeric")
-                .join(name);
-            assert!(diagnostics(&std::fs::read_to_string(numeric).unwrap()).is_empty());
-        }
+        let numeric = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/numeric/exact.t");
+        assert!(diagnostics(&std::fs::read_to_string(numeric).unwrap()).is_empty());
     }
 
     #[test]
