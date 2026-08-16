@@ -212,7 +212,7 @@ fn accepts_clean_shared_language_source() {
 
 #[test]
 fn accepts_the_standard_library_fundamental_sources() {
-    for name in ["boolean.t", "ordering.t", "unit.t"] {
+    for name in ["boolean.t", "optional-result.t", "ordering.t", "unit.t"] {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../library/fundamental")
             .join(name);
