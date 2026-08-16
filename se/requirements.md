@@ -80,3 +80,21 @@ input, and incomplete input needed by batch tools, editor services, custom lint
 rules, and static debugging. Runtime tools shall correlate execution decisions
 with the same stable source identities without making application semantics
 depend on observation.
+
+## TOPAL-REQ-BEST-PRACTICE-001 — Shared programming guidance
+
+The repository shall maintain a versioned best-practice database from which
+human guidance, agent decision information, and optional lint rules are
+traceably derived. Entries shall have stable owned identities, explicit status,
+classification, applicability, defaults, tags, provenance, and license.
+Generated projections shall remain version controlled and shall be verified
+against their authoritative inputs.
+
+## TOPAL-REQ-LINT-001 — Contained configurable linting
+
+The Topal linter shall consume shared versioned syntax and semantic views,
+produce diagnostics compatible with the interpreter and compiler, support
+configuration and scoped suppression by stable best-practice identity, and
+apply only explicitly selected safe rectifications. External databases and
+library-supplied rules shall be supported without granting ambient authority or
+automatic execution merely because a package is installed.
