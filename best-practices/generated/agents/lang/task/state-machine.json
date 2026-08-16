@@ -1,7 +1,7 @@
 {
-  "generated_by": "topal-best-practices/1",
-  "schema": 1,
-  "authoritative_sha256": "7fe8db69ab2480fe9b10d093f134bfea6f75e3c75e9861f49c88204330846859",
+  "generated_by": "topal-best-practices/2",
+  "schema": 2,
+  "authoritative_sha256": "975b35970170a3e39f6de787728f84d427a2665cc6b2d2a38d4813754cd283f6",
   "identity": "lang best-practice task state-machine",
   "version": "v0.1",
   "status": {
@@ -38,5 +38,6 @@
   ],
   "examples": [
     "examples/language/task-message-transactions.t"
-  ]
+  ],
+  "lint_rule": null
 }

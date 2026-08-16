@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-pub const SUPPORTED_SCHEMA: u64 = 1;
+pub const SUPPORTED_SCHEMA: u64 = 2;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -27,6 +27,7 @@ pub struct CatalogEntry {
     pub required_features: Vec<String>,
     pub excluded_features: Vec<String>,
     pub tags: Vec<String>,
+    pub lint_rule: Option<RuleAttachment>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -36,6 +37,16 @@ pub struct Status {
     pub since_language_version: Option<String>,
     pub explanation: Option<String>,
     pub replacement: Option<Vec<String>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct RuleAttachment {
+    pub engine: String,
+    pub entry_point: String,
+    pub version: String,
+    pub stage: String,
+    pub diagnostic_code: String,
 }
 
 impl Catalog {
@@ -64,6 +75,7 @@ impl Catalog {
                     entry.identity
                 ));
             }
+            validate_entry(entry)?;
         }
         for pair in catalog.entries.windows(2) {
             if pair[0].identity == pair[1].identity {
@@ -97,6 +109,15 @@ impl Catalog {
     /// Returns an error if the external catalog collides with any already
     /// loaded stable identity.
     pub fn merge(&mut self, external: Self) -> Result<(), String> {
+        if external.schema != SUPPORTED_SCHEMA {
+            return Err(format!(
+                "unsupported best-practice catalog schema {}",
+                external.schema
+            ));
+        }
+        for entry in &external.entries {
+            validate_entry(entry)?;
+        }
         self.entries.extend(external.entries);
         self.entries
             .sort_by(|left, right| left.identity.cmp(&right.identity));
@@ -110,6 +131,61 @@ impl Catalog {
         }
         Ok(())
     }
+}
+
+fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
+    if entry.status.kind == "proposed" && entry.default_enabled {
+        return Err(format!(
+            "proposed best-practice `{}` cannot be enabled by default",
+            entry.identity
+        ));
+    }
+    if !matches!(
+        entry.class.as_str(),
+        "template" | "recommended" | "best-practice"
+    ) {
+        return Err(format!("unknown best-practice class `{}`", entry.class));
+    }
+    if !matches!(
+        entry.status.kind.as_str(),
+        "proposed" | "active" | "obsolete" | "deprecated"
+    ) {
+        return Err(format!(
+            "unknown best-practice status `{}`",
+            entry.status.kind
+        ));
+    }
+    if !matches!(entry.default_severity.as_str(), "warning" | "error") {
+        return Err(format!(
+            "unknown default severity `{}` for {}",
+            entry.default_severity, entry.identity
+        ));
+    }
+    if entry.tags.is_empty() {
+        return Err(format!("best-practice `{}` has no tags", entry.identity));
+    }
+    if let Some(rule) = &entry.lint_rule {
+        if !matches!(rule.engine.as_str(), "builtin" | "topal") {
+            return Err(format!("unknown lint-rule engine `{}`", rule.engine));
+        }
+        if !matches!(
+            rule.stage.as_str(),
+            "tokens" | "syntax" | "semantic" | "trace"
+        ) {
+            return Err(format!("unknown lint-rule stage `{}`", rule.stage));
+        }
+        if !rule.diagnostic_code.starts_with("L-")
+            || !rule.diagnostic_code.chars().all(|character| {
+                character.is_ascii_uppercase() || character.is_ascii_digit() || character == '-'
+            })
+        {
+            return Err(format!(
+                "invalid lint-rule diagnostic code `{}`",
+                rule.diagnostic_code
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -136,6 +212,23 @@ mod tests {
                 .merge(Catalog::builtin())
                 .unwrap_err()
                 .contains("more than one")
+        );
+    }
+
+    #[test]
+    fn malformed_external_rule_attachment_is_rejected() {
+        let mut catalog = Catalog::builtin();
+        let entry = catalog
+            .entries
+            .iter_mut()
+            .find(|entry| entry.lint_rule.is_some())
+            .unwrap();
+        entry.lint_rule.as_mut().unwrap().engine = "ambient-process".into();
+        let source = serde_json::to_string(&catalog).unwrap();
+        assert!(
+            Catalog::from_json(&source)
+                .unwrap_err()
+                .contains("unknown lint-rule engine")
         );
     }
 }

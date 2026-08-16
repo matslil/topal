@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://topal.dev/schema/best-practice-v1.json",
+  "$id": "https://topal.dev/schema/best-practice-v2.json",
   "title": "Topal best-practice bootstrap record",
   "type": "object",
   "additionalProperties": false,
@@ -9,10 +9,10 @@
     "recommendation", "rationale", "language", "language_versions",
     "required_features", "excluded_features", "default_enabled",
     "default_severity", "checkability", "rectification", "tags", "exceptions",
-    "examples", "specification_rules", "provenance", "license"
+    "examples", "specification_rules", "lint_rule", "provenance", "license"
   ],
   "properties": {
-    "schema": { "const": 1 },
+    "schema": { "const": 2 },
     "identity": { "$ref": "#/$defs/identity" },
     "version": { "type": "string", "minLength": 1 },
     "status": {
@@ -43,6 +43,23 @@
     "exceptions": { "$ref": "#/$defs/strings" },
     "examples": { "$ref": "#/$defs/strings" },
     "specification_rules": { "$ref": "#/$defs/strings" },
+    "lint_rule": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["engine", "entry_point", "version", "stage", "diagnostic_code"],
+          "properties": {
+            "engine": { "enum": ["builtin", "topal"] },
+            "entry_point": { "type": "string", "minLength": 1 },
+            "version": { "type": "string", "minLength": 1 },
+            "stage": { "enum": ["tokens", "syntax", "semantic", "trace"] },
+            "diagnostic_code": { "type": "string", "pattern": "^L-[A-Z0-9-]+$" }
+          }
+        }
+      ]
+    },
     "provenance": { "type": "string", "minLength": 1 },
     "license": { "type": "string", "minLength": 1 }
   },

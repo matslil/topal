@@ -115,3 +115,74 @@ fn rejects_a_selector_that_matches_no_catalog_entry() {
             .contains("matches no best-practice")
     );
 }
+
+#[test]
+fn proposed_task_order_rule_is_off_by_default_and_configurable() {
+    let path = temporary_source(
+        "task-order",
+        "use language (\n  version is v0.1\n)\nCounter is Task (queue-size is 2)\nservice is Counter\n  start is fn (initial : Nat) -> Completed\n    Completed\n  increment is fn (_ : MessageContext, amount : Nat) -> Unit\n    ()\n  count : Nat\n",
+    );
+    let default = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(default.status.success());
+    assert!(default.stderr.is_empty());
+
+    let enabled = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args([
+            "--enable",
+            "lang best-practice task declaration-order",
+            "--format",
+            "json",
+        ])
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(enabled.status.success());
+    let finding: serde_json::Value = serde_json::from_slice(&enabled.stdout).unwrap();
+    assert_eq!(finding["severity"], "warning");
+    assert_eq!(
+        finding["best_practice"],
+        "lang best-practice task declaration-order"
+    );
+    assert_eq!(finding["best_practice_version"], "v0.1");
+    assert_eq!(finding["rule_version"], "v0.1");
+    assert_eq!(finding["code"], "L-TASK-DECLARATION-ORDER");
+    assert!(finding["help"].as_str().unwrap().contains("before `start`"));
+
+    let as_error = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args([
+            "--enable",
+            "lang best-practice task declaration-order",
+            "--severity",
+            "lang best-practice task declaration-order=error",
+        ])
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert_eq!(as_error.status.code(), Some(1));
+    assert!(
+        String::from_utf8(as_error.stderr)
+            .unwrap()
+            .contains("error[L-TASK-DECLARATION-ORDER]")
+    );
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn shared_task_order_example_conforms_when_the_proposed_rule_is_enabled() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args(["--enable", "lang best-practice task declaration-order"])
+        .arg(root.join("examples/language/task-declaration-order.t"))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stdout.is_empty());
+    assert!(output.stderr.is_empty());
+}

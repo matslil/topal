@@ -1,0 +1,46 @@
+{
+  "generated_by": "topal-best-practices/2",
+  "schema": 2,
+  "authoritative_sha256": "508c008f60c465436ff8a316ce96b1952d8d4edf0f7912664fb2b304d5e604e8",
+  "identity": "lang best-practice task declaration-order",
+  "version": "v0.1",
+  "status": {
+    "kind": "proposed",
+    "since_language_version": null,
+    "explanation": null,
+    "replacement": null
+  },
+  "class": "template",
+  "title": "Order task declarations by lifecycle",
+  "summary": "Place task state first, then start, message handlers, and terminate so readers encounter the lifecycle in execution order.",
+  "recommendation": "Declare all state fields before start, place start before ordinary message handlers, and place terminate after every ordinary handler.",
+  "rationale": "A consistent lifecycle order makes task invariants, initialization, available messages, and cleanup visible without searching through the declaration.",
+  "applicability": {
+    "language": "topal",
+    "versions": ">=v0.1",
+    "required_features": [
+      "task"
+    ],
+    "excluded_features": []
+  },
+  "exceptions": [],
+  "default_enabled": false,
+  "default_severity": "warning",
+  "checkability": "formally-decidable",
+  "rectification": "suggestion",
+  "tags": [
+    "lang best-practice tag style",
+    "lang best-practice tag readability",
+    "lang best-practice tag concurrency"
+  ],
+  "examples": [
+    "examples/language/task-declaration-order.t"
+  ],
+  "lint_rule": {
+    "engine": "builtin",
+    "entry_point": "task-declaration-order",
+    "version": "v0.1",
+    "stage": "syntax",
+    "diagnostic_code": "L-TASK-DECLARATION-ORDER"
+  }
+}

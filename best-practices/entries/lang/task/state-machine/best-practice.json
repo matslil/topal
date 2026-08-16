@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "identity": ["lang", "best-practice", "task", "state-machine"],
   "version": "v0.1",
   "status": {
@@ -31,6 +31,7 @@
   ],
   "examples": ["examples/language/task-message-transactions.t"],
   "specification_rules": ["TOPAL-TASK-MESSAGE-001", "TOPAL-TASK-STATE-001"],
+  "lint_rule": null,
   "provenance": "Topal design discussion approved 2026-08-16",
   "license": "MIT"
 }
