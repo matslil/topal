@@ -1193,6 +1193,29 @@ mod tests {
     }
 
     #[test]
+    fn accepts_the_first_standard_library_source() {
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/fundamental/ordering.t");
+        let text = std::fs::read_to_string(&path).unwrap();
+        let mut server = Server::default();
+        let output = server.handle(&json!({
+            "method": "textDocument/didOpen",
+            "params": { "textDocument": {
+                "uri": format!("file://{}", path.display()),
+                "languageId": "topal",
+                "version": 1,
+                "text": text
+            } }
+        }));
+        assert!(
+            output[0]["params"]["diagnostics"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
     fn accepts_yield_after_close_diagnostic_example_syntax() {
         let source = include_str!(
             "../../../examples/language-diagnostics/custom-generator-yield-after-close.t"
