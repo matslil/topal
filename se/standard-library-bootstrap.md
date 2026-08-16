@@ -45,6 +45,10 @@ serialization codec, and later compiler wherever those tools apply. Native
 serialization and GEIR artifacts retain exact language revisions and are not a
 cross-version escape hatch.
 
+The implementation phases, shared interpreter/compiler architecture, and
+stacked review procedure are defined in
+[`standard-library-plan.md`](standard-library-plan.md).
+
 ## Initial development gate
 
 Standard-library work may begin when the complete workspace validation passes
