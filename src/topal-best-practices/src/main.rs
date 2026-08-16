@@ -6,8 +6,8 @@ use std::process::ExitCode;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-const GENERATOR_VERSION: &str = "topal-best-practices/4";
-const SCHEMA_VERSION: u64 = 4;
+const GENERATOR_VERSION: &str = "topal-best-practices/5";
+const SCHEMA_VERSION: u64 = 5;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -565,6 +565,7 @@ struct CatalogEntry<'a> {
     authoritative_sha256: String,
     status: &'a Status,
     class: &'a str,
+    recommendation: &'a str,
     default_enabled: bool,
     default_severity: &'a str,
     language: &'a str,
@@ -587,6 +588,7 @@ fn catalog_projection(entries: &[Entry]) -> Result<String, String> {
                 authoritative_sha256: digest(entry),
                 status: &entry.record.status,
                 class: &entry.record.class,
+                recommendation: &entry.record.recommendation,
                 default_enabled: entry.record.default_enabled,
                 default_severity: &entry.record.default_severity,
                 language: &entry.record.language,

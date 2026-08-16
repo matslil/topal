@@ -784,6 +784,12 @@ mod tests {
             "lang best-practice task state-machine"
         );
         assert_eq!(diagnostic["data"]["rectification"]["kind"], "suggestion");
+        assert!(
+            diagnostic["data"]["help"]
+                .as_str()
+                .unwrap()
+                .contains("Start an event-driven state machine")
+        );
         assert_eq!(diagnostic["range"]["start"]["line"], 4);
         assert_eq!(diagnostic["range"]["start"]["character"], 0);
         assert_eq!(diagnostic["range"]["end"]["character"], 2);

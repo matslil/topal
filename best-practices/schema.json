@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://topal.dev/schema/best-practice-v4.json",
+  "$id": "https://topal.dev/schema/best-practice-v5.json",
   "title": "Topal best-practice bootstrap record",
   "type": "object",
   "additionalProperties": false,
@@ -12,7 +12,7 @@
     "examples", "specification_rules", "lint_rule", "provenance", "license"
   ],
   "properties": {
-    "schema": { "const": 4 },
+    "schema": { "const": 5 },
     "identity": { "$ref": "#/$defs/identity" },
     "version": { "type": "string", "minLength": 1 },
     "status": {

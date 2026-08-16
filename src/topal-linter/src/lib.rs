@@ -923,6 +923,7 @@ fn analyze_text(
                             .map(str::to_owned),
                         source.slice(rule_finding.span).chars().count(),
                     )
+                    .with_help(&entry.recommendation)
                     .with_best_practice_suggestion(
                         &entry.identity,
                         &entry.version,
