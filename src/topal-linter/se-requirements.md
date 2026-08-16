@@ -14,6 +14,11 @@ best-practice identity and version. Template and recommended entries normally
 warn; best-practice entries normally produce errors. Projects may override the
 severity or disable any selected entry.
 
+Source-level suppression shall name the stable structured identity and remain
+effective when project policy changes the finding between warning and error.
+One-statement and matched lexical-region suppression shall follow the shared
+diagnostic-control semantics.
+
 ## TOPAL-LINT-RULE-001 — Contained Topal rules
 
 Lint rules shall select the `lint` language variant and receive only their

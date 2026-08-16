@@ -9,7 +9,8 @@ use topal_best_practices::{Catalog, CatalogEntry};
 use topal_language::{Session, Value as LanguageValue};
 use topal_source::{Diagnostic, Severity, SourceText, Span};
 use topal_syntax::{
-    CallableKind, DecisionMatcher, Expression, Statement, SyntaxDiagnostic, lex, parse,
+    CallableKind, DecisionMatcher, DiagnosticControlKind, Expression, Statement, SyntaxDiagnostic,
+    lex, parse,
 };
 
 const MAX_RULE_SOURCE_BYTES: usize = 16 * 1024;
@@ -956,6 +957,14 @@ fn analyze_text(
                     }
                 };
                 for rule_finding in rule_findings {
+                    if diagnostic_suppresses(
+                        &source,
+                        &parsed.statements,
+                        &entry.identity,
+                        rule_finding.span,
+                    ) {
+                        continue;
+                    }
                     let position = source.position(rule_finding.span.start);
                     let diagnostic = match entry_policy.severity {
                         Severity::Warning => Diagnostic::warning(
@@ -1001,6 +1010,98 @@ fn analyze_text(
         diagnostics: findings,
         has_errors: has_error,
     })
+}
+
+fn diagnostic_suppresses(
+    source: &SourceText,
+    statements: &[Statement],
+    identity: &str,
+    finding: Span,
+) -> bool {
+    diagnostic_suppresses_in_context(source, statements, identity, finding, &[])
+}
+
+fn diagnostic_suppresses_in_context(
+    source: &SourceText,
+    statements: &[Statement],
+    identity: &str,
+    finding: Span,
+    inherited: &[String],
+) -> bool {
+    let mut stack = inherited.to_vec();
+    let mut pending = None::<String>;
+    for statement in statements {
+        if let Statement::DiagnosticControl {
+            operation,
+            identity: components,
+            ..
+        } = statement
+        {
+            let controlled = components
+                .iter()
+                .map(|component| source.slice(*component))
+                .collect::<Vec<_>>()
+                .join(" ");
+            match operation {
+                DiagnosticControlKind::DisableNext => pending = Some(controlled),
+                DiagnosticControlKind::Push => stack.push(controlled),
+                DiagnosticControlKind::Pop => {
+                    stack.pop();
+                }
+            }
+            continue;
+        }
+
+        let span = lint_statement_span(statement);
+        let covers_finding = span.start <= finding.start && finding.end <= span.end;
+        let suppressed =
+            stack.iter().any(|active| active == identity) || pending.as_deref() == Some(identity);
+        pending = None;
+        if covers_finding && suppressed {
+            return true;
+        }
+        if covers_finding
+            && nested_statements(statement).is_some_and(|nested| {
+                diagnostic_suppresses_in_context(source, nested, identity, finding, &stack)
+            })
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn nested_statements(statement: &Statement) -> Option<&[Statement]> {
+    match statement {
+        Statement::Published { declaration, .. } => Some(std::slice::from_ref(declaration)),
+        Statement::Implementation { declarations, .. }
+        | Statement::InterfaceImplementation { declarations, .. } => Some(declarations),
+        Statement::Function { body, .. }
+        | Statement::Generator { body, .. }
+        | Statement::Foreach { body, .. } => Some(body),
+        _ => None,
+    }
+}
+
+const fn lint_statement_span(statement: &Statement) -> Span {
+    match statement {
+        Statement::LanguageSelection { span, .. }
+        | Statement::Published { span, .. }
+        | Statement::DiagnosticControl { span, .. }
+        | Statement::Implementation { span, .. }
+        | Statement::ContextAssignment { span, .. }
+        | Statement::Function { span, .. }
+        | Statement::Generator { span, .. }
+        | Statement::Union { span, .. }
+        | Statement::Interface { span, .. }
+        | Statement::InterfaceImplementation { span, .. }
+        | Statement::Foreach { span, .. }
+        | Statement::Discard { span, .. } => *span,
+        Statement::Binding { name, value, .. } => Span::new(name.start, value.span().end),
+        Statement::StateField { name, classifier } => Span::new(name.start, classifier.end),
+        Statement::Return { keyword, value } => Span::new(keyword.start, value.span().end),
+        Statement::Expression(expression) => expression.span(),
+    }
 }
 
 fn topal_rule(
@@ -1662,6 +1763,27 @@ mod tests {
                 .suggestion
                 .is_some()
         );
+    }
+
+    #[test]
+    fn structured_source_control_suppresses_regardless_of_configured_severity() {
+        let task = "use language (\n  version is v0.1\n)\nCounter is Task (queue-size is 2)\nlang disable-diagnostic ( lang best-practice task state-machine )\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n";
+        let controls = [
+            LintControl::Enable("lang best-practice task state-machine".into()),
+            LintControl::Severity {
+                selector: "lang best-practice task state-machine".into(),
+                severity: Severity::Error,
+            },
+        ];
+        let report = lint_text_with_controls(task, &controls).unwrap();
+        assert!(report.diagnostics.is_empty(), "{:?}", report.diagnostics);
+
+        let scoped = task.replace(
+            "lang disable-diagnostic ( lang best-practice task state-machine )",
+            "lang push-disable-diagnostic ( lang best-practice task state-machine )",
+        ) + "lang pop-disable-diagnostic ( lang best-practice task state-machine )\n";
+        let report = lint_text_with_controls(&scoped, &controls).unwrap();
+        assert!(report.diagnostics.is_empty(), "{:?}", report.diagnostics);
     }
 
     #[test]

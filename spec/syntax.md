@@ -200,8 +200,12 @@ literal      ::= boolean | decimal-integer | based-integer | rational | signed-n
 type-construction ::= expression "type" suite ;
 interface    ::= "interface" suite ;
 task         ::= "task" suite ;
-diagnostic-control ::= "lang" ( "disable-warning"
-                     | "push-disable-warning" | "pop-disable-warning" ) identifier ;
+diagnostic-control ::= "lang" warning-control identifier
+                     | "lang" diagnostic-operation diagnostic-identity ;
+warning-control ::= "disable-warning" | "push-disable-warning" | "pop-disable-warning" ;
+diagnostic-operation ::= "disable-diagnostic"
+                       | "push-disable-diagnostic" | "pop-disable-diagnostic" ;
+diagnostic-identity ::= "(" identifier identifier+ ")" ;
 ```
 
 `...` may occur only once and only as the final field of a structural record
@@ -241,10 +245,15 @@ of one is a static error.
 
 ### TOPAL-SYN-DIAG-001 — Diagnostic control
 
-`disable-warning W` applies to the next complete statement in the same lexical
-context. `push-disable-warning W` pushes `W`; `pop-disable-warning W` requires
-`W` at the top. Underflow, mismatch, or a nonempty stack at the context boundary
-is an error. Suppression changes neither semantics nor evidence trust status.
+`disable-diagnostic D` applies the structured diagnostic identity `D` to the
+next complete statement in the same lexical context, independent of the
+diagnostic's configured severity. `push-disable-diagnostic D` pushes `D`;
+`pop-disable-diagnostic D` requires the identical namespace path at the top.
+The warning-specific operations have the same behavior for their single legacy
+warning identifier. Underflow, mismatch, a missing following statement, or a
+nonempty stack at the context boundary is an error. Suppression changes neither
+program semantics nor evidence trust status, and shall not suppress a language
+error merely because a tool can assign that error a diagnostic identity.
 
 ## Graphical presentation
 

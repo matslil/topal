@@ -105,9 +105,36 @@ weakens an explicit classifier.
 
 ## Diagnostic control
 
-Compiler warning identities are static objects supplied by `lang`, not strings.
-An unknown warning name is an error. Diagnostic control is visibly qualified
-and lexical:
+Diagnostic identities are static, structured objects, not strings. A diagnostic
+identity is written in parentheses using its Topal namespace, and an unknown
+identity is an error. Severity-neutral control is visibly qualified and lexical:
+
+```topal
+lang disable-diagnostic ( lang best-practice task state-machine )
+
+service is Counter
+  # The complete declaration is covered regardless of configured severity.
+```
+
+`disable-diagnostic` applies only to the next complete statement in the same
+lexical source context. Comments, documentation, and blank lines do not consume
+it. Longer regions use an explicitly matched diagnostic stack:
+
+```topal
+lang push-disable-diagnostic ( lang best-practice task state-machine )
+
+first-service is Counter
+second-service is Counter
+
+lang pop-disable-diagnostic ( lang best-practice task state-machine )
+```
+
+The pop must name the diagnostic on top of the stack. A mismatched or unmatched
+pop, or reaching the end of the source context with an unclosed push, is an
+error. A region cannot cross a source-file or lexical-context boundary.
+
+The warning-specific spelling remains available for compatibility with
+compiler warning names:
 
 ```topal
 lang disable-warning unverified-law
@@ -115,10 +142,8 @@ lang disable-warning unverified-law
 Associative combine
 ```
 
-`disable-warning` applies only to the next complete statement in the same
-lexical source context. Comments, documentation, and blank lines do not consume
-it. The compiler may optionally diagnose a suppression which the statement did
-not use.
+The compiler may optionally diagnose a suppression which the statement did not
+use.
 
 Longer regions use an explicitly matched warning stack:
 
@@ -132,9 +157,6 @@ Identity combine empty
 lang pop-disable-warning unverified-law
 ```
 
-The pop must name the warning on top of the stack. A mismatched or unmatched
-pop, or reaching the end of the source context with an unclosed push, is an
-error. A region cannot cross a source-file or lexical-context boundary.
 Suppressions affect diagnostic presentation only: they cannot suppress errors,
 change program semantics, or relabel trusted-unverified evidence as verified.
 
