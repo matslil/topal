@@ -57,3 +57,10 @@ expressions outside the pure subset implemented for the selected read-only
 view. Rejection SHALL precede application-state access and SHALL use a stable
 diagnostic code which distinguishes resource exhaustion from unsupported
 authority or syntax.
+
+### TOPAL-BEST-PRACTICE-RECTIFICATION-001 — Distinct rectification advice
+
+When an entry declares suggestion rectification, each finding SHALL carry the
+suggestion as structured rectification data distinct from general explanatory
+help. Presentation adapters SHALL preserve that distinction. A suggestion
+SHALL NOT be represented or applied as an automatic source edit.

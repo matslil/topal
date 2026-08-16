@@ -178,6 +178,7 @@ pub struct BestPracticeDiagnostic {
     pub identity: String,
     pub version: String,
     pub rule_version: String,
+    pub suggestion: Option<Box<str>>,
 }
 
 /// Shared diagnostic data rendered by interpreter, compiler, linter, and LSP
@@ -253,6 +254,24 @@ impl Diagnostic {
             identity: identity.into(),
             version: version.into(),
             rule_version: rule_version.into(),
+            suggestion: None,
+        }));
+        self
+    }
+
+    #[must_use]
+    pub fn with_best_practice_suggestion(
+        mut self,
+        identity: impl Into<String>,
+        version: impl Into<String>,
+        rule_version: impl Into<String>,
+        suggestion: impl Into<String>,
+    ) -> Self {
+        self.best_practice = Some(Box::new(BestPracticeDiagnostic {
+            identity: identity.into(),
+            version: version.into(),
+            rule_version: rule_version.into(),
+            suggestion: Some(suggestion.into().into_boxed_str()),
         }));
         self
     }
@@ -285,6 +304,20 @@ impl Diagnostic {
                 &mut rendered,
                 format_args!(
                     "\n{empty:>width$} |\n{empty:>width$} = help: {help}",
+                    empty = "",
+                    width = self.line.to_string().len()
+                ),
+            );
+        }
+        if let Some(suggestion) = self
+            .best_practice
+            .as_ref()
+            .and_then(|context| context.suggestion.as_deref())
+        {
+            let _ = fmt::Write::write_fmt(
+                &mut rendered,
+                format_args!(
+                    "\n{empty:>width$} = suggestion: {suggestion}",
                     empty = "",
                     width = self.line.to_string().len()
                 ),
@@ -474,7 +507,12 @@ mod tests {
     #[test]
     fn shared_diagnostic_retains_best_practice_provenance() {
         let diagnostic = Diagnostic::warning("L-EXAMPLE", 1, 1, "consider this")
-            .with_best_practice("lang best-practice example", "v0.2", "v0.3");
+            .with_best_practice_suggestion(
+                "lang best-practice example",
+                "v0.2",
+                "v0.3",
+                "apply the documented structure",
+            );
         assert_eq!(diagnostic.severity, Severity::Warning);
         assert_eq!(
             diagnostic.best_practice,
@@ -482,7 +520,13 @@ mod tests {
                 identity: "lang best-practice example".into(),
                 version: "v0.2".into(),
                 rule_version: "v0.3".into(),
+                suggestion: Some("apply the documented structure".into()),
             }))
+        );
+        assert!(
+            diagnostic
+                .render("example.t")
+                .contains("= suggestion: apply the documented structure")
         );
     }
 }

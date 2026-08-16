@@ -115,6 +115,10 @@ fn aggregates_shared_diagnostics_as_sarif() {
     );
     assert_eq!(best_practice["properties"]["bestPracticeVersion"], "v0.1");
     assert_eq!(best_practice["properties"]["ruleVersion"], "v0.1");
+    assert_eq!(
+        best_practice["properties"]["rectification"]["kind"],
+        "suggestion"
+    );
     fs::remove_file(syntax_path).unwrap();
     fs::remove_file(rule_path).unwrap();
 }
@@ -199,7 +203,13 @@ fn proposed_task_order_rule_is_off_by_default_and_configurable() {
     assert_eq!(finding["best_practice_version"], "v0.1");
     assert_eq!(finding["rule_version"], "v0.1");
     assert_eq!(finding["code"], "L-TASK-DECLARATION-ORDER");
-    assert!(finding["help"].as_str().unwrap().contains("before `start`"));
+    assert_eq!(finding["rectification"]["kind"], "suggestion");
+    assert!(
+        finding["rectification"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("before `start`")
+    );
 
     let as_error = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
         .args([
@@ -212,11 +222,9 @@ fn proposed_task_order_rule_is_off_by_default_and_configurable() {
         .output()
         .unwrap();
     assert_eq!(as_error.status.code(), Some(1));
-    assert!(
-        String::from_utf8(as_error.stderr)
-            .unwrap()
-            .contains("error[L-TASK-DECLARATION-ORDER]")
-    );
+    let terminal = String::from_utf8(as_error.stderr).unwrap();
+    assert!(terminal.contains("error[L-TASK-DECLARATION-ORDER]"));
+    assert!(terminal.contains("= suggestion:"));
     fs::remove_file(path).unwrap();
 }
 
@@ -261,7 +269,7 @@ fn topal_state_machine_rule_finds_state_without_a_message_transition() {
         "lang best-practice task state-machine"
     );
     assert!(
-        finding["help"]
+        finding["rectification"]["message"]
             .as_str()
             .unwrap()
             .contains("state-changing event")

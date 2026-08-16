@@ -39,3 +39,6 @@ that record; best-practice identity and both catalog and rule versions remain
 structured provenance rather than text embedded in the message.
 SARIF output aggregates every named source into one SARIF 2.1.0 run suitable
 for CI ingestion and preserves the same provenance in result properties.
+Entries declaring suggestion rectification emit a structured rectification
+object in JSON and SARIF and a separate `suggestion` line in terminal output;
+the advice is not treated as an automatic edit.
