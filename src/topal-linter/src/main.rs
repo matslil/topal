@@ -8,7 +8,13 @@ use serde::Serialize;
 use topal_best_practices::{Catalog, CatalogEntry};
 use topal_language::{Session, Value as LanguageValue};
 use topal_source::{Diagnostic, Severity, SourceText, Span};
-use topal_syntax::{Statement, SyntaxDiagnostic, lex, parse};
+use topal_syntax::{
+    CallableKind, DecisionMatcher, Expression, Statement, SyntaxDiagnostic, lex, parse,
+};
+
+const MAX_RULE_SOURCE_BYTES: usize = 16 * 1024;
+const MAX_RULE_EXPRESSION_NODES: usize = 128;
+const MAX_RULE_INTEGER_BYTES: usize = 64;
 
 const USAGE: &str = "usage: topal-lint [OPTIONS] SOURCE...\n\
   --check-rule PATH              validate a Topal lint-variant rule module\n\
@@ -377,6 +383,11 @@ fn validate_rule_text(
     entry_point: &str,
     expected_parameters: Option<&[&str]>,
 ) -> Result<(), String> {
+    if text.len() > MAX_RULE_SOURCE_BYTES {
+        return Err(format!(
+            "L-RULE-RESOURCE: lint rule source exceeds {MAX_RULE_SOURCE_BYTES} bytes"
+        ));
+    }
     let source =
         SourceText::new(text).map_err(|error| format!("{}: {}", error.code, error.message))?;
     let lexed = lex(&source);
@@ -407,6 +418,7 @@ fn validate_rule_text(
     if selected.contains("debug") {
         return Err("L-RULE-AUTHORITY: lint rule modules cannot select the `debug` feature".into());
     }
+    validate_contained_rule(&source, &parsed.statements, entry_point)?;
     let mut found = None;
     visit_rule_functions(
         &source,
@@ -426,6 +438,97 @@ fn validate_rule_text(
         None => Err(format!(
             "L-RULE-ENTRY: lint rule module does not declare entry point `{entry_point}`"
         )),
+    }
+}
+
+fn validate_contained_rule(
+    source: &SourceText,
+    statements: &[Statement],
+    entry_point: &str,
+) -> Result<(), String> {
+    let [
+        Statement::LanguageSelection { .. },
+        Statement::Function { name, body, .. },
+    ] = statements
+    else {
+        return Err(
+            "L-RULE-CONTAINMENT: a lint rule module contains only its language selection and entry function"
+                .into(),
+        );
+    };
+    if source.slice(*name) != entry_point {
+        return Err(format!(
+            "L-RULE-ENTRY: lint rule module does not declare entry point `{entry_point}`"
+        ));
+    }
+    let mut remaining = MAX_RULE_EXPRESSION_NODES;
+    for statement in body {
+        let expression = match statement {
+            Statement::Expression(expression) => expression,
+            Statement::Return { value, .. } => value,
+            _ => {
+                return Err(
+                    "L-RULE-CONTAINMENT: lint rule bodies contain only pure result expressions"
+                        .into(),
+                );
+            }
+        };
+        validate_rule_expression(source, expression, &mut remaining)?;
+    }
+    Ok(())
+}
+
+fn validate_rule_expression(
+    source: &SourceText,
+    expression: &Expression,
+    remaining: &mut usize,
+) -> Result<(), String> {
+    *remaining = remaining.checked_sub(1).ok_or_else(|| {
+        format!("L-RULE-RESOURCE: lint rule exceeds {MAX_RULE_EXPRESSION_NODES} expression nodes")
+    })?;
+    match expression {
+        Expression::Unit(_)
+        | Expression::Boolean(_)
+        | Expression::Identifier(_)
+        | Expression::Callable {
+            kind:
+                CallableKind::Equal
+                | CallableKind::NotEqual
+                | CallableKind::Less
+                | CallableKind::Greater
+                | CallableKind::LessEqual
+                | CallableKind::Compare
+                | CallableKind::GreaterEqual,
+            ..
+        } => Ok(()),
+        Expression::Integer(span) if source.slice(*span).len() <= MAX_RULE_INTEGER_BYTES => Ok(()),
+        Expression::Integer(_) => Err(format!(
+            "L-RULE-RESOURCE: lint rule integer literal exceeds {MAX_RULE_INTEGER_BYTES} bytes"
+        )),
+        Expression::Application { items, .. } => {
+            for item in items {
+                validate_rule_expression(source, item, remaining)?;
+            }
+            Ok(())
+        }
+        Expression::DecisionTable { subject, rules, .. } => {
+            validate_rule_expression(source, subject, remaining)?;
+            for rule in rules {
+                if !matches!(
+                    rule.matcher,
+                    DecisionMatcher::Boolean { .. } | DecisionMatcher::Otherwise(_)
+                ) {
+                    return Err(
+                        "L-RULE-CONTAINMENT: this lint view supports only Boolean decisions".into(),
+                    );
+                }
+                validate_rule_expression(source, &rule.action, remaining)?;
+            }
+            Ok(())
+        }
+        _ => Err(
+            "L-RULE-CONTAINMENT: lint rule expression is outside the bounded pure subset".into(),
+        ),
     }
 }
 

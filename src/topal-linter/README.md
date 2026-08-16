@@ -29,6 +29,9 @@ returns a Boolean decision; the host remains responsible for diagnostics.
 Attachments name that input contract explicitly, such as
 `task-declaration-order/1` or `task-state-machine/1`, so incompatible view
 revisions are rejected before execution.
+Admission also caps source bytes and expression nodes and permits only the
+bounded pure expression subset supported by the selected view. Unsupported
+declarations and potentially unbounded operations fail before rule execution.
 
 Source, syntax, and best-practice findings use `topal-source`'s shared
 diagnostic record. Terminal and JSON output are presentation adapters over

@@ -354,3 +354,63 @@ fn lint_rule_module_cannot_acquire_debugger_authority() {
     );
     fs::remove_file(path).unwrap();
 }
+
+#[test]
+fn lint_rule_admission_enforces_deterministic_resource_bounds() {
+    let oversized = temporary_source(
+        "oversized-rule",
+        &format!(
+            "use language ( version is v0.1, features is ( lint ) )\n# {}\nrule is fn static () -> Boolean\n  true\n",
+            "x".repeat(17_000)
+        ),
+    );
+    let rejected = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg("--check-rule")
+        .arg(&oversized)
+        .output()
+        .unwrap();
+    assert_eq!(rejected.status.code(), Some(2));
+    assert!(
+        String::from_utf8(rejected.stderr)
+            .unwrap()
+            .contains("L-RULE-RESOURCE")
+    );
+    fs::remove_file(oversized).unwrap();
+
+    let unbounded_operation = temporary_source(
+        "unbounded-rule-operation",
+        "use language ( version is v0.1, features is ( lint ) )\nrule is fn static () -> Int\n  2 ^ 1000000\n",
+    );
+    let rejected = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg("--check-rule")
+        .arg(&unbounded_operation)
+        .output()
+        .unwrap();
+    assert_eq!(rejected.status.code(), Some(2));
+    assert!(
+        String::from_utf8(rejected.stderr)
+            .unwrap()
+            .contains("L-RULE-CONTAINMENT")
+    );
+    fs::remove_file(unbounded_operation).unwrap();
+
+    let nested = format!("{}true{}", "not (".repeat(130), ")".repeat(130));
+    let excessive_tree = temporary_source(
+        "excessive-rule-tree",
+        &format!(
+            "use language ( version is v0.1, features is ( lint ) )\nrule is fn static () -> Boolean\n  {nested}\n"
+        ),
+    );
+    let rejected = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg("--check-rule")
+        .arg(&excessive_tree)
+        .output()
+        .unwrap();
+    assert_eq!(rejected.status.code(), Some(2));
+    assert!(
+        String::from_utf8(rejected.stderr)
+            .unwrap()
+            .contains("L-RULE-RESOURCE")
+    );
+    fs::remove_file(excessive_tree).unwrap();
+}
