@@ -1,5 +1,5 @@
 {
-  "schema": 5,
+  "schema": 6,
   "identity": ["lang", "best-practice", "task", "state-machine"],
   "version": "v0.1",
   "status": {
@@ -20,6 +20,7 @@
   "default_enabled": false,
   "default_severity": "warning",
   "checkability": "heuristic",
+  "confidence": "High confidence that the task has no syntactically explicit state update in a message handler; the syntax view does not resolve indirect transitions through called functions.",
   "rectification": "suggestion",
   "tags": [
     ["lang", "best-practice", "tag", "architecture"],

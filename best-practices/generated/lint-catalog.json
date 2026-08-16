@@ -1,11 +1,11 @@
 {
-  "generated_by": "topal-best-practices/5",
-  "schema": 5,
+  "generated_by": "topal-best-practices/6",
+  "schema": 6,
   "entries": [
     {
       "identity": "lang best-practice task declaration-order",
       "version": "v0.1",
-      "authoritative_sha256": "27ef8e48ed44156f185d23dc0718b0ed96721eb609b4c5f1bb11834fd6e82999",
+      "authoritative_sha256": "2a0d6d0be04570629a2bf57ed3ce4a7dad2976b9fb0eda218d0761ee45f2e808",
       "status": {
         "kind": "proposed",
         "since_language_version": null,
@@ -14,6 +14,8 @@
       },
       "class": "template",
       "recommendation": "Declare all state fields before start, place start before ordinary message handlers, and place terminate after every ordinary handler.",
+      "checkability": "formally-decidable",
+      "confidence": null,
       "default_enabled": false,
       "default_severity": "warning",
       "language": "topal",
@@ -41,7 +43,7 @@
     {
       "identity": "lang best-practice task state-machine",
       "version": "v0.1",
-      "authoritative_sha256": "3d922b05df51ab94d109d18f92dab39734df570edefb1ae6bfcd7d41ce6aa9dd",
+      "authoritative_sha256": "c5e284c8fab471c1731420b75cc12e8f93d5ec1a2ef109258ac9654648099adc",
       "status": {
         "kind": "proposed",
         "since_language_version": null,
@@ -50,6 +52,8 @@
       },
       "class": "recommended",
       "recommendation": "Start an event-driven state machine as a task whose accepted messages describe events and whose private value describes the current state.",
+      "checkability": "heuristic",
+      "confidence": "High confidence that the task has no syntactically explicit state update in a message handler; the syntax view does not resolve indirect transitions through called functions.",
       "default_enabled": false,
       "default_severity": "warning",
       "language": "topal",

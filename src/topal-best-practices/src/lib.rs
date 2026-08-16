@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-pub const SUPPORTED_SCHEMA: u64 = 5;
+pub const SUPPORTED_SCHEMA: u64 = 6;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -22,6 +22,8 @@ pub struct CatalogEntry {
     pub status: Status,
     pub class: String,
     pub recommendation: String,
+    pub checkability: String,
+    pub confidence: Option<String>,
     pub default_enabled: bool,
     pub default_severity: String,
     pub language: String,
@@ -156,6 +158,23 @@ fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
             "best-practice `{}` has no recommendation guidance",
             entry.identity
         ));
+    }
+    match (entry.checkability.as_str(), entry.confidence.as_deref()) {
+        ("heuristic", Some(confidence)) if !confidence.is_empty() => {}
+        ("heuristic", _) => {
+            return Err(format!(
+                "heuristic best-practice `{}` has no confidence explanation",
+                entry.identity
+            ));
+        }
+        ("guidance-only" | "semantic" | "formally-decidable", None) => {}
+        ("guidance-only" | "semantic" | "formally-decidable", Some(_)) => {
+            return Err(format!(
+                "non-heuristic best-practice `{}` records confidence",
+                entry.identity
+            ));
+        }
+        (other, _) => return Err(format!("unknown best-practice checkability `{other}`")),
     }
     validate_status(entry)?;
     if !matches!(entry.default_severity.as_str(), "warning" | "error") {
@@ -375,6 +394,23 @@ mod tests {
             Catalog::from_json(&source)
                 .unwrap_err()
                 .contains("cannot use a language-version cutoff")
+        );
+    }
+
+    #[test]
+    fn heuristic_catalog_entries_require_confidence() {
+        let mut catalog = Catalog::builtin();
+        let entry = catalog
+            .entries
+            .iter_mut()
+            .find(|entry| entry.checkability == "heuristic")
+            .unwrap();
+        entry.confidence = None;
+        let source = serde_json::to_string(&catalog).unwrap();
+        assert!(
+            Catalog::from_json(&source)
+                .unwrap_err()
+                .contains("has no confidence explanation")
         );
     }
 }

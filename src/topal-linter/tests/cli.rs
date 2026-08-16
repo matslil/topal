@@ -168,6 +168,10 @@ fn aggregates_shared_diagnostics_as_sarif() {
     );
     assert_eq!(best_practice["properties"]["bestPracticeVersion"], "v0.1");
     assert_eq!(best_practice["properties"]["ruleVersion"], "v0.1");
+    assert_eq!(
+        best_practice["properties"]["checkability"],
+        "formally-decidable"
+    );
     assert!(
         best_practice["help"]["text"]
             .as_str()
@@ -349,6 +353,13 @@ fn topal_state_machine_rule_finds_state_without_a_message_transition() {
     assert!(output.status.success());
     let finding: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(finding["code"], "L-TASK-STATE-MACHINE");
+    assert_eq!(finding["checkability"], "heuristic");
+    assert!(
+        finding["confidence"]
+            .as_str()
+            .unwrap()
+            .contains("indirect transitions")
+    );
     assert_eq!(
         finding["best_practice"],
         "lang best-practice task state-machine"

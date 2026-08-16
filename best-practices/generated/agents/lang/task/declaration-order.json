@@ -1,7 +1,7 @@
 {
-  "generated_by": "topal-best-practices/5",
-  "schema": 5,
-  "authoritative_sha256": "27ef8e48ed44156f185d23dc0718b0ed96721eb609b4c5f1bb11834fd6e82999",
+  "generated_by": "topal-best-practices/6",
+  "schema": 6,
+  "authoritative_sha256": "2a0d6d0be04570629a2bf57ed3ce4a7dad2976b9fb0eda218d0761ee45f2e808",
   "identity": "lang best-practice task declaration-order",
   "version": "v0.1",
   "status": {
@@ -27,6 +27,7 @@
   "default_enabled": false,
   "default_severity": "warning",
   "checkability": "formally-decidable",
+  "confidence": null,
   "rectification": "suggestion",
   "tags": [
     "lang best-practice tag style",
