@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use serde::Serialize;
 use topal_best_practices::{Catalog, CatalogEntry};
 use topal_language::{Session, Value as LanguageValue};
-use topal_source::{SourceText, Span};
+use topal_source::{Diagnostic, Severity, SourceText, Span};
 use topal_syntax::{Statement, SyntaxDiagnostic, lex, parse};
 
 const USAGE: &str = "usage: topal-lint [OPTIONS] SOURCE...\n\
@@ -21,28 +21,12 @@ const USAGE: &str = "usage: topal-lint [OPTIONS] SOURCE...\n\
   --severity SELECTOR=LEVEL      set warning, error, or off\n\
   --format terminal|json         select finding presentation";
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-enum Severity {
-    Warning,
-    Error,
-}
-
-impl Severity {
-    fn parse(value: &str) -> Result<Option<Self>, String> {
-        match value {
-            "warning" => Ok(Some(Self::Warning)),
-            "error" => Ok(Some(Self::Error)),
-            "off" => Ok(None),
-            _ => Err(format!("unknown lint severity `{value}`")),
-        }
-    }
-
-    const fn label(self) -> &'static str {
-        match self {
-            Self::Warning => "warning",
-            Self::Error => "error",
-        }
+fn parse_severity(value: &str) -> Result<Option<Severity>, String> {
+    match value {
+        "warning" => Ok(Some(Severity::Warning)),
+        "error" => Ok(Some(Severity::Error)),
+        "off" => Ok(None),
+        _ => Err(format!("unknown lint severity `{value}`")),
     }
 }
 
@@ -137,8 +121,8 @@ struct Policy {
 }
 
 #[derive(Serialize)]
-struct Finding<'a> {
-    severity: Severity,
+struct JsonDiagnostic<'a> {
+    severity: &'static str,
     code: &'a str,
     message: &'a str,
     source: &'a str,
@@ -152,6 +136,24 @@ struct Finding<'a> {
     rule_version: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     help: Option<&'a str>,
+}
+
+impl<'a> JsonDiagnostic<'a> {
+    fn from_diagnostic(diagnostic: &'a Diagnostic, source: &'a str) -> Self {
+        let best_practice = diagnostic.best_practice.as_ref();
+        Self {
+            severity: diagnostic.severity.label(),
+            code: &diagnostic.code,
+            message: &diagnostic.message,
+            source,
+            line: diagnostic.line,
+            column: diagnostic.column,
+            best_practice: best_practice.map(|context| context.identity.as_str()),
+            best_practice_version: best_practice.map(|context| context.version.as_str()),
+            rule_version: best_practice.map(|context| context.rule_version.as_str()),
+            help: diagnostic.help.as_deref(),
+        }
+    }
 }
 
 fn main() -> ExitCode {
@@ -243,7 +245,7 @@ fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, Str
                 options.overrides.push(Override {
                     selector: Selector::parse(selector)?,
                     enabled: None,
-                    severity: match Severity::parse(severity)? {
+                    severity: match parse_severity(severity)? {
                         Some(severity) => SeveritySetting::Set(severity),
                         None => SeveritySetting::Off,
                     },
@@ -404,7 +406,7 @@ fn validate_overrides(catalog: &Catalog, overrides: &[Override]) -> Result<(), S
 }
 
 fn policy(entry: &CatalogEntry, overrides: &[Override]) -> Result<Policy, String> {
-    let default_severity = Severity::parse(&entry.default_severity)?
+    let default_severity = parse_severity(&entry.default_severity)?
         .ok_or_else(|| "catalog default severity cannot be off".to_string())?;
     let mut policy = Policy {
         enabled: entry.default_enabled,
@@ -476,8 +478,8 @@ fn lint_source(
     let source = match SourceText::new(&text) {
         Ok(source) => source,
         Err(error) => {
-            let finding = finding(path, &text, error.span, error.code, error.message);
-            emit(&finding, format)?;
+            let diagnostic = source_diagnostic(&text, error.span, error.code, error.message);
+            emit(&diagnostic, path, format)?;
             return Ok(true);
         }
     };
@@ -515,19 +517,27 @@ fn lint_source(
                     }
                 };
                 for rule_finding in rule_findings {
-                    let finding = Finding {
-                        severity: entry_policy.severity,
-                        code: &rule.diagnostic_code,
-                        message: rule_finding.message,
-                        source: path.to_str().unwrap_or("<source>"),
-                        line: rule_finding.line,
-                        column: rule_finding.column,
-                        best_practice: Some(&entry.identity),
-                        best_practice_version: Some(&entry.version),
-                        rule_version: Some(&rule.version),
-                        help: Some(rule_finding.help),
-                    };
-                    emit(&finding, format)?;
+                    let diagnostic = match entry_policy.severity {
+                        Severity::Warning => Diagnostic::warning(
+                            &rule.diagnostic_code,
+                            rule_finding.line,
+                            rule_finding.column,
+                            rule_finding.message,
+                        ),
+                        Severity::Error => Diagnostic::error(
+                            &rule.diagnostic_code,
+                            rule_finding.line,
+                            rule_finding.column,
+                            rule_finding.message,
+                        ),
+                    }
+                    .with_help(rule_finding.help)
+                    .with_best_practice(
+                        &entry.identity,
+                        &entry.version,
+                        &rule.version,
+                    );
+                    emit(&diagnostic, path, format)?;
                     has_error |= entry_policy.severity == Severity::Error;
                 }
             }
@@ -753,41 +763,34 @@ fn emit_syntax(
     format: Format,
 ) -> Result<(), String> {
     let position = source.position(diagnostic.span.start);
-    let finding = Finding {
-        severity: Severity::Error,
-        code: diagnostic.code,
-        message: &diagnostic.message,
-        source: path.to_str().unwrap_or("<source>"),
-        line: position.line,
-        column: position.column,
-        best_practice: None,
-        best_practice_version: None,
-        rule_version: None,
-        help: None,
-    };
-    emit(&finding, format)
+    let diagnostic = Diagnostic::error(
+        diagnostic.code,
+        position.line,
+        position.column,
+        &diagnostic.message,
+    )
+    .with_source_excerpt(
+        source
+            .as_str()
+            .lines()
+            .nth(position.line - 1)
+            .map(str::to_owned),
+        diagnostic.span.end.saturating_sub(diagnostic.span.start),
+    );
+    emit(&diagnostic, path, format)
 }
 
-fn finding<'a>(
-    path: &'a Path,
+fn source_diagnostic(
     text: &str,
     span: Span,
-    code: &'a str,
-    message: &'a str,
-) -> Finding<'a> {
+    code: impl Into<String>,
+    message: impl Into<String>,
+) -> Diagnostic {
     let (line, column) = byte_position(text, span.start);
-    Finding {
-        severity: Severity::Error,
-        code,
-        message,
-        source: path.to_str().unwrap_or("<source>"),
-        line,
-        column,
-        best_practice: None,
-        best_practice_version: None,
-        rule_version: None,
-        help: None,
-    }
+    Diagnostic::error(code, line, column, message).with_source_excerpt(
+        text.lines().nth(line - 1).map(str::to_owned),
+        span.end.saturating_sub(span.start),
+    )
 }
 
 fn byte_position(text: &str, offset: usize) -> (usize, usize) {
@@ -802,23 +805,14 @@ fn byte_position(text: &str, offset: usize) -> (usize, usize) {
     (line, column)
 }
 
-fn emit(finding: &Finding<'_>, format: Format) -> Result<(), String> {
+fn emit(diagnostic: &Diagnostic, path: &Path, format: Format) -> Result<(), String> {
+    let source = path.to_str().unwrap_or("<source>");
     match format {
-        Format::Terminal => eprintln!(
-            "{}[{}]: {}\n --> {}:{}:{}{}",
-            finding.severity.label(),
-            finding.code,
-            finding.message,
-            finding.source,
-            finding.line,
-            finding.column,
-            finding
-                .help
-                .map_or_else(String::new, |help| format!("\n  = help: {help}"))
-        ),
+        Format::Terminal => eprintln!("{}", diagnostic.render(source)),
         Format::Json => println!(
             "{}",
-            serde_json::to_string(finding).map_err(|error| error.to_string())?
+            serde_json::to_string(&JsonDiagnostic::from_diagnostic(diagnostic, source))
+                .map_err(|error| error.to_string())?
         ),
     }
     Ok(())

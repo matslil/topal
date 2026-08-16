@@ -13,6 +13,7 @@ The specification is divided into:
 - [numeric semantics](numbers.md);
 - [string semantics](strings.md);
 - [container semantics](containers.md);
+- [tool diagnostics](diagnostics.md);
 - [generic export intermediate language](generic-ir.md);
 - [native serialization protocol](serialization.md);
 - [memory model](memory-model.md); and

@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
-use topal_source::{SourceText, Span};
+use topal_source::{Diagnostic, Severity, SourceText, Span};
 use topal_syntax::{Statement, SyntaxDiagnostic, TokenKind, lex, parse};
 
 #[derive(Default)]
@@ -306,12 +306,8 @@ fn diagnostics(text: &str) -> Vec<Value> {
     let source = match SourceText::new(text) {
         Ok(source) => source,
         Err(error) => {
-            return vec![protocol_diagnostic(
-                text,
-                error.span,
-                error.code,
-                error.message,
-            )];
+            let diagnostic = shared_diagnostic(text, error.span, error.code, error.message);
+            return vec![protocol_diagnostic(text, error.span, &diagnostic)];
         }
     };
     let lexed = lex(&source);
@@ -323,24 +319,38 @@ fn diagnostics(text: &str) -> Vec<Value> {
 }
 
 fn syntax_diagnostic(source: &SourceText, diagnostic: &SyntaxDiagnostic) -> Value {
-    protocol_diagnostic(
+    let shared = shared_diagnostic(
         source.as_str(),
         diagnostic.span,
         diagnostic.code,
         &diagnostic.message,
-    )
+    );
+    protocol_diagnostic(source.as_str(), diagnostic.span, &shared)
 }
 
-fn protocol_diagnostic(text: &str, span: Span, code: &str, message: &str) -> Value {
+fn shared_diagnostic(
+    text: &str,
+    span: Span,
+    code: impl Into<String>,
+    message: impl Into<String>,
+) -> Diagnostic {
+    let (line, character) = protocol_coordinates(text, span.start);
+    Diagnostic::error(code, line + 1, character + 1, message)
+}
+
+fn protocol_diagnostic(text: &str, span: Span, diagnostic: &Diagnostic) -> Value {
     json!({
         "range": {
             "start": protocol_position(text, span.start),
             "end": protocol_position(text, span.end)
         },
-        "severity": 1,
-        "code": code,
+        "severity": match diagnostic.severity {
+            Severity::Error => 1,
+            Severity::Warning => 2,
+        },
+        "code": diagnostic.code,
         "source": "topal",
-        "message": message
+        "message": diagnostic.message
     })
 }
 
