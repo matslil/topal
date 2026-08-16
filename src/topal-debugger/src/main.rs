@@ -2,9 +2,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, Cursor, IsTerminal, Read, Write};
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use topal_language::{Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session};
+use topal_language::{
+    Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session, load_module_tree,
+};
 use topal_source::SourceText;
 use topal_syntax::{Statement, lex, parse};
 
@@ -20,13 +23,18 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), String> {
     let arguments = parse_arguments(env::args().skip(1))?;
-    let source = fs::read_to_string(&arguments.source)
-        .map_err(|error| format!("cannot read {}: {error}", arguments.source))?;
+    let source_path = source_entry(&arguments.source)?;
+    let source_name = source_path.display().to_string();
+    let source = fs::read_to_string(&source_path)
+        .map_err(|error| format!("cannot read {source_name}: {error}"))?;
     let mut session = Session::new();
     let mut history = ExecutionHistory::new();
+    if Path::new(&arguments.source).is_dir() {
+        load_module_tree(&mut session, Path::new(&arguments.source), &mut history)?;
+    }
     let execution = session
         .prepare_source_file(&source, &mut history)
-        .map_err(|error| error.render(&arguments.source))?;
+        .map_err(|error| error.render(&source_name))?;
     history.rewind();
     let mut debuggee = Debuggee {
         session,
@@ -50,7 +58,7 @@ fn run() -> Result<(), String> {
                 Cursor::new(body),
                 &mut debuggee,
                 &source,
-                &arguments.source,
+                &source_name,
                 Some("<stdin>"),
                 false,
                 header_lines,
@@ -63,7 +71,7 @@ fn run() -> Result<(), String> {
                 Cursor::new(body),
                 &mut debuggee,
                 &source,
-                &arguments.source,
+                &source_name,
                 Some(&commands),
                 false,
                 header_lines,
@@ -75,11 +83,24 @@ fn run() -> Result<(), String> {
             io::stdin().lock(),
             &mut debuggee,
             &source,
-            &arguments.source,
+            &source_name,
             None,
             prompt,
             0,
         )
+    }
+}
+
+fn source_entry(source: &str) -> Result<PathBuf, String> {
+    let path = Path::new(source);
+    if !path.is_dir() {
+        return Ok(path.to_owned());
+    }
+    let entry = path.join("application.t");
+    if entry.is_file() {
+        Ok(entry)
+    } else {
+        Err(format!("{} has no application.t", path.display()))
     }
 }
 

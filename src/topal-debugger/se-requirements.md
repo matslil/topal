@@ -4,6 +4,12 @@ These tool requirements refine `TOPAL-REQ-TOOLS-001`,
 `TOPAL-REQ-INTEROP-001`, `TOPAL-REQ-TRACE-001`, and
 `TOPAL-REQ-SHARED-001` for the `topal-debug` source execution debugger.
 
+## TOPAL-DEBUG-LIBRARY-001 — Shared library applications
+
+The debugger shall accept the same directory application and shared module
+tree as the interpreter, preserve package-relative declaration resolution, and
+execute standard-library examples through deterministic debugger scripts.
+
 ## TOPAL-DEBUG-EXEC-001 — Shared deterministic execution
 
 The debugger shall execute the same accepted language and semantic transitions
