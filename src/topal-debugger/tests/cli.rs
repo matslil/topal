@@ -8,6 +8,25 @@ fn language_example(name: &str) -> String {
     )
 }
 
+#[test]
+fn executes_the_standard_library_example_from_its_shared_module_tree() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../library");
+    let script = concat!(env!("CARGO_MANIFEST_DIR"), "/../../library/minimum.debug");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args(["--script", script, root])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("decision #"));
+    assert!(stdout.contains("evaluation.result"));
+    assert!(stdout.contains("(Int)"));
+}
+
 fn language_diagnostic(name: &str) -> String {
     format!(
         "{}/../../examples/language-diagnostics/{name}",

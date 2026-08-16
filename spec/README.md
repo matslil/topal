@@ -16,6 +16,7 @@ The specification is divided into:
 - [tool diagnostics](diagnostics.md);
 - [generic export intermediate language](generic-ir.md);
 - [native serialization protocol](serialization.md);
+- [standard-library conformance](standard-library.md);
 - [memory model](memory-model.md); and
 - [concurrency model](concurrency-model.md).
 
