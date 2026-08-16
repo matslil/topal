@@ -1,7 +1,7 @@
 {
-  "generated_by": "topal-best-practices/3",
-  "schema": 3,
-  "authoritative_sha256": "ded6d668d09efa4647fc6b72610d440f404f340aa30cb7c405e1cc57f07f0730",
+  "generated_by": "topal-best-practices/4",
+  "schema": 4,
+  "authoritative_sha256": "b8053241f4e1d61f783dc9146cec75bc584594386c5313bc208d4137823f6b2d",
   "identity": "lang best-practice task state-machine",
   "version": "v0.1",
   "status": {
@@ -37,7 +37,17 @@
     "lang best-practice tag readability"
   ],
   "examples": [
-    "examples/language/task-message-transactions.t"
+    "examples/language/task-message-transactions.t",
+    "examples/linter/task-state-machine-rule.t"
   ],
-  "lint_rule": null
+  "lint_rule": {
+    "engine": "topal",
+    "entry_point": "rule",
+    "version": "v0.1",
+    "stage": "syntax",
+    "view": "task-state-machine/1",
+    "diagnostic_code": "L-TASK-STATE-MACHINE",
+    "source_sha256": "4010419803a21c7eb2a1de1127d323ea065ca0cec8e82461de7172d916d280e7",
+    "source_text": "use language (\n  version is v0.1,\n  features is ( lint )\n)\n# Demonstrates an assistive Topal-authored rule. The host reports whether a task\n# has private state and whether one of its message handlers explicitly updates it.\nrule is fn static (has-state : Boolean, has-transition : Boolean) -> Boolean\n  has-state\n    true then has-transition\n    otherwise true\n"
+  }
 }

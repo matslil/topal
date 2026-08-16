@@ -1,5 +1,5 @@
 {
-  "schema": 3,
+  "schema": 4,
   "identity": ["lang", "best-practice", "task", "state-machine"],
   "version": "v0.1",
   "status": {
@@ -29,9 +29,20 @@
   "exceptions": [
     "Prefer a pure transition function when no persistent task identity, asynchronous event source, or isolated mutable state is required."
   ],
-  "examples": ["examples/language/task-message-transactions.t"],
+  "examples": [
+    "examples/language/task-message-transactions.t",
+    "examples/linter/task-state-machine-rule.t"
+  ],
   "specification_rules": ["TOPAL-TASK-MESSAGE-001", "TOPAL-TASK-STATE-001"],
-  "lint_rule": null,
+  "lint_rule": {
+    "engine": "topal",
+    "entry_point": "rule",
+    "version": "v0.1",
+    "stage": "syntax",
+    "view": "task-state-machine/1",
+    "diagnostic_code": "L-TASK-STATE-MACHINE",
+    "source": "examples/linter/task-state-machine-rule.t"
+  },
   "provenance": "Topal design discussion approved 2026-08-16",
   "license": "MIT"
 }

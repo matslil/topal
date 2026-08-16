@@ -611,6 +611,18 @@ mod tests {
     }
 
     #[test]
+    fn accepts_the_task_state_machine_lint_rule_module() {
+        let source = include_str!("../../../examples/linter/task-state-machine-rule.t");
+        assert!(diagnostics(source).is_empty());
+        assert!(
+            !semantic_tokens(source)["data"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
     fn publishes_all_shared_syntax_diagnostics_with_utf16_ranges() {
         let mut server = Server::default();
         let output = server.handle(&json!({

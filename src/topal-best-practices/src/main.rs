@@ -6,8 +6,8 @@ use std::process::ExitCode;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-const GENERATOR_VERSION: &str = "topal-best-practices/3";
-const SCHEMA_VERSION: u64 = 3;
+const GENERATOR_VERSION: &str = "topal-best-practices/4";
+const SCHEMA_VERSION: u64 = 4;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -54,6 +54,7 @@ struct RuleAttachment {
     entry_point: String,
     version: String,
     stage: String,
+    view: String,
     diagnostic_code: String,
     source: String,
 }
@@ -237,6 +238,9 @@ fn validate(root: &Path, directory: &Path, record: &BestPractice) -> Result<(), 
         if rule.entry_point.is_empty() || rule.version.is_empty() {
             return Err("lint-rule entry point and version cannot be empty".into());
         }
+        if !valid_view(&rule.view) {
+            return Err("lint-rule view must use a stable `name/version` identity".into());
+        }
         if !matches!(
             rule.stage.as_str(),
             "tokens" | "syntax" | "semantic" | "trace"
@@ -252,6 +256,16 @@ fn validate(root: &Path, directory: &Path, record: &BestPractice) -> Result<(), 
         }
     }
     Ok(())
+}
+
+fn valid_view(view: &str) -> bool {
+    view.rsplit_once('/').is_some_and(|(name, version)| {
+        !name.is_empty()
+            && name.chars().all(|character| {
+                character.is_ascii_lowercase() || character.is_ascii_digit() || character == '-'
+            })
+            && version.parse::<u64>().is_ok_and(|version| version > 0)
+    })
 }
 
 fn validate_status(record: &BestPractice) -> Result<(), String> {
@@ -595,6 +609,7 @@ struct RuleProjection<'a> {
     entry_point: &'a str,
     version: &'a str,
     stage: &'a str,
+    view: &'a str,
     diagnostic_code: &'a str,
     source_sha256: String,
     source_text: &'a str,
@@ -606,6 +621,7 @@ fn projected_rule(entry: &Entry) -> Option<RuleProjection<'_>> {
         entry_point: &rule.entry_point,
         version: &rule.version,
         stage: &rule.stage,
+        view: &rule.view,
         diagnostic_code: &rule.diagnostic_code,
         source_sha256: {
             let source = entry

@@ -1,5 +1,5 @@
 {
-  "schema": 3,
+  "schema": 4,
   "identity": ["lang", "best-practice", "task", "declaration-order"],
   "version": "v0.1",
   "status": {
@@ -34,6 +34,7 @@
     "entry_point": "rule",
     "version": "v0.1",
     "stage": "syntax",
+    "view": "task-declaration-order/1",
     "diagnostic_code": "L-TASK-DECLARATION-ORDER",
     "source": "examples/linter/task-declaration-order-rule.t"
   },

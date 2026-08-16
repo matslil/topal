@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-pub const SUPPORTED_SCHEMA: u64 = 3;
+pub const SUPPORTED_SCHEMA: u64 = 4;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -47,6 +47,7 @@ pub struct RuleAttachment {
     pub entry_point: String,
     pub version: String,
     pub stage: String,
+    pub view: String,
     pub diagnostic_code: String,
     pub source_sha256: String,
     pub source_text: String,
@@ -174,6 +175,9 @@ fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
         if rule.source_text.is_empty() || rule.source_sha256 != sha256(&rule.source_text) {
             return Err("Topal lint-rule attachment requires authenticated embedded source".into());
         }
+        if !valid_view(&rule.view) {
+            return Err("lint-rule view must use a stable `name/version` identity".into());
+        }
         if !matches!(
             rule.stage.as_str(),
             "tokens" | "syntax" | "semantic" | "trace"
@@ -192,6 +196,16 @@ fn validate_entry(entry: &CatalogEntry) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn valid_view(view: &str) -> bool {
+    view.rsplit_once('/').is_some_and(|(name, version)| {
+        !name.is_empty()
+            && name.chars().all(|character| {
+                character.is_ascii_lowercase() || character.is_ascii_digit() || character == '-'
+            })
+            && version.parse::<u64>().is_ok_and(|version| version > 0)
+    })
 }
 
 fn sha256(source: &str) -> String {
@@ -258,6 +272,23 @@ mod tests {
             Catalog::from_json(&source)
                 .unwrap_err()
                 .contains("authenticated embedded source")
+        );
+    }
+
+    #[test]
+    fn malformed_read_only_view_identity_is_rejected() {
+        let mut catalog = Catalog::builtin();
+        let rule = catalog
+            .entries
+            .iter_mut()
+            .find_map(|entry| entry.lint_rule.as_mut())
+            .unwrap();
+        rule.view = "../ambient/0".into();
+        let source = serde_json::to_string(&catalog).unwrap();
+        assert!(
+            Catalog::from_json(&source)
+                .unwrap_err()
+                .contains("stable `name/version`")
         );
     }
 }
