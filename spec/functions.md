@@ -205,6 +205,16 @@ under this rule. Test traces and debugger history shall expose proof acceptance
 at declaration and every recursive descent before nested function entry. Cycles
 without an implemented termination proof remain rejected.
 
+### TOPAL-FUNCTION-RECURSION-EUCLIDEAN-001 — Proven Euclidean recursion
+
+A binary `Int` function explicitly measured by the absolute value of its
+second parameter is proven terminating when it returns a nonrecursive base for
+a zero second parameter and every recursive edge replaces `(left, right)` with
+`(right, left % right)`. Euclidean modulo supplies a nonnegative remainder
+strictly below `absolute right`, so the measure decreases on every recursive
+edge. Traces and debugger history SHALL identify this proof at declaration and
+descent.
+
 ### TOPAL-FUNCTION-RECURSION-INT-INCREASING-001 — Proven increasing Int recursion
 
 The dual structural rule proves a unary `Int` function terminating when its

@@ -53,3 +53,11 @@ Result fallback, pairwise zipping, and nested-Result flattening. Operations
 which do not explicitly transform an Error SHALL preserve its complete domain,
 code, detail, cause, and source provenance. Related success classifiers and
 error-code vocabularies SHALL remain exact through every operation.
+
+### TOPAL-LIB-EXACT-NUMERIC-001 — Derived exact-number operations
+
+The numeric exact module SHALL provide sign and distance in their strongest
+closed exact domains, Euclidean `gcd`, parity and divisibility predicates, and
+fallible rational reciprocal. Partial arithmetic SHALL retain the arithmetic
+Result vocabulary and compiler-derived reporting domain. No operation in this
+module may round, overflow, or introduce parsing or presentation policy.
