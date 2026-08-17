@@ -48,6 +48,8 @@ cross-version escape hatch.
 The implementation phases, shared interpreter/compiler architecture, and
 stacked review procedure are defined in
 [`standard-library-plan.md`](standard-library-plan.md).
+The follow-on fundamental API completion series is defined in
+[`fundamental-standard-library-completion.md`](fundamental-standard-library-completion.md).
 
 ## Initial development gate
 
