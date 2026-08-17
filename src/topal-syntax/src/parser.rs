@@ -1269,6 +1269,38 @@ impl Parser<'_> {
         if first.kind != TokenKind::Identifier {
             return None;
         }
+        if self.source.slice(first.span) == "fn" {
+            if self.peek_nontrivia().is_some_and(|token| {
+                token.kind == TokenKind::Identifier && self.source.slice(token.span) == "static"
+            }) {
+                self.take_nontrivia();
+            }
+            let opening = self.take_nontrivia()?;
+            if opening.kind != TokenKind::LeftParen {
+                return None;
+            }
+            let mut depth = 1_usize;
+            let mut closing = opening;
+            while depth > 0 {
+                let token = self.take_nontrivia()?;
+                match token.kind {
+                    TokenKind::LeftParen => depth += 1,
+                    TokenKind::RightParen => depth -= 1,
+                    _ => {}
+                }
+                closing = token;
+            }
+            let arrow = self.take_nontrivia()?;
+            if arrow.kind != TokenKind::Arrow {
+                return None;
+            }
+            let result_start = self.take_nontrivia()?;
+            let result = self.classifier_from_first(result_start)?;
+            return Some(Span::new(
+                first.span.start,
+                result.end.max(closing.span.end),
+            ));
+        }
         if self.source.slice(first.span) == "Result" {
             if !self
                 .peek_nontrivia()
@@ -2896,6 +2928,31 @@ mod tests {
         assert_eq!(parameters.len(), 2);
         assert_eq!(source.slice(parameters[0].name), "left");
         assert_eq!(source.slice(parameters[1].name), "right");
+    }
+
+    #[test]
+    fn preserves_structural_higher_order_generic_classifiers() {
+        let source = SourceText::new(
+            "map is fn (candidate : Optional (Input : Type), transformation : fn (Input) -> Output) -> Optional Output\n  candidate",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function {
+            parameters, result, ..
+        } = &parsed.statements[0]
+        else {
+            panic!("expected function declaration");
+        };
+        assert_eq!(
+            source.slice(parameters[0].classifier),
+            "Optional (Input : Type)"
+        );
+        assert_eq!(
+            source.slice(parameters[1].classifier),
+            "fn (Input) -> Output"
+        );
+        assert_eq!(source.slice(*result), "Optional Output");
     }
 
     #[test]
