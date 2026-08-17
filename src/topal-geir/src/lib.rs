@@ -1686,7 +1686,7 @@ mod tests {
     #[test]
     fn source_package_key_covers_every_reproducibility_boundary() {
         let sources = BTreeMap::from([
-            ("fundamental/ordering.t".into(), "minimum".into()),
+            ("fundamental/ordering.t".into(), "min".into()),
             ("library.t".into(), "ordering".into()),
         ]);
         let dependencies = BTreeMap::from([("example.base".into(), [7; 32])]);
@@ -1698,7 +1698,7 @@ mod tests {
             SourcePackageKey::derive(LanguageVersion::DESIGN_0, "18.0.0", &sources, &dependencies,)
         );
         let mut changed = sources;
-        changed.insert("fundamental/ordering.t".into(), "maximum".into());
+        changed.insert("fundamental/ordering.t".into(), "max".into());
         assert_ne!(
             key,
             SourcePackageKey::derive(LanguageVersion::DESIGN_0, "17.0.0", &changed, &dependencies,)

@@ -24,7 +24,7 @@ fn executes_the_standard_library_example_from_its_shared_module_tree() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("decision #"));
     assert!(stdout.contains("evaluation.result"));
-    assert!(stdout.contains("((Int, Rational, (Int, Int), Int, Int, Int, Rational))"));
+    assert!(stdout.contains("((Int, Rational, (Int, Int), (Int, Int), Int, Int, Int, Rational))"));
 }
 
 fn language_diagnostic(name: &str) -> String {

@@ -29,3 +29,10 @@ A compiler MAY replace a standard-library declaration only after matching its
 exact structural identity and required capability evidence. The replacement
 SHALL be observationally equivalent to executing the authoritative Topal
 source. Absence of a substitution SHALL NOT affect program correctness.
+
+### TOPAL-LIB-ORDERING-001 — Generic scalar extrema
+
+The fundamental ordering module SHALL provide `min`, `max`, and `min-max` for
+two values of one exact type that supplies `TotalOrder`. `min-max` SHALL return
+the lesser value followed by the greater value. All three functions SHALL
+select their left argument when the arguments compare equal.
