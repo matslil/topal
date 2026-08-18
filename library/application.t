@@ -6,27 +6,27 @@ use language (
 # Executes the first standard-library vertical slice through the same package
 # tree consumed by source tools. The derived function itself remains in the
 # ordinary published source under fundamental/ordering.t.
-min is fundamental ordering min
-max is fundamental ordering max
-min-max is fundamental ordering min-max
-sign is numeric exact sign
-distance is numeric exact distance
-optional-map is fundamental optional map
-absent? is fundamental optional absent?
-optional-zip is fundamental optional zip
-result-map is fundamental result map
+min is std min
+max is std max
+min-max is std min-max
+sign is std sign
+distance is std distance
+optional-map is std map
+absent? is std absent?
+optional-zip is std zip
+result-map is std map
 divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)
   left / right
-gcd is numeric exact gcd
-even? is numeric exact even?
-reciprocal is numeric exact reciprocal
-range-bounds is fundamental range bounds
-range-hull is fundamental range hull
-text-trim is text unicode trim
-text-repeat is text unicode repeat
-any? is collection finite any?
-find is collection finite find
-count-from is generators lazy count-from
+gcd is std gcd
+even? is std even?
+reciprocal is std reciprocal
+range-bounds is std bounds
+range-hull is std hull
+text-trim is std trim
+text-repeat is std repeat
+any? is std any?
+find is std find
+count-from is std count-from
 values : List Int is Entry (1, Entry (2, Entry (3, Empty)))
 generated is count-from 3
 prefix is collect (generated take-while ({ value } value < 6))

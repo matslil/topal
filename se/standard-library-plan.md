@@ -28,25 +28,21 @@ protocols, checked layouts, and ordinary package construction.
 
 ## Source organization
 
-The initial package is organized by semantic responsibility:
+The fundamental package deliberately has one flat public module:
 
 ```text
 library/
-├── package.t
-├── library.t
-├── fundamental/
-├── numeric/
-├── text/
-├── collection/
-├── iteration/
+├── std.t
+├── application.t
 └── testing/
 ```
 
-Physical layout does not bypass Topal publication. `package.t` constructs the
-package context, `library.t` publishes the supported facade, child `module.t`
-files assemble their interfaces, and ordinary files retain private-by-default
-visibility. The public package identity and final facade name are selected in
-the package-foundation PR so they are reviewed independently of later APIs.
+`std.t` publishes all fundamental overloads directly as `std name`. Physical
+categories would become public namespace components, so they are intentionally
+absent. Independent algorithm libraries use separate top-level namespaces and
+may choose deeper physical layouts. `application.t` is cross-tool conformance
+input, while `testing` contains law infrastructure rather than public
+fundamental operations. Ordinary declarations remain private by default.
 
 ## Pull-request stack
 

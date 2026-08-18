@@ -96,7 +96,7 @@ mod tests {
         load_module_tree(&mut session, &root, &mut trace).unwrap();
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )\nmin is fundamental ordering min\nmin (4, 2)",
+                "use language ( version is v0.1 )\nmin is std min\nmin (4, 2)",
                 &mut trace,
             )
             .unwrap();
@@ -112,7 +112,7 @@ mod tests {
         load_module_tree(&mut session, &root, &mut trace).unwrap();
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )\nmin is fundamental ordering min\nmin ((1, 3), (1, 2))",
+                "use language ( version is v0.1 )\nmin is std min\nmin ((1, 3), (1, 2))",
                 &mut trace,
             )
             .unwrap();
@@ -156,15 +156,15 @@ mod tests {
         let value = session
             .evaluate_source_file(
                 "use language ( version is v0.1 )
-present? is fundamental optional present?
-absent? is fundamental optional absent?
-map is fundamental optional map
-chain is fundamental optional chain
-filter is fundamental optional filter
-value-or is fundamental optional value-or
-or-else is fundamental optional or-else
-zip is fundamental optional zip
-flatten is fundamental optional flatten
+present? is std present?
+absent? is std absent?
+map is std map
+chain is std chain
+filter is std filter
+value-or is std value-or
+or-else is std or-else
+zip is std zip
+flatten is std flatten
 (present? (Some 1), absent? (None String), map ((Some 4), { value } value + 1), chain ((Some 4), { value } Some (value + 2)), filter ((Some 4), { value } value > 2), filter ((Some 1), { value } value > 2), value-or ((None Int), 9), or-else ((None String), (Some \"fallback\")), zip ((Some 2), (Some \"items\")), flatten (Some (Some 7)))",
                 &mut trace,
             )
@@ -184,10 +184,10 @@ flatten is fundamental optional flatten
         let value = session
             .evaluate_source_file(
                 "use language ( version is v0.1 )
-result-map is fundamental result map
-ok? is fundamental result ok?
-error? is fundamental result error?
-result-zip is fundamental result zip
+result-map is std map
+ok? is std ok?
+error? is std error?
+result-zip is std zip
 divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)
   left / right
 successful is 4.0 divide 2.0
@@ -211,11 +211,11 @@ failed is 4.0 divide 0.0
         let value = session
             .evaluate_source_file(
                 "use language ( version is v0.1 )
-gcd is numeric exact gcd
-even? is numeric exact even?
-odd? is numeric exact odd?
-divides? is numeric exact divides?
-reciprocal is numeric exact reciprocal
+gcd is std gcd
+even? is std even?
+odd? is std odd?
+divides? is std divides?
+reciprocal is std reciprocal
 (gcd (-54, 24), even? -4, odd? -3, divides? (0, 0), divides? (6, 42), reciprocal 4.0)",
                 &mut trace,
             )
@@ -239,11 +239,11 @@ reciprocal is numeric exact reciprocal
         let value = session
             .evaluate_source_file(
                 "use language ( version is v0.1 )
-bounds is fundamental range bounds
-intersection is fundamental range intersection
-overlaps? is fundamental range overlaps?
-hull is fundamental range hull
-adjacent? is fundamental range adjacent?
+bounds is std bounds
+intersection is std intersection
+overlaps? is std overlaps?
+hull is std hull
+adjacent? is std adjacent?
 (bounds (-2 .. 5), intersection (0 .. 8, 4 .. 12), overlaps? (0 .. 2, 3 .. 5), hull (0.5 .. 2.5, 2.0 .. 4.0), adjacent? (0 .. 2, 3 .. 5))",
                 &mut trace,
             )
@@ -270,14 +270,14 @@ adjacent? is fundamental range adjacent?
         let value = session
             .evaluate_source_file(
                 "use language ( version is v0.1 )
-nfd is text unicode nfd
-canonical-equal is text unicode canonical-equal
-starts-with? is text unicode starts-with?
-ends-with? is text unicode ends-with?
-contains? is text unicode contains?
-trim is text unicode trim
-replace-all is text unicode replace-all
-repeat is text unicode repeat
+nfd is std nfd
+canonical-equal is std canonical-equal
+starts-with? is std starts-with?
+ends-with? is std ends-with?
+contains? is std contains?
+trim is std trim
+replace-all is std replace-all
+repeat is std repeat
 (nfd \"é\", canonical-equal (\"é\", \"e\u{301}\"), starts-with? (\"Topal\", \"Top\"), ends-with? (\"Topal\", \"pal\"), contains? (\"Topal\", \"opa\"), trim \"  text\n\", replace-all (\"a-b-a\", \"a\", \"x\"), repeat (\"ab\", 3))",
                 &mut trace,
             )
@@ -297,11 +297,11 @@ repeat is text unicode repeat
         let value = session
             .evaluate_source_file(
                 "use language ( version is v0.1 )
-any? is collection finite any?
-all? is collection finite all?
-none? is collection finite none?
-count-where is collection finite count-where
-find is collection finite find
+any? is std any?
+all? is std all?
+none? is std none?
+count-where is std count-where
+find is std find
 values : List Int is Entry (1, Entry (2, Entry (3, Empty)))
 (any? (values, { value } value > 2), all? (values, { value } value > 0), none? (values, { value } value < 0), count-where (values, { value } value >= 2), find (values, { value } value > 1))",
                 &mut trace,
@@ -319,7 +319,7 @@ values : List Int is Entry (1, Entry (2, Entry (3, Empty)))
         let value = session
             .evaluate_source_file(
                 "use language ( version is v0.1 )
-enumerate is generators lazy count-from
+enumerate is std count-from
 numbers is enumerate 3
 collect (numbers take-while ({ value } value < 7))",
                 &mut trace,

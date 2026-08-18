@@ -7,6 +7,11 @@ declarations. Every source tool SHALL resolve a published declaration through
 the same package-relative module path and SHALL NOT maintain a separate native
 definition of its observable semantics.
 
+All fundamental-library declarations SHALL be published directly in the flat
+`std` namespace. Internal source categorization SHALL NOT add intermediate
+components to their public names. Algorithm libraries beyond these fundamental
+operations SHALL use separate namespaces rather than extending `std`.
+
 ### TOPAL-LIB-DIFFERENTIAL-001 — Cross-tool observations
 
 For each executable standard-library example, conforming interpreter,
@@ -32,14 +37,14 @@ source. Absence of a substitution SHALL NOT affect program correctness.
 
 ### TOPAL-LIB-ORDERING-001 — Generic scalar extrema
 
-The fundamental ordering module SHALL provide `min`, `max`, and `min-max` for
+The `std` namespace SHALL provide `min`, `max`, and `min-max` for
 two values of one exact type that supplies `TotalOrder`. `min-max` SHALL return
 the lesser value followed by the greater value. All three functions SHALL
 select their left argument when the arguments compare equal.
 
 ### TOPAL-LIB-OPTIONAL-001 — Generic Optional composition
 
-The fundamental Optional module SHALL provide presence queries, payload
+The `std` namespace SHALL provide Optional presence queries, payload
 mapping and chaining, predicate filtering, value and Optional fallback,
 pairwise zipping, and nested-Optional flattening. Each operation SHALL preserve
 the exact related payload classifiers established by its inputs and any
@@ -47,7 +52,7 @@ higher-order result. The module SHALL NOT provide forced extraction.
 
 ### TOPAL-LIB-RESULT-001 — Generic Result and Error composition
 
-The fundamental Result module SHALL provide success and failure queries,
+The `std` namespace SHALL provide Result success and failure queries,
 success mapping and chaining, explicit Error mapping and recovery, value and
 Result fallback, pairwise zipping, and nested-Result flattening. Operations
 which do not explicitly transform an Error SHALL preserve its complete domain,
@@ -56,7 +61,7 @@ error-code vocabularies SHALL remain exact through every operation.
 
 ### TOPAL-LIB-EXACT-NUMERIC-001 — Derived exact-number operations
 
-The numeric exact module SHALL provide sign and distance in their strongest
+The `std` namespace SHALL provide exact-number sign and distance in their strongest
 closed exact domains, Euclidean `gcd`, parity and divisibility predicates, and
 fallible rational reciprocal. Partial arithmetic SHALL retain the arithmetic
 Result vocabulary and compiler-derived reporting domain. No operation in this
@@ -64,14 +69,14 @@ module may round, overflow, or introduce parsing or presentation policy.
 
 ### TOPAL-LIB-RANGE-001 — Convex range utilities
 
-The fundamental range module SHALL provide bound observation, bound pairing,
+The `std` namespace SHALL provide range bound observation, bound pairing,
 intersection, overlap testing, convex hull, and discrete Int adjacency. Generic
 operations SHALL retain one exact `TotalOrder` endpoint classifier. They SHALL
 preserve convex-predicate semantics and SHALL NOT imply enumeration.
 
 ### TOPAL-LIB-TEXT-001 — Fundamental Unicode text utilities
 
-The text Unicode module SHALL provide canonical normalization and equality,
+The `std` namespace SHALL provide canonical normalization and equality,
 default caseless equality, exact prefix/suffix/containment queries, Unicode
 whitespace trimming, exact replacement, and repetition. Every operation SHALL
 use the selected language context's pinned Unicode policy and SHALL remain
@@ -79,7 +84,7 @@ separate from parsing, formatting, locale policy, and encoded bytes.
 
 ### TOPAL-LIB-FINITE-001 — Derived finite fold algorithms
 
-The collection finite module SHALL provide generic existential, universal, and
+The `std` namespace SHALL provide generic existential, universal, and
 negative quantifiers, predicate counting, and first-match search over finite
 Lists. Implementations SHALL use ordinary finite folds, preserve the exact
 element classifier, visit entries in source order, and return Optional rather
@@ -87,7 +92,7 @@ than force extraction when no match exists.
 
 ### TOPAL-LIB-GENERATOR-001 — Lazy generator constructors
 
-The generator lazy module SHALL provide integer enumeration as a replay-free
+The `std` namespace SHALL provide integer enumeration as a replay-free
 lazy generator. It SHALL yield only when resumed, retain its distinct final
 return, and preserve the language generator-close protocol when abandoned. It
 SHALL NOT materialize an unbounded traversal or imply that a linear generator

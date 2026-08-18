@@ -10,6 +10,19 @@ hierarchy.
 This model keeps the source tree and canonical names aligned while allowing a
 module to expose an interface that does not mirror its implementation layout.
 
+## Fundamental standard-library namespace
+
+The fundamental standard library is the single flat `std` namespace. Its
+functions therefore have names such as `std min`, `std map`, and `std gcd`,
+without category components between `std` and the function name. Overloading
+distinguishes operations such as Optional and Result `map` using their ordinary
+input classifiers.
+
+The fundamental library is intentionally small enough to keep this direct
+interface. Additional algorithm libraries use their own namespaces instead of
+adding categories below `std`; their implementation layout can be as deep as
+their independent scope requires.
+
 ## Source layout and canonical names
 
 Except for the special files `module.t`, `package.t`, `library.t`, and
