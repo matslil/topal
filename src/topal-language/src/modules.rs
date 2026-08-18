@@ -260,4 +260,31 @@ adjacent? is fundamental range adjacent?
             10
         );
     }
+
+    #[test]
+    fn shared_text_functions_apply_explicit_unicode_and_search_policy() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        load_module_tree(&mut session, &root, &mut trace).unwrap();
+        let value = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )
+nfd is text unicode nfd
+canonical-equal is text unicode canonical-equal
+starts-with? is text unicode starts-with?
+ends-with? is text unicode ends-with?
+contains? is text unicode contains?
+trim is text unicode trim
+replace-all is text unicode replace-all
+repeat is text unicode repeat
+(nfd \"é\", canonical-equal (\"é\", \"e\u{301}\"), starts-with? (\"Topal\", \"Top\"), ends-with? (\"Topal\", \"pal\"), contains? (\"Topal\", \"opa\"), trim \"  text\n\", replace-all (\"a-b-a\", \"a\", \"x\"), repeat (\"ab\", 3))",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(
+            value.to_string(),
+            "(\"e\u{301}\", true, true, true, true, \"text\", \"x-b-x\", \"ababab\")"
+        );
+    }
 }

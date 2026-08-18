@@ -3567,6 +3567,26 @@ impl Session {
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && matches!(
+                        source.slice(*name),
+                        "string-starts-with"
+                            | "string-ends-with"
+                            | "string-contains"
+                            | "string-trim"
+                            | "string-replace-all"
+                            | "string-repeat"
+                    )
+                {
+                    let operation = source.slice(*name);
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let value =
+                        apply_string_utility(source, operation, operand, operand_span, trace)?;
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
                 if is_list_uncons(source, items) {
                     return evaluate_list_uncons(source, self, items, *span, trace);
                 }
@@ -12023,6 +12043,103 @@ fn evaluate_list_projection(
     Ok(value)
 }
 
+fn apply_string_utility(
+    source: &SourceText,
+    operation: &str,
+    argument: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let result = match (operation, argument) {
+        ("string-trim", Value::String(text)) => {
+            Value::String(text.trim_matches(is_unicode_white_space).to_owned())
+        }
+        ("string-starts-with" | "string-ends-with" | "string-contains", Value::Tuple(values))
+            if values.len() == 2 =>
+        {
+            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    format!("{operation} requires two String operands"),
+                ));
+            };
+            Value::Boolean(match operation {
+                "string-starts-with" => text.starts_with(pattern),
+                "string-ends-with" => text.ends_with(pattern),
+                _ => text.contains(pattern),
+            })
+        }
+        ("string-replace-all", Value::Tuple(values)) if values.len() == 3 => {
+            let [
+                Value::String(text),
+                Value::String(pattern),
+                Value::String(replacement),
+            ] = values.as_slice()
+            else {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    "string-replace-all requires three String operands",
+                ));
+            };
+            Value::String(text.replace(pattern, replacement))
+        }
+        ("string-repeat", Value::Tuple(values)) if values.len() == 2 => {
+            let [Value::String(text), Value::Int(count)] = values.as_slice() else {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    "string-repeat requires String and Nat operands",
+                ));
+            };
+            let count = usize::try_from(count).map_err(|_| {
+                diagnostic(
+                    source,
+                    "E-STRING-REPEAT-COUNT",
+                    span,
+                    "string repetition count is outside the executable platform limit",
+                )
+            })?;
+            Value::String(text.repeat(count))
+        }
+        _ => {
+            return Err(diagnostic(
+                source,
+                "E-STRING-UTILITY-OPERANDS",
+                span,
+                format!("{operation} received unsupported operands"),
+            ));
+        }
+    };
+    trace.record(TraceEvent {
+        event: "string.utility.applied",
+        rule: "TOPAL-STRING-UTILITY-001",
+        detail: operation,
+    });
+    Ok(result)
+}
+
+fn is_unicode_white_space(character: char) -> bool {
+    matches!(
+        character,
+        '\u{0009}'..='\u{000D}'
+            | '\u{0020}'
+            | '\u{0085}'
+            | '\u{00A0}'
+            | '\u{1680}'
+            | '\u{2000}'..='\u{200A}'
+            | '\u{2028}'
+            | '\u{2029}'
+            | '\u{202F}'
+            | '\u{205F}'
+            | '\u{3000}'
+    )
+}
+
 fn apply_count(
     source: &SourceText,
     operation: &str,
@@ -13881,7 +13998,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 23] = [
+const ROOT_OPERATIONS: [&str; 29] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -13904,6 +14021,12 @@ const ROOT_OPERATIONS: [&str; 23] = [
     "one",
     "rest",
     "reverse",
+    "string-contains",
+    "string-ends-with",
+    "string-repeat",
+    "string-replace-all",
+    "string-starts-with",
+    "string-trim",
     "zero",
 ];
 

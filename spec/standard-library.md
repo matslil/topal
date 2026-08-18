@@ -68,3 +68,11 @@ The fundamental range module SHALL provide bound observation, bound pairing,
 intersection, overlap testing, convex hull, and discrete Int adjacency. Generic
 operations SHALL retain one exact `TotalOrder` endpoint classifier. They SHALL
 preserve convex-predicate semantics and SHALL NOT imply enumeration.
+
+### TOPAL-LIB-TEXT-001 — Fundamental Unicode text utilities
+
+The text Unicode module SHALL provide canonical normalization and equality,
+default caseless equality, exact prefix/suffix/containment queries, Unicode
+whitespace trimming, exact replacement, and repetition. Every operation SHALL
+use the selected language context's pinned Unicode policy and SHALL remain
+separate from parsing, formatting, locale policy, and encoded bytes.
