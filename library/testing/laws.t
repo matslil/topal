@@ -7,9 +7,7 @@ use language (
 # implementation only for the exact declaration identity and must preserve
 # these ordinary-source observations.
 pub min-commutes is fn (left : Int, right : Int) -> Boolean
-  min is fundamental ordering min
-  min (left, right) = min (right, left)
+  (left <= right then left otherwise right) = (right <= left then right otherwise left)
 
 pub nfc-idempotent is fn (text : String) -> Boolean
-  nfc is text unicode nfc
-  nfc (nfc text) = nfc text
+  ((text normalize NFC) normalize NFC) = (text normalize NFC)

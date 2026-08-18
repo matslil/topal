@@ -50,6 +50,9 @@ stacked review procedure are defined in
 [`standard-library-plan.md`](standard-library-plan.md).
 The follow-on fundamental API completion series is defined in
 [`fundamental-standard-library-completion.md`](fundamental-standard-library-completion.md).
+That completed API is published directly through the flat `std` namespace.
+Non-fundamental algorithm packages use separate namespaces so their growth does
+not change fundamental names.
 
 ## Initial development gate
 
