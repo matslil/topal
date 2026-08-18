@@ -229,4 +229,35 @@ reciprocal is numeric exact reciprocal
                 && event.contains("TOPAL-FUNCTION-RECURSION-EUCLIDEAN-001")
         }));
     }
+
+    #[test]
+    fn shared_range_functions_preserve_endpoint_domains_and_convexity() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        load_module_tree(&mut session, &root, &mut trace).unwrap();
+        let value = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )
+bounds is fundamental range bounds
+intersection is fundamental range intersection
+overlaps? is fundamental range overlaps?
+hull is fundamental range hull
+adjacent? is fundamental range adjacent?
+(bounds (-2 .. 5), intersection (0 .. 8, 4 .. 12), overlaps? (0 .. 2, 3 .. 5), hull (0.5 .. 2.5, 2.0 .. 4.0), adjacent? (0 .. 2, 3 .. 5))",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(
+            value.to_string(),
+            "((-2, 5), 4 .. 8, false, Rational ( 1, 2 ) .. Rational ( 4, 1 ), true)"
+        );
+        assert_eq!(
+            trace
+                .iter()
+                .filter(|event| event.contains("TOPAL-RANGE-BOUND-001"))
+                .count(),
+            10
+        );
+    }
 }
