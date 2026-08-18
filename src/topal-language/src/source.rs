@@ -2645,6 +2645,20 @@ impl Session {
                 if let Some(value) = self.evaluate_layout_application(source, items, *span, trace) {
                     return value;
                 }
+                if let [Expression::Identifier(empty), element] = items.as_slice()
+                    && source.slice(*empty) == "Empty"
+                {
+                    let element = self.evaluate_expression(source, element, trace)?;
+                    let Value::Type(element_classifier) = element else {
+                        return Err(diagnostic(
+                            source,
+                            "E-LIST-EMPTY-CLASSIFIER",
+                            items[1].span(),
+                            "Empty requires an element type",
+                        ));
+                    };
+                    return Ok(construct_empty_list(element_classifier, trace));
+                }
                 if let [Expression::Identifier(task), options] = items.as_slice()
                     && source.slice(*task) == "Task"
                 {
@@ -4218,6 +4232,14 @@ impl Session {
         let name = source.slice(span);
         if let Ok(version) = name.parse::<LanguageVersion>() {
             return Ok(Value::Version(version));
+        }
+        if let Some(classifier) = self.generic_types.get(name) {
+            trace.record(TraceEvent {
+                event: "type.resolved",
+                rule: "TOPAL-FUNCTION-GENERIC-HEADER-001",
+                detail: classifier,
+            });
+            return Ok(Value::Type(classifier.clone()));
         }
         if matches!(name, "Little" | "Big") {
             trace.record(TraceEvent {
@@ -9056,6 +9078,32 @@ fn generic_classifier_accepts_name(
     ) {
         return generic_classifier_accepts_name(actual_payload, expected_payload, generic_types);
     }
+    if let (Some(actual_element), Some(expected_element)) = (
+        applied_classifier(actual, "List"),
+        applied_classifier(expected, "List"),
+    ) {
+        return generic_classifier_accepts_name(actual_element, expected_element, generic_types);
+    }
+    if let (Some(actual_endpoint), Some(expected_endpoint)) = (
+        applied_classifier(actual, "Range"),
+        applied_classifier(expected, "Range"),
+    ) {
+        return generic_classifier_accepts_name(actual_endpoint, expected_endpoint, generic_types);
+    }
+    if let (Some(actual_payload), Some(expected_payload)) = (
+        result_classifier_parts(actual),
+        result_classifier_parts(expected),
+    ) {
+        return generic_classifier_accepts_name(
+            actual_payload.0,
+            expected_payload.0,
+            generic_types,
+        ) && generic_classifier_accepts_name(
+            actual_payload.1,
+            expected_payload.1,
+            generic_types,
+        );
+    }
     if let (Some(actual_items), Some(expected_items)) =
         (tuple_classifiers(actual), tuple_classifiers(expected))
     {
@@ -9123,6 +9171,17 @@ fn populate_function_generics(
             }
         } else if let Some(argument) = scope.bindings.get(parameter) {
             let _ = generic_parameter_accepts(argument, classifier, generic_types);
+            if let (Some((_, expected_result)), Value::NamedFunction(named_function)) =
+                (function_classifier_parts(classifier), argument)
+                && named_function.candidates.len() == 1
+            {
+                let _ = bind_named_classifier_generics(
+                    &named_function.candidates[0].result,
+                    expected_result,
+                    &function.generic_names,
+                    generic_types,
+                );
+            }
         }
     }
 }
@@ -9326,6 +9385,10 @@ fn collect_function_result_generic_names(
 ) {
     if let Some(payload) = applied_classifier(classifier, "Optional") {
         collect_function_result_generic_names(payload, enum_types, names);
+    } else if let Some(element) = applied_classifier(classifier, "List") {
+        collect_function_result_generic_names(element, enum_types, names);
+    } else if let Some(endpoint) = applied_classifier(classifier, "Range") {
+        collect_function_result_generic_names(endpoint, enum_types, names);
     } else if let Some((success, codes)) = result_classifier_parts(classifier) {
         collect_function_result_generic_names(success, enum_types, names);
         collect_function_result_generic_names(codes, enum_types, names);
@@ -9405,6 +9468,33 @@ fn bind_function_arguments(
         });
     }
     Ok(())
+}
+
+fn bind_named_classifier_generics(
+    actual: &str,
+    expected: &str,
+    generic_names: &BTreeSet<String>,
+    generic_types: &mut BTreeMap<String, String>,
+) -> bool {
+    if generic_names.contains(expected) {
+        return generic_types
+            .insert(expected.to_owned(), actual.to_owned())
+            .is_none_or(|existing| existing == actual);
+    }
+    for constructor in ["Optional", "List", "Range"] {
+        if let (Some(actual_inner), Some(expected_inner)) = (
+            applied_classifier(actual, constructor),
+            applied_classifier(expected, constructor),
+        ) {
+            return bind_named_classifier_generics(
+                actual_inner,
+                expected_inner,
+                generic_names,
+                generic_types,
+            );
+        }
+    }
+    generic_classifier_accepts_name(actual, expected, generic_types)
 }
 
 fn bind_package_fields(

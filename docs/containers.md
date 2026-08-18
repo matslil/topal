@@ -569,6 +569,13 @@ policy. These are distinct operations rather than overloads selected by their
 output types. `flat-map` can be an ordinary shorthand where the source and
 target kind make those laws unambiguous.
 
+For finite Lists, the fundamental library provides three derived folds with
+explicit order contracts. `filter-map` applies an Optional-producing
+transformation once per entry and retains only present payloads. `flat-map`
+concatenates transformed Lists in source and expansion order. They allocate
+only their result Lists and run in time linear in the number of visited source
+and emitted result entries.
+
 ### Entry views
 
 Every homogeneous collection exposes entries, allowing the same functions to

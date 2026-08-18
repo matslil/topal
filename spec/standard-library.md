@@ -93,6 +93,12 @@ Lists. Implementations SHALL use ordinary finite folds, preserve the exact
 element classifier, visit entries in source order, and return Optional rather
 than force extraction when no match exists.
 
+`filter-map` SHALL retain every present transformed payload in source order and
+discard absent transformation results. `flat-map` SHALL concatenate transformed
+Lists in source order while preserving each transformed List's internal order.
+Both operations SHALL retain exact related input and output classifiers and
+require finite input Lists.
+
 ### TOPAL-LIB-GENERATOR-001 — Lazy generator constructors
 
 The `std` namespace SHALL provide integer enumeration as a replay-free

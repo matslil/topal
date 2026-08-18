@@ -370,6 +370,27 @@ pub find is fn (
 ) -> Optional Value
   values fold (None Value) { found, value } find-step-callable (found, predicate value, value)
 
+filter-map-step is fn (
+  collected : List (Output : Type),
+  candidate : Optional Output
+) -> List Output
+  candidate
+    Some value then collected append value
+    None then collected
+filter-map-step-callable is filter-map-step
+
+pub filter-map is fn (
+  values : List (Input : Type),
+  transformation : fn (Input) -> Optional Output
+) -> List Output
+  values fold (Empty Output) { collected, value } filter-map-step-callable (collected, transformation value)
+
+pub flat-map is fn (
+  values : List (Input : Type),
+  transformation : fn (Input) -> List Output
+) -> List Output
+  values fold (Empty Output) { collected, value } collected concat (transformation value)
+
 # Lazy generators.
 pub count-from is fn (initial : Int) -> Generator Int Unit Unit
   initial iterate ({ value } value + 1)

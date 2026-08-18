@@ -21,6 +21,14 @@ patterns such as `Optional (Input : Type)` and higher-order classifiers such as
 for later semantic matching. A frontend SHALL NOT truncate a function
 classifier at `fn` or reinterpret its operand types as named declarations.
 
+When a higher-order parameter's result introduces a related type variable
+inside `Optional`, `List`, `Range`, `Result`, or a product, invocation through
+a named function value SHALL bind that variable from the retained declaration
+result. The binding SHALL be available as an ordinary type value inside the
+invoked generic body and SHALL be substituted recursively into its result.
+Constructing `Empty T` with such a bound type value SHALL produce an empty
+`List T`; it SHALL NOT fall back to an unrelated element classifier.
+
 ### TOPAL-EXEC-COMPLETED-001 — Completion evidence
 
 The identifier `Completed` in expression position shall evaluate to the
