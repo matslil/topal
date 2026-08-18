@@ -4134,7 +4134,7 @@ fn script_and_test_modes_execute_the_shared_standard_library_example() {
         );
         assert_eq!(
             String::from_utf8(output.stdout).unwrap().trim(),
-            "(2, Rational ( 9, 2 ), (1, 2), (3, 7), -1, -1, 9, Rational ( 3, 2 ), Some 5, true, Some (2, \"items\"), Rational ( 5, 1 ), 6, true, Rational ( 1, 2 ), (-2, 5), 0 .. 8, \"text\", \"abab\", true, Some 2)"
+            "(2, Rational ( 9, 2 ), (1, 2), (3, 7), -1, -1, 9, Rational ( 3, 2 ), Some 5, true, Some (2, \"items\"), Rational ( 5, 1 ), 6, true, Rational ( 1, 2 ), (-2, 5), 0 .. 8, \"text\", \"abab\", true, Some 2, Entry ( 3, Entry ( 4, Entry ( 5, Empty ) ) ))"
         );
     }
 }

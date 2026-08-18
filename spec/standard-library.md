@@ -84,3 +84,12 @@ negative quantifiers, predicate counting, and first-match search over finite
 Lists. Implementations SHALL use ordinary finite folds, preserve the exact
 element classifier, visit entries in source order, and return Optional rather
 than force extraction when no match exists.
+
+### TOPAL-LIB-GENERATOR-001 — Lazy generator constructors
+
+The generator lazy module SHALL provide integer enumeration as a replay-free
+lazy generator. It SHALL yield only when resumed, retain its distinct final
+return, and preserve the language generator-close protocol when abandoned. It
+SHALL NOT materialize an unbounded traversal or imply that a linear generator
+can be replayed. Generic repetition is deferred until generator declarations can
+bind classifier parameters without weakening their linear continuation type.

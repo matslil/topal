@@ -309,4 +309,26 @@ values : List Int is Entry (1, Entry (2, Entry (3, Empty)))
             .unwrap();
         assert_eq!(value.to_string(), "(true, true, true, 2, Some 2)");
     }
+
+    #[test]
+    fn shared_lazy_generators_load_as_linear_continuations() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        load_module_tree(&mut session, &root, &mut trace).unwrap();
+        let value = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )
+enumerate is generators lazy count-from
+numbers is enumerate 3
+collect (numbers take-while ({ value } value < 7))",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(
+            value.to_string(),
+            "Entry ( 3, Entry ( 4, Entry ( 5, Entry ( 6, Empty ) ) ) )"
+        );
+        assert!(trace.iter().any(|event| event.contains("generator")));
+    }
 }

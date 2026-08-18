@@ -2736,6 +2736,9 @@ impl Session {
                 if Self::is_iterate_construction(source, items) {
                     return self.construct_iterate_generator(source, items, *span, trace);
                 }
+                if Self::is_generator_take_while_application(source, items) {
+                    return self.apply_generator_take_while(source, items, *span, trace);
+                }
                 if self.is_bound_named_function_call(source, items) {
                     return self
                         .evaluate_bound_named_function_call(source, expression, items, trace);
@@ -4820,6 +4823,63 @@ impl Session {
             current: Box::new(current),
             next: Box::new(next),
             take_while: Some(Box::new(predicate)),
+            classifier,
+        };
+        self.checkpoint(trace, Some(&value), Some(span));
+        Ok(value)
+    }
+
+    fn is_generator_take_while_application(source: &SourceText, items: &[Expression]) -> bool {
+        matches!(items,
+            [_, Expression::Identifier(take_while), Expression::AnonymousFunction { .. }]
+                if source.slice(*take_while) == "take-while")
+    }
+
+    fn apply_generator_take_while(
+        &self,
+        source: &SourceText,
+        items: &[Expression],
+        span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let [generator, _, predicate] = items else {
+            unreachable!("preselected generator take-while application")
+        };
+        let generator_span = generator.span();
+        let generator = self.evaluate_expression(source, generator, trace)?;
+        let Value::IterateGenerator {
+            current,
+            next,
+            classifier,
+            ..
+        } = generator
+        else {
+            return Err(diagnostic(
+                source,
+                "E-TAKE-WHILE-SOURCE",
+                generator_span,
+                "take-while requires a lazy iterate generator",
+            ));
+        };
+        let predicate_value = self.evaluate_expression(source, predicate, trace)?;
+        if !matches!(&predicate_value, Value::AnonymousFunction(function) if function.parameters.len() == 1)
+        {
+            return Err(diagnostic(
+                source,
+                "E-GENERATED-TRAVERSAL-FUNCTION-ARITY",
+                predicate.span(),
+                "take-while predicate requires exactly one parameter",
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "generator.take-while.constructed",
+            rule: "TOPAL-GENERATOR-TAKE-WHILE-001",
+            detail: &classifier,
+        });
+        let value = Value::IterateGenerator {
+            current,
+            next,
+            take_while: Some(Box::new(predicate_value)),
             classifier,
         };
         self.checkpoint(trace, Some(&value), Some(span));
