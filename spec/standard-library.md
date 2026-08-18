@@ -36,3 +36,11 @@ The fundamental ordering module SHALL provide `min`, `max`, and `min-max` for
 two values of one exact type that supplies `TotalOrder`. `min-max` SHALL return
 the lesser value followed by the greater value. All three functions SHALL
 select their left argument when the arguments compare equal.
+
+### TOPAL-LIB-OPTIONAL-001 — Generic Optional composition
+
+The fundamental Optional module SHALL provide presence queries, payload
+mapping and chaining, predicate filtering, value and Optional fallback,
+pairwise zipping, and nested-Optional flattening. Each operation SHALL preserve
+the exact related payload classifiers established by its inputs and any
+higher-order result. The module SHALL NOT provide forced extraction.

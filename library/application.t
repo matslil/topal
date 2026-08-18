@@ -11,5 +11,8 @@ max is fundamental ordering max
 min-max is fundamental ordering min-max
 sign is numeric exact sign
 distance is numeric exact distance
+optional-map is fundamental optional map
+absent? is fundamental optional absent?
+optional-zip is fundamental optional zip
 
-(min (4, 2), max (4.5, 2.5), min ((1, 2), (1, 3)), min-max (7, 3), sign -9, sign -0.5, distance (-4, 5), distance (-0.5, 1.0))
+(min (4, 2), max (4.5, 2.5), min ((1, 2), (1, 3)), min-max (7, 3), sign -9, sign -0.5, distance (-4, 5), distance (-0.5, 1.0), optional-map ((Some 4), { value } value + 1), absent? (None String), optional-zip ((Some 2), (Some "items")))
