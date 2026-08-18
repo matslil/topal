@@ -65,7 +65,10 @@ The `std` namespace SHALL provide exact-number sign and distance in their strong
 closed exact domains, Euclidean `gcd`, parity and divisibility predicates, and
 fallible rational reciprocal. Partial arithmetic SHALL retain the arithmetic
 Result vocabulary and compiler-derived reporting domain. No operation in this
-module may round, overflow, or introduce parsing or presentation policy.
+module may round, overflow, or introduce parsing or presentation policy. Exact
+`sum` and `product` folds SHALL preserve `Int` or `Rational` according to their
+List entry classifier, use the corresponding additive or multiplicative
+identity for an empty List, and evaluate in source order.
 
 ### TOPAL-LIB-RANGE-001 — Convex range utilities
 

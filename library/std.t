@@ -274,6 +274,18 @@ pub reciprocal is fn (
 ) -> Result (Rational, lang arithmetic ArithmeticErrorCode)
   1.0 / value
 
+pub sum is fn (values : List Int) -> Int
+  values fold 0 { total, value } total + value
+
+pub sum is fn (values : List Rational) -> Rational
+  values fold 0.0 { total, value } total + value
+
+pub product is fn (values : List Int) -> Int
+  values fold 1 { total, value } total * value
+
+pub product is fn (values : List Rational) -> Rational
+  values fold 1.0 { total, value } total * value
+
 # Unicode text.
 pub nfc is fn (text : String) -> String
   text normalize NFC

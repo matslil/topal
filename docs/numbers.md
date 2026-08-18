@@ -574,6 +574,20 @@ ordinary Approx addition   deterministic only for a defined evaluation order
 The compiler may reorder or parallelize a reduction only when the selected
 operation provides the necessary laws.
 
+### Fundamental exact folds
+
+The flat `std` namespace provides `sum` and `product` for finite Lists of
+`Int` and `Rational`. These functions are ordered folds over ordinary exact
+addition or multiplication. An empty List returns the algebraic identity: zero
+for `sum` and one for `product`. The result retains the List entry classifier;
+an `Int` fold does not widen to `Rational`, and a `Rational` fold does not
+round or narrow.
+
+These functions intentionally do not accept approximate numbers. Approximate
+summation requires an explicit evaluation or reproducibility policy, described
+below. They also do not replace the more general `fold` or claim an observable
+allocation strategy.
+
 ## Reproducible approximate sums
 
 Order-independent approximate results require semantics stronger than ordinary
