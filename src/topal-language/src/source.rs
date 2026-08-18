@@ -8700,6 +8700,7 @@ fn supported_generator_value_classifier(
             | "Comparison"
             | "Constraint"
             | "Effect"
+            | "Error"
             | "Int"
             | "MessageContext"
             | "Nat"
@@ -8729,7 +8730,15 @@ fn is_arithmetic_error_code(code: &str) -> bool {
     )
 }
 
-fn result_success_classifier(classifier: &str) -> Option<&str> {
+fn error_code_classifier(code: &str) -> &'static str {
+    if is_arithmetic_error_code(code) {
+        "lang arithmetic ArithmeticErrorCode"
+    } else {
+        "lang generator GeneratorErrorCode"
+    }
+}
+
+fn result_classifier_parts(classifier: &str) -> Option<(&str, &str)> {
     let contents = classifier
         .trim()
         .strip_prefix("Result")?
@@ -8737,13 +8746,17 @@ fn result_success_classifier(classifier: &str) -> Option<&str> {
         .strip_prefix('(')?
         .strip_suffix(')')?;
     let comma = top_level_comma(contents)?;
-    let (success, errors) = (&contents[..comma], &contents[comma + 1..]);
+    Some((contents[..comma].trim(), contents[comma + 1..].trim()))
+}
+
+fn result_success_classifier(classifier: &str) -> Option<&str> {
+    let (success, errors) = result_classifier_parts(classifier)?;
     let errors = errors.split_whitespace().collect::<Vec<_>>().join(" ");
     matches!(
         errors.as_str(),
         "lang arithmetic ArithmeticErrorCode" | "()"
     )
-    .then(|| success.trim())
+    .then_some(success)
 }
 
 fn optional_payload_classifier(classifier: &str) -> Option<&str> {
@@ -8879,6 +8892,20 @@ fn generic_parameter_accepts(
         };
         return generic_classifier_accepts_name(actual, payload_classifier, generic_types);
     }
+    if let Some((success, codes)) = result_classifier_parts(classifier) {
+        if let Value::Error { code, .. } = argument {
+            return generic_classifier_accepts_name(
+                error_code_classifier(code),
+                codes,
+                generic_types,
+            );
+        }
+        return generic_classifier_accepts_name(
+            &structural_value_classifier(argument),
+            success,
+            generic_types,
+        );
+    }
     if function_classifier_parts(classifier).is_some() {
         return value_classifier(argument) == "Function";
     }
@@ -8992,6 +9019,20 @@ fn value_matches_substituted_classifier(
             generic_types,
         );
     }
+    if let Some((success, codes)) = result_classifier_parts(classifier) {
+        if let Value::Error { code, .. } = value {
+            if generic_names.contains(codes) && !generic_types.contains_key(codes) {
+                generic_types.insert(codes.to_owned(), error_code_classifier(code).to_owned());
+                return true;
+            }
+            return generic_classifier_accepts_name(
+                error_code_classifier(code),
+                codes,
+                generic_types,
+            );
+        }
+        return value_matches_substituted_classifier(value, success, generic_names, generic_types);
+    }
     if let (Value::Tuple(values), Some(classifiers)) = (value, tuple_classifiers(classifier)) {
         return values.len() == classifiers.len()
             && values.iter().zip(classifiers).all(|(value, classifier)| {
@@ -9016,6 +9057,12 @@ fn supported_generic_classifier(
         || applied_classifier(classifier, "Optional").is_some_and(|payload| {
             supported_generic_classifier(payload, generic_names, enum_types)
                 || generic_capability_classifier(payload).is_some()
+        })
+        || result_classifier_parts(classifier).is_some_and(|(success, codes)| {
+            (supported_generic_classifier(success, generic_names, enum_types)
+                || generic_capability_classifier(success).is_some())
+                && (supported_generic_classifier(codes, generic_names, enum_types)
+                    || generic_capability_classifier(codes).is_some())
         })
         || function_classifier_parts(classifier).is_some_and(|(input, result)| {
             supported_generic_classifier(input, generic_names, enum_types)
@@ -9083,6 +9130,11 @@ fn collect_generic_names(
         collect_generic_names(payload, enum_types, names);
         return;
     }
+    if let Some((success, codes)) = result_classifier_parts(classifier) {
+        collect_generic_names(success, enum_types, names);
+        collect_generic_names(codes, enum_types, names);
+        return;
+    }
     if let Some((input, result)) = function_classifier_parts(classifier) {
         collect_generic_names(input, enum_types, names);
         collect_function_result_generic_names(result, enum_types, names);
@@ -9102,6 +9154,9 @@ fn collect_function_result_generic_names(
 ) {
     if let Some(payload) = applied_classifier(classifier, "Optional") {
         collect_function_result_generic_names(payload, enum_types, names);
+    } else if let Some((success, codes)) = result_classifier_parts(classifier) {
+        collect_function_result_generic_names(success, enum_types, names);
+        collect_function_result_generic_names(codes, enum_types, names);
     } else if let Some(items) = tuple_classifiers(classifier) {
         for item in items {
             collect_function_result_generic_names(item, enum_types, names);
@@ -9846,6 +9901,7 @@ fn supported_value_classifier(
             | "Comparison"
             | "Constraint"
             | "Effect"
+            | "Error"
             | "Generator Character Unit Unit"
             | "Generator Character Unit Character"
             | "Generator String Unit Unit"

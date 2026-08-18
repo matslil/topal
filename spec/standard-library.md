@@ -44,3 +44,12 @@ mapping and chaining, predicate filtering, value and Optional fallback,
 pairwise zipping, and nested-Optional flattening. Each operation SHALL preserve
 the exact related payload classifiers established by its inputs and any
 higher-order result. The module SHALL NOT provide forced extraction.
+
+### TOPAL-LIB-RESULT-001 — Generic Result and Error composition
+
+The fundamental Result module SHALL provide success and failure queries,
+success mapping and chaining, explicit Error mapping and recovery, value and
+Result fallback, pairwise zipping, and nested-Result flattening. Operations
+which do not explicitly transform an Error SHALL preserve its complete domain,
+code, detail, cause, and source provenance. Related success classifiers and
+error-code vocabularies SHALL remain exact through every operation.

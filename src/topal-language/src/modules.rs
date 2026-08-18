@@ -174,4 +174,31 @@ flatten is fundamental optional flatten
             "(true, true, Some 5, Some 6, Some 4, None, 9, Some \"fallback\", Some (2, \"items\"), Some 7)"
         );
     }
+
+    #[test]
+    fn shared_result_functions_preserve_success_and_complete_errors() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        load_module_tree(&mut session, &root, &mut trace).unwrap();
+        let value = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )
+result-map is fundamental result map
+ok? is fundamental result ok?
+error? is fundamental result error?
+result-zip is fundamental result zip
+divide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)
+  left / right
+successful is 4.0 divide 2.0
+failed is 4.0 divide 0.0
+(ok? successful, error? failed, result-map (successful, { value } value + 1), result-map (failed, { value } value + 1), result-zip (successful, 9.0 divide 3.0))",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(
+            value.to_string(),
+            "(true, true, Rational ( 3, 1 ), Error ( domain is root./(Rational,Rational), code is division-by-zero ), (Rational ( 2, 1 ), Rational ( 3, 1 )))"
+        );
+    }
 }
