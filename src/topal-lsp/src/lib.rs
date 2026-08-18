@@ -276,6 +276,36 @@ fn completion_items(debug_variant: bool, lint_variant: bool) -> Value {
                 "detail": "Range T -> T"
             },
             {
+                "label": "string-contains",
+                "kind": 3,
+                "detail": "String, String -> Boolean"
+            },
+            {
+                "label": "string-ends-with",
+                "kind": 3,
+                "detail": "String, String -> Boolean"
+            },
+            {
+                "label": "string-repeat",
+                "kind": 3,
+                "detail": "String, Nat -> String"
+            },
+            {
+                "label": "string-replace-all",
+                "kind": 3,
+                "detail": "String, String, String -> String"
+            },
+            {
+                "label": "string-starts-with",
+                "kind": 3,
+                "detail": "String, String -> Boolean"
+            },
+            {
+                "label": "string-trim",
+                "kind": 3,
+                "detail": "String -> String"
+            },
+            {
                 "label": "upper",
                 "kind": 3,
                 "detail": "String -> String"
@@ -665,6 +695,12 @@ mod tests {
                 "normalize",
                 "range-lower",
                 "range-upper",
+                "string-contains",
+                "string-ends-with",
+                "string-repeat",
+                "string-replace-all",
+                "string-starts-with",
+                "string-trim",
                 "upper",
                 "negate",
                 "one",

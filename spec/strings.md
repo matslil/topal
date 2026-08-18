@@ -193,3 +193,14 @@ under the language context's pinned Unicode data. The result shall be a plain
 `String` in this implemented subset. The operation is explicit and shall not
 change the input binding or introduce normalization into other String
 operations.
+
+### TOPAL-STRING-UTILITY-001 — Fundamental text utilities
+
+Prefix, suffix, and containment queries SHALL compare preserved scalar
+sequences exactly and SHALL NOT normalize or case-map either operand.
+`string-trim` SHALL remove only leading and trailing characters having the
+pinned Unicode `White_Space` property. `string-replace-all` SHALL replace every
+non-overlapping exact occurrence from left to right, and `string-repeat` SHALL
+concatenate the input the supplied finite Nat number of times. These operations
+SHALL preserve valid String boundaries and SHALL NOT introduce parsing,
+formatting, locale, or encoded-byte policy.
