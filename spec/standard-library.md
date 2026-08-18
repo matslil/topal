@@ -65,7 +65,10 @@ The `std` namespace SHALL provide exact-number sign and distance in their strong
 closed exact domains, Euclidean `gcd`, parity and divisibility predicates, and
 fallible rational reciprocal. Partial arithmetic SHALL retain the arithmetic
 Result vocabulary and compiler-derived reporting domain. No operation in this
-module may round, overflow, or introduce parsing or presentation policy.
+module may round, overflow, or introduce parsing or presentation policy. Exact
+`sum` and `product` folds SHALL preserve `Int` or `Rational` according to their
+List entry classifier, use the corresponding additive or multiplicative
+identity for an empty List, and evaluate in source order.
 
 ### TOPAL-LIB-RANGE-001 — Convex range utilities
 
@@ -89,6 +92,12 @@ negative quantifiers, predicate counting, and first-match search over finite
 Lists. Implementations SHALL use ordinary finite folds, preserve the exact
 element classifier, visit entries in source order, and return Optional rather
 than force extraction when no match exists.
+
+`filter-map` SHALL retain every present transformed payload in source order and
+discard absent transformation results. `flat-map` SHALL concatenate transformed
+Lists in source order while preserving each transformed List's internal order.
+Both operations SHALL retain exact related input and output classifiers and
+require finite input Lists.
 
 ### TOPAL-LIB-GENERATOR-001 — Lazy generator constructors
 

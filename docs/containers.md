@@ -277,6 +277,10 @@ get is fn (
 ) -> Element
 ```
 
+When only an unrefined `Nat` is available, `array-at? (array, index)` performs
+the bounds check and returns `Optional T`. It returns `None T` for every index
+outside `0 <= index < N`; it does not clamp or wrap.
+
 Deriving an array type from `Array` permits implicit conversion back to the
 underlying array representation, but this does not make `Index A` a subtype of
 `Index Array`. Erasing the concrete array type also erases the nominal indexing
@@ -337,6 +341,13 @@ no-scores is ()
 Consequently, map entries use the ordinary product model, and generic set
 operations can be reused when their laws remain meaningful. Lookup and other
 key-oriented functions are derived from the uniqueness constraint.
+
+The representation-dependent eliminators are `map-lookup (mapping, key)`,
+`set-contains? (members, value)`, and `bag-multiplicity (bag, value)`. Lookup
+returns `Optional V`; membership returns `Boolean`; multiplicity returns zero
+for an absent value and otherwise its positive occurrence count. Each query
+requires the exact key or element classifier. None exposes the internal
+iteration order of an unordered collection.
 
 A bag, or multiset, retains multiplicity without introducing order. It can be
 constructed from a map of values to positive occurrence counts:
@@ -568,6 +579,13 @@ concatenates in order to construct a `List`; `collect-set` removes duplicates,
 policy. These are distinct operations rather than overloads selected by their
 output types. `flat-map` can be an ordinary shorthand where the source and
 target kind make those laws unambiguous.
+
+For finite Lists, the fundamental library provides three derived folds with
+explicit order contracts. `filter-map` applies an Optional-producing
+transformation once per entry and retains only present payloads. `flat-map`
+concatenates transformed Lists in source and expansion order. They allocate
+only their result Lists and run in time linear in the number of visited source
+and emitted result entries.
 
 ### Entry views
 

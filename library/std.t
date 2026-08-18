@@ -274,6 +274,18 @@ pub reciprocal is fn (
 ) -> Result (Rational, lang arithmetic ArithmeticErrorCode)
   1.0 / value
 
+pub sum is fn (values : List Int) -> Int
+  values fold 0 { total, value } total + value
+
+pub sum is fn (values : List Rational) -> Rational
+  values fold 0.0 { total, value } total + value
+
+pub product is fn (values : List Int) -> Int
+  values fold 1 { total, value } total * value
+
+pub product is fn (values : List Rational) -> Rational
+  values fold 1.0 { total, value } total * value
+
 # Unicode text.
 pub nfc is fn (text : String) -> String
   text normalize NFC
@@ -357,6 +369,27 @@ pub find is fn (
   predicate : fn (Value) -> Boolean
 ) -> Optional Value
   values fold (None Value) { found, value } find-step-callable (found, predicate value, value)
+
+filter-map-step is fn (
+  collected : List (Output : Type),
+  candidate : Optional Output
+) -> List Output
+  candidate
+    Some value then collected append value
+    None then collected
+filter-map-step-callable is filter-map-step
+
+pub filter-map is fn (
+  values : List (Input : Type),
+  transformation : fn (Input) -> Optional Output
+) -> List Output
+  values fold (Empty Output) { collected, value } filter-map-step-callable (collected, transformation value)
+
+pub flat-map is fn (
+  values : List (Input : Type),
+  transformation : fn (Input) -> List Output
+) -> List Output
+  values fold (Empty Output) { collected, value } collected concat (transformation value)
 
 # Lazy generators.
 pub count-from is fn (initial : Int) -> Generator Int Unit Unit

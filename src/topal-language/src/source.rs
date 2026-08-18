@@ -2645,6 +2645,20 @@ impl Session {
                 if let Some(value) = self.evaluate_layout_application(source, items, *span, trace) {
                     return value;
                 }
+                if let [Expression::Identifier(empty), element] = items.as_slice()
+                    && source.slice(*empty) == "Empty"
+                {
+                    let element = self.evaluate_expression(source, element, trace)?;
+                    let Value::Type(element_classifier) = element else {
+                        return Err(diagnostic(
+                            source,
+                            "E-LIST-EMPTY-CLASSIFIER",
+                            items[1].span(),
+                            "Empty requires an element type",
+                        ));
+                    };
+                    return Ok(construct_empty_list(element_classifier, trace));
+                }
                 if let [Expression::Identifier(task), options] = items.as_slice()
                     && source.slice(*task) == "Task"
                 {
@@ -3559,6 +3573,21 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
+                    && matches!(
+                        source.slice(*name),
+                        "array-at?" | "map-lookup" | "set-contains?" | "bag-multiplicity"
+                    )
+                {
+                    let operation = source.slice(*name);
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let value =
+                        apply_collection_query(source, operation, operand, operand_span, trace)?;
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
                     && matches!(source.slice(*name), "range-lower" | "range-upper")
                 {
                     let operation = source.slice(*name);
@@ -4218,6 +4247,14 @@ impl Session {
         let name = source.slice(span);
         if let Ok(version) = name.parse::<LanguageVersion>() {
             return Ok(Value::Version(version));
+        }
+        if let Some(classifier) = self.generic_types.get(name) {
+            trace.record(TraceEvent {
+                event: "type.resolved",
+                rule: "TOPAL-FUNCTION-GENERIC-HEADER-001",
+                detail: classifier,
+            });
+            return Ok(Value::Type(classifier.clone()));
         }
         if matches!(name, "Little" | "Big") {
             trace.record(TraceEvent {
@@ -9056,6 +9093,32 @@ fn generic_classifier_accepts_name(
     ) {
         return generic_classifier_accepts_name(actual_payload, expected_payload, generic_types);
     }
+    if let (Some(actual_element), Some(expected_element)) = (
+        applied_classifier(actual, "List"),
+        applied_classifier(expected, "List"),
+    ) {
+        return generic_classifier_accepts_name(actual_element, expected_element, generic_types);
+    }
+    if let (Some(actual_endpoint), Some(expected_endpoint)) = (
+        applied_classifier(actual, "Range"),
+        applied_classifier(expected, "Range"),
+    ) {
+        return generic_classifier_accepts_name(actual_endpoint, expected_endpoint, generic_types);
+    }
+    if let (Some(actual_payload), Some(expected_payload)) = (
+        result_classifier_parts(actual),
+        result_classifier_parts(expected),
+    ) {
+        return generic_classifier_accepts_name(
+            actual_payload.0,
+            expected_payload.0,
+            generic_types,
+        ) && generic_classifier_accepts_name(
+            actual_payload.1,
+            expected_payload.1,
+            generic_types,
+        );
+    }
     if let (Some(actual_items), Some(expected_items)) =
         (tuple_classifiers(actual), tuple_classifiers(expected))
     {
@@ -9123,6 +9186,17 @@ fn populate_function_generics(
             }
         } else if let Some(argument) = scope.bindings.get(parameter) {
             let _ = generic_parameter_accepts(argument, classifier, generic_types);
+            if let (Some((_, expected_result)), Value::NamedFunction(named_function)) =
+                (function_classifier_parts(classifier), argument)
+                && named_function.candidates.len() == 1
+            {
+                let _ = bind_named_classifier_generics(
+                    &named_function.candidates[0].result,
+                    expected_result,
+                    &function.generic_names,
+                    generic_types,
+                );
+            }
         }
     }
 }
@@ -9326,6 +9400,10 @@ fn collect_function_result_generic_names(
 ) {
     if let Some(payload) = applied_classifier(classifier, "Optional") {
         collect_function_result_generic_names(payload, enum_types, names);
+    } else if let Some(element) = applied_classifier(classifier, "List") {
+        collect_function_result_generic_names(element, enum_types, names);
+    } else if let Some(endpoint) = applied_classifier(classifier, "Range") {
+        collect_function_result_generic_names(endpoint, enum_types, names);
     } else if let Some((success, codes)) = result_classifier_parts(classifier) {
         collect_function_result_generic_names(success, enum_types, names);
         collect_function_result_generic_names(codes, enum_types, names);
@@ -9405,6 +9483,33 @@ fn bind_function_arguments(
         });
     }
     Ok(())
+}
+
+fn bind_named_classifier_generics(
+    actual: &str,
+    expected: &str,
+    generic_names: &BTreeSet<String>,
+    generic_types: &mut BTreeMap<String, String>,
+) -> bool {
+    if generic_names.contains(expected) {
+        return generic_types
+            .insert(expected.to_owned(), actual.to_owned())
+            .is_none_or(|existing| existing == actual);
+    }
+    for constructor in ["Optional", "List", "Range"] {
+        if let (Some(actual_inner), Some(expected_inner)) = (
+            applied_classifier(actual, constructor),
+            applied_classifier(expected, constructor),
+        ) {
+            return bind_named_classifier_generics(
+                actual_inner,
+                expected_inner,
+                generic_names,
+                generic_types,
+            );
+        }
+    }
+    generic_classifier_accepts_name(actual, expected, generic_types)
 }
 
 fn bind_package_fields(
@@ -12332,6 +12437,164 @@ fn apply_count(
         detail: &detail,
     });
     Ok(Value::Int(BigInt::from(count)))
+}
+
+fn apply_collection_query(
+    source: &SourceText,
+    operation: &str,
+    operand: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::Tuple(mut arguments) = operand else {
+        return Err(diagnostic(
+            source,
+            "E-COLLECTION-QUERY-ARGUMENT",
+            span,
+            format!("{operation} requires one two-field product"),
+        ));
+    };
+    if arguments.len() != 2 {
+        return Err(diagnostic(
+            source,
+            "E-COLLECTION-QUERY-ARGUMENT",
+            span,
+            format!("{operation} requires one two-field product"),
+        ));
+    }
+    let query = arguments.pop().unwrap();
+    let collection = arguments.pop().unwrap();
+    let (value, rule, detail) = match (operation, collection) {
+        (
+            "array-at?",
+            Value::Array {
+                element_classifier,
+                entries,
+            },
+        ) => {
+            let Value::Int(index) = query else {
+                return Err(diagnostic(
+                    source,
+                    "E-ARRAY-INDEX-CLASSIFIER",
+                    span,
+                    "array-at? requires a Nat index",
+                ));
+            };
+            let payload = usize::try_from(index)
+                .ok()
+                .and_then(|index| entries.get(index).cloned())
+                .map(Box::new);
+            (
+                Value::Optional {
+                    payload_classifier: element_classifier,
+                    payload,
+                },
+                "TOPAL-ARRAY-GET-CHECKED-001",
+                "array.checked-access",
+            )
+        }
+        (
+            "map-lookup",
+            Value::Map {
+                key_classifier,
+                value_classifier,
+                entries,
+            },
+        ) => {
+            if !value_has_classifier(&query, &key_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-MAP-KEY-CLASSIFIER",
+                    span,
+                    format!("map-lookup requires a `{key_classifier}` key"),
+                ));
+            }
+            let payload = entries
+                .into_iter()
+                .find_map(|(key, value)| {
+                    values_equal(key, query.clone(), &mut Vec::new())?.then_some(value)
+                })
+                .map(Box::new);
+            (
+                Value::Optional {
+                    payload_classifier: value_classifier,
+                    payload,
+                },
+                "TOPAL-MAP-LOOKUP-001",
+                "map.lookup",
+            )
+        }
+        (
+            "set-contains?",
+            Value::Set {
+                element_classifier,
+                entries,
+            },
+        ) => {
+            if !value_has_classifier(&query, &element_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-SET-ELEMENT-CLASSIFIER",
+                    span,
+                    format!("set-contains? requires a `{element_classifier}` value"),
+                ));
+            }
+            let present = entries
+                .into_iter()
+                .any(|entry| values_equal(entry, query.clone(), &mut Vec::new()).unwrap_or(false));
+            (
+                Value::Boolean(present),
+                "TOPAL-SET-CONTAINS-001",
+                "set.membership",
+            )
+        }
+        (
+            "bag-multiplicity",
+            Value::Bag {
+                element_classifier,
+                entries,
+            },
+        ) => {
+            if !value_has_classifier(&query, &element_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-BAG-ELEMENT-CLASSIFIER",
+                    span,
+                    format!("bag-multiplicity requires a `{element_classifier}` value"),
+                ));
+            }
+            let count = entries
+                .into_iter()
+                .find_map(|(entry, count)| {
+                    values_equal(entry, query.clone(), &mut Vec::new())?.then_some(count)
+                })
+                .unwrap_or(0);
+            (
+                Value::Int(BigInt::from(count)),
+                "TOPAL-BAG-MULTIPLICITY-001",
+                "bag.multiplicity",
+            )
+        }
+        _ => {
+            return Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                format!("{operation} received the wrong collection kind"),
+            ));
+        }
+    };
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail,
+    });
+    trace.record(TraceEvent {
+        event: detail,
+        rule,
+        detail: operation,
+    });
+    Ok(value)
 }
 
 fn apply_list_reverse(value: &mut Value, trace: &mut impl TraceSink) {

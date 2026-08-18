@@ -11,4 +11,4 @@ array is values collect Array
 members is collect-set values
 occurrences is collect-bag values
 scores is collect-map pairs resolving keep-last
-(array, members, occurrences, scores, entry-count array, entry-count members, entry-count occurrences, entry-count scores, empty? members)
+(array, members, occurrences, scores, entry-count array, entry-count members, entry-count occurrences, entry-count scores, empty? members, array-at? (array, 1), array-at? (array, 9), set-contains? (members, 2), bag-multiplicity (occurrences, 2), bag-multiplicity (occurrences, 9), map-lookup (scores, "Ada"), map-lookup (scores, "Grace"))
