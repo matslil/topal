@@ -76,3 +76,11 @@ default caseless equality, exact prefix/suffix/containment queries, Unicode
 whitespace trimming, exact replacement, and repetition. Every operation SHALL
 use the selected language context's pinned Unicode policy and SHALL remain
 separate from parsing, formatting, locale policy, and encoded bytes.
+
+### TOPAL-LIB-FINITE-001 — Derived finite fold algorithms
+
+The collection finite module SHALL provide generic existential, universal, and
+negative quantifiers, predicate counting, and first-match search over finite
+Lists. Implementations SHALL use ordinary finite folds, preserve the exact
+element classifier, visit entries in source order, and return Optional rather
+than force extraction when no match exists.
