@@ -81,3 +81,8 @@ Interpreter, scripted debugger, LSP, linter, and compiler/GEIR paths are updated
 where applicable. Every layer passes formatting, strict workspace linting, the
 complete workspace test suite, diff validation, and GitHub trunk-level stack
 checks before the next layer is submitted.
+
+The completed disposition of every layer is recorded in
+[`fundamental-standard-library-matrix.md`](fundamental-standard-library-matrix.md).
+Entries recorded there as deliberate omissions are terminal for this series;
+they require a separately admitted contract before later publication.
