@@ -239,3 +239,28 @@ count is the sum of occurrence counts rather than its distinct-value count.
 
 Array, Set, Bag, and Map `empty?` shall be true exactly when their entry count
 is zero.
+
+### TOPAL-ARRAY-GET-CHECKED-001 — Checked unrefined Array access
+
+`array-at? (array, index)` for `array : Array N T` and `index : Nat` SHALL
+return `Some value` exactly when `index < N`, selecting the zero-based entry,
+and SHALL otherwise return `None T`. It SHALL preserve `T` and SHALL NOT clamp,
+wrap, or diagnose a nonnegative out-of-bounds index.
+
+### TOPAL-MAP-LOOKUP-001 — Exact-key Map lookup
+
+`map-lookup (mapping, key)` for `mapping : Map (K, V)` and `key : K` SHALL
+return the unique associated value as `Optional V`, or `None V` when the key is
+absent. A key outside exact classifier `K` SHALL be rejected before lookup.
+
+### TOPAL-SET-CONTAINS-001 — Set membership
+
+`set-contains? (members, value)` for `members : Set T` and `value : T` SHALL
+report whether the value's equality class occurs in the Set. It SHALL expose no
+storage or iteration order.
+
+### TOPAL-BAG-MULTIPLICITY-001 — Bag occurrence count
+
+`bag-multiplicity (bag, value)` for `bag : Bag T` and `value : T` SHALL return
+its positive occurrence count, or zero when absent. It SHALL expose no storage
+or iteration order.

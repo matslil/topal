@@ -3573,6 +3573,21 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
+                    && matches!(
+                        source.slice(*name),
+                        "array-at?" | "map-lookup" | "set-contains?" | "bag-multiplicity"
+                    )
+                {
+                    let operation = source.slice(*name);
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let value =
+                        apply_collection_query(source, operation, operand, operand_span, trace)?;
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
                     && matches!(source.slice(*name), "range-lower" | "range-upper")
                 {
                     let operation = source.slice(*name);
@@ -12422,6 +12437,164 @@ fn apply_count(
         detail: &detail,
     });
     Ok(Value::Int(BigInt::from(count)))
+}
+
+fn apply_collection_query(
+    source: &SourceText,
+    operation: &str,
+    operand: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::Tuple(mut arguments) = operand else {
+        return Err(diagnostic(
+            source,
+            "E-COLLECTION-QUERY-ARGUMENT",
+            span,
+            format!("{operation} requires one two-field product"),
+        ));
+    };
+    if arguments.len() != 2 {
+        return Err(diagnostic(
+            source,
+            "E-COLLECTION-QUERY-ARGUMENT",
+            span,
+            format!("{operation} requires one two-field product"),
+        ));
+    }
+    let query = arguments.pop().unwrap();
+    let collection = arguments.pop().unwrap();
+    let (value, rule, detail) = match (operation, collection) {
+        (
+            "array-at?",
+            Value::Array {
+                element_classifier,
+                entries,
+            },
+        ) => {
+            let Value::Int(index) = query else {
+                return Err(diagnostic(
+                    source,
+                    "E-ARRAY-INDEX-CLASSIFIER",
+                    span,
+                    "array-at? requires a Nat index",
+                ));
+            };
+            let payload = usize::try_from(index)
+                .ok()
+                .and_then(|index| entries.get(index).cloned())
+                .map(Box::new);
+            (
+                Value::Optional {
+                    payload_classifier: element_classifier,
+                    payload,
+                },
+                "TOPAL-ARRAY-GET-CHECKED-001",
+                "array.checked-access",
+            )
+        }
+        (
+            "map-lookup",
+            Value::Map {
+                key_classifier,
+                value_classifier,
+                entries,
+            },
+        ) => {
+            if !value_has_classifier(&query, &key_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-MAP-KEY-CLASSIFIER",
+                    span,
+                    format!("map-lookup requires a `{key_classifier}` key"),
+                ));
+            }
+            let payload = entries
+                .into_iter()
+                .find_map(|(key, value)| {
+                    values_equal(key, query.clone(), &mut Vec::new())?.then_some(value)
+                })
+                .map(Box::new);
+            (
+                Value::Optional {
+                    payload_classifier: value_classifier,
+                    payload,
+                },
+                "TOPAL-MAP-LOOKUP-001",
+                "map.lookup",
+            )
+        }
+        (
+            "set-contains?",
+            Value::Set {
+                element_classifier,
+                entries,
+            },
+        ) => {
+            if !value_has_classifier(&query, &element_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-SET-ELEMENT-CLASSIFIER",
+                    span,
+                    format!("set-contains? requires a `{element_classifier}` value"),
+                ));
+            }
+            let present = entries
+                .into_iter()
+                .any(|entry| values_equal(entry, query.clone(), &mut Vec::new()).unwrap_or(false));
+            (
+                Value::Boolean(present),
+                "TOPAL-SET-CONTAINS-001",
+                "set.membership",
+            )
+        }
+        (
+            "bag-multiplicity",
+            Value::Bag {
+                element_classifier,
+                entries,
+            },
+        ) => {
+            if !value_has_classifier(&query, &element_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-BAG-ELEMENT-CLASSIFIER",
+                    span,
+                    format!("bag-multiplicity requires a `{element_classifier}` value"),
+                ));
+            }
+            let count = entries
+                .into_iter()
+                .find_map(|(entry, count)| {
+                    values_equal(entry, query.clone(), &mut Vec::new())?.then_some(count)
+                })
+                .unwrap_or(0);
+            (
+                Value::Int(BigInt::from(count)),
+                "TOPAL-BAG-MULTIPLICITY-001",
+                "bag.multiplicity",
+            )
+        }
+        _ => {
+            return Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                format!("{operation} received the wrong collection kind"),
+            ));
+        }
+    };
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail,
+    });
+    trace.record(TraceEvent {
+        event: detail,
+        rule,
+        detail: operation,
+    });
+    Ok(value)
 }
 
 fn apply_list_reverse(value: &mut Value, trace: &mut impl TraceSink) {
