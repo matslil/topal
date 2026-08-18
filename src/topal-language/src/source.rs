@@ -3459,15 +3459,13 @@ impl Session {
                         recursion_target: function.recursion_target.clone(),
                     });
                     bind_function_arguments(&mut function_scope, &function, argument, trace, rule)?;
-                    for (parameter, classifier) in &function.parameters {
-                        if let Some(argument) = function_scope.bindings.get(parameter).cloned() {
-                            let _ = generic_parameter_accepts(
-                                &argument,
-                                classifier,
-                                &mut function_scope.generic_types,
-                            );
-                        }
-                    }
+                    let mut invocation_generics = BTreeMap::new();
+                    populate_function_generics(
+                        &function,
+                        &function_scope,
+                        &mut invocation_generics,
+                    );
+                    function_scope.generic_types = invocation_generics;
                     trace.record(TraceEvent {
                         event: "function.selected",
                         rule: "TOPAL-TYPE-CALL-001",
@@ -6765,6 +6763,13 @@ impl Execution {
                 &session.enum_types,
                 &mut generic_names,
             );
+            for field in &parameter.fields {
+                collect_generic_names(
+                    self.source.slice(field.classifier),
+                    &session.enum_types,
+                    &mut generic_names,
+                );
+            }
         }
         if !supported_generic_classifier(result_text, &generic_names, &session.enum_types)
             && !session.union_types.contains_key(result_text)
@@ -6789,6 +6794,11 @@ impl Execution {
                         .map(|field| {
                             let classifier = self.source.slice(field.classifier);
                             if !supported_value_classifier(classifier, &session.enum_types)
+                                && !supported_generic_classifier(
+                                    classifier,
+                                    &generic_names,
+                                    &session.enum_types,
+                                )
                                 && !session.union_types.contains_key(classifier)
                             {
                                 return Err(diagnostic(
@@ -8886,10 +8896,11 @@ fn user_function_accepts(function: &UserFunction, argument: &Value) -> bool {
     let mut generic_types = BTreeMap::new();
     function.parameters.iter().enumerate().zip(arguments).all(
         |((index, (_, classifier)), argument)| {
-            function.parameter_packages.get(&index).map_or_else(
-                || generic_parameter_accepts(argument, classifier, &mut generic_types),
-                |fields| package_accepts(fields, argument),
-            )
+            if let Some(fields) = function.parameter_packages.get(&index) {
+                package_generic_accepts(fields, argument, &mut generic_types)
+            } else {
+                generic_parameter_accepts(argument, classifier, &mut generic_types)
+            }
         },
     )
 }
@@ -8928,6 +8939,15 @@ fn generic_parameter_accepts(
             return false;
         };
         return generic_classifier_accepts_name(actual, payload_classifier, generic_types);
+    }
+    if let Some(element) = applied_classifier(classifier, "List") {
+        let Value::List {
+            element_classifier, ..
+        } = argument
+        else {
+            return false;
+        };
+        return generic_classifier_accepts_name(element_classifier, element, generic_types);
     }
     if let Some(endpoint) = applied_classifier(classifier, "Range") {
         let actual = match argument {
@@ -9020,17 +9040,31 @@ fn value_has_capability(value: &Value, capability: &str) -> bool {
 
 fn generic_result_accepts(function: &UserFunction, scope: &Session, value: &Value) -> bool {
     let mut generic_types = BTreeMap::new();
-    for (parameter, classifier) in &function.parameters {
-        if let Some(argument) = scope.bindings.get(parameter) {
-            let _ = generic_parameter_accepts(argument, classifier, &mut generic_types);
-        }
-    }
+    populate_function_generics(function, scope, &mut generic_types);
     value_matches_substituted_classifier(
         value,
         &function.result,
         &function.generic_names,
         &mut generic_types,
     )
+}
+
+fn populate_function_generics(
+    function: &UserFunction,
+    scope: &Session,
+    generic_types: &mut BTreeMap<String, String>,
+) {
+    for (index, (parameter, classifier)) in function.parameters.iter().enumerate() {
+        if let Some(fields) = function.parameter_packages.get(&index) {
+            for field in fields {
+                if let Some(argument) = scope.bindings.get(&field.name) {
+                    let _ = generic_parameter_accepts(argument, &field.classifier, generic_types);
+                }
+            }
+        } else if let Some(argument) = scope.bindings.get(parameter) {
+            let _ = generic_parameter_accepts(argument, classifier, generic_types);
+        }
+    }
 }
 
 fn value_matches_substituted_classifier(
@@ -9063,6 +9097,15 @@ fn value_matches_substituted_classifier(
             expected_payload,
             generic_types,
         );
+    }
+    if let Some(element) = applied_classifier(classifier, "List") {
+        let Value::List {
+            element_classifier, ..
+        } = value
+        else {
+            return false;
+        };
+        return generic_classifier_accepts_name(element_classifier, element, generic_types);
     }
     if let Some(endpoint) = applied_classifier(classifier, "Range") {
         let actual = match value {
@@ -9110,6 +9153,10 @@ fn supported_generic_classifier(
         || applied_classifier(classifier, "Optional").is_some_and(|payload| {
             supported_generic_classifier(payload, generic_names, enum_types)
                 || generic_capability_classifier(payload).is_some()
+        })
+        || applied_classifier(classifier, "List").is_some_and(|element| {
+            supported_generic_classifier(element, generic_names, enum_types)
+                || generic_capability_classifier(element).is_some()
         })
         || applied_classifier(classifier, "Range").is_some_and(|endpoint| {
             supported_generic_classifier(endpoint, generic_names, enum_types)
@@ -9187,6 +9234,10 @@ fn collect_generic_names(
         collect_generic_names(payload, enum_types, names);
         return;
     }
+    if let Some(element) = applied_classifier(classifier, "List") {
+        collect_generic_names(element, enum_types, names);
+        return;
+    }
     if let Some(endpoint) = applied_classifier(classifier, "Range") {
         collect_generic_names(endpoint, enum_types, names);
         return;
@@ -9229,7 +9280,11 @@ fn collect_function_result_generic_names(
     }
 }
 
-fn package_accepts(fields: &[UserParameterField], argument: &Value) -> bool {
+fn package_generic_accepts(
+    fields: &[UserParameterField],
+    argument: &Value,
+    generic_types: &mut BTreeMap<String, String>,
+) -> bool {
     match argument {
         Value::Record(values) => {
             values
@@ -9240,16 +9295,15 @@ fn package_accepts(fields: &[UserParameterField], argument: &Value) -> bool {
                         .iter()
                         .find(|(label, _)| *label == field.name)
                         .map_or(field.default.is_some(), |(_, value)| {
-                            value_has_classifier(value, &field.classifier)
+                            generic_parameter_accepts(value, &field.classifier, generic_types)
                         })
                 })
         }
         Value::Tuple(values) => {
             values.len() == fields.len()
-                && fields
-                    .iter()
-                    .zip(values)
-                    .all(|(field, value)| value_has_classifier(value, &field.classifier))
+                && fields.iter().zip(values).all(|(field, value)| {
+                    generic_parameter_accepts(value, &field.classifier, generic_types)
+                })
         }
         _ => false,
     }

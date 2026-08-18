@@ -287,4 +287,26 @@ repeat is text unicode repeat
             "(\"e\u{301}\", true, true, true, true, \"text\", \"x-b-x\", \"ababab\")"
         );
     }
+
+    #[test]
+    fn shared_finite_algorithms_preserve_generic_list_elements() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        load_module_tree(&mut session, &root, &mut trace).unwrap();
+        let value = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )
+any? is collection finite any?
+all? is collection finite all?
+none? is collection finite none?
+count-where is collection finite count-where
+find is collection finite find
+values : List Int is Entry (1, Entry (2, Entry (3, Empty)))
+(any? (values, { value } value > 2), all? (values, { value } value > 0), none? (values, { value } value < 0), count-where (values, { value } value >= 2), find (values, { value } value > 1))",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(value.to_string(), "(true, true, true, 2, Some 2)");
+    }
 }
