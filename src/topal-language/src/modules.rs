@@ -201,4 +201,32 @@ failed is 4.0 divide 0.0
             "(true, true, Rational ( 3, 1 ), Error ( domain is root./(Rational,Rational), code is division-by-zero ), (Rational ( 2, 1 ), Rational ( 3, 1 )))"
         );
     }
+
+    #[test]
+    fn shared_exact_number_functions_cover_euclidean_and_partial_operations() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        load_module_tree(&mut session, &root, &mut trace).unwrap();
+        let value = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )
+gcd is numeric exact gcd
+even? is numeric exact even?
+odd? is numeric exact odd?
+divides? is numeric exact divides?
+reciprocal is numeric exact reciprocal
+(gcd (-54, 24), even? -4, odd? -3, divides? (0, 0), divides? (6, 42), reciprocal 4.0)",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(
+            value.to_string(),
+            "(6, true, true, true, true, Rational ( 1, 4 ))"
+        );
+        assert!(trace.iter().any(|event| {
+            event.contains("function.recursion.descended")
+                && event.contains("TOPAL-FUNCTION-RECURSION-EUCLIDEAN-001")
+        }));
+    }
 }

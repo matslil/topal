@@ -6826,8 +6826,14 @@ impl Execution {
                 "an overload with the same input classifiers and staticness already exists",
             ));
         }
-        let direct_termination_rule =
-            prove_int_recursion(&self.source, name_text, &parameters, body);
+        let direct_termination_rule = prove_euclidean_recursion(
+            &self.source,
+            name_text,
+            &parameters,
+            effect_bound_text.as_deref(),
+            body,
+        )
+        .or_else(|| prove_int_recursion(&self.source, name_text, &parameters, body));
         let mutual_edge = direct_termination_rule
             .is_none()
             .then(|| prove_mutual_int_recursion_edge(&self.source, name_text, &parameters, body))
@@ -9562,6 +9568,69 @@ fn prove_int_recursion(
             )
         });
     (found && valid && preserves_nat).then_some(proof_rule)
+}
+
+fn prove_euclidean_recursion(
+    source: &SourceText,
+    function_name: &str,
+    parameters: &[(String, String)],
+    effect_bound: Option<&str>,
+    body: &[Statement],
+) -> Option<&'static str> {
+    let [(left, left_classifier), (right, right_classifier)] = parameters else {
+        return None;
+    };
+    if left_classifier != "Int"
+        || right_classifier != "Int"
+        || !effect_bound.is_some_and(|bound| bound.trim_start().starts_with("Decreases"))
+    {
+        return None;
+    }
+    let [Statement::Expression(Expression::DecisionTable { subject, rules, .. })] = body else {
+        return None;
+    };
+    if !matches!(subject.as_ref(), Expression::Identifier(span) if source.slice(*span) == right) {
+        return None;
+    }
+    let [base, recursive] = rules.as_slice() else {
+        return None;
+    };
+    if !matches!(&base.matcher, DecisionMatcher::Comparison {
+        kind: CallableKind::Equal,
+        operand: Expression::Integer(zero),
+        ..
+    } if parse_integer(source.slice(*zero)).is_some_and(|value| value == BigInt::from(0)))
+        || !matches!(&recursive.matcher, DecisionMatcher::Otherwise(_))
+        || contains_self_call(source, function_name, &base.action)
+    {
+        return None;
+    }
+    let Expression::Application { items, .. } = &recursive.action else {
+        return None;
+    };
+    let [
+        Expression::Identifier(callee),
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    let [first, second] = fields.as_slice() else {
+        return None;
+    };
+    let modulo_is_measure_reducing = matches!(
+        &second.value,
+        Expression::Application { items, .. }
+            if matches!(items.as_slice(), [
+                Expression::Identifier(dividend),
+                Expression::Callable { kind: CallableKind::Modulo, .. },
+                Expression::Identifier(divisor)
+            ] if source.slice(*dividend) == left && source.slice(*divisor) == right)
+    );
+    (source.slice(*callee) == function_name
+        && matches!(&first.value, Expression::Identifier(span) if source.slice(*span) == right)
+        && modulo_is_measure_reducing)
+        .then_some("TOPAL-FUNCTION-RECURSION-EUCLIDEAN-001")
 }
 
 fn nat_decrement_step_limit(source: &SourceText, matcher: &DecisionMatcher) -> Option<BigInt> {
