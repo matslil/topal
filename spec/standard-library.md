@@ -61,3 +61,10 @@ closed exact domains, Euclidean `gcd`, parity and divisibility predicates, and
 fallible rational reciprocal. Partial arithmetic SHALL retain the arithmetic
 Result vocabulary and compiler-derived reporting domain. No operation in this
 module may round, overflow, or introduce parsing or presentation policy.
+
+### TOPAL-LIB-RANGE-001 — Convex range utilities
+
+The fundamental range module SHALL provide bound observation, bound pairing,
+intersection, overlap testing, convex hull, and discrete Int adjacency. Generic
+operations SHALL retain one exact `TotalOrder` endpoint classifier. They SHALL
+preserve convex-predicate semantics and SHALL NOT imply enumeration.

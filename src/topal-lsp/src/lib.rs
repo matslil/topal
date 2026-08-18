@@ -266,6 +266,16 @@ fn completion_items(debug_variant: bool, lint_variant: bool) -> Value {
                 "detail": "String, NFC -> String"
             },
             {
+                "label": "range-lower",
+                "kind": 3,
+                "detail": "Range T -> T"
+            },
+            {
+                "label": "range-upper",
+                "kind": 3,
+                "detail": "Range T -> T"
+            },
+            {
                 "label": "upper",
                 "kind": 3,
                 "detail": "String -> String"
@@ -653,6 +663,8 @@ mod tests {
                 "entry-count",
                 "lower",
                 "normalize",
+                "range-lower",
+                "range-upper",
                 "upper",
                 "negate",
                 "one",

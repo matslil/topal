@@ -38,6 +38,20 @@ constructs their predicate intersection. Its lower bound is the greater lower
 bound and its upper bound is the lesser upper bound. Disjoint inputs therefore
 produce a reversed empty range rather than an error. Each operand is evaluated
 once, and the result retains the shared Range classifier.
+
+### TOPAL-RANGE-EMPTY-001 — Empty range observation
+
+`empty? interval` SHALL return true exactly when the interval's lower bound is
+greater than its upper bound and false otherwise. Observation SHALL retain the
+range and endpoint domain unchanged and SHALL NOT enumerate members.
+
+### TOPAL-RANGE-BOUND-001 — Inclusive bound observation
+
+`range-lower interval` and `range-upper interval` SHALL return the retained
+inclusive lower and upper endpoint respectively, preserving the exact endpoint
+classifier. These operations apply only where the implemented range form has
+both finite explicit bounds; they SHALL NOT invent sentinels for absent bounds.
+
 ### TOPAL-RANGE-VALUE-SELECTION-001 — Convex value selection
 
 `collection select range` shall treat Range as its ordinary value predicate,

@@ -3556,6 +3556,17 @@ impl Session {
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && matches!(source.slice(*name), "range-lower" | "range-upper")
+                {
+                    let operation = source.slice(*name);
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let value = apply_range_bound(source, operation, operand, operand_span, trace)?;
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
                 if is_list_uncons(source, items) {
                     return evaluate_list_uncons(source, self, items, *span, trace);
                 }
@@ -8898,6 +8909,14 @@ fn generic_parameter_accepts(
         };
         return generic_classifier_accepts_name(actual, payload_classifier, generic_types);
     }
+    if let Some(endpoint) = applied_classifier(classifier, "Range") {
+        let actual = match argument {
+            Value::IntRange { .. } => "Int",
+            Value::RationalRange { .. } => "Rational",
+            _ => return false,
+        };
+        return generic_classifier_accepts_name(actual, endpoint, generic_types);
+    }
     if let Some((success, codes)) = result_classifier_parts(classifier) {
         if let Value::Error { code, .. } = argument {
             return generic_classifier_accepts_name(
@@ -9025,6 +9044,14 @@ fn value_matches_substituted_classifier(
             generic_types,
         );
     }
+    if let Some(endpoint) = applied_classifier(classifier, "Range") {
+        let actual = match value {
+            Value::IntRange { .. } => "Int",
+            Value::RationalRange { .. } => "Rational",
+            _ => return false,
+        };
+        return generic_classifier_accepts_name(actual, endpoint, generic_types);
+    }
     if let Some((success, codes)) = result_classifier_parts(classifier) {
         if let Value::Error { code, .. } = value {
             if generic_names.contains(codes) && !generic_types.contains_key(codes) {
@@ -9063,6 +9090,10 @@ fn supported_generic_classifier(
         || applied_classifier(classifier, "Optional").is_some_and(|payload| {
             supported_generic_classifier(payload, generic_names, enum_types)
                 || generic_capability_classifier(payload).is_some()
+        })
+        || applied_classifier(classifier, "Range").is_some_and(|endpoint| {
+            supported_generic_classifier(endpoint, generic_names, enum_types)
+                || generic_capability_classifier(endpoint).is_some()
         })
         || result_classifier_parts(classifier).is_some_and(|(success, codes)| {
             (supported_generic_classifier(success, generic_names, enum_types)
@@ -9134,6 +9165,10 @@ fn collect_generic_names(
     }
     if let Some(payload) = applied_classifier(classifier, "Optional") {
         collect_generic_names(payload, enum_types, names);
+        return;
+    }
+    if let Some(endpoint) = applied_classifier(classifier, "Range") {
+        collect_generic_names(endpoint, enum_types, names);
         return;
     }
     if let Some((success, codes)) = result_classifier_parts(classifier) {
@@ -11398,6 +11433,35 @@ fn apply_range(
     Ok(range)
 }
 
+fn apply_range_bound(
+    source: &SourceText,
+    operation: &str,
+    range: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let value = match (operation, range) {
+        ("range-lower", Value::IntRange { lower, .. }) => Value::Int(lower),
+        ("range-upper", Value::IntRange { upper, .. }) => Value::Int(upper),
+        ("range-lower", Value::RationalRange { lower, .. }) => Value::Rational(lower),
+        ("range-upper", Value::RationalRange { upper, .. }) => Value::Rational(upper),
+        _ => {
+            return Err(diagnostic(
+                source,
+                "E-RANGE-BOUND-OPERAND",
+                span,
+                format!("{operation} requires a bounded exact Range operand"),
+            ));
+        }
+    };
+    trace.record(TraceEvent {
+        event: "range.bound.observed",
+        rule: "TOPAL-RANGE-BOUND-001",
+        detail: operation,
+    });
+    Ok(value)
+}
+
 fn apply_range_membership(
     source: &SourceText,
     callable: &str,
@@ -11779,13 +11843,25 @@ fn apply_empty_predicate(
             "collection.empty.tested",
             "TOPAL-COLLECTION-EMPTY-PREDICATE-001",
         ),
+        Value::IntRange { lower, upper } => (
+            lower > upper,
+            "Range Int".into(),
+            "range.empty.tested",
+            "TOPAL-RANGE-EMPTY-001",
+        ),
+        Value::RationalRange { lower, upper } => (
+            lower > upper,
+            "Range Rational".into(),
+            "range.empty.tested",
+            "TOPAL-RANGE-EMPTY-001",
+        ),
         value => {
             let found = structural_value_classifier(&value);
             return Err(diagnostic(
                 source,
                 "E-NO-APPLICABLE-OVERLOAD",
                 span,
-                format!("empty? requires a String or List operand, found `{found}`"),
+                format!("empty? requires a collection, text, or Range operand, found `{found}`"),
             ));
         }
     };
@@ -13805,7 +13881,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 21] = [
+const ROOT_OPERATIONS: [&str; 23] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -13819,6 +13895,8 @@ const ROOT_OPERATIONS: [&str; 21] = [
     "first",
     "lower",
     "normalize",
+    "range-lower",
+    "range-upper",
     "upper",
     "uncons",
     "not",
