@@ -1,6 +1,7 @@
 //! Shared frontend and evaluator for Topal tools.
 
 mod concurrency;
+mod documentation;
 mod execution;
 mod modules;
 mod source;
@@ -10,6 +11,7 @@ pub use concurrency::{
     Admission, DependencyGraph, DependencyKind, Interaction, InteractionForm, Protocol,
     ProtocolTransition, TaskScope, validate_schedule_equivalence,
 };
+pub use documentation::lang_documentation;
 pub use execution::{
     ExecutionHistory, ExecutionSnapshot, ExecutionState, ExecutionTransition, SourceRange,
 };

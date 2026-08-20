@@ -45,8 +45,9 @@ The interpreter and source debugger share a deterministic execution machine.
 The machine exposes source-level transitions whose stable identities, semantic
 decisions, and state changes can be consumed without coupling tools to its
 internal call stack. The interpreter runs those transitions to completion; the
-debugger retains enough transition history and periodic checkpoints to inspect
-earlier Topal states and to replay forward deterministically.
+debugger reconstructs earlier deterministic Topal states from source and
+compact transition state changes. Checkpoints retain only external observations
+or effect results that source replay cannot reconstruct.
 
 Reverse execution reverses or reconstructs Topal execution state. It does not
 attempt to undo changes already made to the external world. When later language

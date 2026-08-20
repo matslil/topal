@@ -3,6 +3,7 @@ members = [
     "src/topal-best-practices",
     "src/topal-interpreter",
     "src/topal-debugger",
+    "src/topal-doc",
     "src/topal-geir",
     "src/topal-language",
     "src/topal-linter",

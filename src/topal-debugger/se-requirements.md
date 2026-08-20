@@ -4,6 +4,13 @@ These tool requirements refine `TOPAL-REQ-TOOLS-001`,
 `TOPAL-REQ-INTEROP-001`, `TOPAL-REQ-TRACE-001`, and
 `TOPAL-REQ-SHARED-001` for the `topal-debug` source execution debugger.
 
+## TOPAL-DEBUG-HELP-001 — Declaration documentation help
+
+The debugger shall list commands for bare `help` and shall print the shared
+syntax and documentation metadata for a declaration named by `help`. It shall
+cover visible debuggee and standard-library declarations plus qualified
+built-in `lang` identifiers, and shall report ambiguous unqualified names.
+
 ## TOPAL-DEBUG-LIBRARY-001 — Shared library applications
 
 The debugger shall accept the same directory application and shared module
@@ -26,10 +33,12 @@ context.
 
 ## TOPAL-DEBUG-REVERSE-001 — Reversible Topal state
 
-The debugger shall support reverse stepping by retaining transition history
-and reconstructing earlier Topal execution states directly or from deterministic
-checkpoints and replay. Re-entering a previously recorded interval shall
-reproduce its recorded semantic decisions and values.
+The debugger shall support reverse stepping by retaining transition history and
+reconstructing earlier deterministic Topal execution states from source and
+compact transition state changes. Re-entering a previously recorded interval
+shall reproduce its recorded semantic decisions and values. Full checkpoints
+shall be retained only for external observations or effect results that source
+replay cannot reconstruct.
 
 The debugger shall not claim to reverse external-world effects. Once effects
 or external observations are implemented, replay shall consume their recorded

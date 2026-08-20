@@ -1,0 +1,10 @@
+#!/usr/bin/env topal-debug
+use language (
+  version is v0.1,
+  features is ( debug )
+)
+
+help documented-answer
+help min
+help lang Int
+help
