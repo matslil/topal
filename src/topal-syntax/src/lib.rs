@@ -4,7 +4,9 @@ use topal_source::{
     SourceText, Span, is_decimal_digit, is_identifier_character, is_identifier_start, is_nfc,
 };
 
+mod documentation;
 mod parser;
+pub use documentation::{DocumentedDeclaration, DocumentedParameter, extract_documentation};
 pub use parser::{
     CallableKind, DecisionMatcher, DecisionRule, DiagnosticControlKind, Expression,
     FunctionParameter, InterfaceFunction, ParsedSource, ProductField, Statement, UnionAlternative,
@@ -16,6 +18,7 @@ pub enum TokenKind {
     Whitespace,
     Newline,
     Comment,
+    Documentation,
     Hashbang,
     Identifier,
     Discard,
@@ -60,7 +63,7 @@ impl TokenKind {
     pub const fn is_trivia(self) -> bool {
         matches!(
             self,
-            Self::Whitespace | Self::Newline | Self::Comment | Self::Hashbang
+            Self::Whitespace | Self::Newline | Self::Comment | Self::Documentation | Self::Hashbang
         )
     }
 }
@@ -146,6 +149,10 @@ fn next_token(rest: &str, left_delimited: bool) -> (TokenKind, usize) {
             take_while(rest, |c| matches!(c, ' ' | '\t')),
         ),
         '\n' => (TokenKind::Newline, 1),
+        '#' if rest.starts_with("###") => (
+            TokenKind::Documentation,
+            rest.find('\n').unwrap_or(rest.len()),
+        ),
         '#' if rest.starts_with("# ") => {
             (TokenKind::Comment, rest.find('\n').unwrap_or(rest.len()))
         }

@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use crate::{TraceEvent, TraceSink, Value};
 use topal_source::Span;
@@ -26,7 +27,9 @@ pub struct ExecutionState {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Checkpoint {
     cursor: usize,
-    state: ExecutionState,
+    binding_changes: Vec<(String, Option<Rc<Value>>)>,
+    value: Option<Value>,
+    source_range: Option<SourceRange>,
 }
 
 /// One owned semantic transition in deterministic execution order.
@@ -46,6 +49,7 @@ pub struct ExecutionTransition {
 pub struct ExecutionHistory {
     transitions: Vec<ExecutionTransition>,
     checkpoints: Vec<Checkpoint>,
+    current_bindings: BTreeMap<String, Rc<Value>>,
     cursor: usize,
 }
 
@@ -80,44 +84,68 @@ impl ExecutionHistory {
         true
     }
 
-    pub fn finish(&mut self) -> Option<&ExecutionState> {
+    pub fn finish(&mut self) -> Option<ExecutionState> {
         self.cursor = self.transitions.len();
         self.state()
     }
 
-    pub fn reverse_finish(&mut self) -> Option<&ExecutionState> {
+    pub fn reverse_finish(&mut self) -> Option<ExecutionState> {
         self.cursor = 0;
         self.state()
     }
 
     #[must_use]
-    pub fn state(&self) -> Option<&ExecutionState> {
-        self.checkpoints
-            .iter()
-            .rev()
-            .find(|checkpoint| checkpoint.cursor <= self.cursor)
-            .map(|checkpoint| &checkpoint.state)
+    pub fn state(&self) -> Option<ExecutionState> {
+        let (bindings, latest) = self.shared_state()?;
+        Some(ExecutionState {
+            bindings: bindings
+                .into_iter()
+                .map(|(name, value)| (name, (*value).clone()))
+                .collect(),
+            value: latest.value.clone(),
+            source_range: latest.source_range,
+        })
     }
 
-    pub fn step_source_forward(&mut self) -> Option<&ExecutionState> {
+    fn shared_state(&self) -> Option<(BTreeMap<String, Rc<Value>>, &Checkpoint)> {
+        let mut bindings = BTreeMap::new();
+        let mut latest = None;
+        for checkpoint in self
+            .checkpoints
+            .iter()
+            .take_while(|checkpoint| checkpoint.cursor <= self.cursor)
+        {
+            for (name, value) in &checkpoint.binding_changes {
+                if let Some(value) = value {
+                    bindings.insert(name.clone(), Rc::clone(value));
+                } else {
+                    bindings.remove(name);
+                }
+            }
+            latest = Some(checkpoint);
+        }
+        latest.map(|checkpoint| (bindings, checkpoint))
+    }
+
+    pub fn step_source_forward(&mut self) -> Option<ExecutionState> {
         let cursor = self
             .checkpoints
             .iter()
             .find(|checkpoint| {
-                checkpoint.cursor > self.cursor && checkpoint.state.source_range.is_some()
+                checkpoint.cursor > self.cursor && checkpoint.source_range.is_some()
             })?
             .cursor;
         self.cursor = cursor;
         self.state()
     }
 
-    pub fn step_source_backward(&mut self) -> Option<&ExecutionState> {
+    pub fn step_source_backward(&mut self) -> Option<ExecutionState> {
         let cursor = self
             .checkpoints
             .iter()
             .rev()
             .find(|checkpoint| {
-                checkpoint.cursor < self.cursor && checkpoint.state.source_range.is_some()
+                checkpoint.cursor < self.cursor && checkpoint.source_range.is_some()
             })?
             .cursor;
         self.cursor = cursor;
@@ -127,28 +155,25 @@ impl ExecutionHistory {
     pub fn continue_source_forward(
         &mut self,
         predicate: impl Fn(&ExecutionState) -> bool,
-    ) -> Option<&ExecutionState> {
-        let cursor = self
-            .checkpoints
-            .iter()
-            .find(|checkpoint| checkpoint.cursor > self.cursor && predicate(&checkpoint.state))?
-            .cursor;
-        self.cursor = cursor;
-        self.state()
+    ) -> Option<ExecutionState> {
+        while let Some(state) = self.step_source_forward() {
+            if predicate(&state) {
+                return Some(state);
+            }
+        }
+        None
     }
 
     pub fn continue_source_backward(
         &mut self,
         predicate: impl Fn(&ExecutionState) -> bool,
-    ) -> Option<&ExecutionState> {
-        let cursor = self
-            .checkpoints
-            .iter()
-            .rev()
-            .find(|checkpoint| checkpoint.cursor < self.cursor && predicate(&checkpoint.state))?
-            .cursor;
-        self.cursor = cursor;
-        self.state()
+    ) -> Option<ExecutionState> {
+        while let Some(state) = self.step_source_backward() {
+            if predicate(&state) {
+                return Some(state);
+            }
+        }
+        None
     }
 
     pub fn step_forward(&mut self) -> Option<&ExecutionTransition> {
@@ -234,26 +259,48 @@ impl TraceSink for ExecutionHistory {
     }
 
     fn checkpoint(&mut self, snapshot: ExecutionSnapshot<'_>) {
-        let state = ExecutionState {
-            bindings: snapshot.bindings.clone(),
+        if self
+            .checkpoints
+            .last()
+            .is_some_and(|checkpoint| checkpoint.cursor == self.cursor)
+        {
+            self.checkpoints.pop();
+            self.current_bindings = self
+                .shared_state()
+                .map_or_else(BTreeMap::new, |(bindings, _)| bindings);
+        }
+        let mut names = self
+            .current_bindings
+            .keys()
+            .chain(snapshot.bindings.keys())
+            .cloned()
+            .collect::<Vec<_>>();
+        names.sort();
+        names.dedup();
+        let binding_changes = names
+            .into_iter()
+            .filter_map(|name| {
+                let previous = self.current_bindings.get(&name).map(Rc::as_ref);
+                let current = snapshot.bindings.get(&name);
+                (previous != current).then(|| (name, current.cloned().map(Rc::new)))
+            })
+            .collect::<Vec<_>>();
+        for (name, value) in &binding_changes {
+            if let Some(value) = value {
+                self.current_bindings.insert(name.clone(), Rc::clone(value));
+            } else {
+                self.current_bindings.remove(name);
+            }
+        }
+        self.checkpoints.push(Checkpoint {
+            cursor: self.cursor,
+            binding_changes,
             value: snapshot.value.cloned(),
             source_range: snapshot.span.map(|span| SourceRange {
                 start: span.start,
                 end: span.end,
             }),
-        };
-        if let Some(checkpoint) = self
-            .checkpoints
-            .iter_mut()
-            .find(|checkpoint| checkpoint.cursor == self.cursor)
-        {
-            checkpoint.state = state;
-        } else {
-            self.checkpoints.push(Checkpoint {
-                cursor: self.cursor,
-                state,
-            });
-        }
+        });
     }
 }
 

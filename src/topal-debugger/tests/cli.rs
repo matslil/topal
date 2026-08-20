@@ -24,7 +24,7 @@ fn executes_the_standard_library_example_from_its_shared_module_tree() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("decision #"));
     assert!(stdout.contains("evaluation.result"));
-    assert!(stdout.contains("((Int, Rational, (Int, Int), (Int, Int), Int, Int, Int, Rational, Optional Int, Boolean, Optional (Int, String), Rational, Int, Boolean, Rational, (Int, Int), Range Int, String, String, Boolean, Optional Int, List Int))"));
+    assert!(stdout.contains("((Int, Rational, (Int, Int), (Int, Int), Int, Int, Int, Rational, Optional Int, Boolean, Optional (Int, String), Rational, Int, Boolean, Rational, Int, Int, (Int, Int), Range Int, String, String, Boolean, Optional Int, List Int, List Int, List Int))"));
 }
 
 fn language_diagnostic(name: &str) -> String {
@@ -3511,4 +3511,27 @@ fn records_reversible_broad_unicode_identifier_bindings() {
     assert!(stdout.contains("binding.bind [TOPAL-SYN-BIND-001] left+right"));
     assert!(stdout.contains("\n40\n"));
     assert!(stdout.contains("\n2\n"));
+}
+
+#[test]
+fn help_prints_source_standard_library_and_builtin_documentation() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}documentation-help.debug"),
+            &format!("{root}documentation-help.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Return the documented answer"));
+    assert!(stdout.contains("Return the smaller value"));
+    assert!(stdout.contains("Arbitrary-precision signed integers"));
+    assert!(stdout.contains("step | reverse-step"));
 }

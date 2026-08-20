@@ -363,6 +363,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "topal-doc"
+version = "0.1.0"
+dependencies = [
+ "topal-language",
+ "topal-source",
+ "topal-syntax",
+]
+
+[[package]]
 name = "topal-geir"
 version = "0.1.0"
 dependencies = [

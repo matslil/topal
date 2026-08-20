@@ -32,6 +32,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/standard-library.md` | 12 | 9 | shared library loader and cross-tool conformance suites | static, runtime, artifact | complete |
 | `spec/tracing.md` | 4 | 9 | shared semantic tracing and adapters | static, runtime, artifact | complete |
 | `spec/debugger-scripting.md` | 2 | 9 | `topal-debugger`, shared language variants | static, runtime | complete |
+| `spec/source-documentation.md` | 7 | 9 | `topal-syntax`, `topal-language`, `topal-doc`, `topal-debugger` | static, presentation | complete |
 | `spec/best-practices.md` | 7 | 9 | `topal-best-practices` catalog model and `topal-linter` contained executor | static, artifact | complete |
 | `spec/diagnostics.md` | 2 | 9 | `topal-source`, source-facing tool adapters | static, presentation | complete |
 

@@ -17,5 +17,5 @@ The design currently covers:
 - modules, constructed contexts, resources, tasks, and interfaces;
 - containers, strings, numbers, ranges, units, and serialization;
 - layouts, addressed storage, sensitive values, tracing, debugger scripting,
-  and performance; and
+  source documentation, generated API reference material, and performance; and
 - unit testing, structural path coverage, and the best-practice database.

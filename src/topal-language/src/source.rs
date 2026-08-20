@@ -2,6 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::rc::Rc;
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -16,7 +17,8 @@ use topal_source::{
     characters, lowercase, normalize_nfc, normalize_nfd, uppercase,
 };
 use topal_syntax::{
-    CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, lex, parse,
+    CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, extract_documentation,
+    lex, parse,
 };
 
 use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
@@ -80,9 +82,9 @@ pub enum Value {
         entries: Vec<Self>,
     },
     Callable(CallableKind),
-    NamedFunction(Box<NamedFunction>),
-    Namespace(Box<NamespaceValue>),
-    AnonymousFunction(Box<AnonymousFunction>),
+    NamedFunction(Rc<NamedFunction>),
+    Namespace(Rc<NamespaceValue>),
+    AnonymousFunction(Rc<AnonymousFunction>),
     Array {
         element_classifier: String,
         entries: Vec<Self>,
@@ -206,6 +208,7 @@ pub enum IntrospectionValue {
     DeclarationView {
         name: Option<String>,
         canonical_path: Option<String>,
+        documentation: Option<String>,
         language_version: LanguageVersion,
     },
     LanguageContext {
@@ -553,10 +556,11 @@ impl fmt::Display for IntrospectionValue {
             Self::DeclarationView {
                 name,
                 canonical_path,
+                documentation,
                 language_version,
             } => write!(
                 formatter,
-                "lang DeclarationView ( name is {name:?}, path is {canonical_path:?}, version is {language_version} )"
+                "lang DeclarationView ( name is {name:?}, path is {canonical_path:?}, documentation is {documentation:?}, version is {language_version} )"
             ),
             Self::LanguageContext {
                 language,
@@ -593,6 +597,7 @@ pub struct Session {
     generators: Box<BTreeMap<String, Vec<UserGenerator>>>,
     declared_names: BTreeSet<String>,
     published_names: BTreeSet<String>,
+    documentation: Box<BTreeMap<String, String>>,
     language_version: LanguageVersion,
     language_features: BTreeSet<String>,
     consumed_names: BTreeSet<String>,
@@ -1372,6 +1377,7 @@ impl Session {
             generators: Box::new(snapshot.definition.streams.clone()),
             declared_names: BTreeSet::new(),
             published_names: BTreeSet::new(),
+            documentation: self.documentation.clone(),
             language_version: self.language_version,
             language_features: self.language_features.clone(),
             consumed_names: BTreeSet::new(),
@@ -1446,6 +1452,7 @@ impl Session {
             generators: self.generators.clone(),
             declared_names: BTreeSet::new(),
             published_names: BTreeSet::new(),
+            documentation: self.documentation.clone(),
             language_version: self.language_version,
             language_features: self.language_features.clone(),
             consumed_names: BTreeSet::new(),
@@ -1700,7 +1707,7 @@ impl Session {
                         rule: "TOPAL-SYN-CONTEXT-001",
                         detail: "lang lint",
                     });
-                    Ok(Value::Namespace(Box::new(NamespaceValue {
+                    Ok(Value::Namespace(Rc::new(NamespaceValue {
                         name: "lang lint".into(),
                         bindings: BTreeMap::new(),
                         functions: BTreeMap::new(),
@@ -1744,6 +1751,9 @@ impl Session {
                     };
                     Value::Introspection(Box::new(IntrospectionValue::DeclarationView {
                         canonical_path: name.as_ref().map(|name| format!("root.{name}")),
+                        documentation: name
+                            .as_ref()
+                            .and_then(|name| self.documentation.get(name).cloned()),
                         name,
                         language_version: self.language_version,
                     }))
@@ -1771,7 +1781,7 @@ impl Session {
                     members.sort();
                     members.dedup();
                     Value::Introspection(Box::new(IntrospectionValue::ScopeView {
-                        identity: namespace.name,
+                        identity: namespace.name.clone(),
                         members,
                     }))
                 }
@@ -1968,7 +1978,7 @@ impl Session {
             .into_iter()
             .filter(|(member, _)| self.published_names.contains(member))
             .collect();
-        Value::Namespace(Box::new(NamespaceValue {
+        Value::Namespace(Rc::new(NamespaceValue {
             name: name.to_owned(),
             bindings,
             functions,
@@ -2054,7 +2064,8 @@ impl Session {
             detail: "design-0;Unicode=17.0.0",
         });
         let source = accepted_source(input, trace)?;
-        let parsed = parse(&source, &lex(&source));
+        let lexed = lex(&source);
+        let parsed = parse(&source, &lexed);
         if let Some(error) = parsed.diagnostics.first() {
             return Err(diagnostic(&source, error.code, error.span, &error.message));
         }
@@ -2112,6 +2123,17 @@ impl Session {
             ));
         }
         self.language_version = requested;
+        let documentation_lexed = lex(&execution.source);
+        let documentation_parsed = parse(&execution.source, &documentation_lexed);
+        for declaration in extract_documentation(
+            &execution.source,
+            &documentation_lexed,
+            &documentation_parsed,
+        ) {
+            if let Some(documentation) = declaration.documentation {
+                self.documentation.insert(declaration.name, documentation);
+            }
+        }
         self.language_features = features
             .iter()
             .map(|feature| execution.source.slice(*feature).to_owned())
@@ -2156,6 +2178,7 @@ impl Session {
             generators: Box::new(BTreeMap::new()),
             declared_names: bindings.keys().cloned().collect(),
             published_names: BTreeSet::new(),
+            documentation: Box::new(BTreeMap::new()),
             language_version: LanguageVersion::DESIGN_0,
             language_features: BTreeSet::new(),
             consumed_names: BTreeSet::new(),
@@ -2507,6 +2530,7 @@ impl Session {
                         generators: self.generators.clone(),
                         declared_names: self.declared_names.clone(),
                         published_names: self.published_names.clone(),
+                        documentation: self.documentation.clone(),
                         language_version: self.language_version,
                         language_features: self.language_features.clone(),
                         consumed_names: self.consumed_names.clone(),
@@ -3281,6 +3305,7 @@ impl Session {
                         generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
                         published_names: BTreeSet::new(),
+                        documentation: self.documentation.clone(),
                         language_version: self.language_version,
                         language_features: self.language_features.clone(),
                         consumed_names: BTreeSet::new(),
@@ -3456,6 +3481,7 @@ impl Session {
                         generators: self.generators.clone(),
                         declared_names: BTreeSet::new(),
                         published_names: BTreeSet::new(),
+                        documentation: self.documentation.clone(),
                         language_version: self.language_version,
                         language_features: self.language_features.clone(),
                         consumed_names: BTreeSet::new(),
@@ -4397,7 +4423,7 @@ impl Session {
                 rule: "TOPAL-NAMESPACE-ROOT-001",
                 detail: "root",
             });
-            return Ok(Value::Namespace(Box::new(NamespaceValue {
+            return Ok(Value::Namespace(Rc::new(NamespaceValue {
                 name: "root".into(),
                 bindings: self.bindings.clone(),
                 functions: (*self.functions).clone(),
@@ -4418,7 +4444,7 @@ impl Session {
         let value = if let Some(value) = self.bindings.get(name) {
             value.clone()
         } else if let Some(candidates) = self.functions.get(name) {
-            Value::NamedFunction(Box::new(NamedFunction {
+            Value::NamedFunction(Rc::new(NamedFunction {
                 name: name.to_owned(),
                 candidates: candidates.clone(),
             }))
@@ -5638,7 +5664,7 @@ impl Session {
             rule: "TOPAL-FUNCTION-ANONYMOUS-001",
             detail: &detail,
         });
-        Value::AnonymousFunction(Box::new(AnonymousFunction {
+        Value::AnonymousFunction(Rc::new(AnonymousFunction {
             source: source.clone(),
             parameters,
             body: Box::new(body.clone()),
@@ -10849,7 +10875,7 @@ fn introspection_view(source: &SourceText, value: Value, span: Span) -> Result<V
             members.sort();
             members.dedup();
             IntrospectionValue::ScopeView {
-                identity: namespace.name,
+                identity: namespace.name.clone(),
                 members,
             }
         }
@@ -12439,6 +12465,7 @@ fn apply_count(
     Ok(Value::Int(BigInt::from(count)))
 }
 
+#[allow(clippy::too_many_lines)] // Keep the collection-query operations together and auditable.
 fn apply_collection_query(
     source: &SourceText,
     operation: &str,
@@ -14697,6 +14724,22 @@ mod tests {
             Value::Introspection(context)
                 if matches!(&*context, IntrospectionValue::LanguageContext { features, .. }
                     if features == &["debug", "lint"])
+        ));
+    }
+
+    #[test]
+    fn declaration_view_exposes_attached_documentation() {
+        let value = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\n### The documented answer.\npub answer is 42\nlang declaration answer\n",
+                &mut std::io::sink(),
+            )
+            .unwrap();
+        assert!(matches!(
+            value,
+            Value::Introspection(view)
+                if matches!(&*view, IntrospectionValue::DeclarationView { documentation, .. }
+                    if documentation.as_deref() == Some("The documented answer."))
         ));
     }
 

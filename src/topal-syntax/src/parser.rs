@@ -511,7 +511,12 @@ impl Parser<'_> {
         let remaining = &self.tokens[self.cursor..];
         if !remaining
             .iter()
-            .find(|token| !matches!(token.kind, TokenKind::Whitespace | TokenKind::Comment))
+            .find(|token| {
+                !matches!(
+                    token.kind,
+                    TokenKind::Whitespace | TokenKind::Comment | TokenKind::Documentation
+                )
+            })
             .is_some_and(|token| token.kind == TokenKind::Newline)
         {
             return false;
@@ -533,7 +538,12 @@ impl Parser<'_> {
         }
         let significant = remaining[newline + 1..]
             .iter()
-            .filter(|token| !matches!(token.kind, TokenKind::Whitespace | TokenKind::Comment))
+            .filter(|token| {
+                !matches!(
+                    token.kind,
+                    TokenKind::Whitespace | TokenKind::Comment | TokenKind::Documentation
+                )
+            })
             .take(3)
             .collect::<Vec<_>>();
         matches!(significant.as_slice(), [name, separator, function]

@@ -6,10 +6,11 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use topal_language::{
-    Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session, load_module_tree,
+    Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session, lang_documentation,
+    load_module_tree,
 };
 use topal_source::SourceText;
-use topal_syntax::{Statement, lex, parse};
+use topal_syntax::{DocumentedDeclaration, Statement, extract_documentation, lex, parse};
 
 fn main() -> ExitCode {
     match run() {
@@ -300,7 +301,7 @@ fn command_loop(
             command if command.starts_with("delete-checkpoint ") => {
                 delete_checkpoint(command, &mut checkpoints);
             }
-            "print" | "p" => match history.state().and_then(|state| state.value.as_ref()) {
+            "print" | "p" => match history.state().and_then(|state| state.value) {
                 Some(value) => println!("{value}"),
                 None => println!("no value at current execution state"),
             },
@@ -309,6 +310,9 @@ fn command_loop(
                 print_expression(history, expression);
             }
             "bindings" => print_bindings(history),
+            command if command.starts_with("help ") => {
+                print_identifier_help(command[5..].trim(), source);
+            }
             "help" | "h" => {
                 println!(
                     "step | reverse-step | source-step | reverse-source-step | next | reverse-next | finish | reverse-finish | backtrace | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | why | history | print | bindings | quit"
@@ -328,6 +332,60 @@ fn command_loop(
         }
         io::stdout().flush().map_err(|error| error.to_string())?;
     }
+}
+
+fn print_identifier_help(identifier: &str, source: &str) {
+    let mut declarations = documented_source(source);
+    declarations.extend(documented_source(include_str!("../../../library/std.t")));
+    declarations.extend(lang_documentation());
+    let qualified = identifier.contains(' ');
+    let matches = declarations
+        .iter()
+        .filter(|declaration| {
+            declaration.name == identifier
+                || (!qualified
+                    && declaration
+                        .name
+                        .split_whitespace()
+                        .next_back()
+                        .is_some_and(|name| name == identifier))
+        })
+        .collect::<Vec<_>>();
+    if matches.is_empty() {
+        println!("no documentation for `{identifier}`");
+        return;
+    }
+    let distinct_names = matches
+        .iter()
+        .map(|entry| &entry.name)
+        .collect::<BTreeSet<_>>();
+    if distinct_names.len() > 1 {
+        println!("ambiguous identifier `{identifier}`; candidates:");
+        for name in distinct_names {
+            println!("  {name}");
+        }
+        return;
+    }
+    for declaration in matches {
+        println!("{}", declaration.syntax);
+        if let Some(documentation) = &declaration.documentation {
+            println!("\n{documentation}");
+        }
+        for parameter in &declaration.parameters {
+            if let Some(documentation) = &parameter.documentation {
+                println!("\n{}: {documentation}", parameter.name);
+            }
+        }
+    }
+}
+
+fn documented_source(text: &str) -> Vec<DocumentedDeclaration> {
+    let Ok(source) = SourceText::new(text) else {
+        return Vec::new();
+    };
+    let lexed = lex(&source);
+    let parsed = parse(&source, &lexed);
+    extract_documentation(&source, &lexed, &parsed)
 }
 
 const DEBUG_COMMANDS: &[&str] = &[
