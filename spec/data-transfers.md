@@ -109,3 +109,10 @@ A native backend shall privately own every descriptor, handle, socket, request,
 and callback supplied by the embedding host. It shall publish a versioned
 support manifest, reject unavailable capability construction, and retain
 request resources until exactly one terminal completion is consumed.
+
+### TOPAL-NETWORK-IP-001 — Distinct Internet Protocol families
+
+IPv4 and IPv6 addresses, prefixes, scopes, and validated packet headers shall
+retain their distinct family semantics. A shared network capability shall not
+erase IPv4 checksum/fragmentation or IPv6 extension/scope distinctions, and a
+text address shall not substitute for typed service or endpoint identity.
