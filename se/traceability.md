@@ -31,10 +31,10 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-REQ-SHARED-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-UNICODE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-INDENT-001`, `TOPAL-SYN-GRAMMAR-001` |
 | `TOPAL-REQ-BEST-PRACTICE-001` | `TOPAL-BEST-PRACTICE-IDENTITY-001`, `TOPAL-BEST-PRACTICE-STATUS-001`, `TOPAL-BEST-PRACTICE-CLASS-001`, `TOPAL-BEST-PRACTICE-APPLICABILITY-001`, `TOPAL-BEST-PRACTICE-GENERATED-001` |
 | `TOPAL-REQ-LINT-001` | `TOPAL-BEST-PRACTICE-IDENTITY-001` through `TOPAL-BEST-PRACTICE-RECTIFICATION-001`, `TOPAL-DIAG-MODEL-001`, `TOPAL-DIAG-ADAPTER-001`, `TOPAL-SYN-CONTEXT-001`, `TOPAL-SYN-DIAG-001` |
-| `TOPAL-REQ-TRANSFER-001` | planned extended-library formalization governed by `se/data-transfers.md`; existing foundations include `TOPAL-TASK-MESSAGE-001`, `TOPAL-CONC-INTERACT-001`, and `TOPAL-CONC-ORDER-001` |
-| `TOPAL-REQ-DATA-VIEW-001` | planned extended-library formalization governed by `se/data-transfers.md`; existing foundations include `TOPAL-MEM-LOCATION-001`, `TOPAL-MEM-LIFETIME-001`, and `TOPAL-LAYOUT-CONSTRUCT-001` |
-| `TOPAL-REQ-STORE-001` | planned extended-library formalization governed by `se/data-transfers.md`; existing foundations include `TOPAL-NAMESPACE-ROOT-001`, `TOPAL-SER-VALUE-001`, and `TOPAL-TYPE-ID-001` |
-| `TOPAL-REQ-TRANSPORT-BINDING-001` | planned extended-library formalization governed by `se/data-transfers.md`; existing foundations include `TOPAL-CONC-PROTOCOL-001`, `TOPAL-CONC-BACKPRESSURE-001`, and `TOPAL-RESOURCE-OWN-001` |
+| `TOPAL-REQ-TRANSFER-001` | planned extended-library formalization governed by `se/data-transfers.md` and sequenced by `se/data-transfer-standard-library-plan.md`; existing foundations include `TOPAL-TASK-MESSAGE-001`, `TOPAL-CONC-INTERACT-001`, and `TOPAL-CONC-ORDER-001` |
+| `TOPAL-REQ-DATA-VIEW-001` | planned extended-library formalization governed by `se/data-transfers.md` and sequenced by `se/data-transfer-standard-library-plan.md`; existing foundations include `TOPAL-MEM-LOCATION-001`, `TOPAL-MEM-LIFETIME-001`, and `TOPAL-LAYOUT-CONSTRUCT-001` |
+| `TOPAL-REQ-STORE-001` | planned extended-library formalization governed by `se/data-transfers.md` and sequenced by `se/data-transfer-standard-library-plan.md`; existing foundations include `TOPAL-NAMESPACE-ROOT-001`, `TOPAL-SER-VALUE-001`, and `TOPAL-TYPE-ID-001` |
+| `TOPAL-REQ-TRANSPORT-BINDING-001` | planned extended-library formalization governed by `se/data-transfers.md` and sequenced by `se/data-transfer-standard-library-plan.md`; existing foundations include `TOPAL-CONC-PROTOCOL-001`, `TOPAL-CONC-BACKPRESSURE-001`, and `TOPAL-RESOURCE-OWN-001` |
 
 ## Maintenance rules
 
