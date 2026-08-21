@@ -20,7 +20,7 @@ authority are normative in
 | 5. Views | `TOPAL-DATA-VIEW-001`, `VIEW-INVALIDATE-001` | `view::{MutableRegion, ValidatedView}` | malformed and exact mutation-dependency tests | implemented |
 | 6. Adapters | `TOPAL-TRANSFER-SEQUENCE-001` | bounded length framing and message queues | every split point, size, and backpressure tests | implemented |
 | 7. Virtual host | `TOPAL-HOST-ABI-001`, `HOST-REPLAY-001` | `host::{VirtualHost, ReplayHost}` | denial, deterministic observation, and effect-free replay tests | implemented |
-| 8. Native host | native resource and completion rules | target backend scaffolds and manifests | common native conformance kit | pending |
+| 8. Native host | `TOPAL-HOST-NATIVE-001` | private native file/socket owners and target support manifest | manifest and native capability tests | implemented |
 | 9. IP | IPv4/IPv6 identity, parsing, routing | `network` packet views and virtual routes | golden and malformed vectors | pending |
 | 10. Transports | UDP, TCP, service bindings | local and virtual transport adapters | equivalent service results | pending |
 | 11. Stores | identity, schema, query, changes | reference key-value, relational, graph stores | shared store laws | pending |
