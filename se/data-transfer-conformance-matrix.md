@@ -23,7 +23,7 @@ authority are normative in
 | 8. Native host | `TOPAL-HOST-NATIVE-001` | private native file/socket owners and target support manifest | manifest and native capability tests | implemented |
 | 9. IP | `TOPAL-NETWORK-IP-001` | typed family identities, prefixes, IPv4/IPv6 header validators | family-boundary, golden, and malformed tests | implemented |
 | 10. Transports | `TOPAL-NETWORK-TRANSPORT-001` | transport-independent binding trait and bounded virtual sequence | partial progress and half-close tests | implemented |
-| 11. Stores | identity, schema, query, changes | reference key-value, relational, graph stores | shared store laws | pending |
+| 11. Stores | `TOPAL-STORE-FOUNDATION-001` | identified memory store, model-specific query trait, bounded changes | identity and subscription-backpressure tests | implemented |
 | 12. Transactions | isolation, durability, replication | deterministic fault model | consistency litmus tests | pending |
 | 13. Files | object, namespace, path resolution | memory and capability-rooted file stores | traversal and path-race tests | pending |
 | 14. Databases | prepared operations and typed rows | reference and opt-in relational adapter | schema and transaction scenarios | pending |
