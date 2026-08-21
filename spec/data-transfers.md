@@ -30,3 +30,29 @@ unit. Queueing, local binding, or another compatible adapter shall not merge or
 split that boundary. A bounded endpoint which cannot accept a message shall
 report resource exhaustion without consuming the message.
 
+### TOPAL-TRANSFER-OPERATION-001 — Submission and completion identity
+
+Submission shall produce a stable operation identity. Exactly one terminal
+completion shall correlate that identity with success, typed failure,
+cancellation, endpoint loss, or explicitly uncertain timeout. Immediate and
+queued completion shall have the same semantic relation.
+
+### TOPAL-TRANSFER-CANCEL-001 — Cancellation race
+
+Cancellation shall be a request and shall not by itself establish the terminal
+outcome. Completion which races with cancellation shall retain exactly the
+single outcome observed by the endpoint and shall neither duplicate an effect
+nor release operation resources before that observation.
+
+### TOPAL-TRANSFER-BACKPRESSURE-001 — Bounded submission
+
+Every submission queue shall have an explicit bound. Reaching it shall produce
+typed exhaustion without submitting an operation or consuming its input.
+Completion ordering shall be the relation declared by the endpoint protocol
+and shall not be inferred from submission order.
+
+### TOPAL-TRANSFER-RETRY-001 — Retry admission
+
+Automatic retry of an operation which may have performed an effect shall be
+rejected unless idempotence, deduplication, or transaction identity establishes
+equivalent behavior. A timeout alone shall not provide that evidence.
