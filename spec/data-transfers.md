@@ -139,3 +139,10 @@ and replication requirements. An adapter shall conservatively reject a
 requirement it cannot demonstrate. A lost completion after possible commit
 shall report uncertain outcome rather than abort or success, and retry shall
 require transaction or deduplication identity.
+
+### TOPAL-STORE-FILE-001 — File store specialization
+
+A file shall be an identified object with addressed content and metadata; a
+directory shall relate names to identities; and a path shall be a resolution
+query. Namespace rename or unlink shall not replace an already-open object
+identity, and resolution shall not escape the granted capability root.

@@ -25,7 +25,7 @@ authority are normative in
 | 10. Transports | `TOPAL-NETWORK-TRANSPORT-001` | transport-independent binding trait and bounded virtual sequence | partial progress and half-close tests | implemented |
 | 11. Stores | `TOPAL-STORE-FOUNDATION-001` | identified memory store, model-specific query trait, bounded changes | identity and subscription-backpressure tests | implemented |
 | 12. Transactions | `TOPAL-STORE-TRANSACTION-001` | guarantee comparison and deterministic commit-fault model | strength and uncertain-outcome tests | implemented |
-| 13. Files | object, namespace, path resolution | memory and capability-rooted file stores | traversal and path-race tests | pending |
+| 13. Files | `TOPAL-STORE-FILE-001` | identity-preserving memory file store and native injected file capability | traversal rejection and rename identity tests | implemented |
 | 14. Databases | prepared operations and typed rows | reference and opt-in relational adapter | schema and transaction scenarios | pending |
 | 15. Devices | controller, target, DMA obligations | virtual controller/device | removal and ownership tests | pending |
 | 16. I2C | bus and combined transaction protocol | virtual bus and Linux `i2c-dev` adapter | fault and unsafe-retry tests | pending |
