@@ -1,5 +1,13 @@
 # Traceability
 
+The extended data-transfer requirements trace through the approved
+[architecture](data-transfers.md) and [implementation
+plan](data-transfer-standard-library-plan.md) to normative package rules
+`TOPAL-TRANSFER-PACKAGE-001`–`005` in
+[`spec/data-transfer-packages.md`](../spec/data-transfer-packages.md). Phase and
+scenario closure is tracked by the
+[`data-transfer-conformance-matrix.md`](data-transfer-conformance-matrix.md).
+
 This matrix connects system goals to core requirements and formal specification
 domains. Test and implementation columns will be added with those artifacts.
 

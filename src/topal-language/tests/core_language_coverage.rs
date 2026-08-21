@@ -89,7 +89,7 @@ fn every_stable_specification_rule_has_a_completion_owner() {
         let entry = &entries[&path];
         assert_eq!(entry.rules, actual_rules, "stale rule count for {path}");
         assert!(
-            (2..=9).contains(&entry.phase),
+            (2..=27).contains(&entry.phase),
             "invalid completion phase for {path}"
         );
         assert!(
@@ -136,7 +136,9 @@ fn accepted_core_has_no_planned_rule_and_examples_explain_their_feature() {
     assert!(bootstrap.contains("no implicit reflection"));
     let specification_planned = entries
         .iter()
-        .filter_map(|(path, entry)| (entry.status != "complete").then_some(path))
+        .filter_map(|(path, entry)| {
+            (entry.phase <= 9 && entry.status != "complete").then_some(path)
+        })
         .collect::<Vec<_>>();
     let corrections = fs::read_to_string(root.join("se/core-language-corrections.md"))
         .expect("correction ledger must be readable");
@@ -221,7 +223,11 @@ fn every_stable_rule_has_a_reviewed_source_tool_disposition() {
                 .count()
         })
         .sum::<usize>();
-    assert_eq!(expanded_rule_count, 363, "review every new stable rule");
+    let ledger_rule_count = ledger.values().map(|entry| entry.rules).sum::<usize>();
+    assert_eq!(
+        expanded_rule_count, ledger_rule_count,
+        "review every stable rule through an explicit domain row"
+    );
 }
 
 #[test]
