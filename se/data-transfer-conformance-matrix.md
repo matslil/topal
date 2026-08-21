@@ -27,7 +27,7 @@ authority are normative in
 | 12. Transactions | `TOPAL-STORE-TRANSACTION-001` | guarantee comparison and deterministic commit-fault model | strength and uncertain-outcome tests | implemented |
 | 13. Files | `TOPAL-STORE-FILE-001` | identity-preserving memory file store and native injected file capability | traversal rejection and rename identity tests | implemented |
 | 14. Databases | `TOPAL-STORE-DATABASE-001` | prepared operation and schema-checked row boundary | parameter and row mismatch tests | implemented |
-| 15. Devices | controller, target, DMA obligations | virtual controller/device | removal and ownership tests | pending |
+| 15. Devices | `TOPAL-DEVICE-CONTROLLER-001` | bounded virtual controller and explicit DMA requirements | alignment, removal, and ownership tests | implemented |
 | 16. I2C | bus and combined transaction protocol | virtual bus and Linux `i2c-dev` adapter | fault and unsafe-retry tests | pending |
 | 17. Firewall | bounded-copy mutation and offload | nested-view firewall scenario | differential and resource baselines | pending |
 | 18. Audit | compatibility and terminal dispositions | all supported platform adapters | complete conformance and audit suite | pending |

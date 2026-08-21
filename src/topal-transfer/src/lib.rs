@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 pub mod database;
+pub mod device;
 pub mod file_store;
 pub mod framing;
 pub mod host;

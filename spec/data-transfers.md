@@ -153,3 +153,10 @@ Database adapters shall use prepared operations, typed parameters, explicit
 row schemas, cursors, and transaction identities. They shall preserve vendor
 failure provenance and uncertain commit rather than construct queries through
 string interpolation or coerce mismatched rows.
+
+### TOPAL-DEVICE-CONTROLLER-001 — Controller and DMA ownership
+
+Device controllers shall expose typed targets, commands, status, events, and
+queues. DMA submission shall validate alignment, pinning, addressability,
+coherency, size, and device lifetime and shall transfer unique buffer ownership
+until completion, reset, or removal returns a terminal outcome.
