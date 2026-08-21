@@ -102,3 +102,10 @@ injects a capability.
 A debugger replay backend shall return recorded completion observations in
 their semantic order without submitting the recorded external operations.
 Static source tools shall neither inject capabilities nor submit operations.
+
+### TOPAL-HOST-NATIVE-001 — Native resource confinement
+
+A native backend shall privately own every descriptor, handle, socket, request,
+and callback supplied by the embedding host. It shall publish a versioned
+support manifest, reject unavailable capability construction, and retain
+request resources until exactly one terminal completion is consumed.
