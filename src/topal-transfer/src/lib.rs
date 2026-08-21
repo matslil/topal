@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 pub mod database;
 pub mod device;
 pub mod file_store;
+pub mod firewall;
 pub mod framing;
 pub mod host;
 pub mod i2c;

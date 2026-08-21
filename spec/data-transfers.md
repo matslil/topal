@@ -167,3 +167,11 @@ I2C controller and target capabilities shall preserve address mode, transfer
 limits, starts, repeated starts, direction, acknowledgements, arbitration,
 stop, and retry safety. A required register-address write/read shall be one
 indivisible combined transaction, not two independently retryable operations.
+
+### TOPAL-DATA-OFFLOAD-001 — Bounded-copy substitution
+
+Nested frame, packet, transport, and application views may inspect one owned
+region and forward it through scatter/gather. Software and admitted operating-
+system or hardware checksum, segmentation, encryption, and framing
+substitutions shall produce equivalent values, failures, ordering, effects,
+and semantic traces. Copy and allocation claims shall be instrumented.
