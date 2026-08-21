@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 pub mod framing;
+pub mod host;
 pub mod operation;
 pub mod region;
 pub mod view;
