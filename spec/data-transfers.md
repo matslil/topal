@@ -82,3 +82,10 @@ unsupported, and exhausted input shall remain distinct outcomes.
 Mutation shall invalidate every validation dependency overlapping the changed
 span and shall preserve independent evidence. Access through invalidated
 evidence shall fail before interpreted data is observed.
+
+### TOPAL-TRANSFER-SEQUENCE-001 — Sequence and framing
+
+A sequence shall preserve byte order but not producer-operation boundaries.
+A message-to-sequence codec shall recover exactly the encoded message
+boundaries under arbitrary chunking and shall report incomplete, malformed,
+oversized, and queue-exhausted input without emitting a partial message.
