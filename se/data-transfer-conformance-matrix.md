@@ -18,7 +18,7 @@ authority are normative in
 | 3. Completion | `TOPAL-TRANSFER-OPERATION-001`, `CANCEL-001`, `BACKPRESSURE-001`, `RETRY-001` | deterministic `operation::Scheduler` | cancellation race, completion order, bounds, and retry tests | implemented |
 | 4. Regions | `TOPAL-DATA-REGION-001`, `SCATTER-001` | `region::{Region, Span, ScatterGather}` | overflow, bounds, alignment, and no-copy tests | implemented |
 | 5. Views | `TOPAL-DATA-VIEW-001`, `VIEW-INVALIDATE-001` | `view::{MutableRegion, ValidatedView}` | malformed and exact mutation-dependency tests | implemented |
-| 6. Adapters | sequence, message, framing, datagram | `transfer` codecs and queues | chunking, bounds, backpressure | pending |
+| 6. Adapters | `TOPAL-TRANSFER-SEQUENCE-001` | bounded length framing and message queues | every split point, size, and backpressure tests | implemented |
 | 7. Virtual host | host ABI, capability injection, replay | deterministic host backend and tool boundaries | denial and replay tests | pending |
 | 8. Native host | native resource and completion rules | target backend scaffolds and manifests | common native conformance kit | pending |
 | 9. IP | IPv4/IPv6 identity, parsing, routing | `network` packet views and virtual routes | golden and malformed vectors | pending |
