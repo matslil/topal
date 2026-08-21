@@ -17,6 +17,7 @@ The specification is divided into:
 - [generic export intermediate language](generic-ir.md);
 - [native serialization protocol](serialization.md);
 - [standard-library conformance](standard-library.md);
+- [data-transfer package boundaries](data-transfer-packages.md);
 - [memory model](memory-model.md); and
 - [concurrency model](concurrency-model.md).
 

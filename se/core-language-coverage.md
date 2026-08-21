@@ -35,6 +35,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/source-documentation.md` | 7 | 9 | `topal-syntax`, `topal-language`, `topal-doc`, `topal-debugger` | static, presentation | complete |
 | `spec/best-practices.md` | 7 | 9 | `topal-best-practices` catalog model and `topal-linter` contained executor | static, artifact | complete |
 | `spec/diagnostics.md` | 2 | 9 | `topal-source`, source-facing tool adapters | static, presentation | complete |
+| `spec/data-transfer-packages.md` | 5 | 10 | extended packages and shared host boundary | static, runtime, platform | planned |
 
 ## Cross-tool evidence
 
