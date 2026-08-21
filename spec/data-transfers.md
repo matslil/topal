@@ -89,3 +89,16 @@ A sequence shall preserve byte order but not producer-operation boundaries.
 A message-to-sequence codec shall recover exactly the encoded message
 boundaries under arbitrary chunking and shall report incomplete, malformed,
 oversized, and queue-exhausted input without emitting a partial message.
+
+### TOPAL-HOST-ABI-001 — Semantic host operations
+
+The host boundary shall be versioned and shall exchange semantic capability,
+operation, and observation values rather than native descriptors, pointers, or
+error numbers. No authority shall exist until the embedding application
+injects a capability.
+
+### TOPAL-HOST-REPLAY-001 — Effect-free replay
+
+A debugger replay backend shall return recorded completion observations in
+their semantic order without submitting the recorded external operations.
+Static source tools shall neither inject capabilities nor submit operations.
