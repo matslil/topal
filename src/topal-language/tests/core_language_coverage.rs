@@ -175,3 +175,90 @@ fn accepted_core_has_no_planned_rule_and_examples_explain_their_feature() {
         );
     }
 }
+
+#[test]
+fn every_stable_rule_has_a_reviewed_source_tool_disposition() {
+    let root = workspace_root();
+    let matrix = fs::read_to_string(root.join("se/tool-conformance.md"))
+        .expect("source-tool conformance matrix must be readable");
+    let valid = ["direct", "shared", "boundary", "not-applicable"];
+    let mut rows = BTreeMap::new();
+
+    for line in matrix.lines().filter(|line| line.starts_with("| `spec/")) {
+        let cells: Vec<_> = line.split('|').skip(1).map(table_cell).collect();
+        assert!(cells.len() >= 6, "malformed tool-conformance row: {line}");
+        let path = cells[0].clone();
+        for (tool, disposition) in ["interpreter", "LSP", "linter", "debugger"]
+            .into_iter()
+            .zip(&cells[1..5])
+        {
+            assert!(
+                valid.contains(&disposition.as_str()),
+                "invalid {tool} disposition `{disposition}` for {path}"
+            );
+        }
+        assert!(!cells[5].is_empty(), "missing evidence for {path}");
+        assert!(
+            rows.insert(path.clone(), cells[1..6].to_vec()).is_none(),
+            "duplicate tool-conformance row for {path}"
+        );
+    }
+
+    let ledger = read_ledger(&root);
+    assert_eq!(
+        rows.keys().collect::<Vec<_>>(),
+        ledger.keys().collect::<Vec<_>>(),
+        "tool-conformance matrix and stable specification files differ"
+    );
+
+    let expanded_rule_count = rows
+        .keys()
+        .map(|path| {
+            fs::read_to_string(root.join(path))
+                .unwrap()
+                .lines()
+                .filter(|line| line.starts_with("### TOPAL-"))
+                .count()
+        })
+        .sum::<usize>();
+    assert_eq!(expanded_rule_count, 363, "review every new stable rule");
+}
+
+#[test]
+fn every_system_and_tool_requirement_has_traceability_evidence() {
+    let root = workspace_root();
+    let traceability = fs::read_to_string(root.join("se/traceability.md"))
+        .expect("traceability matrix must be readable");
+    let mut requirement_files = vec![root.join("se/requirements.md")];
+    for entry in fs::read_dir(root.join("src")).expect("src must be readable") {
+        let path = entry
+            .expect("src entry must be readable")
+            .path()
+            .join("se-requirements.md");
+        if path.is_file() {
+            requirement_files.push(path);
+        }
+    }
+
+    let mut missing = Vec::new();
+    for path in requirement_files {
+        let requirements = fs::read_to_string(&path).expect("requirements must be readable");
+        for line in requirements.lines() {
+            let Some(identifier) = line
+                .strip_prefix("## ")
+                .and_then(|heading| heading.split_once(' '))
+                .map(|(identifier, _)| identifier)
+                .filter(|identifier| identifier.starts_with("TOPAL-"))
+            else {
+                continue;
+            };
+            if !traceability.contains(&format!("`{identifier}`")) {
+                missing.push(format!("{}: {identifier}", path.display()));
+            }
+        }
+    }
+    assert!(
+        missing.is_empty(),
+        "requirements without traceability evidence: {missing:?}"
+    );
+}

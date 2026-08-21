@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 fn language_example(name: &str) -> String {
@@ -6,6 +7,42 @@ fn language_example(name: &str) -> String {
         "{}/../../examples/language/{name}",
         env!("CARGO_MANIFEST_DIR")
     )
+}
+
+#[test]
+fn every_language_example_executes_through_the_debugger() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language");
+    let mut examples = std::fs::read_dir(directory)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
+        .collect::<Vec<_>>();
+    examples.sort();
+    assert_eq!(examples.len(), 192);
+    let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
+    for example in examples {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+            .args(["--script", "-"])
+            .arg(&example)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(commands.as_bytes())
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(
+            output.status.success(),
+            "{} failed in debugger:\n{}",
+            example.display(),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
 
 #[test]
