@@ -8,6 +8,11 @@ plan](data-transfer-standard-library-plan.md) to normative package rules
 scenario closure is tracked by the
 [`data-transfer-conformance-matrix.md`](data-transfer-conformance-matrix.md).
 
+`TOPAL-TRANSFER-ENDPOINT-001`, `TOPAL-TRANSFER-SERVICE-001`,
+`TOPAL-TRANSFER-PROTOCOL-001`, and `TOPAL-TRANSFER-MESSAGE-001` are implemented
+by `topal-transfer` endpoint identities, capabilities, protocol state, bounded
+local endpoint pairs, and their focused tests.
+
 This matrix connects system goals to core requirements and formal specification
 domains. Test and implementation columns will be added with those artifacts.
 

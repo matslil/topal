@@ -18,6 +18,7 @@ The specification is divided into:
 - [native serialization protocol](serialization.md);
 - [standard-library conformance](standard-library.md);
 - [data-transfer package boundaries](data-transfer-packages.md);
+- [data-transfer semantics](data-transfers.md);
 - [memory model](memory-model.md); and
 - [concurrency model](concurrency-model.md).
 

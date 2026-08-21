@@ -12,6 +12,7 @@ members = [
     "src/topal-source",
     "src/topal-serialization",
     "src/topal-syntax",
+    "src/topal-transfer",
 ]
 resolver = "3"
 
