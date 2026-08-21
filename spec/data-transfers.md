@@ -116,3 +116,10 @@ IPv4 and IPv6 addresses, prefixes, scopes, and validated packet headers shall
 retain their distinct family semantics. A shared network capability shall not
 erase IPv4 checksum/fragmentation or IPv6 extension/scope distinctions, and a
 text address shall not substitute for typed service or endpoint identity.
+
+### TOPAL-NETWORK-TRANSPORT-001 — Transport bindings
+
+UDP bindings shall preserve datagram boundaries and their delivery limits. TCP
+bindings shall expose ordered partial transfer, backpressure, half-close, and
+reset. Binding the same typed service to local messages, IPv4, or IPv6 shall
+preserve service values while retaining transport-specific observations.

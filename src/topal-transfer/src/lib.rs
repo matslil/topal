@@ -11,6 +11,7 @@ pub mod native;
 pub mod network;
 pub mod operation;
 pub mod region;
+pub mod transport;
 pub mod view;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
