@@ -68,6 +68,98 @@ The language server and linter analyze contracts and source without opening
 external endpoints. The source debugger records external completions and
 replays their observations without repeating external effects.
 
+## Native backend architecture
+
+The portable library shall not call a lowest-common-denominator `read` or
+`write` shim. Native access is divided into four layers:
+
+1. the ordinary Topal protocol and data-shape contracts;
+2. a versioned semantic host-operation ABI using Topal identities, capabilities,
+   regions, operations, completions, and typed failures;
+3. a memory-safe native backend which maps that ABI to documented operating-
+   system objects, calls, completion facilities, and cancellation; and
+4. an application/platform broker which obtains user consent, entitlements,
+   sandbox extensions, or privileged device authority and injects only the
+   resulting capabilities.
+
+The backend implementation may use Rust plus small reviewed C, Objective-C,
+Swift, Java, or Kotlin shims where a platform facility has no stable C ABI.
+Unsafe code is confined to native handle, buffer, and callback adapters. It
+shall never construct a Topal capability from a pathname, integer, pointer, or
+foreign handle supplied by untrusted Topal code.
+
+Backends use documented libc, SDK, NDK, Win32, and framework entry points. They
+shall not hard-code private system-call numbers or private framework symbols.
+On Linux, a maintained binding may invoke a documented syscall whose libc
+wrapper is unavailable, but the backend must probe support at runtime and retain
+a conforming fallback. Operating-system name or version alone is not evidence
+that an operation is permitted by the running kernel, sandbox, security policy,
+filesystem, device, or transport provider.
+
+### Native resources and completions
+
+Foreign descriptors, handles, ports, callbacks, and request structures are
+backend-private resources associated with stable Topal endpoint and operation
+identities. Their numeric values and addresses never enter language semantics,
+serialization, or deterministic traces.
+
+Every submitted native operation owns its request storage and borrowed or
+pinned buffers until exactly one terminal completion has been consumed.
+Immediate native success and pending native success both pass through the same
+completion path. Cancellation is a request, not proof of cancellation: the
+backend retains resources until it observes the platform's terminal result and
+maps the race to the portable completion contract.
+
+Native callbacks and readiness notifications enqueue completion records into
+the Topal scheduler. They do not execute arbitrary Topal application code on an
+operating-system callback, signal, dispatch, Binder, or completion-port thread.
+Readiness is not reported as transfer completion; the adapter retries the
+nonblocking operation and records its actual progress or typed failure.
+
+Common failures have portable classifications such as denied authority,
+unavailable endpoint, malformed input, exhausted resource, interrupted,
+cancelled, timed out, partial progress, and uncertain outcome. Platform error
+domains and codes remain structured provenance for diagnostics and specialized
+handling; they are not collapsed into misleading universal equivalence.
+
+### Platform mechanisms
+
+| Platform | Resource and transfer mechanisms | Completion integration | Authority and unavailable facilities |
+| --- | --- | --- | --- |
+| Linux | file descriptors; `openat2`/`openat`, `statx`, `preadv`/`pwritev`, `renameat2`, `fsync`; sockets with `sendmsg`/`recvmsg`; `mmap`, `ioctl`, and documented device ABIs; `I2C_RDWR` through `i2c-dev` | `io_uring` when each required opcode and semantic is runtime-probed; nonblocking descriptors with `epoll` fallback; bounded worker execution only for operations with no safe asynchronous interface | inject pre-opened descriptors or capability-rooted directory handles; apply sandboxing such as namespaces, seccomp, or Landlock where the host selects it; reject rather than emulate guarantees unavailable from the running kernel/filesystem/device |
+| Windows | owned `HANDLE` and Winsock `SOCKET` resources; `CreateFileW`, `ReadFile`, `WriteFile`, scatter/gather APIs where supported; Winsock `AcceptEx`/`ConnectEx`/`WSASend`/`WSARecv`; `DeviceIoControl` for admitted device contracts | overlapped operations associated with I/O completion ports; `CancelIoEx` races are completed and reaped through IOCP; registered I/O is an optional measured substitution | capabilities originate from the embedding process and its access token; file sharing, delete, reparse-point, and path-resolution semantics remain explicit; reject a capability-rooted store guarantee if the selected API cannot enforce it without a race |
+| macOS | owned POSIX file descriptors and documented `openat`, positioned/vectored I/O, sockets, `mmap`, and device APIs; Dispatch I/O for stream or random-access descriptor operations; Network.framework for TCP, UDP, TLS, path changes, listeners, and modern network policy | `kqueue` for readiness-based descriptor facilities, Dispatch queues for Dispatch I/O, and Network.framework completions; all are marshalled into the Topal scheduler | app-container descriptors, user-selected security-scoped URLs, entitlements, and brokered IOKit/DriverKit services become explicit capabilities; no general device or I2C capability is advertised where public platform APIs do not provide one |
+| Android | Bionic/POSIX descriptors, sockets, positioned/vectored I/O, `mmap`, `ioctl`, and `epoll` where allowed; NDK facilities; Java/Kotlin framework bridges for Storage Access Framework, `ContentResolver`, Binder-backed services, and descriptors received as `ParcelFileDescriptor` | nonblocking descriptors with `epoll`; framework/Binder callbacks marshalled into the scheduler; `io_uring` only after runtime kernel, opcode, and seccomp-policy probing | app-private storage descriptors and framework/user-granted content capabilities replace ambient paths under scoped storage; arbitrary device or I2C access is unsupported for ordinary apps and requires an explicitly privileged/system host adapter |
+| iOS | app-container and user/document-provider file capabilities through Foundation with Dispatch I/O where appropriate; Network.framework for direct TCP/UDP/TLS services; `URLSession` for HTTP and background transfers whose lifetime can outlive the process | Dispatch and Network.framework completions enter the scheduler; background `URLSession` is a distinct persistent transfer protocol, not disguised as an in-process pending operation | sandbox extensions, document-picker results, security-scoped resources, entitlements, and approved frameworks are the only authority sources; raw devices, arbitrary I2C, unrestricted filesystem paths, and restricted network-extension behavior are explicitly unavailable unless a supported entitled host supplies them |
+
+Darwin similarities do not make macOS and iOS one backend contract: their
+sandbox, lifecycle, background execution, entitlement, device, and networking
+surfaces differ. Android likewise shares a Linux kernel without promising the
+same syscall availability, filesystem namespace, device access, or security
+policy as a general Linux host.
+
+### Build, selection, and conformance
+
+The portable packages contain no conditional semantic behavior. A runtime is
+built with one or more native backend modules selected by target and SDK, then
+constructs a capability inventory from facilities actually supplied by the
+embedding application. Optional fast paths are selected per endpoint and
+operation after runtime probing; they do not change the public protocol.
+
+Each native backend publishes a machine-readable support manifest containing
+backend ABI revision, target, minimum supported platform/SDK, available
+operation families, limits, cancellation behavior, and known semantic
+restrictions. Unsupported facilities fail capability construction rather than
+appearing and failing after unrelated application work.
+
+The same adapter conformance kit runs against the deterministic virtual backend
+and every native backend. Native tests use temporary capability roots,
+loopback/private networks, disposable databases, virtual devices, and explicit
+mobile test-host grants. Cross-compilation proves only build compatibility;
+behavioral conformance requires execution on the platform. CI records OS build,
+kernel, SDK, filesystem, security/sandbox mode, device/backend versions, and
+feature probes with each result.
+
 ## Admission rules
 
 Every public interface and adapter shall satisfy these rules:
@@ -196,7 +288,24 @@ and backpressure.
 Acceptance: all subsequent functional suites can run without ambient machine
 state, and denied authority fails before a host operation is submitted.
 
-### 8. Network identity, resolution, IPv4, and IPv6
+### 8. Native backend ABI and platform scaffolding
+
+- Implement the versioned host-operation ABI and backend-private resource table.
+- Add common request ownership, pinned-buffer lifetime, completion marshalling,
+  cancellation-race, error-provenance, and runtime feature-probe machinery.
+- Build minimal Linux, Windows, macOS, Android, and iOS adapters that accept an
+  embedding-supplied capability and perform one region read plus one local or
+  loopback message transfer where the platform permits it.
+- Generate support manifests and reject unavailable capability construction.
+- Establish native CI runners or recorded manual qualification for every
+  claimed target; cross-compilation remains a separate gate.
+
+Acceptance: every native adapter passes the common immediate/pending,
+partial-progress, cancellation, endpoint-loss, denied-authority, and cleanup
+tests without exposing a native descriptor, handle, pointer, callback, or error
+number as portable semantics.
+
+### 9. Network identity, resolution, IPv4, and IPv6
 
 - Add distinct IPv4 and IPv6 address, prefix, scope, endpoint-address, and
   packet-view types with shared capabilities only where semantics agree.
@@ -210,7 +319,7 @@ state, and denied authority fails before a host operation is submitted.
 Acceptance: packet golden vectors and malformed cases pass independently for
 IPv4 and IPv6; address strings never substitute for typed identity or scope.
 
-### 9. UDP, TCP, and transport-independent services
+### 10. UDP, TCP, and transport-independent services
 
 - Bind message endpoints to UDP without losing datagram boundaries or delivery
   limitations.
@@ -226,7 +335,7 @@ IPv4 and IPv6; address strings never substitute for typed identity or scope.
 Acceptance: the service produces equivalent semantic results through all three
 bindings while traces retain distinct transport failures and addresses.
 
-### 10. Store identity, schema, namespace, and change foundation
+### 11. Store identity, schema, namespace, and change foundation
 
 - Formalize store, object, schema, relation, query, and change identities.
 - Define explicit lookup, insertion, replacement, removal, snapshot, and
@@ -240,7 +349,7 @@ bindings while traces retain distinct transport failures and addresses.
 Acceptance: shared store laws hold without forcing relational or graph queries
 through paths, byte streams, or one universal query representation.
 
-### 11. Transactions, consistency, durability, and replication contracts
+### 12. Transactions, consistency, durability, and replication contracts
 
 - Formalize transaction identity, commit, abort, conflict, isolation,
   consistency, durability, placement, and replication requirements.
@@ -254,7 +363,7 @@ through paths, byte streams, or one universal query representation.
 Acceptance: litmus tests distinguish serializable, snapshot, causal, and
 eventual observations; no weaker adapter silently satisfies a stronger request.
 
-### 12. File-store specialization
+### 13. File-store specialization
 
 - Define files as identified objects with addressed content and structured
   metadata; directories as name-to-object relations; links as direct or
@@ -264,7 +373,8 @@ eventual observations; no weaker adapter silently satisfies a stronger request.
 - Add atomic rename/update requirements, snapshots and change messages where
   supported, and explicit behavior where they are unavailable.
 - Implement an in-memory reference file store followed by one capability-rooted
-  host-filesystem adapter.
+  adapter for each claimed desktop/server platform and framework-granted mobile
+  file capabilities.
 - Exercise local and virtual distributed file stores through the same object
   and namespace contracts with different declared guarantees.
 
@@ -272,7 +382,7 @@ Acceptance: traversal cannot escape granted roots, path races do not replace
 object identity, and distributed failures remain distinguishable from local
 not-found outcomes.
 
-### 13. Database adapter boundary
+### 14. Database adapter boundary
 
 - Define prepared operation, parameter, row/message, cursor/sequence, and
   transaction adapter contracts without embedding one vendor protocol.
@@ -288,7 +398,7 @@ Acceptance: query values are not constructed through string interpolation,
 row/schema mismatches fail explicitly, and reference and real adapters satisfy
 the same transaction scenarios.
 
-### 14. Device-controller and DMA foundation
+### 15. Device-controller and DMA foundation
 
 - Formalize controller, target, command, status, interrupt/event, register, and
   transfer-queue protocols.
@@ -302,7 +412,7 @@ the same transaction scenarios.
 Acceptance: simulated DMA completion, device removal, reset, timeout, queue
 exhaustion, and stale-buffer access cannot leak or duplicate ownership.
 
-### 15. I2C vertical slice
+### 16. I2C vertical slice
 
 - Define controller and target capabilities, typed address modes, speed and
   transfer limits, and shared-bus scheduling.
@@ -310,14 +420,17 @@ exhaustion, and stale-buffer access cannot leak or duplicate ownership.
   arbitration, clocking, stop, recovery, and combined transaction atomicity.
 - Add register-region views only for devices whose access contracts justify
   them.
-- Implement a deterministic virtual bus and one capability-rooted host adapter.
+- Implement a deterministic virtual bus and a Linux `i2c-dev` adapter; add only
+  platform adapters backed by documented public device facilities and record
+  ordinary Android and iOS applications as unsupported rather than simulating
+  raw bus authority.
 - Build a typed sensor service over a combined register-address write/read.
 
 Acceptance: negative acknowledgement, arbitration loss, device disappearance,
 partial transfer, unsafe retry, and bus recovery are independently testable;
 the sensor service does not expose raw bus authority.
 
-### 16. Zero-copy firewall and offload equivalence
+### 17. Zero-copy firewall and offload equivalence
 
 - Build the architecture's firewall scenario over nested frame and packet views.
 - Inspect different layers without payload copying, update selected headers with
@@ -333,11 +446,12 @@ Acceptance: functional equivalence is exact; performance claims state the
 platform, workload, measurement method, variance, and allowed regression rather
 than relying on elapsed-time anecdotes.
 
-### 17. Cross-platform adapters and final audit
+### 18. Cross-platform adapters and final audit
 
-- Add adapter conformance kits for POSIX-style readiness, Linux completion
-  queues, Windows completion ports, capability kernels, and other supported
-  hosts without making any one model normative.
+- Complete the adapter conformance kits for Linux `io_uring`/`epoll`, Windows
+  IOCP/overlapped I/O, macOS Dispatch I/O/Network.framework/`kqueue`, Android
+  NDK/framework-brokered descriptors, and iOS Dispatch/Network.framework/
+  `URLSession` without making any one model normative.
 - Audit every public capability for ambient-authority leaks and every external
   operation for explicit effects and cleanup.
 - Run malformed-input fuzzing, state-machine/model tests, fault injection,
