@@ -160,3 +160,10 @@ Device controllers shall expose typed targets, commands, status, events, and
 queues. DMA submission shall validate alignment, pinning, addressability,
 coherency, size, and device lifetime and shall transfer unique buffer ownership
 until completion, reset, or removal returns a terminal outcome.
+
+### TOPAL-DEVICE-I2C-001 — Combined bus transactions
+
+I2C controller and target capabilities shall preserve address mode, transfer
+limits, starts, repeated starts, direction, acknowledgements, arbitration,
+stop, and retry safety. A required register-address write/read shall be one
+indivisible combined transaction, not two independently retryable operations.

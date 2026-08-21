@@ -10,6 +10,7 @@ pub mod device;
 pub mod file_store;
 pub mod framing;
 pub mod host;
+pub mod i2c;
 pub mod native;
 pub mod network;
 pub mod operation;
