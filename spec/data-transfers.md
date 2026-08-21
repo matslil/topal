@@ -69,3 +69,16 @@ affected span.
 A scatter/gather value shall describe an ordered collection of checked spans
 without copying their payload. Alignment, pinning, addressability, and external
 lifetime requirements shall be validated before a host substitution uses it.
+
+### TOPAL-DATA-VIEW-001 — Validation evidence
+
+Untrusted representation data shall acquire a message, packet, frame, or stored
+object interpretation only through validation. The resulting view shall retain
+its exact source span and evidence dependencies. Incomplete, malformed,
+unsupported, and exhausted input shall remain distinct outcomes.
+
+### TOPAL-DATA-VIEW-INVALIDATE-001 — Mutation invalidation
+
+Mutation shall invalidate every validation dependency overlapping the changed
+span and shall preserve independent evidence. Access through invalidated
+evidence shall fail before interpreted data is observed.
