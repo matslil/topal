@@ -98,3 +98,34 @@ configuration and scoped suppression by stable best-practice identity, and
 apply only explicitly selected safe rectifications. External databases and
 library-supplied rules shall be supported without granting ambient authority or
 automatic execution merely because a package is installed.
+
+## TOPAL-REQ-TRANSFER-001 — Protocol-governed external interaction
+
+External and inter-component data transfer shall use capability-authorized
+endpoints whose typed operations, completions, failures, effects, lifetime, and
+legal protocol transitions remain explicit. Local calls, messages, stores,
+networks, and devices shall share this foundation without erasing their
+distinct ordering, atomicity, reliability, or addressing semantics.
+
+## TOPAL-REQ-DATA-VIEW-001 — Safe layered data access
+
+Messages, packets, frames, sequences, and addressed regions shall retain their
+semantic boundaries and support recursively nested representations. Validated
+views over shared data shall permit bounded-copy inspection and transfer while
+tracking ownership, span dependencies, mutation invalidation, resource limits,
+and device-memory obligations.
+
+## TOPAL-REQ-STORE-001 — Explicit store guarantees
+
+File, relational, graph, document, key-value, and object stores shall share
+identity, authority, transaction, snapshot, change, consistency, durability,
+replication, and failure concepts where applicable without being forced through
+one query or byte-stream interface.
+
+## TOPAL-REQ-TRANSPORT-BINDING-001 — Replaceable faithful bindings
+
+An application service may be realized over multiple local, network, or device
+transports. A binding shall preserve the service protocol or reject unmet
+requirements, and shall expose transport-specific correctness properties such
+as addressing, scope, transaction boundaries, retry safety, security,
+completion ordering, and resource constraints.
