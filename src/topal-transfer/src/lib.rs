@@ -5,6 +5,8 @@ use std::fmt;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+pub mod operation;
+
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 fn fresh_id() -> u64 {

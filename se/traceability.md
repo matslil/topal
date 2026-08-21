@@ -13,6 +13,11 @@ scenario closure is tracked by the
 by `topal-transfer` endpoint identities, capabilities, protocol state, bounded
 local endpoint pairs, and their focused tests.
 
+`TOPAL-TRANSFER-OPERATION-001`, `TOPAL-TRANSFER-CANCEL-001`,
+`TOPAL-TRANSFER-BACKPRESSURE-001`, and `TOPAL-TRANSFER-RETRY-001` are
+implemented by `topal_transfer::operation` and its deterministic race, ordering,
+bound, and retry-admission tests.
+
 This matrix connects system goals to core requirements and formal specification
 domains. Test and implementation columns will be added with those artifacts.
 
