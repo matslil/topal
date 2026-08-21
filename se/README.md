@@ -12,6 +12,7 @@ formal specification.
 - [Verification strategy](verification-strategy.md)
 - [Test strategy](test-strategy.md)
 - [Toolchain architecture](toolchain-architecture.md)
+- [Data-transfer and external-resource architecture](data-transfers.md)
 - [Traceability](traceability.md)
 - [Core-language completion plan](core-language-completion-plan.md)
 - [Core-language correction ledger](core-language-corrections.md)
