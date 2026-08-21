@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 
 pub mod operation;
 pub mod region;
+pub mod view;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
