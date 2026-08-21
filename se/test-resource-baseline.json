@@ -1,0 +1,3605 @@
+{
+  "schema": 1,
+  "allowed_increase_percent": 20,
+  "samples_per_test": 50,
+  "environment": {
+    "architecture": "x86_64",
+    "logical_cpus": 8,
+    "operating_system": "Linux",
+    "rustc": [
+      "rustc 1.97.0 (2d8144b78 2026-07-07)",
+      "binary: rustc",
+      "commit-hash: 2d8144b7880597b6e6d3dfd63a9a9efae3f533d3",
+      "commit-date: 2026-07-07",
+      "host: x86_64-unknown-linux-gnu",
+      "release: 1.97.0",
+      "LLVM version: 22.1.6"
+    ]
+  },
+  "tests": {
+    "topal-best-practices::bin:topal-best-practices::tests::committed_projections_match_authoritative_entries": {
+      "cpu_time_ns": 4044580,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-best-practices::bin:topal-best-practices::tests::executable_default_error_requires_sound_checkability": {
+      "cpu_time_ns": 1674020,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-best-practices::bin:topal-best-practices::tests::identity_must_match_owned_storage_path": {
+      "cpu_time_ns": 1733160,
+      "memory_peak_bytes": 17862656
+    },
+    "topal-best-practices::bin:topal-best-practices::tests::obsolete_entry_requires_version_and_explanation": {
+      "cpu_time_ns": 1707660,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-best-practices::bin:topal-best-practices::tests::proposed_entry_cannot_be_enabled": {
+      "cpu_time_ns": 1707600,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-best-practices::lib:topal_best_practices::tests::built_in_catalog_is_valid_and_sorted": {
+      "cpu_time_ns": 1443279,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-best-practices::lib:topal_best_practices::tests::duplicate_external_identity_is_rejected": {
+      "cpu_time_ns": 1628800,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-best-practices::lib:topal_best_practices::tests::external_catalog_rejects_unsound_automated_default_errors": {
+      "cpu_time_ns": 1763460,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-best-practices::lib:topal_best_practices::tests::heuristic_catalog_entries_require_confidence": {
+      "cpu_time_ns": 1788480,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-best-practices::lib:topal_best_practices::tests::malformed_external_lifecycle_metadata_is_rejected": {
+      "cpu_time_ns": 2102480,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-best-practices::lib:topal_best_practices::tests::malformed_external_rule_attachment_is_rejected": {
+      "cpu_time_ns": 1754160,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-best-practices::lib:topal_best_practices::tests::malformed_read_only_view_identity_is_rejected": {
+      "cpu_time_ns": 1797280,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-best-practices::lib:topal_best_practices::tests::modified_embedded_rule_source_is_rejected": {
+      "cpu_time_ns": 1762659,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::bin:topal-debug::tests::prompt_expands_unique_commands_and_aliases": {
+      "cpu_time_ns": 1138140,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::bin:topal-debug::tests::prompt_reports_ambiguous_recursive_lookup": {
+      "cpu_time_ns": 1134160,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-debugger::bin:topal-debug::tests::scripts_resolve_complete_names_from_lang_debug": {
+      "cpu_time_ns": 1119879,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::evaluates_inspection_expressions_without_mutating_history": {
+      "cpu_time_ns": 4557199,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::executes_the_debuggee_only_when_commands_advance_it": {
+      "cpu_time_ns": 3979140,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-debugger::test:cli::executes_the_shared_lint_language_variant_reversibly": {
+      "cpu_time_ns": 3668420,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-debugger::test:cli::executes_the_shared_task_declaration_order_example_reversibly": {
+      "cpu_time_ns": 6474880,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-debugger::test:cli::executes_the_standard_library_example_from_its_shared_module_tree": {
+      "cpu_time_ns": 166532759,
+      "memory_peak_bytes": 17752064
+    },
+    "topal-debugger::test:cli::exposes_intermediate_expression_values_as_reversible_states": {
+      "cpu_time_ns": 4250639,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-debugger::test:cli::follows_reversible_task_message_transactions": {
+      "cpu_time_ns": 8066240,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::help_prints_source_standard_library_and_builtin_documentation": {
+      "cpu_time_ns": 78029860,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::navigates_recorded_execution_in_both_directions": {
+      "cpu_time_ns": 4906060,
+      "memory_peak_bytes": 17739776
+    },
+    "topal-debugger::test:cli::records_abandoned_custom_generator_close_reversibly": {
+      "cpu_time_ns": 5165959,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_boolean_generator_values_reversibly": {
+      "cpu_time_ns": 4634500,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_bound_anonymous_function_values_reversibly": {
+      "cpu_time_ns": 6002040,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_capability_composition": {
+      "cpu_time_ns": 4350020,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_character_returning_generator_function_result_reversibly": {
+      "cpu_time_ns": 5554460,
+      "memory_peak_bytes": 18059264
+    },
+    "topal-debugger::test:cli::records_character_returning_generator_parameter_reversibly": {
+      "cpu_time_ns": 5778980,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_comparison_generator_values_reversibly": {
+      "cpu_time_ns": 4806079,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_completion_evidence_reversibly": {
+      "cpu_time_ns": 3969260,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_compound_generator_function_boundaries_reversibly": {
+      "cpu_time_ns": 7002260,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-debugger::test:cli::records_constraint_evidence_reversibly": {
+      "cpu_time_ns": 5998220,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_consumed_generator_failure_reversibly": {
+      "cpu_time_ns": 4488160,
+      "memory_peak_bytes": 17641472
+    },
+    "topal-debugger::test:cli::records_contextual_anonymous_list_functions_reversibly": {
+      "cpu_time_ns": 5312120,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_custom_generator_close_handler_reversibly": {
+      "cpu_time_ns": 5601079,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_custom_generator_function_parameter_reversibly": {
+      "cpu_time_ns": 5598580,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-debugger::test:cli::records_custom_generator_function_result_reversibly": {
+      "cpu_time_ns": 5585500,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_custom_generator_local_binding_reversibly": {
+      "cpu_time_ns": 5006120,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-debugger::test:cli::records_custom_generator_string_input_reversibly": {
+      "cpu_time_ns": 5226400,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_custom_generator_suspension_order_reversibly": {
+      "cpu_time_ns": 5220780,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_custom_multiple_yield_generator_reversibly": {
+      "cpu_time_ns": 5011779,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_custom_string_yields_reversibly": {
+      "cpu_time_ns": 4915660,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_defining_context_selection": {
+      "cpu_time_ns": 4590820,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_direct_anonymous_function_application_reversibly": {
+      "cpu_time_ns": 4764719,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_discarded_computation_between_yields_reversibly": {
+      "cpu_time_ns": 5082059,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_distinct_generator_final_character_reversibly": {
+      "cpu_time_ns": 4982459,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-debugger::test:cli::records_distinct_generator_final_string_reversibly": {
+      "cpu_time_ns": 4833860,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_enum_generator_values_reversibly": {
+      "cpu_time_ns": 4774539,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_explicit_generator_return_reversibly": {
+      "cpu_time_ns": 4573319,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-debugger::test:cli::records_explicit_return_after_generator_resumption_reversibly": {
+      "cpu_time_ns": 4947459,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-debugger::test:cli::records_function_interface_declaration": {
+      "cpu_time_ns": 4873640,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_fundamental_container_collection_reversibly": {
+      "cpu_time_ns": 8136260,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-debugger::test:cli::records_fundamental_type_values_reversibly": {
+      "cpu_time_ns": 3765119,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_generated_collection_reversibly": {
+      "cpu_time_ns": 4874940,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_generated_foreach_reversibly": {
+      "cpu_time_ns": 5173040,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_generator_final_decision_reversibly": {
+      "cpu_time_ns": 4987319,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_generator_local_close_handler_reversibly": {
+      "cpu_time_ns": 6879280,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_generator_local_function_reversibly": {
+      "cpu_time_ns": 5791640,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-debugger::test:cli::records_generator_overload_selection_reversibly": {
+      "cpu_time_ns": 6703779,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_generator_return_before_yield_reversibly": {
+      "cpu_time_ns": 4657280,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_generic_generator_function_boundaries_reversibly": {
+      "cpu_time_ns": 6020620,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_immutable_reconstruction_reversibly": {
+      "cpu_time_ns": 4706240,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_int_generator_values_reversibly": {
+      "cpu_time_ns": 4634260,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_lazy_iterate_construction_reversibly": {
+      "cpu_time_ns": 4068639,
+      "memory_peak_bytes": 17633280
+    },
+    "topal-debugger::test:cli::records_lazy_take_while_construction_reversibly": {
+      "cpu_time_ns": 4094199,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_lazy_unfold_construction_reversibly": {
+      "cpu_time_ns": 4389680,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-debugger::test:cli::records_list_construction_and_decomposition_reversibly": {
+      "cpu_time_ns": 8003239,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_list_containment_laws_reversibly": {
+      "cpu_time_ns": 5907119,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_list_generator_values_reversibly": {
+      "cpu_time_ns": 6136680,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_list_sequence_operations_reversibly": {
+      "cpu_time_ns": 8084560,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-debugger::test:cli::records_list_value_removal_reversibly": {
+      "cpu_time_ns": 4638420,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-debugger::test:cli::records_modular_arithmetic_reversibly": {
+      "cpu_time_ns": 5050620,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_named_function_values_reversibly": {
+      "cpu_time_ns": 4590560,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_namespace_alias_chains_reversibly": {
+      "cpu_time_ns": 3978319,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_namespace_alias_resolution_reversibly": {
+      "cpu_time_ns": 4647000,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_namespace_overload_selection_reversibly": {
+      "cpu_time_ns": 5171300,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_namespace_snapshot_visibility_reversibly": {
+      "cpu_time_ns": 4201600,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_namespace_use_reversibly": {
+      "cpu_time_ns": 4558199,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_nat_generator_values_reversibly": {
+      "cpu_time_ns": 4621119,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_nested_absent_optional_values_reversibly": {
+      "cpu_time_ns": 4903280,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_nested_generator_function_boundaries_reversibly": {
+      "cpu_time_ns": 8472580,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_nested_optional_generator_values_reversibly": {
+      "cpu_time_ns": 5627620,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-debugger::test:cli::records_nested_result_generator_values_reversibly": {
+      "cpu_time_ns": 5877660,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-debugger::test:cli::records_optional_generator_values_reversibly": {
+      "cpu_time_ns": 4923879,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_optional_result_composition_reversibly": {
+      "cpu_time_ns": 6967280,
+      "memory_peak_bytes": 17743872
+    },
+    "topal-debugger::test:cli::records_payload_union_decisions_reversibly": {
+      "cpu_time_ns": 7272099,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_product_generator_values_reversibly": {
+      "cpu_time_ns": 5247600,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_qualified_generator_close_code_match_reversibly": {
+      "cpu_time_ns": 5912959,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_qualified_namespace_generators_reversibly": {
+      "cpu_time_ns": 5135700,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_range_generator_values_reversibly": {
+      "cpu_time_ns": 4854779,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_range_selection_reversibly": {
+      "cpu_time_ns": 5046760,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-debugger::test:cli::records_rational_generator_values_reversibly": {
+      "cpu_time_ns": 5282199,
+      "memory_peak_bytes": 17674240
+    },
+    "topal-debugger::test:cli::records_recursive_list_classifiers_reversibly": {
+      "cpu_time_ns": 5945880,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-debugger::test:cli::records_recursive_nominal_generator_values_reversibly": {
+      "cpu_time_ns": 6051139,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_result_generator_values_reversibly": {
+      "cpu_time_ns": 5324080,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_abandoned_generator_close": {
+      "cpu_time_ns": 4443979,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_arithmetic_error_code_selection": {
+      "cpu_time_ns": 4227519,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_boolean_decision_selection": {
+      "cpu_time_ns": 4705600,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_boolean_not": {
+      "cpu_time_ns": 4685080,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_reversible_broad_unicode_identifier_bindings": {
+      "cpu_time_ns": 4258579,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_call_to_later_function_declaration": {
+      "cpu_time_ns": 4906740,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_calls_between_distinct_overloads": {
+      "cpu_time_ns": 5071759,
+      "memory_peak_bytes": 17809408
+    },
+    "topal-debugger::test:cli::records_reversible_canonical_rational_construction": {
+      "cpu_time_ns": 4257539,
+      "memory_peak_bytes": 17752064
+    },
+    "topal-debugger::test:cli::records_reversible_canonical_string_equality": {
+      "cpu_time_ns": 4648620,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_character_classification": {
+      "cpu_time_ns": 4826840,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_reversible_character_generator_foreach": {
+      "cpu_time_ns": 4202700,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_reversible_character_traversal_collection": {
+      "cpu_time_ns": 3847420,
+      "memory_peak_bytes": 17821696
+    },
+    "topal-debugger::test:cli::records_reversible_checked_int_construction": {
+      "cpu_time_ns": 4767639,
+      "memory_peak_bytes": 17821696
+    },
+    "topal-debugger::test:cli::records_reversible_checked_location_access": {
+      "cpu_time_ns": 8328160,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-debugger::test:cli::records_reversible_checked_nat_construction": {
+      "cpu_time_ns": 4722340,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_comparison_decision_selection": {
+      "cpu_time_ns": 4985640,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_comparison_operand_expression": {
+      "cpu_time_ns": 5197499,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_decreasing_int_recursion": {
+      "cpu_time_ns": 7148960,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_dynamic_division_error": {
+      "cpu_time_ns": 4746519,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-debugger::test:cli::records_reversible_dynamic_negative_power_error": {
+      "cpu_time_ns": 4732640,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_dynamic_rational_construction": {
+      "cpu_time_ns": 5367780,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_reversible_dynamic_rational_int_validation": {
+      "cpu_time_ns": 4841740,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_enum_function_classification": {
+      "cpu_time_ns": 4742220,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_enum_values": {
+      "cpu_time_ns": 4267259,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-debugger::test:cli::records_reversible_error_code_decisions": {
+      "cpu_time_ns": 6628300,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_error_field_selection": {
+      "cpu_time_ns": 4939519,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_reversible_exact_numeric_absolute": {
+      "cpu_time_ns": 4045160,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_reversible_exact_numeric_zero": {
+      "cpu_time_ns": 4044219,
+      "memory_peak_bytes": 17764352
+    },
+    "topal-debugger::test:cli::records_reversible_exact_rational_int_narrowing": {
+      "cpu_time_ns": 4132599,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_reversible_exact_three_way_comparison": {
+      "cpu_time_ns": 5363540,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_exhaustive_boolean_decision_selection": {
+      "cpu_time_ns": 4828400,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_reversible_exhaustive_enum_decision": {
+      "cpu_time_ns": 5023219,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_exhaustive_error_code_decision": {
+      "cpu_time_ns": 7426900,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_reversible_explicit_function_return": {
+      "cpu_time_ns": 4193240,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_explicit_optional_construction": {
+      "cpu_time_ns": 7080219,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-debugger::test:cli::records_reversible_full_unicode_case_folding": {
+      "cpu_time_ns": 3759619,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_reversible_function_effect_bounds": {
+      "cpu_time_ns": 4367900,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_function_local_shadowing": {
+      "cpu_time_ns": 4492239,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_function_overload_reasons": {
+      "cpu_time_ns": 4767820,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_generator_error_code_selection": {
+      "cpu_time_ns": 4185200,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-debugger::test:cli::records_reversible_generator_parameter_transfer": {
+      "cpu_time_ns": 5091700,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_inclusive_int_ranges": {
+      "cpu_time_ns": 5780780,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-debugger::test:cli::records_reversible_increasing_int_recursion": {
+      "cpu_time_ns": 7462380,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_increasing_nat_recursion": {
+      "cpu_time_ns": 5781140,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-debugger::test:cli::records_reversible_int_euclidean_modulo": {
+      "cpu_time_ns": 5633600,
+      "memory_peak_bytes": 17731584
+    },
+    "topal-debugger::test:cli::records_reversible_multiple_calls_on_a_mutual_edge": {
+      "cpu_time_ns": 6912920,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_reversible_multiple_recursive_calls": {
+      "cpu_time_ns": 7140700,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_reversible_mutual_increasing_int_recursion_proof": {
+      "cpu_time_ns": 8806060,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-debugger::test:cli::records_reversible_mutual_increasing_nat_recursion": {
+      "cpu_time_ns": 8658159,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_reversible_mutual_int_recursion_proof": {
+      "cpu_time_ns": 8717800,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_reversible_mutual_nat_recursion": {
+      "cpu_time_ns": 6177060,
+      "memory_peak_bytes": 17739776
+    },
+    "topal-debugger::test:cli::records_reversible_named_character_generator_consumption": {
+      "cpu_time_ns": 4501360,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_named_exact_numeric_negation": {
+      "cpu_time_ns": 4111019,
+      "memory_peak_bytes": 17731584
+    },
+    "topal-debugger::test:cli::records_reversible_nat_function_execution": {
+      "cpu_time_ns": 4113219,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_nat_recursion": {
+      "cpu_time_ns": 5276259,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_reversible_native_serialization": {
+      "cpu_time_ns": 4496599,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-debugger::test:cli::records_reversible_negative_rational_exponentiation": {
+      "cpu_time_ns": 3820159,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_nested_function_call_order": {
+      "cpu_time_ns": 4669140,
+      "memory_peak_bytes": 17813504
+    },
+    "topal-debugger::test:cli::records_reversible_nested_lexical_function": {
+      "cpu_time_ns": 4701919,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_ordinary_function_execution": {
+      "cpu_time_ns": 4693140,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_packaged_function_defaults": {
+      "cpu_time_ns": 4510360,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_positive_literal_recursion_steps": {
+      "cpu_time_ns": 7398240,
+      "memory_peak_bytes": 17719296
+    },
+    "topal-debugger::test:cli::records_reversible_rational_natural_exponentiation": {
+      "cpu_time_ns": 4047640,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_rational_ranges": {
+      "cpu_time_ns": 5433960,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-debugger::test:cli::records_reversible_result_decisions": {
+      "cpu_time_ns": 6472819,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_reversible_result_error_propagation": {
+      "cpu_time_ns": 5175320,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_result_success_projection": {
+      "cpu_time_ns": 6136880,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-debugger::test:cli::records_reversible_returned_character_generator": {
+      "cpu_time_ns": 5033160,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-debugger::test:cli::records_reversible_static_function_argument_binding": {
+      "cpu_time_ns": 4645720,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_reversible_static_function_call_decisions": {
+      "cpu_time_ns": 4688239,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-debugger::test:cli::records_reversible_static_introspection": {
+      "cpu_time_ns": 4594640,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-debugger::test:cli::records_reversible_static_product_argument_bindings": {
+      "cpu_time_ns": 4761200,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-debugger::test:cli::records_reversible_string_character_indexing": {
+      "cpu_time_ns": 6101820,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_reversible_successful_result_contract": {
+      "cpu_time_ns": 4369720,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-debugger::test:cli::records_reversible_universal_unicode_lowercase": {
+      "cpu_time_ns": 3753240,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-debugger::test:cli::records_reversible_universal_unicode_uppercase": {
+      "cpu_time_ns": 3777160,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_root_namespace_resolution_reversibly": {
+      "cpu_time_ns": 4665640,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_scope_classification_reversibly": {
+      "cpu_time_ns": 3964280,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-debugger::test:cli::records_scope_function_parameters_reversibly": {
+      "cpu_time_ns": 4324179,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-debugger::test:cli::records_short_circuiting_traversal_control_reversibly": {
+      "cpu_time_ns": 5097420,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-debugger::test:cli::records_symbolic_callable_values_reversibly": {
+      "cpu_time_ns": 4552540,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_unconsumed_custom_generator_parameter_close_reversibly": {
+      "cpu_time_ns": 5245499,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::records_unfold_collection_reversibly": {
+      "cpu_time_ns": 4804339,
+      "memory_peak_bytes": 17731584
+    },
+    "topal-debugger::test:cli::records_unit_generator_values_reversibly": {
+      "cpu_time_ns": 4367580,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-debugger::test:cli::records_unit_resume_binding_reversibly": {
+      "cpu_time_ns": 4960779,
+      "memory_peak_bytes": 17809408
+    },
+    "topal-debugger::test:cli::records_yield_after_custom_close_failure_reversibly": {
+      "cpu_time_ns": 5487000,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::reports_debuggee_diagnostics_with_its_source_name": {
+      "cpu_time_ns": 2743100,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::retains_inspectable_history_when_live_execution_fails": {
+      "cpu_time_ns": 4138680,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-debugger::test:cli::script_mode_rejects_unknown_commands_with_a_line_diagnostic": {
+      "cpu_time_ns": 3269940,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-debugger::test:cli::script_mode_reports_command_file_errors": {
+      "cpu_time_ns": 3115120,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::script_mode_requires_the_debug_language_variant": {
+      "cpu_time_ns": 4976339,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-debugger::test:cli::steps_over_diagnostic_controls_reversibly": {
+      "cpu_time_ns": 4780860,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::steps_through_discard_input_patterns": {
+      "cpu_time_ns": 4269619,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-debugger::test:cli::steps_through_lexical_blocks_reversibly": {
+      "cpu_time_ns": 4324280,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-doc::test:cli::directory_traversal_is_shallow_unless_recursive": {
+      "cpu_time_ns": 4049060,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-doc::test:cli::generates_explicit_source_and_optional_lang_pages": {
+      "cpu_time_ns": 29651780,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-geir::lib:topal_geir::tests::compiler_only_boundary_is_stable_for_every_source_tool": {
+      "cpu_time_ns": 1199640,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-geir::lib:topal_geir::tests::decoder_rejects_every_truncated_prefix_and_noncanonical_varint": {
+      "cpu_time_ns": 1627940,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-geir::lib:topal_geir::tests::source_package_key_covers_every_reproducibility_boundary": {
+      "cpu_time_ns": 1273640,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-geir::lib:topal_geir::tests::structural_identity_is_normative_sha256": {
+      "cpu_time_ns": 1217960,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-geir::lib:topal_geir::tests::valid_modules_have_stable_idempotent_canonical_bytes": {
+      "cpu_time_ns": 1298459,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-geir::lib:topal_geir::tests::validation_rederives_return_and_branch_types": {
+      "cpu_time_ns": 1253159,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-geir::lib:topal_geir::tests::validation_rejects_before_artifact_use": {
+      "cpu_time_ns": 1212239,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::all_modes_construct_exact_rational_literals": {
+      "cpu_time_ns": 7171760,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-interpreter::test:cli::all_modes_execute_exact_multiplication_left_to_right": {
+      "cpu_time_ns": 9651019,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-interpreter::test:cli::all_modes_execute_exact_natural_exponentiation": {
+      "cpu_time_ns": 7536320,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::all_modes_execute_exact_rational_arithmetic_left_to_right": {
+      "cpu_time_ns": 9988079,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::all_modes_execute_exact_rational_division": {
+      "cpu_time_ns": 7542220,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-interpreter::test:cli::all_modes_execute_exact_rational_natural_exponentiation": {
+      "cpu_time_ns": 10613600,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::all_modes_execute_exact_subtraction": {
+      "cpu_time_ns": 7576400,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::all_modes_execute_mixed_exact_arithmetic": {
+      "cpu_time_ns": 7744400,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::all_modes_execute_signed_exact_addition": {
+      "cpu_time_ns": 7513099,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::all_modes_preserve_literal_string_contents": {
+      "cpu_time_ns": 6905820,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::boolean_literal_spellings_cannot_be_rebound": {
+      "cpu_time_ns": 3029320,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::character_classifier_diagnostic_reports_observed_count": {
+      "cpu_time_ns": 3448159,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::closed_constraint_rejection_has_source_help": {
+      "cpu_time_ns": 3841660,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::closed_invalid_list_boundary_has_source_help": {
+      "cpu_time_ns": 3689360,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::closed_modular_construction_rejection_is_source_located": {
+      "cpu_time_ns": 3762099,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::conversion_trace_precedes_rational_overload_selection": {
+      "cpu_time_ns": 3683820,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-interpreter::test:cli::diagnostics_suggest_implemented_root_operations": {
+      "cpu_time_ns": 5976920,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::division_by_zero_is_rejected": {
+      "cpu_time_ns": 3429280,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::division_retains_rational_type_for_whole_result": {
+      "cpu_time_ns": 3483280,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::duplicate_error_code_pattern_points_to_unreachable_case": {
+      "cpu_time_ns": 3466300,
+      "memory_peak_bytes": 17756160
+    },
+    "topal-interpreter::test:cli::equality_requires_a_shared_operation": {
+      "cpu_time_ns": 5613200,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::equality_uses_canonical_exact_conversion": {
+      "cpu_time_ns": 3628280,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::error_code_pattern_after_fallback_has_ordering_help": {
+      "cpu_time_ns": 3429100,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_interpreter_example_documents_its_feature": {
+      "cpu_time_ns": 3029460,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_interpreter_example_is_an_executable_script": {
+      "cpu_time_ns": 596519380,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-interpreter::test:cli::every_mode_accepts_balanced_diagnostic_controls": {
+      "cpu_time_ns": 10469379,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_accepts_broad_unicode_identifiers": {
+      "cpu_time_ns": 8443980,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_accepts_exhaustive_arithmetic_code_decision": {
+      "cpu_time_ns": 22804399,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_applies_bound_named_function_values": {
+      "cpu_time_ns": 13499860,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-interpreter::test:cli::every_mode_applies_bound_symbolic_callable_values": {
+      "cpu_time_ns": 12740980,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_applies_full_universal_unicode_case_folding": {
+      "cpu_time_ns": 10240520,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_applies_qualified_namespace_generators": {
+      "cpu_time_ns": 16239180,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-interpreter::test:cli::every_mode_applies_universal_unicode_lowercase": {
+      "cpu_time_ns": 10191539,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_applies_universal_unicode_uppercase": {
+      "cpu_time_ns": 10167739,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_binds_successful_unit_resumption": {
+      "cpu_time_ns": 16006820,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_calls_a_later_function_declaration": {
+      "cpu_time_ns": 14923259,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::every_mode_calls_static_product_functions": {
+      "cpu_time_ns": 12970040,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_classifies_constraint_values": {
+      "cpu_time_ns": 8592059,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_classifies_effect_rows": {
+      "cpu_time_ns": 7593400,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_classifies_function_values": {
+      "cpu_time_ns": 8679920,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::every_mode_classifies_namespaces_as_scope": {
+      "cpu_time_ns": 8042940,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_classifies_type_values": {
+      "cpu_time_ns": 7500820,
+      "memory_peak_bytes": 17743872
+    },
+    "topal-interpreter::test:cli::every_mode_classifies_unicode_characters": {
+      "cpu_time_ns": 14483020,
+      "memory_peak_bytes": 17866752
+    },
+    "topal-interpreter::test:cli::every_mode_closes_abandoned_custom_generator": {
+      "cpu_time_ns": 17495599,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_closes_abandoned_generator_parameter": {
+      "cpu_time_ns": 13343399,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-interpreter::test:cli::every_mode_closes_unconsumed_custom_generator_parameter": {
+      "cpu_time_ns": 17028960,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_collects_finite_generated_traversals": {
+      "cpu_time_ns": 13932700,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_collects_finite_unfold_generators": {
+      "cpu_time_ns": 13877620,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_collects_fundamental_containers": {
+      "cpu_time_ns": 23985280,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_collects_unicode_character_traversal": {
+      "cpu_time_ns": 10665899,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-interpreter::test:cli::every_mode_compares_canonical_string_equivalence": {
+      "cpu_time_ns": 13246879,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_compares_effect_rows": {
+      "cpu_time_ns": 7605460,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_compares_type_identity": {
+      "cpu_time_ns": 8274219,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_composes_capability_promises": {
+      "cpu_time_ns": 9229259,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_composes_completion_with_effect_values": {
+      "cpu_time_ns": 9273600,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_composes_optional_result_and_error_fields": {
+      "cpu_time_ns": 24030840,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_and_tests_rational_ranges": {
+      "cpu_time_ns": 17211059,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_canonical_rationals": {
+      "cpu_time_ns": 14207480,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_compares_and_decomposes_lists": {
+      "cpu_time_ns": 24108440,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_dynamic_rationals": {
+      "cpu_time_ns": 18924360,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_empty_effect_rows": {
+      "cpu_time_ns": 6981880,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_exact_numeric_zero": {
+      "cpu_time_ns": 10989220,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_explicit_optional_values": {
+      "cpu_time_ns": 23473160,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_inclusive_int_ranges": {
+      "cpu_time_ns": 17883719,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_lazy_iterate_generators": {
+      "cpu_time_ns": 10847840,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_lazy_take_while_prefixes": {
+      "cpu_time_ns": 11212580,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_lazy_unfold_generators": {
+      "cpu_time_ns": 11995080,
+      "memory_peak_bytes": 18010112
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_qualified_generator_error_code": {
+      "cpu_time_ns": 11635460,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-interpreter::test:cli::every_mode_consumes_character_returning_generator_function_result": {
+      "cpu_time_ns": 19098880,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_consumes_custom_generator_returned_by_function": {
+      "cpu_time_ns": 18744800,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-interpreter::test:cli::every_mode_consumes_named_character_generator": {
+      "cpu_time_ns": 13093940,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_consumes_returned_character_generator": {
+      "cpu_time_ns": 15208640,
+      "memory_peak_bytes": 17788928
+    },
+    "topal-interpreter::test:cli::every_mode_counts_prospective_utf8_bytes": {
+      "cpu_time_ns": 9783839,
+      "memory_peak_bytes": 17809408
+    },
+    "topal-interpreter::test:cli::every_mode_counts_string_sequence_entries": {
+      "cpu_time_ns": 9906900,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_declares_and_calls_static_nullary_functions": {
+      "cpu_time_ns": 11622780,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_declares_and_calls_static_unary_functions": {
+      "cpu_time_ns": 12144899,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_declares_and_compares_enum_values": {
+      "cpu_time_ns": 13384880,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-interpreter::test:cli::every_mode_declares_function_interfaces": {
+      "cpu_time_ns": 11263060,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_derives_lexicographic_tuple_ordering": {
+      "cpu_time_ns": 10962060,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-interpreter::test:cli::every_mode_derives_record_equality": {
+      "cpu_time_ns": 11050860,
+      "memory_peak_bytes": 17764352
+    },
+    "topal-interpreter::test:cli::every_mode_directly_applies_anonymous_function_values": {
+      "cpu_time_ns": 13300300,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_distinguishes_list_containment_laws": {
+      "cpu_time_ns": 17485659,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_distinguishes_overloads_from_recursion": {
+      "cpu_time_ns": 15227260,
+      "memory_peak_bytes": 17780736
+    },
+    "topal-interpreter::test:cli::every_mode_evaluates_boolean_literals": {
+      "cpu_time_ns": 8519660,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_evaluates_boolean_not": {
+      "cpu_time_ns": 13589760,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_evaluates_derived_inequality": {
+      "cpu_time_ns": 10366160,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-interpreter::test:cli::every_mode_evaluates_empty_blocks": {
+      "cpu_time_ns": 9320240,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_evaluates_exact_ordering_predicates": {
+      "cpu_time_ns": 13808700,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_evaluates_fundamental_equality": {
+      "cpu_time_ns": 10497360,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-interpreter::test:cli::every_mode_evaluates_multiline_products": {
+      "cpu_time_ns": 7674439,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_evaluates_positional_products": {
+      "cpu_time_ns": 13584960,
+      "memory_peak_bytes": 17682432
+    },
+    "topal-interpreter::test:cli::every_mode_evaluates_the_unit_product": {
+      "cpu_time_ns": 6729940,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::every_mode_executes_checked_int_construction": {
+      "cpu_time_ns": 14444979,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-interpreter::test:cli::every_mode_executes_checked_nat_construction": {
+      "cpu_time_ns": 16341059,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_comparison_decisions": {
+      "cpu_time_ns": 15141460,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_comparison_operand_expressions": {
+      "cpu_time_ns": 15979960,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_executes_complete_boolean_decisions": {
+      "cpu_time_ns": 13889359,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_executes_complete_list_sequence_operations": {
+      "cpu_time_ns": 34650640,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_contextual_anonymous_list_functions": {
+      "cpu_time_ns": 15836359,
+      "memory_peak_bytes": 17809408
+    },
+    "topal-interpreter::test:cli::every_mode_executes_discarded_computation_between_yields": {
+      "cpu_time_ns": 17752940,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_euclidean_int_modulo": {
+      "cpu_time_ns": 18473100,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_exact_negative_rational_exponents": {
+      "cpu_time_ns": 9988200,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_executes_exact_numeric_absolute": {
+      "cpu_time_ns": 11476020,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_exact_three_way_comparison": {
+      "cpu_time_ns": 17645480,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_exhaustive_boolean_decisions_without_otherwise": {
+      "cpu_time_ns": 11238600,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_exhaustive_enum_decisions": {
+      "cpu_time_ns": 18313120,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::every_mode_executes_exhaustive_result_decisions": {
+      "cpu_time_ns": 21540260,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_executes_explicit_generator_return": {
+      "cpu_time_ns": 14608460,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::every_mode_executes_multi_statement_function_bodies": {
+      "cpu_time_ns": 12149660,
+      "memory_peak_bytes": 18116608
+    },
+    "topal-interpreter::test:cli::every_mode_executes_multiple_calls_on_a_proven_mutual_edge": {
+      "cpu_time_ns": 17705300,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_multiple_proven_recursive_calls": {
+      "cpu_time_ns": 17395479,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_executes_named_exact_numeric_negation": {
+      "cpu_time_ns": 11235520,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_nested_function_calls": {
+      "cpu_time_ns": 13330480,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_nested_lexical_functions": {
+      "cpu_time_ns": 14263299,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_executes_ordinary_runtime_functions": {
+      "cpu_time_ns": 13793199,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_executes_positive_literal_recursion_steps": {
+      "cpu_time_ns": 18567040,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::every_mode_executes_proven_decreasing_int_recursion": {
+      "cpu_time_ns": 24483220,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-interpreter::test:cli::every_mode_executes_proven_increasing_int_recursion": {
+      "cpu_time_ns": 24449000,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_proven_increasing_nat_recursion": {
+      "cpu_time_ns": 18221379,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_executes_proven_mutual_increasing_int_recursion": {
+      "cpu_time_ns": 30792620,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_executes_proven_mutual_int_recursion": {
+      "cpu_time_ns": 30714900,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_proven_mutual_nat_recursion": {
+      "cpu_time_ns": 30923680,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_executes_proven_nat_recursion": {
+      "cpu_time_ns": 21536100,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_executes_recursive_products_variants_and_unions": {
+      "cpu_time_ns": 24541380,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_executes_settled_modular_numbers": {
+      "cpu_time_ns": 16928380,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_executes_successful_result_contracts": {
+      "cpu_time_ns": 12189139,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_foreach_consumes_character_generator": {
+      "cpu_time_ns": 11901500,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_indexes_user_perceived_string_characters": {
+      "cpu_time_ns": 19560279,
+      "memory_peak_bytes": 17760256
+    },
+    "topal-interpreter::test:cli::every_mode_keeps_unit_distinct_beside_effect_values": {
+      "cpu_time_ns": 7623579,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_makes_namespaces_available_with_use": {
+      "cpu_time_ns": 13668580,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::every_mode_matches_qualified_error_codes": {
+      "cpu_time_ns": 23027980,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_matches_qualified_generator_close_code": {
+      "cpu_time_ns": 21463080,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_narrows_closed_exact_rational_to_int": {
+      "cpu_time_ns": 13876899,
+      "memory_peak_bytes": 17555456
+    },
+    "topal-interpreter::test:cli::every_mode_normalizes_strings_to_nfc_explicitly": {
+      "cpu_time_ns": 9845379,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_normalizes_strings_to_nfd_explicitly": {
+      "cpu_time_ns": 9775959,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_observes_distinct_generator_final_character": {
+      "cpu_time_ns": 16346080,
+      "memory_peak_bytes": 17866752
+    },
+    "topal-interpreter::test:cli::every_mode_observes_distinct_generator_final_string": {
+      "cpu_time_ns": 16165819,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_packages_effect_products": {
+      "cpu_time_ns": 8180180,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_passes_bound_anonymous_function_values": {
+      "cpu_time_ns": 16540240,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_passes_callable_values_through_functions": {
+      "cpu_time_ns": 9968400,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-interpreter::test:cli::every_mode_passes_effect_values_through_functions": {
+      "cpu_time_ns": 9009780,
+      "memory_peak_bytes": 17809408
+    },
+    "topal-interpreter::test:cli::every_mode_passes_namespaces_through_scope_parameters": {
+      "cpu_time_ns": 9451440,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_passes_type_values_through_functions": {
+      "cpu_time_ns": 8892720,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::every_mode_preserves_namespace_alias_chains": {
+      "cpu_time_ns": 8185580,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_preserves_namespace_capture_visibility": {
+      "cpu_time_ns": 8834080,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::every_mode_preserves_namespace_overload_sets": {
+      "cpu_time_ns": 15772140,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_preserves_outer_bindings_across_local_shadowing": {
+      "cpu_time_ns": 9389060,
+      "memory_peak_bytes": 17739776
+    },
+    "topal-interpreter::test:cli::every_mode_preserves_recursive_list_classifiers": {
+      "cpu_time_ns": 17833480,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_projects_result_through_classified_binding": {
+      "cpu_time_ns": 19841499,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::every_mode_reconstructs_records_immutably": {
+      "cpu_time_ns": 13457040,
+      "memory_peak_bytes": 17698816
+    },
+    "topal-interpreter::test:cli::every_mode_rejects_non_unit_foreach_action": {
+      "cpu_time_ns": 8571260,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_rejects_yield_after_custom_close": {
+      "cpu_time_ns": 14485460,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_removes_list_values_by_explicit_law": {
+      "cpu_time_ns": 13286200,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_arithmetic_error_codes_qualified": {
+      "cpu_time_ns": 11313880,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_declared_field_order": {
+      "cpu_time_ns": 6955720,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_fundamental_type_values": {
+      "cpu_time_ns": 10355159,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_layout_absence_policies": {
+      "cpu_time_ns": 7531440,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_layout_access_policies": {
+      "cpu_time_ns": 7748600,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_layout_bit_order": {
+      "cpu_time_ns": 7684200,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_layout_endian_policies": {
+      "cpu_time_ns": 7558540,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_layout_packing": {
+      "cpu_time_ns": 7463320,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_members_through_namespace_aliases": {
+      "cpu_time_ns": 13488339,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_payload_placement": {
+      "cpu_time_ns": 7557219,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_resolves_the_root_namespace_explicitly": {
+      "cpu_time_ns": 13727860,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_restores_generator_local_close_handler": {
+      "cpu_time_ns": 26547980,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-interpreter::test:cli::every_mode_retains_effect_lists": {
+      "cpu_time_ns": 7847260,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_retains_generator_local_function": {
+      "cpu_time_ns": 22085260,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_returns_dynamic_negative_power_error": {
+      "cpu_time_ns": 13910079,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_returns_dynamic_rational_division_error": {
+      "cpu_time_ns": 16116360,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_returns_early_from_functions": {
+      "cpu_time_ns": 11723640,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_returns_explicit_completion_evidence": {
+      "cpu_time_ns": 11126939,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_returns_explicitly_after_generator_resumption": {
+      "cpu_time_ns": 15904980,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_runs_custom_generator_close_handler": {
+      "cpu_time_ns": 19955300,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_selects_defining_context_members": {
+      "cpu_time_ns": 10049720,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_selects_generator_final_decision": {
+      "cpu_time_ns": 17476279,
+      "memory_peak_bytes": 17649664
+    },
+    "topal-interpreter::test:cli::every_mode_selects_generator_overloads": {
+      "cpu_time_ns": 24968160,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_selects_structured_error_fields": {
+      "cpu_time_ns": 14812460,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_selects_typed_function_overloads": {
+      "cpu_time_ns": 14229300,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_selects_values_and_indexes_by_range": {
+      "cpu_time_ns": 15030739,
+      "memory_peak_bytes": 17809408
+    },
+    "topal-interpreter::test:cli::every_mode_short_circuits_fold_with_traversal_control": {
+      "cpu_time_ns": 14820159,
+      "memory_peak_bytes": 17768448
+    },
+    "topal-interpreter::test:cli::every_mode_starts_custom_generator_with_string_input": {
+      "cpu_time_ns": 17967559,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-interpreter::test:cli::every_mode_suspends_custom_generator_between_yields": {
+      "cpu_time_ns": 17663879,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::every_mode_tests_string_emptiness": {
+      "cpu_time_ns": 9599599,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_transfers_character_returning_generator_parameter": {
+      "cpu_time_ns": 20116860,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::every_mode_transfers_compound_generator_function_boundaries": {
+      "cpu_time_ns": 25574019,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_transfers_custom_generator_function_parameter": {
+      "cpu_time_ns": 19168460,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-interpreter::test:cli::every_mode_transfers_generator_parameter": {
+      "cpu_time_ns": 15744680,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::every_mode_transfers_generic_generator_function_boundaries": {
+      "cpu_time_ns": 20957780,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_transfers_list_generator_values": {
+      "cpu_time_ns": 21807999,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::every_mode_transfers_nested_generator_function_boundaries": {
+      "cpu_time_ns": 33452880,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_arbitrary_precision_int_generator_values": {
+      "cpu_time_ns": 11544800,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_boolean_generator_values": {
+      "cpu_time_ns": 14820620,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_bounded_generated_prefixes": {
+      "cpu_time_ns": 15037900,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_comparison_generator_values": {
+      "cpu_time_ns": 12483320,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_custom_multiple_yield_generator": {
+      "cpu_time_ns": 16837719,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_custom_string_yields": {
+      "cpu_time_ns": 16464500,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_enum_generator_values": {
+      "cpu_time_ns": 12227700,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_exact_rational_generator_values": {
+      "cpu_time_ns": 13422320,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_generator_returning_before_yield": {
+      "cpu_time_ns": 14729060,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_nat_generator_values": {
+      "cpu_time_ns": 11868220,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_nested_absent_optional_values": {
+      "cpu_time_ns": 13149120,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_nested_optional_generator_values": {
+      "cpu_time_ns": 15306419,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_nested_result_generator_values": {
+      "cpu_time_ns": 17205220,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_optional_generator_values": {
+      "cpu_time_ns": 16043120,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_product_generator_values": {
+      "cpu_time_ns": 13653760,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_range_generator_values": {
+      "cpu_time_ns": 16095640,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_recursive_nominal_generator_values": {
+      "cpu_time_ns": 21933540,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_result_generator_values": {
+      "cpu_time_ns": 15289899,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_traverses_unit_generator_values": {
+      "cpu_time_ns": 14156840,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-interpreter::test:cli::every_mode_uses_custom_generator_local_binding": {
+      "cpu_time_ns": 16614019,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-interpreter::test:cli::every_mode_uses_enum_function_classifiers": {
+      "cpu_time_ns": 13028119,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::every_mode_validates_constraints_and_derives_base_capabilities": {
+      "cpu_time_ns": 18282759,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::every_mode_validates_dynamic_rational_to_int": {
+      "cpu_time_ns": 15373400,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-interpreter::test:cli::every_mode_validates_nat_function_boundaries": {
+      "cpu_time_ns": 13456040,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::exact_ordering_rejects_values_without_total_order": {
+      "cpu_time_ns": 3429399,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-interpreter::test:cli::exact_ordering_traces_conversion_and_three_way_decision": {
+      "cpu_time_ns": 3632760,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::exponentiation_has_no_hidden_precedence": {
+      "cpu_time_ns": 5621440,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::generator_classifier_error_is_actionable_in_script_mode": {
+      "cpu_time_ns": 4119699,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::incomplete_error_code_decision_reports_missing_alternatives": {
+      "cpu_time_ns": 3311140,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-interpreter::test:cli::inequality_preserves_equality_applicability": {
+      "cpu_time_ns": 3501160,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::infallible_projection_diagnostic_explains_available_repairs": {
+      "cpu_time_ns": 4774100,
+      "memory_peak_bytes": 17739776
+    },
+    "topal-interpreter::test:cli::interactive_diagnostic_uses_an_interactive_source_label": {
+      "cpu_time_ns": 3391900,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::interactive_language_version_is_explicit_or_defaults_to_highest_supported": {
+      "cpu_time_ns": 6577540,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-interpreter::test:cli::interactive_mode_accumulates_multiline_string": {
+      "cpu_time_ns": 3128720,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-interpreter::test:cli::interactive_mode_evaluates_each_input": {
+      "cpu_time_ns": 3157919,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::interactive_mode_preserves_bindings": {
+      "cpu_time_ns": 3260720,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::interactive_mode_preserves_complete_unit_results": {
+      "cpu_time_ns": 5361060,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::interactive_mode_recovers_after_diagnostic": {
+      "cpu_time_ns": 3257240,
+      "memory_peak_bytes": 17776640
+    },
+    "topal-interpreter::test:cli::missing_namespace_member_suggests_only_a_member": {
+      "cpu_time_ns": 3533140,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::mixed_product_fields_suggest_explicit_nesting": {
+      "cpu_time_ns": 3003740,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-interpreter::test:cli::nat_recursion_accepts_only_bound_preserving_decrements": {
+      "cpu_time_ns": 8435599,
+      "memory_peak_bytes": 17866752
+    },
+    "topal-interpreter::test:cli::negative_exponent_is_rejected_for_int_overload": {
+      "cpu_time_ns": 3577640,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-interpreter::test:cli::overload_failure_lists_available_signatures": {
+      "cpu_time_ns": 3926119,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-interpreter::test:cli::rational_arithmetic_trace_identifies_overload_and_rule": {
+      "cpu_time_ns": 3643280,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::rational_literal_trace_retains_exact_lexeme": {
+      "cpu_time_ns": 3429080,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::rational_zero_division_trace_refutes_obligation": {
+      "cpu_time_ns": 3581760,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::result_errors_propagate_unchanged_across_calls": {
+      "cpu_time_ns": 5178700,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::return_outside_a_function_is_rejected": {
+      "cpu_time_ns": 3082700,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::rule_after_otherwise_has_ordering_help": {
+      "cpu_time_ns": 3221440,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::script_and_test_modes_execute_the_shared_standard_library_example": {
+      "cpu_time_ns": 185003200,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::script_and_test_modes_load_directory_applications": {
+      "cpu_time_ns": 6909079,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::script_and_test_modes_preserve_nested_module_paths": {
+      "cpu_time_ns": 6629860,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::script_diagnostic_shows_source_marker_and_help": {
+      "cpu_time_ns": 3010600,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::script_executes_arbitrary_precision_based_integer": {
+      "cpu_time_ns": 3299459,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-interpreter::test:cli::script_executes_bindings_in_source_order": {
+      "cpu_time_ns": 3405760,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::script_mode_explains_consumed_generator_reuse": {
+      "cpu_time_ns": 4218280,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::script_mode_explains_invalid_list_entries": {
+      "cpu_time_ns": 3500360,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::script_mode_ignores_hashbang_launcher_line": {
+      "cpu_time_ns": 3296880,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::script_mode_is_default": {
+      "cpu_time_ns": 3253580,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::script_mode_requires_an_explicit_source_language_version": {
+      "cpu_time_ns": 2871360,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::script_preserves_non_nfc_string_contents": {
+      "cpu_time_ns": 3264819,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::script_rejects_discarded_expression_values": {
+      "cpu_time_ns": 3267980,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-interpreter::test:cli::script_rejects_non_nfc_identifier_without_rewriting_it": {
+      "cpu_time_ns": 3041860,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-interpreter::test:cli::script_rejects_non_nfc_literal_tag": {
+      "cpu_time_ns": 3070360,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::static_function_cannot_call_an_ordinary_function": {
+      "cpu_time_ns": 3920580,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::static_function_result_classifier_is_checked": {
+      "cpu_time_ns": 3761759,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::static_product_function_checks_shape_and_arity": {
+      "cpu_time_ns": 6260600,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::static_unary_function_checks_argument_classifier": {
+      "cpu_time_ns": 3901620,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::string_trace_retains_complete_tagged_lexeme": {
+      "cpu_time_ns": 3342500,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-interpreter::test:cli::test_mode_emits_stable_decisions": {
+      "cpu_time_ns": 3372040,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::test_mode_preserves_based_literal_lexeme_in_trace": {
+      "cpu_time_ns": 3439240,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::test_mode_preserves_script_standard_output": {
+      "cpu_time_ns": 5868100,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::test_mode_records_adjacent_literal_composition": {
+      "cpu_time_ns": 3544020,
+      "memory_peak_bytes": 17743872
+    },
+    "topal-interpreter::test:cli::test_mode_records_discard_after_its_initializer": {
+      "cpu_time_ns": 3643880,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::test_mode_records_empty_string_construction": {
+      "cpu_time_ns": 3398759,
+      "memory_peak_bytes": 17866752
+    },
+    "topal-interpreter::test:cli::test_mode_records_labeled_record_construction": {
+      "cpu_time_ns": 3638340,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::test_mode_records_plain_string_concatenation": {
+      "cpu_time_ns": 3616999,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::test_mode_records_record_field_selection": {
+      "cpu_time_ns": 3814579,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::test_mode_records_string_character_count": {
+      "cpu_time_ns": 3652720,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-interpreter::test:cli::test_mode_traces_proven_mutual_increasing_nat_recursion": {
+      "cpu_time_ns": 10003620,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::test_trace_distinguishes_literal_sign_and_prefix_negation": {
+      "cpu_time_ns": 5465040,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::test_trace_explains_binary_subtraction": {
+      "cpu_time_ns": 3596880,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-interpreter::test:cli::test_trace_explains_binding_decisions": {
+      "cpu_time_ns": 3488920,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::test_trace_explains_boolean_literal_construction": {
+      "cpu_time_ns": 3344999,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-interpreter::test:cli::test_trace_explains_exact_addition": {
+      "cpu_time_ns": 3589360,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::test_trace_explains_exact_division": {
+      "cpu_time_ns": 3604940,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::test_trace_explains_exact_multiplication": {
+      "cpu_time_ns": 3656000,
+      "memory_peak_bytes": 17887232
+    },
+    "topal-interpreter::test:cli::test_trace_explains_zero_division_rejection": {
+      "cpu_time_ns": 3599660,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::test_trace_records_the_pinned_unicode_context": {
+      "cpu_time_ns": 3334620,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-interpreter::test:cli::tuple_ordering_requires_comparable_fields_until_decided": {
+      "cpu_time_ns": 5807680,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::tuple_ordering_trace_names_the_derived_rule": {
+      "cpu_time_ns": 3825520,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-interpreter::test:cli::unbound_name_diagnostic_suggests_a_close_visible_binding": {
+      "cpu_time_ns": 3443960,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::unicode_diagnostics_preserve_source_columns": {
+      "cpu_time_ns": 3506800,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::unsupported_syntax_is_explicit": {
+      "cpu_time_ns": 3011420,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::unterminated_string_is_rejected_recoverably": {
+      "cpu_time_ns": 3072100,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::version_exposes_the_language_context_unicode_version": {
+      "cpu_time_ns": 2670739,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-interpreter::test:cli::version_output_is_reproducible": {
+      "cpu_time_ns": 3987719,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-interpreter::test:cli::zero_to_zero_is_empty_product": {
+      "cpu_time_ns": 3594860,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-language::lib:topal_language::concurrency::tests::rejects_loss_cycles_races_and_schedule_divergence": {
+      "cpu_time_ns": 1763960,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-language::lib:topal_language::concurrency::tests::validates_protocol_dependency_scope_and_determinism_evidence": {
+      "cpu_time_ns": 1829080,
+      "memory_peak_bytes": 17719296
+    },
+    "topal-language::lib:topal_language::execution::tests::records_and_navigates_deterministic_semantic_history": {
+      "cpu_time_ns": 2529599,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-language::lib:topal_language::execution::tests::stepping_follows_and_reverses_message_transactions": {
+      "cpu_time_ns": 1687580,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::modules::tests::capability_generic_result_substitutes_inside_a_product": {
+      "cpu_time_ns": 3396559,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::modules::tests::shared_exact_number_functions_cover_euclidean_and_partial_operations": {
+      "cpu_time_ns": 59209000,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::modules::tests::shared_finite_algorithms_preserve_generic_list_elements": {
+      "cpu_time_ns": 65003280,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-language::lib:topal_language::modules::tests::shared_lazy_generators_load_as_linear_continuations": {
+      "cpu_time_ns": 55786340,
+      "memory_peak_bytes": 17862656
+    },
+    "topal-language::lib:topal_language::modules::tests::shared_library_ordering_retains_one_exact_generic_type": {
+      "cpu_time_ns": 57772419,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::modules::tests::shared_loader_executes_the_first_library_definition": {
+      "cpu_time_ns": 53918580,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::modules::tests::shared_optional_functions_preserve_related_generic_types": {
+      "cpu_time_ns": 64876600,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::modules::tests::shared_range_functions_preserve_endpoint_domains_and_convexity": {
+      "cpu_time_ns": 58693000,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-language::lib:topal_language::modules::tests::shared_result_functions_preserve_success_and_complete_errors": {
+      "cpu_time_ns": 59657200,
+      "memory_peak_bytes": 17928192
+    },
+    "topal-language::lib:topal_language::modules::tests::shared_text_functions_apply_explicit_unicode_and_search_policy": {
+      "cpu_time_ns": 62688620,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::abandoned_custom_generator_handles_close_result": {
+      "cpu_time_ns": 3456620,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::abandoned_custom_generator_keeps_domain_separate_from_provenance": {
+      "cpu_time_ns": 3190699,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::abandoned_generator_parameter_closes_at_function_boundary": {
+      "cpu_time_ns": 2832900,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::boolean_and_implements_the_eager_truth_table": {
+      "cpu_time_ns": 2482660,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::boolean_decision_evaluates_only_selected_action": {
+      "cpu_time_ns": 2784240,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::boolean_not_is_eager_and_type_checked": {
+      "cpu_time_ns": 2601080,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::boolean_or_implements_the_eager_truth_table": {
+      "cpu_time_ns": 2469579,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::boolean_xor_implements_the_eager_truth_table": {
+      "cpu_time_ns": 2530359,
+      "memory_peak_bytes": 17784832
+    },
+    "topal-language::lib:topal_language::source::bounded_int_recursion_accepts_only_positive_literal_progress": {
+      "cpu_time_ns": 5529240,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::canonical_string_equality_preserves_exact_equality_distinction": {
+      "cpu_time_ns": 2835400,
+      "memory_peak_bytes": 17735680
+    },
+    "topal-language::lib:topal_language::source::case_fold_uses_full_locale_independent_unicode_mapping": {
+      "cpu_time_ns": 2294199,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::character_classifier_uses_pinned_grapheme_segmentation": {
+      "cpu_time_ns": 3099820,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::character_generator_accepts_its_explicit_classifier": {
+      "cpu_time_ns": 2867579,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::character_traversal_collects_the_exact_preserved_string": {
+      "cpu_time_ns": 2283420,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::checked_int_construction_is_exact_and_fallible": {
+      "cpu_time_ns": 3199720,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::checked_nat_construction_validates_the_nonnegative_constraint": {
+      "cpu_time_ns": 3125340,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::source::classified_binding_projects_success_and_propagates_error": {
+      "cpu_time_ns": 4084639,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::classified_binding_rejects_error_propagation_from_infallible_function": {
+      "cpu_time_ns": 3203740,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::classified_foreach_result_reports_mismatch": {
+      "cpu_time_ns": 2971820,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-language::lib:topal_language::source::closed_exact_rational_narrows_to_int_without_rounding": {
+      "cpu_time_ns": 2771260,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-language::lib:topal_language::source::closed_rational_construction_canonicalizes_components": {
+      "cpu_time_ns": 2807179,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::lib:topal_language::source::comparison_decision_uses_subject_as_left_operand": {
+      "cpu_time_ns": 2990600,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::comparison_matcher_evaluates_complete_operand_expression": {
+      "cpu_time_ns": 3431860,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::compound_generator_crosses_function_boundaries": {
+      "cpu_time_ns": 4285799,
+      "memory_peak_bytes": 17682432
+    },
+    "topal-language::lib:topal_language::source::contextual_none_uses_function_result_classifiers": {
+      "cpu_time_ns": 2807820,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::contextual_none_uses_the_binding_classifier": {
+      "cpu_time_ns": 2433860,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::lib:topal_language::source::custom_generator_accepts_string_initial_input": {
+      "cpu_time_ns": 3192500,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::custom_generator_binds_unit_resume_after_yield": {
+      "cpu_time_ns": 3035920,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::custom_generator_cannot_yield_after_close_result": {
+      "cpu_time_ns": 3233240,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::custom_generator_crosses_generic_function_boundaries": {
+      "cpu_time_ns": 3775820,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::custom_generator_defers_post_yield_binding_until_resume": {
+      "cpu_time_ns": 3236940,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::custom_generator_executes_discard_after_resume": {
+      "cpu_time_ns": 3228020,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::custom_generator_matches_qualified_close_code": {
+      "cpu_time_ns": 3622720,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_comparison_identity": {
+      "cpu_time_ns": 3132320,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_enum_identity": {
+      "cpu_time_ns": 3021240,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_int_values": {
+      "cpu_time_ns": 2906419,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_nat_constraint": {
+      "cpu_time_ns": 2990740,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_nested_absent_optional": {
+      "cpu_time_ns": 3166980,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_nested_optional_product": {
+      "cpu_time_ns": 3632959,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_nested_result_product": {
+      "cpu_time_ns": 3607800,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_optional_values": {
+      "cpu_time_ns": 3089320,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_product_values": {
+      "cpu_time_ns": 3251440,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_range_values": {
+      "cpu_time_ns": 3022720,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::custom_generator_preserves_rational_values": {
+      "cpu_time_ns": 3323720,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::lib:topal_language::source::custom_generator_restores_local_declarations_during_close": {
+      "cpu_time_ns": 4326100,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::custom_generator_retains_local_function_across_resumption": {
+      "cpu_time_ns": 3727939,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::custom_generator_returns_distinct_string": {
+      "cpu_time_ns": 2984740,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::custom_generator_returns_explicitly_after_resuming": {
+      "cpu_time_ns": 2988800,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::custom_generator_returns_explicitly_before_yielding": {
+      "cpu_time_ns": 2771740,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::custom_generator_returns_structured_result_error": {
+      "cpu_time_ns": 3387179,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::custom_generator_selects_final_decision_after_resuming": {
+      "cpu_time_ns": 3148060,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::custom_generator_selects_unary_and_binary_overloads": {
+      "cpu_time_ns": 4229079,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::custom_generator_transfers_boolean_values": {
+      "cpu_time_ns": 2866160,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::custom_generator_transfers_unit_values": {
+      "cpu_time_ns": 2756200,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::source::custom_generator_yields_strings": {
+      "cpu_time_ns": 3045620,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::custom_generators_preserve_recursive_nominal_classifiers": {
+      "cpu_time_ns": 3799319,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::declares_and_calls_static_nullary_functions": {
+      "cpu_time_ns": 2691639,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::declares_nominal_payload_free_enum_values": {
+      "cpu_time_ns": 2664240,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::decreasing_int_recursion_executes_only_after_structural_proof": {
+      "cpu_time_ns": 5713499,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::duplicate_generator_input_signature_is_rejected": {
+      "cpu_time_ns": 2432320,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-language::lib:topal_language::source::dynamic_rational_construction_distinguishes_zero_failures": {
+      "cpu_time_ns": 3761940,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::dynamic_rational_to_int_validation_returns_typed_result": {
+      "cpu_time_ns": 3195820,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::earlier_function_body_calls_later_declaration": {
+      "cpu_time_ns": 3056379,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::every_call_on_one_mutual_edge_must_share_target_and_progress": {
+      "cpu_time_ns": 6349779,
+      "memory_peak_bytes": 17862656
+    },
+    "topal-language::lib:topal_language::source::every_recursive_call_in_one_action_must_progress": {
+      "cpu_time_ns": 5786380,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-language::lib:topal_language::source::exact_numeric_absolute_retains_operand_domain": {
+      "cpu_time_ns": 2565739,
+      "memory_peak_bytes": 17682432
+    },
+    "topal-language::lib:topal_language::source::exact_numeric_zero_uses_explicit_domain": {
+      "cpu_time_ns": 2499420,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-language::lib:topal_language::source::exact_three_way_comparison_returns_nominal_alternatives": {
+      "cpu_time_ns": 3837100,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::executes_only_complete_enum_decisions": {
+      "cpu_time_ns": 2977680,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-language::lib:topal_language::source::exhaustive_boolean_decision_selects_both_literal_cases": {
+      "cpu_time_ns": 3073380,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-language::lib:topal_language::source::explicit_empty_and_singleton_lists_preserve_numeric_one": {
+      "cpu_time_ns": 2613079,
+      "memory_peak_bytes": 17633280
+    },
+    "topal-language::lib:topal_language::source::explicit_optional_constructors_preserve_payload_classifiers": {
+      "cpu_time_ns": 2487019,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::source::explicit_return_skips_later_function_statements": {
+      "cpu_time_ns": 2753740,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::lib:topal_language::source::first_and_rest_reject_non_lists": {
+      "cpu_time_ns": 2299359,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::foreach_consumes_character_generator_with_unit": {
+      "cpu_time_ns": 2622640,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::foreach_rejects_non_unit_action_result": {
+      "cpu_time_ns": 2381360,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::foreach_result_binding_is_available_to_later_statements": {
+      "cpu_time_ns": 3085020,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::function_block_bindings_are_local_to_each_invocation": {
+      "cpu_time_ns": 3184080,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::lib:topal_language::source::function_closes_unconsumed_custom_generator_parameter": {
+      "cpu_time_ns": 3139999,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::source::function_local_binding_shadows_capture_without_leaking": {
+      "cpu_time_ns": 2962280,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::function_parameter_preserves_generator_final_character": {
+      "cpu_time_ns": 3534960,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::function_parameter_receives_custom_generator_ownership": {
+      "cpu_time_ns": 3509000,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::function_result_preserves_generator_final_character": {
+      "cpu_time_ns": 3376260,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::lib:topal_language::source::function_returns_fresh_character_generator": {
+      "cpu_time_ns": 3118940,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::function_transfers_custom_generator_result_to_caller": {
+      "cpu_time_ns": 3431900,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::generator_error_code_has_qualified_nominal_identity": {
+      "cpu_time_ns": 2540480,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::generator_overload_error_lists_available_inputs": {
+      "cpu_time_ns": 2489819,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::lib:topal_language::source::generator_parameter_transfers_linear_continuation": {
+      "cpu_time_ns": 3239840,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::generator_return_mismatch_reports_expected_and_found_classifiers": {
+      "cpu_time_ns": 2820720,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-language::lib:topal_language::source::inclusive_int_ranges_preserve_bounds_and_allow_empty_ranges": {
+      "cpu_time_ns": 2798420,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::increasing_int_recursion_executes_only_after_structural_proof": {
+      "cpu_time_ns": 5257720,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::int_modulo_is_euclidean_and_dynamic_zero_returns_error": {
+      "cpu_time_ns": 3901639,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::interface_implementations_require_exact_shapes": {
+      "cpu_time_ns": 2146719,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::list_containment_distinguishes_entry_sequence_and_subsequence": {
+      "cpu_time_ns": 3738200,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::list_containment_requires_compatible_classifiers": {
+      "cpu_time_ns": 2589580,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::list_entry_classifier_mismatch_is_precise": {
+      "cpu_time_ns": 2186380,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::list_generator_crosses_function_boundaries": {
+      "cpu_time_ns": 3869420,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::list_operations_reject_incompatible_classifiers": {
+      "cpu_time_ns": 2632760,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::list_remainder_must_be_a_list": {
+      "cpu_time_ns": 2158520,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::list_value_removal_preserves_retained_order": {
+      "cpu_time_ns": 3011620,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::list_value_removal_rejects_wrong_classifier": {
+      "cpu_time_ns": 2496479,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::lists_construct_compare_and_decompose": {
+      "cpu_time_ns": 5449860,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::loaded_modules_expose_only_published_members": {
+      "cpu_time_ns": 2921740,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::lower_uses_locale_independent_unicode_mapping": {
+      "cpu_time_ns": 2216840,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::matches_both_result_paths_exhaustively": {
+      "cpu_time_ns": 4112360,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::mutual_increasing_int_recursion_requires_one_direction_for_the_complete_cycle": {
+      "cpu_time_ns": 7293360,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::mutual_int_recursion_executes_only_when_every_cycle_edge_decreases": {
+      "cpu_time_ns": 8148720,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::named_character_generator_is_consumed_linearly": {
+      "cpu_time_ns": 2660019,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::named_generator_can_return_before_first_yield": {
+      "cpu_time_ns": 2807659,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::named_generator_returns_character_after_yields": {
+      "cpu_time_ns": 3036140,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-language::lib:topal_language::source::named_generator_yield_reads_local_binding": {
+      "cpu_time_ns": 3057300,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::named_numeric_negate_matches_exact_additive_inverse": {
+      "cpu_time_ns": 2593240,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::named_single_yield_generator_is_traversable": {
+      "cpu_time_ns": 3085139,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-language::lib:topal_language::source::nat_classifiers_accept_only_nonnegative_int_values": {
+      "cpu_time_ns": 2860600,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::nested_function_calls_preserve_staticness_and_detect_cycles": {
+      "cpu_time_ns": 3144080,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::nested_function_captures_outer_parameter_without_leaking": {
+      "cpu_time_ns": 3476399,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::nested_generator_crosses_function_boundaries": {
+      "cpu_time_ns": 5085980,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::optional_decisions_bind_only_present_payloads": {
+      "cpu_time_ns": 3228020,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::optional_decisions_consume_indexed_characters": {
+      "cpu_time_ns": 3457040,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-language::lib:topal_language::source::optional_equality_uses_nominal_payload_identity": {
+      "cpu_time_ns": 2936780,
+      "memory_peak_bytes": 17743872
+    },
+    "topal-language::lib:topal_language::source::optional_values_cross_matching_function_boundaries": {
+      "cpu_time_ns": 3015280,
+      "memory_peak_bytes": 17858560
+    },
+    "topal-language::lib:topal_language::source::ordinary_runtime_function_uses_ordinary_trace_rule": {
+      "cpu_time_ns": 2887639,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::overload_selection_uses_input_classifier_and_rejects_duplicate_signature": {
+      "cpu_time_ns": 3202560,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::proves_closed_mutual_increasing_nat_recursion": {
+      "cpu_time_ns": 6659180,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::proves_closed_mutual_nat_recursion": {
+      "cpu_time_ns": 6726660,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::proves_increasing_nat_recursion_with_positive_steps": {
+      "cpu_time_ns": 3964499,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-language::lib:topal_language::source::proves_nat_decrement_when_the_bound_prevents_overshoot": {
+      "cpu_time_ns": 3598740,
+      "memory_peak_bytes": 17612800
+    },
+    "topal-language::lib:topal_language::source::proves_unit_step_nat_recursion_without_overshoot": {
+      "cpu_time_ns": 4246100,
+      "memory_peak_bytes": 17743872
+    },
+    "topal-language::lib:topal_language::source::qualified_error_code_pattern_selects_without_using_domain": {
+      "cpu_time_ns": 3805220,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::source::rational_ranges_use_exact_canonical_conversion": {
+      "cpu_time_ns": 2910819,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::recursive_list_classifiers_cross_function_boundaries": {
+      "cpu_time_ns": 3745880,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::resolves_namespaced_arithmetic_error_codes_without_a_domain": {
+      "cpu_time_ns": 2282380,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::reused_character_generator_reports_consumption": {
+      "cpu_time_ns": 2847420,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::same_named_distinct_overloads_are_not_recursive": {
+      "cpu_time_ns": 3186020,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::static_function_body_uses_declaration_order_lexical_bindings": {
+      "cpu_time_ns": 2979560,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::static_product_function_binds_typed_parameters_in_order": {
+      "cpu_time_ns": 3097920,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::static_unary_function_binds_a_typed_local_parameter": {
+      "cpu_time_ns": 3099260,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::string_character_at_returns_optional_grapheme_clusters": {
+      "cpu_time_ns": 2791680,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::structured_error_fields_retain_code_type_and_domain_identity": {
+      "cpu_time_ns": 3204980,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::tests::adds_signed_arbitrary_precision_integers": {
+      "cpu_time_ns": 2228759,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::tests::advances_a_prepared_execution_one_statement_at_a_time": {
+      "cpu_time_ns": 2406299,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::tests::binds_packaged_function_operands_and_fills_field_defaults": {
+      "cpu_time_ns": 3016240,
+      "memory_peak_bytes": 17866752
+    },
+    "topal-language::lib:topal_language::source::tests::composes_only_adjacent_string_literals_implicitly": {
+      "cpu_time_ns": 2724700,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::tests::concatenates_plain_strings_without_normalizing_the_join": {
+      "cpu_time_ns": 2339460,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::source::tests::constructs_exact_rational_literals": {
+      "cpu_time_ns": 2252239,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::tests::constructs_external_layouts_ranges_offsets_and_locations": {
+      "cpu_time_ns": 3143180,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::source::tests::constructs_tasks_and_routes_stateful_message_transactions": {
+      "cpu_time_ns": 3807660,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::tests::constructs_the_unique_empty_plain_string": {
+      "cpu_time_ns": 2090119,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::tests::converts_int_for_mixed_exact_arithmetic": {
+      "cpu_time_ns": 2366160,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-language::lib:topal_language::source::tests::counts_prospective_utf8_bytes_without_normalizing": {
+      "cpu_time_ns": 2355439,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::tests::counts_unicode_user_perceived_characters": {
+      "cpu_time_ns": 2410140,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::tests::declaration_view_exposes_attached_documentation": {
+      "cpu_time_ns": 2564739,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::tests::derives_equality_for_records_with_the_same_shape": {
+      "cpu_time_ns": 2717460,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-language::lib:topal_language::source::tests::diagnostics_suggest_root_operations_and_the_concat_migration": {
+      "cpu_time_ns": 2712940,
+      "memory_peak_bytes": 17784832
+    },
+    "topal-language::lib:topal_language::source::tests::display_extends_colliding_string_tag": {
+      "cpu_time_ns": 2007640,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::tests::divides_to_canonical_rational": {
+      "cpu_time_ns": 2270140,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::tests::edit_distance_counts_unicode_scalars": {
+      "cpu_time_ns": 1681820,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::tests::evaluates_binding_and_lookup": {
+      "cpu_time_ns": 2263639,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::tests::evaluates_discard_without_introducing_a_binding": {
+      "cpu_time_ns": 2347619,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::tests::evaluates_exact_rational_arithmetic": {
+      "cpu_time_ns": 2427880,
+      "memory_peak_bytes": 17772544
+    },
+    "topal-language::lib:topal_language::source::tests::evaluates_labeled_record_products_in_field_order": {
+      "cpu_time_ns": 2393440,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::tests::evaluates_qualified_static_introspection": {
+      "cpu_time_ns": 2283600,
+      "memory_peak_bytes": 17821696
+    },
+    "topal-language::lib:topal_language::source::tests::evaluates_static_object_relations_without_runtime_reflection": {
+      "cpu_time_ns": 2331180,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::tests::exponentiation_uses_ordinary_left_association": {
+      "cpu_time_ns": 2338400,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::tests::exposes_lint_namespace_only_in_the_lint_variant": {
+      "cpu_time_ns": 2407480,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::tests::follows_left_association": {
+      "cpu_time_ns": 2196640,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-language::lib:topal_language::source::tests::multiplies_without_hidden_precedence": {
+      "cpu_time_ns": 2375180,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-language::lib:topal_language::source::tests::native_serialization_round_trips_numeric_and_collection_schemas": {
+      "cpu_time_ns": 2135440,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-language::lib:topal_language::source::tests::negates_and_subtracts_exact_integers": {
+      "cpu_time_ns": 2248740,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::tests::normalizes_plain_strings_to_nfc_explicitly": {
+      "cpu_time_ns": 2244979,
+      "memory_peak_bytes": 17616896
+    },
+    "topal-language::lib:topal_language::source::tests::normalizes_plain_strings_to_nfd_explicitly": {
+      "cpu_time_ns": 2361980,
+      "memory_peak_bytes": 17866752
+    },
+    "topal-language::lib:topal_language::source::tests::parentheses_group_addition": {
+      "cpu_time_ns": 2307260,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-language::lib:topal_language::source::tests::preserves_constructed_language_variant_features": {
+      "cpu_time_ns": 2282480,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::tests::preserves_ordinary_and_tagged_string_contents": {
+      "cpu_time_ns": 1971839,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-language::lib:topal_language::source::tests::raises_integer_to_natural_power_exactly": {
+      "cpu_time_ns": 2272580,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::tests::raises_rationals_to_natural_powers_exactly": {
+      "cpu_time_ns": 2468020,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::tests::rejects_incomplete_grouping": {
+      "cpu_time_ns": 2013100,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::tests::rejects_malformed_rational_literal": {
+      "cpu_time_ns": 1992260,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::tests::rejects_negative_integer_exponent": {
+      "cpu_time_ns": 2210500,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::tests::rejects_rational_zero_divisor": {
+      "cpu_time_ns": 2208719,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-language::lib:topal_language::source::tests::rejects_statically_evident_zero_divisor": {
+      "cpu_time_ns": 2159960,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::tests::renders_unicode_aligned_actionable_diagnostics": {
+      "cpu_time_ns": 2577879,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::source::tests::retains_explicit_function_effect_upper_bounds_for_static_views": {
+      "cpu_time_ns": 2368979,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::lib:topal_language::source::tests::selects_record_fields_without_resolving_the_label_as_a_name": {
+      "cpu_time_ns": 2630880,
+      "memory_peak_bytes": 17821696
+    },
+    "topal-language::lib:topal_language::source::tests::serializes_with_an_explicit_version_and_deserializes_validated_streams": {
+      "cpu_time_ns": 2926020,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-language::lib:topal_language::source::tests::string_entry_count_agrees_with_character_count": {
+      "cpu_time_ns": 2283339,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::source::tests::task_streams_follow_transactions_and_reacquire_current_state": {
+      "cpu_time_ns": 4234139,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-language::lib:topal_language::source::tests::task_termination_discards_events_and_fails_requests_in_task_domain": {
+      "cpu_time_ns": 3666540,
+      "memory_peak_bytes": 17862656
+    },
+    "topal-language::lib:topal_language::source::tests::tests_plain_string_emptiness": {
+      "cpu_time_ns": 2361680,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::lib:topal_language::source::uncons_is_total_for_empty_lists_and_rejects_other_values": {
+      "cpu_time_ns": 2361300,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-language::lib:topal_language::source::upper_uses_locale_independent_unicode_mapping": {
+      "cpu_time_ns": 2214439,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::source::validates_enum_function_parameters_and_results": {
+      "cpu_time_ns": 2932880,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::lib:topal_language::trace::tests::one_event_always_occupies_one_json_line": {
+      "cpu_time_ns": 1707999,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::lib:topal_language::trace::tests::stable_schema_is_shared_by_every_event": {
+      "cpu_time_ns": 1733819,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-language::lib:topal_language::trace::tests::trace_serialization_is_deterministic": {
+      "cpu_time_ns": 1720480,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::lib:topal_language::trace::tests::trace_strings_are_validly_escaped": {
+      "cpu_time_ns": 1747340,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-language::test:core_language_coverage::accepted_core_has_no_planned_rule_and_examples_explain_their_feature": {
+      "cpu_time_ns": 3279580,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-language::test:core_language_coverage::every_stable_specification_rule_has_a_completion_owner": {
+      "cpu_time_ns": 102008380,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-linter::lib:topal_linter::tests::accepted_candidate_replaces_the_complete_file_transactionally": {
+      "cpu_time_ns": 1707100,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-linter::lib:topal_linter::tests::applicability_tracks_each_selected_context_and_used_feature": {
+      "cpu_time_ns": 4560339,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-linter::lib:topal_linter::tests::applicability_uses_the_selected_source_language_version": {
+      "cpu_time_ns": 1974500,
+      "memory_peak_bytes": 17784832
+    },
+    "topal-linter::lib:topal_linter::tests::automatic_edits_are_ordered_and_review_required_edits_are_ignored": {
+      "cpu_time_ns": 1658520,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-linter::lib:topal_linter::tests::automatic_edits_reject_overlap_and_invalid_utf8_boundaries": {
+      "cpu_time_ns": 1572680,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-linter::lib:topal_linter::tests::deprecated_entries_are_off_by_default_but_remain_selectable": {
+      "cpu_time_ns": 1885160,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-linter::lib:topal_linter::tests::exact_identity_overrides_namespace_and_tag_regardless_of_order": {
+      "cpu_time_ns": 1874219,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-linter::lib:topal_linter::tests::in_memory_api_matches_shared_frontend_and_rule_diagnostics": {
+      "cpu_time_ns": 4744259,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-linter::lib:topal_linter::tests::in_memory_controls_share_selector_precedence_and_severity": {
+      "cpu_time_ns": 4455760,
+      "memory_peak_bytes": 17858560
+    },
+    "topal-linter::lib:topal_linter::tests::in_memory_engine_requires_explicit_noncolliding_external_catalogs": {
+      "cpu_time_ns": 3234780,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-linter::lib:topal_linter::tests::later_setting_wins_within_one_specificity": {
+      "cpu_time_ns": 1897740,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-linter::lib:topal_linter::tests::rectified_candidate_must_reparse_before_replacement": {
+      "cpu_time_ns": 1714440,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-linter::lib:topal_linter::tests::structured_source_control_suppresses_regardless_of_configured_severity": {
+      "cpu_time_ns": 5775480,
+      "memory_peak_bytes": 17928192
+    },
+    "topal-linter::lib:topal_linter::tests::topal_rule_decides_adjacent_phase_order": {
+      "cpu_time_ns": 4765920,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-linter::lib:topal_linter::tests::topal_rule_decides_whether_state_has_a_message_transition": {
+      "cpu_time_ns": 4750999,
+      "memory_peak_bytes": 17866752
+    },
+    "topal-linter::lib:topal_linter::tests::unsupported_read_only_view_revision_is_rejected_before_rule_execution": {
+      "cpu_time_ns": 1957220,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-linter::test:cli::accepts_clean_shared_language_source": {
+      "cpu_time_ns": 3970080,
+      "memory_peak_bytes": 17846272
+    },
+    "topal-linter::test:cli::accepts_the_standard_library_fundamental_sources": {
+      "cpu_time_ns": 45552320,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-linter::test:cli::aggregates_shared_diagnostics_as_sarif": {
+      "cpu_time_ns": 6336539,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-linter::test:cli::emits_shared_style_terminal_and_json_syntax_diagnostics": {
+      "cpu_time_ns": 5306999,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-linter::test:cli::explains_lifecycle_applicability_and_rule_attachment": {
+      "cpu_time_ns": 5563420,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-linter::test:cli::external_catalogs_are_explicit_and_cannot_replace_owned_identities": {
+      "cpu_time_ns": 3203919,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-linter::test:cli::lint_rule_admission_enforces_deterministic_resource_bounds": {
+      "cpu_time_ns": 10512660,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-linter::test:cli::lint_rule_module_cannot_acquire_debugger_authority": {
+      "cpu_time_ns": 3110740,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-linter::test:cli::lists_and_explains_the_built_in_catalog": {
+      "cpu_time_ns": 4840219,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-linter::test:cli::proposed_task_order_rule_is_off_by_default_and_configurable": {
+      "cpu_time_ns": 21260800,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-linter::test:cli::rejects_a_selector_that_matches_no_catalog_entry": {
+      "cpu_time_ns": 3011480,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-linter::test:cli::rule_entry_point_must_exist_and_be_static": {
+      "cpu_time_ns": 3122820,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-linter::test:cli::shared_task_order_example_conforms_when_the_proposed_rule_is_enabled": {
+      "cpu_time_ns": 7015100,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-linter::test:cli::source_suppression_uses_identity_instead_of_configured_severity": {
+      "cpu_time_ns": 5380820,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-linter::test:cli::topal_state_machine_rule_finds_state_without_a_message_transition": {
+      "cpu_time_ns": 10095419,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-linter::test:cli::validates_explicit_lint_variant_rule_modules": {
+      "cpu_time_ns": 5087760,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-lsp::lib:topal_lsp::tests::accepts_and_highlights_function_interfaces": {
+      "cpu_time_ns": 2407780,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-lsp::lib:topal_lsp::tests::accepts_the_standard_library_fundamental_sources": {
+      "cpu_time_ns": 42084140,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-lsp::lib:topal_lsp::tests::accepts_the_task_state_machine_lint_rule_module": {
+      "cpu_time_ns": 3001359,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-lsp::lib:topal_lsp::tests::accepts_yield_after_close_diagnostic_example_syntax": {
+      "cpu_time_ns": 2681879,
+      "memory_peak_bytes": 17743872
+    },
+    "topal-lsp::lib:topal_lsp::tests::applies_shared_lint_selector_and_severity_policy": {
+      "cpu_time_ns": 5742360,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-lsp::lib:topal_lsp::tests::change_replaces_content_and_close_clears_diagnostics": {
+      "cpu_time_ns": 2296639,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-lsp::lib:topal_lsp::tests::completes_debug_commands_only_in_the_debug_variant": {
+      "cpu_time_ns": 2741620,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-lsp::lib:topal_lsp::tests::completes_lint_namespace_only_in_the_lint_variant": {
+      "cpu_time_ns": 2968220,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-lsp::lib:topal_lsp::tests::completes_only_implemented_named_root_operations": {
+      "cpu_time_ns": 2225280,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-lsp::lib:topal_lsp::tests::every_interpreter_example_has_clean_diagnostics_and_highlighting": {
+      "cpu_time_ns": 221378580,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-lsp::lib:topal_lsp::tests::highlights_broad_unicode_identifiers_as_single_variables": {
+      "cpu_time_ns": 1899219,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-lsp::lib:topal_lsp::tests::highlights_function_declaration_words_as_keywords": {
+      "cpu_time_ns": 1636680,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-lsp::lib:topal_lsp::tests::highlights_return_as_a_keyword": {
+      "cpu_time_ns": 1835500,
+      "memory_peak_bytes": 17891328
+    },
+    "topal-lsp::lib:topal_lsp::tests::honors_structured_source_suppression_after_severity_policy": {
+      "cpu_time_ns": 4770839,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-lsp::lib:topal_lsp::tests::initializes_with_full_utf16_document_sync": {
+      "cpu_time_ns": 2367380,
+      "memory_peak_bytes": 17747968
+    },
+    "topal-lsp::lib:topal_lsp::tests::loads_only_explicit_external_lint_catalogs": {
+      "cpu_time_ns": 5320620,
+      "memory_peak_bytes": 17743872
+    },
+    "topal-lsp::lib:topal_lsp::tests::publishes_all_shared_syntax_diagnostics_with_utf16_ranges": {
+      "cpu_time_ns": 2312840,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-lsp::lib:topal_lsp::tests::publishes_duplicate_error_code_pattern_diagnostic": {
+      "cpu_time_ns": 2694600,
+      "memory_peak_bytes": 17752064
+    },
+    "topal-lsp::lib:topal_lsp::tests::publishes_explicitly_enabled_shared_lint_findings": {
+      "cpu_time_ns": 6298159,
+      "memory_peak_bytes": 17768448
+    },
+    "topal-lsp::lib:topal_lsp::tests::publishes_missing_error_code_alternatives": {
+      "cpu_time_ns": 2574600,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-lsp::lib:topal_lsp::tests::publishes_rule_after_otherwise_diagnostic": {
+      "cpu_time_ns": 2424359,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-lsp::lib:topal_lsp::tests::publishes_unreachable_error_code_pattern_diagnostic": {
+      "cpu_time_ns": 2647260,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-lsp::lib:topal_lsp::tests::rejects_malformed_lsp_lint_policy": {
+      "cpu_time_ns": 2030720,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-lsp::lib:topal_lsp::tests::rejects_unknown_lint_identity_during_initialization": {
+      "cpu_time_ns": 2341379,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-lsp::lib:topal_lsp::tests::rejects_unreadable_external_lint_catalog_path": {
+      "cpu_time_ns": 2230740,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-lsp::lib:topal_lsp::tests::returns_utf16_semantic_tokens_for_incomplete_unicode_source": {
+      "cpu_time_ns": 2434879,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-lsp::test:protocol::stdio_transcript_initializes_publishes_and_shuts_down": {
+      "cpu_time_ns": 4405840,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-semantics::lib:topal_semantics::introspection::tests::dependent_fields_remain_lossless": {
+      "cpu_time_ns": 1253260,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-semantics::lib:topal_semantics::introspection::tests::visible_scope_members_have_canonical_order": {
+      "cpu_time_ns": 1206140,
+      "memory_peak_bytes": 18010112
+    },
+    "topal-semantics::lib:topal_semantics::tests::capability_evidence_is_coherent_per_exact_subject": {
+      "cpu_time_ns": 1323760,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-semantics::lib:topal_semantics::tests::capability_trust_and_existential_elimination_preserve_evidence": {
+      "cpu_time_ns": 1231599,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-semantics::lib:topal_semantics::tests::compiler_memory_choices_refine_unobservable_semantics": {
+      "cpu_time_ns": 1293399,
+      "memory_peak_bytes": 17813504
+    },
+    "topal-semantics::lib:topal_semantics::tests::declarations_retain_source_order": {
+      "cpu_time_ns": 1267559,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-semantics::lib:topal_semantics::tests::dependency_schedules_are_canonical_and_reject_internal_cycles": {
+      "cpu_time_ns": 1315859,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-semantics::lib:topal_semantics::tests::effect_rows_compose_and_check_containment_canonically": {
+      "cpu_time_ns": 1335899,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-semantics::lib:topal_semantics::tests::effect_union_is_canonical_and_idempotent": {
+      "cpu_time_ns": 1249400,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-semantics::lib:topal_semantics::tests::generic_patterns_preserve_exact_substitutions": {
+      "cpu_time_ns": 1268920,
+      "memory_peak_bytes": 17743872
+    },
+    "topal-semantics::lib:topal_semantics::tests::interface_implementation_requires_exact_roles": {
+      "cpu_time_ns": 1273560,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-semantics::lib:topal_semantics::tests::language_versions_expand_and_order_canonically": {
+      "cpu_time_ns": 1233600,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-semantics::lib:topal_semantics::tests::layout_codecs_check_rights_endian_and_malformed_input": {
+      "cpu_time_ns": 1259700,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-semantics::lib:topal_semantics::tests::locations_separate_resources_and_validate_events": {
+      "cpu_time_ns": 1307840,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-semantics::lib:topal_semantics::tests::memory_execution_requires_order_for_conflicts": {
+      "cpu_time_ns": 1336439,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-semantics::lib:topal_semantics::tests::nominal_and_structural_identity_remain_distinct": {
+      "cpu_time_ns": 1215439,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-semantics::lib:topal_semantics::tests::predicate_is_the_only_subkind": {
+      "cpu_time_ns": 1198780,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-semantics::lib:topal_semantics::tests::recursive_layouts_validate_structure_and_boundaries": {
+      "cpu_time_ns": 1271759,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-semantics::lib:topal_semantics::tests::requests_reply_once_and_streams_preserve_order": {
+      "cpu_time_ns": 1280119,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-semantics::lib:topal_semantics::tests::resource_moves_retain_one_obligation_and_cleanup_once": {
+      "cpu_time_ns": 1300419,
+      "memory_peak_bytes": 17756160
+    },
+    "topal-semantics::lib:topal_semantics::tests::task_cancellation_closes_children_before_parent": {
+      "cpu_time_ns": 1270680,
+      "memory_peak_bytes": 18010112
+    },
+    "topal-semantics::lib:topal_semantics::tracing::tests::observers_may_recognize_stateful_lifecycles": {
+      "cpu_time_ns": 1227419,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-semantics::lib:topal_semantics::tracing::tests::operators_share_function_events": {
+      "cpu_time_ns": 1240860,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-semantics::lib:topal_semantics::tracing::tests::profiles_have_canonical_names": {
+      "cpu_time_ns": 1210139,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-serialization::lib:topal_serialization::tests::arbitrary_integers_round_trip_canonically_and_reject_nonminimal_forms": {
+      "cpu_time_ns": 1427200,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-serialization::lib:topal_serialization::tests::canonical_stream_has_stable_golden_bytes_and_round_trips": {
+      "cpu_time_ns": 1420280,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-serialization::lib:topal_serialization::tests::configured_nesting_limit_precedes_recursive_value_allocation": {
+      "cpu_time_ns": 1375360,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-serialization::lib:topal_serialization::tests::described_values_are_structurally_checked_instead_of_accepted_as_frame_bytes": {
+      "cpu_time_ns": 1352680,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-serialization::lib:topal_serialization::tests::every_protocol_kind_is_preserved_as_a_safe_description": {
+      "cpu_time_ns": 1551880,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-serialization::lib:topal_serialization::tests::every_truncated_prefix_and_nonminimal_varint_is_rejected_without_panic": {
+      "cpu_time_ns": 1720760,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-serialization::lib:topal_serialization::tests::limits_and_trailing_bytes_fail_before_exposure": {
+      "cpu_time_ns": 1401560,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-serialization::lib:topal_serialization::tests::malformed_and_unsupported_headers_are_distinct": {
+      "cpu_time_ns": 1368940,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-serialization::lib:topal_serialization::tests::physical_chunk_boundaries_do_not_change_stream_decoding": {
+      "cpu_time_ns": 2571759,
+      "memory_peak_bytes": 17600512
+    },
+    "topal-serialization::lib:topal_serialization::tests::rational_and_collection_descriptions_enforce_canonical_values": {
+      "cpu_time_ns": 1438640,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-serialization::lib:topal_serialization::tests::unknown_count_streams_end_only_at_the_zero_frame_terminator": {
+      "cpu_time_ns": 1441680,
+      "memory_peak_bytes": 17862656
+    },
+    "topal-serialization::lib:topal_serialization::tests::variant_types_round_trip_and_integers_cannot_be_truncated": {
+      "cpu_time_ns": 1377940,
+      "memory_peak_bytes": 17866752
+    },
+    "topal-source::lib:topal_source::tests::applies_default_unicode_lowercase_mapping": {
+      "cpu_time_ns": 1141679,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-source::lib:topal_source::tests::applies_default_unicode_uppercase_mapping": {
+      "cpu_time_ns": 1187039,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-source::lib:topal_source::tests::applies_full_default_unicode_case_folding": {
+      "cpu_time_ns": 1197220,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-source::lib:topal_source::tests::compares_canonical_unicode_equivalence": {
+      "cpu_time_ns": 1206440,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-source::lib:topal_source::tests::counts_user_perceived_characters": {
+      "cpu_time_ns": 1185040,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-source::lib:topal_source::tests::decomposes_preserved_text_explicitly": {
+      "cpu_time_ns": 1182680,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-source::lib:topal_source::tests::exposes_pinned_unicode_17_tables": {
+      "cpu_time_ns": 1231520,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-source::lib:topal_source::tests::normalizes_and_maps_unicode_positions": {
+      "cpu_time_ns": 1230000,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-source::lib:topal_source::tests::normalizes_preserved_text_explicitly": {
+      "cpu_time_ns": 1209200,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-source::lib:topal_source::tests::rejects_bare_carriage_return": {
+      "cpu_time_ns": 1202380,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-source::lib:topal_source::tests::selects_extended_grapheme_clusters": {
+      "cpu_time_ns": 1201760,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-source::lib:topal_source::tests::shared_diagnostic_renders_rust_style_source_context": {
+      "cpu_time_ns": 1204200,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-source::lib:topal_source::tests::shared_diagnostic_retains_best_practice_provenance": {
+      "cpu_time_ns": 1197840,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-source::lib:topal_source::tests::traverses_extended_grapheme_clusters_in_order": {
+      "cpu_time_ns": 1200219,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-syntax::lib:topal_syntax::documentation::tests::attaches_blocks_to_declarations_and_parameters": {
+      "cpu_time_ns": 1429639,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::accepts_complete_closed_arithmetic_error_code_set": {
+      "cpu_time_ns": 1969880,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::distinguishes_grouping_and_positional_products": {
+      "cpu_time_ns": 1335319,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::distinguishes_ordinary_and_static_function_headers": {
+      "cpu_time_ns": 1442300,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::duplicate_arithmetic_error_code_pattern_is_rejected": {
+      "cpu_time_ns": 1758239,
+      "memory_peak_bytes": 17743872
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::error_code_pattern_after_generic_fallback_is_rejected": {
+      "cpu_time_ns": 1675299,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::ignores_newlines_inside_parentheses": {
+      "cpu_time_ns": 1292659,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::incomplete_arithmetic_error_decision_lists_missing_codes": {
+      "cpu_time_ns": 1663239,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::malformed_source_corpus_never_panics": {
+      "cpu_time_ns": 1383559,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_a_body_calling_a_later_function_declaration": {
+      "cpu_time_ns": 1429540,
+      "memory_peak_bytes": 17596416
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_a_multi_statement_function_body": {
+      "cpu_time_ns": 1456160,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_balanced_diagnostic_controls": {
+      "cpu_time_ns": 1820160,
+      "memory_peak_bytes": 17883136
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_brand_neutral_language_selection": {
+      "cpu_time_ns": 1467500,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_classified_binding": {
+      "cpu_time_ns": 1354000,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_classified_foreach_result_binding": {
+      "cpu_time_ns": 1423780,
+      "memory_peak_bytes": 17874944
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_comparison_decision_matcher": {
+      "cpu_time_ns": 1499920,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_complete_boolean_decision_table": {
+      "cpu_time_ns": 1452740,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_complete_comparison_operand_before_then": {
+      "cpu_time_ns": 1475060,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_compound_generator_function_classifiers": {
+      "cpu_time_ns": 2302440,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_contextual_anonymous_list_functions": {
+      "cpu_time_ns": 1625980,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_exhaustive_boolean_decision_without_otherwise": {
+      "cpu_time_ns": 1438440,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_explicit_generator_return": {
+      "cpu_time_ns": 1519720,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_explicit_return_as_a_function_statement": {
+      "cpu_time_ns": 1386359,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_foreach_result_binding": {
+      "cpu_time_ns": 1394360,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_function_interface_shapes_without_bodies": {
+      "cpu_time_ns": 1374139,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_list_construction_and_total_decomposition": {
+      "cpu_time_ns": 2242620,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_list_generator_function_classifiers": {
+      "cpu_time_ns": 1990360,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_multi_input_generator_declaration": {
+      "cpu_time_ns": 1564120,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_multiple_typed_static_function_parameters": {
+      "cpu_time_ns": 1414780,
+      "memory_peak_bytes": 17756160
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_mutually_recursive_function_declarations": {
+      "cpu_time_ns": 1598080,
+      "memory_peak_bytes": 17866752
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_named_generator_declaration": {
+      "cpu_time_ns": 1525420,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_nested_function_declaration_in_body": {
+      "cpu_time_ns": 1509280,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_nested_generator_function_classifiers": {
+      "cpu_time_ns": 2911040,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_nested_optional_generator_classifiers": {
+      "cpu_time_ns": 1931120,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_one_typed_static_function_parameter": {
+      "cpu_time_ns": 1420080,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_optional_generator_classifiers": {
+      "cpu_time_ns": 1487980,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_payload_unions_and_positional_variants": {
+      "cpu_time_ns": 2317480,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_product_generator_classifiers": {
+      "cpu_time_ns": 1555260,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_qualified_error_code_decision_matcher": {
+      "cpu_time_ns": 1526860,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_qualified_generator_error_code_pattern": {
+      "cpu_time_ns": 1644999,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_recursive_list_classifiers": {
+      "cpu_time_ns": 1912160,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_result_generator_classifiers": {
+      "cpu_time_ns": 1803659,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_static_nullary_function_with_indented_body": {
+      "cpu_time_ns": 1393260,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::parses_the_zero_field_product_as_unit": {
+      "cpu_time_ns": 1287900,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::preserves_language_variant_features": {
+      "cpu_time_ns": 1415779,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::preserves_named_enum_decision_matchers": {
+      "cpu_time_ns": 1461900,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::preserves_publication_on_declarations": {
+      "cpu_time_ns": 1361959,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::preserves_structural_higher_order_generic_classifiers": {
+      "cpu_time_ns": 1459300,
+      "memory_peak_bytes": 17879040
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::recovers_incomplete_binding": {
+      "cpu_time_ns": 1326060,
+      "memory_peak_bytes": 17887232
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::rejects_boolean_literal_as_a_binding_name": {
+      "cpu_time_ns": 1298639,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::rejects_more_than_two_function_operands": {
+      "cpu_time_ns": 1408060,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::rejects_products_that_mix_positional_and_labeled_fields": {
+      "cpu_time_ns": 1337899,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::rejects_publication_on_expressions": {
+      "cpu_time_ns": 1325659,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::rejects_unbalanced_diagnostic_controls": {
+      "cpu_time_ns": 1475199,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::requires_matching_structured_diagnostic_identities": {
+      "cpu_time_ns": 1514620,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::retains_generic_application_order": {
+      "cpu_time_ns": 1290840,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::retains_incomplete_application_for_semantic_recovery": {
+      "cpu_time_ns": 1324620,
+      "memory_peak_bytes": 17936384
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::retains_incomplete_parentheses_for_recovery": {
+      "cpu_time_ns": 1342459,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::retains_labels_on_record_product_fields": {
+      "cpu_time_ns": 1348919,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::retains_named_and_prefix_application_terms": {
+      "cpu_time_ns": 1335140,
+      "memory_peak_bytes": 17911808
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::retains_packaged_operand_fields_and_defaults": {
+      "cpu_time_ns": 1406339,
+      "memory_peak_bytes": 18006016
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::retains_same_line_and_continued_function_effect_bounds": {
+      "cpu_time_ns": 1446879,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::retains_task_implementation_state_handlers_and_context_assignment": {
+      "cpu_time_ns": 1551280,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::rule_after_otherwise_is_rejected": {
+      "cpu_time_ns": 1432260,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::tests::accepts_printable_symbols_anywhere_in_identifiers": {
+      "cpu_time_ns": 1367300,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::tests::covers_every_source_byte": {
+      "cpu_time_ns": 1314299,
+      "memory_peak_bytes": 18120704
+    },
+    "topal-syntax::lib:topal_syntax::tests::distinguishes_rational_literals_from_operators_and_based_digits": {
+      "cpu_time_ns": 1306519,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-syntax::lib:topal_syntax::tests::distinguishes_signed_literal_from_prefix_minus": {
+      "cpu_time_ns": 1289700,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-syntax::lib:topal_syntax::tests::longest_matches_exact_ordering_symbols": {
+      "cpu_time_ns": 1287059,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::tests::preserves_trivia_and_symbolic_application": {
+      "cpu_time_ns": 1280919,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-syntax::lib:topal_syntax::tests::recognizes_only_complete_delimited_operator_spellings": {
+      "cpu_time_ns": 1436160,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-syntax::lib:topal_syntax::tests::rejects_identifiers_beginning_with_unicode_decimal_digits": {
+      "cpu_time_ns": 1243539,
+      "memory_peak_bytes": 17928192
+    },
+    "topal-syntax::lib:topal_syntax::tests::rejects_non_nfc_identifier_and_literal_tag_but_preserves_contents": {
+      "cpu_time_ns": 1318339,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::tests::reserves_complete_boolean_literal_spellings": {
+      "cpu_time_ns": 1280699,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-syntax::lib:topal_syntax::tests::reserves_the_complete_discard_spelling": {
+      "cpu_time_ns": 1292899,
+      "memory_peak_bytes": 17940480
+    },
+    "topal-syntax::lib:topal_syntax::tests::retains_unterminated_string_for_recovery": {
+      "cpu_time_ns": 1275540,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::tests::selects_the_declared_inequality_symbol_as_one_token": {
+      "cpu_time_ns": 1285259,
+      "memory_peak_bytes": 17944576
+    },
+    "topal-syntax::lib:topal_syntax::tests::tokenizes_exact_storage_size_suffixes": {
+      "cpu_time_ns": 1368820,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::tests::tokenizes_function_result_arrow_as_one_symbol": {
+      "cpu_time_ns": 1294380,
+      "memory_peak_bytes": 17805312
+    },
+    "topal-syntax::lib:topal_syntax::tests::tokenizes_fundamental_equality_as_a_callable_symbol": {
+      "cpu_time_ns": 1307839,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-syntax::lib:topal_syntax::tests::tokenizes_inclusive_range_as_one_callable": {
+      "cpu_time_ns": 1282140,
+      "memory_peak_bytes": 17948672
+    },
+    "topal-syntax::lib:topal_syntax::tests::tokenizes_ordinary_tagged_and_multiline_strings_losslessly": {
+      "cpu_time_ns": 1296459,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-syntax::lib:topal_syntax::tests::tokenizes_parameter_classifier_colon": {
+      "cpu_time_ns": 1341160,
+      "memory_peak_bytes": 17801216
+    },
+    "topal-syntax::lib:topal_syntax::tests::tokenizes_percent_as_modulo_callable": {
+      "cpu_time_ns": 1268659,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-syntax::lib:topal_syntax::tests::tokenizes_slash_percent_as_one_callable": {
+      "cpu_time_ns": 1254839,
+      "memory_peak_bytes": 17797120
+    },
+    "topal-syntax::lib:topal_syntax::tests::tokenizes_three_way_comparison_as_one_callable": {
+      "cpu_time_ns": 1286560,
+      "memory_peak_bytes": 17870848
+    }
+  }
+}
