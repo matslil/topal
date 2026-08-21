@@ -14,7 +14,7 @@ authority are normative in
 | Phase | Contract/specification | Implementation evidence | Required verification | Status |
 | --- | --- | --- | --- | --- |
 | 1. Boundaries | `TOPAL-TRANSFER-PACKAGE-001`–`005` | package ownership and this matrix | link, traceability, and closure-gate tests | implemented |
-| 2. Endpoint foundation | endpoint, capability, protocol, service identity | `transfer` reference endpoint and request/reply | state and binding equivalence | pending |
+| 2. Endpoint foundation | `TOPAL-TRANSFER-ENDPOINT-001`, `SERVICE-001`, `PROTOCOL-001`, `MESSAGE-001` | `topal-transfer` reference endpoint and request/reply | capability confinement, state, boundary, and backpressure tests | implemented |
 | 3. Completion | operation identity, cancellation, timeout, retry | deterministic scheduler queues | exhaustive transition model | pending |
 | 4. Regions | ownership, span, alignment, scatter/gather | `data` reference regions | boundary and ownership tests | pending |
 | 5. Views | validated evidence and invalidation | `data` nested views | malformed and mutation dependency tests | pending |
@@ -52,4 +52,3 @@ A machine-readable row disposition shall eventually be one of `implemented`,
 Until that gate is implemented in phase 1 follow-through, every `pending` row
 above blocks release. Changing a status by editing this table alone does not
 satisfy the gate.
-

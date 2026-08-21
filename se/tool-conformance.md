@@ -28,6 +28,7 @@ applicable to the interpreter and debugger.
 | `spec/concurrency-model.md` | shared | not-applicable | shared | shared | `topal-semantics`; task source tests; contained task-rule views; reversible message tests |
 | `spec/containers.md` | direct | shared | shared | shared | `topal-language`; cross-tool source corpora |
 | `spec/data-transfer-packages.md` | boundary | shared | shared | boundary | explicit host-capability boundary; package source corpora; debugger replay boundary |
+| `spec/data-transfers.md` | direct | shared | shared | shared | `topal-transfer` reference protocols and cross-tool package corpus |
 | `spec/debugger-scripting.md` | not-applicable | shared | not-applicable | direct | `topal-debugger`; debugger scripts; LSP debug-variant completion tests |
 | `spec/decisions.md` | direct | shared | shared | shared | `topal-syntax`; `topal-language`; cross-tool source corpora |
 | `spec/diagnostics.md` | shared | direct | direct | shared | `topal-source`; tool adapter and functional suites |
