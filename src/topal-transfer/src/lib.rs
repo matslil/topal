@@ -11,6 +11,7 @@ pub mod native;
 pub mod network;
 pub mod operation;
 pub mod region;
+pub mod store;
 pub mod transport;
 pub mod view;
 

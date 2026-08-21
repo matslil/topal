@@ -123,3 +123,11 @@ UDP bindings shall preserve datagram boundaries and their delivery limits. TCP
 bindings shall expose ordered partial transfer, backpressure, half-close, and
 reset. Binding the same typed service to local messages, IPv4, or IPv6 shall
 preserve service values while retaining transport-specific observations.
+
+### TOPAL-STORE-FOUNDATION-001 — Store identity and change
+
+A store shall keep object identity distinct from names and query expressions.
+Lookup, insertion, replacement, removal, schema-specific query, and change
+subscription shall require explicit capabilities. Change delivery shall be
+ordered according to its declared relation and bounded by explicit
+backpressure.
