@@ -131,3 +131,11 @@ Lookup, insertion, replacement, removal, schema-specific query, and change
 subscription shall require explicit capabilities. Change delivery shall be
 ordered according to its declared relation and bounded by explicit
 backpressure.
+
+### TOPAL-STORE-TRANSACTION-001 — Guarantees and uncertain commit
+
+Transactions shall declare their isolation, consistency, durability, placement,
+and replication requirements. An adapter shall conservatively reject a
+requirement it cannot demonstrate. A lost completion after possible commit
+shall report uncertain outcome rather than abort or success, and retry shall
+require transaction or deduplication identity.

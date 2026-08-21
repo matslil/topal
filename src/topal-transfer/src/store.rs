@@ -59,6 +59,77 @@ pub enum StoreFailure {
     Uncertain,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Consistency {
+    Serializable,
+    Snapshot,
+    Causal,
+    Eventual,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Durability {
+    Volatile,
+    Process,
+    Device,
+    Replicated(u8),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Guarantees {
+    pub consistency: Consistency,
+    pub durability: Durability,
+}
+
+impl Guarantees {
+    #[must_use]
+    pub const fn satisfies(self, required: Self) -> bool {
+        let consistency = self.consistency as u8 <= required.consistency as u8;
+        let durability = match (self.durability, required.durability) {
+            (Durability::Replicated(actual), Durability::Replicated(required)) => {
+                actual >= required
+            }
+            (actual, required) => durability_rank(actual) >= durability_rank(required),
+        };
+        consistency && durability
+    }
+}
+
+const fn durability_rank(value: Durability) -> u8 {
+    match value {
+        Durability::Volatile => 0,
+        Durability::Process => 1,
+        Durability::Device => 2,
+        Durability::Replicated(_) => 3,
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CommitObservation {
+    Committed,
+    Conflict,
+    Aborted,
+    Uncertain,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum InjectedFault {
+    None,
+    Conflict,
+    LoseCompletionAfterCommit,
+    Abort,
+}
+
+#[must_use]
+pub const fn commit_with_fault(fault: InjectedFault) -> CommitObservation {
+    match fault {
+        InjectedFault::None => CommitObservation::Committed,
+        InjectedFault::Conflict => CommitObservation::Conflict,
+        InjectedFault::LoseCompletionAfterCommit => CommitObservation::Uncertain,
+        InjectedFault::Abort => CommitObservation::Aborted,
+    }
+}
+
 pub trait QueryStore<Query> {
     type Row;
     type Failure;
@@ -81,5 +152,21 @@ mod tests {
             store.next_change(),
             Some(Change::Inserted(_, "value"))
         ));
+    }
+    #[test]
+    fn guarantees_do_not_silently_strengthen_and_lost_commit_is_uncertain() {
+        let weak = Guarantees {
+            consistency: Consistency::Eventual,
+            durability: Durability::Volatile,
+        };
+        let strong = Guarantees {
+            consistency: Consistency::Serializable,
+            durability: Durability::Device,
+        };
+        assert!(!weak.satisfies(strong));
+        assert_eq!(
+            commit_with_fault(InjectedFault::LoseCompletionAfterCommit),
+            CommitObservation::Uncertain
+        );
     }
 }
