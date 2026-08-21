@@ -29,7 +29,7 @@ authority are normative in
 | 14. Databases | `TOPAL-STORE-DATABASE-001` | prepared operation and schema-checked row boundary | parameter and row mismatch tests | implemented |
 | 15. Devices | `TOPAL-DEVICE-CONTROLLER-001` | bounded virtual controller and explicit DMA requirements | alignment, removal, and ownership tests | implemented |
 | 16. I2C | `TOPAL-DEVICE-I2C-001` | deterministic virtual bus and Linux `I2C_RDWR` adapter | combined sensor read, NACK, address, and transfer-limit tests | implemented |
-| 17. Firewall | bounded-copy mutation and offload | nested-view firewall scenario | differential and resource baselines | pending |
+| 17. Firewall | `TOPAL-DATA-OFFLOAD-001` | Ethernet/IPv4 firewall with checksum substitution and copy trace | software/offload differential and zero-payload-copy tests | implemented |
 | 18. Audit | compatibility and terminal dispositions | all supported platform adapters | complete conformance and audit suite | pending |
 
 ## Architecture scenario closure
