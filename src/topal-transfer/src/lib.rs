@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 pub mod operation;
+pub mod region;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 

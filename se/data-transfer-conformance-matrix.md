@@ -16,7 +16,7 @@ authority are normative in
 | 1. Boundaries | `TOPAL-TRANSFER-PACKAGE-001`–`005` | package ownership and this matrix | link, traceability, and closure-gate tests | implemented |
 | 2. Endpoint foundation | `TOPAL-TRANSFER-ENDPOINT-001`, `SERVICE-001`, `PROTOCOL-001`, `MESSAGE-001` | `topal-transfer` reference endpoint and request/reply | capability confinement, state, boundary, and backpressure tests | implemented |
 | 3. Completion | `TOPAL-TRANSFER-OPERATION-001`, `CANCEL-001`, `BACKPRESSURE-001`, `RETRY-001` | deterministic `operation::Scheduler` | cancellation race, completion order, bounds, and retry tests | implemented |
-| 4. Regions | ownership, span, alignment, scatter/gather | `data` reference regions | boundary and ownership tests | pending |
+| 4. Regions | `TOPAL-DATA-REGION-001`, `SCATTER-001` | `region::{Region, Span, ScatterGather}` | overflow, bounds, alignment, and no-copy tests | implemented |
 | 5. Views | validated evidence and invalidation | `data` nested views | malformed and mutation dependency tests | pending |
 | 6. Adapters | sequence, message, framing, datagram | `transfer` codecs and queues | chunking, bounds, backpressure | pending |
 | 7. Virtual host | host ABI, capability injection, replay | deterministic host backend and tool boundaries | denial and replay tests | pending |

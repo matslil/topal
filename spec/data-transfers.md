@@ -56,3 +56,16 @@ and shall not be inferred from submission order.
 Automatic retry of an operation which may have performed an effect shall be
 rejected unless idempotence, deduplication, or transaction identity establishes
 equivalent behavior. A timeout alone shall not provide that evidence.
+
+### TOPAL-DATA-REGION-001 — Owned regions and checked spans
+
+A region shall own or explicitly retain its element storage. Every span shall
+be checked against overflow and the exact region bound before access. Shared
+immutable spans may overlap; mutation shall require unique authority over the
+affected span.
+
+### TOPAL-DATA-SCATTER-001 — Scatter/gather descriptions
+
+A scatter/gather value shall describe an ordered collection of checked spans
+without copying their payload. Alignment, pinning, addressability, and external
+lifetime requirements shall be validated before a host substitution uses it.
