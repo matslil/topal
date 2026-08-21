@@ -30,7 +30,7 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-REQ-TRACE-001` | all stable `TOPAL-*` specification rules |
 | `TOPAL-REQ-SHARED-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-UNICODE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-INDENT-001`, `TOPAL-SYN-GRAMMAR-001` |
 | `TOPAL-REQ-BEST-PRACTICE-001` | `TOPAL-BEST-PRACTICE-IDENTITY-001`, `TOPAL-BEST-PRACTICE-STATUS-001`, `TOPAL-BEST-PRACTICE-CLASS-001`, `TOPAL-BEST-PRACTICE-APPLICABILITY-001`, `TOPAL-BEST-PRACTICE-GENERATED-001` |
-| `TOPAL-REQ-LINT-001` | staged by `src/topal-linter/se-requirements.md`; formal lint execution rules follow implementation |
+| `TOPAL-REQ-LINT-001` | `TOPAL-BEST-PRACTICE-IDENTITY-001` through `TOPAL-BEST-PRACTICE-RECTIFICATION-001`, `TOPAL-DIAG-MODEL-001`, `TOPAL-DIAG-ADAPTER-001`, `TOPAL-SYN-CONTEXT-001`, `TOPAL-SYN-DIAG-001` |
 
 ## Maintenance rules
 
@@ -48,11 +48,13 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-INTP-MODE-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-NUM-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-MODE-002` | `TOPAL-SYN-NUM-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-MODE-003` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-NUM-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
+| `TOPAL-INTP-LIBRARY-GENERICS-001` | `TOPAL-FUNCTION-CAPABILITY-GENERIC-001`, `TOPAL-LIB-SOURCE-001`, `TOPAL-LIB-ORDERING-001` | generic standard-library cross-tool application tests | `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-SUBSET-001` | `TOPAL-SYN-GRAMMAR-001`, `TOPAL-REQ-TOOLS-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
 | `TOPAL-INTP-SUBSET-002` | `TOPAL-SYN-BIND-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
 | `TOPAL-INTP-SUBSET-003` | `TOPAL-SYN-NUM-001`, `TOPAL-NUM-LITERAL-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language` |
 | `TOPAL-REQ-SHARED-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-GRAMMAR-001` | unit tests in `topal-source` and `topal-syntax` | `topal-source`, `topal-syntax` |
 | `TOPAL-BEST-PRACTICE-TOOL-001` through `TOPAL-BEST-PRACTICE-TOOL-003` | `TOPAL-BEST-PRACTICE-IDENTITY-001`, `TOPAL-BEST-PRACTICE-STATUS-001`, `TOPAL-BEST-PRACTICE-CLASS-001`, `TOPAL-BEST-PRACTICE-APPLICABILITY-001`, `TOPAL-BEST-PRACTICE-GENERATED-001` | `topal-best-practices` unit tests and repository catalog check | `topal-best-practices` |
+| `TOPAL-BEST-PRACTICE-TOOL-002` | `TOPAL-BEST-PRACTICE-GENERATED-001` | deterministic projection and stale-projection tests | `topal-best-practices` |
 | `TOPAL-LINT-CATALOG-001` (catalog loading and policy precedence foundation), `TOPAL-LINT-DIAGNOSTIC-001` (shared source/syntax diagnostics) | `TOPAL-DIAG-MODEL-001`, `TOPAL-DIAG-ADAPTER-001`, catalog schema and shared source/syntax rules | `topal-source` diagnostic model tests; `src/topal-linter/tests/cli.rs` and `topal-linter` unit tests | `topal-best-practices`, `topal-source`, `topal-syntax`, `topal-language`, `topal-linter` |
 | `TOPAL-LINT-CATALOG-001` (versioned rule attachment), `TOPAL-LINT-DIAGNOSTIC-001` (best-practice identity and rule version) | `TOPAL-BEST-PRACTICE-GENERATED-001`, `TOPAL-TASK-DEFINITION-001`, `TOPAL-TASK-LIFECYCLE-001` | linter unit and CLI tests; interpreter and scripted debugger corpus tests; `examples/language/task-declaration-order.t`, `examples/linter/task-declaration-order-rule.t` | `topal-best-practices` authenticated embedded rule projection; `topal-linter` contained Topal execution |
 | `TOPAL-LINT-CATALOG-001` (lifecycle applicability) | `TOPAL-BEST-PRACTICE-STATUS-001`, `TOPAL-BEST-PRACTICE-APPLICABILITY-001` | catalog lifecycle validation and linter policy/applicability unit tests | `topal-best-practices` runtime catalog validation; `topal-linter` lifecycle policy |
@@ -130,15 +132,14 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-INTP-EXAMPLE-001` | implemented `TOPAL-SYN-*`, `TOPAL-TYPE-*`, and `TOPAL-NUM-*` subset rules | `examples/language/*.t` via `src/topal-interpreter/tests/cli.rs` | `topal-interpreter` |
 | `TOPAL-LSP-FEATURE-001` | `TOPAL-REQ-SHARED-001` and each implemented feature rule | `examples/language/*.t` via unit tests in `topal-lsp` | `topal-source`, `topal-syntax`, `topal-lsp` |
 
-The approved source-debugger requirements are staged for implementation in
-`src/topal-debugger/se-requirements.md`. Their functional-evidence and
-implementation entries shall be added incrementally when the corresponding
-debugger capabilities land; `TOPAL-DEBUG-MESSAGE-001` remains intentionally
-pending until message passing exists in the shared execution machine.
+The approved source-debugger requirements are implemented through the shared
+deterministic execution machine and the scripted debugger adapter. The entries
+below record their functional evidence, including message-transaction stepping.
 
 | Tool requirement | Specification rules | Functional evidence | Implementation |
 | --- | --- | --- | --- |
 | `TOPAL-DEBUG-EXEC-001`, `TOPAL-DEBUG-TRACE-001` | implemented semantic trace rule IDs | unit tests in `topal-language`; `examples/debugger/basic-history.t` | `topal-language::ExecutionHistory` |
+| `TOPAL-DEBUG-LIBRARY-001`, `TOPAL-DEBUG-EXAMPLE-001` | `TOPAL-LIB-SOURCE-001`, implemented source-language rules | shared library and language example corpus smoke tests; focused scripted scenarios | `topal-language`, `topal-debugger` |
 | `TOPAL-DEBUG-CONTROL-001` (transition navigation foundation) | implemented semantic trace rule IDs | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.t` | `topal-debugger` |
 | `TOPAL-DEBUG-MODE-001` | debugger command contract | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.debug` | `topal-debugger` |
 | `TOPAL-DEBUG-MODE-001` (debug language variant) | `TOPAL-DEBUG-LANGUAGE-001`, `TOPAL-DEBUG-COMMAND-001`, `TOPAL-SYN-CONTEXT-001` | `src/topal-debugger/tests/cli.rs`; `examples/debugger/basic-history.debug` | `topal-syntax`, `topal-debugger`, `topal-lsp` |
@@ -399,6 +400,7 @@ pending until message passing exists in the shared execution machine.
 | optional standard-library substitutions | `TOPAL-LIB-SUBSTITUTION-001`, `TOPAL-GIR-ID-001` | executable laws in `library/testing/laws.t`; GEIR structural-identity tests | `topal-geir`, future compiler backend |
 | fundamental-library completion audit | completion layers 1–14 in `se/fundamental-standard-library-completion.md` | implemented-or-deliberately-omitted matrix; exact fold reference laws; complete cross-tool application | human review, `topal-language`, `topal-interpreter`, `topal-debugger`, `topal-geir` |
 | source declaration documentation | `TOPAL-DOC-LEX-001`, `TOPAL-DOC-ATTACH-001`, `TOPAL-DOC-TARGET-001`, `TOPAL-DOC-VIEW-001`, `TOPAL-DOC-GENERATE-001`, `TOPAL-DOC-BUILTIN-001`, `TOPAL-DEBUG-HELP-001` | syntax attachment tests; declaration-view test; `topal-doc` explicit/shallow/recursive/built-in tests; documented `library/std.t` corpus; scripted debugger help test | `topal-syntax`, `topal-language`, `topal-doc`, `topal-debugger`, `topal-lsp` |
+| `TOPAL-DOC-INPUT-001`, `TOPAL-DOC-RST-001`, `TOPAL-DOC-LANG-001` | `TOPAL-DOC-GENERATE-001`, `TOPAL-DOC-BUILTIN-001` | `src/topal-doc/tests/cli.rs` | `topal-doc` |
 | `TOPAL-INTP-SUBSET-245`, `TOPAL-DEBUG-INTROSPECTION-001`, `TOPAL-LSP-FEATURE-001` | `TOPAL-INTRO-QUALIFIED-001` through `TOPAL-INTRO-RELATION-001` | language unit tests; interpreter example-corpus tests; LSP example diagnostics/highlighting; scripted reversible debugger test; static-introspection examples | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | `TOPAL-INTP-SUBSET-249`, `TOPAL-DEBUG-MESSAGE-001`, `TOPAL-LSP-FEATURE-001` | `TOPAL-TASK-DEFINITION-001`, `TOPAL-TASK-HANDLER-001`, `TOPAL-TASK-STATE-001`, `TOPAL-TASK-LIFECYCLE-001`, `TOPAL-TASK-MESSAGE-001`, `TOPAL-CONC-INTERACT-001` | syntax and language unit tests; interpreter example-corpus test; LSP example diagnostics/highlighting; scripted reversible debugger test; task-message examples | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |
 | `TOPAL-INTP-SUBSET-250`, `TOPAL-DEBUG-LOCATION-001`, `TOPAL-LSP-FEATURE-001` | `TOPAL-LAYOUT-SIZE-001`, `TOPAL-LAYOUT-CONSTRUCT-001`, `TOPAL-ADDRESS-RANGE-001`, `TOPAL-LOCATION-CONSTRUCT-001`, `TOPAL-LOCATION-READ-001`, `TOPAL-LOCATION-WRITE-001` | syntax and language unit tests; interpreter example-corpus test; LSP diagnostics/highlighting; scripted reversible debugger test; checked-location examples | `topal-syntax`, `topal-language`, `topal-interpreter`, `topal-lsp`, `topal-debugger` |

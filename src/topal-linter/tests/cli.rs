@@ -1,3 +1,7 @@
+//! Functional conformance evidence for TOPAL-BEST-PRACTICE-IDENTITY-001
+//! through TOPAL-BEST-PRACTICE-RECTIFICATION-001, TOPAL-DIAG-MODEL-001,
+//! TOPAL-DIAG-ADAPTER-001, and the TOPAL-LINT-* tool requirements.
+
 use std::fs;
 use std::process::Command;
 

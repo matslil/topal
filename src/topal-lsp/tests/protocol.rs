@@ -1,3 +1,7 @@
+//! Functional conformance evidence for TOPAL-SYN-SOURCE-001,
+//! TOPAL-SYN-LEX-001, TOPAL-SYN-GRAMMAR-001, TOPAL-DIAG-MODEL-001,
+//! TOPAL-DIAG-ADAPTER-001, and the TOPAL-LSP-* tool requirements.
+
 use std::io::Write;
 use std::process::{Command, Stdio};
 

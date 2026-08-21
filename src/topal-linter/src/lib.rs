@@ -1759,7 +1759,34 @@ fn byte_position(text: &str, offset: usize) -> (usize, usize) {
 
 #[cfg(test)]
 mod tests {
+    //! Shared-engine conformance evidence for TOPAL-SYN-SOURCE-001,
+    //! TOPAL-SYN-GRAMMAR-001, TOPAL-BEST-PRACTICE-RULE-CONTAINMENT-001,
+    //! and TOPAL-BEST-PRACTICE-RECTIFICATION-001.
+
     use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn every_language_example_uses_the_shared_linter_frontend() {
+        let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language");
+        let mut examples = std::fs::read_dir(directory)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
+            .collect::<Vec<_>>();
+        examples.sort();
+        assert_eq!(examples.len(), 192);
+        for example in examples {
+            let source = std::fs::read_to_string(&example).unwrap();
+            let report = lint_text(&source, &[]).unwrap();
+            assert!(
+                !report.has_errors,
+                "{} produced linter errors: {:?}",
+                example.display(),
+                report.diagnostics
+            );
+        }
+    }
 
     #[test]
     fn automatic_edits_are_ordered_and_review_required_edits_are_ignored() {
