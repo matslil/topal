@@ -146,3 +146,10 @@ A file shall be an identified object with addressed content and metadata; a
 directory shall relate names to identities; and a path shall be a resolution
 query. Namespace rename or unlink shall not replace an already-open object
 identity, and resolution shall not escape the granted capability root.
+
+### TOPAL-STORE-DATABASE-001 — Database adapters
+
+Database adapters shall use prepared operations, typed parameters, explicit
+row schemas, cursors, and transaction identities. They shall preserve vendor
+failure provenance and uncertain commit rather than construct queries through
+string interpolation or coerce mismatched rows.
