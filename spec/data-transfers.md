@@ -175,3 +175,10 @@ region and forward it through scatter/gather. Software and admitted operating-
 system or hardware checksum, segmentation, encryption, and framing
 substitutions shall produce equivalent values, failures, ordering, effects,
 and semantic traces. Copy and allocation claims shall be instrumented.
+
+### TOPAL-TRANSFER-COMPAT-001 — Version negotiation
+
+Public package, encoded protocol, and host-operation ABI revisions shall be
+negotiated before use. An implementation may satisfy an older compatible minor
+revision within the same major revision; it shall reject a different major or
+an implementation older than the required minor revision.

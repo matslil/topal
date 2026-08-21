@@ -30,7 +30,7 @@ authority are normative in
 | 15. Devices | `TOPAL-DEVICE-CONTROLLER-001` | bounded virtual controller and explicit DMA requirements | alignment, removal, and ownership tests | implemented |
 | 16. I2C | `TOPAL-DEVICE-I2C-001` | deterministic virtual bus and Linux `I2C_RDWR` adapter | combined sensor read, NACK, address, and transfer-limit tests | implemented |
 | 17. Firewall | `TOPAL-DATA-OFFLOAD-001` | Ethernet/IPv4 firewall with checksum substitution and copy trace | software/offload differential and zero-payload-copy tests | implemented |
-| 18. Audit | compatibility and terminal dispositions | all supported platform adapters | complete conformance and audit suite | pending |
+| 18. Audit | `TOPAL-TRANSFER-COMPAT-001` | compatibility negotiation, machine-readable closure, and platform qualification record | closure, compatibility, lint, and complete workspace suites | implemented |
 
 ## Architecture scenario closure
 
@@ -47,8 +47,8 @@ authority are normative in
 
 ## Closure gate
 
-A machine-readable row disposition shall eventually be one of `implemented`,
-`platform-specific`, or `deferred`, accompanied by exact evidence identifiers.
-Until that gate is implemented in phase 1 follow-through, every `pending` row
-above blocks release. Changing a status by editing this table alone does not
-satisfy the gate.
+[`data-transfer-conformance.json`](data-transfer-conformance.json) records each
+phase as `implemented`, `platform-specific`, or `deferred` with exact evidence.
+The repository test requires phases 1 through 18 exactly once, rejects other
+dispositions and empty evidence, and verifies every repository evidence path.
+Changing this table alone therefore cannot satisfy closure.

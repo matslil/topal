@@ -5,6 +5,7 @@ use std::fmt;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+pub mod compatibility;
 pub mod database;
 pub mod device;
 pub mod file_store;

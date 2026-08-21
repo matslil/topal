@@ -49,10 +49,10 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-REQ-SHARED-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-UNICODE-001`, `TOPAL-SYN-LEX-001`, `TOPAL-SYN-INDENT-001`, `TOPAL-SYN-GRAMMAR-001` |
 | `TOPAL-REQ-BEST-PRACTICE-001` | `TOPAL-BEST-PRACTICE-IDENTITY-001`, `TOPAL-BEST-PRACTICE-STATUS-001`, `TOPAL-BEST-PRACTICE-CLASS-001`, `TOPAL-BEST-PRACTICE-APPLICABILITY-001`, `TOPAL-BEST-PRACTICE-GENERATED-001` |
 | `TOPAL-REQ-LINT-001` | `TOPAL-BEST-PRACTICE-IDENTITY-001` through `TOPAL-BEST-PRACTICE-RECTIFICATION-001`, `TOPAL-DIAG-MODEL-001`, `TOPAL-DIAG-ADAPTER-001`, `TOPAL-SYN-CONTEXT-001`, `TOPAL-SYN-DIAG-001` |
-| `TOPAL-REQ-TRANSFER-001` | planned extended-library formalization governed by `se/data-transfers.md` and sequenced by `se/data-transfer-standard-library-plan.md`; existing foundations include `TOPAL-TASK-MESSAGE-001`, `TOPAL-CONC-INTERACT-001`, and `TOPAL-CONC-ORDER-001` |
-| `TOPAL-REQ-DATA-VIEW-001` | planned extended-library formalization governed by `se/data-transfers.md` and sequenced by `se/data-transfer-standard-library-plan.md`; existing foundations include `TOPAL-MEM-LOCATION-001`, `TOPAL-MEM-LIFETIME-001`, and `TOPAL-LAYOUT-CONSTRUCT-001` |
-| `TOPAL-REQ-STORE-001` | planned extended-library formalization governed by `se/data-transfers.md` and sequenced by `se/data-transfer-standard-library-plan.md`; existing foundations include `TOPAL-NAMESPACE-ROOT-001`, `TOPAL-SER-VALUE-001`, and `TOPAL-TYPE-ID-001` |
-| `TOPAL-REQ-TRANSPORT-BINDING-001` | planned extended-library formalization governed by `se/data-transfers.md` and sequenced by `se/data-transfer-standard-library-plan.md`; existing foundations include `TOPAL-CONC-PROTOCOL-001`, `TOPAL-CONC-BACKPRESSURE-001`, and `TOPAL-RESOURCE-OWN-001` |
+| `TOPAL-REQ-TRANSFER-001` | `TOPAL-TRANSFER-ENDPOINT-001`, `TOPAL-TRANSFER-SERVICE-001`, `TOPAL-TRANSFER-PROTOCOL-001`, `TOPAL-TRANSFER-MESSAGE-001`, `TOPAL-TRANSFER-OPERATION-001`, `TOPAL-TRANSFER-CANCEL-001`, `TOPAL-TRANSFER-BACKPRESSURE-001`, `TOPAL-TRANSFER-RETRY-001`, `TOPAL-TRANSFER-SEQUENCE-001`, `TOPAL-HOST-ABI-001`, `TOPAL-HOST-REPLAY-001`, `TOPAL-HOST-NATIVE-001`, `TOPAL-TRANSFER-COMPAT-001` |
+| `TOPAL-REQ-DATA-VIEW-001` | `TOPAL-DATA-REGION-001`, `TOPAL-DATA-SCATTER-001`, `TOPAL-DATA-VIEW-001`, `TOPAL-DATA-VIEW-INVALIDATE-001`, `TOPAL-DATA-OFFLOAD-001` |
+| `TOPAL-REQ-STORE-001` | `TOPAL-STORE-FOUNDATION-001`, `TOPAL-STORE-TRANSACTION-001`, `TOPAL-STORE-FILE-001`, `TOPAL-STORE-DATABASE-001` |
+| `TOPAL-REQ-TRANSPORT-BINDING-001` | `TOPAL-NETWORK-IP-001`, `TOPAL-NETWORK-TRANSPORT-001`, `TOPAL-DEVICE-CONTROLLER-001`, `TOPAL-DEVICE-I2C-001` |
 
 ## Maintenance rules
 
@@ -67,6 +67,14 @@ domains. Test and implementation columns will be added with those artifacts.
 
 | Tool requirement | Specification rules | Functional evidence | Implementation |
 | --- | --- | --- | --- |
+| extended transfer package boundary | `TOPAL-TRANSFER-PACKAGE-001`, `TOPAL-TRANSFER-PACKAGE-002`, `TOPAL-TRANSFER-PACKAGE-003`, `TOPAL-TRANSFER-PACKAGE-004`, `TOPAL-TRANSFER-PACKAGE-005` | conformance closure and cross-tool disposition tests | `topal-transfer`; capability-injection and static-tool boundaries |
+| extended transfer foundation | `TOPAL-TRANSFER-ENDPOINT-001`, `TOPAL-TRANSFER-SERVICE-001`, `TOPAL-TRANSFER-PROTOCOL-001`, `TOPAL-TRANSFER-MESSAGE-001`, `TOPAL-TRANSFER-OPERATION-001`, `TOPAL-TRANSFER-CANCEL-001`, `TOPAL-TRANSFER-BACKPRESSURE-001`, `TOPAL-TRANSFER-RETRY-001`, `TOPAL-TRANSFER-SEQUENCE-001` | endpoint, queue, cancellation, retry, and framing tests | `topal-transfer` reference protocols |
+| data regions and views | `TOPAL-DATA-REGION-001`, `TOPAL-DATA-SCATTER-001`, `TOPAL-DATA-VIEW-001`, `TOPAL-DATA-VIEW-INVALIDATE-001`, `TOPAL-DATA-OFFLOAD-001` | region, evidence-invalidation, and firewall differential tests | `topal-transfer` region, view, and firewall modules |
+| host and compatibility boundary | `TOPAL-HOST-ABI-001`, `TOPAL-HOST-REPLAY-001`, `TOPAL-HOST-NATIVE-001`, `TOPAL-TRANSFER-COMPAT-001` | virtual/replay/native manifest and revision-negotiation tests | `topal-transfer` host, native, and compatibility modules |
+| network and transport bindings | `TOPAL-NETWORK-IP-001`, `TOPAL-NETWORK-TRANSPORT-001` | IP header, family, partial-transfer, and half-close tests | `topal-transfer` network and transport modules |
+| store specializations | `TOPAL-STORE-FOUNDATION-001`, `TOPAL-STORE-TRANSACTION-001`, `TOPAL-STORE-FILE-001`, `TOPAL-STORE-DATABASE-001` | store identity, fault, namespace, and schema tests | `topal-transfer` store, file-store, and database modules |
+| device bindings | `TOPAL-DEVICE-CONTROLLER-001`, `TOPAL-DEVICE-I2C-001` | virtual DMA, combined I2C, NACK, and Linux binding tests | `topal-transfer` device and I2C modules |
+
 | `TOPAL-INTP-MODE-001` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-NUM-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-MODE-002` | `TOPAL-SYN-NUM-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
 | `TOPAL-INTP-MODE-003` | `TOPAL-SYN-SOURCE-001`, `TOPAL-SYN-NUM-001`, `TOPAL-SYN-GRAMMAR-001` | `src/topal-interpreter/tests/cli.rs` | `topal-language`, `topal-interpreter` |
