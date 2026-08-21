@@ -26,6 +26,11 @@ Platform facilities are separate explicit packages. They are not part of the
 fundamental-type library and enter through published capabilities, effects,
 protocols, checked layouts, and ordinary package construction.
 
+The implementation series for data transfer, stores, networks, and devices is
+defined separately in
+[`data-transfer-standard-library-plan.md`](data-transfer-standard-library-plan.md).
+It consumes the completed fundamental package but does not enlarge `std`.
+
 ## Source organization
 
 The fundamental package deliberately has one flat public module:
