@@ -6,7 +6,7 @@ display, locale policy, platform facilities, and representation-specific
 conveniences are outside this series.
 
 The completed fundamental library is published directly through one flat
-`std` namespace and one ordinary `library/std.t` source module. Future algorithm
+`std` namespace and one ordinary `library/std/module.t` source module. Future algorithm
 packages use separate namespaces; they do not enlarge or subdivide `std`.
 
 ## API rules

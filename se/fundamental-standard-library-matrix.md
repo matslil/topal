@@ -2,7 +2,7 @@
 
 This matrix closes the completion series defined in
 [`fundamental-standard-library-completion.md`](fundamental-standard-library-completion.md).
-An implemented entry is either ordinary source in `library/std.t` or an
+An implemented entry is either ordinary source in `library/std/module.t` or an
 irreducible representation-dependent root operation. A deliberate omission is
 not a placeholder API: adding it later requires its own admitted contract and
 must not silently enlarge the fundamental `std` namespace.

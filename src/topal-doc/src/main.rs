@@ -144,7 +144,12 @@ fn visit_directory(
 }
 
 fn page_name(path: &Path) -> String {
-    path.file_stem()
+    let canonical = if path.file_name().is_some_and(|name| name == "module.t") {
+        path.parent().and_then(Path::file_name)
+    } else {
+        path.file_stem()
+    };
+    canonical
         .and_then(std::ffi::OsStr::to_str)
         .unwrap_or("source")
         .chars()

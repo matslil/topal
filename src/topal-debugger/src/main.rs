@@ -336,7 +336,9 @@ fn command_loop(
 
 fn print_identifier_help(identifier: &str, source: &str) {
     let mut declarations = documented_source(source);
-    declarations.extend(documented_source(include_str!("../../../library/std.t")));
+    declarations.extend(documented_source(include_str!(
+        "../../../library/std/module.t"
+    )));
     declarations.extend(lang_documentation());
     let qualified = identifier.contains(' ');
     let matches = declarations

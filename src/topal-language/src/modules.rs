@@ -131,6 +131,32 @@ mod tests {
     }
 
     #[test]
+    fn shared_library_retains_flat_fundamentals_and_nested_extensions() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        load_module_tree(&mut session, &root, &mut trace).unwrap();
+
+        let value = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\n(std min (4, 2), std transfer revision, std data revision, std store revision, std network revision, std device revision)",
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(
+            value,
+            Value::Tuple(vec![
+                Value::Int(BigInt::from(2)),
+                Value::Int(BigInt::from(1)),
+                Value::Int(BigInt::from(1)),
+                Value::Int(BigInt::from(1)),
+                Value::Int(BigInt::from(1)),
+                Value::Int(BigInt::from(1)),
+            ])
+        );
+    }
+
+    #[test]
     fn capability_generic_result_substitutes_inside_a_product() {
         let mut session = Session::new();
         let mut trace = Vec::new();

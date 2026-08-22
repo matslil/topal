@@ -8,7 +8,7 @@ fn scratch(name: &str) -> std::path::PathBuf {
 #[test]
 fn generates_explicit_source_and_optional_lang_pages() {
     let output = scratch("explicit");
-    let source = concat!(env!("CARGO_MANIFEST_DIR"), "/../../library/std.t");
+    let source = concat!(env!("CARGO_MANIFEST_DIR"), "/../../library/std/module.t");
     let result = Command::new(env!("CARGO_BIN_EXE_topal-doc"))
         .args([
             "--output",
