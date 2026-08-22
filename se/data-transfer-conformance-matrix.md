@@ -29,7 +29,7 @@ lack of ambient host authority are normative in
 | 14. Databases | `TOPAL-STORE-DATABASE-001` | Topal prepared-operation and schema adapters | Topal parameter, row, and transaction laws | planned |
 | 15. Devices | `TOPAL-DEVICE-CONTROLLER-001` | Topal virtual controller and explicit DMA contracts | Topal alignment, removal, and ownership laws | planned |
 | 16. I2C | `TOPAL-DEVICE-I2C-001` | `library/std/device/i2c.t`, Topal address/limit/descriptor laws, and existing Linux `I2C_RDWR` experiment; capability binding remains | Topal combined execution and NACK laws remain | partial |
-| 17. Firewall | `TOPAL-DATA-OFFLOAD-001` | self-checking `examples/data-transfer/firewall.t` uses public `std` namespaces | software/offload differential and resource measurements remain | partial |
+| 17. Firewall | `TOPAL-DATA-OFFLOAD-001` | self-checking `examples/data-transfer/firewall.t` introduces views; `examples/data-transfer/packet-filter.t` adds fail-closed validation, immutable policy, exact-flow priority, IPv4/IPv6 policy equivalence, batching, and slow-path decisions through `std packet filter` | native region handoff, software/offload differential, and resource measurements remain | partial |
 | 18. Audit | `TOPAL-TRANSFER-COMPAT-001` | Topal source, tests, examples, documentation, native boundary, and qualification record | closure, compatibility, lint, and complete workspace suites | planned |
 
 ## Architecture scenario closure
