@@ -18,7 +18,6 @@ formal specification.
 - [Data-transfer implementation conformance matrix](data-transfer-conformance-matrix.md)
 - [Data-transfer platform qualification](data-transfer-platform-qualification.md)
 - [Traceability](traceability.md)
-- [Core-language completion plan](core-language-completion-plan.md)
 - [Core-language correction ledger](core-language-corrections.md)
 - [Standard-library bootstrap contract](standard-library-bootstrap.md)
 

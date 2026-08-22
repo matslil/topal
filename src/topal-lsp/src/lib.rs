@@ -1241,11 +1241,29 @@ mod tests {
     }
 
     #[test]
-    fn accepts_the_standard_library_fundamental_sources() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/std");
-        for relative in ["module.t", "data/spans.t", "transfer/queues.t", "store/memory.t", "network/addresses.t", "device/i2c.t"] {
+    fn accepts_standard_library_sources_and_topal_tests() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        for relative in [
+            "library/std/module.t",
+            "library/std/data/spans.t",
+            "library/std/transfer/queues.t",
+            "library/std/store/memory.t",
+            "library/std/network/addresses.t",
+            "library/std/device/i2c.t",
+            "tests/standard-library/harness.t",
+            "tests/standard-library/data-spans.t",
+            "tests/standard-library/transfer-queues.t",
+            "tests/standard-library/store-memory.t",
+            "tests/standard-library/network-addresses.t",
+            "tests/standard-library/device-i2c.t",
+            "examples/data-transfer/firewall.t",
+        ] {
             let path = root.join(relative);
-            assert!(diagnostics(&std::fs::read_to_string(&path).unwrap()).is_empty(), "{}", path.display());
+            assert!(
+                diagnostics(&std::fs::read_to_string(&path).unwrap()).is_empty(),
+                "{}",
+                path.display()
+            );
         }
     }
 

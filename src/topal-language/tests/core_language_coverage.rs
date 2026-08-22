@@ -146,12 +146,9 @@ fn accepted_core_has_no_planned_rule_and_examples_explain_their_feature() {
         .lines()
         .filter(|line| line.starts_with('|') && line.ends_with("| planned |"))
         .count();
-    let completion_plan = fs::read_to_string(root.join("se/core-language-completion-plan.md"))
-        .expect("completion plan must be readable");
-    assert_eq!(
-        completion_plan.contains("**Completion record:**"),
+    assert!(
         specification_planned.is_empty() && correction_planned == 0,
-        "a completion record is valid only when both ledgers are terminal"
+        "the accepted core requires terminal specification and correction ledgers"
     );
 
     let mut examples = fs::read_dir(root.join("examples/language"))
