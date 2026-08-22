@@ -36,13 +36,17 @@ samples, reducing noise from process startup and page-level accounting without
 weakening the comparison threshold.
 
 Baseline mode records average child CPU time and peak child resident memory for
-every discovered test case in `se/test-resource-baseline.json`. Updating that
-versioned baseline requires the explicit `--approve-baseline-update` argument
-and prior human approval of any unexplained increase. Compare mode fails when a
-test is added or removed without a baseline update, a test does not pass, or
-either resource metric exceeds its recorded value by more than 20 percent. Such
-a deviation requires investigation and a recorded motivation before a human
-approves a new baseline; decreases do not rewrite the baseline automatically.
+every discovered test case in `se/test-resource-baseline.json`. Extending that
+versioned baseline requires the explicit `--approve-baseline-update` argument.
+When the file already exists, ordinary baseline mode adds only newly discovered
+test identities: existing measurements and metadata remain unchanged, including
+entries absent from the current run. Replacing existing measurements requires
+the additional `--replace-existing-baseline` argument and prior human approval
+of every motivated change. Compare mode fails when a test is added or removed
+without a baseline update, a test does not pass, or either resource metric
+exceeds its recorded value by more than 20 percent. Such a deviation requires
+investigation and a recorded motivation before a human approves a replacement;
+decreases do not rewrite the baseline automatically.
 
 The baseline is meaningful only on a sufficiently comparable execution
 environment. Its environment metadata records the architecture, logical CPU
@@ -54,6 +58,12 @@ Create an approved baseline with:
 
 ```console
 scripts/test_resource_usage.py baseline --approve-baseline-update
+```
+
+Replace existing measurements only after explicit human approval:
+
+```console
+scripts/test_resource_usage.py baseline --approve-baseline-update --replace-existing-baseline
 ```
 
 Compare the current tests with it using:
