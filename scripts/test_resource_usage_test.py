@@ -69,5 +69,40 @@ class CompareTests(unittest.TestCase):
         )
 
 
+class BaselineExtensionTests(unittest.TestCase):
+    def test_only_new_tests_are_added(self) -> None:
+        baseline = {
+            "schema": 1,
+            "samples_per_test": 50,
+            "environment": {"host": "original"},
+            "tests": {
+                "existing": {
+                    "cpu_time_ns": 100,
+                    "memory_peak_bytes": 1_000,
+                    "review_note": "preserve the complete entry",
+                },
+                "removed": {
+                    "cpu_time_ns": 200,
+                    "memory_peak_bytes": 2_000,
+                },
+            },
+        }
+        measured = {
+            "existing": RESOURCE_USAGE.Measurement(999, 9_999, "passed"),
+            "new": RESOURCE_USAGE.Measurement(300, 3_000, "passed"),
+        }
+
+        extended, additions = RESOURCE_USAGE.extend_baseline(baseline, measured)
+
+        self.assertEqual(additions, 1)
+        self.assertEqual(extended["environment"], {"host": "original"})
+        self.assertEqual(extended["tests"]["existing"], baseline["tests"]["existing"])
+        self.assertEqual(extended["tests"]["removed"], baseline["tests"]["removed"])
+        self.assertEqual(
+            extended["tests"]["new"],
+            {"cpu_time_ns": 300, "memory_peak_bytes": 3_000},
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

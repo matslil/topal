@@ -341,6 +341,23 @@ def baseline_document(
     }
 
 
+def extend_baseline(
+    baseline: dict[str, Any], measured: dict[str, Measurement]
+) -> tuple[dict[str, Any], int]:
+    """Add measurements for new identities without changing existing entries."""
+    expected = baseline["tests"]
+    additions = {
+        identity: {
+            "cpu_time_ns": measured[identity].cpu_time_ns,
+            "memory_peak_bytes": measured[identity].memory_peak_bytes,
+        }
+        for identity in sorted(set(measured) - set(expected))
+    }
+    extended = dict(baseline)
+    extended["tests"] = {**expected, **additions}
+    return extended, len(additions)
+
+
 def failed_tests(measured: dict[str, Measurement]) -> list[str]:
     return [identity for identity, result in measured.items() if result.status != "passed"]
 
@@ -383,6 +400,7 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--timeout", type=int, default=600)
     parser.add_argument("--samples", type=int, default=50)
     parser.add_argument("--approve-baseline-update", action="store_true")
+    parser.add_argument("--replace-existing-baseline", action="store_true")
     parsed = parser.parse_args()
     if parsed.jobs is not None and parsed.jobs < 1:
         parser.error("--jobs must be at least 1")
@@ -392,6 +410,10 @@ def arguments() -> argparse.Namespace:
         parser.error("baseline mode requires --approve-baseline-update")
     if parsed.mode == "compare" and parsed.approve_baseline_update:
         parser.error("--approve-baseline-update only applies to baseline mode")
+    if parsed.replace_existing_baseline and parsed.mode != "baseline":
+        parser.error("--replace-existing-baseline only applies to baseline mode")
+    if parsed.replace_existing_baseline and not parsed.approve_baseline_update:
+        parser.error("--replace-existing-baseline requires --approve-baseline-update")
     return parsed
 
 
@@ -405,11 +427,23 @@ def main() -> int:
         return 1
     if parsed.mode == "baseline":
         parsed.baseline.parent.mkdir(parents=True, exist_ok=True)
+        added = len(measured)
+        document = baseline_document(measured, parsed.samples)
+        if parsed.baseline.exists() and not parsed.replace_existing_baseline:
+            existing = json.loads(parsed.baseline.read_text(encoding="utf-8"))
+            if existing.get("schema") != 1:
+                raise RuntimeError("unsupported baseline schema")
+            if existing.get("samples_per_test") != parsed.samples:
+                raise RuntimeError("baseline sample count differs from --samples")
+            document, added = extend_baseline(existing, measured)
         parsed.baseline.write_text(
-            json.dumps(baseline_document(measured, parsed.samples), indent=2) + "\n",
+            json.dumps(document, indent=2) + "\n",
             encoding="utf-8",
         )
-        print(f"Wrote baseline for {len(measured)} tests to {parsed.baseline}")
+        if parsed.replace_existing_baseline:
+            print(f"Replaced baseline for {len(measured)} tests in {parsed.baseline}")
+        else:
+            print(f"Added {added} new tests to baseline {parsed.baseline}")
         return 0
     baseline = json.loads(parsed.baseline.read_text(encoding="utf-8"))
     if baseline.get("schema") != 1:
@@ -422,7 +456,9 @@ def main() -> int:
         for problem in problems:
             print(f"- {problem}", file=sys.stderr)
         print(
-            "After human approval, update with baseline mode and --approve-baseline-update.",
+            "Add new tests with baseline mode and --approve-baseline-update. "
+            "After human approval of changed existing measurements, also pass "
+            "--replace-existing-baseline.",
             file=sys.stderr,
         )
         return 1
