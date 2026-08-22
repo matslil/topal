@@ -30,3 +30,16 @@ Programs under `linter/` are Topal rule modules rather than applications. They
 explicitly select the `lint` language variant and are admitted by `topal-lint`
 before contained rule execution; the language server opens the same files for
 variant-aware editing support.
+
+Programs under `data-transfer/` are executable, self-checking application
+policies built over the source standard library. `firewall.t` introduces
+bounded layered views. `packet-filter.t` develops that idea into a fail-closed,
+batch-oriented filter with an established-flow fast path, ordered policy, IPv4
+and IPv6 equivalence, and explicit slow path. `rest-controller.t` demonstrates
+a REST API whose typed controller functions are embedded in an `Interface`
+implementation while HTTP routing and response policy remain reusable.
+
+These examples simulate semantic inputs so they run on every host. They do not
+claim to open sockets, attach XDP programs, or benchmark the current runtime.
+Native endpoint adapters can supply the same inputs without moving portable
+policy out of Topal.

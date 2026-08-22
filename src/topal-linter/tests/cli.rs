@@ -224,6 +224,8 @@ fn accepts_standard_library_sources_and_topal_tests() {
         "library/std/store/memory.t",
         "library/std/network/addresses.t",
         "library/std/device/i2c.t",
+        "library/std/packet/filter.t",
+        "library/std/web/http.t",
         "library/std/build/module.t",
         "library/std/build/graph.t",
         "tests/standard-library/harness.t",
@@ -234,6 +236,8 @@ fn accepts_standard_library_sources_and_topal_tests() {
         "tests/standard-library/device-i2c.t",
         "tests/standard-library/build-graph.t",
         "examples/data-transfer/firewall.t",
+        "examples/data-transfer/packet-filter.t",
+        "examples/data-transfer/rest-controller.t",
     ] {
         let path = root.join(relative);
         let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
