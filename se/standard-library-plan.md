@@ -37,12 +37,13 @@ The fundamental package deliberately has one flat public module:
 
 ```text
 library/
-├── std.t
+├── std/
+│   └── module.t
 ├── application.t
 └── testing/
 ```
 
-`std.t` publishes all fundamental overloads directly as `std name`. Physical
+`std/module.t` publishes all fundamental overloads directly as `std name`. Physical
 categories would become public namespace components, so they are intentionally
 absent. Independent algorithm libraries use separate top-level namespaces and
 may choose deeper physical layouts. `application.t` is cross-tool conformance

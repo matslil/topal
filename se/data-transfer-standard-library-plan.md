@@ -4,8 +4,9 @@ This plan turns the approved
 [data-transfer and external-resource architecture](data-transfers.md) into a
 dependency-ordered pull-request series. It realizes `TOPAL-REQ-TRANSFER-001`,
 `TOPAL-REQ-DATA-VIEW-001`, `TOPAL-REQ-STORE-001`, and
-`TOPAL-REQ-TRANSPORT-BINDING-001` without enlarging the completed fundamental
-`std` namespace or granting ordinary library code ambient platform authority.
+`TOPAL-REQ-TRANSPORT-BINDING-001` without enlarging the completed flat
+fundamental surface of `std` or granting ordinary library code ambient platform
+authority.
 
 ## Scope and completion boundary
 
@@ -35,20 +36,21 @@ not mix unrelated algorithm expansion into its PRs.
 
 ## Package and authority architecture
 
-The public surface belongs to separately versioned ordinary Topal packages,
-not the flat fundamental `std` module. The intended public namespaces are:
+The public surface belongs to separately versioned ordinary Topal namespaces
+nested below the stable `std` root. The intended public namespaces are:
 
 ```text
-transfer   endpoint, operation, completion, message, sequence, and adapters
-data       owned regions, spans, validated views, packets, frames, and codecs
-store      identity, namespace, transaction, snapshot, change, and guarantees
-network    addresses, resolution, IPv4, IPv6, transport, and service bindings
-device     controller, target, register, DMA, and bus protocols
+std transfer   endpoint, operation, completion, message, sequence, and adapters
+std data       owned regions, spans, validated views, packets, frames, and codecs
+std store      identity, namespace, transaction, snapshot, change, and guarantees
+std network    addresses, resolution, IPv4, IPv6, transport, and service bindings
+std device     controller, target, register, DMA, and bus protocols
 ```
 
-Physical package layout and exact source names are admitted in the first phase;
-namespace names are architectural ownership boundaries, not approval of an API
-spelling in advance.
+The implementation resides in ordinary `.t` source below `library/std/`.
+Portable contracts, adapters, policies, reference models, and codecs are Topal
+code. Rust is restricted to irreducible host/native mechanisms and their narrow
+runtime bridge.
 
 Ordinary Topal code defines protocols, adapters, validation, store logic, and
 reference behavior. Irreducible platform access enters through a small shared

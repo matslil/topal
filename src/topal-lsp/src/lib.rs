@@ -1242,7 +1242,7 @@ mod tests {
 
     #[test]
     fn accepts_the_standard_library_fundamental_sources() {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/std.t");
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/std/module.t");
         let text = std::fs::read_to_string(&path).unwrap();
         let mut server = Server::default();
         let output = server.handle(&json!({
@@ -1262,7 +1262,7 @@ mod tests {
             "{}",
             path.display()
         );
-        let numeric = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/std.t");
+        let numeric = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/std/module.t");
         assert!(diagnostics(&std::fs::read_to_string(numeric).unwrap()).is_empty());
     }
 
