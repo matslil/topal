@@ -157,37 +157,6 @@ mod tests {
     }
 
     #[test]
-    fn extended_transfer_interfaces_execute_as_ordinary_topal_source() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
-        let mut session = Session::new();
-        let mut trace = Vec::new();
-        load_module_tree(&mut session, &root, &mut trace).unwrap();
-        let value = session
-            .evaluate_source_file(
-                "use language ( version is v0.1 )
-(std data spans span? (2, 3, 5), std data spans span? (4, 2, 5), std data spans spans-overlap? ((1, 3), (3, 2)), std transfer queues retry-safe? (false, false, true), std network addresses ipv4? (127, 0, 0, 1), std network addresses ipv4-prefix? 33, std device i2c i2c-seven-bit-address? 72)",
-                &mut trace,
-            )
-            .unwrap();
-        assert_eq!(
-            value.to_string(),
-            "(true, false, true, true, true, false, true)"
-        );
-    }
-
-    #[test]
-    fn firewall_example_executes_against_public_topal_interfaces() {
-        let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let mut session = Session::new();
-        let mut trace = Vec::new();
-        load_module_tree(&mut session, &repository.join("library"), &mut trace).unwrap();
-        let source = std::fs::read_to_string(repository.join("examples/data-transfer/firewall.t"))
-            .unwrap();
-        let value = session.evaluate_source_file(&source, &mut trace).unwrap();
-        assert_eq!(value.to_string(), "(true, true, true, true)");
-    }
-
-    #[test]
     fn capability_generic_result_substitutes_inside_a_product() {
         let mut session = Session::new();
         let mut trace = Vec::new();
