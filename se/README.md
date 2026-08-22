@@ -14,6 +14,7 @@ formal specification.
 - [Toolchain architecture](toolchain-architecture.md)
 - [Data-transfer and external-resource architecture](data-transfers.md)
 - [Data-transfer standard-library implementation plan](data-transfer-standard-library-plan.md)
+- [Data-transfer Topal test migration plan](data-transfer-topal-test-plan.md)
 - [Data-transfer implementation conformance matrix](data-transfer-conformance-matrix.md)
 - [Data-transfer platform qualification](data-transfer-platform-qualification.md)
 - [Traceability](traceability.md)
