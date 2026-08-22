@@ -15,3 +15,7 @@ topal-language = { path = "../topal-language" }
 [[bin]]
 name = "topal-build"
 path = "src/main.rs"
+
+[[bin]]
+name = "topal-build-test-action"
+path = "src/test_action.rs"

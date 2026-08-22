@@ -184,14 +184,19 @@ fn select_with_topal(
             .map(move |dependency| (dependency.as_str(), unit.id.as_str()))
     });
     let source = format!(
-        "use language ( version is v0.1 )\nstd build graph selected ({}, ({}, {}))",
+        "use language ( version is v0.1 )\nselect-build-units is std build graph selected\nchanged-units : List String is {}\ndependency-edges : List (String, String) is {}\nall-units : List String is {}\nselect-build-units (changed-units, (dependency-edges, all-units))",
         string_list(changed.iter().map(String::as_str)),
         pair_list(edges),
         string_list(manifest.units.iter().map(|unit| unit.id.as_str()))
     );
     let value = session
         .evaluate_source_file(&source, &mut trace)
-        .map_err(|error| error.render("<topal-build-policy>"))?;
+        .map_err(|error| {
+            format!(
+                "{}\nGenerated policy input:\n{source}",
+                error.render("<topal-build-policy>")
+            )
+        })?;
     let Value::List { entries, .. } = value else {
         return Err("Topal build policy returned a non-List value".into());
     };
