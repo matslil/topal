@@ -14,13 +14,11 @@ pub enqueue? is fn ((
   message : Message,
   capacity : Nat
 )) -> Optional List Message
-  queue-present-if-callable (entry-count messages < capacity, messages append message)
+  queue-present-if-callable ((entry-count messages) < capacity, messages append message)
 
 ### Dequeue one complete message together with the remaining queue.
 pub dequeue is fn (messages : List (Message : Type)) -> Optional (Message, List Message)
-  messages
-    Empty then None (Message, List Message)
-    Entry (message, remaining) then Some (message, remaining)
+  uncons messages
 
 ### Admit automatic retry only with explicit semantic evidence.
 pub retry-safe? is fn (
