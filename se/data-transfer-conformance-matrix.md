@@ -15,21 +15,21 @@ lack of ambient host authority are normative in
 | --- | --- | --- | --- | --- |
 | 1. Boundaries | `TOPAL-TRANSFER-PACKAGE-001`–`005` | corrected `std` namespace ownership and this matrix | link, traceability, and closure-gate tests | implemented |
 | 2. Endpoint foundation | `TOPAL-TRANSFER-ENDPOINT-001`, `SERVICE-001`, `PROTOCOL-001`, `MESSAGE-001` | ordinary `std transfer` source and host substitution boundary | Topal law and cross-tool tests | planned |
-| 3. Completion | `TOPAL-TRANSFER-OPERATION-001`, `CANCEL-001`, `BACKPRESSURE-001`, `RETRY-001` | `library/std/transfer/queues.t`; scheduler adapters remain | Topal cancellation, ordering, bounds, and retry laws | partial |
-| 4. Regions | `TOPAL-DATA-REGION-001`, `SCATTER-001` | `library/std/data/spans.t`; owned regions remain | Topal bounds, alignment, ownership, and no-copy laws | partial |
+| 3. Completion | `TOPAL-TRANSFER-OPERATION-001`, `CANCEL-001`, `BACKPRESSURE-001`, `RETRY-001` | `library/std/transfer/queues.t` and Topal queue/retry laws; operations, cancellation, and scheduler adapters remain | Topal cancellation and terminal-observation laws remain | partial |
+| 4. Regions | `TOPAL-DATA-REGION-001`, `SCATTER-001` | `library/std/data/spans.t` and Topal bounds, overlap, and gather-length laws; owned regions remain | Topal alignment, ownership, and no-copy laws remain | partial |
 | 5. Views | `TOPAL-DATA-VIEW-001`, `VIEW-INVALIDATE-001` | ordinary `std data` validated views | Topal malformed-input and evidence-invalidation laws | planned |
 | 6. Adapters | `TOPAL-TRANSFER-SEQUENCE-001` | ordinary `std transfer` framing adapters | Topal chunking, size, and backpressure laws | planned |
 | 7. Virtual host | `TOPAL-HOST-ABI-001`, `HOST-REPLAY-001` | Topal virtual protocols over the narrow host boundary | denial, deterministic observation, and effect-free replay tests | planned |
 | 8. Native host | `TOPAL-HOST-NATIVE-001` | private native file/socket owners and target support manifest | manifest and native capability tests | implemented |
-| 9. IP | `TOPAL-NETWORK-IP-001` | `library/std/network/addresses.t`; packet validators remain | Topal family-boundary, golden, and malformed tests | partial |
+| 9. IP | `TOPAL-NETWORK-IP-001` | `library/std/network/addresses.t` and Topal family/boundary laws; packet validators remain | Topal packet golden and malformed tests remain | partial |
 | 10. Transports | `TOPAL-NETWORK-TRANSPORT-001` | ordinary transport-independent Topal bindings | Topal partial-progress, half-close, and service-equivalence tests | planned |
-| 11. Stores | `TOPAL-STORE-FOUNDATION-001` | `library/std/store/memory.t`; queries and changes remain | Topal shared store laws | partial |
+| 11. Stores | `TOPAL-STORE-FOUNDATION-001` | `library/std/store/memory.t` and Topal identity, lookup, count, and guarantee-rank laws; queries and changes remain | Topal change and backend-shared store laws remain | partial |
 | 12. Transactions | `TOPAL-STORE-TRANSACTION-001` | ordinary Topal guarantee and fault models | Topal consistency and uncertain-outcome laws | planned |
 | 13. Files | `TOPAL-STORE-FILE-001` | Topal memory file store plus native injected capability | Topal traversal and rename-identity tests | planned |
 | 14. Databases | `TOPAL-STORE-DATABASE-001` | Topal prepared-operation and schema adapters | Topal parameter, row, and transaction laws | planned |
 | 15. Devices | `TOPAL-DEVICE-CONTROLLER-001` | Topal virtual controller and explicit DMA contracts | Topal alignment, removal, and ownership laws | planned |
-| 16. I2C | `TOPAL-DEVICE-I2C-001` | `library/std/device/i2c.t` plus existing Linux `I2C_RDWR` experiment; capability binding remains | Topal combined read, NACK, address, and limit tests | partial |
-| 17. Firewall | `TOPAL-DATA-OFFLOAD-001` | `examples/data-transfer/firewall.t` uses public `std` namespaces | software/offload differential and resource measurements | partial |
+| 16. I2C | `TOPAL-DEVICE-I2C-001` | `library/std/device/i2c.t`, Topal address/limit/descriptor laws, and existing Linux `I2C_RDWR` experiment; capability binding remains | Topal combined execution and NACK laws remain | partial |
+| 17. Firewall | `TOPAL-DATA-OFFLOAD-001` | self-checking `examples/data-transfer/firewall.t` uses public `std` namespaces | software/offload differential and resource measurements remain | partial |
 | 18. Audit | `TOPAL-TRANSFER-COMPAT-001` | Topal source, tests, examples, documentation, native boundary, and qualification record | closure, compatibility, lint, and complete workspace suites | planned |
 
 ## Architecture scenario closure

@@ -45,14 +45,14 @@ serialization codec, and later compiler wherever those tools apply. Native
 serialization and GEIR artifacts retain exact language revisions and are not a
 cross-version escape hatch.
 
-The implementation phases, shared interpreter/compiler architecture, and
-stacked review procedure are defined in
-[`standard-library-plan.md`](standard-library-plan.md).
-The follow-on fundamental API completion series is defined in
-[`fundamental-standard-library-completion.md`](fundamental-standard-library-completion.md).
-That completed API is published directly through the flat `std` namespace.
-Non-fundamental algorithm packages use separate namespaces so their growth does
-not change fundamental names.
+The completed fundamental API and its deliberate omissions are recorded in
+[`fundamental-standard-library-matrix.md`](fundamental-standard-library-matrix.md).
+The data-transfer implementation phases and shared native-boundary architecture
+are maintained in
+[`data-transfer-standard-library-plan.md`](data-transfer-standard-library-plan.md).
+The fundamental API is published directly through the flat `std` namespace;
+extended libraries use nested scopes beneath `std` so their growth does not
+change fundamental names.
 
 ## Initial development gate
 

@@ -19,7 +19,10 @@ fn topal_tests() -> Vec<PathBuf> {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     paths.sort();
-    assert!(!paths.is_empty(), "the standard-library Topal corpus is empty");
+    assert!(
+        !paths.is_empty(),
+        "the standard-library Topal corpus is empty"
+    );
     paths
 }
 
@@ -30,9 +33,9 @@ fn topal_standard_library_expectations_pass() {
         let mut trace = Vec::new();
         load_module_tree(&mut session, &repository().join("library"), &mut trace).unwrap();
         let source = fs::read_to_string(&path).unwrap();
-        session.evaluate_source_file(&source, &mut trace).unwrap_or_else(|error| {
-            panic!("{}", error.render(&path.display().to_string()))
-        });
+        session
+            .evaluate_source_file(&source, &mut trace)
+            .unwrap_or_else(|error| panic!("{}", error.render(&path.display().to_string())));
     }
 }
 
