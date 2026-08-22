@@ -178,4 +178,43 @@ fn invalid_graph_and_escaping_paths_are_rejected() {
     let mut options = fixture.options();
     options.manifest = "invalid.json".into();
     assert!(run(&options).unwrap_err().contains("declared root"));
+
+    let unknown = json!({
+        "schema": 1,
+        "units": [{
+            "id": "bad", "kind": "build", "inputs": ["core.t"],
+            "outputs": ["bad.out"], "dependencies": ["missing"],
+            "command": ["not-run"]
+        }]
+    });
+    fs::write(
+        fixture.source.join("unknown.json"),
+        serde_json::to_vec_pretty(&unknown).unwrap(),
+    )
+    .unwrap();
+    options.manifest = "unknown.json".into();
+    assert!(run(&options).unwrap_err().contains("unknown or later"));
+}
+
+#[test]
+fn missing_declared_output_does_not_publish_state() {
+    let fixture = Fixture::new(true);
+    let helper = env!("CARGO_BIN_EXE_topal-build-test-action");
+    let manifest = json!({
+        "schema": 1,
+        "units": [{
+            "id": "missing-output", "kind": "build", "inputs": ["core.t"],
+            "outputs": ["declared.out"], "dependencies": [],
+            "command": [helper, "missing-output", "actual.out", "core.t"]
+        }]
+    });
+    fs::write(
+        fixture.source.join("missing-output.json"),
+        serde_json::to_vec_pretty(&manifest).unwrap(),
+    )
+    .unwrap();
+    let mut options = fixture.options();
+    options.manifest = "missing-output.json".into();
+    assert!(run(&options).unwrap_err().contains("did not produce"));
+    assert!(!fixture.build.join("state.json").exists());
 }

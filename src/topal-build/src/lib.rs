@@ -66,6 +66,14 @@ pub struct Outcome {
     pub selected: Vec<String>,
 }
 
+/// Loads the manifest, selects affected units through the Topal policy, and
+/// executes their declared commands.
+///
+/// # Errors
+///
+/// Returns an error when roots or manifest entries are invalid, filesystem
+/// observation fails, Topal policy evaluation fails, an action fails, or an
+/// action does not produce every declared output.
 pub fn run(options: &Options) -> Result<Outcome, String> {
     let manifest_path = resolve_source_path(&options.source_root, &options.manifest)?;
     let manifest_text = fs::read_to_string(&manifest_path)
@@ -159,7 +167,7 @@ fn validate_manifest(manifest: &Manifest) -> Result<(), String> {
             }
         }
         for dependency in &unit.dependencies {
-            if !known.contains(dependency) {
+            if dependency == &unit.id || !known.contains(dependency) {
                 return Err(format!(
                     "unit `{}` depends on unknown or later unit `{dependency}`",
                     unit.id
@@ -218,11 +226,20 @@ fn execute(unit: &Unit, options: &Options) -> Result<(), String> {
         .env("TOPAL_BUILD_ROOT", &options.build_root)
         .status()
         .map_err(|error| format!("cannot execute unit `{}`: {error}", unit.id))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("unit `{}` failed with {status}", unit.id))
+    if !status.success() {
+        return Err(format!("unit `{}` failed with {status}", unit.id));
     }
+    for output in &unit.outputs {
+        let path = resolve_build_path(&options.build_root, output)?;
+        if !path.exists() {
+            return Err(format!(
+                "unit `{}` did not produce declared output {}",
+                unit.id,
+                path.display()
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn stamp(path: &Path) -> Result<Stamp, String> {
