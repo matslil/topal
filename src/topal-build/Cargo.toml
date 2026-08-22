@@ -1,0 +1,17 @@
+[package]
+name = "topal-build"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.151"
+topal-language = { path = "../topal-language" }
+
+[[bin]]
+name = "topal-build"
+path = "src/main.rs"
