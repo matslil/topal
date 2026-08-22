@@ -8,14 +8,18 @@ fn repository() -> PathBuf {
 }
 
 fn topal_tests() -> Vec<PathBuf> {
-    let directory = repository().join("tests/standard-library");
-    let mut paths = fs::read_dir(&directory)
-        .unwrap()
+    let directories = [
+        repository().join("tests/standard-library"),
+        repository().join("examples/data-transfer"),
+    ];
+    let mut paths = directories
+        .iter()
+        .flat_map(|directory| fs::read_dir(directory).unwrap())
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     paths.sort();
-    assert!(!paths.is_empty(), "{} contains no Topal tests", directory.display());
+    assert!(!paths.is_empty(), "the standard-library Topal corpus is empty");
     paths
 }
 

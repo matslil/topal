@@ -5,15 +5,26 @@ use language (
 # The design-0 reference store is an ordered List of `(identity, value)` pairs
 # while keeping identity distinct from names and paths.
 
+lookup-present-if is fn (accepted : Boolean, value : (Value : Type)) -> Optional Value
+  accepted
+    true then Some value
+    false then None Value
+lookup-present-if-callable is lookup-present-if
+
+lookup-missing is fn (
+  requested : String,
+  (identity : String, value : String)
+) -> Optional String
+  lookup-present-if-callable (identity = requested, value)
+lookup-missing-callable is lookup-missing
+
 lookup-step is fn (
   (found : Optional String, requested : String),
   (identity : String, value : String)
 ) -> Optional String
   found
     Some present then found
-    None then identity = requested
-      true then Some value
-      false then None String
+    None then lookup-missing-callable (requested, (identity, value))
 lookup-step-callable is lookup-step
 
 ### Look up an object by stable identity rather than by a path or address.
