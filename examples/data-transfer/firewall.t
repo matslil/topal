@@ -26,4 +26,14 @@ layers-do-not-alias is ethernet-network-distinct and network-transport-distinct
 source-address-valid is ipv4? (192, 0, 2, 10)
 destination-address-valid is ipv4? (198, 51, 100, 20)
 
-(headers-fit, layers-do-not-alias, source-address-valid, destination-address-valid)
+Pass is Boolean constraint { value } value = true
+headers-fit-test : Pass is Pass headers-fit
+layers-do-not-alias-test : Pass is Pass layers-do-not-alias
+source-address-test : Pass is Pass source-address-valid
+destination-address-test : Pass is Pass destination-address-valid
+truncated-packet-rejected : Pass is Pass (not (packet-span? (34, 20, 53)))
+malformed-address-rejected : Pass is Pass (not (ipv4? (198, 51, 100, 256)))
+
+(headers-fit-test, layers-do-not-alias-test, source-address-test,
+ destination-address-test, truncated-packet-rejected,
+ malformed-address-rejected)
