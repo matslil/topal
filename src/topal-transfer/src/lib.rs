@@ -1,4 +1,9 @@
-//! Capability-authorized data-transfer protocols and reference backends.
+//! Experimental host-boundary mechanisms for Topal data transfers.
+//!
+//! The public language library is ordinary Topal source under `library/std`.
+//! This Rust crate is not the Topal standard-library API: it preserves the
+//! earlier reference backends while native capability bindings are narrowed
+//! and connected to the source-level contracts.
 
 use std::collections::VecDeque;
 use std::fmt;
@@ -9,6 +14,7 @@ pub mod compatibility;
 pub mod database;
 pub mod device;
 pub mod file_store;
+/// Legacy Rust measurement model; applications use the source-level firewall example.
 pub mod firewall;
 pub mod framing;
 pub mod host;
