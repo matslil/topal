@@ -65,6 +65,15 @@ domains. Test and implementation columns will be added with those artifacts.
 
 ## Implementation coverage
 
+| Build-tool requirement | Design/plan | Functional evidence | Implementation |
+| --- | --- | --- | --- |
+| `TOPAL-BUILD-GRAPH-001` | `se/topal-build-system-plan.md` complete explicit graph | invalid graph, escaping path, and output validation tests | `topal-build` manifest validator |
+| `TOPAL-BUILD-CHANGE-001` | exact timestamp equality and conservative reversion policy | deterministic timestamp-change integration tests | `topal-build` filesystem observation state |
+| `TOPAL-BUILD-INVALIDATE-001` | source-level reverse-transitive selection | `tests/standard-library/build-graph.t`; native integration selection tests | `library/std/build/graph.t` |
+| `TOPAL-BUILD-TEST-001` | tests as graph units | direct, indirect, independent, and test-only Topal/native tests | `library/std/build/graph.t`; manifest test units |
+| `TOPAL-BUILD-ROOT-001` | independent source and build roots | in-tree and out-of-tree isolation integration tests | `topal-build` root-confined resolver |
+| `TOPAL-BUILD-BOUNDARY-001` | narrow native capability boundary | failed-action state and missing-output tests | `topal-build` filesystem/process adapter |
+
 | Tool requirement | Specification rules | Functional evidence | Implementation |
 | --- | --- | --- | --- |
 | extended transfer package boundary | `TOPAL-TRANSFER-PACKAGE-001`, `TOPAL-TRANSFER-PACKAGE-002`, `TOPAL-TRANSFER-PACKAGE-003`, `TOPAL-TRANSFER-PACKAGE-004`, `TOPAL-TRANSFER-PACKAGE-005` | nested-source loader, linter, and LSP tests | `library/std/{data,transfer,store,network,device}`; `topal-transfer` is native-boundary experiment only |

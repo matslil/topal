@@ -3600,6 +3600,30 @@
     "topal-syntax::lib:topal_syntax::tests::tokenizes_three_way_comparison_as_one_callable": {
       "cpu_time_ns": 1286560,
       "memory_peak_bytes": 17870848
+    },
+    "topal-build::test:incremental::failed_action_does_not_advance_observation_state": {
+      "cpu_time_ns": 232527700,
+      "memory_peak_bytes": 18067456
+    },
+    "topal-build::test:incremental::in_tree_build_selects_only_reverse_transitive_dependents": {
+      "cpu_time_ns": 231868140,
+      "memory_peak_bytes": 18067456
+    },
+    "topal-build::test:incremental::invalid_graph_and_escaping_paths_are_rejected": {
+      "cpu_time_ns": 2541120,
+      "memory_peak_bytes": 18132992
+    },
+    "topal-build::test:incremental::missing_declared_output_does_not_publish_state": {
+      "cpu_time_ns": 76476840,
+      "memory_peak_bytes": 18132992
+    },
+    "topal-build::test:incremental::out_of_tree_build_keeps_outputs_and_state_outside_source": {
+      "cpu_time_ns": 86482340,
+      "memory_peak_bytes": 18014208
+    },
+    "topal-build::test:incremental::test_only_change_does_not_rebuild_production_units": {
+      "cpu_time_ns": 155222240,
+      "memory_peak_bytes": 18272256
     }
   }
 }

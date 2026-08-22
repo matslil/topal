@@ -1250,12 +1250,15 @@ mod tests {
             "library/std/store/memory.t",
             "library/std/network/addresses.t",
             "library/std/device/i2c.t",
+            "library/std/build/module.t",
+            "library/std/build/graph.t",
             "tests/standard-library/harness.t",
             "tests/standard-library/data-spans.t",
             "tests/standard-library/transfer-queues.t",
             "tests/standard-library/store-memory.t",
             "tests/standard-library/network-addresses.t",
             "tests/standard-library/device-i2c.t",
+            "tests/standard-library/build-graph.t",
             "examples/data-transfer/firewall.t",
         ] {
             let path = root.join(relative);

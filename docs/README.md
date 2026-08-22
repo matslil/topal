@@ -15,8 +15,9 @@ The design currently covers:
 - the object, type, abstraction, capability, and introspection models;
 - syntax, execution, errors, effects, functions, and generators;
 - modules, constructed contexts, resources, tasks, and interfaces;
-- containers, strings, numbers, ranges, units, serialization, and
-  [data transfers](data-transfers.md);
+- containers, strings, numbers, ranges, units, serialization,
+  [data transfers](data-transfers.md), and the
+  [incremental build system](build-system.md);
 - layouts, addressed storage, sensitive values, tracing, debugger scripting,
   source documentation, generated API reference material, and performance; and
 - unit testing, structural path coverage, and the best-practice database.
