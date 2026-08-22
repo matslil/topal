@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use topal_language::{Session, load_module_tree};
+use topal_language::{Session, declares_library, load_module_tree};
 
 fn repository() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -31,8 +31,10 @@ fn topal_standard_library_expectations_pass() {
     for path in topal_tests() {
         let mut session = Session::new();
         let mut trace = Vec::new();
-        load_module_tree(&mut session, &repository().join("library"), &mut trace).unwrap();
         let source = fs::read_to_string(&path).unwrap();
+        if declares_library(&source, "std") {
+            load_module_tree(&mut session, &repository().join("library"), &mut trace).unwrap();
+        }
         session
             .evaluate_source_file(&source, &mut trace)
             .unwrap_or_else(|error| panic!("{}", error.render(&path.display().to_string())));

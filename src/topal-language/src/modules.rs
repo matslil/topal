@@ -4,6 +4,23 @@ use std::fs;
 use std::path::Path;
 
 use crate::{Session, TraceSink};
+use topal_source::SourceText;
+use topal_syntax::{Statement, lex, parse};
+
+/// Test whether a source file explicitly declares one library identity.
+#[must_use]
+pub fn declares_library(source: &str, identity: &str) -> bool {
+    let Ok(source) = SourceText::new(source) else {
+        return false;
+    };
+    parse(&source, &lex(&source))
+        .statements
+        .iter()
+        .any(|statement| {
+            matches!(statement, Statement::LibrarySelection { name, version, .. }
+            if source.slice(*name) == identity && source.slice(*version) == "v0.1")
+        })
+}
 
 /// Load every ordinary source module and constructed child module below one
 /// package directory into an existing session.
@@ -94,14 +111,42 @@ mod tests {
         let mut session = Session::new();
         let mut trace = Vec::new();
         load_module_tree(&mut session, &root, &mut trace).unwrap();
+        let undeclared = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\nstd min (4, 2)",
+                &mut trace,
+            )
+            .unwrap_err();
+        assert_eq!(undeclared.code, "E-UNDECLARED-LIBRARY");
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )\nmin is std min\nmin (4, 2)",
+                "use language ( version is v0.1 )\nuse library std ( version is v0.1 )\nmin is std min\nmin (4, 2)",
                 &mut trace,
             )
             .unwrap();
         assert_eq!(value, Value::Int(BigInt::from(2)));
         assert!(trace.iter().any(|event| event.contains("module.loaded")));
+        let no_leaked_declaration = session
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\nstd min (4, 2)",
+                &mut trace,
+            )
+            .unwrap_err();
+        assert_eq!(no_leaked_declaration.code, "E-UNDECLARED-LIBRARY");
+        let duplicate = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\nuse library std ( version is v0.1 )\nuse library std ( version is v0.1 )\n()",
+                &mut trace,
+            )
+            .unwrap_err();
+        assert_eq!(duplicate.code, "E-DUPLICATE-LIBRARY");
+        let unavailable = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\nuse library other ( version is v0.1 )\n()",
+                &mut trace,
+            )
+            .unwrap_err();
+        assert_eq!(unavailable.code, "E-UNSUPPORTED-LIBRARY");
     }
 
     #[test]
@@ -112,7 +157,7 @@ mod tests {
         load_module_tree(&mut session, &root, &mut trace).unwrap();
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )\nmin is std min\nmin ((1, 3), (1, 2))",
+                "use language ( version is v0.1 )\nuse library std ( version is v0.1 )\nmin is std min\nmin ((1, 3), (1, 2))",
                 &mut trace,
             )
             .unwrap();
@@ -139,7 +184,7 @@ mod tests {
 
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )\n(std min (4, 2), std transfer revision, std data revision, std store revision, std network revision, std device revision)",
+                "use language ( version is v0.1 )\nuse library std ( version is v0.1 )\n(std min (4, 2), std transfer revision, std data revision, std store revision, std network revision, std device revision)",
                 &mut trace,
             )
             .unwrap();
@@ -181,7 +226,8 @@ mod tests {
         load_module_tree(&mut session, &root, &mut trace).unwrap();
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )
+"use language ( version is v0.1 )
+use library std ( version is v0.1 )
 present? is std present?
 absent? is std absent?
 map is std map
@@ -209,7 +255,8 @@ flatten is std flatten
         load_module_tree(&mut session, &root, &mut trace).unwrap();
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )
+"use language ( version is v0.1 )
+use library std ( version is v0.1 )
 result-map is std map
 ok? is std ok?
 error? is std error?
@@ -237,6 +284,7 @@ failed is 4.0 divide 0.0
         let value = session
             .evaluate_source_file(
                 "use language ( version is v0.1 )
+use library std ( version is v0.1 )
 gcd is std gcd
 even? is std even?
 odd? is std odd?
@@ -264,7 +312,8 @@ reciprocal is std reciprocal
         load_module_tree(&mut session, &root, &mut trace).unwrap();
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )
+"use language ( version is v0.1 )
+use library std ( version is v0.1 )
 bounds is std bounds
 intersection is std intersection
 overlaps? is std overlaps?
@@ -295,7 +344,8 @@ adjacent? is std adjacent?
         load_module_tree(&mut session, &root, &mut trace).unwrap();
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )
+"use language ( version is v0.1 )
+use library std ( version is v0.1 )
 nfd is std nfd
 canonical-equal is std canonical-equal
 starts-with? is std starts-with?
@@ -322,7 +372,8 @@ repeat is std repeat
         load_module_tree(&mut session, &root, &mut trace).unwrap();
         let value = session
             .evaluate_source_file(
-                "use language ( version is v0.1 )
+"use language ( version is v0.1 )
+use library std ( version is v0.1 )
 any? is std any?
 all? is std all?
 none? is std none?
@@ -345,6 +396,7 @@ values : List Int is Entry (1, Entry (2, Entry (3, Empty)))
         let value = session
             .evaluate_source_file(
                 "use language ( version is v0.1 )
+use library std ( version is v0.1 )
 enumerate is std count-from
 numbers is enumerate 3
 collect (numbers take-while ({ value } value < 7))",

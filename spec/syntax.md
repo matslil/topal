@@ -48,6 +48,20 @@ not through a second bootstrap grammar. A debugger command file shall select
 implicitly. Selection adds only the variant's vocabulary and authority to that
 source context.
 
+### TOPAL-SYN-LIBRARY-001 — Explicit library dependency
+
+After its initial language selection, a source file MAY declare a library
+dependency with `use library N ( version is V )`, where `N` is a library
+identity and `V` is a `Version` literal. The declaration SHALL NOT contain a
+filesystem location or grant runtime authority. Duplicate declarations of one
+identity or unsupported declaration fields SHALL be diagnosed.
+
+The `std` root namespace SHALL be unavailable unless that source context
+declares `use library std`. A source tool SHALL resolve the declared identity
+and compatible version through its configured library resolver before it
+evaluates a reference to the library. An unavailable library, unsupported
+version, or reference to an undeclared library namespace SHALL be diagnosed.
+
 ### TOPAL-SYN-LEX-001 — Tokens
 
 Let `printable` contain every assigned Unicode 17.0.0 scalar whose General

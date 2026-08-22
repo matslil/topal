@@ -16,6 +16,9 @@ built-in `lang` identifiers, and shall report ambiguous unqualified names.
 The debugger shall accept the same directory application and shared module
 tree as the interpreter, preserve package-relative declaration resolution, and
 execute standard-library examples through deterministic debugger scripts.
+For an individual file it shall resolve only libraries declared with
+`TOPAL-SYN-LIBRARY-001`, using its configured library root. It shall not inject
+`std` into a debuggee that omits the declaration.
 
 ## TOPAL-DEBUG-EXEC-001 — Shared deterministic execution
 

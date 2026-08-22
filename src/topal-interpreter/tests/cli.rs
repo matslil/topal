@@ -68,6 +68,21 @@ fn every_interpreter_example_is_an_executable_script() {
 }
 
 #[test]
+fn declared_standard_library_file_executes_directly() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal"))
+        .args(["--library-root", root.join("library").to_str().unwrap()])
+        .arg(root.join("examples/data-transfer/rest-controller.t"))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
 fn every_interpreter_example_documents_its_feature() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language");
     for entry in std::fs::read_dir(directory).unwrap() {

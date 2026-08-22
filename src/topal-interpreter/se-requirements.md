@@ -163,6 +163,11 @@ interactive context. With no interactive version option, the interpreter shall
 select its highest supported language version. Unsupported versions shall
 produce an actionable diagnostic rather than fall back to another version.
 
+Script and test modes shall resolve only source-declared library dependencies
+under `TOPAL-SYN-LIBRARY-001`. The standard library location may come from a
+tool option or environment configuration, but that configuration shall not
+implicitly declare `std` for the program.
+
 ## TOPAL-INTP-ABSTRACTION-001 — Function interfaces
 
 All interpreter modes shall construct implementation-independent function

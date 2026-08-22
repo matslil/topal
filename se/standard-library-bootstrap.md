@@ -31,12 +31,15 @@ code depends on it.
 ## Bootstrap order
 
 1. The stable source bootstrap selects the file's immutable language context.
-2. The shared frontend parses and validates the module without executing it.
-3. Package and module loading establishes only published, version-compatible
+2. Each source file explicitly declares every library dependency, including
+   `use library std ( version is v0.1 )` when it needs the standard library.
+   No standard-library namespace is ambient.
+3. The shared frontend parses and validates the module without executing it.
+4. Package and module loading establishes only declared, published, version-compatible
    dependencies.
-4. Static construction and introspection derive typed ordinary artifacts
+5. Static construction and introspection derive typed ordinary artifacts
    without retaining automatic runtime reflection.
-5. Runtime execution receives explicit arguments, capabilities, and effects;
+6. Runtime execution receives explicit arguments, capabilities, and effects;
    resource acquisition remains an ordinary explicit effect.
 
 Library packages shall state their supported language revision and test their

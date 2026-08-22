@@ -2,6 +2,9 @@
 use language (
   version is v0.1
 )
+use library std (
+  version is v0.1
+)
 
 # A transport-independent REST API whose controller functions are embedded
 # directly in an Interface implementation. An HTTP adapter validates message
