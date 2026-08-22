@@ -176,6 +176,18 @@ mod tests {
     }
 
     #[test]
+    fn firewall_example_executes_against_public_topal_interfaces() {
+        let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut session = Session::new();
+        let mut trace = Vec::new();
+        load_module_tree(&mut session, &repository.join("library"), &mut trace).unwrap();
+        let source = std::fs::read_to_string(repository.join("examples/data-transfer/firewall.t"))
+            .unwrap();
+        let value = session.evaluate_source_file(&source, &mut trace).unwrap();
+        assert_eq!(value.to_string(), "(true, true, true, true)");
+    }
+
+    #[test]
     fn capability_generic_result_substitutes_inside_a_product() {
         let mut session = Session::new();
         let mut trace = Vec::new();
