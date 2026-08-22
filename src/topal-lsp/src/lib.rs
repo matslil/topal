@@ -1242,28 +1242,11 @@ mod tests {
 
     #[test]
     fn accepts_the_standard_library_fundamental_sources() {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/std/module.t");
-        let text = std::fs::read_to_string(&path).unwrap();
-        let mut server = Server::default();
-        let output = server.handle(&json!({
-            "method": "textDocument/didOpen",
-            "params": { "textDocument": {
-                "uri": format!("file://{}", path.display()),
-                "languageId": "topal",
-                "version": 1,
-                "text": text
-            } }
-        }));
-        assert!(
-            output[0]["params"]["diagnostics"]
-                .as_array()
-                .unwrap()
-                .is_empty(),
-            "{}",
-            path.display()
-        );
-        let numeric = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/std/module.t");
-        assert!(diagnostics(&std::fs::read_to_string(numeric).unwrap()).is_empty());
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library/std");
+        for relative in ["module.t", "data/spans.t", "transfer/queues.t", "store/memory.t", "network/addresses.t", "device/i2c.t"] {
+            let path = root.join(relative);
+            assert!(diagnostics(&std::fs::read_to_string(&path).unwrap()).is_empty(), "{}", path.display());
+        }
     }
 
     #[test]
