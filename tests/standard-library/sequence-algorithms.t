@@ -21,6 +21,7 @@ windows is std sequence windows
 enumerate is std sequence enumerate
 group-runs is std sequence group-runs
 zip-pairs is std sequence zip
+range-values is std sequence values
 even? is fn (value : Int) -> Boolean
   value % 2 = 0
 
@@ -46,6 +47,7 @@ run-three : List Int is Entry (1, Empty)
 runs : List List Int is Entry (run-one, Entry (run-two, Entry (run-three, Empty)))
 letters : List String is Entry ("a", Entry ("b", Empty))
 zipped : List (Int, String) is Entry ((1, "a"), Entry ((2, "b"), Empty))
+range-list : List Int is Entry (2, Entry (3, Entry (4, Empty)))
 index-is is fn (candidate : Optional Nat, expected : Int) -> Boolean
   candidate
     Some index then index = expected
@@ -79,9 +81,10 @@ oversized-windows : Pass is Pass ((windows (values, 8)) = no-windows)
 indexed-entries : Pass is Pass ((enumerate values) = enumerated-values)
 adjacent-groups : Pass is Pass ((group-runs run-input) = runs)
 shortest-pairs : Pass is Pass ((zip-pairs (values, letters)) = zipped)
+range-materialization : Pass is Pass ((range-values (2 ..= 4)) = range-list)
 
 (take-prefix, take-clamps, drop-prefix, drop-clamps, split-list, take-text,
  drop-text, split-text, stable-retain, stable-reject, first-occurrences,
  first-index, last-index, absent-index, left-rotation, right-rotation-wraps,
  fixed-chunks, sliding-windows, oversized-windows, indexed-entries,
- adjacent-groups, shortest-pairs)
+ adjacent-groups, shortest-pairs, range-materialization)

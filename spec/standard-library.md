@@ -116,7 +116,8 @@ The `std sequence` namespace SHALL provide clamped `take`, `drop`, and
 Characters under the selected Unicode context. It SHALL also provide stable
 predicate retention/rejection, first-occurrence duplicate removal, first/last
 indexed equality search, rotation, chunking, windows, enumeration,
-adjacent-run grouping, and shortest zip. Every operation
+adjacent-run grouping, shortest zip, and finite Int range materialization.
+Every operation
 SHALL preserve source order and the exact element classifier, operate on
 ordinary finite sequence values, and leave its input unchanged.
 
@@ -149,6 +150,15 @@ Unicode-whitespace blank testing, explicit NFC and NFD normalization, line and
 Unicode-whitespace word splitting, and exact joining.
 Operations SHALL use the selected pinned Unicode context and SHALL NOT add
 locale or encoded-byte policy.
+
+### TOPAL-LIB-PARSE-001 — Exact text parsing helpers
+
+The `std parse` namespace SHALL provide strict complete signed ASCII decimal
+Int parsing, source-ordered signed and unsigned decimal extraction, decimal
+digit decomposition, canonical base-ten Int formatting, and Unicode Character
+materialization. Complete parsing SHALL return `None Int` for malformed text.
+Digit decomposition SHALL reject any nondigit rather than discard it. These
+operations SHALL be locale independent and SHALL NOT expose encoded units.
 
 ### TOPAL-LIB-GRAPH-001 — Finite directed reachability
 
