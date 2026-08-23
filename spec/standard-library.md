@@ -137,6 +137,34 @@ follow the underlying String and List containment laws; these exact operations
 SHALL NOT silently introduce regular-expression, locale, or normalization
 policy.
 
+### TOPAL-LIB-TEXT-ALGORITHMS-001 — Unicode text algorithms
+
+The `std text` namespace SHALL provide canonical and default-caseless equality,
+Unicode-whitespace blank testing, and explicit NFC and NFD normalization.
+Operations SHALL use the selected pinned Unicode context and SHALL NOT add
+locale or encoded-byte policy.
+
+### TOPAL-LIB-GRAPH-001 — Finite directed reachability
+
+The `std graph` namespace SHALL provide reachability closure and membership for
+finite directed graphs represented by explicit String nodes and
+`(source, destination)` edges. The start node SHALL be reachable from itself,
+cycles SHALL terminate, results SHALL contain each reached node once, and
+unreachable components SHALL remain absent.
+
+### TOPAL-LIB-COMBINATORICS-001 — Exact combinatorial counts
+
+The `std combinatorics` namespace SHALL provide exact Nat factorial and finite
+List subset counts. `factorial 0` SHALL be one and `subset-count values` SHALL
+be two raised to the exact List entry count, without fixed-width overflow.
+
+### TOPAL-LIB-STATISTICS-001 — Exact arithmetic means
+
+The `std statistics` namespace SHALL provide exact arithmetic means for finite
+Int and Rational Lists. A nonempty result SHALL be a canonical Rational;
+an empty input SHALL return `None Rational` rather than inventing a value or
+raising an arithmetic error.
+
 ### TOPAL-LIB-GENERATOR-001 — Lazy generator constructors
 
 The `std` namespace SHALL provide integer enumeration as a replay-free
