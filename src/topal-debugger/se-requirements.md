@@ -63,6 +63,11 @@ to the next source location in the current source file without presenting
 dependency-source locations as locations in that file. Their reverse forms
 shall preserve the same boundary.
 
+Each source checkpoint shall retain the identity and text of the source file
+that produced it. Stepping into a `use library` clause shall present successive
+source locations from the selected dependency rather than only describing its
+module-loading events or interpreting its spans against the caller's source.
+
 Ordinary source-position output shall show the current line without a caret
 marker. A source renderer shall show caret markers only when its caller
 provides a separate source span to emphasize, such as for a diagnostic or an

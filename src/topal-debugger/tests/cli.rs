@@ -110,7 +110,9 @@ fn step_enters_declared_library_while_next_stays_in_the_current_file() {
         .stdin
         .take()
         .unwrap()
-        .write_all(b"use language ( version is v0.1, features is ( debug ) )\nstep\nnext\nquit\n")
+        .write_all(
+            b"use language ( version is v0.1, features is ( debug ) )\nnext\nstep\nstep\nreverse-step\nquit\n",
+        )
         .unwrap();
     let output = child.wait_with_output().unwrap();
     assert!(
@@ -119,8 +121,12 @@ fn step_enters_declared_library_while_next_stays_in_the_current_file() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("module.loaded [TOPAL-NAMESPACE-USE-001]"));
     assert!(stdout.contains("examples/data-transfer/rest-controller.t:5:1"));
+    assert!(stdout.contains("library/std/module.t:12:1"));
+    assert_eq!(stdout.matches("library/std/module.t:12:1").count(), 2);
+    assert!(stdout.contains("pub min is fn"));
+    assert!(stdout.contains("library/std/module.t:18:1"));
+    assert!(stdout.contains("pub max is fn"));
     assert!(!stdout.contains("rest-controller.t:12:50"));
     assert!(!stdout.contains('^'));
     assert!(!stdout.contains("error["));
