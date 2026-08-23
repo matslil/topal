@@ -6,5 +6,10 @@ use language (
 
 help documented-answer
 help min
+help std min
+help std web http response
 help lang Int
+help next
 help
+next
+bindings

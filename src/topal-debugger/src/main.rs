@@ -35,6 +35,14 @@ fn run() -> Result<(), String> {
     } else if declares_library(&source, "std") {
         load_module_tree(&mut session, &arguments.library_root, &mut history)?;
     }
+    let documentation_root = if Path::new(&arguments.source).is_dir() {
+        Some(Path::new(&arguments.source))
+    } else if arguments.library_root.is_dir() {
+        Some(arguments.library_root.as_path())
+    } else {
+        None
+    };
+    let documentation = debugger_documentation(&source, documentation_root)?;
     let current_source_start = history.transitions().len();
     history.push_source(&source_name, &source);
     let execution = session
@@ -46,7 +54,8 @@ fn run() -> Result<(), String> {
         execution,
         history,
         current_source_start,
-        dependency_return_cursor: None,
+        dependency_frame: None,
+        documentation,
         complete: false,
     };
 
@@ -167,9 +176,20 @@ struct Debuggee {
     execution: Execution,
     history: ExecutionHistory,
     current_source_start: usize,
-    dependency_return_cursor: Option<usize>,
+    dependency_frame: Option<SourceFrame>,
+    documentation: Vec<DocumentedDeclaration>,
     complete: bool,
 }
+
+#[derive(Clone)]
+struct SourceFrame {
+    return_cursor: usize,
+    caller_name: String,
+    caller_source: String,
+    caller_range: topal_language::SourceRange,
+}
+
+type Breakpoint = (String, usize);
 
 fn parse_arguments(mut arguments: impl Iterator<Item = String>) -> Result<Arguments, String> {
     let mut commands = None;
@@ -226,7 +246,8 @@ fn command_loop(
         execution,
         history,
         current_source_start,
-        dependency_return_cursor,
+        dependency_frame,
+        documentation,
         complete,
     } = debuggee;
     let mut breakpoints = BTreeSet::new();
@@ -262,7 +283,7 @@ fn command_loop(
                     session,
                     execution,
                     complete,
-                )? => {}
+                ) => {}
             command
                 if handle_frame_command(
                     command,
@@ -272,6 +293,7 @@ fn command_loop(
                     session,
                     execution,
                     *current_source_start,
+                    dependency_frame,
                     complete,
                 ) => {}
             command
@@ -284,19 +306,20 @@ fn command_loop(
                     &watchpoints,
                 ) => {}
             "step" | "s" => {
-                if dependency_return_cursor.is_some()
-                    || at_library_selection(history, source, source_name)
+                if dependency_frame.is_some() || at_library_selection(history, source, source_name)
                 {
-                    if dependency_return_cursor.is_none() {
-                        *dependency_return_cursor = Some(history.cursor());
+                    if dependency_frame.is_none() {
+                        *dependency_frame = source_frame(history, source, source_name);
                         history.rewind();
                     }
                     match history.step_source_forward() {
                         Some(_) => {
                             if history.cursor()
-                                >= dependency_return_cursor.unwrap_or(*current_source_start)
+                                >= dependency_frame
+                                    .as_ref()
+                                    .map_or(*current_source_start, |frame| frame.return_cursor)
                             {
-                                *dependency_return_cursor = None;
+                                *dependency_frame = None;
                             }
                             print_source_location(history, source, source_name);
                         }
@@ -310,12 +333,13 @@ fn command_loop(
                 }
             }
             "reverse-step" | "rs" => {
-                if let Some(return_cursor) = *dependency_return_cursor {
+                if let Some(frame) = dependency_frame.as_ref() {
+                    let return_cursor = frame.return_cursor;
                     if history.step_source_backward().is_some() {
                         print_source_location(history, source, source_name);
                     } else {
                         history.seek(return_cursor);
-                        *dependency_return_cursor = None;
+                        *dependency_frame = None;
                         print_source_location(history, source, source_name);
                     }
                 } else if history.cursor() == 0 {
@@ -331,7 +355,7 @@ fn command_loop(
             "history" => print_history(history),
             "why" => print_reason(history),
             "breakpoints" => {
-                print_breakpoints(&breakpoints, source_name);
+                print_breakpoints(&breakpoints);
             }
             "watchpoints" => {
                 print_watchpoints(&watchpoints);
@@ -340,10 +364,12 @@ fn command_loop(
                 print_checkpoints(&checkpoints);
             }
             command if command.starts_with("break ") => {
-                update_breakpoint(command, "break ", &mut breakpoints, true);
+                let current_name = current_source_name(history, source_name);
+                update_breakpoint(command, "break ", &current_name, &mut breakpoints, true);
             }
             command if command.starts_with("delete ") => {
-                update_breakpoint(command, "delete ", &mut breakpoints, false);
+                let current_name = current_source_name(history, source_name);
+                update_breakpoint(command, "delete ", &current_name, &mut breakpoints, false);
             }
             command if command.starts_with("watch ") => {
                 update_watchpoint(command, "watch ", &mut watchpoints, true);
@@ -370,7 +396,7 @@ fn command_loop(
             }
             "bindings" => print_bindings(history),
             command if command.starts_with("help ") => {
-                print_identifier_help(command[5..].trim(), source);
+                print_identifier_help(command[5..].trim(), documentation);
             }
             "help" | "h" => {
                 println!(
@@ -394,12 +420,11 @@ fn command_loop(
     }
 }
 
-fn print_identifier_help(identifier: &str, source: &str) {
-    let mut declarations = documented_source(source);
-    declarations.extend(documented_source(include_str!(
-        "../../../library/std/module.t"
-    )));
-    declarations.extend(lang_documentation());
+fn print_identifier_help(identifier: &str, declarations: &[DocumentedDeclaration]) {
+    if let Some(documentation) = debugger_command_documentation(identifier) {
+        println!("{identifier}: {documentation}");
+        return;
+    }
     let qualified = identifier.contains(' ');
     let matches = declarations
         .iter()
@@ -439,6 +464,94 @@ fn print_identifier_help(identifier: &str, source: &str) {
             }
         }
     }
+}
+
+fn debugger_documentation(
+    source: &str,
+    library_root: Option<&Path>,
+) -> Result<Vec<DocumentedDeclaration>, String> {
+    let mut declarations = documented_source(source);
+    if let Some(root) = library_root {
+        collect_module_documentation(root, root, &mut declarations)?;
+    }
+    declarations.extend(lang_documentation());
+    Ok(declarations)
+}
+
+fn collect_module_documentation(
+    root: &Path,
+    directory: &Path,
+    declarations: &mut Vec<DocumentedDeclaration>,
+) -> Result<(), String> {
+    let mut paths = fs::read_dir(directory)
+        .map_err(|error| format!("cannot read {}: {error}", directory.display()))?
+        .map(|entry| entry.map(|entry| entry.path()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())?;
+    paths.sort();
+    for path in paths {
+        if path.is_dir() {
+            collect_module_documentation(root, &path, declarations)?;
+        } else if path.extension().is_some_and(|extension| extension == "t") {
+            if matches!(
+                path.file_name().and_then(|name| name.to_str()),
+                Some("application.t" | "package.t" | "library.t")
+            ) {
+                continue;
+            }
+            let text = fs::read_to_string(&path)
+                .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+            let relative = path.strip_prefix(root).unwrap_or(&path);
+            let mut namespace = relative
+                .parent()
+                .into_iter()
+                .flat_map(Path::components)
+                .map(|component| component.as_os_str().to_string_lossy().into_owned())
+                .collect::<Vec<_>>();
+            if path.file_name().and_then(|name| name.to_str()) != Some("module.t")
+                && let Some(stem) = path.file_stem()
+            {
+                namespace.push(stem.to_string_lossy().into_owned());
+            }
+            for mut declaration in documented_source(&text) {
+                if !namespace.is_empty() {
+                    declaration.name = format!("{} {}", namespace.join(" "), declaration.name);
+                }
+                declarations.push(declaration);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn debugger_command_documentation(command: &str) -> Option<&'static str> {
+    Some(match command {
+        "step" => "enter the current source clause, including a selected dependency",
+        "reverse-step" => "move to the preceding step, returning through source frames",
+        "next" => "advance to the next location in the current source file",
+        "reverse-next" => "move to the preceding location in the current source file",
+        "source-step" | "expression-step" => "advance to the next recorded source expression",
+        "reverse-source-step" => "move to the preceding recorded source expression",
+        "finish" => "finish the current source frame and return to its caller",
+        "reverse-finish" => "rewind to the start of source execution",
+        "continue" | "reverse-continue" => "run to a source breakpoint or binding watchpoint",
+        "backtrace" => "show the current source frame and its callers",
+        "break" => "break LINE sets a breakpoint in the current source file",
+        "delete" => "delete LINE removes a breakpoint in the current source file",
+        "breakpoints" => "list source-qualified breakpoints",
+        "watch" | "unwatch" | "watchpoints" => "manage binding-change watchpoints",
+        "checkpoint" | "restore" | "checkpoints" | "delete-checkpoint" => {
+            "manage named execution-history positions"
+        }
+        "where" => "show the current source location",
+        "why" => "explain the current semantic decision",
+        "history" => "list recorded semantic decisions",
+        "print" => "print the current value or evaluate a read-only Topal expression",
+        "bindings" => "list bindings visible at the current execution state",
+        "help" => "list commands, or use help NAME for command or declaration documentation",
+        "quit" => "leave the debugger",
+        _ => return None,
+    })
 }
 
 fn documented_source(text: &str) -> Vec<DocumentedDeclaration> {
@@ -561,15 +674,13 @@ fn handle_source_command(
     session: &mut Session,
     execution: &mut Execution,
     complete: &mut bool,
-) -> Result<bool, String> {
+) -> bool {
     match command {
         "source-step" | "ss" | "expression-step" | "es" => {
-            if live_source_step(history, session, execution, complete)
-                .map_err(|error| error.render(source_name))?
-            {
-                print_source_location(history, source, source_name);
-            } else {
-                println!("end of source execution");
+            match live_source_step(history, session, execution, complete) {
+                Ok(true) => print_source_location(history, source, source_name),
+                Ok(false) => println!("end of source execution"),
+                Err(error) => println!("{}", error.render(source_name)),
             }
         }
         "reverse-source-step" | "rss" => match history.step_source_backward() {
@@ -577,9 +688,9 @@ fn handle_source_command(
             None => println!("start of source execution"),
         },
         "where" | "w" => print_source_location(history, source, source_name),
-        _ => return Ok(false),
+        _ => return false,
     }
-    Ok(true)
+    true
 }
 
 fn print_reason(history: &ExecutionHistory) {
@@ -598,7 +709,7 @@ fn handle_continue_command(
     history: &mut ExecutionHistory,
     source: &str,
     source_name: &str,
-    breakpoints: &BTreeSet<usize>,
+    breakpoints: &BTreeSet<Breakpoint>,
     watchpoints: &BTreeSet<String>,
 ) -> bool {
     let reverse = match command {
@@ -629,7 +740,13 @@ fn read_command(input: &mut impl BufRead, prompt: bool) -> Result<Option<String>
 }
 
 fn print_bindings(history: &ExecutionHistory) {
-    if let Some(state) = history.state() {
+    let Some(state) = history.state() else {
+        println!("no execution state selected");
+        return;
+    };
+    if state.bindings.is_empty() {
+        println!("no visible bindings");
+    } else {
         for (name, value) in &state.bindings {
             println!("{name} = {value}");
         }
@@ -656,9 +773,21 @@ fn handle_frame_command(
     session: &mut Session,
     execution: &mut Execution,
     current_source_start: usize,
+    dependency_frame: &mut Option<SourceFrame>,
     complete: &mut bool,
 ) -> bool {
     match command {
+        "next" | "n" if dependency_frame.is_some() => {
+            let return_cursor = dependency_frame.as_ref().unwrap().return_cursor;
+            let current_name = current_source_name(history, source_name);
+            if step_to_source_in_file(history, &current_name, return_cursor, false) {
+                print_source_location(history, source, source_name);
+            } else {
+                history.seek(return_cursor);
+                *dependency_frame = None;
+                print_source_location(history, source, source_name);
+            }
+        }
         "next" | "n" => {
             match live_next(history, session, execution, current_source_start, complete) {
                 Ok(true) => print_source_location(history, source, source_name),
@@ -666,10 +795,26 @@ fn handle_frame_command(
                 Err(error) => println!("{}", error.render(source_name)),
             }
         }
+        "reverse-next" | "rn" if dependency_frame.is_some() => {
+            let current_name = current_source_name(history, source_name);
+            if step_to_source_in_file(history, &current_name, 0, true) {
+                print_source_location(history, source, source_name);
+            } else {
+                let return_cursor = dependency_frame.as_ref().unwrap().return_cursor;
+                history.seek(return_cursor);
+                *dependency_frame = None;
+                print_source_location(history, source, source_name);
+            }
+        }
         "reverse-next" | "rn" => match reverse_next(history, current_source_start) {
             Some(_) => print_source_location(history, source, source_name),
             None => println!("start of current frame"),
         },
+        "finish" if dependency_frame.is_some() => {
+            let return_cursor = dependency_frame.take().unwrap().return_cursor;
+            history.seek(return_cursor);
+            print_source_location(history, source, source_name);
+        }
         "finish" => {
             while !*complete {
                 match execution.step(session, history) {
@@ -690,10 +835,33 @@ fn handle_frame_command(
             history.reverse_finish();
             print_source_location(history, source, source_name);
         }
-        "backtrace" | "bt" => print_backtrace(history, source, source_name),
+        "backtrace" | "bt" => {
+            print_backtrace(history, source, source_name, dependency_frame.as_ref());
+        }
         _ => return false,
     }
     true
+}
+
+fn step_to_source_in_file(
+    history: &mut ExecutionHistory,
+    source_name: &str,
+    boundary: usize,
+    reverse: bool,
+) -> bool {
+    loop {
+        let advanced = if reverse {
+            history.step_source_backward().is_some()
+        } else {
+            history.cursor() < boundary && history.step_source_forward().is_some()
+        };
+        if !advanced {
+            return false;
+        }
+        if current_source_name(history, "") == source_name {
+            return true;
+        }
+    }
 }
 
 fn live_next(
@@ -748,21 +916,66 @@ fn live_source_step(
     Ok(true)
 }
 
-fn print_backtrace(history: &ExecutionHistory, source: &str, source_name: &str) {
-    if let Some(range) = history.state().and_then(|state| state.source_range) {
-        let (line, column) = line_column(source, range.start);
-        println!("#0 <script> at {source_name}:{line}:{column}");
+fn print_backtrace(
+    history: &ExecutionHistory,
+    source: &str,
+    source_name: &str,
+    dependency_frame: Option<&SourceFrame>,
+) {
+    if let Some(state) = history.state()
+        && let Some(range) = state.source_range
+    {
+        let shown_source = state.source.as_deref().unwrap_or(source);
+        let shown_name = state.source_name.as_deref().unwrap_or(source_name);
+        let (line, column) = line_column(shown_source, range.start);
+        let frame_kind = if dependency_frame.is_some() {
+            "<dependency>"
+        } else {
+            "<script>"
+        };
+        println!("#0 {frame_kind} at {shown_name}:{line}:{column}");
+        if let Some(frame) = dependency_frame {
+            let (line, column) = line_column(&frame.caller_source, frame.caller_range.start);
+            println!("#1 <script> at {}:{line}:{column}", frame.caller_name);
+        }
     } else {
         println!("#0 <script> before first statement in {source_name}");
     }
+}
+
+fn source_frame(
+    history: &ExecutionHistory,
+    source: &str,
+    source_name: &str,
+) -> Option<SourceFrame> {
+    let state = history.state()?;
+    Some(SourceFrame {
+        return_cursor: history.cursor(),
+        caller_name: state
+            .source_name
+            .as_deref()
+            .unwrap_or(source_name)
+            .to_owned(),
+        caller_source: state.source.as_deref().unwrap_or(source).to_owned(),
+        caller_range: state.source_range?,
+    })
+}
+
+fn current_source_name(history: &ExecutionHistory, fallback: &str) -> String {
+    history
+        .state()
+        .and_then(|state| state.source_name)
+        .as_deref()
+        .unwrap_or(fallback)
+        .to_owned()
 }
 
 fn valid_checkpoint_name(name: &str) -> bool {
     !name.is_empty() && !name.chars().any(char::is_whitespace)
 }
 
-fn print_breakpoints(breakpoints: &BTreeSet<usize>, source_name: &str) {
-    for line in breakpoints {
+fn print_breakpoints(breakpoints: &BTreeSet<Breakpoint>) {
+    for (source_name, line) in breakpoints {
         println!("{source_name}:{line}");
     }
 }
@@ -834,18 +1047,24 @@ fn update_watchpoint(
     }
 }
 
-fn update_breakpoint(command: &str, prefix: &str, breakpoints: &mut BTreeSet<usize>, insert: bool) {
+fn update_breakpoint(
+    command: &str,
+    prefix: &str,
+    source_name: &str,
+    breakpoints: &mut BTreeSet<Breakpoint>,
+    insert: bool,
+) {
     match command[prefix.len()..].trim().parse::<usize>() {
         Ok(0) | Err(_) => println!("breakpoint line must be a positive integer"),
         Ok(line) if insert => {
-            breakpoints.insert(line);
-            println!("breakpoint set at line {line}");
+            breakpoints.insert((source_name.to_owned(), line));
+            println!("breakpoint set at line {line} in {source_name}");
         }
         Ok(line) => {
-            if breakpoints.remove(&line) {
-                println!("breakpoint removed from line {line}");
+            if breakpoints.remove(&(source_name.to_owned(), line)) {
+                println!("breakpoint removed from line {line} in {source_name}");
             } else {
-                println!("no breakpoint at line {line}");
+                println!("no breakpoint at {source_name}:{line}");
             }
         }
     }
@@ -853,8 +1072,8 @@ fn update_breakpoint(command: &str, prefix: &str, breakpoints: &mut BTreeSet<usi
 
 fn continue_to_stop(
     history: &mut ExecutionHistory,
-    source: &str,
-    breakpoints: &BTreeSet<usize>,
+    _source: &str,
+    breakpoints: &BTreeSet<Breakpoint>,
     watchpoints: &BTreeSet<String>,
     reverse: bool,
 ) -> bool {
@@ -864,8 +1083,14 @@ fn continue_to_stop(
         .unwrap_or_default();
     let matches = |state: &topal_language::ExecutionState| {
         let breakpoint = state.source_range.is_some_and(|range| {
+            let Some(source) = state.source.as_deref() else {
+                return false;
+            };
+            let Some(source_name) = state.source_name.as_deref() else {
+                return false;
+            };
             let (line, _) = line_column(source, range.start);
-            breakpoints.contains(&line)
+            breakpoints.contains(&(source_name.to_owned(), line))
         });
         let watched_change = watchpoints
             .iter()
@@ -1003,5 +1228,10 @@ mod tests {
     fn scripts_resolve_complete_names_from_lang_debug() {
         assert_eq!(resolve_script_command("step"), "step");
         assert_eq!(resolve_script_command("lang debug break 42"), "break 42");
+        assert!(
+            DEBUG_COMMANDS
+                .iter()
+                .all(|command| debugger_command_documentation(command).is_some())
+        );
     }
 }

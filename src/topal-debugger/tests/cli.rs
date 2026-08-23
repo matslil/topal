@@ -111,7 +111,7 @@ fn step_enters_declared_library_while_next_stays_in_the_current_file() {
         .take()
         .unwrap()
         .write_all(
-            b"use language ( version is v0.1, features is ( debug ) )\nnext\nstep\nstep\nreverse-step\nquit\n",
+            b"use language ( version is v0.1, features is ( debug ) )\nnext\nstep\nbacktrace\nbreak 18\nbreakpoints\ncontinue\nnext\nreverse-next\nfinish\nquit\n",
         )
         .unwrap();
     let output = child.wait_with_output().unwrap();
@@ -123,10 +123,20 @@ fn step_enters_declared_library_while_next_stays_in_the_current_file() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("examples/data-transfer/rest-controller.t:5:1"));
     assert!(stdout.contains("library/std/module.t:12:1"));
-    assert_eq!(stdout.matches("library/std/module.t:12:1").count(), 2);
+    assert!(stdout.contains("#0 <dependency> at"));
+    assert!(stdout.contains("library/std/module.t:12:1"));
+    assert!(stdout.contains("#1 <script> at"));
+    assert!(stdout.contains("breakpoint set at line 18 in"));
+    assert!(stdout.contains("library/std/module.t:18"));
     assert!(stdout.contains("pub min is fn"));
     assert!(stdout.contains("library/std/module.t:18:1"));
     assert!(stdout.contains("pub max is fn"));
+    assert!(
+        stdout
+            .matches("examples/data-transfer/rest-controller.t:5:1")
+            .count()
+            >= 2
+    );
     assert!(!stdout.contains("rest-controller.t:12:50"));
     assert!(!stdout.contains('^'));
     assert!(!stdout.contains("error["));
@@ -3621,8 +3631,11 @@ fn records_reversible_broad_unicode_identifier_bindings() {
 #[test]
 fn help_prints_source_standard_library_and_builtin_documentation() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let library = concat!(env!("CARGO_MANIFEST_DIR"), "/../../library");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
+            "--library-root",
+            library,
             "--script",
             &format!("{root}documentation-help.debug"),
             &format!("{root}documentation-help.t"),
@@ -3637,6 +3650,9 @@ fn help_prints_source_standard_library_and_builtin_documentation() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("Return the documented answer"));
     assert!(stdout.contains("Return the smaller value"));
+    assert!(stdout.contains("Construct the design-0 response shape"));
     assert!(stdout.contains("Arbitrary-precision signed integers"));
+    assert!(stdout.contains("next: advance to the next location in the current source file"));
+    assert!(stdout.contains("no visible bindings"));
     assert!(stdout.contains("step | reverse-step"));
 }

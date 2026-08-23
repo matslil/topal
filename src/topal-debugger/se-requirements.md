@@ -10,6 +10,8 @@ The debugger shall list commands for bare `help` and shall print the shared
 syntax and documentation metadata for a declaration named by `help`. It shall
 cover visible debuggee and standard-library declarations plus qualified
 built-in `lang` identifiers, and shall report ambiguous unqualified names.
+`help` shall also describe each debugger command. Standard-library lookup shall
+cover the complete configured module tree and accept canonical qualified names.
 
 ## TOPAL-DEBUG-LIBRARY-001 — Shared library applications
 
@@ -72,6 +74,12 @@ Ordinary source-position output shall show the current line without a caret
 marker. A source renderer shall show caret markers only when its caller
 provides a separate source span to emphasize, such as for a diagnostic or an
 explicit expression-level selection.
+
+Breakpoints shall be identified by source identity and line, using the current
+source frame when a command supplies only a line. `next` and `reverse-next`
+inside dependency source shall remain in that source file. `finish` shall
+return from the dependency frame to its calling `use` clause, and `backtrace`
+shall show both locations.
 
 ## TOPAL-DEBUG-MESSAGE-001 — Step into message transactions
 
@@ -152,6 +160,11 @@ session shall remain usable for inspection and reverse navigation rather than
 terminating with the debuggee. Repeated advancement may retry only when doing
 so cannot duplicate an external effect; otherwise it shall remain stopped at
 the recorded failure.
+
+This retention applies uniformly to step, source-step, next, finish, and
+continue commands rather than depending on which advancement command observed
+the diagnostic. Empty state queries shall report that no state or binding is
+available rather than printing an indistinguishable blank response.
 
 ## TOPAL-DEBUG-COMPILER-BOUNDARY-001 — No debugger artifact lowering
 
