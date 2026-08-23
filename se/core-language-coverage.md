@@ -18,7 +18,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/numbers.md` | 40 | 3 | `topal-language` value domains | runtime | complete |
 | `spec/ranges.md` | 9 | 3 | `topal-language` value domains | runtime | complete |
 | `spec/strings.md` | 25 | 3 | `topal-source`, `topal-language` | static, runtime | complete |
-| `spec/containers.md` | 50 | 3 | `topal-language` value domains | runtime | complete |
+| `spec/containers.md` | 51 | 3 | `topal-language` value domains | runtime | complete |
 | `spec/generators.md` | 27 | 3 | `topal-language` execution | runtime | complete |
 | `spec/modules.md` | 11 | 4 | shared loader and `topal-language` | static, runtime | complete |
 | `spec/abstractions.md` | 7 | 5 | `topal-semantics`, shared source tools | static | complete |
