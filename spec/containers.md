@@ -38,6 +38,15 @@ left entry followed by every right entry without removing duplicates.
 
 `entry-count list` shall return the nonnegative number of entries in the List.
 
+### TOPAL-LIST-STABLE-SORT-001 — Stable exact-numeric List ordering
+
+`values stable-sort` and `values stable-sort-descending` SHALL accept finite
+`List Int` and `List Rational` values and return the same entries in ascending
+or descending ordinary numeric order respectively. Entries that compare equal
+SHALL retain their relative source order. The input List SHALL remain unchanged.
+Other element classifiers SHALL be rejected until an explicit comparison
+policy is supported.
+
 ### TOPAL-LIST-EMPTY-PREDICATE-001 — List emptiness
 
 `empty? list` shall be true exactly when the List has no entries.

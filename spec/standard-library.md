@@ -118,6 +118,15 @@ stable predicate retention/rejection and first-occurrence duplicate removal. Eve
 SHALL preserve source order and the exact element classifier, operate on
 ordinary finite sequence values, and leave its input unchanged.
 
+### TOPAL-LIB-ORDERED-001 — Ordered List algorithms
+
+The `std ordered` namespace SHALL provide stable ascending and descending
+sorting for finite `List Int` values. It SHALL also
+provide lower and upper insertion boundaries and their half-open equal range
+for ascending Lists. Boundary operations SHALL return the same result as
+counting entries strictly below, or below-or-equal to, the sought value; they
+need not promise random access or a particular search complexity.
+
 ### TOPAL-LIB-GENERATOR-001 — Lazy generator constructors
 
 The `std` namespace SHALL provide integer enumeration as a replay-free
