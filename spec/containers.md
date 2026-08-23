@@ -57,6 +57,15 @@ preserve exact nested classifiers, and leave their inputs unchanged. Index
 search SHALL return `None Nat` when absent. Zero chunk or window size SHALL be
 rejected; an oversized window SHALL produce an empty outer List.
 
+### TOPAL-LIST-ORDERED-ALGORITHMS-001 — Exact-numeric ordered mechanisms
+
+Ascending finite Int and Rational Lists SHALL support logarithmic binary search
+by value, stable ascending merge, a sorted prefix of at most a requested count,
+and zero-based nth-order selection. Search and nth selection SHALL return an
+Optional and preserve the exact numeric classifier. Selection outside the List
+SHALL return absence. Merge and prefix selection SHALL preserve multiplicity,
+retain stable equal-entry order, and leave every input unchanged.
+
 ### TOPAL-LIST-EMPTY-PREDICATE-001 — List emptiness
 
 `empty? list` shall be true exactly when the List has no entries.

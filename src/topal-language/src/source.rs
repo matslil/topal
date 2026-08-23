@@ -4118,6 +4118,10 @@ impl Session {
                                 | "list-rotate-right"
                                 | "list-chunks"
                                 | "list-windows"
+                                | "ordered-binary-search"
+                                | "ordered-merge"
+                                | "ordered-nth"
+                                | "ordered-smallest"
                                 | "remove-first"
                                 | "remove-all"
                         )
@@ -13261,6 +13265,124 @@ fn apply_list_operation(
     }
     if matches!(
         operation,
+        "ordered-binary-search" | "ordered-nth" | "ordered-smallest"
+    ) {
+        if !matches!(element_classifier.as_str(), "Int" | "Rational") {
+            return Err(diagnostic(
+                source,
+                "E-LIST-ORDERED-CLASSIFIER",
+                right_span,
+                "ordered selection currently requires List Int or List Rational",
+            ));
+        }
+        if operation == "ordered-binary-search" {
+            if !value_has_classifier(&right, &element_classifier) {
+                return Err(diagnostic(
+                    source,
+                    "E-LIST-SEARCH-CLASSIFIER",
+                    right_span,
+                    format!("binary search requires an `{element_classifier}` value"),
+                ));
+            }
+            let index = entries
+                .binary_search_by(|entry| {
+                    values_compare(entry.clone(), right.clone(), trace)
+                        .expect("validated exact numeric entries are totally ordered")
+                })
+                .ok();
+            trace.record(TraceEvent {
+                event: "list.binary.searched",
+                rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
+                detail: operation,
+            });
+            return Ok(Value::Optional {
+                payload_classifier: "Nat".into(),
+                payload: index.map(|index| Box::new(Value::Int(BigInt::from(index)))),
+            });
+        }
+        let Value::Int(count) = right else {
+            return Err(diagnostic(
+                source,
+                "E-LIST-ORDERED-INDEX",
+                right_span,
+                format!("{operation} requires a Nat index or count"),
+            ));
+        };
+        let Ok(count) = usize::try_from(count) else {
+            return Err(diagnostic(
+                source,
+                "E-LIST-ORDERED-INDEX",
+                right_span,
+                format!("{operation} requires a representable Nat"),
+            ));
+        };
+        entries.sort_by(|left, right| {
+            values_compare(left.clone(), right.clone(), trace)
+                .expect("validated exact numeric entries are totally ordered")
+        });
+        if operation == "ordered-nth" {
+            let payload = entries.get(count).cloned().map(Box::new);
+            trace.record(TraceEvent {
+                event: "list.order.selected",
+                rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
+                detail: operation,
+            });
+            return Ok(Value::Optional {
+                payload_classifier: element_classifier,
+                payload,
+            });
+        }
+        entries.truncate(count);
+        trace.record(TraceEvent {
+            event: "list.order.selected",
+            rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
+            detail: operation,
+        });
+        return Ok(Value::List {
+            element_classifier,
+            entries,
+        });
+    }
+    if operation == "ordered-merge" {
+        let Value::List {
+            element_classifier: right_classifier,
+            entries: right_entries,
+        } = right
+        else {
+            return Err(diagnostic(
+                source,
+                "E-LIST-ORDERED-MERGE",
+                right_span,
+                "ordered merge requires another List",
+            ));
+        };
+        if right_classifier != element_classifier
+            || !matches!(element_classifier.as_str(), "Int" | "Rational")
+        {
+            return Err(diagnostic(
+                source,
+                "E-LIST-ORDERED-MERGE",
+                right_span,
+                "ordered merge requires exact matching Int or Rational Lists",
+            ));
+        }
+        entries.extend(right_entries);
+        entries.sort_by(|left, right| {
+            values_compare(left.clone(), right.clone(), trace)
+                .expect("validated exact numeric entries are totally ordered")
+        });
+        trace.record(TraceEvent {
+            event: "list.ordered.merged",
+            rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
+            detail: operation,
+        });
+        return Ok(Value::List {
+            element_classifier,
+            entries,
+        });
+    }
+    if matches!(
+        operation,
         "list-rotate-left" | "list-rotate-right" | "list-chunks" | "list-windows"
     ) {
         let Value::Int(amount) = right else {
@@ -15054,7 +15176,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 42] = [
+const ROOT_OPERATIONS: [&str; 46] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -15081,6 +15203,10 @@ const ROOT_OPERATIONS: [&str; 42] = [
     "not",
     "negate",
     "one",
+    "ordered-binary-search",
+    "ordered-merge",
+    "ordered-nth",
+    "ordered-smallest",
     "rest",
     "reverse",
     "list-rotate-left",

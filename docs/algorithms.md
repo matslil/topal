@@ -8,8 +8,9 @@ algorithms without exposing storage representation.
 `std sequence` contains operations that do not require entry ordering: bounded
 prefixes and suffixes, splitting, predicate retention, duplicate removal,
 indexed equality search, rotations, chunks, windows, enumeration, adjacent-run
-grouping, and shortest zip. `std ordered` adds algorithms that require a total order,
-including stable sorting and insertion boundaries. `std pattern` distinguishes
+grouping, and shortest zip. `std ordered` adds stable Int and Rational sorting,
+binary search, merge, partial and nth-order selection, and insertion boundaries.
+`std pattern` distinguishes
 consecutive exact matching from ordered subsequence matching.
 
 More specialized namespaces keep their policies visible:
