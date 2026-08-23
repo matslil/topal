@@ -21,14 +21,16 @@ More specialized namespaces keep their policies visible:
 
 - `std text` applies the selected Unicode context to normalization, lines,
   whitespace words, and joining without silently adding locale or encoded-byte policy;
-- `std graph` operates on explicit finite nodes and directed edges, including
-  cycles, without choosing an application-specific graph representation;
+- `std graph` operates on explicit finite String nodes and directed edges,
+  including deterministic breadth/depth traversal, minimum-edge and
+  nonnegative exact-weight paths, topological ordering, and weak components,
+  without choosing an application-specific graph representation;
 - `std combinatorics` provides exact counts and constructions, with operations
   named for whether entries are distinct or repeated; and
 - `std statistics` uses exact numeric results and represents undefined results,
   such as the mean of an empty sample, explicitly.
 
 The first revision intentionally favors small composable operations. More
-specialized search structures, regular expressions, graph weights, sampling,
+specialized search structures, negative graph weights, sampling,
 and approximate numeric methods belong in later namespaces with their policy
 and complexity contracts stated explicitly.

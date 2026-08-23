@@ -6,6 +6,25 @@ use language (
 ### Revision of the finite directed-graph algorithm namespace.
 pub revision is 1
 
+graph-breadth-first is fn (arguments : (String, List (String, String), List String)) -> List String
+  graph-bfs arguments
+graph-breadth-first-callable is graph-breadth-first
+graph-depth-first is fn (arguments : (String, List (String, String), List String)) -> List String
+  graph-dfs arguments
+graph-depth-first-callable is graph-depth-first
+graph-shortest is fn (arguments : (String, String, List (String, String), List String)) -> Optional (List String)
+  graph-shortest-path arguments
+graph-shortest-callable is graph-shortest
+graph-topological is fn (arguments : (List (String, String), List String)) -> Optional (List String)
+  graph-topological-sort arguments
+graph-topological-callable is graph-topological
+graph-components is fn (arguments : (List (String, String), List String)) -> List (List String)
+  graph-weak-components arguments
+graph-components-callable is graph-components
+graph-weighted-shortest is fn (arguments : (String, String, List (String, String, Rational), List String)) -> Optional (List String, Rational)
+  graph-weighted-shortest-path arguments
+graph-weighted-shortest-callable is graph-weighted-shortest
+
 append-unique is fn (values : List String, value : String) -> List String
   values contains-entry value
     true then values
@@ -40,3 +59,45 @@ pub reachable? is fn (
 ) -> Boolean
   starts : List String is one start
   (reachable-callable (starts, (edges, nodes))) contains-entry destination
+
+### Visit reachable nodes in deterministic breadth-first order.
+pub breadth-first is fn (
+  start : String,
+  (edges : List (String, String), nodes : List String)
+) -> List String
+  graph-breadth-first-callable (start, edges, nodes)
+
+### Visit reachable nodes in deterministic depth-first order.
+pub depth-first is fn (
+  start : String,
+  (edges : List (String, String), nodes : List String)
+) -> List String
+  graph-depth-first-callable (start, edges, nodes)
+
+### Return a minimum-edge directed path, or absence when none exists.
+pub shortest-path is fn (
+  start : String,
+  (destination : String, edges : List (String, String), nodes : List String)
+) -> Optional (List String)
+  graph-shortest-callable (start, destination, edges, nodes)
+
+### Return a deterministic topological ordering, or absence for a cyclic graph.
+pub topological-sort is fn (
+  edges : List (String, String),
+  nodes : List String
+) -> Optional (List String)
+  graph-topological-callable (edges, nodes)
+
+### Return the weakly connected components in node order.
+pub weak-components is fn (
+  edges : List (String, String),
+  nodes : List String
+) -> List (List String)
+  graph-components-callable (edges, nodes)
+
+### Return a minimum-weight directed path and its exact total weight.
+pub weighted-shortest-path is fn (
+  start : String,
+  (destination : String, edges : List (String, String, Rational), nodes : List String)
+) -> Optional (List String, Rational)
+  graph-weighted-shortest-callable (start, destination, edges, nodes)

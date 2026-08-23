@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 use std::rc::Rc;
 
@@ -3489,6 +3489,26 @@ impl Session {
                         task_state: None,
                         task_owner: None,
                     };
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && matches!(
+                        source.slice(*name),
+                        "graph-bfs"
+                            | "graph-dfs"
+                            | "graph-shortest-path"
+                            | "graph-topological-sort"
+                            | "graph-weak-components"
+                            | "graph-weighted-shortest-path"
+                    )
+                {
+                    let operation = source.slice(*name);
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let value =
+                        apply_graph_algorithm(source, operation, operand, operand_span, trace)?;
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -12838,10 +12858,20 @@ fn apply_string_utility(
         }
         ("string-regex-contains", Value::Tuple(values)) if values.len() == 2 => {
             let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(source, "E-STRING-UTILITY-OPERANDS", span, "string-regex-contains requires two String operands"));
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    "string-regex-contains requires two String operands",
+                ));
             };
             let expression = Regex::new(pattern).map_err(|error| {
-                diagnostic(source, "E-REGEX-PATTERN", span, format!("invalid regular expression: {error}"))
+                diagnostic(
+                    source,
+                    "E-REGEX-PATTERN",
+                    span,
+                    format!("invalid regular expression: {error}"),
+                )
             })?;
             Value::Boolean(expression.is_match(text))
         }
@@ -12976,6 +13006,448 @@ fn glob_matches(text: &str, pattern: &str) -> bool {
         }
     }
     matched[pattern.len()][text.len()]
+}
+
+fn string_list(value: &Value) -> Option<Vec<String>> {
+    let Value::List {
+        element_classifier,
+        entries,
+    } = value
+    else {
+        return None;
+    };
+    if element_classifier != "String" {
+        return None;
+    }
+    entries
+        .iter()
+        .map(|entry| match entry {
+            Value::String(value) => Some(value.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+fn graph_edges(value: &Value) -> Option<Vec<(String, String)>> {
+    let Value::List { entries, .. } = value else {
+        return None;
+    };
+    entries
+        .iter()
+        .map(|entry| match entry {
+            Value::Tuple(fields) if fields.len() == 2 => match fields.as_slice() {
+                [Value::String(source), Value::String(destination)] => {
+                    Some((source.clone(), destination.clone()))
+                }
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect()
+}
+
+fn weighted_graph_edges(value: &Value) -> Option<Vec<(String, String, BigRational)>> {
+    let Value::List { entries, .. } = value else {
+        return None;
+    };
+    entries
+        .iter()
+        .map(|entry| match entry {
+            Value::Tuple(fields) if fields.len() == 3 => match fields.as_slice() {
+                [
+                    Value::String(source),
+                    Value::String(destination),
+                    Value::Rational(weight),
+                ] => Some((source.clone(), destination.clone(), weight.clone())),
+                [
+                    Value::String(source),
+                    Value::String(destination),
+                    Value::Int(weight),
+                ] => Some((
+                    source.clone(),
+                    destination.clone(),
+                    BigRational::from_integer(weight.clone()),
+                )),
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect()
+}
+
+fn adjacency(
+    nodes: &[String],
+    edges: &[(String, String)],
+    undirected: bool,
+) -> BTreeMap<String, Vec<String>> {
+    let mut result = nodes
+        .iter()
+        .cloned()
+        .map(|node| (node, Vec::new()))
+        .collect::<BTreeMap<_, _>>();
+    for (source, destination) in edges {
+        result
+            .entry(source.clone())
+            .or_default()
+            .push(destination.clone());
+        result.entry(destination.clone()).or_default();
+        if undirected {
+            result
+                .entry(destination.clone())
+                .or_default()
+                .push(source.clone());
+        }
+    }
+    result
+}
+
+fn string_list_value(entries: Vec<String>) -> Value {
+    Value::List {
+        element_classifier: "String".into(),
+        entries: entries.into_iter().map(Value::String).collect(),
+    }
+}
+
+fn reconstruct_path(
+    start: &str,
+    destination: &str,
+    previous: &BTreeMap<String, String>,
+) -> Option<Vec<String>> {
+    let mut path = vec![destination.to_owned()];
+    while path.last().is_some_and(|node| node != start) {
+        path.push(previous.get(path.last()?)?.clone());
+    }
+    path.reverse();
+    Some(path)
+}
+
+fn apply_graph_algorithm(
+    source: &SourceText,
+    operation: &str,
+    argument: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::Tuple(fields) = argument else {
+        return Err(diagnostic(
+            source,
+            "E-GRAPH-OPERANDS",
+            span,
+            format!("{operation} requires a packaged graph"),
+        ));
+    };
+    let result = match operation {
+        "graph-bfs" | "graph-dfs" => {
+            let [Value::String(start), edges, nodes] = fields.as_slice() else {
+                return Err(diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    format!("{operation} requires (String, edges, nodes)"),
+                ));
+            };
+            let edges = graph_edges(edges).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph edges require List (String, String)",
+                )
+            })?;
+            let nodes = string_list(nodes).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph nodes require List String",
+                )
+            })?;
+            let adjacent = adjacency(&nodes, &edges, false);
+            let mut visited = BTreeSet::new();
+            let mut order = Vec::new();
+            let mut frontier = VecDeque::from([start.clone()]);
+            while let Some(node) = if operation == "graph-bfs" {
+                frontier.pop_front()
+            } else {
+                frontier.pop_back()
+            } {
+                if !visited.insert(node.clone()) {
+                    continue;
+                }
+                order.push(node.clone());
+                let neighbors = adjacent.get(&node).cloned().unwrap_or_default();
+                if operation == "graph-bfs" {
+                    frontier.extend(neighbors);
+                } else {
+                    frontier.extend(neighbors.into_iter().rev());
+                }
+            }
+            string_list_value(order)
+        }
+        "graph-shortest-path" => {
+            let [
+                Value::String(start),
+                Value::String(destination),
+                edges,
+                nodes,
+            ] = fields.as_slice()
+            else {
+                return Err(diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph-shortest-path requires (start, destination, edges, nodes)",
+                ));
+            };
+            let edges = graph_edges(edges).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph edges require List (String, String)",
+                )
+            })?;
+            let nodes = string_list(nodes).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph nodes require List String",
+                )
+            })?;
+            let adjacent = adjacency(&nodes, &edges, false);
+            let mut visited = BTreeSet::from([start.clone()]);
+            let mut previous = BTreeMap::new();
+            let mut frontier = VecDeque::from([start.clone()]);
+            while let Some(node) = frontier.pop_front() {
+                if &node == destination {
+                    break;
+                }
+                for neighbor in adjacent.get(&node).into_iter().flatten() {
+                    if visited.insert(neighbor.clone()) {
+                        previous.insert(neighbor.clone(), node.clone());
+                        frontier.push_back(neighbor.clone());
+                    }
+                }
+            }
+            let path = visited
+                .contains(destination)
+                .then(|| reconstruct_path(start, destination, &previous))
+                .flatten();
+            Value::Optional {
+                payload_classifier: "List String".into(),
+                payload: path.map(|path| Box::new(string_list_value(path))),
+            }
+        }
+        "graph-topological-sort" => {
+            let [edges, nodes] = fields.as_slice() else {
+                return Err(diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph-topological-sort requires (edges, nodes)",
+                ));
+            };
+            let edges = graph_edges(edges).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph edges require List (String, String)",
+                )
+            })?;
+            let nodes = string_list(nodes).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph nodes require List String",
+                )
+            })?;
+            let adjacent = adjacency(&nodes, &edges, false);
+            let mut incoming = nodes
+                .iter()
+                .cloned()
+                .map(|node| (node, 0usize))
+                .collect::<BTreeMap<_, _>>();
+            for (_, destination) in &edges {
+                *incoming.entry(destination.clone()).or_default() += 1;
+            }
+            let mut ready = VecDeque::from(
+                nodes
+                    .iter()
+                    .filter(|node| incoming.get(*node) == Some(&0))
+                    .cloned()
+                    .collect::<Vec<_>>(),
+            );
+            let mut order = Vec::new();
+            while let Some(node) = ready.pop_front() {
+                order.push(node.clone());
+                for destination in adjacent.get(&node).into_iter().flatten() {
+                    let count = incoming
+                        .get_mut(destination)
+                        .expect("destination is registered");
+                    *count -= 1;
+                    if *count == 0 {
+                        ready.push_back(destination.clone());
+                    }
+                }
+            }
+            Value::Optional {
+                payload_classifier: "List String".into(),
+                payload: (order.len() == incoming.len())
+                    .then(|| Box::new(string_list_value(order))),
+            }
+        }
+        "graph-weak-components" => {
+            let [edges, nodes] = fields.as_slice() else {
+                return Err(diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph-weak-components requires (edges, nodes)",
+                ));
+            };
+            let edges = graph_edges(edges).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph edges require List (String, String)",
+                )
+            })?;
+            let nodes = string_list(nodes).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph nodes require List String",
+                )
+            })?;
+            let adjacent = adjacency(&nodes, &edges, true);
+            let mut visited = BTreeSet::new();
+            let mut components = Vec::new();
+            for start in nodes {
+                if visited.contains(&start) {
+                    continue;
+                }
+                let mut component = Vec::new();
+                let mut frontier = VecDeque::from([start]);
+                while let Some(node) = frontier.pop_front() {
+                    if !visited.insert(node.clone()) {
+                        continue;
+                    }
+                    component.push(node.clone());
+                    frontier.extend(adjacent.get(&node).into_iter().flatten().cloned());
+                }
+                components.push(string_list_value(component));
+            }
+            Value::List {
+                element_classifier: "List String".into(),
+                entries: components,
+            }
+        }
+        "graph-weighted-shortest-path" => {
+            let [
+                Value::String(start),
+                Value::String(destination),
+                edges,
+                nodes,
+            ] = fields.as_slice()
+            else {
+                return Err(diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph-weighted-shortest-path requires (start, destination, weighted-edges, nodes)",
+                ));
+            };
+            let edges = weighted_graph_edges(edges).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "weighted edges require List (String, String, Rational)",
+                )
+            })?;
+            if edges
+                .iter()
+                .any(|(_, _, weight)| weight < &BigRational::from_integer(BigInt::from(0)))
+            {
+                return Err(diagnostic(
+                    source,
+                    "E-GRAPH-NEGATIVE-WEIGHT",
+                    span,
+                    "weighted shortest path requires nonnegative weights",
+                ));
+            }
+            let nodes = string_list(nodes).ok_or_else(|| {
+                diagnostic(
+                    source,
+                    "E-GRAPH-OPERANDS",
+                    span,
+                    "graph nodes require List String",
+                )
+            })?;
+            let mut distance =
+                BTreeMap::from([(start.clone(), BigRational::from_integer(BigInt::from(0)))]);
+            let mut previous = BTreeMap::new();
+            let mut unvisited = nodes.into_iter().collect::<BTreeSet<_>>();
+            while !unvisited.is_empty() {
+                let current = unvisited
+                    .iter()
+                    .filter_map(|node| {
+                        distance
+                            .get(node)
+                            .map(|value| (node.clone(), value.clone()))
+                    })
+                    .min_by(|left, right| left.1.cmp(&right.1));
+                let Some((node, node_distance)) = current else {
+                    break;
+                };
+                unvisited.remove(&node);
+                if &node == destination {
+                    break;
+                }
+                for (source_node, next, weight) in edges
+                    .iter()
+                    .filter(|(source_node, _, _)| source_node == &node)
+                {
+                    let _ = source_node;
+                    let candidate = node_distance.clone() + weight;
+                    if distance
+                        .get(next)
+                        .is_none_or(|existing| candidate < *existing)
+                    {
+                        distance.insert(next.clone(), candidate);
+                        previous.insert(next.clone(), node.clone());
+                    }
+                }
+            }
+            let payload = distance
+                .get(destination)
+                .and_then(|total| {
+                    reconstruct_path(start, destination, &previous).map(|path| {
+                        Value::Tuple(vec![
+                            string_list_value(path),
+                            Value::Rational(total.clone()),
+                        ])
+                    })
+                })
+                .map(Box::new);
+            Value::Optional {
+                payload_classifier: "(List String, Rational)".into(),
+                payload,
+            }
+        }
+        _ => unreachable!("known graph algorithm"),
+    };
+    trace.record(TraceEvent {
+        event: "graph.algorithm.applied",
+        rule: "TOPAL-LIB-GRAPH-ADVANCED-001",
+        detail: operation,
+    });
+    Ok(result)
 }
 
 fn apply_count(
@@ -15366,7 +15838,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 55] = [
+const ROOT_OPERATIONS: [&str; 61] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -15379,6 +15851,12 @@ const ROOT_OPERATIONS: [&str; 55] = [
     "list-enumerate",
     "entry-count",
     "first",
+    "graph-bfs",
+    "graph-dfs",
+    "graph-shortest-path",
+    "graph-topological-sort",
+    "graph-weak-components",
+    "graph-weighted-shortest-path",
     "list-group-runs",
     "list-index-of",
     "lower",
