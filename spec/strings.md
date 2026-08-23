@@ -204,3 +204,19 @@ non-overlapping exact occurrence from left to right, and `string-repeat` SHALL
 concatenate the input the supplied finite Nat number of times. These operations
 SHALL preserve valid String boundaries and SHALL NOT introduce parsing,
 formatting, locale, or encoded-byte policy.
+### TOPAL-STRING-PATTERN-ALGORITHMS-001 — Exact and wildcard text algorithms
+
+String algorithms SHALL count and locate overlapping exact nonempty patterns
+at zero-based Character boundaries, split at nonoverlapping exact nonempty
+patterns, match a complete String with `?` for one Character and `*` for zero
+or more Characters, and test a finite List of exact alternatives. Line
+splitting SHALL omit terminators, Unicode-word splitting SHALL use the selected
+context's whitespace property and omit empty pieces, and joining SHALL insert
+the exact separator only between entries. These operations SHALL preserve text
+without implicit normalization or locale policy.
+
+Design-0 regular-expression containment SHALL support Unicode literals and
+classes, grouping, alternation, greedy and lazy repetition, and anchors. It
+SHALL reject malformed patterns and unsupported backreferences or look-around.
+Matching SHALL have a linear-time bound in the input text and SHALL NOT perform
+implicit normalization or locale-sensitive comparison.

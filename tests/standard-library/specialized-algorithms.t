@@ -14,6 +14,9 @@ reachable? is std graph reachable?
 factorial is std combinatorics factorial
 subset-count is std combinatorics subset-count
 mean is std statistics mean
+lines is std text lines
+words is std text words
+join is std text join
 
 edges : List (String, String) is Entry (("a", "b"), Entry (("b", "c"), Entry (("c", "a"), Entry (("x", "y"), Empty))))
 nodes : List String is Entry ("a", Entry ("b", Entry ("c", Entry ("x", Entry ("y", Empty)))))
@@ -24,6 +27,15 @@ none : List Int is Empty
 two-and-half : Optional Rational is Some (Rational (5, 2))
 one-rational : Optional Rational is Some (Rational 1)
 no-mean : Optional Rational is None Rational
+line-parts : List String is Entry ("one", Entry ("two", Empty))
+word-parts : List String is Entry ("one", Entry ("two", Entry ("three", Empty)))
+line-source is text"one
+two
+"text
+actual-lines : List String is lines line-source
+actual-words : List String is words " one  two  three "
+actual-lines-joined is join (actual-lines, "|")
+actual-words-joined is join (actual-words, "|")
 
 unicode-blank : Pass is Pass (blank? "   ")
 nonblank : Pass is Pass (not (blank? " x "))
@@ -38,7 +50,11 @@ power-set-size : Pass is Pass ((subset-count four) = 16)
 exact-mean : Pass is Pass ((mean four) = two-and-half)
 rational-mean : Pass is Pass ((mean rationals) = one-rational)
 empty-mean : Pass is Pass ((mean none) = no-mean)
+line-splitting : Pass is Pass (actual-lines-joined = "one|two")
+unicode-words : Pass is Pass (actual-words-joined = "one|two|three")
+exact-join : Pass is Pass ((join (word-parts, "--")) = "one--two--three")
 
 (unicode-blank, nonblank, canonical, caseless, transitive-reachability,
  isolated-component, closure-order, zero-factorial, five-factorial,
- power-set-size, exact-mean, rational-mean, empty-mean)
+ power-set-size, exact-mean, rational-mean, empty-mean, line-splitting,
+ unicode-words, exact-join)

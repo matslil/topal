@@ -10,13 +10,17 @@ prefixes and suffixes, splitting, predicate retention, duplicate removal,
 indexed equality search, rotations, chunks, windows, enumeration, adjacent-run
 grouping, and shortest zip. `std ordered` adds stable Int and Rational sorting,
 binary search, merge, partial and nth-order selection, and insertion boundaries.
-`std pattern` distinguishes
-consecutive exact matching from ordered subsequence matching.
+`std pattern` distinguishes consecutive exact matching from ordered subsequence
+matching and provides overlapping search, alternative patterns, and explicit
+whole-text `*`/`?` glob policy. Its design-0 regular expressions are Unicode
+aware and support literals, classes, grouping, alternation, repetition, and
+anchors. They deliberately omit backreferences and look-around so matching has
+a linear-time bound in the searched text.
 
 More specialized namespaces keep their policies visible:
 
-- `std text` applies the selected Unicode context and does not silently add
-  locale or encoded-byte policy;
+- `std text` applies the selected Unicode context to normalization, lines,
+  whitespace words, and joining without silently adding locale or encoded-byte policy;
 - `std graph` operates on explicit finite nodes and directed edges, including
   cycles, without choosing an application-specific graph representation;
 - `std combinatorics` provides exact counts and constructions, with operations
