@@ -47,6 +47,16 @@ SHALL retain their relative source order. The input List SHALL remain unchanged.
 Other element classifiers SHALL be rejected until an explicit comparison
 policy is supported.
 
+### TOPAL-LIST-SEQUENCE-ALGORITHMS-001 — Derived sequence mechanisms
+
+Finite Lists SHALL support first and last equal-value index search, modular
+left and right rotation, positive-size chunking and sliding windows,
+zero-based enumeration, adjacent equal-run grouping, and shortest-length zip.
+All transformations SHALL retain source order except for the stated rotation,
+preserve exact nested classifiers, and leave their inputs unchanged. Index
+search SHALL return `None Nat` when absent. Zero chunk or window size SHALL be
+rejected; an oversized window SHALL produce an empty outer List.
+
 ### TOPAL-LIST-EMPTY-PREDICATE-001 — List emptiness
 
 `empty? list` shall be true exactly when the List has no entries.

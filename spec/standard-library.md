@@ -114,7 +114,9 @@ require finite input Lists.
 The `std sequence` namespace SHALL provide clamped `take`, `drop`, and
 `split-at` operations for Lists and Strings. String boundaries SHALL count
 Characters under the selected Unicode context. It SHALL also provide stable
-stable predicate retention/rejection and first-occurrence duplicate removal. Every operation
+predicate retention/rejection, first-occurrence duplicate removal, first/last
+indexed equality search, rotation, chunking, windows, enumeration,
+adjacent-run grouping, and shortest zip. Every operation
 SHALL preserve source order and the exact element classifier, operate on
 ordinary finite sequence values, and leave its input unchanged.
 

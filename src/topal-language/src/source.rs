@@ -4040,6 +4040,23 @@ impl Session {
                     if let Expression::Identifier(callable_span) = &items[index]
                         && matches!(
                             source.slice(*callable_span),
+                            "list-enumerate" | "list-group-runs"
+                        )
+                        && matches!(result, Value::List { .. })
+                    {
+                        result = apply_list_sequence_unary(
+                            source,
+                            source.slice(*callable_span),
+                            result,
+                            *callable_span,
+                            trace,
+                        )?;
+                        index += 1;
+                        continue;
+                    }
+                    if let Expression::Identifier(callable_span) = &items[index]
+                        && matches!(
+                            source.slice(*callable_span),
                             "stable-sort" | "stable-sort-descending"
                         )
                         && matches!(result, Value::List { .. })
@@ -4094,6 +4111,13 @@ impl Session {
                                 | "remove-indexes"
                                 | "zip-exact"
                                 | "zip-shortest"
+                                | "list-zip-shortest"
+                                | "list-index-of"
+                                | "list-last-index-of"
+                                | "list-rotate-left"
+                                | "list-rotate-right"
+                                | "list-chunks"
+                                | "list-windows"
                                 | "remove-first"
                                 | "remove-all"
                         )
@@ -13070,6 +13094,75 @@ fn apply_list_stable_sort(
     Ok(())
 }
 
+fn apply_list_sequence_unary(
+    source: &SourceText,
+    operation: &str,
+    value: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let Value::List {
+        element_classifier,
+        entries,
+    } = value
+    else {
+        unreachable!("sequence operation dispatched only for a List")
+    };
+    let result = match operation {
+        "list-enumerate" => Value::List {
+            element_classifier: format!("(Nat, {element_classifier})"),
+            entries: entries
+                .into_iter()
+                .enumerate()
+                .map(|(index, entry)| Value::Tuple(vec![Value::Int(BigInt::from(index)), entry]))
+                .collect(),
+        },
+        "list-group-runs" => {
+            let mut groups: Vec<Vec<Value>> = Vec::new();
+            for entry in entries {
+                if groups.is_empty() {
+                    groups.push(vec![entry]);
+                    continue;
+                }
+                let same_run = groups
+                    .last()
+                    .and_then(|group| group.last())
+                    .and_then(|previous| values_equal(previous.clone(), entry.clone(), trace));
+                let Some(same_run) = same_run else {
+                    return Err(diagnostic(
+                        source,
+                        "E-LIST-GROUP-CLASSIFIER",
+                        span,
+                        "group-runs requires entries with Equality",
+                    ));
+                };
+                if same_run {
+                    groups.last_mut().expect("a current run exists").push(entry);
+                } else {
+                    groups.push(vec![entry]);
+                }
+            }
+            Value::List {
+                element_classifier: format!("List {element_classifier}"),
+                entries: groups
+                    .into_iter()
+                    .map(|entries| Value::List {
+                        element_classifier: element_classifier.clone(),
+                        entries,
+                    })
+                    .collect(),
+            }
+        }
+        _ => unreachable!("known unary sequence operation"),
+    };
+    trace.record(TraceEvent {
+        event: "list.sequence.transformed",
+        rule: "TOPAL-LIST-SEQUENCE-ALGORITHMS-001",
+        detail: operation,
+    });
+    Ok(result)
+}
+
 #[allow(clippy::too_many_lines)] // Keep ordered List operation dispatch together.
 fn apply_list_operation(
     source: &SourceText,
@@ -13124,7 +13217,10 @@ fn apply_list_operation(
             trace,
         );
     }
-    if matches!(operation, "zip-exact" | "zip-shortest") {
+    if matches!(
+        operation,
+        "zip-exact" | "zip-shortest" | "list-zip-shortest"
+    ) {
         return apply_list_zip(
             source,
             operation,
@@ -13134,6 +13230,118 @@ fn apply_list_operation(
             right_span,
             trace,
         );
+    }
+    if matches!(operation, "list-index-of" | "list-last-index-of") {
+        if !value_has_classifier(&right, &element_classifier) {
+            return Err(diagnostic(
+                source,
+                "E-LIST-SEARCH-CLASSIFIER",
+                right_span,
+                format!("{operation} requires an `{element_classifier}` value"),
+            ));
+        }
+        let indexes = entries.iter().enumerate().filter_map(|(index, entry)| {
+            values_equal(entry.clone(), right.clone(), trace)
+                .and_then(|equal| equal.then_some(index))
+        });
+        let index = if operation == "list-index-of" {
+            indexes.into_iter().next()
+        } else {
+            indexes.into_iter().last()
+        };
+        trace.record(TraceEvent {
+            event: "list.index.searched",
+            rule: "TOPAL-LIST-SEQUENCE-ALGORITHMS-001",
+            detail: operation,
+        });
+        return Ok(Value::Optional {
+            payload_classifier: "Nat".into(),
+            payload: index.map(|index| Box::new(Value::Int(BigInt::from(index)))),
+        });
+    }
+    if matches!(
+        operation,
+        "list-rotate-left" | "list-rotate-right" | "list-chunks" | "list-windows"
+    ) {
+        let Value::Int(amount) = right else {
+            return Err(diagnostic(
+                source,
+                "E-LIST-SEQUENCE-COUNT",
+                right_span,
+                format!("{operation} requires a Nat count"),
+            ));
+        };
+        let Ok(amount) = usize::try_from(amount) else {
+            return Err(diagnostic(
+                source,
+                "E-LIST-SEQUENCE-COUNT",
+                right_span,
+                format!("{operation} requires a representable Nat count"),
+            ));
+        };
+        let value = match operation {
+            "list-rotate-left" | "list-rotate-right" => {
+                if !entries.is_empty() {
+                    let shift = amount % entries.len();
+                    if operation == "list-rotate-left" {
+                        entries.rotate_left(shift);
+                    } else {
+                        entries.rotate_right(shift);
+                    }
+                }
+                Value::List {
+                    element_classifier,
+                    entries,
+                }
+            }
+            "list-chunks" => {
+                if amount == 0 {
+                    return Err(diagnostic(
+                        source,
+                        "E-LIST-SEQUENCE-COUNT",
+                        right_span,
+                        "chunks requires a positive count",
+                    ));
+                }
+                Value::List {
+                    element_classifier: format!("List {element_classifier}"),
+                    entries: entries
+                        .chunks(amount)
+                        .map(|chunk| Value::List {
+                            element_classifier: element_classifier.clone(),
+                            entries: chunk.to_vec(),
+                        })
+                        .collect(),
+                }
+            }
+            "list-windows" => {
+                if amount == 0 {
+                    return Err(diagnostic(
+                        source,
+                        "E-LIST-SEQUENCE-COUNT",
+                        right_span,
+                        "windows requires a positive count",
+                    ));
+                }
+                Value::List {
+                    element_classifier: format!("List {element_classifier}"),
+                    entries: entries
+                        .windows(amount)
+                        .map(|window| Value::List {
+                            element_classifier: element_classifier.clone(),
+                            entries: window.to_vec(),
+                        })
+                        .collect(),
+                }
+            }
+            _ => unreachable!(),
+        };
+        trace.record(TraceEvent {
+            event: "list.sequence.transformed",
+            rule: "TOPAL-LIST-SEQUENCE-ALGORITHMS-001",
+            detail: operation,
+        });
+        return Ok(value);
     }
     match operation {
         "prepend" | "append" => {
@@ -14846,7 +15054,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 33] = [
+const ROOT_OPERATIONS: [&str; 42] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -14856,9 +15064,13 @@ const ROOT_OPERATIONS: [&str; 33] = [
     "concat",
     "collect",
     "empty",
+    "list-enumerate",
     "entry-count",
     "first",
+    "list-group-runs",
+    "list-index-of",
     "lower",
+    "list-last-index-of",
     "normalize",
     "range-lower",
     "range-lower-inclusive?",
@@ -14871,6 +15083,11 @@ const ROOT_OPERATIONS: [&str; 33] = [
     "one",
     "rest",
     "reverse",
+    "list-rotate-left",
+    "list-rotate-right",
+    "list-chunks",
+    "list-windows",
+    "list-zip-shortest",
     "stable-sort",
     "stable-sort-descending",
     "string-contains",
