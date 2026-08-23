@@ -158,6 +158,19 @@ finite directed graphs represented by explicit String nodes and
 cycles SHALL terminate, results SHALL contain each reached node once, and
 unreachable components SHALL remain absent.
 
+### TOPAL-LIB-GRAPH-ADVANCED-001 — Finite graph algorithms
+
+The `std graph` namespace SHALL provide deterministic breadth-first and
+depth-first traversal, minimum-edge paths, topological ordering, weakly
+connected components, and minimum-weight paths for finite graphs with explicit
+String nodes. Edge and node input order SHALL determine all traversal and tie
+ordering. Missing paths and topological orders for cyclic graphs SHALL be
+represented by `None`.
+
+Weighted edges SHALL carry exact Rational weights. The minimum-weight operation
+SHALL reject negative weights, return an exact total, and SHALL NOT silently
+substitute an algorithm intended for negative-weight graphs.
+
 ### TOPAL-LIB-COMBINATORICS-001 — Exact combinatorial counts
 
 The `std combinatorics` namespace SHALL provide exact Nat factorial and finite

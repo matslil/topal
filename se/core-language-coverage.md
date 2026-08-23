@@ -29,7 +29,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/tasks.md` | 5 | 7 | `topal-syntax`, `topal-language`, shared execution tools | static, runtime | complete |
 | `spec/serialization.md` | 22 | 8 | shared layout and serialization codecs | artifact, runtime | complete |
 | `spec/generic-ir.md` | 11 | 9 | shared generic artifact and source-package identity model | artifact, compiler-only | complete |
-| `spec/standard-library.md` | 20 | 9 | shared library loader and cross-tool conformance suites | static, runtime, artifact | complete |
+| `spec/standard-library.md` | 21 | 9 | shared library loader and cross-tool conformance suites | static, runtime, artifact | complete |
 | `spec/tracing.md` | 4 | 9 | shared semantic tracing and adapters | static, runtime, artifact | complete |
 | `spec/debugger-scripting.md` | 3 | 9 | `topal-debugger`, shared language variants | static, runtime | complete |
 | `spec/source-documentation.md` | 7 | 9 | `topal-syntax`, `topal-language`, `topal-doc`, `topal-debugger` | static, presentation | complete |
