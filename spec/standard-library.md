@@ -109,6 +109,15 @@ Lists in source order while preserving each transformed List's internal order.
 Both operations SHALL retain exact related input and output classifiers and
 require finite input Lists.
 
+### TOPAL-LIB-SEQUENCE-001 — Finite sequence algorithms
+
+The `std sequence` namespace SHALL provide clamped `take`, `drop`, and
+`split-at` operations for Lists and Strings. String boundaries SHALL count
+Characters under the selected Unicode context. It SHALL also provide stable
+stable predicate retention/rejection and first-occurrence duplicate removal. Every operation
+SHALL preserve source order and the exact element classifier, operate on
+ordinary finite sequence values, and leave its input unchanged.
+
 ### TOPAL-LIB-GENERATOR-001 — Lazy generator constructors
 
 The `std` namespace SHALL provide integer enumeration as a replay-free
