@@ -127,6 +127,16 @@ for ascending Lists. Boundary operations SHALL return the same result as
 counting entries strictly below, or below-or-equal to, the sought value; they
 need not promise random access or a particular search complexity.
 
+### TOPAL-LIB-PATTERN-001 — Exact pattern algorithms
+
+The `std pattern` namespace SHALL provide exact String prefix, suffix,
+containment, and nonoverlapping replacement operations under the selected
+Unicode context. It SHALL provide consecutive and ordered-subsequence matching
+for finite Lists over one exact `Equality` classifier. Empty patterns SHALL
+follow the underlying String and List containment laws; these exact operations
+SHALL NOT silently introduce regular-expression, locale, or normalization
+policy.
+
 ### TOPAL-LIB-GENERATOR-001 — Lazy generator constructors
 
 The `std` namespace SHALL provide integer enumeration as a replay-free
