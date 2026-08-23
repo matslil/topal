@@ -82,7 +82,9 @@ identity for an empty List, and evaluate in source order.
 ### TOPAL-LIB-RANGE-001 — Convex range utilities
 
 The `std` namespace SHALL provide range endpoint and inclusivity observation, bound pairing,
-intersection, overlap testing, convex hull, and discrete Int adjacency. Generic
+intersection, overlap testing, convex hull, discrete Int adjacency, and
+normalization of finite Int Range Lists into sorted, disjoint, nonadjacent
+inclusive Ranges. Generic
 operations SHALL retain one exact `TotalOrder` endpoint classifier. They SHALL
 preserve every open or closed endpoint required by convex-predicate semantics
 and SHALL NOT imply enumeration.
@@ -116,7 +118,8 @@ The `std sequence` namespace SHALL provide clamped `take`, `drop`, and
 Characters under the selected Unicode context. It SHALL also provide stable
 predicate retention/rejection, first-occurrence duplicate removal, first/last
 indexed equality search, rotation, chunking, windows, enumeration,
-adjacent-run grouping, shortest zip, and finite Int range materialization.
+adjacent-run grouping, shortest zip, finite Int range materialization, and
+shortest-row transposition of nested Lists.
 Every operation
 SHALL preserve source order and the exact element classifier, operate on
 ordinary finite sequence values, and leave its input unchanged.
@@ -155,10 +158,12 @@ locale or encoded-byte policy.
 
 The `std parse` namespace SHALL provide strict complete signed ASCII decimal
 Int parsing, source-ordered signed and unsigned decimal extraction, decimal
-digit decomposition, canonical base-ten Int formatting, and Unicode Character
+digit decomposition, row-wise and fixed-width vertical integer extraction,
+canonical base-ten Int formatting, and Unicode Character
 materialization. Complete parsing SHALL return `None Int` for malformed text.
 Digit decomposition SHALL reject any nondigit rather than discard it. These
 operations SHALL be locale independent and SHALL NOT expose encoded units.
+The namespace SHALL also reconstruct a String from complete Characters.
 
 ### TOPAL-LIB-GRAPH-001 — Finite directed reachability
 

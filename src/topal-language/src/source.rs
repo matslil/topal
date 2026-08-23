@@ -3496,6 +3496,26 @@ impl Session {
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
+                        "list-transpose-shortest" | "character-list-string" | "range-coalesce-int"
+                    )
+                {
+                    let operation = source.slice(*name);
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let value = apply_structural_algorithm(
+                        source,
+                        operation,
+                        operand,
+                        operand_span,
+                        trace,
+                    )?;
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && matches!(
+                        source.slice(*name),
                         "statistics-median"
                             | "statistics-modes"
                             | "statistics-histogram"
@@ -3833,6 +3853,8 @@ impl Session {
                             | "string-characters"
                             | "int-decimal-string"
                             | "range-integers"
+                            | "string-integer-rows"
+                            | "string-vertical-integers"
                     )
                 {
                     let operation = source.slice(*name);
@@ -13029,6 +13051,61 @@ fn apply_string_utility(
                 .collect(),
         },
         ("int-decimal-string", Value::Int(value)) => Value::String(value.to_string()),
+        ("string-integer-rows", Value::String(text)) => {
+            let expression = Regex::new(r"-?[0-9]+").expect("fixed decimal pattern is valid");
+            Value::List {
+                element_classifier: "List Int".into(),
+                entries: text
+                    .lines()
+                    .filter_map(|line| {
+                        let entries = expression
+                            .find_iter(line)
+                            .map(|found| {
+                                Value::Int(
+                                    found
+                                        .as_str()
+                                        .parse::<BigInt>()
+                                        .expect("matched decimal integer"),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        (!entries.is_empty()).then_some(Value::List {
+                            element_classifier: "Int".into(),
+                            entries,
+                        })
+                    })
+                    .collect(),
+            }
+        }
+        ("string-vertical-integers", Value::String(text)) => {
+            let lines = text.lines().collect::<Vec<_>>();
+            let width = lines.iter().map(|line| line.len()).max().unwrap_or(0);
+            let number_lines = lines.get(..lines.len().saturating_sub(1)).unwrap_or(&[]);
+            let entries = (0..width)
+                .map(|column| {
+                    let digits = number_lines
+                        .iter()
+                        .filter_map(|line| line.as_bytes().get(column).copied())
+                        .filter(u8::is_ascii_digit)
+                        .collect::<Vec<_>>();
+                    Value::Optional {
+                        payload_classifier: "Int".into(),
+                        payload: (!digits.is_empty()).then(|| {
+                            Box::new(Value::Int(
+                                String::from_utf8(digits)
+                                    .expect("ASCII digits are UTF-8")
+                                    .parse::<BigInt>()
+                                    .expect("digit column is an integer"),
+                            ))
+                        }),
+                    }
+                })
+                .collect();
+            Value::List {
+                element_classifier: "Optional Int".into(),
+                entries,
+            }
+        }
         (
             "range-integers",
             Value::IntRange {
@@ -13762,6 +13839,192 @@ fn apply_combinatorial_construction(
     trace.record(TraceEvent {
         event: "combinatorics.construction.applied",
         rule: "TOPAL-LIB-COMBINATORICS-ADVANCED-001",
+        detail: operation,
+    });
+    Ok(result)
+}
+
+fn apply_structural_algorithm(
+    source: &SourceText,
+    operation: &str,
+    argument: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let result = match (operation, argument) {
+        (
+            "list-transpose-shortest",
+            Value::List {
+                element_classifier,
+                entries,
+            },
+        ) => {
+            let inner_classifier = element_classifier
+                .strip_prefix("List ")
+                .ok_or_else(|| {
+                    diagnostic(
+                        source,
+                        "E-TRANSPOSE-OPERAND",
+                        span,
+                        "transpose requires a List of Lists",
+                    )
+                })?
+                .to_owned();
+            let rows = entries
+                .into_iter()
+                .map(|entry| match entry {
+                    Value::List {
+                        element_classifier,
+                        entries,
+                    } if element_classifier == inner_classifier => Some(entries),
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()
+                .ok_or_else(|| {
+                    diagnostic(
+                        source,
+                        "E-TRANSPOSE-OPERAND",
+                        span,
+                        "transpose requires homogeneous inner Lists",
+                    )
+                })?;
+            let width = rows.iter().map(Vec::len).min().unwrap_or(0);
+            let entries = (0..width)
+                .map(|column| Value::List {
+                    element_classifier: inner_classifier.clone(),
+                    entries: rows.iter().map(|row| row[column].clone()).collect(),
+                })
+                .collect();
+            Value::List {
+                element_classifier: format!("List {inner_classifier}"),
+                entries,
+            }
+        }
+        (
+            "character-list-string",
+            Value::List {
+                element_classifier,
+                entries,
+            },
+        ) if element_classifier == "Character" => {
+            let mut text = String::new();
+            for entry in entries {
+                let Value::String(character) = entry else {
+                    unreachable!("List Character stores Character values")
+                };
+                text.push_str(&character);
+            }
+            Value::String(text)
+        }
+        (
+            "range-coalesce-int",
+            Value::List {
+                element_classifier,
+                entries,
+            },
+        ) if element_classifier == "Range Int" => {
+            let mut intervals = entries
+                .into_iter()
+                .filter_map(|entry| match entry {
+                    Value::IntRange {
+                        lower,
+                        upper,
+                        lower_inclusive,
+                        upper_inclusive,
+                    } => {
+                        let lower = lower + BigInt::from(!lower_inclusive);
+                        let upper = upper - BigInt::from(!upper_inclusive);
+                        (lower <= upper).then_some((lower, upper))
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            intervals.sort();
+            let mut merged: Vec<(BigInt, BigInt)> = Vec::new();
+            for (lower, upper) in intervals {
+                if let Some((_, previous_upper)) = merged.last_mut()
+                    && lower <= previous_upper.clone() + BigInt::from(1)
+                {
+                    if upper > *previous_upper {
+                        *previous_upper = upper;
+                    }
+                } else {
+                    merged.push((lower, upper));
+                }
+            }
+            Value::List {
+                element_classifier: "Range Int".into(),
+                entries: merged
+                    .into_iter()
+                    .map(|(lower, upper)| Value::IntRange {
+                        lower,
+                        upper,
+                        lower_inclusive: true,
+                        upper_inclusive: true,
+                    })
+                    .collect(),
+            }
+        }
+        (
+            "range-coalesce-int",
+            Value::List {
+                element_classifier,
+                entries,
+            },
+        ) if element_classifier == "(Int, Int)" => {
+            let mut intervals = entries
+                .into_iter()
+                .filter_map(|entry| match entry {
+                    Value::Tuple(fields) => match fields.as_slice() {
+                        [Value::Int(lower), Value::Int(upper)] if lower <= upper => {
+                            Some((lower.clone(), upper.clone()))
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            intervals.sort();
+            let mut merged: Vec<(BigInt, BigInt)> = Vec::new();
+            for (lower, upper) in intervals {
+                if let Some((_, previous_upper)) = merged.last_mut()
+                    && lower <= previous_upper.clone() + BigInt::from(1)
+                {
+                    if upper > *previous_upper {
+                        *previous_upper = upper;
+                    }
+                } else {
+                    merged.push((lower, upper));
+                }
+            }
+            Value::List {
+                element_classifier: "(Int, Int)".into(),
+                entries: merged
+                    .into_iter()
+                    .map(|(lower, upper)| Value::Tuple(vec![Value::Int(lower), Value::Int(upper)]))
+                    .collect(),
+            }
+        }
+        (_, value) => {
+            return Err(diagnostic(
+                source,
+                "E-STRUCTURAL-ALGORITHM-OPERAND",
+                span,
+                format!(
+                    "{operation} does not accept {}",
+                    structural_value_classifier(&value)
+                ),
+            ));
+        }
+    };
+    trace.record(TraceEvent {
+        event: "structural.algorithm.applied",
+        rule: match operation {
+            "list-transpose-shortest" => "TOPAL-LIB-SEQUENCE-001",
+            "character-list-string" => "TOPAL-LIB-PARSE-001",
+            "range-coalesce-int" => "TOPAL-LIB-RANGE-001",
+            _ => unreachable!("known structural operation"),
+        },
         detail: operation,
     });
     Ok(result)
@@ -16446,7 +16709,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 84] = [
+const ROOT_OPERATIONS: [&str; 89] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16518,6 +16781,11 @@ const ROOT_OPERATIONS: [&str; 84] = [
     "string-characters",
     "int-decimal-string",
     "range-integers",
+    "string-integer-rows",
+    "string-vertical-integers",
+    "list-transpose-shortest",
+    "character-list-string",
+    "range-coalesce-int",
     "statistics-median",
     "statistics-modes",
     "statistics-histogram",

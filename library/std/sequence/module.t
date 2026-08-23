@@ -135,6 +135,10 @@ enumerate-implementation-callable is enumerate-implementation
 pub enumerate is fn (values : List (Value : Type)) -> List (Nat, Value)
   enumerate-implementation-callable values
 
+### Pair Characters with indexes without erasing their exact classifier.
+pub enumerate is fn (values : List Character) -> List (Nat, Character)
+  values list-enumerate
+
 ### Group adjacent equal entries into nonempty runs.
 group-runs-implementation is fn (values : List (Value : Equality)) -> List List Value
   values list-group-runs
@@ -160,3 +164,7 @@ pub zip is fn (
 ### Materialize a finite Int range in ascending order.
 pub values is fn (range : Range Int) -> List Int
   range-integers range
+
+### Transpose homogeneous rows through the shortest row boundary.
+pub transpose is fn (rows : List (List (Value : Type))) -> List (List Value)
+  list-transpose-shortest rows

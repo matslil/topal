@@ -12,6 +12,7 @@ unsigned-integers is std parse unsigned-integers
 decimal-digits is std parse decimal-digits
 decimal is std parse decimal
 character-list is std parse character-list
+character-string is std parse string
 
 expected-signed : List Int is Entry (-12, Entry (7, Empty))
 expected-unsigned : List Nat is Entry (12, Entry (7, Empty))
@@ -26,6 +27,7 @@ unsigned-order : Pass is Pass ((unsigned-integers "x=-12 y=7") = expected-unsign
 digits : Pass is Pass ((decimal-digits "905") = expected-digits)
 formatted : Pass is Pass ((decimal -120) = "-120")
 unicode-characters : Pass is Pass ((entry-count (character-list "áb")) = 2)
+unicode-round-trip : Pass is Pass ((character-string (character-list "áb")) = "áb")
 
 (strict, malformed, signed-order, unsigned-order, digits, formatted,
- unicode-characters)
+ unicode-characters, unicode-round-trip)
