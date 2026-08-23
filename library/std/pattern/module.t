@@ -38,3 +38,27 @@ pub subsequence? is fn (
   pattern : List Value
 ) -> Boolean
   values contains-subsequence pattern
+
+### Count overlapping exact String occurrences at Character boundaries.
+pub count is fn (text : String, pattern : String) -> Nat
+  string-count-exact (text, pattern)
+
+### Return every overlapping exact-match Character index.
+pub find-all is fn (text : String, pattern : String) -> List Nat
+  string-find-all (text, pattern)
+
+### Split text at every nonoverlapping exact pattern occurrence.
+pub split is fn (text : String, pattern : String) -> List String
+  string-split-exact (text, pattern)
+
+### Match a complete String using `*` and `?` Character wildcards.
+pub glob? is fn (text : String, pattern : String) -> Boolean
+  string-glob-matches (text, pattern)
+
+### Test whether a Unicode regular expression occurs in text.
+pub regex-contains? is fn (text : String, pattern : String) -> Boolean
+  string-regex-contains (text, pattern)
+
+### Test whether any exact String pattern occurs.
+pub contains-any? is fn (text : String, patterns : List String) -> Boolean
+  string-contains-any (text, patterns)

@@ -26,3 +26,15 @@ pub nfc is fn (text : String) -> String
 ### Return text normalized to Unicode NFD.
 pub nfd is fn (text : String) -> String
   text normalize NFD
+
+### Split text into lines without retaining line terminators.
+pub lines is fn (text : String) -> List String
+  string-lines text
+
+### Split text on Unicode whitespace and omit empty pieces.
+pub words is fn (text : String) -> List String
+  string-words text
+
+### Join String entries with one exact separator.
+pub join is fn (values : List String, separator : String) -> String
+  string-join (values, separator)

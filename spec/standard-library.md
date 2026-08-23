@@ -133,7 +133,9 @@ operations promise no particular implementation complexity beyond finiteness.
 ### TOPAL-LIB-PATTERN-001 — Exact pattern algorithms
 
 The `std pattern` namespace SHALL provide exact String prefix, suffix,
-containment, and nonoverlapping replacement operations under the selected
+containment, overlapping count/index search, splitting, alternative search,
+complete glob matching, Unicode regular-expression containment, and
+nonoverlapping replacement operations under the selected
 Unicode context. It SHALL provide consecutive and ordered-subsequence matching
 for finite Lists over one exact `Equality` classifier. Empty patterns SHALL
 follow the underlying String and List containment laws; these exact operations
@@ -143,7 +145,8 @@ policy.
 ### TOPAL-LIB-TEXT-ALGORITHMS-001 — Unicode text algorithms
 
 The `std text` namespace SHALL provide canonical and default-caseless equality,
-Unicode-whitespace blank testing, and explicit NFC and NFD normalization.
+Unicode-whitespace blank testing, explicit NFC and NFD normalization, line and
+Unicode-whitespace word splitting, and exact joining.
 Operations SHALL use the selected pinned Unicode context and SHALL NOT add
 locale or encoded-byte policy.
 

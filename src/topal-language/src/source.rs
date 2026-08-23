@@ -6,6 +6,7 @@ use std::rc::Rc;
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
+use regex::Regex;
 use topal_semantics::{LanguageVersion, ObjectKind};
 use topal_serialization::{
     Event as SerializedEvent, Header as SerializationHeader, Limits as SerializationLimits,
@@ -3748,6 +3749,15 @@ impl Session {
                             | "string-trim"
                             | "string-replace-all"
                             | "string-repeat"
+                            | "string-count-exact"
+                            | "string-find-all"
+                            | "string-split-exact"
+                            | "string-glob-matches"
+                            | "string-contains-any"
+                            | "string-lines"
+                            | "string-words"
+                            | "string-join"
+                            | "string-regex-contains"
                     )
                 {
                     let operation = source.slice(*name);
@@ -12754,6 +12764,164 @@ fn apply_string_utility(
             })?;
             Value::String(text.repeat(count))
         }
+        ("string-count-exact" | "string-find-all", Value::Tuple(values)) if values.len() == 2 => {
+            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    format!("{operation} requires two String operands"),
+                ));
+            };
+            let text = characters(text).collect::<Vec<_>>();
+            let pattern = characters(pattern).collect::<Vec<_>>();
+            if pattern.is_empty() {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-EMPTY-PATTERN",
+                    span,
+                    format!("{operation} requires a nonempty pattern"),
+                ));
+            }
+            let indexes = text
+                .windows(pattern.len())
+                .enumerate()
+                .filter_map(|(index, candidate)| (candidate == pattern.as_slice()).then_some(index))
+                .collect::<Vec<_>>();
+            if operation == "string-count-exact" {
+                Value::Int(BigInt::from(indexes.len()))
+            } else {
+                Value::List {
+                    element_classifier: "Nat".into(),
+                    entries: indexes
+                        .into_iter()
+                        .map(|index| Value::Int(BigInt::from(index)))
+                        .collect(),
+                }
+            }
+        }
+        ("string-split-exact", Value::Tuple(values)) if values.len() == 2 => {
+            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    "string-split-exact requires two String operands",
+                ));
+            };
+            if pattern.is_empty() {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-EMPTY-PATTERN",
+                    span,
+                    "string-split-exact requires a nonempty pattern",
+                ));
+            }
+            Value::List {
+                element_classifier: "String".into(),
+                entries: text
+                    .split(pattern)
+                    .map(|part| Value::String(part.to_owned()))
+                    .collect(),
+            }
+        }
+        ("string-glob-matches", Value::Tuple(values)) if values.len() == 2 => {
+            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    "string-glob-matches requires two String operands",
+                ));
+            };
+            Value::Boolean(glob_matches(text, pattern))
+        }
+        ("string-regex-contains", Value::Tuple(values)) if values.len() == 2 => {
+            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
+                return Err(diagnostic(source, "E-STRING-UTILITY-OPERANDS", span, "string-regex-contains requires two String operands"));
+            };
+            let expression = Regex::new(pattern).map_err(|error| {
+                diagnostic(source, "E-REGEX-PATTERN", span, format!("invalid regular expression: {error}"))
+            })?;
+            Value::Boolean(expression.is_match(text))
+        }
+        ("string-contains-any", Value::Tuple(values)) if values.len() == 2 => {
+            let [
+                Value::String(text),
+                Value::List {
+                    element_classifier,
+                    entries,
+                },
+            ] = values.as_slice()
+            else {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    "string-contains-any requires String and List String operands",
+                ));
+            };
+            if element_classifier != "String" {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    "string-contains-any requires List String patterns",
+                ));
+            }
+            Value::Boolean(
+                entries
+                    .iter()
+                    .any(|entry| matches!(entry, Value::String(pattern) if text.contains(pattern))),
+            )
+        }
+        ("string-lines", Value::String(text)) => Value::List {
+            element_classifier: "String".into(),
+            entries: text
+                .lines()
+                .map(|line| Value::String(line.to_owned()))
+                .collect(),
+        },
+        ("string-words", Value::String(text)) => Value::List {
+            element_classifier: "String".into(),
+            entries: text
+                .split_whitespace()
+                .map(|word| Value::String(word.to_owned()))
+                .collect(),
+        },
+        ("string-join", Value::Tuple(values)) if values.len() == 2 => {
+            let [
+                Value::List {
+                    element_classifier,
+                    entries,
+                },
+                Value::String(separator),
+            ] = values.as_slice()
+            else {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    "string-join requires List String and String operands",
+                ));
+            };
+            if element_classifier != "String" {
+                return Err(diagnostic(
+                    source,
+                    "E-STRING-UTILITY-OPERANDS",
+                    span,
+                    "string-join requires List String entries",
+                ));
+            }
+            let parts = entries
+                .iter()
+                .map(|entry| match entry {
+                    Value::String(part) => part.as_str(),
+                    _ => unreachable!("List String contains String values"),
+                })
+                .collect::<Vec<_>>();
+            Value::String(parts.join(separator))
+        }
         _ => {
             return Err(diagnostic(
                 source,
@@ -12786,6 +12954,28 @@ fn is_unicode_white_space(character: char) -> bool {
             | '\u{205F}'
             | '\u{3000}'
     )
+}
+
+fn glob_matches(text: &str, pattern: &str) -> bool {
+    let text = characters(text).collect::<Vec<_>>();
+    let pattern = characters(pattern).collect::<Vec<_>>();
+    let mut matched = vec![vec![false; text.len() + 1]; pattern.len() + 1];
+    matched[0][0] = true;
+    for pattern_index in 1..=pattern.len() {
+        if pattern[pattern_index - 1] == "*" {
+            matched[pattern_index][0] = matched[pattern_index - 1][0];
+        }
+        for text_index in 1..=text.len() {
+            matched[pattern_index][text_index] = if pattern[pattern_index - 1] == "*" {
+                matched[pattern_index - 1][text_index] || matched[pattern_index][text_index - 1]
+            } else {
+                (pattern[pattern_index - 1] == "?"
+                    || pattern[pattern_index - 1] == text[text_index - 1])
+                    && matched[pattern_index - 1][text_index - 1]
+            };
+        }
+    }
+    matched[pattern.len()][text.len()]
 }
 
 fn apply_count(
@@ -15176,7 +15366,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 46] = [
+const ROOT_OPERATIONS: [&str; 55] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -15217,11 +15407,20 @@ const ROOT_OPERATIONS: [&str; 46] = [
     "stable-sort",
     "stable-sort-descending",
     "string-contains",
+    "string-contains-any",
+    "string-count-exact",
     "string-ends-with",
+    "string-find-all",
+    "string-glob-matches",
+    "string-join",
+    "string-lines",
     "string-repeat",
+    "string-regex-contains",
     "string-replace-all",
     "string-starts-with",
+    "string-split-exact",
     "string-trim",
+    "string-words",
     "zero",
 ];
 
