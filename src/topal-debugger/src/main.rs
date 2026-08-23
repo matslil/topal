@@ -850,15 +850,28 @@ fn print_source_location(history: &ExecutionHistory, source: &str, source_name: 
         println!("before first source statement");
         return;
     };
-    let (line, column) = line_column(source, range.start);
-    let source_line = source.lines().nth(line.saturating_sub(1)).unwrap_or("");
-    println!("{source_name}:{line}:{column}");
-    println!("{source_line}");
-    println!(
-        "{}{}",
-        " ".repeat(column.saturating_sub(1)),
-        "^".repeat(range.end.saturating_sub(range.start).max(1))
+    print!(
+        "{}",
+        render_source_position(source, source_name, range, None)
     );
+}
+
+fn render_source_position(
+    source: &str,
+    source_name: &str,
+    position: topal_language::SourceRange,
+    emphasis: Option<topal_language::SourceRange>,
+) -> String {
+    let (line, column) = line_column(source, position.start);
+    let source_line = source.lines().nth(line.saturating_sub(1)).unwrap_or("");
+    let mut rendered = format!("{source_name}:{line}:{column}\n{source_line}\n");
+    if let Some(emphasis) = emphasis {
+        let (_, emphasis_column) = line_column(source, emphasis.start);
+        rendered.push_str(&" ".repeat(emphasis_column.saturating_sub(1)));
+        rendered.push_str(&"^".repeat(emphasis.end.saturating_sub(emphasis.start).max(1)));
+        rendered.push('\n');
+    }
+    rendered
 }
 
 fn line_column(source: &str, offset: usize) -> (usize, usize) {

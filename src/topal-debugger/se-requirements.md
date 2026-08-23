@@ -63,6 +63,11 @@ to the next source location in the current source file without presenting
 dependency-source locations as locations in that file. Their reverse forms
 shall preserve the same boundary.
 
+Ordinary source-position output shall show the current line without a caret
+marker. A source renderer shall show caret markers only when its caller
+provides a separate source span to emphasize, such as for a diagnostic or an
+explicit expression-level selection.
+
 ## TOPAL-DEBUG-MESSAGE-001 — Step into message transactions
 
 Once message passing is supported by the language execution machine, stepping
