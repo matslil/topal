@@ -16,3 +16,20 @@ interactive prompt MAY accept a unique prefix or recursively resolve one unique
 name beneath `lang debug`, but SHALL diagnose ambiguity and SHALL resolve input
 to a canonical Topal application before evaluation. Exported or replayed
 scripts SHALL use the canonical form rather than prompt shortcuts.
+
+### TOPAL-DEBUG-INTERACTIVE-001 — Interactive control interface
+
+An interactive debugger SHALL display the initial source position. It SHALL
+provide command-name and argument completion, up/down history navigation, and
+backward history search. Command history SHALL contain no duplicate entries;
+re-entering a command SHALL move that command to the newest position. Empty
+input SHALL repeat the latest execution-progressing command, if any, and SHALL
+NOT repeat a non-progressing command.
+
+Forward `continue` SHALL extend live execution until a configured stop,
+diagnostic, manual interruption, or application completion. `run` SHALL restart
+the debuggee from its initial state. Bare `until` SHALL leave the current source
+frame, while an argument SHALL identify a source line, source-qualified line,
+or read-only Boolean condition. Interactive semantic output SHALL translate
+stable rule identifiers into human-readable descriptions; deterministic script
+output MAY retain stable identifiers for conformance automation.
