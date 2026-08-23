@@ -26,6 +26,14 @@ pub integer-rows is fn (text : String) -> List (List Int)
 pub vertical-integers is fn (text : String) -> List (Optional Int)
   string-vertical-integers text
 
+### Extract rows containing exactly two signed decimal integers.
+pub integer-pairs is fn (text : String) -> List (Int, Int)
+  string-integer-pairs text
+
+### Extract rows containing exactly three signed decimal integers.
+pub integer-triples is fn (text : String) -> List (Int, Int, Int)
+  string-integer-triples text
+
 ### Convert an ASCII decimal digit String into its individual values.
 pub decimal-digits is fn (text : String) -> List Nat
   string-decimal-digits text

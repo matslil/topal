@@ -3855,6 +3855,8 @@ impl Session {
                             | "range-integers"
                             | "string-integer-rows"
                             | "string-vertical-integers"
+                            | "string-integer-pairs"
+                            | "string-integer-triples"
                     )
                 {
                     let operation = source.slice(*name);
@@ -3862,6 +3864,23 @@ impl Session {
                     let operand = self.evaluate_expression(source, &items[1], trace)?;
                     let value =
                         apply_string_utility(source, operation, operand, operand_span, trace)?;
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && matches!(
+                        source.slice(*name),
+                        "geometry-nearest-component-product"
+                            | "geometry-final-connection-x-product"
+                            | "geometry-largest-point-rectangle"
+                            | "geometry-largest-contained-rectangle"
+                    )
+                {
+                    let operation = source.slice(*name);
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let value = apply_geometry_algorithm(source, operation, operand, operand_span)?;
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -13106,6 +13125,24 @@ fn apply_string_utility(
                 entries,
             }
         }
+        ("string-integer-pairs" | "string-integer-triples", Value::String(text)) => {
+            let arity = if operation == "string-integer-pairs" { 2 } else { 3 };
+            let expression = Regex::new(r"-?[0-9]+").expect("fixed decimal pattern is valid");
+            let entries = text
+                .lines()
+                .filter_map(|line| {
+                    let values = expression
+                        .find_iter(line)
+                        .map(|found| Value::Int(found.as_str().parse::<BigInt>().expect("matched integer")))
+                        .collect::<Vec<_>>();
+                    (values.len() == arity).then_some(Value::Tuple(values))
+                })
+                .collect();
+            Value::List {
+                element_classifier: if arity == 2 { "(Int, Int)" } else { "(Int, Int, Int)" }.into(),
+                entries,
+            }
+        }
         (
             "range-integers",
             Value::IntRange {
@@ -13665,6 +13702,131 @@ fn apply_graph_algorithm(
         rule: "TOPAL-LIB-GRAPH-ADVANCED-001",
         detail: operation,
     });
+    Ok(result)
+}
+
+fn integer_points(value: &Value, arity: usize) -> Option<Vec<Vec<BigInt>>> {
+    let Value::List { entries, .. } = value else { return None };
+    entries
+        .iter()
+        .map(|entry| {
+            let Value::Tuple(fields) = entry else { return None };
+            if fields.len() != arity { return None; }
+            fields
+                .iter()
+                .map(|field| match field { Value::Int(value) => Some(value.clone()), _ => None })
+                .collect()
+        })
+        .collect()
+}
+
+fn union_find_root(parents: &mut [usize], mut node: usize) -> usize {
+    while parents[node] != node {
+        parents[node] = parents[parents[node]];
+        node = parents[node];
+    }
+    node
+}
+
+fn union_find_join(parents: &mut [usize], left: usize, right: usize) -> bool {
+    let left = union_find_root(parents, left);
+    let right = union_find_root(parents, right);
+    if left == right { false } else { parents[left] = right; true }
+}
+
+fn point_pairs_by_distance(points: &[Vec<BigInt>]) -> Vec<(BigInt, usize, usize)> {
+    let mut pairs = Vec::new();
+    for left in 0..points.len() {
+        for right in left + 1..points.len() {
+            let distance = points[left]
+                .iter()
+                .zip(&points[right])
+                .map(|(left, right)| { let delta = right - left; &delta * &delta })
+                .sum();
+            pairs.push((distance, left, right));
+        }
+    }
+    pairs.sort();
+    pairs
+}
+
+fn rectangle_area(left: &[BigInt], right: &[BigInt]) -> BigInt {
+    let width = if right[0] >= left[0] { &right[0] - &left[0] } else { &left[0] - &right[0] };
+    let height = if right[1] >= left[1] { &right[1] - &left[1] } else { &left[1] - &right[1] };
+    (width + 1) * (height + 1)
+}
+
+fn edge_crosses_rectangle(
+    left: &[BigInt],
+    right: &[BigInt],
+    edge_start: &[BigInt],
+    edge_end: &[BigInt],
+) -> bool {
+    let min_x = left[0].clone().min(right[0].clone());
+    let max_x = left[0].clone().max(right[0].clone());
+    let min_y = left[1].clone().min(right[1].clone());
+    let max_y = left[1].clone().max(right[1].clone());
+    let vertical = edge_start[0] > min_x
+        && edge_start[0] < max_x
+        && edge_start[1].clone().min(edge_end[1].clone()) < max_y
+        && edge_start[1].clone().max(edge_end[1].clone()) > min_y;
+    let horizontal = edge_start[1] > min_y
+        && edge_start[1] < max_y
+        && edge_start[0].clone().min(edge_end[0].clone()) < max_x
+        && edge_start[0].clone().max(edge_end[0].clone()) > min_x;
+    vertical || horizontal
+}
+
+fn apply_geometry_algorithm(
+    source: &SourceText,
+    operation: &str,
+    argument: Value,
+    span: Span,
+) -> Result<Value, Diagnostic> {
+    let invalid = || diagnostic(source, "E-GEOMETRY-OPERANDS", span, format!("invalid operands for {operation}"));
+    let result = match operation {
+        "geometry-nearest-component-product" => {
+            let Value::Tuple(fields) = argument else { return Err(invalid()) };
+            let [points, Value::Int(limit)] = fields.as_slice() else { return Err(invalid()) };
+            let points = integer_points(points, 3).ok_or_else(invalid)?;
+            let limit = usize::try_from(limit).map_err(|_| invalid())?;
+            let mut parents = (0..points.len()).collect::<Vec<_>>();
+            for (_, left, right) in point_pairs_by_distance(&points).into_iter().take(limit) {
+                union_find_join(&mut parents, left, right);
+            }
+            let mut sizes = BTreeMap::new();
+            for node in 0..points.len() { *sizes.entry(union_find_root(&mut parents, node)).or_insert(0usize) += 1; }
+            let mut sizes = sizes.into_values().collect::<Vec<_>>();
+            sizes.sort_by(|left, right| right.cmp(left));
+            Value::Int(sizes.into_iter().take(3).map(BigInt::from).product())
+        }
+        "geometry-final-connection-x-product" => {
+            let points = integer_points(&argument, 3).ok_or_else(invalid)?;
+            let mut parents = (0..points.len()).collect::<Vec<_>>();
+            let mut answer = None;
+            for (_, left, right) in point_pairs_by_distance(&points) {
+                if union_find_join(&mut parents, left, right) { answer = Some(&points[left][0] * &points[right][0]); }
+            }
+            Value::Int(answer.unwrap_or_default())
+        }
+        "geometry-largest-point-rectangle" | "geometry-largest-contained-rectangle" => {
+            let points = integer_points(&argument, 2).ok_or_else(invalid)?;
+            let contained = operation == "geometry-largest-contained-rectangle";
+            let mut best = BigInt::from(0);
+            for left in 0..points.len() {
+                for right in left + 1..points.len() {
+                    let valid = !contained || (0..points.len()).all(|edge| {
+                        !edge_crosses_rectangle(
+                            &points[left], &points[right], &points[edge], &points[(edge + 1) % points.len()]
+                        )
+                    });
+                    if valid { best = best.max(rectangle_area(&points[left], &points[right])); }
+                }
+            }
+            Value::Int(best)
+        }
+        _ => unreachable!("geometry operation is dispatched explicitly"),
+    };
     Ok(result)
 }
 
@@ -16709,7 +16871,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 89] = [
+const ROOT_OPERATIONS: [&str; 95] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16783,9 +16945,15 @@ const ROOT_OPERATIONS: [&str; 89] = [
     "range-integers",
     "string-integer-rows",
     "string-vertical-integers",
+    "string-integer-pairs",
+    "string-integer-triples",
     "list-transpose-shortest",
     "character-list-string",
     "range-coalesce-int",
+    "geometry-nearest-component-product",
+    "geometry-final-connection-x-product",
+    "geometry-largest-point-rectangle",
+    "geometry-largest-contained-rectangle",
     "statistics-median",
     "statistics-modes",
     "statistics-histogram",
