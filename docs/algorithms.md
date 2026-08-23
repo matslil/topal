@@ -28,10 +28,11 @@ More specialized namespaces keep their policies visible:
 - `std combinatorics` provides exact counts, positional permutations,
   combinations, subsets, and Cartesian products; repeated equal entries remain
   distinct positions rather than being silently deduplicated; and
-- `std statistics` uses exact numeric results and represents undefined results,
-  such as the mean of an empty sample, explicitly.
+- `std statistics` provides exact means, medians, modes, histograms, quantiles,
+  population/sample variance, population covariance, and mergeable count/sum/
+  square-sum summaries. Undefined results are represented explicitly.
 
 The first revision intentionally favors small composable operations. More
-specialized search structures, negative graph weights, sampling,
+specialized search structures, negative graph weights, approximate sampling,
 and approximate numeric methods belong in later namespaces with their policy
 and complexity contracts stated explicitly.
