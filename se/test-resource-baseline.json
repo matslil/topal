@@ -3632,6 +3632,10 @@
     "topal-interpreter::test:cli::declared_standard_library_file_executes_directly": {
       "cpu_time_ns": 128945940,
       "memory_peak_bytes": 18149376
+    },
+    "topal-debugger::test:cli::step_enters_declared_library_while_next_stays_in_the_current_file": {
+      "cpu_time_ns": 106160319,
+      "memory_peak_bytes": 18137088
     }
   }
 }

@@ -35,6 +35,7 @@ fn run() -> Result<(), String> {
     } else if declares_library(&source, "std") {
         load_module_tree(&mut session, &arguments.library_root, &mut history)?;
     }
+    let current_source_start = history.transitions().len();
     let execution = session
         .prepare_source_file(&source, &mut history)
         .map_err(|error| error.render(&source_name))?;
@@ -43,6 +44,7 @@ fn run() -> Result<(), String> {
         session,
         execution,
         history,
+        current_source_start,
         complete: false,
     };
 
@@ -162,6 +164,7 @@ struct Debuggee {
     session: Session,
     execution: Execution,
     history: ExecutionHistory,
+    current_source_start: usize,
     complete: bool,
 }
 
@@ -219,6 +222,7 @@ fn command_loop(
         session,
         execution,
         history,
+        current_source_start,
         complete,
     } = debuggee;
     let mut breakpoints = BTreeSet::new();
@@ -263,6 +267,7 @@ fn command_loop(
                     source_name,
                     session,
                     execution,
+                    *current_source_start,
                     complete,
                 ) => {}
             command
@@ -337,6 +342,7 @@ fn command_loop(
                 println!(
                     "step | reverse-step | source-step | reverse-source-step | next | reverse-next | finish | reverse-finish | backtrace | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | why | history | print | bindings | quit"
                 );
+                println!("step enters use-clause work; next stays in the current source file");
                 println!("expression-step (es) advances to the next recorded expression state");
             }
             "quit" | "q" => return Ok(()),
@@ -607,6 +613,7 @@ fn print_expression(history: &ExecutionHistory, expression: &str) {
     }
 }
 
+#[allow(clippy::too_many_arguments)] // Frame navigation needs the live execution and source boundary.
 fn handle_frame_command(
     command: &str,
     history: &mut ExecutionHistory,
@@ -614,15 +621,18 @@ fn handle_frame_command(
     source_name: &str,
     session: &mut Session,
     execution: &mut Execution,
+    current_source_start: usize,
     complete: &mut bool,
 ) -> bool {
     match command {
-        "next" | "n" => match live_source_step(history, session, execution, complete) {
-            Ok(true) => print_source_location(history, source, source_name),
-            Ok(false) => println!("end of current frame"),
-            Err(error) => println!("{}", error.render(source_name)),
-        },
-        "reverse-next" | "rn" => match history.step_source_backward() {
+        "next" | "n" => {
+            match live_next(history, session, execution, current_source_start, complete) {
+                Ok(true) => print_source_location(history, source, source_name),
+                Ok(false) => println!("end of current frame"),
+                Err(error) => println!("{}", error.render(source_name)),
+            }
+        }
+        "reverse-next" | "rn" => match reverse_next(history, current_source_start) {
             Some(_) => print_source_location(history, source, source_name),
             None => println!("start of current frame"),
         },
@@ -650,6 +660,32 @@ fn handle_frame_command(
         _ => return false,
     }
     true
+}
+
+fn live_next(
+    history: &mut ExecutionHistory,
+    session: &mut Session,
+    execution: &mut Execution,
+    current_source_start: usize,
+    complete: &mut bool,
+) -> Result<bool, topal_language::Diagnostic> {
+    if history.cursor() < current_source_start {
+        history.seek(current_source_start);
+    }
+    live_source_step(history, session, execution, complete)
+}
+
+fn reverse_next(
+    history: &mut ExecutionHistory,
+    current_source_start: usize,
+) -> Option<topal_language::ExecutionState> {
+    let state = history.step_source_backward()?;
+    if history.cursor() < current_source_start {
+        history.seek(current_source_start);
+        None
+    } else {
+        Some(state)
+    }
 }
 
 fn live_source_step(
