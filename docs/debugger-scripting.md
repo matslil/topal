@@ -39,3 +39,20 @@ The same language-variant mechanism may later construct lint-rule and build
 script contexts. Each variant adds only its own qualified vocabulary and
 capabilities; it does not add another parser or silently change ordinary source
 authority.
+
+## Source frames and help
+
+`step` enters source selected by a `use` clause, while `next` remains in the
+current source file. Once inside dependency source, `next`, `reverse-next`, and
+`finish` operate on that dependency frame; `finish` returns to the calling
+clause. Backtraces and breakpoints identify both file and line so identically
+numbered lines in different modules remain distinct.
+
+`help COMMAND` explains debugger commands. `help NAME` searches the debuggee,
+the complete configured standard-library source tree, and qualified built-in
+declarations. Qualified library names follow their source namespace, for
+example `help std web http response`.
+
+A diagnostic raised while advancing the debuggee does not close the command
+session. The user may inspect bindings and history or move backward from the
+last completed state.
