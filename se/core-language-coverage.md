@@ -18,7 +18,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/numbers.md` | 40 | 3 | `topal-language` value domains | runtime | complete |
 | `spec/ranges.md` | 9 | 3 | `topal-language` value domains | runtime | complete |
 | `spec/strings.md` | 25 | 3 | `topal-source`, `topal-language` | static, runtime | complete |
-| `spec/containers.md` | 49 | 3 | `topal-language` value domains | runtime | complete |
+| `spec/containers.md` | 50 | 3 | `topal-language` value domains | runtime | complete |
 | `spec/generators.md` | 27 | 3 | `topal-language` execution | runtime | complete |
 | `spec/modules.md` | 11 | 4 | shared loader and `topal-language` | static, runtime | complete |
 | `spec/abstractions.md` | 7 | 5 | `topal-semantics`, shared source tools | static | complete |
@@ -29,7 +29,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/tasks.md` | 5 | 7 | `topal-syntax`, `topal-language`, shared execution tools | static, runtime | complete |
 | `spec/serialization.md` | 22 | 8 | shared layout and serialization codecs | artifact, runtime | complete |
 | `spec/generic-ir.md` | 11 | 9 | shared generic artifact and source-package identity model | artifact, compiler-only | complete |
-| `spec/standard-library.md` | 13 | 9 | shared library loader and cross-tool conformance suites | static, runtime, artifact | complete |
+| `spec/standard-library.md` | 15 | 9 | shared library loader and cross-tool conformance suites | static, runtime, artifact | complete |
 | `spec/tracing.md` | 4 | 9 | shared semantic tracing and adapters | static, runtime, artifact | complete |
 | `spec/debugger-scripting.md` | 3 | 9 | `topal-debugger`, shared language variants | static, runtime | complete |
 | `spec/source-documentation.md` | 7 | 9 | `topal-syntax`, `topal-language`, `topal-doc`, `topal-debugger` | static, presentation | complete |

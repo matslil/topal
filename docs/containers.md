@@ -801,6 +801,13 @@ sequence rather than pretending to preserve an unordered source kind:
 collect ( collection order-by comparison )
 ```
 
+For the exact numeric domains' ordinary total order, the fundamental
+`stable-sort` and `stable-sort-descending` List operations provide the
+allocation and comparison mechanism used by `std ordered`. Equal entries keep
+their source order. Keeping the policy-free mechanism fundamental lets the
+Topal standard library name and compose sorting algorithms without depending
+on a host-specific container representation.
+
 Pairwise traversal must state what happens when sizes differ:
 
 ```topal

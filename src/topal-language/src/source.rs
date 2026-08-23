@@ -4038,6 +4038,24 @@ impl Session {
                         continue;
                     }
                     if let Expression::Identifier(callable_span) = &items[index]
+                        && matches!(
+                            source.slice(*callable_span),
+                            "stable-sort" | "stable-sort-descending"
+                        )
+                        && matches!(result, Value::List { .. })
+                    {
+                        let descending = source.slice(*callable_span) == "stable-sort-descending";
+                        apply_list_stable_sort(
+                            source,
+                            &mut result,
+                            descending,
+                            *callable_span,
+                            trace,
+                        )?;
+                        index += 1;
+                        continue;
+                    }
+                    if let Expression::Identifier(callable_span) = &items[index]
                         && source.slice(*callable_span) == "entries"
                         && matches!(result, Value::List { .. })
                     {
@@ -13003,6 +13021,55 @@ fn apply_list_reverse(value: &mut Value, trace: &mut impl TraceSink) {
     });
 }
 
+fn apply_list_stable_sort(
+    source: &SourceText,
+    value: &mut Value,
+    descending: bool,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<(), Diagnostic> {
+    let Value::List {
+        element_classifier,
+        entries,
+    } = value
+    else {
+        unreachable!("stable sort dispatched only for a List")
+    };
+    if !matches!(element_classifier.as_str(), "Int" | "Rational") {
+        return Err(diagnostic(
+            source,
+            "E-LIST-SORT-CLASSIFIER",
+            span,
+            "stable sorting currently requires List Int or List Rational",
+        ));
+    }
+    entries.sort_by(|left, right| {
+        let ordering = values_compare(left.clone(), right.clone(), trace)
+            .expect("validated exact numeric entries are totally ordered");
+        if descending {
+            ordering.reverse()
+        } else {
+            ordering
+        }
+    });
+    let classifier = format!("List {element_classifier}");
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: if descending {
+            "root.stable-sort-descending(List)"
+        } else {
+            "root.stable-sort(List)"
+        },
+    });
+    trace.record(TraceEvent {
+        event: "list.stably-sorted",
+        rule: "TOPAL-LIST-STABLE-SORT-001",
+        detail: &classifier,
+    });
+    Ok(())
+}
+
 #[allow(clippy::too_many_lines)] // Keep ordered List operation dispatch together.
 fn apply_list_operation(
     source: &SourceText,
@@ -14779,7 +14846,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 31] = [
+const ROOT_OPERATIONS: [&str; 33] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -14804,6 +14871,8 @@ const ROOT_OPERATIONS: [&str; 31] = [
     "one",
     "rest",
     "reverse",
+    "stable-sort",
+    "stable-sort-descending",
     "string-contains",
     "string-ends-with",
     "string-repeat",
