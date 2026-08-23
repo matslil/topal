@@ -22,6 +22,8 @@ pub struct ExecutionState {
     pub bindings: BTreeMap<String, Value>,
     pub value: Option<Value>,
     pub source_range: Option<SourceRange>,
+    pub source_name: Option<Rc<str>>,
+    pub source: Option<Rc<str>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -30,6 +32,8 @@ struct Checkpoint {
     binding_changes: Vec<(String, Option<Rc<Value>>)>,
     value: Option<Value>,
     source_range: Option<SourceRange>,
+    source_name: Option<Rc<str>>,
+    source: Option<Rc<str>>,
 }
 
 /// One owned semantic transition in deterministic execution order.
@@ -51,6 +55,7 @@ pub struct ExecutionHistory {
     checkpoints: Vec<Checkpoint>,
     current_bindings: BTreeMap<String, Rc<Value>>,
     cursor: usize,
+    source_stack: Vec<(Rc<str>, Rc<str>)>,
 }
 
 impl ExecutionHistory {
@@ -104,6 +109,8 @@ impl ExecutionHistory {
                 .collect(),
             value: latest.value.clone(),
             source_range: latest.source_range,
+            source_name: latest.source_name.clone(),
+            source: latest.source.clone(),
         })
     }
 
@@ -300,7 +307,21 @@ impl TraceSink for ExecutionHistory {
                 start: span.start,
                 end: span.end,
             }),
+            source_name: self.source_stack.last().map(|(name, _)| Rc::clone(name)),
+            source: self
+                .source_stack
+                .last()
+                .map(|(_, source)| Rc::clone(source)),
         });
+    }
+
+    fn push_source(&mut self, source_name: &str, source: &str) {
+        self.source_stack
+            .push((Rc::from(source_name), Rc::from(source)));
+    }
+
+    fn pop_source(&mut self) {
+        self.source_stack.pop();
     }
 }
 

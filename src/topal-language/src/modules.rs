@@ -53,9 +53,13 @@ pub fn load_module_tree(
                 .ok_or_else(|| format!("source {} has no module name", path.display()))?
                 .to_string_lossy();
             let source = read_source(path)?;
-            session
+            let source_name = path.display().to_string();
+            trace.push_source(&source_name, &source);
+            let result = session
                 .load_module(&name, &source, trace)
-                .map_err(|error| error.render(&path.display().to_string()))?;
+                .map_err(|error| error.render(&source_name));
+            trace.pop_source();
+            result?;
         }
     }
     Ok(())
@@ -70,9 +74,13 @@ fn load_child_module(
     let descriptor = path.join("module.t");
     if descriptor.is_file() {
         let source = read_source(&descriptor)?;
-        child
+        let source_name = descriptor.display().to_string();
+        trace.push_source(&source_name, &source);
+        let result = child
             .evaluate_source_file(&source, trace)
-            .map_err(|error| error.render(&descriptor.display().to_string()))?;
+            .map_err(|error| error.render(&source_name));
+        trace.pop_source();
+        result?;
     }
     load_module_tree(&mut child, path, trace)?;
     let name = path

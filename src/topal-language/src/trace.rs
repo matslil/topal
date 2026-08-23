@@ -20,6 +20,10 @@ pub trait TraceSink {
     fn record(&mut self, event: TraceEvent<'_>);
 
     fn checkpoint(&mut self, _snapshot: ExecutionSnapshot<'_>) {}
+
+    fn push_source(&mut self, _source_name: &str, _source: &str) {}
+
+    fn pop_source(&mut self) {}
 }
 
 impl TraceSink for Vec<String> {

@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use topal_language::{
-    Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session, declares_library,
-    lang_documentation, load_module_tree,
+    Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session, TraceSink,
+    declares_library, lang_documentation, load_module_tree,
 };
 use topal_source::SourceText;
 use topal_syntax::{DocumentedDeclaration, Statement, extract_documentation, lex, parse};
@@ -36,6 +36,7 @@ fn run() -> Result<(), String> {
         load_module_tree(&mut session, &arguments.library_root, &mut history)?;
     }
     let current_source_start = history.transitions().len();
+    history.push_source(&source_name, &source);
     let execution = session
         .prepare_source_file(&source, &mut history)
         .map_err(|error| error.render(&source_name))?;
@@ -45,6 +46,7 @@ fn run() -> Result<(), String> {
         execution,
         history,
         current_source_start,
+        dependency_return_cursor: None,
         complete: false,
     };
 
@@ -165,6 +167,7 @@ struct Debuggee {
     execution: Execution,
     history: ExecutionHistory,
     current_source_start: usize,
+    dependency_return_cursor: Option<usize>,
     complete: bool,
 }
 
@@ -223,6 +226,7 @@ fn command_loop(
         execution,
         history,
         current_source_start,
+        dependency_return_cursor,
         complete,
     } = debuggee;
     let mut breakpoints = BTreeSet::new();
@@ -279,12 +283,42 @@ fn command_loop(
                     &breakpoints,
                     &watchpoints,
                 ) => {}
-            "step" | "s" => match history.step_forward() {
-                Some(transition) => print_transition(transition),
-                None => println!("end of execution"),
-            },
+            "step" | "s" => {
+                if dependency_return_cursor.is_some()
+                    || at_library_selection(history, source, source_name)
+                {
+                    if dependency_return_cursor.is_none() {
+                        *dependency_return_cursor = Some(history.cursor());
+                        history.rewind();
+                    }
+                    match history.step_source_forward() {
+                        Some(_) => {
+                            if history.cursor()
+                                >= dependency_return_cursor.unwrap_or(*current_source_start)
+                            {
+                                *dependency_return_cursor = None;
+                            }
+                            print_source_location(history, source, source_name);
+                        }
+                        None => println!("end of dependency source"),
+                    }
+                } else {
+                    match history.step_forward() {
+                        Some(transition) => print_transition(transition),
+                        None => println!("end of execution"),
+                    }
+                }
+            }
             "reverse-step" | "rs" => {
-                if history.cursor() == 0 {
+                if let Some(return_cursor) = *dependency_return_cursor {
+                    if history.step_source_backward().is_some() {
+                        print_source_location(history, source, source_name);
+                    } else {
+                        history.seek(return_cursor);
+                        *dependency_return_cursor = None;
+                        print_source_location(history, source, source_name);
+                    }
+                } else if history.cursor() == 0 {
                     println!("start of execution");
                 } else {
                     history.step_backward();
@@ -846,14 +880,43 @@ fn continue_to_stop(
 }
 
 fn print_source_location(history: &ExecutionHistory, source: &str, source_name: &str) {
-    let Some(range) = history.state().and_then(|state| state.source_range) else {
+    let Some(state) = history.state() else {
         println!("before first source statement");
         return;
     };
+    let Some(range) = state.source_range else {
+        println!("before first source statement");
+        return;
+    };
+    let shown_source = state.source.as_deref().unwrap_or(source);
+    let shown_name = state.source_name.as_deref().unwrap_or(source_name);
     print!(
         "{}",
-        render_source_position(source, source_name, range, None)
+        render_source_position(shown_source, shown_name, range, None)
     );
+}
+
+fn at_library_selection(history: &ExecutionHistory, source: &str, source_name: &str) -> bool {
+    let Some(state) = history.state() else {
+        return false;
+    };
+    if state
+        .source_name
+        .as_deref()
+        .is_some_and(|name| name != source_name)
+    {
+        return false;
+    }
+    let Some(range) = state.source_range else {
+        return false;
+    };
+    let Ok(source_text) = SourceText::new(source) else {
+        return false;
+    };
+    parse(&source_text, &lex(&source_text))
+        .statements
+        .iter()
+        .any(|statement| matches!(statement, Statement::LibrarySelection { span, .. } if span.start == range.start))
 }
 
 fn render_source_position(
