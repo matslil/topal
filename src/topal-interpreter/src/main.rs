@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use topal_language::{
-    JsonLines, LanguageVersion, Session, TraceSink, UNICODE_VERSION, declares_library,
+    JsonLines, LanguageVersion, Session, TraceSink, UNICODE_VERSION, Value, declares_library,
     load_module_tree,
 };
 
@@ -20,6 +20,7 @@ struct Arguments {
     source: Option<String>,
     language_version: Option<LanguageVersion>,
     library_root: PathBuf,
+    input: Option<PathBuf>,
 }
 
 fn main() -> ExitCode {
@@ -34,6 +35,9 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), String> {
     let arguments = parse_arguments(env::args().skip(1))?;
+    if arguments.input.is_some() && matches!(arguments.mode, Mode::Interactive) {
+        return Err("--input is available only in script and test modes".into());
+    }
     match arguments.mode {
         Mode::Interactive => interactive(arguments.source.as_deref(), arguments.language_version),
         Mode::Script | Mode::Test => {
@@ -41,6 +45,9 @@ fn run() -> Result<(), String> {
                 return Err("--language-version supplies interactive context only; source files declare their own version".into());
             }
             let source_name = arguments.source.as_deref().unwrap_or("<stdin>");
+            if arguments.input.is_some() && arguments.source.is_none() {
+                return Err("--input requires a Topal source file".into());
+            }
             let mut session = Session::new();
             if matches!(arguments.mode, Mode::Test) {
                 let stderr = io::stderr();
@@ -50,6 +57,7 @@ fn run() -> Result<(), String> {
                     arguments.source.as_deref(),
                     source_name,
                     &arguments.library_root,
+                    arguments.input.as_deref(),
                     &mut trace,
                 )
             } else {
@@ -58,6 +66,7 @@ fn run() -> Result<(), String> {
                     arguments.source.as_deref(),
                     source_name,
                     &arguments.library_root,
+                    arguments.input.as_deref(),
                     &mut io::sink(),
                 )
             }
@@ -71,6 +80,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
     let mut language_version = None;
     let mut library_root =
         env::var_os("TOPAL_LIBRARY_ROOT").map_or_else(|| PathBuf::from("library"), PathBuf::from);
+    let mut input = None;
     let mut arguments = arguments.peekable();
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
@@ -96,9 +106,14 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
                         .ok_or("--library-root requires a directory")?,
                 );
             }
+            "--input" => {
+                input = Some(PathBuf::from(
+                    arguments.next().ok_or("--input requires a data file")?,
+                ));
+            }
             "--help" => {
                 println!(
-                    "Usage: topal [--library-root DIR] [--interactive [--language-version VERSION] | --test] [FILE]\n\nWith no FILE, source is read from standard input. Source files declare their language and library dependencies."
+                    "Usage: topal [--library-root DIR] [--input DATA] [--interactive [--language-version VERSION] | --test] [FILE]\n\nWith no FILE, source is read from standard input. --input evaluates FILE, then calls its `solve` function with the complete DATA file as a String. Source files declare their language and library dependencies."
                 );
                 std::process::exit(0);
             }
@@ -123,6 +138,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
         source,
         language_version,
         library_root,
+        input,
     })
 }
 
@@ -240,6 +256,7 @@ fn evaluate_input(
     path: Option<&str>,
     source_name: &str,
     library_root: &Path,
+    input: Option<&Path>,
     trace: &mut impl TraceSink,
 ) -> Result<(), String> {
     if let Some(path) = path.filter(|path| Path::new(path).is_dir()) {
@@ -249,7 +266,21 @@ fn evaluate_input(
     if declares_library(&source, "std") {
         load_module_tree(session, library_root, trace)?;
     }
-    evaluate_and_print(session, &source, source_name, trace)
+    if let Some(input) = input {
+        session
+            .evaluate_source_file(&source, trace)
+            .map_err(|error| error.render(source_name))?;
+        let input = fs::read_to_string(input)
+            .map_err(|error| format!("cannot read {}: {error}", input.display()))?;
+        let expression = format!("solve {}", Value::String(input));
+        let value = session
+            .evaluate(&expression, trace)
+            .map_err(|error| error.render(source_name))?;
+        println!("{value}");
+        Ok(())
+    } else {
+        evaluate_and_print(session, &source, source_name, trace)
+    }
 }
 
 fn evaluate_directory(

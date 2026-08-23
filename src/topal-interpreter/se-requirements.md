@@ -1939,6 +1939,16 @@ module attachment shall use the shared package-loader implementation rather
 than an interpreter-private module graph, so a compiler frontend can consume
 the same canonical source layout.
 
+## TOPAL-INTP-APPLICATION-INPUT-001 — Explicit script input file
+
+Script and test modes shall accept an explicit `--input DATA` option together
+with a Topal source file. The interpreter shall evaluate the source, call its
+`solve` function exactly once with the complete UTF-8 DATA contents as a
+String, and print only the returned value to standard output. It shall reject
+missing or unreadable data, invalid UTF-8, a missing source file, and an absent
+or inapplicable `solve` function without granting ambient filesystem access to
+Topal code.
+
 ## TOPAL-INTP-COMPILER-BOUNDARY-001 — Compiler-only static operations
 
 The interpreter shall use the shared GEIR boundary for artifact export,

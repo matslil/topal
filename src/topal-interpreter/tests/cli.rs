@@ -45,6 +45,35 @@ fn run_file(path: &Path) -> std::process::Output {
 }
 
 #[test]
+fn explicit_input_file_calls_solve_and_prints_only_its_result() {
+    let directory =
+        std::env::temp_dir().join(format!("topal-explicit-input-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let source = directory.join("solver.t");
+    let input = directory.join("data.txt");
+    std::fs::write(
+        &source,
+        "use language ( version is v0.1 )\nsolve is fn (input : String) -> Nat\n  entry-count input\n",
+    )
+    .unwrap();
+    std::fs::write(&input, "åb\n").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_topal"))
+        .args(["--input", input.to_str().unwrap(), source.to_str().unwrap()])
+        .output()
+        .unwrap();
+
+    std::fs::remove_dir_all(&directory).unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(output.stdout, b"3\n");
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
 fn every_interpreter_example_is_an_executable_script() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language");
     let mut examples = std::fs::read_dir(directory)
