@@ -92,6 +92,39 @@ fn declared_standard_library_file_executes_directly() {
     );
 }
 
+#[test]
+fn step_enters_declared_library_while_next_stays_in_the_current_file() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../library");
+    let rest = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/data-transfer/rest-controller.t"
+    );
+    let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args(["--library-root", root, "--script", "-", rest])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(b"use language ( version is v0.1, features is ( debug ) )\nstep\nnext\nquit\n")
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("module.loaded [TOPAL-NAMESPACE-USE-001]"));
+    assert!(stdout.contains("examples/data-transfer/rest-controller.t:5:1"));
+    assert!(!stdout.contains("rest-controller.t:12:50"));
+    assert!(!stdout.contains("error["));
+}
+
 fn language_diagnostic(name: &str) -> String {
     format!(
         "{}/../../examples/language-diagnostics/{name}",

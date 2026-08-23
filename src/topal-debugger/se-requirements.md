@@ -57,6 +57,12 @@ expose the current source location, current value, visible bindings, logical
 backtrace, and deterministic transition history. Commands that cannot proceed
 shall explain why without changing debuggee state.
 
+`step` shall enter semantic work performed for a source clause, including the
+resolution and initialization selected by a `use` clause. `next` shall advance
+to the next source location in the current source file without presenting
+dependency-source locations as locations in that file. Their reverse forms
+shall preserve the same boundary.
+
 ## TOPAL-DEBUG-MESSAGE-001 — Step into message transactions
 
 Once message passing is supported by the language execution machine, stepping
