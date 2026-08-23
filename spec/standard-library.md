@@ -194,6 +194,21 @@ Int and Rational Lists. A nonempty result SHALL be a canonical Rational;
 an empty input SHALL return `None Rational` rather than inventing a value or
 raising an arithmetic error.
 
+### TOPAL-LIB-STATISTICS-ADVANCED-001 — Exact descriptive statistics
+
+The `std statistics` namespace SHALL provide exact median, modes, histogram,
+linearly interpolated quantile, population and sample variance, population
+covariance, and streaming summary operations for finite Int and Rational data.
+Undefined results SHALL use `None`: median, quantile, population variance, and
+covariance for empty data, and sample variance for fewer than two entries.
+Covariance SHALL reject unequal List lengths, and quantile SHALL reject
+probabilities outside the inclusive Rational range zero through one.
+
+Modes and histograms SHALL retain first-occurrence order. Streaming summaries
+SHALL retain exact count, sum, and sum of squares and SHALL yield the same mean
+and population variance as the corresponding batch operations, apart from no
+rounding because every calculation is exact.
+
 ### TOPAL-LIB-GENERATOR-001 — Lazy generator constructors
 
 The `std` namespace SHALL provide integer enumeration as a replay-free

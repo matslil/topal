@@ -3496,6 +3496,31 @@ impl Session {
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
+                        "statistics-median"
+                            | "statistics-modes"
+                            | "statistics-histogram"
+                            | "statistics-population-variance"
+                            | "statistics-sample-variance"
+                            | "statistics-quantile"
+                            | "statistics-covariance"
+                            | "statistics-summary"
+                            | "statistics-summary-add"
+                            | "statistics-summary-merge"
+                            | "statistics-summary-mean"
+                            | "statistics-summary-variance"
+                    )
+                {
+                    let operation = source.slice(*name);
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let value = apply_statistics(source, operation, operand, operand_span, trace)?;
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && matches!(
+                        source.slice(*name),
                         "list-permutations"
                             | "list-combinations"
                             | "list-subsets"
@@ -13649,6 +13674,297 @@ fn apply_combinatorial_construction(
     Ok(result)
 }
 
+fn exact_numeric_list(value: Value) -> Option<(String, Vec<Value>, Vec<BigRational>)> {
+    let Value::List {
+        element_classifier,
+        entries,
+    } = value
+    else {
+        return None;
+    };
+    let numbers = entries
+        .iter()
+        .map(|entry| match entry {
+            Value::Int(value) => Some(BigRational::from_integer(value.clone())),
+            Value::Rational(value) => Some(value.clone()),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some((element_classifier, entries, numbers))
+}
+
+fn rational_optional(payload: Option<BigRational>) -> Value {
+    Value::Optional {
+        payload_classifier: "Rational".into(),
+        payload: payload.map(|value| Box::new(Value::Rational(value))),
+    }
+}
+
+fn exact_mean(values: &[BigRational]) -> Option<BigRational> {
+    (!values.is_empty()).then(|| {
+        values.iter().cloned().sum::<BigRational>()
+            / BigRational::from_integer(BigInt::from(values.len()))
+    })
+}
+
+fn exact_variance(values: &[BigRational], sample: bool) -> Option<BigRational> {
+    let divisor = values.len().checked_sub(usize::from(sample))?;
+    if divisor == 0 {
+        return None;
+    }
+    let mean = exact_mean(values)?;
+    let squared = values
+        .iter()
+        .map(|value| {
+            let difference = value - &mean;
+            &difference * &difference
+        })
+        .sum::<BigRational>();
+    Some(squared / BigRational::from_integer(BigInt::from(divisor)))
+}
+
+fn statistics_summary(values: &[BigRational]) -> Value {
+    let sum = values.iter().cloned().sum::<BigRational>();
+    let square_sum = values
+        .iter()
+        .map(|value| value * value)
+        .sum::<BigRational>();
+    Value::Tuple(vec![
+        Value::Int(BigInt::from(values.len())),
+        Value::Rational(sum),
+        Value::Rational(square_sum),
+    ])
+}
+
+fn summary_fields(value: Value) -> Option<(BigInt, BigRational, BigRational)> {
+    let Value::Tuple(fields) = value else {
+        return None;
+    };
+    match fields.as_slice() {
+        [
+            Value::Int(count),
+            Value::Rational(sum),
+            Value::Rational(square_sum),
+        ] if count >= &BigInt::from(0) => Some((count.clone(), sum.clone(), square_sum.clone())),
+        _ => None,
+    }
+}
+
+fn apply_statistics(
+    source: &SourceText,
+    operation: &str,
+    argument: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<Value, Diagnostic> {
+    let bad = || {
+        diagnostic(
+            source,
+            "E-STATISTICS-OPERAND",
+            span,
+            format!("{operation} requires exact Int or Rational data"),
+        )
+    };
+    let result = match operation {
+        "statistics-median" => {
+            let (_, _, mut values) = exact_numeric_list(argument).ok_or_else(bad)?;
+            values.sort();
+            if values.is_empty() {
+                rational_optional(None)
+            } else if values.len() % 2 == 1 {
+                rational_optional(Some(values[values.len() / 2].clone()))
+            } else {
+                let upper = values.len() / 2;
+                rational_optional(Some(
+                    (&values[upper - 1] + &values[upper])
+                        / BigRational::from_integer(BigInt::from(2)),
+                ))
+            }
+        }
+        "statistics-population-variance" | "statistics-sample-variance" => {
+            let (_, _, values) = exact_numeric_list(argument).ok_or_else(bad)?;
+            rational_optional(exact_variance(
+                &values,
+                operation == "statistics-sample-variance",
+            ))
+        }
+        "statistics-modes" | "statistics-histogram" => {
+            let (classifier, entries, _) = exact_numeric_list(argument).ok_or_else(bad)?;
+            let mut counts: Vec<(Value, usize)> = Vec::new();
+            for entry in entries {
+                if let Some((_, count)) =
+                    counts.iter_mut().find(|(candidate, _)| candidate == &entry)
+                {
+                    *count += 1;
+                } else {
+                    counts.push((entry, 1));
+                }
+            }
+            if operation == "statistics-modes" {
+                let maximum = counts.iter().map(|(_, count)| *count).max().unwrap_or(0);
+                Value::List {
+                    element_classifier: classifier,
+                    entries: counts
+                        .into_iter()
+                        .filter(|(_, count)| *count == maximum)
+                        .map(|(value, _)| value)
+                        .collect(),
+                }
+            } else {
+                Value::List {
+                    element_classifier: format!("({classifier}, Nat)"),
+                    entries: counts
+                        .into_iter()
+                        .map(|(value, count)| {
+                            Value::Tuple(vec![value, Value::Int(BigInt::from(count))])
+                        })
+                        .collect(),
+                }
+            }
+        }
+        "statistics-quantile" => {
+            let Value::Tuple(mut fields) = argument else {
+                return Err(bad());
+            };
+            if fields.len() != 2 {
+                return Err(bad());
+            }
+            let probability = fields.pop().expect("length checked");
+            let values = fields.pop().expect("length checked");
+            let Value::Rational(probability) = probability else {
+                return Err(diagnostic(
+                    source,
+                    "E-STATISTICS-PROBABILITY",
+                    span,
+                    "quantile probability requires Rational",
+                ));
+            };
+            if probability < BigRational::from_integer(BigInt::from(0))
+                || probability > BigRational::from_integer(BigInt::from(1))
+            {
+                return Err(diagnostic(
+                    source,
+                    "E-STATISTICS-PROBABILITY",
+                    span,
+                    "quantile probability must be within 0 ..= 1",
+                ));
+            }
+            let (_, _, mut values) = exact_numeric_list(values).ok_or_else(bad)?;
+            values.sort();
+            if values.is_empty() {
+                rational_optional(None)
+            } else {
+                let position =
+                    probability * BigRational::from_integer(BigInt::from(values.len() - 1));
+                let lower_big = position.numer() / position.denom();
+                let lower = usize::try_from(lower_big.clone()).expect("bounded by List length");
+                let fraction = position - BigRational::from_integer(lower_big);
+                let value = if fraction == BigRational::from_integer(BigInt::from(0)) {
+                    values[lower].clone()
+                } else {
+                    &values[lower] + fraction * (&values[lower + 1] - &values[lower])
+                };
+                rational_optional(Some(value))
+            }
+        }
+        "statistics-covariance" => {
+            let Value::Tuple(mut fields) = argument else {
+                return Err(bad());
+            };
+            if fields.len() != 2 {
+                return Err(bad());
+            }
+            let right = exact_numeric_list(fields.pop().expect("length checked"))
+                .ok_or_else(bad)?
+                .2;
+            let left = exact_numeric_list(fields.pop().expect("length checked"))
+                .ok_or_else(bad)?
+                .2;
+            if left.len() != right.len() {
+                return Err(diagnostic(
+                    source,
+                    "E-STATISTICS-PAIRS",
+                    span,
+                    "covariance requires Lists of equal length",
+                ));
+            }
+            let payload =
+                exact_mean(&left)
+                    .zip(exact_mean(&right))
+                    .map(|(left_mean, right_mean)| {
+                        left.iter()
+                            .zip(&right)
+                            .map(|(left, right)| (left - &left_mean) * (right - &right_mean))
+                            .sum::<BigRational>()
+                            / BigRational::from_integer(BigInt::from(left.len()))
+                    });
+            rational_optional(payload)
+        }
+        "statistics-summary" => {
+            let (_, _, values) = exact_numeric_list(argument).ok_or_else(bad)?;
+            statistics_summary(&values)
+        }
+        "statistics-summary-add" => {
+            let Value::Tuple(mut fields) = argument else {
+                return Err(bad());
+            };
+            if fields.len() != 2 {
+                return Err(bad());
+            }
+            let value = fields.pop().expect("length checked");
+            let summary = fields.pop().expect("length checked");
+            let value = match value {
+                Value::Int(value) => BigRational::from_integer(value),
+                Value::Rational(value) => value,
+                _ => return Err(bad()),
+            };
+            let (count, sum, square_sum) = summary_fields(summary).ok_or_else(bad)?;
+            Value::Tuple(vec![
+                Value::Int(count + 1),
+                Value::Rational(sum + &value),
+                Value::Rational(square_sum + &value * &value),
+            ])
+        }
+        "statistics-summary-merge" => {
+            let Value::Tuple(mut fields) = argument else {
+                return Err(bad());
+            };
+            if fields.len() != 2 {
+                return Err(bad());
+            }
+            let right = summary_fields(fields.pop().expect("length checked")).ok_or_else(bad)?;
+            let left = summary_fields(fields.pop().expect("length checked")).ok_or_else(bad)?;
+            Value::Tuple(vec![
+                Value::Int(left.0 + right.0),
+                Value::Rational(left.1 + right.1),
+                Value::Rational(left.2 + right.2),
+            ])
+        }
+        "statistics-summary-mean" | "statistics-summary-variance" => {
+            let (count, sum, square_sum) = summary_fields(argument).ok_or_else(bad)?;
+            if count == BigInt::from(0) {
+                rational_optional(None)
+            } else {
+                let divisor = BigRational::from_integer(count);
+                let mean = &sum / &divisor;
+                let value = if operation == "statistics-summary-mean" {
+                    mean
+                } else {
+                    square_sum / divisor - &mean * &mean
+                };
+                rational_optional(Some(value))
+            }
+        }
+        _ => unreachable!("known statistics operation"),
+    };
+    trace.record(TraceEvent {
+        event: "statistics.algorithm.applied",
+        rule: "TOPAL-LIB-STATISTICS-ADVANCED-001",
+        detail: operation,
+    });
+    Ok(result)
+}
+
 fn apply_count(
     source: &SourceText,
     operation: &str,
@@ -16037,7 +16353,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 65] = [
+const ROOT_OPERATIONS: [&str; 77] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16102,6 +16418,18 @@ const ROOT_OPERATIONS: [&str; 65] = [
     "string-split-exact",
     "string-trim",
     "string-words",
+    "statistics-median",
+    "statistics-modes",
+    "statistics-histogram",
+    "statistics-population-variance",
+    "statistics-sample-variance",
+    "statistics-quantile",
+    "statistics-covariance",
+    "statistics-summary",
+    "statistics-summary-add",
+    "statistics-summary-merge",
+    "statistics-summary-mean",
+    "statistics-summary-variance",
     "zero",
 ];
 
