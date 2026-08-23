@@ -4,6 +4,16 @@ use std::fs;
 use std::io::{self, BufRead, Cursor, IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use rustyline::completion::{Completer, Pair};
+use rustyline::error::ReadlineError;
+use rustyline::highlight::Highlighter;
+use rustyline::hint::Hinter;
+use rustyline::history::DefaultHistory;
+use rustyline::validate::Validator;
+use rustyline::{Context, Editor, Helper};
 
 use topal_language::{
     Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session, TraceSink,
@@ -11,6 +21,8 @@ use topal_language::{
 };
 use topal_source::SourceText;
 use topal_syntax::{DocumentedDeclaration, Statement, extract_documentation, lex, parse};
+
+static HUMAN_OUTPUT: AtomicBool = AtomicBool::new(false);
 
 fn main() -> ExitCode {
     match run() {
@@ -24,6 +36,72 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), String> {
     let arguments = parse_arguments(env::args().skip(1))?;
+    let (source, source_name, mut debuggee) = prepare_debuggee(&arguments)?;
+    let interrupted = Arc::new(AtomicBool::new(false));
+    let interrupt_request = Arc::clone(&interrupted);
+    ctrlc::set_handler(move || interrupt_request.store(true, Ordering::SeqCst))
+        .map_err(|error| format!("cannot install interrupt handler: {error}"))?;
+
+    println!(
+        "loaded {} transitions",
+        debuggee.history.transitions().len()
+    );
+    print_initial_position(&source, &source_name);
+    if let Some(commands) = &arguments.commands {
+        if commands == "-" {
+            let mut script = String::new();
+            io::stdin().read_to_string(&mut script).map_err(|error| {
+                format!("cannot read debugger script from standard input: {error}")
+            })?;
+            let (body, header_lines) = debug_script_body(&script, "<stdin>")?;
+            command_loop(
+                Cursor::new(body),
+                &mut debuggee,
+                &source,
+                &source_name,
+                &arguments,
+                &interrupted,
+                Some("<stdin>"),
+                header_lines,
+            )
+        } else {
+            let script = fs::read_to_string(commands)
+                .map_err(|error| format!("cannot read command script {commands}: {error}"))?;
+            let (body, header_lines) = debug_script_body(&script, commands)?;
+            command_loop(
+                Cursor::new(body),
+                &mut debuggee,
+                &source,
+                &source_name,
+                &arguments,
+                &interrupted,
+                Some(commands),
+                header_lines,
+            )
+        }
+    } else if io::stdin().is_terminal() {
+        interactive_command_loop(
+            &mut debuggee,
+            &source,
+            &source_name,
+            &arguments,
+            &interrupted,
+        )
+    } else {
+        command_loop(
+            io::stdin().lock(),
+            &mut debuggee,
+            &source,
+            &source_name,
+            &arguments,
+            &interrupted,
+            None,
+            0,
+        )
+    }
+}
+
+fn prepare_debuggee(arguments: &Arguments) -> Result<(String, String, Debuggee), String> {
     let source_path = source_entry(&arguments.source)?;
     let source_name = source_path.display().to_string();
     let source = fs::read_to_string(&source_path)
@@ -49,7 +127,7 @@ fn run() -> Result<(), String> {
         .prepare_source_file(&source, &mut history)
         .map_err(|error| error.render(&source_name))?;
     history.rewind();
-    let mut debuggee = Debuggee {
+    let debuggee = Debuggee {
         session,
         execution,
         history,
@@ -59,52 +137,7 @@ fn run() -> Result<(), String> {
         complete: false,
     };
 
-    println!(
-        "loaded {} transitions",
-        debuggee.history.transitions().len()
-    );
-    if let Some(commands) = arguments.commands {
-        if commands == "-" {
-            let mut script = String::new();
-            io::stdin().read_to_string(&mut script).map_err(|error| {
-                format!("cannot read debugger script from standard input: {error}")
-            })?;
-            let (body, header_lines) = debug_script_body(&script, "<stdin>")?;
-            command_loop(
-                Cursor::new(body),
-                &mut debuggee,
-                &source,
-                &source_name,
-                Some("<stdin>"),
-                false,
-                header_lines,
-            )
-        } else {
-            let script = fs::read_to_string(&commands)
-                .map_err(|error| format!("cannot read command script {commands}: {error}"))?;
-            let (body, header_lines) = debug_script_body(&script, &commands)?;
-            command_loop(
-                Cursor::new(body),
-                &mut debuggee,
-                &source,
-                &source_name,
-                Some(&commands),
-                false,
-                header_lines,
-            )
-        }
-    } else {
-        let prompt = io::stdin().is_terminal();
-        command_loop(
-            io::stdin().lock(),
-            &mut debuggee,
-            &source,
-            &source_name,
-            None,
-            prompt,
-            0,
-        )
-    }
+    Ok((source, source_name, debuggee))
 }
 
 fn source_entry(source: &str) -> Result<PathBuf, String> {
@@ -120,6 +153,7 @@ fn source_entry(source: &str) -> Result<PathBuf, String> {
     }
 }
 
+#[derive(Clone)]
 struct Arguments {
     source: String,
     commands: Option<String>,
@@ -191,6 +225,196 @@ struct SourceFrame {
 
 type Breakpoint = (String, usize);
 
+struct DebugHelper;
+
+impl Helper for DebugHelper {}
+impl Highlighter for DebugHelper {}
+impl Validator for DebugHelper {}
+
+impl Hinter for DebugHelper {
+    type Hint = String;
+
+    fn hint(&self, line: &str, _position: usize, _context: &Context<'_>) -> Option<String> {
+        let command = line.trim();
+        command_argument_hint(command).map(|hint| format!(" {hint}"))
+    }
+}
+
+impl Completer for DebugHelper {
+    type Candidate = Pair;
+
+    fn complete(
+        &self,
+        line: &str,
+        position: usize,
+        _context: &Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Pair>)> {
+        let before = &line[..position];
+        if let Some((command, argument)) = before.split_once(' ') {
+            let candidates = argument_candidates(command)
+                .into_iter()
+                .filter(|candidate| candidate.starts_with(argument))
+                .map(|candidate| Pair {
+                    display: candidate.to_owned(),
+                    replacement: candidate.to_owned(),
+                })
+                .collect();
+            return Ok((command.len() + 1, candidates));
+        }
+        let candidates = DEBUG_COMMANDS
+            .iter()
+            .filter(|command| command.starts_with(before))
+            .map(|command| Pair {
+                display: (*command).to_owned(),
+                replacement: (*command).to_owned(),
+            })
+            .collect();
+        Ok((0, candidates))
+    }
+}
+
+fn command_argument_hint(command: &str) -> Option<&'static str> {
+    Some(match command {
+        "break" | "delete" => "LINE",
+        "watch" | "unwatch" | "checkpoint" | "restore" | "delete-checkpoint" => "NAME",
+        "help" => "COMMAND or identifier",
+        "print" => "EXPRESSION",
+        "until" => "[LINE | FILE:LINE | CONDITION]",
+        _ => return None,
+    })
+}
+
+fn argument_candidates(command: &str) -> Vec<&'static str> {
+    match command {
+        "help" => DEBUG_COMMANDS.to_vec(),
+        "until" => vec!["<LINE>", "<FILE:LINE>", "<CONDITION>"],
+        command => command_argument_hint(command).into_iter().collect(),
+    }
+}
+
+struct InteractiveInput {
+    editor: Editor<DebugHelper, DefaultHistory>,
+    buffer: Vec<u8>,
+    position: usize,
+    unique_history: Vec<String>,
+    last_progressing: Option<String>,
+    eof: bool,
+}
+
+impl InteractiveInput {
+    fn new() -> Result<Self, String> {
+        let mut editor = Editor::new().map_err(|error| error.to_string())?;
+        editor.set_helper(Some(DebugHelper));
+        Ok(Self {
+            editor,
+            buffer: Vec::new(),
+            position: 0,
+            unique_history: Vec::new(),
+            last_progressing: None,
+            eof: false,
+        })
+    }
+
+    fn refill(&mut self) -> io::Result<()> {
+        if self.eof || self.position < self.buffer.len() {
+            return Ok(());
+        }
+        self.buffer.clear();
+        self.position = 0;
+        let entered = match self.editor.readline("(topal-debug) ") {
+            Ok(line) => line,
+            Err(ReadlineError::Interrupted) => String::new(),
+            Err(ReadlineError::Eof) => {
+                self.eof = true;
+                return Ok(());
+            }
+            Err(error) => return Err(io::Error::other(error.to_string())),
+        };
+        let trimmed = entered.trim();
+        let command = if trimmed.is_empty() {
+            self.last_progressing.clone().unwrap_or_default()
+        } else {
+            self.unique_history.retain(|previous| previous != trimmed);
+            self.unique_history.push(trimmed.to_owned());
+            self.editor.clear_history().map_err(io::Error::other)?;
+            for item in &self.unique_history {
+                self.editor
+                    .add_history_entry(item)
+                    .map_err(io::Error::other)?;
+            }
+            let resolved = resolve_prompt_command(trimmed).unwrap_or_else(|_| trimmed.to_owned());
+            if is_progressing_command(&resolved) {
+                self.last_progressing = Some(trimmed.to_owned());
+            }
+            entered
+        };
+        self.buffer.extend_from_slice(command.as_bytes());
+        self.buffer.push(b'\n');
+        Ok(())
+    }
+}
+
+impl Read for InteractiveInput {
+    fn read(&mut self, output: &mut [u8]) -> io::Result<usize> {
+        self.refill()?;
+        let available = &self.buffer[self.position..];
+        let count = available.len().min(output.len());
+        output[..count].copy_from_slice(&available[..count]);
+        self.position += count;
+        Ok(count)
+    }
+}
+
+impl BufRead for InteractiveInput {
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        self.refill()?;
+        Ok(&self.buffer[self.position..])
+    }
+
+    fn consume(&mut self, amount: usize) {
+        self.position = (self.position + amount).min(self.buffer.len());
+    }
+}
+
+fn is_progressing_command(command: &str) -> bool {
+    matches!(
+        command.split_whitespace().next().unwrap_or(""),
+        "step"
+            | "reverse-step"
+            | "source-step"
+            | "expression-step"
+            | "reverse-source-step"
+            | "next"
+            | "reverse-next"
+            | "finish"
+            | "reverse-finish"
+            | "continue"
+            | "reverse-continue"
+            | "until"
+            | "run"
+    )
+}
+
+fn interactive_command_loop(
+    debuggee: &mut Debuggee,
+    source: &str,
+    source_name: &str,
+    arguments: &Arguments,
+    interrupted: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    HUMAN_OUTPUT.store(true, Ordering::Relaxed);
+    command_loop(
+        InteractiveInput::new()?,
+        debuggee,
+        source,
+        source_name,
+        arguments,
+        interrupted,
+        None,
+        0,
+    )
+}
+
 fn parse_arguments(mut arguments: impl Iterator<Item = String>) -> Result<Arguments, String> {
     let mut commands = None;
     let mut source = None;
@@ -231,14 +455,15 @@ fn parse_arguments(mut arguments: impl Iterator<Item = String>) -> Result<Argume
     })
 }
 
-#[allow(clippy::too_many_lines)] // Command aliases remain visible in one deterministic dispatcher.
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)] // The dispatcher owns one coherent debug session.
 fn command_loop(
     mut input: impl BufRead,
     debuggee: &mut Debuggee,
     source: &str,
     source_name: &str,
+    arguments: &Arguments,
+    interrupted: &Arc<AtomicBool>,
     script_name: Option<&str>,
-    prompt: bool,
     initial_line_number: usize,
 ) -> Result<(), String> {
     let Debuggee {
@@ -255,11 +480,11 @@ fn command_loop(
     let mut checkpoints = BTreeMap::new();
     let mut line_number = initial_line_number;
     loop {
-        let Some(command) = read_command(&mut input, prompt)? else {
+        let Some(command) = read_command(&mut input, false)? else {
             return Ok(());
         };
         line_number += 1;
-        let command = if prompt {
+        let command = if script_name.is_none() {
             match resolve_prompt_command(command.trim()) {
                 Ok(command) => command,
                 Err(message) => {
@@ -302,9 +527,39 @@ fn command_loop(
                     history,
                     source,
                     source_name,
+                    session,
+                    execution,
+                    complete,
                     &breakpoints,
                     &watchpoints,
+                    interrupted,
                 ) => {}
+            command if command == "until" || command.starts_with("until ") => {
+                handle_until_command(
+                    command,
+                    history,
+                    source,
+                    source_name,
+                    session,
+                    execution,
+                    complete,
+                    dependency_frame,
+                    interrupted,
+                );
+            }
+            "run" => match prepare_debuggee(arguments) {
+                Ok((_, _, restarted)) => {
+                    *session = restarted.session;
+                    *execution = restarted.execution;
+                    *history = restarted.history;
+                    *current_source_start = restarted.current_source_start;
+                    *dependency_frame = None;
+                    *documentation = restarted.documentation;
+                    *complete = false;
+                    print_initial_position(source, source_name);
+                }
+                Err(error) => println!("cannot restart application: {error}"),
+            },
             "step" | "s" => {
                 if dependency_frame.is_some() || at_library_selection(history, source, source_name)
                 {
@@ -400,7 +655,7 @@ fn command_loop(
             }
             "help" | "h" => {
                 println!(
-                    "step | reverse-step | source-step | reverse-source-step | next | reverse-next | finish | reverse-finish | backtrace | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | why | history | print | bindings | quit"
+                    "step | reverse-step | source-step | reverse-source-step | next | reverse-next | finish | reverse-finish | until [LINE|FILE:LINE|CONDITION] | run | backtrace | break LINE | delete LINE | breakpoints | watch NAME | unwatch NAME | watchpoints | continue | reverse-continue | checkpoint NAME | restore NAME | checkpoints | delete-checkpoint NAME | where | why | history | print | bindings | quit"
                 );
                 println!("step enters use-clause work; next stays in the current source file");
                 println!("expression-step (es) advances to the next recorded expression state");
@@ -535,6 +790,10 @@ fn debugger_command_documentation(command: &str) -> Option<&'static str> {
         "finish" => "finish the current source frame and return to its caller",
         "reverse-finish" => "rewind to the start of source execution",
         "continue" | "reverse-continue" => "run to a source breakpoint or binding watchpoint",
+        "until" => {
+            "without an argument, leave the current source frame; otherwise run to a source line or true Boolean expression"
+        }
+        "run" => "restart the application and stop at its initial source position",
         "backtrace" => "show the current source frame and its callers",
         "break" => "break LINE sets a breakpoint in the current source file",
         "delete" => "delete LINE removes a breakpoint in the current source file",
@@ -580,6 +839,7 @@ const DEBUG_COMMANDS: &[&str] = &[
     "next",
     "print",
     "quit",
+    "run",
     "restore",
     "reverse-continue",
     "reverse-finish",
@@ -589,6 +849,7 @@ const DEBUG_COMMANDS: &[&str] = &[
     "source-step",
     "step",
     "unwatch",
+    "until",
     "watch",
     "watchpoints",
     "where",
@@ -695,36 +956,146 @@ fn handle_source_command(
 
 fn print_reason(history: &ExecutionHistory) {
     if let Some(transition) = history.current() {
-        println!(
-            "decision #{}: {} because {} ({})",
-            transition.sequence, transition.event, transition.rule, transition.detail
-        );
+        if HUMAN_OUTPUT.load(Ordering::Relaxed) {
+            println!(
+                "decision #{}: {} because {} ({})",
+                transition.sequence,
+                human_event(transition.event),
+                human_rule(transition.rule),
+                transition.detail
+            );
+        } else {
+            println!(
+                "decision #{}: {} because {} ({})",
+                transition.sequence, transition.event, transition.rule, transition.detail
+            );
+        }
     } else {
         println!("before the first semantic decision");
     }
 }
 
+#[allow(clippy::too_many_arguments)] // Live control shares all mutable debuggee components.
 fn handle_continue_command(
     command: &str,
     history: &mut ExecutionHistory,
     source: &str,
     source_name: &str,
+    session: &mut Session,
+    execution: &mut Execution,
+    complete: &mut bool,
     breakpoints: &BTreeSet<Breakpoint>,
     watchpoints: &BTreeSet<String>,
+    interrupted: &AtomicBool,
 ) -> bool {
     let reverse = match command {
         "continue" | "c" => false,
         "reverse-continue" | "rc" => true,
         _ => return false,
     };
-    if continue_to_stop(history, source, breakpoints, watchpoints, reverse) {
+    if reverse && continue_to_stop(history, source, breakpoints, watchpoints, true) {
         print_source_location(history, source, source_name);
     } else if reverse {
         println!("no earlier breakpoint");
     } else {
-        println!("no later breakpoint");
+        interrupted.store(false, Ordering::SeqCst);
+        loop {
+            if continue_to_stop(history, source, breakpoints, watchpoints, false) {
+                print_source_location(history, source, source_name);
+                break;
+            }
+            if interrupted.swap(false, Ordering::SeqCst) {
+                println!("execution interrupted");
+                print_source_location(history, source, source_name);
+                break;
+            }
+            match live_source_step(history, session, execution, complete) {
+                Ok(true) => {}
+                Ok(false) => {
+                    println!("application finished");
+                    print_source_location(history, source, source_name);
+                    break;
+                }
+                Err(error) => {
+                    println!("{}", error.render(source_name));
+                    break;
+                }
+            }
+        }
     }
     true
+}
+
+#[allow(clippy::too_many_arguments)]
+fn handle_until_command(
+    command: &str,
+    history: &mut ExecutionHistory,
+    source: &str,
+    source_name: &str,
+    session: &mut Session,
+    execution: &mut Execution,
+    complete: &mut bool,
+    dependency_frame: &mut Option<SourceFrame>,
+    interrupted: &AtomicBool,
+) {
+    let target = command.strip_prefix("until").unwrap().trim();
+    if target.is_empty()
+        && let Some(frame) = dependency_frame.take()
+    {
+        history.seek(frame.return_cursor);
+        print_source_location(history, source, source_name);
+        return;
+    }
+    interrupted.store(false, Ordering::SeqCst);
+    loop {
+        if !target.is_empty() && until_target_matches(history, target) {
+            print_source_location(history, source, source_name);
+            return;
+        }
+        if interrupted.swap(false, Ordering::SeqCst) {
+            println!("execution interrupted");
+            print_source_location(history, source, source_name);
+            return;
+        }
+        match live_source_step(history, session, execution, complete) {
+            Ok(true) => {}
+            Ok(false) => {
+                println!("application finished");
+                print_source_location(history, source, source_name);
+                return;
+            }
+            Err(error) => {
+                println!("{}", error.render(source_name));
+                return;
+            }
+        }
+    }
+}
+
+fn until_target_matches(history: &ExecutionHistory, target: &str) -> bool {
+    if let Ok(line) = target.parse::<usize>() {
+        return current_line(history).is_some_and(|(_, current)| current == line);
+    }
+    if let Some((file, line)) = target.rsplit_once(':')
+        && let Ok(line) = line.parse::<usize>()
+    {
+        return current_line(history).is_some_and(|(name, current)| {
+            current == line && (name == file || name.ends_with(file))
+        });
+    }
+    let Some(state) = history.state() else {
+        return false;
+    };
+    Session::inspect(&state.bindings, target, &mut io::sink())
+        .is_ok_and(|value| value.to_string() == "true")
+}
+
+fn current_line(history: &ExecutionHistory) -> Option<(String, usize)> {
+    let state = history.state()?;
+    let source = state.source.as_deref()?;
+    let name = state.source_name.as_deref()?;
+    let range = state.source_range?;
+    Some((name.to_owned(), line_column(source, range.start).0))
 }
 
 fn read_command(input: &mut impl BufRead, prompt: bool) -> Result<Option<String>, String> {
@@ -875,6 +1246,18 @@ fn live_next(
         history.seek(current_source_start);
     }
     live_source_step(history, session, execution, complete)
+}
+
+fn print_initial_position(source: &str, source_name: &str) {
+    let start = source
+        .char_indices()
+        .find(|(_, character)| !character.is_whitespace())
+        .map_or(0, |(offset, _)| offset);
+    let range = topal_language::SourceRange { start, end: start };
+    print!(
+        "{}",
+        render_source_position(source, source_name, range, None)
+    );
 }
 
 fn reverse_next(
@@ -1177,10 +1560,21 @@ fn print_transition(transition: &ExecutionTransition) {
             transition.receiver.unwrap_or_default()
         )
     });
-    println!(
-        "#{} {} [{}] {}{}",
-        transition.sequence, transition.event, transition.rule, transition.detail, transaction
-    );
+    if HUMAN_OUTPUT.load(Ordering::Relaxed) {
+        println!(
+            "#{} {} — {}: {}{}",
+            transition.sequence,
+            human_event(transition.event),
+            human_rule(transition.rule),
+            transition.detail,
+            transaction
+        );
+    } else {
+        println!(
+            "#{} {} [{}] {}{}",
+            transition.sequence, transition.event, transition.rule, transition.detail, transaction
+        );
+    }
 }
 
 fn print_history(history: &ExecutionHistory) {
@@ -1197,10 +1591,44 @@ fn print_history(history: &ExecutionHistory) {
                 transition.receiver.unwrap_or_default()
             )
         });
-        println!(
-            "{marker} #{} {} [{}] {}{}",
-            transition.sequence, transition.event, transition.rule, transition.detail, transaction
-        );
+        if HUMAN_OUTPUT.load(Ordering::Relaxed) {
+            println!(
+                "{marker} #{} {} — {}: {}{}",
+                transition.sequence,
+                human_event(transition.event),
+                human_rule(transition.rule),
+                transition.detail,
+                transaction
+            );
+        } else {
+            println!(
+                "{marker} #{} {} [{}] {}{}",
+                transition.sequence,
+                transition.event,
+                transition.rule,
+                transition.detail,
+                transaction
+            );
+        }
+    }
+}
+
+fn human_event(event: &str) -> String {
+    event.replace(['.', '_'], " ")
+}
+
+fn human_rule(rule: &str) -> String {
+    let words = rule
+        .strip_prefix("TOPAL-")
+        .unwrap_or(rule)
+        .split('-')
+        .filter(|part| !part.chars().all(|character| character.is_ascii_digit()))
+        .map(str::to_ascii_lowercase)
+        .collect::<Vec<_>>();
+    if words.is_empty() {
+        "language semantics".to_owned()
+    } else {
+        words.join(" ")
     }
 }
 
@@ -1233,5 +1661,26 @@ mod tests {
                 .iter()
                 .all(|command| debugger_command_documentation(command).is_some())
         );
+    }
+
+    #[test]
+    fn completion_describes_commands_and_arguments() {
+        let helper = DebugHelper;
+        let history = DefaultHistory::new();
+        let context = Context::new(&history);
+        let (_, commands) = helper.complete("reverse-f", 9, &context).unwrap();
+        assert_eq!(commands[0].replacement, "reverse-finish");
+        assert_eq!(
+            command_argument_hint("until"),
+            Some("[LINE | FILE:LINE | CONDITION]")
+        );
+        assert!(is_progressing_command("continue"));
+        assert!(!is_progressing_command("help"));
+    }
+
+    #[test]
+    fn requirement_identifiers_are_rendered_as_words() {
+        assert_eq!(human_rule("TOPAL-DEBUG-CONTROL-001"), "debug control");
+        assert_eq!(human_event("binding.bind"), "binding bind");
     }
 }

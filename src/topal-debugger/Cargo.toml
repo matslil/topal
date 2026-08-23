@@ -10,6 +10,8 @@ name = "topal-debug"
 path = "src/main.rs"
 
 [dependencies]
+ctrlc = "3.4.7"
+rustyline = { version = "18.0.1", default-features = false, features = ["custom-bindings"] }
 topal-language = { path = "../topal-language" }
 topal-source = { path = "../topal-source" }
 topal-syntax = { path = "../topal-syntax" }

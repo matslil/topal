@@ -35,6 +35,26 @@ application before evaluation. Command files use strict Topal lookup and do not
 accept these prompt shortcuts. History records both entered text and its
 canonical form, and exported scripts contain the canonical form.
 
+The interactive terminal offers command completion and describes the expected
+argument after a complete command. Up and down navigate command history, and
+Ctrl-R searches it backward. History contains one copy of a command: entering
+an older command again moves it to the newest position. A blank line repeats
+the most recent command that advances execution, but does not repeat inspection,
+help, breakpoint management, or other non-progressing commands.
+
+The debugger prints the initial source position when it starts. `continue`
+runs until a breakpoint, watchpoint, diagnostic, manual interruption, or normal
+application completion. `run` reconstructs the debuggee and stops at its
+initial position. Bare `until` leaves the current source frame; at application
+scope that means running to completion. `until LINE`, `until FILE:LINE`, and
+`until CONDITION` stop at a location or when a read-only Boolean inspection
+expression becomes true.
+
+Interactive semantic history describes rules in ordinary words rather than
+showing repository requirement identifiers. Debugger command files retain the
+stable identifiers in their deterministic output because that output is an
+automation and conformance interface rather than terminal presentation.
+
 The same language-variant mechanism may later construct lint-rule and build
 script contexts. Each variant adds only its own qualified vocabulary and
 capabilities; it does not add another parser or silently change ordinary source

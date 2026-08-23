@@ -9,6 +9,42 @@ fn language_example(name: &str) -> String {
     )
 }
 
+fn run_basic_commands(commands: &str) -> String {
+    let source = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/debugger/basic-history.t"
+    );
+    let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args(["--script", "-", source])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(
+            format!("use language ( version is v0.1, features is ( debug ) )\n{commands}\nquit\n")
+                .as_bytes(),
+        )
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(output.status.success());
+    String::from_utf8(output.stdout).unwrap()
+}
+
+#[test]
+fn startup_continue_until_and_run_have_live_source_semantics() {
+    let stdout = run_basic_commands("continue\nprint\nrun\nuntil 8\nprint\nrun\nuntil true");
+    assert!(stdout.contains("basic-history.t:1:1"));
+    assert!(stdout.contains("application finished"));
+    assert!(stdout.matches("basic-history.t:1:1").count() >= 3);
+    assert!(stdout.contains("basic-history.t:8:1"));
+    assert!(stdout.contains("\n42\n"));
+    assert!(stdout.contains("\n40\n"));
+}
+
 #[test]
 fn every_language_example_executes_through_the_debugger() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language");

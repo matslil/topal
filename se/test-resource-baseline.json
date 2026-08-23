@@ -3636,6 +3636,18 @@
     "topal-debugger::test:cli::step_enters_declared_library_while_next_stays_in_the_current_file": {
       "cpu_time_ns": 106160319,
       "memory_peak_bytes": 18137088
+    },
+    "topal-debugger::bin:topal-debug::tests::completion_describes_commands_and_arguments": {
+      "cpu_time_ns": 1586459,
+      "memory_peak_bytes": 18038784
+    },
+    "topal-debugger::bin:topal-debug::tests::requirement_identifiers_are_rendered_as_words": {
+      "cpu_time_ns": 1767000,
+      "memory_peak_bytes": 17838080
+    },
+    "topal-debugger::test:cli::startup_continue_until_and_run_have_live_source_semantics": {
+      "cpu_time_ns": 8404540,
+      "memory_peak_bytes": 18214912
     }
   }
 }

@@ -81,6 +81,17 @@ inside dependency source shall remain in that source file. `finish` shall
 return from the dependency frame to its calling `use` clause, and `backtrace`
 shall show both locations.
 
+## TOPAL-DEBUG-INTERACTIVE-001 — Productive terminal control
+
+The interactive debugger shall support unique command completion with argument
+guidance, deduplicated navigable and reverse-searchable command history, and
+blank-line repetition of only the latest execution-progressing command. It
+shall show the initial source position and provide live continue, restart, and
+source-frame or destination-oriented until control, including manual
+interruption of live execution. Human-facing semantic output shall describe
+rules without exposing requirement-style identifiers; deterministic debugger
+scripts may retain stable identifiers as a conformance interface.
+
 ## TOPAL-DEBUG-MESSAGE-001 — Step into message transactions
 
 Once message passing is supported by the language execution machine, stepping
