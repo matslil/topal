@@ -123,11 +123,12 @@ ordinary finite sequence values, and leave its input unchanged.
 ### TOPAL-LIB-ORDERED-001 — Ordered List algorithms
 
 The `std ordered` namespace SHALL provide stable ascending and descending
-sorting for finite `List Int` values. It SHALL also
-provide lower and upper insertion boundaries and their half-open equal range
-for ascending Lists. Boundary operations SHALL return the same result as
+sorting for finite Int and Rational Lists. It SHALL also provide binary search,
+stable merge, smallest-prefix and nth-order selection, lower and upper insertion
+boundaries, and their half-open equal range for ascending Lists. Boundary operations SHALL return the same result as
 counting entries strictly below, or below-or-equal to, the sought value; they
-need not promise random access or a particular search complexity.
+need not promise random access. Binary search SHALL be logarithmic; the other
+operations promise no particular implementation complexity beyond finiteness.
 
 ### TOPAL-LIB-PATTERN-001 — Exact pattern algorithms
 
