@@ -177,6 +177,16 @@ The `std combinatorics` namespace SHALL provide exact Nat factorial and finite
 List subset counts. `factorial 0` SHALL be one and `subset-count values` SHALL
 be two raised to the exact List entry count, without fixed-width overflow.
 
+### TOPAL-LIB-COMBINATORICS-ADVANCED-001 — Finite combinatorial constructions
+
+The `std combinatorics` namespace SHALL construct positional permutations,
+fixed-size combinations without replacement, all subsets, and Cartesian
+products of finite Lists. Equal entries at different source positions SHALL
+remain distinct choices. Results SHALL be deterministic: source position order
+SHALL order choices, subsets SHALL begin with the empty subset, and Cartesian
+products SHALL be left-major. An impossible combination size SHALL produce an
+empty result, while size zero SHALL produce the single empty combination.
+
 ### TOPAL-LIB-STATISTICS-001 — Exact arithmetic means
 
 The `std statistics` namespace SHALL provide exact arithmetic means for finite

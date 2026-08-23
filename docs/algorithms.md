@@ -25,8 +25,9 @@ More specialized namespaces keep their policies visible:
   including deterministic breadth/depth traversal, minimum-edge and
   nonnegative exact-weight paths, topological ordering, and weak components,
   without choosing an application-specific graph representation;
-- `std combinatorics` provides exact counts and constructions, with operations
-  named for whether entries are distinct or repeated; and
+- `std combinatorics` provides exact counts, positional permutations,
+  combinations, subsets, and Cartesian products; repeated equal entries remain
+  distinct positions rather than being silently deduplicated; and
 - `std statistics` uses exact numeric results and represents undefined results,
   such as the mean of an empty sample, explicitly.
 
