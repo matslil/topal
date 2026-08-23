@@ -12,6 +12,15 @@ All fundamental-library declarations SHALL be published directly in the flat
 components to their public names. Algorithm libraries beyond these fundamental
 operations SHALL use separate namespaces rather than extending `std`.
 
+### TOPAL-LIB-DEPENDENCY-001 — Explicit standard-library selection
+
+Application and test source SHALL acquire the `std` namespace only by declaring
+`use library std ( version is V )` as specified by `TOPAL-SYN-LIBRARY-001`.
+Tools SHALL NOT inject `std` into source contexts that omit the declaration.
+The source declaration identifies a dependency, while tool configuration,
+package metadata, or a lockfile determines its location and exact resolved
+artifact.
+
 ### TOPAL-LIB-DIFFERENTIAL-001 — Cross-tool observations
 
 For each executable standard-library example, conforming interpreter,

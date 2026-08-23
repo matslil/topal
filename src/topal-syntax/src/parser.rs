@@ -177,6 +177,11 @@ pub enum Statement {
         features: Vec<Span>,
         span: Span,
     },
+    LibrarySelection {
+        name: Span,
+        version: Span,
+        span: Span,
+    },
     Published {
         declaration: Box<Self>,
         span: Span,
@@ -331,6 +336,14 @@ impl Parser<'_> {
             })
         {
             return self.language_selection(first);
+        }
+        if first.kind == TokenKind::Identifier
+            && self.source.slice(first.span) == "use"
+            && self.peek_nontrivia().is_some_and(|next| {
+                next.kind == TokenKind::Identifier && self.source.slice(next.span) == "library"
+            })
+        {
+            return self.library_selection(first);
         }
         if first.kind == TokenKind::Identifier && self.source.slice(first.span) == "pub" {
             let declaration = self.ordinary_statement()?;
@@ -671,6 +684,45 @@ impl Parser<'_> {
         Some(Statement::LanguageSelection {
             version,
             features,
+            span: Span::new(use_keyword.span.start, closing.span.end),
+        })
+    }
+
+    fn library_selection(&mut self, use_keyword: Token) -> Option<Statement> {
+        let library = self.take_nontrivia()?;
+        let name = self.take_nontrivia()?;
+        let opening = self.take_nontrivia()?;
+        if opening.kind != TokenKind::LeftParen {
+            self.error_current(
+                "E-LIBRARY-SELECTION",
+                "expected `(` after the library identity",
+            );
+            return None;
+        }
+        self.delimiter_depth += 1;
+        let field = self.take_nontrivia()?;
+        let separator = self.take_nontrivia()?;
+        let version = self.take_nontrivia()?;
+        let closing = self.take_nontrivia()?;
+        self.delimiter_depth -= 1;
+        let valid = name.kind == TokenKind::Identifier
+            && field.kind == TokenKind::Identifier
+            && self.source.slice(field.span) == "version"
+            && separator.kind == TokenKind::Identifier
+            && self.source.slice(separator.span) == "is"
+            && version.kind == TokenKind::Version
+            && closing.kind == TokenKind::RightParen;
+        if !valid {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-LIBRARY-SELECTION",
+                span: Span::new(library.span.start, closing.span.end),
+                message: "expected `use library name ( version is V )`".into(),
+            });
+            return None;
+        }
+        Some(Statement::LibrarySelection {
+            name: name.span,
+            version: version.span,
             span: Span::new(use_keyword.span.start, closing.span.end),
         })
     }
@@ -2544,6 +2596,7 @@ fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => Span::new(name.start, value.span().end),
         Statement::LanguageSelection { span, .. }
+        | Statement::LibrarySelection { span, .. }
         | Statement::Published { span, .. }
         | Statement::DiagnosticControl { span, .. }
         | Statement::Implementation { span, .. }
@@ -3607,6 +3660,17 @@ mod tests {
             parsed.statements.first(),
             Some(Statement::LanguageSelection { version, .. })
                 if source.slice(*version) == "v0.1"
+        ));
+        let source = SourceText::new(
+            "use language ( version is v0.1 )\nuse library std ( version is v0.1 )\nstd min (2, 1)",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(
+            parsed.statements.get(1),
+            Some(Statement::LibrarySelection { name, version, .. })
+                if source.slice(*name) == "std" && source.slice(*version) == "v0.1"
         ));
     }
 

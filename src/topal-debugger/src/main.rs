@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use topal_language::{
-    Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session, lang_documentation,
-    load_module_tree,
+    Execution, ExecutionHistory, ExecutionStep, ExecutionTransition, Session, declares_library,
+    lang_documentation, load_module_tree,
 };
 use topal_source::SourceText;
 use topal_syntax::{DocumentedDeclaration, Statement, extract_documentation, lex, parse};
@@ -32,6 +32,8 @@ fn run() -> Result<(), String> {
     let mut history = ExecutionHistory::new();
     if Path::new(&arguments.source).is_dir() {
         load_module_tree(&mut session, Path::new(&arguments.source), &mut history)?;
+    } else if declares_library(&source, "std") {
+        load_module_tree(&mut session, &arguments.library_root, &mut history)?;
     }
     let execution = session
         .prepare_source_file(&source, &mut history)
@@ -108,6 +110,7 @@ fn source_entry(source: &str) -> Result<PathBuf, String> {
 struct Arguments {
     source: String,
     commands: Option<String>,
+    library_root: PathBuf,
 }
 
 fn debug_script_body(script: &str, name: &str) -> Result<(String, usize), String> {
@@ -163,26 +166,43 @@ struct Debuggee {
 }
 
 fn parse_arguments(mut arguments: impl Iterator<Item = String>) -> Result<Arguments, String> {
-    let first = arguments
-        .next()
-        .ok_or_else(|| "usage: topal-debug [--script COMMANDS] FILE".to_owned())?;
-    let (commands, source) = if first == "--script" {
-        let commands = arguments
-            .next()
-            .ok_or_else(|| "--script requires a command file or -".to_owned())?;
-        let source = arguments
-            .next()
-            .ok_or_else(|| "--script requires a Topal source file".to_owned())?;
-        (Some(commands), source)
-    } else if first.starts_with('-') {
-        return Err(format!("unknown option: {first}"));
-    } else {
-        (None, first)
-    };
-    if let Some(extra) = arguments.next() {
-        return Err(format!("unexpected second source file: {extra}"));
+    let mut commands = None;
+    let mut source = None;
+    let mut library_root =
+        env::var_os("TOPAL_LIBRARY_ROOT").map_or_else(|| PathBuf::from("library"), PathBuf::from);
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--script" => {
+                commands = Some(
+                    arguments
+                        .next()
+                        .ok_or_else(|| "--script requires a command file or -".to_owned())?,
+                );
+            }
+            "--library-root" => {
+                library_root = PathBuf::from(
+                    arguments
+                        .next()
+                        .ok_or_else(|| "--library-root requires a directory".to_owned())?,
+                );
+            }
+            option if option.starts_with('-') && option != "-" => {
+                return Err(format!("unknown option: {option}"));
+            }
+            value if source.replace(value.to_owned()).is_some() => {
+                return Err(format!("unexpected second source file: {value}"));
+            }
+            _ => {}
+        }
     }
-    Ok(Arguments { source, commands })
+    let source = source.ok_or_else(|| {
+        "usage: topal-debug [--library-root DIR] [--script COMMANDS] FILE".to_owned()
+    })?;
+    Ok(Arguments {
+        source,
+        commands,
+        library_root,
+    })
 }
 
 #[allow(clippy::too_many_lines)] // Command aliases remain visible in one deterministic dispatcher.

@@ -171,6 +171,7 @@ fn line_end(source: &SourceText, offset: usize) -> usize {
 fn statement_extent(statement: &Statement) -> Span {
     match statement {
         Statement::LanguageSelection { span, .. }
+        | Statement::LibrarySelection { span, .. }
         | Statement::Published { span, .. }
         | Statement::DiagnosticControl { span, .. }
         | Statement::Implementation { span, .. }

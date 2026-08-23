@@ -1219,6 +1219,7 @@ fn nested_statements(statement: &Statement) -> Option<&[Statement]> {
 const fn lint_statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::LanguageSelection { span, .. }
+        | Statement::LibrarySelection { span, .. }
         | Statement::Published { span, .. }
         | Statement::DiagnosticControl { span, .. }
         | Statement::Implementation { span, .. }

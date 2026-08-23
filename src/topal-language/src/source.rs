@@ -600,6 +600,7 @@ pub struct Session {
     documentation: Box<BTreeMap<String, String>>,
     language_version: LanguageVersion,
     language_features: BTreeSet<String>,
+    declared_libraries: BTreeSet<String>,
     consumed_names: BTreeSet<String>,
     local_function_names: BTreeSet<String>,
     enum_types: BTreeMap<String, BTreeSet<String>>,
@@ -1380,6 +1381,7 @@ impl Session {
             documentation: self.documentation.clone(),
             language_version: self.language_version,
             language_features: self.language_features.clone(),
+            declared_libraries: self.declared_libraries.clone(),
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: self.enum_types.clone(),
@@ -1455,6 +1457,7 @@ impl Session {
             documentation: self.documentation.clone(),
             language_version: self.language_version,
             language_features: self.language_features.clone(),
+            declared_libraries: self.declared_libraries.clone(),
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: self.enum_types.clone(),
@@ -2123,6 +2126,33 @@ impl Session {
             ));
         }
         self.language_version = requested;
+        self.declared_libraries.clear();
+        let mut libraries = BTreeSet::new();
+        let mut declarations_closed = false;
+        for statement in execution.statements.iter().skip(1) {
+            match statement {
+                Statement::LibrarySelection { name, span, .. } if !declarations_closed => {
+                    let identity = execution.source.slice(*name);
+                    if !libraries.insert(identity.to_owned()) {
+                        return Err(diagnostic(
+                            &execution.source,
+                            "E-DUPLICATE-LIBRARY",
+                            *span,
+                            format!("library `{identity}` is declared more than once"),
+                        ));
+                    }
+                }
+                Statement::LibrarySelection { span, .. } => {
+                    return Err(diagnostic(
+                        &execution.source,
+                        "E-LIBRARY-DECLARATION-ORDER",
+                        *span,
+                        "library dependencies immediately follow the initial language selection",
+                    ));
+                }
+                _ => declarations_closed = true,
+            }
+        }
         let documentation_lexed = lex(&execution.source);
         let documentation_parsed = parse(&execution.source, &documentation_lexed);
         for declaration in extract_documentation(
@@ -2181,6 +2211,7 @@ impl Session {
             documentation: Box::new(BTreeMap::new()),
             language_version: LanguageVersion::DESIGN_0,
             language_features: BTreeSet::new(),
+            declared_libraries: BTreeSet::new(),
             consumed_names: BTreeSet::new(),
             local_function_names: BTreeSet::new(),
             enum_types: BTreeMap::new(),
@@ -2533,6 +2564,7 @@ impl Session {
                         documentation: self.documentation.clone(),
                         language_version: self.language_version,
                         language_features: self.language_features.clone(),
+                        declared_libraries: self.declared_libraries.clone(),
                         consumed_names: self.consumed_names.clone(),
                         local_function_names: self.local_function_names.clone(),
                         enum_types: self.enum_types.clone(),
@@ -3308,6 +3340,7 @@ impl Session {
                         documentation: self.documentation.clone(),
                         language_version: self.language_version,
                         language_features: self.language_features.clone(),
+                        declared_libraries: self.declared_libraries.clone(),
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
@@ -3484,6 +3517,7 @@ impl Session {
                         documentation: self.documentation.clone(),
                         language_version: self.language_version,
                         language_features: self.language_features.clone(),
+                        declared_libraries: self.declared_libraries.clone(),
                         consumed_names: BTreeSet::new(),
                         local_function_names: BTreeSet::new(),
                         enum_types: self.enum_types.clone(),
@@ -4417,6 +4451,14 @@ impl Session {
             });
             return Ok(Value::Capability(vec![BTreeSet::from([name.to_owned()])]));
         }
+        if name == "std" && !self.declared_libraries.contains("std") {
+            return Err(diagnostic(
+                source,
+                "E-UNDECLARED-LIBRARY",
+                span,
+                "the `std` namespace requires `use library std ( version is v0.1 )`",
+            ));
+        }
         if name == "root" {
             trace.record(TraceEvent {
                 event: "namespace.resolved",
@@ -4642,6 +4684,14 @@ impl Session {
         let Some(Value::Namespace(namespace)) = self.bindings.get(source.slice(*alias)) else {
             unreachable!("preselected namespace alias")
         };
+        if source.slice(*alias) == "std" && !self.declared_libraries.contains("std") {
+            return Err(diagnostic(
+                source,
+                "E-UNDECLARED-LIBRARY",
+                *alias,
+                "the `std` namespace requires `use library std ( version is v0.1 )`",
+            ));
+        }
         let member_name = source.slice(*member);
         if !namespace.bindings.contains_key(member_name)
             && !namespace.functions.contains_key(member_name)
@@ -7228,6 +7278,39 @@ impl Execution {
                 });
                 (Value::Unit, *span)
             }
+            Statement::LibrarySelection {
+                name,
+                version,
+                span,
+            } => {
+                let library_name = self.source.slice(*name);
+                let requested = self.source.slice(*version);
+                if library_name != "std" {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-UNSUPPORTED-LIBRARY",
+                        *name,
+                        format!("library `{library_name}` is not available"),
+                    ));
+                }
+                if requested != "v0.1" {
+                    return Err(diagnostic(
+                        &self.source,
+                        "E-UNSUPPORTED-LIBRARY-VERSION",
+                        *version,
+                        format!(
+                            "standard-library version `{requested}` is not supported; available version is `v0.1`"
+                        ),
+                    ));
+                }
+                session.declared_libraries.insert(library_name.to_owned());
+                trace.record(TraceEvent {
+                    event: "library.dependency.selected",
+                    rule: "TOPAL-SYN-LIBRARY-001",
+                    detail: "std@v0.1",
+                });
+                (Value::Unit, *span)
+            }
             Statement::Published {
                 declaration, span, ..
             } => {
@@ -8124,6 +8207,7 @@ fn statement_span(statement: &Statement) -> Span {
     match statement {
         Statement::Binding { name, value, .. } => cover(*name, value.span()),
         Statement::LanguageSelection { span, .. }
+        | Statement::LibrarySelection { span, .. }
         | Statement::Published { span, .. }
         | Statement::DiagnosticControl { span, .. }
         | Statement::Implementation { span, .. }

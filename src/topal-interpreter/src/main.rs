@@ -1,11 +1,12 @@
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, IsTerminal, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use topal_language::{
-    JsonLines, LanguageVersion, Session, TraceSink, UNICODE_VERSION, load_module_tree,
+    JsonLines, LanguageVersion, Session, TraceSink, UNICODE_VERSION, declares_library,
+    load_module_tree,
 };
 
 enum Mode {
@@ -18,6 +19,7 @@ struct Arguments {
     mode: Mode,
     source: Option<String>,
     language_version: Option<LanguageVersion>,
+    library_root: PathBuf,
 }
 
 fn main() -> ExitCode {
@@ -47,6 +49,7 @@ fn run() -> Result<(), String> {
                     &mut session,
                     arguments.source.as_deref(),
                     source_name,
+                    &arguments.library_root,
                     &mut trace,
                 )
             } else {
@@ -54,6 +57,7 @@ fn run() -> Result<(), String> {
                     &mut session,
                     arguments.source.as_deref(),
                     source_name,
+                    &arguments.library_root,
                     &mut io::sink(),
                 )
             }
@@ -65,6 +69,8 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
     let mut mode = Mode::Script;
     let mut source = None;
     let mut language_version = None;
+    let mut library_root =
+        env::var_os("TOPAL_LIBRARY_ROOT").map_or_else(|| PathBuf::from("library"), PathBuf::from);
     let mut arguments = arguments.peekable();
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
@@ -83,9 +89,16 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
                         .map_err(|error| format!("invalid language version `{value}`: {error}"))?,
                 );
             }
+            "--library-root" => {
+                library_root = PathBuf::from(
+                    arguments
+                        .next()
+                        .ok_or("--library-root requires a directory")?,
+                );
+            }
             "--help" => {
                 println!(
-                    "Usage: topal [--interactive [--language-version VERSION] | --test] [FILE]\n\nWith no FILE, source is read from standard input. Source files declare their language version."
+                    "Usage: topal [--library-root DIR] [--interactive [--language-version VERSION] | --test] [FILE]\n\nWith no FILE, source is read from standard input. Source files declare their language and library dependencies."
                 );
                 std::process::exit(0);
             }
@@ -109,6 +122,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
         mode,
         source,
         language_version,
+        library_root,
     })
 }
 
@@ -225,12 +239,16 @@ fn evaluate_input(
     session: &mut Session,
     path: Option<&str>,
     source_name: &str,
+    library_root: &Path,
     trace: &mut impl TraceSink,
 ) -> Result<(), String> {
     if let Some(path) = path.filter(|path| Path::new(path).is_dir()) {
         return evaluate_directory(session, Path::new(path), trace);
     }
     let source = read_source(path)?;
+    if declares_library(&source, "std") {
+        load_module_tree(session, library_root, trace)?;
+    }
     evaluate_and_print(session, &source, source_name, trace)
 }
 

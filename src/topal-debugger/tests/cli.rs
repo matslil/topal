@@ -64,6 +64,34 @@ fn executes_the_standard_library_example_from_its_shared_module_tree() {
     assert!(stdout.contains("((Int, Rational, (Int, Int), (Int, Int), Int, Int, Int, Rational, Optional Int, Boolean, Optional (Int, String), Rational, Int, Boolean, Rational, Int, Int, (Int, Int), Range Int, String, String, Boolean, Optional Int, List Int, List Int, List Int))"));
 }
 
+#[test]
+fn declared_standard_library_file_executes_directly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../library");
+    let rest = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/data-transfer/rest-controller.t"
+    );
+    let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args(["--library-root", root, "--script", "-", rest])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(b"use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n")
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 fn language_diagnostic(name: &str) -> String {
     format!(
         "{}/../../examples/language-diagnostics/{name}",

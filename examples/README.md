@@ -43,3 +43,22 @@ These examples simulate semantic inputs so they run on every host. They do not
 claim to open sockets, attach XDP programs, or benchmark the current runtime.
 Native endpoint adapters can supply the same inputs without moving portable
 policy out of Topal.
+
+Run all self-checking standard-library and data-transfer sources with:
+
+```sh
+cargo test -p topal-language --test standard_library
+```
+
+Each data-transfer source explicitly declares `std`, so it can also be run or
+debugged directly from the repository root:
+
+```sh
+cargo run -q -p topal-interpreter --bin topal -- \
+  examples/data-transfer/rest-controller.t
+cargo run -q -p topal-debugger --bin topal-debug -- \
+  examples/data-transfer/rest-controller.t
+```
+
+Use `--library-root DIR` or `TOPAL_LIBRARY_ROOT` when the standard library is
+not available as `library/` beneath the current working directory.

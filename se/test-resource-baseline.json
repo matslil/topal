@@ -3624,6 +3624,14 @@
     "topal-build::test:incremental::test_only_change_does_not_rebuild_production_units": {
       "cpu_time_ns": 155222240,
       "memory_peak_bytes": 18272256
+    },
+    "topal-debugger::test:cli::declared_standard_library_file_executes_directly": {
+      "cpu_time_ns": 121744600,
+      "memory_peak_bytes": 18079744
+    },
+    "topal-interpreter::test:cli::declared_standard_library_file_executes_directly": {
+      "cpu_time_ns": 128945940,
+      "memory_peak_bytes": 18149376
     }
   }
 }

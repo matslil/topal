@@ -2,6 +2,9 @@
 use language (
   version is v0.1
 )
+use library std (
+  version is v0.1
+)
 
 # A source-level firewall pipeline. The packet bytes stay in their owning
 # region; each layer passes structural spans and validates only the view it

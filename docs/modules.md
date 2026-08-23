@@ -26,6 +26,25 @@ fundamental surface, and importing one extended scope does not import another.
 Their implementation layout can be as deep as their independent scope
 requires.
 
+The namespace is not ambient. A source file that uses it declares the library
+dependency after its language selection:
+
+```topal
+use language (
+  version is v0.1
+)
+use library std (
+  version is v0.1
+)
+```
+
+Without this declaration, `std` is not available. This permits freestanding,
+embedded, bootstrap, and otherwise deliberately minimal programs. The
+declaration identifies the library and compatible revision; it does not embed a
+filesystem path or grant authority. Build tools and source tools resolve that
+identity through their configured library roots and report an unavailable or
+incompatible dependency before executing application code.
+
 ## Source layout and canonical names
 
 Except for the special files `module.t`, `package.t`, `library.t`, and

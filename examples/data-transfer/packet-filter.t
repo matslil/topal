@@ -2,6 +2,9 @@
 use language (
   version is v0.1
 )
+use library std (
+  version is v0.1
+)
 
 # A modern packet-filter decision kernel. A native ingress adapter can provide
 # one owned region plus validated metadata from XDP, AF_XDP, an OS packet API,

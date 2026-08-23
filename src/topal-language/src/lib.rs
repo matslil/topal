@@ -15,7 +15,7 @@ pub use documentation::lang_documentation;
 pub use execution::{
     ExecutionHistory, ExecutionSnapshot, ExecutionState, ExecutionTransition, SourceRange,
 };
-pub use modules::load_module_tree;
+pub use modules::{declares_library, load_module_tree};
 pub use source::{Execution, ExecutionStep, Session, Value};
 pub use topal_semantics::LanguageVersion;
 pub use topal_source::Diagnostic;
