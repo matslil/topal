@@ -53,11 +53,15 @@ range ( >= 0 and < 10 )  # closed below, open above
 range ( > 0 and <= 10 )  # open below, closed above
 ```
 
-The concise inclusive syntax is sugar for the corresponding predicate:
+Four concise forms cover the same endpoint choices. The common `..` form is
+lower-inclusive and upper-exclusive, which matches collection boundaries and
+lets adjacent ranges meet without overlapping:
 
 ```topal
-0 .. 10
-range ( >= 0 and <= 10 )
+0 .. 10    # >= 0 and < 10
+0 <.. 10   # > 0 and < 10
+0 ..= 10   # >= 0 and <= 10
+0 <..= 10  # > 0 and <= 10
 ```
 
 The internal representation may expose included and excluded bounds for
@@ -100,9 +104,9 @@ belongs to the ordinary numeric domain, it remains an endpoint value rather than
 being normalized into an absent bound:
 
 ```topal
-0 .. +Infinity                     # Includes +Infinity.
+0 ..= +Infinity                    # Includes +Infinity.
 range ( >= 0 and < +Infinity )     # Every finite nonnegative value.
--Infinity .. 10                    # Includes -Infinity.
+-Infinity ..= 10                   # Includes -Infinity.
 ```
 
 This applies when an endpoint is calculated at run time as well as when it is
@@ -141,7 +145,7 @@ Because ranges are predicates, they participate in Topal's ordinary constraint
 and refined-type model:
 
 ```topal
-ByteRange is 0 .. 255
+ByteRange is 0 ..= 255
 ByteValue is ByteRange Nat
 ```
 

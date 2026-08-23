@@ -1073,7 +1073,7 @@ fn records_reversible_dynamic_rational_construction() {
 }
 
 #[test]
-fn records_reversible_inclusive_int_ranges() {
+fn records_reversible_int_range_endpoint_forms() {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
     let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
         .args([
@@ -1085,12 +1085,12 @@ fn records_reversible_inclusive_int_ranges() {
         .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("TOPAL-RANGE-INCLUSIVE-001"));
+    assert!(stdout.contains("TOPAL-RANGE-BOUNDS-001"));
     assert!(stdout.contains("TOPAL-RANGE-MEMBERSHIP-001"));
     assert!(stdout.contains("range.constructed"));
     assert!(stdout.contains("range.membership.tested"));
     assert!(stdout.contains("TOPAL-RANGE-INTERSECTION-001"));
-    assert!(stdout.contains("(0 .. 10, 5 .. 10, 20 .. 10, true, false, false)"));
+    assert!(stdout.contains("(0 ..= 10, 0 .. 10, 0 <.. 10, 0 <..= 10, true, false, false, false, false, true, 5 ..= 10, 20 ..= 10, true, false, false)"));
 }
 
 #[test]
@@ -1108,7 +1108,7 @@ fn records_reversible_rational_ranges() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("Int->Rational:left"));
     assert!(stdout.contains("Int->Rational:membership"));
-    assert!(stdout.contains("Rational ( 0, 1 ) .. Rational ( 5, 2 )"));
+    assert!(stdout.contains("Rational ( 0, 1 ) ..= Rational ( 5, 2 )"));
     assert!(stdout.contains("TOPAL-RANGE-INTERSECTION-001"));
 }
 
@@ -1841,7 +1841,7 @@ fn records_range_generator_values_reversibly() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("Generator Range Int Unit Range Int"));
-    assert!(stdout.contains("5 .. 10"));
+    assert!(stdout.contains("5 ..= 10"));
 }
 
 #[test]

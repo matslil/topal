@@ -10,8 +10,8 @@ narrow is generator ( initial : Range Int )
   -> Range Int
 
   _ is yield initial
-  initial and (5 .. 15)
+  initial and (5 ..= 15)
 
-generated is narrow (0 .. 10)
+generated is narrow (0 ..= 10)
 generated foreach { interval }
   _ is 5 in interval

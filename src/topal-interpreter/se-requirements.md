@@ -864,13 +864,14 @@ The result shall have denominator one without a Result wrapper. Test traces and
 reversible debugger history shall expose explicit construction; LSP validation
 shall accept the updated commented Rational construction example.
 
-## TOPAL-INTP-SUBSET-098 — Inclusive Int ranges
+## TOPAL-INTP-SUBSET-098 — Int range endpoint forms
 
-All interpreter modes shall construct `lower .. upper` as a closed Int range
-under `TOPAL-RANGE-INCLUSIVE-001`, including an empty value when bounds are
-reversed. Test traces and reversible debugger history shall distinguish
-nonempty and empty construction; LSP validation and highlighting shall accept
-the commented example.
+All interpreter modes shall construct `lower .. upper`, `lower <.. upper`,
+`lower ..= upper`, and `lower <..= upper` under `TOPAL-RANGE-BOUNDS-001`, with
+the endpoint inclusivity expressed by each operator. A range shall be empty
+when its selected comparisons have no solution. Test traces and reversible
+debugger history shall distinguish nonempty and empty construction; LSP
+validation and highlighting shall accept the commented example.
 
 ## TOPAL-INTP-SUBSET-099 — Int range membership
 
@@ -882,8 +883,8 @@ shall accept the updated commented range example.
 
 ## TOPAL-INTP-SUBSET-100 — Rational ranges
 
-All interpreter modes shall construct and test closed Rational ranges under
-`TOPAL-RANGE-RATIONAL-001`, including mixed Int endpoints and Int membership via
+All interpreter modes shall construct and test all four Rational range endpoint
+forms under `TOPAL-RANGE-RATIONAL-001`, including mixed Int endpoints and Int membership via
 the canonical exact conversion. Test traces and reversible debugger history
 shall expose range and conversion decisions; LSP validation shall accept the
 commented example.

@@ -44,6 +44,9 @@ pub enum TokenKind {
     LessEqual,
     Compare,
     Range,
+    RangeOpen,
+    RangeInclusive,
+    RangeOpenInclusive,
     Ellipsis,
     GreaterEqual,
     Plus,
@@ -212,6 +215,9 @@ fn standalone_symbol(text: &str) -> Option<(TokenKind, usize)> {
     const SYMBOLS: &[(&str, TokenKind)] = &[
         ("<=>", TokenKind::Compare),
         ("...", TokenKind::Ellipsis),
+        ("<..=", TokenKind::RangeOpenInclusive),
+        ("<..", TokenKind::RangeOpen),
+        ("..=", TokenKind::RangeInclusive),
         ("!=", TokenKind::NotEquals),
         ("..", TokenKind::Range),
         ("<=", TokenKind::LessEqual),
@@ -655,13 +661,31 @@ mod tests {
     }
 
     #[test]
-    fn tokenizes_inclusive_range_as_one_callable() {
+    fn tokenizes_each_range_bound_form_as_one_callable() {
         assert_eq!(
-            kinds("0 .. 10"),
+            kinds("0 .. 1 0 <.. 1 0 ..= 1 0 <..= 1"),
             vec![
                 TokenKind::Integer,
                 TokenKind::Whitespace,
                 TokenKind::Range,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::RangeOpen,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::RangeInclusive,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::Integer,
+                TokenKind::Whitespace,
+                TokenKind::RangeOpenInclusive,
                 TokenKind::Whitespace,
                 TokenKind::Integer,
             ]

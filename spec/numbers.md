@@ -342,7 +342,7 @@ association is fixed by `TOPAL-SYN-GRAMMAR-001`; for example, `2 + 3 * 4`
 produces `20`, while `2 + ( 3 * 4 )` produces `14`.
 ### TOPAL-NUM-MODULAR-TYPE-001 — Nominal modular numeric families
 
-`Name is ModNat (0 .. upper)` and `Name is ModInt (lower .. upper)` shall
+`Name is ModNat (0 ..= upper)` and `Name is ModInt (lower ..= upper)` shall
 introduce distinct nominal modular types whose finite contiguous canonical range
 contains zero. The inclusive range determines the modulus. ModNat shall begin
 at zero; ModInt may use negative canonical representatives.

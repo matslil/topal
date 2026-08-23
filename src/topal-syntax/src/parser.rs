@@ -54,6 +54,9 @@ pub enum CallableKind {
     LessEqual,
     Compare,
     Range,
+    RangeOpen,
+    RangeInclusive,
+    RangeOpenInclusive,
     GreaterEqual,
     Plus,
     Minus,
@@ -2223,6 +2226,18 @@ impl Parser<'_> {
             }),
             TokenKind::Range => Some(Expression::Callable {
                 kind: CallableKind::Range,
+                span: token.span,
+            }),
+            TokenKind::RangeOpen => Some(Expression::Callable {
+                kind: CallableKind::RangeOpen,
+                span: token.span,
+            }),
+            TokenKind::RangeInclusive => Some(Expression::Callable {
+                kind: CallableKind::RangeInclusive,
+                span: token.span,
+            }),
+            TokenKind::RangeOpenInclusive => Some(Expression::Callable {
+                kind: CallableKind::RangeOpenInclusive,
                 span: token.span,
             }),
             TokenKind::GreaterEqual => Some(Expression::Callable {

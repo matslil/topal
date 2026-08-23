@@ -620,6 +620,9 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
         | TokenKind::LessEqual
         | TokenKind::Compare
         | TokenKind::Range
+        | TokenKind::RangeOpen
+        | TokenKind::RangeInclusive
+        | TokenKind::RangeOpenInclusive
         | TokenKind::Ellipsis
         | TokenKind::GreaterEqual
         | TokenKind::Plus

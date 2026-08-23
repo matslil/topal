@@ -663,7 +663,7 @@ package status is maintained
 package description is "Exact numerical calculations"
 package license is "Apache-2.0"
 package copyrights is (
-  ( "Example AB", ( 2024 .. 2026 ) )
+  ( "Example AB", ( 2024 ..= 2026 ) )
 )
 package repository is URI "https://github.com/example/calculator"
 package documentation is URI "https://docs.example.com/calculator"
@@ -955,7 +955,7 @@ their work:
 
 ```topal
 copyrights is (
-  ( "Example AB", ( 2024 .. 2026 ) )
+  ( "Example AB", ( 2024 ..= 2026 ) )
 )
 ```
 
@@ -963,7 +963,7 @@ Several notices remain distinct when several holders contributed:
 
 ```topal
 copyrights is (
-  ( "Example AB", ( 2024 .. 2026 ) ),
+  ( "Example AB", ( 2024 ..= 2026 ) ),
   ( "Alice Smith", ( 2025 ) )
 )
 ```
@@ -996,7 +996,7 @@ package status is maintained
 package description is "Exact numerical calculations"
 package license is "Apache-2.0"
 package copyrights is (
-  ( "Example AB", ( 2024 .. 2026 ) )
+  ( "Example AB", ( 2024 ..= 2026 ) )
 )
 package repository is URI "https://github.com/example/calculator"
 package documentation is URI "https://docs.example.com/calculator"
@@ -1040,7 +1040,7 @@ tokenize is fn ...
 
 license is "BSD-3-Clause"
 copyrights is (
-  ( "Adapted parser contributors", ( 2022 .. 2026 ) )
+  ( "Adapted parser contributors", ( 2022 ..= 2026 ) )
 )
 
 adapted-parse is fn ...
@@ -1072,7 +1072,7 @@ use language (
 
 license is "BSD-3-Clause"
 copyrights is (
-  ( "Parser contributors", ( 2022 .. 2026 ) )
+  ( "Parser contributors", ( 2022 ..= 2026 ) )
 )
 ```
 

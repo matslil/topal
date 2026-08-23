@@ -34,8 +34,8 @@ machine-style unsigned overflow.
 
 Operations derive the strongest practical result constraints. For example,
 subtracting two `Nat` values produces `Int` unless their ordering proves that
-the result remains nonnegative. Adding two values in `0 .. 255` produces a value
-in `0 .. 510`, not another byte-sized value.
+the result remains nonnegative. Adding two values in `0 ..= 255` produces a value
+in `0 ..= 510`, not another byte-sized value.
 
 The compiler may store a proven-small `Int` or `Nat` in a machine register and
 promote it when required. This is an implementation decision and cannot change
@@ -77,9 +77,9 @@ the modulus. It must contain zero. A `ModNat` range begins at zero, while a
 `ModInt` range may include negative representatives:
 
 ```topal
-ByteCounter is ModNat ( 0 .. 255 )
-SignedByte is ModInt ( -128 .. 127 )
-ClockHour is ModNat ( 0 .. 23 )
+ByteCounter is ModNat ( 0 ..= 255 )
+SignedByte is ModInt ( -128 ..= 127 )
+ClockHour is ModNat ( 0 ..= 23 )
 ```
 
 Examples:
@@ -107,7 +107,7 @@ afterward. This distinction preserves the rule that constraints restrict values
 while types determine what operations mean:
 
 ```topal
-ByteRange is 0 .. 255
+ByteRange is 0 ..= 255
 ByteValue is ByteRange Nat
 ByteCounter is ModNat ByteRange
 ```
@@ -245,7 +245,7 @@ The fixed width makes every result well-defined. In contrast, applying
 `bit-not`, a shift, or a rotation directly to arbitrary-precision `Int` or
 `Nat` would require an otherwise unobservable choice of width. Arbitrary
 modular arithmetic also does not imply a bit representation: a
-`ModNat ( 0 .. 9 )` has ten values while four bits have sixteen patterns. Code
+`ModNat ( 0 ..= 9 )` has ten values while four bits have sixteen patterns. Code
 which needs both numeric and bit operations converts explicitly between the
 numeric value and a `Bits` value using a chosen representation.
 
@@ -756,9 +756,9 @@ Width and byte order are layout fields shared across encoding families. The
 complete type-directed field vocabulary is defined in
 [layouts and addressed storage](layouts.md#encoding-construction-and-validation).
 
-For example, `ModNat ( 0 .. 9 )` may be stored in a byte, packed into four bits,
+For example, `ModNat ( 0 ..= 9 )` may be stored in a byte, packed into four bits,
 or encoded as an ASCII digit without changing its modulo-10 arithmetic. A
-`ModNat ( 0 .. 255 )` may occupy one byte in an encoded array and a full machine
+`ModNat ( 0 ..= 255 )` may occupy one byte in an encoded array and a full machine
 register during computation.
 
 As with strings, representation becomes observable only at an explicit storage,

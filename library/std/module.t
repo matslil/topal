@@ -212,15 +212,26 @@ pub flatten is fn (
     Error problem then problem
 
 # Convex ranges.
-### Return the inclusive lower bound of a Range.
+### Return the lower endpoint of a Range.
 pub lower-bound is fn (interval : Range (Value : TotalOrder)) -> Value
   range-lower interval
 
-### Return the inclusive upper bound of a Range.
+### Return the upper endpoint of a Range.
 pub upper-bound is fn (interval : Range (Value : TotalOrder)) -> Value
   range-upper interval
 
-### Return the inclusive lower and upper bounds of a Range.
+### Test whether a Range includes its lower endpoint.
+pub lower-inclusive? is fn (interval : Range (Value : TotalOrder)) -> Boolean
+  range-lower-inclusive? interval
+
+### Test whether a Range includes its upper endpoint.
+pub upper-inclusive? is fn (interval : Range (Value : TotalOrder)) -> Boolean
+  range-upper-inclusive? interval
+
+range-lower-inclusive-callable is lower-inclusive?
+range-upper-inclusive-callable is upper-inclusive?
+
+### Return the lower and upper endpoints of a Range.
 pub bounds is fn (interval : Range (Value : TotalOrder)) -> (Value, Value)
   (range-lower interval, range-upper interval)
 
@@ -231,7 +242,7 @@ pub intersection is fn (
 ) -> Range Value
   left and right
 
-### Test whether two inclusive Ranges share at least one value.
+### Test whether two Ranges share at least one value.
 pub overlaps? is fn (
   left : Range (Value : TotalOrder),
   right : Range Value
@@ -250,6 +261,34 @@ range-max is fn (left : (Value : TotalOrder), right : Value) -> Value
     otherwise right
 range-max-callable is range-max
 
+range-hull-lower-inclusive is fn (
+  left : Range (Value : TotalOrder),
+  right : Range Value
+) -> Boolean
+  left-lower is range-lower left
+  right-lower is range-lower right
+  left-inclusive is range-lower-inclusive-callable left
+  right-inclusive is range-lower-inclusive-callable right
+  left-lower
+    < right-lower then left-inclusive
+    > right-lower then right-inclusive
+    otherwise left-inclusive or right-inclusive
+range-hull-lower-inclusive-callable is range-hull-lower-inclusive
+
+range-hull-upper-inclusive is fn (
+  left : Range (Value : TotalOrder),
+  right : Range Value
+) -> Boolean
+  left-upper is range-upper left
+  right-upper is range-upper right
+  left-inclusive is range-upper-inclusive-callable left
+  right-inclusive is range-upper-inclusive-callable right
+  left-upper
+    > right-upper then left-inclusive
+    < right-upper then right-inclusive
+    otherwise left-inclusive or right-inclusive
+range-hull-upper-inclusive-callable is range-hull-upper-inclusive
+
 ### Return the smallest Range containing both input Ranges.
 pub hull is fn (
   left : Range (Value : TotalOrder),
@@ -257,11 +296,34 @@ pub hull is fn (
 ) -> Range Value
   lower is range-min-callable (range-lower left, range-lower right)
   upper is range-max-callable (range-upper left, range-upper right)
-  lower .. upper
+  include-lower is range-hull-lower-inclusive-callable (left, right)
+  include-upper is range-hull-upper-inclusive-callable (left, right)
+  inclusivity is (include-lower, include-upper)
+  inclusivity
+    = (true, true) then lower ..= upper
+    = (true, false) then lower .. upper
+    = (false, true) then lower <..= upper
+    otherwise lower <.. upper
+
+range-first-int is fn (interval : Range Int) -> Int
+  range-lower-inclusive-callable interval
+    true then range-lower interval
+    false then (range-lower interval) + 1
+range-first-int-callable is range-first-int
+
+range-last-int is fn (interval : Range Int) -> Int
+  range-upper-inclusive-callable interval
+    true then range-upper interval
+    false then (range-upper interval) - 1
+range-last-int-callable is range-last-int
 
 ### Test whether two Int Ranges touch without overlapping.
 pub adjacent? is fn (left : Range Int, right : Range Int) -> Boolean
-  ((range-upper left) + 1 = (range-lower right)) or ((range-upper right) + 1 = (range-lower left))
+  left-first is range-first-int-callable left
+  left-last is range-last-int-callable left
+  right-first is range-first-int-callable right
+  right-last is range-last-int-callable right
+  (left-last + 1 = right-first) or (right-last + 1 = left-first)
 
 # Exact numbers.
 ### Return -1, 0, or 1 according to an Int's sign.
