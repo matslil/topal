@@ -81,10 +81,11 @@ identity for an empty List, and evaluate in source order.
 
 ### TOPAL-LIB-RANGE-001 — Convex range utilities
 
-The `std` namespace SHALL provide range bound observation, bound pairing,
+The `std` namespace SHALL provide range endpoint and inclusivity observation, bound pairing,
 intersection, overlap testing, convex hull, and discrete Int adjacency. Generic
 operations SHALL retain one exact `TotalOrder` endpoint classifier. They SHALL
-preserve convex-predicate semantics and SHALL NOT imply enumeration.
+preserve every open or closed endpoint required by convex-predicate semantics
+and SHALL NOT imply enumeration.
 
 ### TOPAL-LIB-TEXT-001 — Fundamental Unicode text utilities
 

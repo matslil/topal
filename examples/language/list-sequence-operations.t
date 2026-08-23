@@ -19,7 +19,7 @@ done : Unit is values foreach { value }
   values take 2,
   values drop 1,
   values remove 1,
-  values remove-indexes (1 .. 2),
+  values remove-indexes (1 ..= 2),
   values remove-indexes { index } index = 0,
   values remove-values { value } value > 1,
   values zip-exact other,

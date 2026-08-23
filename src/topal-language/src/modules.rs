@@ -333,14 +333,14 @@ adjacent? is std adjacent?
             .unwrap();
         assert_eq!(
             value.to_string(),
-            "((-2, 5), 4 .. 8, false, Rational ( 1, 2 ) .. Rational ( 4, 1 ), true)"
+            "((-2, 5), 4 .. 8, false, Rational ( 1, 2 ) .. Rational ( 4, 1 ), false)"
         );
         assert_eq!(
             trace
                 .iter()
                 .filter(|event| event.contains("TOPAL-RANGE-BOUND-001"))
                 .count(),
-            10
+            22
         );
     }
 

@@ -38,7 +38,7 @@ DeviceAddresses is AddressRange (
   minimum-access-size is 32[b],
   medium is MMIO
 )
-device is DeviceAddresses (0x40000000 .. 0x4000ffff)
+device is DeviceAddresses (0x40000000 ..= 0x4000ffff)
 DeviceOffset is AddressOffset (range is device, alignment is 4)
 control-offset is DeviceOffset 32
 ControlLocation is Location UInt32LE

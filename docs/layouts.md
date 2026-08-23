@@ -20,9 +20,9 @@ applies the constructor to the attribute map as its single parameter. The
 resulting subtype then accepts the ordinary value or type:
 
 ```text
-attributes AddressRange ( Nat .. Nat ) -> address-range value
+attributes AddressRange ( Nat ..= Nat ) -> address-range value
 AddressRange attributes                -> address-range subtype
-address-range-subtype ( Nat .. Nat )   -> address-range value
+address-range-subtype ( Nat ..= Nat )   -> address-range value
 
 attributes AddressOffset Nat          -> address-offset value
 AddressOffset attributes              -> address-offset subtype
@@ -36,7 +36,7 @@ Location layout                       -> location subtype
 location-subtype AddressOffset         -> location value
 ```
 
-For example, `( caching is Uncached ) AddressRange ( 0 .. 255 )` constructs a
+For example, `( caching is Uncached ) AddressRange ( 0 ..= 255 )` constructs a
 complete range directly. `AddressRange ( caching is Uncached )` instead
 constructs a subtype which can be reused to construct several ranges. This
 asymmetry keeps the complete expression attribute-first while leaving subtype
@@ -44,7 +44,7 @@ construction as an ordinary one-parameter application.
 
 ## Address ranges
 
-An `AddressRange` value stores an ordinary `Nat .. Nat` range. Its subtype's
+An `AddressRange` value stores an ordinary `Nat ..= Nat` range. Its subtype's
 attribute map initially supports:
 
 Schema tables in this document place a field name and its accepted classifier
@@ -67,7 +67,7 @@ DeviceAddresses is AddressRange (
 )
 
 device is DeviceAddresses (
-  0x4000_0000 .. 0x4000_FFFF
+  0x4000_0000 ..= 0x4000_FFFF
 )
 ```
 

@@ -2345,7 +2345,7 @@ fn every_mode_constructs_dynamic_rationals() {
 }
 
 #[test]
-fn every_mode_constructs_inclusive_int_ranges() {
+fn every_mode_constructs_all_int_range_endpoint_forms() {
     let source = include_str!("../../../examples/language/inclusive-int-ranges.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
@@ -2353,12 +2353,12 @@ fn every_mode_constructs_inclusive_int_ranges() {
         assert!(
             output
                 .stdout
-                .ends_with(b"(0 .. 10, 5 .. 10, 20 .. 10, true, false, false)\n")
+                .ends_with(b"(0 ..= 10, 0 .. 10, 0 <.. 10, 0 <..= 10, true, false, false, false, false, true, 5 ..= 10, 20 ..= 10, true, false, false)\n")
         );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
-    assert_eq!(trace.matches("TOPAL-RANGE-INCLUSIVE-001").count(), 4);
-    assert_eq!(trace.matches("TOPAL-RANGE-MEMBERSHIP-001").count(), 3);
+    assert_eq!(trace.matches("TOPAL-RANGE-BOUNDS-001").count(), 7);
+    assert_eq!(trace.matches("TOPAL-RANGE-MEMBERSHIP-001").count(), 9);
     assert!(trace.contains("\"detail\":\"nonempty\""));
     assert!(trace.contains("\"detail\":\"empty\""));
     assert!(trace.contains("\"detail\":\"accepted\""));
@@ -2375,7 +2375,7 @@ fn every_mode_constructs_and_tests_rational_ranges() {
         assert!(
             output
                 .stdout
-                .ends_with(b"(Rational ( 0, 1 ) .. Rational ( 5, 2 ), Rational ( 1, 1 ) .. Rational ( 5, 2 ), true, true, false)\n")
+                .ends_with(b"(Rational ( 0, 1 ) ..= Rational ( 5, 2 ), Rational ( 1, 1 ) ..= Rational ( 5, 2 ), true, true, false)\n")
         );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
@@ -2959,7 +2959,7 @@ fn every_mode_traverses_range_generator_values() {
     for arguments in [&[][..], &["--test"][..], &["--interactive"][..]] {
         let output = run(arguments, source);
         assert!(output.status.success());
-        assert!(output.stdout.ends_with(b"5 .. 10\n"));
+        assert!(output.stdout.ends_with(b"5 ..= 10\n"));
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains(
@@ -3523,7 +3523,7 @@ fn every_mode_executes_settled_modular_numbers() {
 
 #[test]
 fn closed_modular_construction_rejection_is_source_located() {
-    let output = run(&[], "Byte is ModNat (0 .. 255)\nByte 256\n");
+    let output = run(&[], "Byte is ModNat (0 ..= 255)\nByte 256\n");
     assert!(!output.status.success());
     assert!(
         String::from_utf8(output.stderr)
@@ -4149,7 +4149,7 @@ fn script_and_test_modes_execute_the_shared_standard_library_example() {
         );
         assert_eq!(
             String::from_utf8(output.stdout).unwrap().trim(),
-            "(2, Rational ( 9, 2 ), (1, 2), (3, 7), -1, -1, 9, Rational ( 3, 2 ), Some 5, true, Some (2, \"items\"), Rational ( 5, 1 ), 6, true, Rational ( 1, 2 ), 6, 6, (-2, 5), 0 .. 8, \"text\", \"abab\", true, Some 2, Entry ( 2, Empty ), Entry ( 1, Entry ( 1, Entry ( 2, Entry ( 2, Entry ( 3, Entry ( 3, Empty ) ) ) ) ) ), Entry ( 3, Entry ( 4, Entry ( 5, Empty ) ) ))"
+        "(2, Rational ( 9, 2 ), (1, 2), (3, 7), -1, -1, 9, Rational ( 3, 2 ), Some 5, true, Some (2, \"items\"), Rational ( 5, 1 ), 6, true, Rational ( 1, 2 ), 6, 6, (-2, 5), 0 ..= 8, \"text\", \"abab\", true, Some 2, Entry ( 2, Empty ), Entry ( 1, Entry ( 1, Entry ( 2, Entry ( 2, Entry ( 3, Entry ( 3, Empty ) ) ) ) ) ), Entry ( 3, Entry ( 4, Entry ( 5, Empty ) ) ))"
         );
     }
 }

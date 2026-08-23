@@ -68,10 +68,14 @@ pub enum Value {
     IntRange {
         lower: BigInt,
         upper: BigInt,
+        lower_inclusive: bool,
+        upper_inclusive: bool,
     },
     RationalRange {
         lower: BigRational,
         upper: BigRational,
+        lower_inclusive: bool,
+        upper_inclusive: bool,
     },
     Optional {
         payload_classifier: String,
@@ -336,8 +340,20 @@ impl fmt::Display for Value {
             }
             Self::SizeBits(bits) => write!(formatter, "{bits}[b]"),
             Self::AddressRangeType(_) => formatter.write_str("AddressRange <subtype>"),
-            Self::AddressRange { lower, upper, .. } | Self::IntRange { lower, upper } => {
+            Self::AddressRange { lower, upper, .. } => {
                 write!(formatter, "{lower} .. {upper}")
+            }
+            Self::IntRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            } => {
+                write!(
+                    formatter,
+                    "{lower} {} {upper}",
+                    range_symbol(*lower_inclusive, *upper_inclusive)
+                )
             }
             Self::AddressOffsetType(_) => formatter.write_str("AddressOffset <subtype>"),
             Self::AddressOffset { offset, .. } => offset.fmt(formatter),
@@ -378,11 +394,17 @@ impl fmt::Display for Value {
                     value.denom()
                 )
             }
-            Self::RationalRange { lower, upper } => write!(
+            Self::RationalRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            } => write!(
                 formatter,
-                "Rational ( {}, {} ) .. Rational ( {}, {} )",
+                "Rational ( {}, {} ) {} Rational ( {}, {} )",
                 lower.numer(),
                 lower.denom(),
+                range_symbol(*lower_inclusive, *upper_inclusive),
                 upper.numer(),
                 upper.denom()
             ),
@@ -507,6 +529,59 @@ impl fmt::Display for Value {
             Self::Completed => formatter.write_str("Completed"),
             Self::Unit => formatter.write_str("()"),
         }
+    }
+}
+
+const fn range_symbol(lower_inclusive: bool, upper_inclusive: bool) -> &'static str {
+    match (lower_inclusive, upper_inclusive) {
+        (true, false) => "..",
+        (false, false) => "<..",
+        (true, true) => "..=",
+        (false, true) => "<..=",
+    }
+}
+
+fn bound_contains<T: Ord>(
+    value: &T,
+    lower: &T,
+    upper: &T,
+    lower_inclusive: bool,
+    upper_inclusive: bool,
+) -> bool {
+    (if lower_inclusive {
+        value >= lower
+    } else {
+        value > lower
+    }) && (if upper_inclusive {
+        value <= upper
+    } else {
+        value < upper
+    })
+}
+
+fn stricter_lower<T: Ord>(
+    left: T,
+    left_inclusive: bool,
+    right: T,
+    right_inclusive: bool,
+) -> (T, bool) {
+    match left.cmp(&right) {
+        Ordering::Greater => (left, left_inclusive),
+        Ordering::Less => (right, right_inclusive),
+        Ordering::Equal => (left, left_inclusive && right_inclusive),
+    }
+}
+
+fn stricter_upper<T: Ord>(
+    left: T,
+    left_inclusive: bool,
+    right: T,
+    right_inclusive: bool,
+) -> (T, bool) {
+    match left.cmp(&right) {
+        Ordering::Less => (left, left_inclusive),
+        Ordering::Greater => (right, right_inclusive),
+        Ordering::Equal => (left, left_inclusive && right_inclusive),
     }
 }
 
@@ -918,7 +993,7 @@ impl Session {
                     let value = self.evaluate_expression(source, argument, trace)?;
                     if kind == "AddressRange" {
                         match value {
-                            Value::IntRange { lower, upper } if lower >= BigInt::from(0) => {
+                            Value::IntRange { lower, upper, .. } if lower >= BigInt::from(0) => {
                                 Ok(Value::AddressRange {
                                     attributes,
                                     lower,
@@ -977,7 +1052,7 @@ impl Session {
                 Value::AddressRangeType(attributes) => Some(
                     self.evaluate_expression(source, argument, trace).and_then(
                         |value| match value {
-                            Value::IntRange { lower, upper } if lower >= BigInt::from(0) => {
+                            Value::IntRange { lower, upper, .. } if lower >= BigInt::from(0) => {
                                 Ok(Value::AddressRange {
                                     attributes: attributes.clone(),
                                     lower,
@@ -3648,7 +3723,13 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
-                    && matches!(source.slice(*name), "range-lower" | "range-upper")
+                    && matches!(
+                        source.slice(*name),
+                        "range-lower"
+                            | "range-upper"
+                            | "range-lower-inclusive?"
+                            | "range-upper-inclusive?"
+                    )
                 {
                     let operation = source.slice(*name);
                     let operand_span = items[1].span();
@@ -5178,7 +5259,13 @@ impl Session {
         };
         let collection_value = self.evaluate_expression(source, collection, trace)?;
         let selector_value = self.evaluate_expression(source, selector, trace)?;
-        let Value::IntRange { lower, upper } = selector_value else {
+        let Value::IntRange {
+            lower,
+            upper,
+            lower_inclusive,
+            upper_inclusive,
+        } = selector_value
+        else {
             return Err(diagnostic(
                 source,
                 "E-SELECTION-RANGE",
@@ -5197,7 +5284,7 @@ impl Session {
                     .enumerate()
                     .filter(|(index, _)| {
                         let index = BigInt::from(*index);
-                        index >= lower && index <= upper
+                        bound_contains(&index, &lower, &upper, lower_inclusive, upper_inclusive)
                     })
                     .map(|(_, value)| value)
                     .collect();
@@ -5213,7 +5300,7 @@ impl Session {
                 let entries = entries
                     .into_iter()
                     .filter(|value| {
-                        matches!(value, Value::Int(candidate) if candidate >= &lower && candidate <= &upper)
+                        matches!(value, Value::Int(candidate) if bound_contains(candidate, &lower, &upper, lower_inclusive, upper_inclusive))
                     })
                     .collect();
                 Value::List {
@@ -5226,7 +5313,7 @@ impl Session {
                     .enumerate()
                     .filter(|(index, _)| {
                         let index = BigInt::from(*index);
-                        index >= lower && index <= upper
+                        bound_contains(&index, &lower, &upper, lower_inclusive, upper_inclusive)
                     })
                     .map(|(_, character)| character)
                     .collect::<String>();
@@ -5304,7 +5391,13 @@ impl Session {
         };
         let signed = source.slice(*kind) == "ModInt";
         let range_value = self.evaluate_expression(source, range, trace)?;
-        let Value::IntRange { lower, upper } = range_value else {
+        let Value::IntRange {
+            lower,
+            upper,
+            lower_inclusive: true,
+            upper_inclusive: true,
+        } = range_value
+        else {
             return Err(diagnostic(
                 source,
                 "E-MODULAR-RANGE",
@@ -11627,8 +11720,14 @@ fn apply_binary(
             alternative: alternative.to_owned(),
         });
     }
-    if kind == CallableKind::Range {
-        return apply_range(source, left, right, span, trace);
+    if matches!(
+        kind,
+        CallableKind::Range
+            | CallableKind::RangeOpen
+            | CallableKind::RangeInclusive
+            | CallableKind::RangeOpenInclusive
+    ) {
+        return apply_range(source, kind, left, right, span, trace);
     }
     if matches!(
         kind,
@@ -11739,31 +11838,71 @@ fn forget_refinement(value: Value, trace: &mut impl TraceSink, detail: &'static 
 
 fn apply_range(
     source: &SourceText,
+    kind: CallableKind,
     left: Value,
     right: Value,
     span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
+    let (lower_inclusive, upper_inclusive) = match kind {
+        CallableKind::Range => (true, false),
+        CallableKind::RangeOpen => (false, false),
+        CallableKind::RangeInclusive => (true, true),
+        CallableKind::RangeOpenInclusive => (false, true),
+        _ => unreachable!("range operator dispatched with range kind"),
+    };
     let (range, nonempty) = match (left, right) {
         (Value::Int(lower), Value::Int(upper)) => {
-            let nonempty = lower <= upper;
-            (Value::IntRange { lower, upper }, nonempty)
+            let nonempty = lower < upper || (lower == upper && lower_inclusive && upper_inclusive);
+            (
+                Value::IntRange {
+                    lower,
+                    upper,
+                    lower_inclusive,
+                    upper_inclusive,
+                },
+                nonempty,
+            )
         }
         (Value::Rational(lower), Value::Rational(upper)) => {
-            let nonempty = lower <= upper;
-            (Value::RationalRange { lower, upper }, nonempty)
+            let nonempty = lower < upper || (lower == upper && lower_inclusive && upper_inclusive);
+            (
+                Value::RationalRange {
+                    lower,
+                    upper,
+                    lower_inclusive,
+                    upper_inclusive,
+                },
+                nonempty,
+            )
         }
         (Value::Int(lower), Value::Rational(upper)) => {
             trace_conversion(trace, "Int->Rational:left");
             let lower = BigRational::from_integer(lower);
-            let nonempty = lower <= upper;
-            (Value::RationalRange { lower, upper }, nonempty)
+            let nonempty = lower < upper || (lower == upper && lower_inclusive && upper_inclusive);
+            (
+                Value::RationalRange {
+                    lower,
+                    upper,
+                    lower_inclusive,
+                    upper_inclusive,
+                },
+                nonempty,
+            )
         }
         (Value::Rational(lower), Value::Int(upper)) => {
             trace_conversion(trace, "Int->Rational:right");
             let upper = BigRational::from_integer(upper);
-            let nonempty = lower <= upper;
-            (Value::RationalRange { lower, upper }, nonempty)
+            let nonempty = lower < upper || (lower == upper && lower_inclusive && upper_inclusive);
+            (
+                Value::RationalRange {
+                    lower,
+                    upper,
+                    lower_inclusive,
+                    upper_inclusive,
+                },
+                nonempty,
+            )
         }
         _ => {
             return Err(diagnostic(
@@ -11776,7 +11915,7 @@ fn apply_range(
     };
     trace.record(TraceEvent {
         event: "range.constructed",
-        rule: "TOPAL-RANGE-INCLUSIVE-001",
+        rule: "TOPAL-RANGE-BOUNDS-001",
         detail: if nonempty { "nonempty" } else { "empty" },
     });
     Ok(range)
@@ -11794,6 +11933,30 @@ fn apply_range_bound(
         ("range-upper", Value::IntRange { upper, .. }) => Value::Int(upper),
         ("range-lower", Value::RationalRange { lower, .. }) => Value::Rational(lower),
         ("range-upper", Value::RationalRange { upper, .. }) => Value::Rational(upper),
+        (
+            "range-lower-inclusive?",
+            Value::IntRange {
+                lower_inclusive, ..
+            },
+        )
+        | (
+            "range-lower-inclusive?",
+            Value::RationalRange {
+                lower_inclusive, ..
+            },
+        ) => Value::Boolean(lower_inclusive),
+        (
+            "range-upper-inclusive?",
+            Value::IntRange {
+                upper_inclusive, ..
+            },
+        )
+        | (
+            "range-upper-inclusive?",
+            Value::RationalRange {
+                upper_inclusive, ..
+            },
+        ) => Value::Boolean(upper_inclusive),
         _ => {
             return Err(diagnostic(
                 source,
@@ -11820,24 +11983,84 @@ fn apply_range_membership(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let operands = match (callable, left, right) {
-        ("in", Value::Int(value), Value::IntRange { lower, upper })
-        | ("contains", Value::IntRange { lower, upper }, Value::Int(value)) => Some((
+        (
+            "in",
+            Value::Int(value),
+            Value::IntRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            },
+        )
+        | (
+            "contains",
+            Value::IntRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            },
+            Value::Int(value),
+        ) => Some((
             BigRational::from_integer(value),
             BigRational::from_integer(lower),
             BigRational::from_integer(upper),
+            lower_inclusive,
+            upper_inclusive,
         )),
-        ("in", Value::Rational(value), Value::RationalRange { lower, upper })
-        | ("contains", Value::RationalRange { lower, upper }, Value::Rational(value)) => {
-            Some((value, lower, upper))
-        }
-        ("in", Value::Int(value), Value::RationalRange { lower, upper })
-        | ("contains", Value::RationalRange { lower, upper }, Value::Int(value)) => {
+        (
+            "in",
+            Value::Rational(value),
+            Value::RationalRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            },
+        )
+        | (
+            "contains",
+            Value::RationalRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            },
+            Value::Rational(value),
+        ) => Some((value, lower, upper, lower_inclusive, upper_inclusive)),
+        (
+            "in",
+            Value::Int(value),
+            Value::RationalRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            },
+        )
+        | (
+            "contains",
+            Value::RationalRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            },
+            Value::Int(value),
+        ) => {
             trace_conversion(trace, "Int->Rational:membership");
-            Some((BigRational::from_integer(value), lower, upper))
+            Some((
+                BigRational::from_integer(value),
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            ))
         }
         _ => None,
     };
-    let Some((value, lower, upper)) = operands else {
+    let Some((value, lower, upper, lower_inclusive, upper_inclusive)) = operands else {
         return Err(diagnostic(
             source,
             "E-RANGE-MEMBERSHIP-OPERANDS",
@@ -11845,7 +12068,7 @@ fn apply_range_membership(
             "range membership requires compatible exact numeric operands",
         ));
     };
-    let accepted = lower <= value && value <= upper;
+    let accepted = bound_contains(&value, &lower, &upper, lower_inclusive, upper_inclusive);
     trace.record(TraceEvent {
         event: "range.membership.tested",
         rule: "TOPAL-RANGE-MEMBERSHIP-001",
@@ -11897,28 +12120,68 @@ fn apply_and(
             Value::IntRange {
                 lower: left_lower,
                 upper: left_upper,
+                lower_inclusive: left_lower_inclusive,
+                upper_inclusive: left_upper_inclusive,
             },
             Value::IntRange {
                 lower: right_lower,
                 upper: right_upper,
+                lower_inclusive: right_lower_inclusive,
+                upper_inclusive: right_upper_inclusive,
             },
-        ) => Value::IntRange {
-            lower: left_lower.max(right_lower),
-            upper: left_upper.min(right_upper),
-        },
+        ) => {
+            let (lower, lower_inclusive) = stricter_lower(
+                left_lower,
+                left_lower_inclusive,
+                right_lower,
+                right_lower_inclusive,
+            );
+            let (upper, upper_inclusive) = stricter_upper(
+                left_upper,
+                left_upper_inclusive,
+                right_upper,
+                right_upper_inclusive,
+            );
+            Value::IntRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            }
+        }
         (
             Value::RationalRange {
                 lower: left_lower,
                 upper: left_upper,
+                lower_inclusive: left_lower_inclusive,
+                upper_inclusive: left_upper_inclusive,
             },
             Value::RationalRange {
                 lower: right_lower,
                 upper: right_upper,
+                lower_inclusive: right_lower_inclusive,
+                upper_inclusive: right_upper_inclusive,
             },
-        ) => Value::RationalRange {
-            lower: left_lower.max(right_lower),
-            upper: left_upper.min(right_upper),
-        },
+        ) => {
+            let (lower, lower_inclusive) = stricter_lower(
+                left_lower,
+                left_lower_inclusive,
+                right_lower,
+                right_lower_inclusive,
+            );
+            let (upper, upper_inclusive) = stricter_upper(
+                left_upper,
+                left_upper_inclusive,
+                right_upper,
+                right_upper_inclusive,
+            );
+            Value::RationalRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            }
+        }
         _ => {
             return Err(diagnostic(
                 source,
@@ -12192,14 +12455,24 @@ fn apply_empty_predicate(
             "collection.empty.tested",
             "TOPAL-COLLECTION-EMPTY-PREDICATE-001",
         ),
-        Value::IntRange { lower, upper } => (
-            lower > upper,
+        Value::IntRange {
+            lower,
+            upper,
+            lower_inclusive,
+            upper_inclusive,
+        } => (
+            lower > upper || (lower == upper && !(lower_inclusive && upper_inclusive)),
             "Range Int".into(),
             "range.empty.tested",
             "TOPAL-RANGE-EMPTY-001",
         ),
-        Value::RationalRange { lower, upper } => (
-            lower > upper,
+        Value::RationalRange {
+            lower,
+            upper,
+            lower_inclusive,
+            upper_inclusive,
+        } => (
+            lower > upper || (lower == upper && !(lower_inclusive && upper_inclusive)),
             "Range Rational".into(),
             "range.empty.tested",
             "TOPAL-RANGE-EMPTY-001",
@@ -12883,7 +13156,12 @@ fn apply_list_index_operation(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     if operation == "remove-indexes"
-        && let Value::IntRange { lower, upper } = operand
+        && let Value::IntRange {
+            lower,
+            upper,
+            lower_inclusive,
+            upper_inclusive,
+        } = operand
     {
         let Ok(lower) = usize::try_from(lower) else {
             return list_boundary_failure(
@@ -12903,7 +13181,9 @@ fn apply_list_index_operation(
                 trace,
             );
         };
-        if lower > upper || upper >= entries.len() {
+        let start = lower + usize::from(!lower_inclusive);
+        let end = upper + usize::from(upper_inclusive);
+        if start > end || end > entries.len() {
             return list_boundary_failure(
                 source,
                 operation,
@@ -12912,11 +13192,11 @@ fn apply_list_index_operation(
                 trace,
             );
         }
-        entries.drain(lower..=upper);
+        entries.drain(start..end);
         trace.record(TraceEvent {
             event: "list.entries.removed",
             rule: "TOPAL-LIST-REMOVE-INDEXES-001",
-            detail: &format!("lower={lower};upper={upper}"),
+            detail: &format!("start={start};end={end}"),
         });
         return Ok(Value::List {
             element_classifier,
@@ -13840,7 +14120,12 @@ fn apply_int_binary(
         | CallableKind::GreaterEqual => {
             unreachable!("comparison is dispatched before numeric operations")
         }
-        CallableKind::Range => unreachable!("range is dispatched before numeric operations"),
+        CallableKind::Range
+        | CallableKind::RangeOpen
+        | CallableKind::RangeInclusive
+        | CallableKind::RangeOpenInclusive => {
+            unreachable!("range is dispatched before numeric operations")
+        }
         CallableKind::Plus => {
             trace.record(TraceEvent {
                 event: "operator.selected",
@@ -14033,7 +14318,12 @@ fn apply_rational_binary(
         | CallableKind::GreaterEqual => {
             unreachable!("comparison is dispatched before numeric operations")
         }
-        CallableKind::Range => unreachable!("range is dispatched before numeric operations"),
+        CallableKind::Range
+        | CallableKind::RangeOpen
+        | CallableKind::RangeInclusive
+        | CallableKind::RangeOpenInclusive => {
+            unreachable!("range is dispatched before numeric operations")
+        }
         CallableKind::Plus => (
             "root.+(Rational,Rational)",
             "evaluation.add",
@@ -14444,6 +14734,9 @@ const fn callable_name(kind: CallableKind) -> &'static str {
         CallableKind::LessEqual => "<=",
         CallableKind::Compare => "<=>",
         CallableKind::Range => "..",
+        CallableKind::RangeOpen => "<..",
+        CallableKind::RangeInclusive => "..=",
+        CallableKind::RangeOpenInclusive => "<..=",
         CallableKind::GreaterEqual => ">=",
         CallableKind::Plus => "+",
         CallableKind::Minus => "-",
@@ -14486,7 +14779,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 29] = [
+const ROOT_OPERATIONS: [&str; 31] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -14501,7 +14794,9 @@ const ROOT_OPERATIONS: [&str; 29] = [
     "lower",
     "normalize",
     "range-lower",
+    "range-lower-inclusive?",
     "range-upper",
+    "range-upper-inclusive?",
     "upper",
     "uncons",
     "not",
@@ -16782,18 +17077,21 @@ fn dynamic_rational_construction_distinguishes_zero_failures() {
 }
 
 #[test]
-fn inclusive_int_ranges_preserve_bounds_and_allow_empty_ranges() {
+fn int_ranges_preserve_all_endpoint_forms_and_allow_empty_ranges() {
     let mut trace = Vec::new();
     let value = Session::new()
-        .evaluate("interval is 0 .. 10\nempty-interval is 10 .. 0\n(interval, 5 in interval, interval contains 11, 5 in empty-interval)\n", &mut trace)
+        .evaluate("half-open is 0 .. 10\nopen is 0 <.. 10\nclosed is 0 ..= 10\nlower-open is 0 <..= 10\nempty-interval is 10 .. 10\n(half-open, 0 in half-open, 10 in half-open, 0 in open, 10 in open, 0 in closed, 10 in closed, 0 in lower-open, 10 in lower-open, empty? empty-interval, range-lower-inclusive? lower-open, range-upper-inclusive? lower-open)\n", &mut trace)
         .unwrap();
-    assert_eq!(value.to_string(), "(0 .. 10, true, false, false)");
+    assert_eq!(
+        value.to_string(),
+        "(0 .. 10, true, false, false, false, true, true, false, true, true, false, true)"
+    );
     assert_eq!(
         trace
             .iter()
-            .filter(|event| event.contains("TOPAL-RANGE-INCLUSIVE-001"))
+            .filter(|event| event.contains("TOPAL-RANGE-BOUNDS-001"))
             .count(),
-        2
+        5
     );
     assert!(trace.iter().any(|event| event.contains("empty")));
     assert_eq!(
@@ -16801,7 +17099,7 @@ fn inclusive_int_ranges_preserve_bounds_and_allow_empty_ranges() {
             .iter()
             .filter(|event| event.contains("TOPAL-RANGE-MEMBERSHIP-001"))
             .count(),
-        3
+        8
     );
 }
 
@@ -17767,8 +18065,8 @@ fn custom_generator_preserves_optional_values() {
 
 #[test]
 fn custom_generator_preserves_range_values() {
-    let value = Session::new().evaluate("narrow is generator ( initial : Range Int )\n  yields Range Int\n  resumes Unit\n  -> Range Int\n\n  _ is yield initial\n  initial and (5 .. 15)\ngenerated is narrow (0 .. 10)\ngenerated foreach { interval }\n  _ is 5 in interval\n", &mut Vec::new()).unwrap();
-    assert_eq!(value.to_string(), "5 .. 10");
+    let value = Session::new().evaluate("narrow is generator ( initial : Range Int )\n  yields Range Int\n  resumes Unit\n  -> Range Int\n\n  _ is yield initial\n  initial and (5 ..= 15)\ngenerated is narrow (0 ..= 10)\ngenerated foreach { interval }\n  _ is 5 in interval\n", &mut Vec::new()).unwrap();
+    assert_eq!(value.to_string(), "5 ..= 10");
 }
 
 #[test]

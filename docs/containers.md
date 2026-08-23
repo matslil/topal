@@ -858,7 +858,7 @@ map remove-keys keys
 A range over set members is a value predicate, not a positional range:
 
 ```topal
-numbers remove-members ( 10 .. 20 )
+numbers remove-members ( 10 ..= 20 )
 ```
 
 Removing from a fixed-size array produces an array with a smaller evidenced size
