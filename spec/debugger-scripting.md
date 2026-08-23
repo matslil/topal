@@ -19,12 +19,15 @@ scripts SHALL use the canonical form rather than prompt shortcuts.
 
 ### TOPAL-DEBUG-INTERACTIVE-001 — Interactive control interface
 
-An interactive debugger SHALL display the initial source position. It SHALL
-provide command-name and argument completion, up/down history navigation, and
-backward history search. Command history SHALL contain no duplicate entries;
-re-entering a command SHALL move that command to the newest position. Empty
-input SHALL repeat the latest execution-progressing command, if any, and SHALL
-NOT repeat a non-progressing command.
+An interactive debugger SHALL display the first parsed Topal clause as the
+initial source position and SHALL NOT identify launcher metadata as executable
+source. `step` and `next` SHALL both advance across a built-in clause that has
+no source implementation to enter. The debugger SHALL provide command-name and
+argument completion, up/down history navigation, and backward history search.
+Command history SHALL contain no duplicate entries; re-entering a command SHALL
+move that command to the newest position. Empty input SHALL repeat the latest
+execution-progressing command, if any, and SHALL NOT repeat a non-progressing
+command.
 
 Forward `continue` SHALL extend live execution until a configured stop,
 diagnostic, manual interruption, or application completion. `run` SHALL restart

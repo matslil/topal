@@ -42,13 +42,16 @@ an older command again moves it to the newest position. A blank line repeats
 the most recent command that advances execution, but does not repeat inspection,
 help, breakpoint management, or other non-progressing commands.
 
-The debugger prints the initial source position when it starts. `continue`
-runs until a breakpoint, watchpoint, diagnostic, manual interruption, or normal
-application completion. `run` reconstructs the debuggee and stops at its
-initial position. Bare `until` leaves the current source frame; at application
-scope that means running to completion. `until LINE`, `until FILE:LINE`, and
-`until CONDITION` stop at a location or when a read-only Boolean inspection
-expression becomes true.
+The debugger prints the first parsed Topal clause as the initial source
+position, excluding launcher metadata such as a hashbang. A built-in clause
+such as `use language` has no source implementation to enter, so `step` and
+`next` both advance from it to the following clause. `continue` runs until a
+breakpoint, watchpoint, diagnostic, manual interruption, or normal application
+completion. `run` reconstructs the debuggee and stops at its initial position.
+Bare `until` leaves the current source frame; at application scope that means
+running to completion. `until LINE`, `until FILE:LINE`, and `until CONDITION`
+stop at a location or when a read-only Boolean inspection expression becomes
+true.
 
 Interactive semantic history describes rules in ordinary words rather than
 showing repository requirement identifiers. Debugger command files retain the

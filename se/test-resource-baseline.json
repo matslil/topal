@@ -3648,6 +3648,10 @@
     "topal-debugger::test:cli::startup_continue_until_and_run_have_live_source_semantics": {
       "cpu_time_ns": 8404540,
       "memory_peak_bytes": 18214912
+    },
+    "topal-debugger::test:cli::language_selection_is_the_initial_position_and_built_in_step_boundary": {
+      "cpu_time_ns": 442805580,
+      "memory_peak_bytes": 17924096
     }
   }
 }

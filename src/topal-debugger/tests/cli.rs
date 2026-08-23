@@ -9,13 +9,10 @@ fn language_example(name: &str) -> String {
     )
 }
 
-fn run_basic_commands(commands: &str) -> String {
-    let source = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../examples/debugger/basic-history.t"
-    );
+fn run_debugger_commands(source: &str, commands: &str) -> String {
+    let library_root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../library");
     let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
-        .args(["--script", "-", source])
+        .args(["--library-root", library_root, "--script", "-", source])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -34,15 +31,40 @@ fn run_basic_commands(commands: &str) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
+fn run_basic_commands(commands: &str) -> String {
+    run_debugger_commands(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/debugger/basic-history.t"
+        ),
+        commands,
+    )
+}
+
 #[test]
 fn startup_continue_until_and_run_have_live_source_semantics() {
     let stdout = run_basic_commands("continue\nprint\nrun\nuntil 8\nprint\nrun\nuntil true");
-    assert!(stdout.contains("basic-history.t:1:1"));
+    assert!(stdout.contains("basic-history.t:2:1"));
     assert!(stdout.contains("application finished"));
-    assert!(stdout.matches("basic-history.t:1:1").count() >= 3);
+    assert!(stdout.matches("basic-history.t:2:1").count() >= 3);
     assert!(stdout.contains("basic-history.t:8:1"));
     assert!(stdout.contains("\n42\n"));
     assert!(stdout.contains("\n40\n"));
+}
+
+#[test]
+fn language_selection_is_the_initial_position_and_built_in_step_boundary() {
+    let source = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/data-transfer/packet-filter.t"
+    );
+    for command in ["next", "step"] {
+        let stdout = run_debugger_commands(source, command);
+        let language = stdout.find("packet-filter.t:2:1").unwrap();
+        let library = stdout.find("packet-filter.t:5:1").unwrap();
+        assert!(language < library, "{command} output:\n{stdout}");
+        assert!(!stdout.contains("packet-filter.t:1:1"));
+    }
 }
 
 #[test]
