@@ -122,6 +122,7 @@ fn step_enters_declared_library_while_next_stays_in_the_current_file() {
     assert!(stdout.contains("module.loaded [TOPAL-NAMESPACE-USE-001]"));
     assert!(stdout.contains("examples/data-transfer/rest-controller.t:5:1"));
     assert!(!stdout.contains("rest-controller.t:12:50"));
+    assert!(!stdout.contains('^'));
     assert!(!stdout.contains("error["));
 }
 
