@@ -534,6 +534,13 @@ fn command_loop(
                     &watchpoints,
                     interrupted,
                 ) => {}
+            "step" | "s" if history.cursor() < *current_source_start => {
+                match live_next(history, session, execution, *current_source_start, complete) {
+                    Ok(true) => print_source_location(history, source, source_name),
+                    Ok(false) => println!("end of current frame"),
+                    Err(error) => println!("{}", error.render(source_name)),
+                }
+            }
             command if command == "until" || command.starts_with("until ") => {
                 handle_until_command(
                     command,
@@ -1249,15 +1256,41 @@ fn live_next(
 }
 
 fn print_initial_position(source: &str, source_name: &str) {
-    let start = source
-        .char_indices()
-        .find(|(_, character)| !character.is_whitespace())
-        .map_or(0, |(offset, _)| offset);
+    let start = SourceText::new(source)
+        .ok()
+        .and_then(|text| {
+            parse(&text, &lex(&text))
+                .statements
+                .first()
+                .map(statement_start)
+        })
+        .unwrap_or(0);
     let range = topal_language::SourceRange { start, end: start };
     print!(
         "{}",
         render_source_position(source, source_name, range, None)
     );
+}
+
+fn statement_start(statement: &Statement) -> usize {
+    match statement {
+        Statement::LanguageSelection { span, .. }
+        | Statement::LibrarySelection { span, .. }
+        | Statement::Published { span, .. }
+        | Statement::DiagnosticControl { span, .. }
+        | Statement::Implementation { span, .. }
+        | Statement::ContextAssignment { span, .. }
+        | Statement::Function { span, .. }
+        | Statement::Generator { span, .. }
+        | Statement::Union { span, .. }
+        | Statement::Interface { span, .. }
+        | Statement::InterfaceImplementation { span, .. }
+        | Statement::Foreach { span, .. }
+        | Statement::Discard { span, .. } => span.start,
+        Statement::Binding { name, .. } | Statement::StateField { name, .. } => name.start,
+        Statement::Return { keyword, .. } => keyword.start,
+        Statement::Expression(expression) => expression.span().start,
+    }
 }
 
 fn reverse_next(

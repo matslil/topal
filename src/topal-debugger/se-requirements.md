@@ -86,11 +86,14 @@ shall show both locations.
 The interactive debugger shall support unique command completion with argument
 guidance, deduplicated navigable and reverse-searchable command history, and
 blank-line repetition of only the latest execution-progressing command. It
-shall show the initial source position and provide live continue, restart, and
-source-frame or destination-oriented until control, including manual
-interruption of live execution. Human-facing semantic output shall describe
-rules without exposing requirement-style identifiers; deterministic debugger
-scripts may retain stable identifiers as a conformance interface.
+shall show the first parsed Topal clause as the initial source position rather
+than launcher metadata. Step and next shall advance identically across a
+built-in clause with no source implementation. The debugger shall provide live
+continue, restart, and source-frame or destination-oriented until control,
+including manual interruption of live execution. Human-facing semantic output
+shall describe rules without exposing requirement-style identifiers;
+deterministic debugger scripts may retain stable identifiers as a conformance
+interface.
 
 ## TOPAL-DEBUG-MESSAGE-001 — Step into message transactions
 
