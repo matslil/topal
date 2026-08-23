@@ -3652,6 +3652,154 @@
     "topal-debugger::test:cli::language_selection_is_the_initial_position_and_built_in_step_boundary": {
       "cpu_time_ns": 442805580,
       "memory_peak_bytes": 17924096
+    },
+    "topal-debugger::test:cli::every_language_example_executes_through_the_debugger": {
+      "cpu_time_ns": 1630130540,
+      "memory_peak_bytes": 18104320
+    },
+    "topal-debugger::test:cli::records_reversible_int_range_endpoint_forms": {
+      "cpu_time_ns": 15939580,
+      "memory_peak_bytes": 17899520
+    },
+    "topal-interpreter::test:cli::every_advent_of_code_2025_solver_matches_its_topal_test_file": {
+      "cpu_time_ns": 14720688860,
+      "memory_peak_bytes": 27627520
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_all_int_range_endpoint_forms": {
+      "cpu_time_ns": 39834319,
+      "memory_peak_bytes": 18112512
+    },
+    "topal-interpreter::test:cli::explicit_input_file_calls_solve_and_prints_only_its_result": {
+      "cpu_time_ns": 7187140,
+      "memory_peak_bytes": 17842176
+    },
+    "topal-language::lib:topal_language::modules::tests::shared_library_retains_flat_fundamentals_and_nested_extensions": {
+      "cpu_time_ns": 263054160,
+      "memory_peak_bytes": 19968000
+    },
+    "topal-language::lib:topal_language::source::int_ranges_preserve_all_endpoint_forms_and_allow_empty_ranges": {
+      "cpu_time_ns": 6101719,
+      "memory_peak_bytes": 17870848
+    },
+    "topal-language::test:core_language_coverage::every_stable_rule_has_a_reviewed_source_tool_disposition": {
+      "cpu_time_ns": 3802120,
+      "memory_peak_bytes": 18124800
+    },
+    "topal-language::test:core_language_coverage::every_system_and_tool_requirement_has_traceability_evidence": {
+      "cpu_time_ns": 187910559,
+      "memory_peak_bytes": 17887232
+    },
+    "topal-language::test:standard_library::false_topal_expectation_fails_without_a_rust_golden_value": {
+      "cpu_time_ns": 4963439,
+      "memory_peak_bytes": 17911808
+    },
+    "topal-language::test:standard_library::topal_standard_library_expectations_pass": {
+      "cpu_time_ns": 4147436620,
+      "memory_peak_bytes": 23015424
+    },
+    "topal-linter::lib:topal_linter::tests::every_language_example_uses_the_shared_linter_frontend": {
+      "cpu_time_ns": 149508320,
+      "memory_peak_bytes": 17813504
+    },
+    "topal-linter::test:cli::accepts_standard_library_sources_and_topal_tests": {
+      "cpu_time_ns": 165064880,
+      "memory_peak_bytes": 18137088
+    },
+    "topal-lsp::lib:topal_lsp::tests::accepts_standard_library_sources_and_topal_tests": {
+      "cpu_time_ns": 107885360,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-syntax::lib:topal_syntax::tests::tokenizes_each_range_bound_form_as_one_callable": {
+      "cpu_time_ns": 2015660,
+      "memory_peak_bytes": 17813504
+    },
+    "topal-transfer::lib:topal_transfer::compatibility::tests::compatibility_never_silently_crosses_major_versions": {
+      "cpu_time_ns": 2022580,
+      "memory_peak_bytes": 17907712
+    },
+    "topal-transfer::lib:topal_transfer::database::tests::rows_are_schema_checked": {
+      "cpu_time_ns": 2012680,
+      "memory_peak_bytes": 17915904
+    },
+    "topal-transfer::lib:topal_transfer::device::tests::ownership_survives_removal": {
+      "cpu_time_ns": 1881740,
+      "memory_peak_bytes": 17793024
+    },
+    "topal-transfer::lib:topal_transfer::file_store::tests::paths_are_queries_not_identity": {
+      "cpu_time_ns": 1838699,
+      "memory_peak_bytes": 17981440
+    },
+    "topal-transfer::lib:topal_transfer::firewall::tests::software_and_offload_are_semantically_equivalent": {
+      "cpu_time_ns": 1736680,
+      "memory_peak_bytes": 17813504
+    },
+    "topal-transfer::lib:topal_transfer::framing::tests::arbitrary_chunking_preserves_messages": {
+      "cpu_time_ns": 1844520,
+      "memory_peak_bytes": 17997824
+    },
+    "topal-transfer::lib:topal_transfer::host::tests::authority_is_injected_and_replay_repeats_no_effect": {
+      "cpu_time_ns": 1889040,
+      "memory_peak_bytes": 18059264
+    },
+    "topal-transfer::lib:topal_transfer::i2c::tests::combined_sensor_read_and_nack_are_explicit": {
+      "cpu_time_ns": 1783960,
+      "memory_peak_bytes": 18001920
+    },
+    "topal-transfer::lib:topal_transfer::native::tests::manifest_never_claims_mobile_i2c": {
+      "cpu_time_ns": 1771400,
+      "memory_peak_bytes": 18022400
+    },
+    "topal-transfer::lib:topal_transfer::network::tests::families_remain_distinct": {
+      "cpu_time_ns": 1728839,
+      "memory_peak_bytes": 18124800
+    },
+    "topal-transfer::lib:topal_transfer::operation::tests::cancellation_and_completion_have_one_terminal_observation": {
+      "cpu_time_ns": 1823820,
+      "memory_peak_bytes": 18120704
+    },
+    "topal-transfer::lib:topal_transfer::operation::tests::completion_order_is_observation_order": {
+      "cpu_time_ns": 2023680,
+      "memory_peak_bytes": 17891328
+    },
+    "topal-transfer::lib:topal_transfer::operation::tests::queue_bound_and_retry_admission_are_explicit": {
+      "cpu_time_ns": 1807980,
+      "memory_peak_bytes": 18124800
+    },
+    "topal-transfer::lib:topal_transfer::region::tests::spans_are_checked_and_zero_copy": {
+      "cpu_time_ns": 1724500,
+      "memory_peak_bytes": 17932288
+    },
+    "topal-transfer::lib:topal_transfer::store::tests::guarantees_do_not_silently_strengthen_and_lost_commit_is_uncertain": {
+      "cpu_time_ns": 1763840,
+      "memory_peak_bytes": 18026496
+    },
+    "topal-transfer::lib:topal_transfer::store::tests::identity_is_not_a_name_and_changes_are_bounded": {
+      "cpu_time_ns": 1834799,
+      "memory_peak_bytes": 18145280
+    },
+    "topal-transfer::lib:topal_transfer::tests::capability_is_confined_to_its_endpoint": {
+      "cpu_time_ns": 1737059,
+      "memory_peak_bytes": 18120704
+    },
+    "topal-transfer::lib:topal_transfer::tests::close_is_a_protocol_transition": {
+      "cpu_time_ns": 1781720,
+      "memory_peak_bytes": 17866752
+    },
+    "topal-transfer::lib:topal_transfer::tests::pair_preserves_message_boundaries_and_backpressure": {
+      "cpu_time_ns": 1906520,
+      "memory_peak_bytes": 18128896
+    },
+    "topal-transfer::lib:topal_transfer::transport::tests::sequence_reports_partial_progress_and_half_close": {
+      "cpu_time_ns": 1766599,
+      "memory_peak_bytes": 18001920
+    },
+    "topal-transfer::lib:topal_transfer::view::tests::mutation_invalidates_only_overlapping_evidence": {
+      "cpu_time_ns": 1765920,
+      "memory_peak_bytes": 18132992
+    },
+    "topal-transfer::test:conformance_closure::closure_has_exact_terminal_evidence": {
+      "cpu_time_ns": 2299279,
+      "memory_peak_bytes": 17772544
     }
   }
 }

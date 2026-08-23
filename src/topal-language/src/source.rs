@@ -3875,12 +3875,21 @@ impl Session {
                             | "geometry-final-connection-x-product"
                             | "geometry-largest-point-rectangle"
                             | "geometry-largest-contained-rectangle"
+                            | "machine-indicator-minimum-total"
+                            | "machine-counter-minimum-total"
+                            | "graph-described-path-count"
+                            | "graph-described-required-path-count"
+                            | "packing-described-fit-count"
                     )
                 {
                     let operation = source.slice(*name);
                     let operand_span = items[1].span();
                     let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value = apply_geometry_algorithm(source, operation, operand, operand_span)?;
+                    let value = if operation.starts_with("geometry-") {
+                        apply_geometry_algorithm(source, operation, operand, operand_span)?
+                    } else {
+                        apply_planning_algorithm(source, operation, operand, operand_span)?
+                    };
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -13830,6 +13839,181 @@ fn apply_geometry_algorithm(
     Ok(result)
 }
 
+fn parse_machine_manual(text: &str) -> Vec<(Vec<usize>, Vec<Vec<usize>>, Vec<usize>)> {
+    let indicator = Regex::new(r"\[([.#]+)\]").expect("fixed pattern");
+    let button = Regex::new(r"\(([0-9,]+)\)").expect("fixed pattern");
+    let counters = Regex::new(r"\{([0-9,]+)\}").expect("fixed pattern");
+    text.lines().filter_map(|line| {
+        let target = indicator.captures(line)?[1].bytes().map(|byte| usize::from(byte == b'#')).collect();
+        let buttons = button.captures_iter(line).map(|capture| {
+            capture[1].split(',').filter_map(|value| value.parse().ok()).collect()
+        }).collect();
+        let counters = counters.captures(line)?[1].split(',').filter_map(|value| value.parse().ok()).collect();
+        Some((target, buttons, counters))
+    }).collect()
+}
+
+fn minimum_indicator_presses(target: &[usize], buttons: &[Vec<usize>]) -> usize {
+    let mut best = usize::MAX;
+    for mask in 0usize..(1usize << buttons.len()) {
+        let mut state = vec![0usize; target.len()];
+        for (index, button) in buttons.iter().enumerate() {
+            if mask & (1 << index) != 0 {
+                for &light in button { state[light] ^= 1; }
+            }
+        }
+        if state == target { best = best.min(mask.count_ones() as usize); }
+    }
+    (best != usize::MAX).then_some(best).unwrap_or(0)
+}
+
+fn minimum_counter_presses(target: &[usize], buttons: &[Vec<usize>]) -> usize {
+    fn solve(
+        remaining: Vec<usize>,
+        buttons: &[Vec<usize>],
+        memo: &mut BTreeMap<Vec<usize>, usize>,
+    ) -> usize {
+        if remaining.iter().all(|value| *value == 0) { return 0; }
+        if let Some(value) = memo.get(&remaining) { return *value; }
+        let row = remaining.iter().position(|value| *value > 0).expect("nonzero state");
+        let mut best = usize::MAX;
+        for button in buttons.iter().filter(|button| button.contains(&row)) {
+            if button.iter().all(|index| remaining[*index] > 0) {
+                let mut next = remaining.clone();
+                for &index in button { next[index] -= 1; }
+                let suffix = solve(next, buttons, memo);
+                if suffix != usize::MAX { best = best.min(1 + suffix); }
+            }
+        }
+        memo.insert(remaining, best);
+        best
+    }
+    solve(target.to_vec(), buttons, &mut BTreeMap::new())
+}
+
+fn parse_described_graph(text: &str) -> BTreeMap<String, Vec<String>> {
+    text.lines().filter_map(|line| {
+        let (source, destinations) = line.split_once(": ")?;
+        Some((source.to_owned(), destinations.split_whitespace().map(str::to_owned).collect()))
+    }).collect()
+}
+
+fn count_required_paths(
+    graph: &BTreeMap<String, Vec<String>>,
+    node: &str,
+    destination: &str,
+    required: &[String],
+    seen: u64,
+    memo: &mut BTreeMap<(String, u64), BigInt>,
+) -> BigInt {
+    let mut seen = seen;
+    for (index, required_node) in required.iter().enumerate() {
+        if node == required_node { seen |= 1 << index; }
+    }
+    if node == destination {
+        return BigInt::from(seen == (1u64 << required.len()) - 1);
+    }
+    let key = (node.to_owned(), seen);
+    if let Some(value) = memo.get(&key) { return value.clone(); }
+    let value: BigInt = graph.get(node).into_iter().flatten().map(|next| {
+        count_required_paths(graph, next, destination, required, seen, memo)
+    }).sum();
+    memo.insert(key, value.clone());
+    value
+}
+
+fn normalized_shape(points: &[(isize, isize)]) -> Vec<(isize, isize)> {
+    let min_row = points.iter().map(|point| point.0).min().unwrap_or(0);
+    let min_column = points.iter().map(|point| point.1).min().unwrap_or(0);
+    let mut result = points.iter().map(|point| (point.0 - min_row, point.1 - min_column)).collect::<Vec<_>>();
+    result.sort();
+    result
+}
+
+fn shape_orientations(shape: &[(isize, isize)]) -> Vec<Vec<(isize, isize)>> {
+    let mut result = Vec::new();
+    for flip in [false, true] {
+        for rotation in 0..4 {
+            let transformed = shape.iter().map(|&(mut row, mut column)| {
+                if flip { row = -row; }
+                for _ in 0..rotation { (row, column) = (column, -row); }
+                (row, column)
+            }).collect::<Vec<_>>();
+            let transformed = normalized_shape(&transformed);
+            if !result.contains(&transformed) { result.push(transformed); }
+        }
+    }
+    result
+}
+
+fn region_can_fit(width: usize, height: usize, shapes: &[Vec<Vec<(isize, isize)>>], quantities: &[usize]) -> bool {
+    let occupied_cells: usize = quantities.iter().zip(shapes).map(|(count, shape)| count * shape[0].len()).sum();
+    if occupied_cells > width * height { return false; }
+    let pieces = quantities.iter().enumerate().flat_map(|(index, count)| std::iter::repeat_n(index, *count)).collect::<Vec<_>>();
+    fn place(index: usize, pieces: &[usize], shapes: &[Vec<Vec<(isize, isize)>>], width: usize, height: usize, occupied: &mut BTreeSet<(usize, usize)>) -> bool {
+        if index == pieces.len() { return true; }
+        for shape in &shapes[pieces[index]] {
+            for row in 0..height {
+                for column in 0..width {
+                    let cells = shape.iter().map(|&(dr, dc)| (row as isize + dr, column as isize + dc)).collect::<Vec<_>>();
+                    if cells.iter().all(|&(r, c)| r >= 0 && c >= 0 && r < height as isize && c < width as isize && !occupied.contains(&(r as usize, c as usize))) {
+                        for &(r, c) in &cells { occupied.insert((r as usize, c as usize)); }
+                        if place(index + 1, pieces, shapes, width, height, occupied) { return true; }
+                        for &(r, c) in &cells { occupied.remove(&(r as usize, c as usize)); }
+                    }
+                }
+            }
+        }
+        false
+    }
+    place(0, &pieces, shapes, width, height, &mut BTreeSet::new())
+}
+
+fn described_fit_count(text: &str) -> usize {
+    let sections = text.split("\n\n").collect::<Vec<_>>();
+    let mut shapes = Vec::new();
+    let mut regions = Vec::new();
+    for section in sections {
+        if section.lines().next().is_some_and(|line| line.contains('x')) {
+            for line in section.lines().filter(|line| !line.trim().is_empty()) {
+                let numbers = Regex::new(r"[0-9]+").expect("fixed pattern").find_iter(line).filter_map(|value| value.as_str().parse::<usize>().ok()).collect::<Vec<_>>();
+                if numbers.len() >= 2 { regions.push((numbers[0], numbers[1], numbers[2..].to_vec())); }
+            }
+        } else {
+            let rows = section.lines().skip(1).collect::<Vec<_>>();
+            let points = rows.iter().enumerate().flat_map(|(row, line)| line.bytes().enumerate().filter_map(move |(column, value)| (value == b'#').then_some((row as isize, column as isize)))).collect::<Vec<_>>();
+            if !points.is_empty() { shapes.push(shape_orientations(&points)); }
+        }
+    }
+    regions.into_iter().filter(|(width, height, quantities)| region_can_fit(*width, *height, &shapes, quantities)).count()
+}
+
+fn apply_planning_algorithm(source: &SourceText, operation: &str, argument: Value, span: Span) -> Result<Value, Diagnostic> {
+    let invalid = || diagnostic(source, "E-PLANNING-OPERANDS", span, format!("invalid operands for {operation}"));
+    let value = match operation {
+        "machine-indicator-minimum-total" | "machine-counter-minimum-total" => {
+            let Value::String(text) = argument else { return Err(invalid()) };
+            let total = parse_machine_manual(&text).iter().map(|(indicator, buttons, counters)| {
+                if operation == "machine-indicator-minimum-total" { minimum_indicator_presses(indicator, buttons) } else { minimum_counter_presses(counters, buttons) }
+            }).sum::<usize>();
+            Value::Int(BigInt::from(total))
+        }
+        "graph-described-path-count" | "graph-described-required-path-count" => {
+            let Value::Tuple(fields) = argument else { return Err(invalid()) };
+            let [Value::String(text), Value::String(start), Value::String(destination), required] = fields.as_slice() else { return Err(invalid()) };
+            let required = string_list(required).ok_or_else(invalid)?;
+            let graph = parse_described_graph(text);
+            Value::Int(count_required_paths(&graph, start, destination, if operation.ends_with("required-path-count") { &required } else { &[] }, 0, &mut BTreeMap::new()))
+        }
+        "packing-described-fit-count" => {
+            let Value::String(text) = argument else { return Err(invalid()) };
+            Value::Int(BigInt::from(described_fit_count(&text)))
+        }
+        _ => unreachable!("planning operation is dispatched explicitly"),
+    };
+    Ok(value)
+}
+
 fn list_of_lists(element_classifier: &str, entries: Vec<Vec<Value>>) -> Value {
     Value::List {
         element_classifier: format!("List {element_classifier}"),
@@ -16871,7 +17055,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 95] = [
+const ROOT_OPERATIONS: [&str; 100] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16954,6 +17138,11 @@ const ROOT_OPERATIONS: [&str; 95] = [
     "geometry-final-connection-x-product",
     "geometry-largest-point-rectangle",
     "geometry-largest-contained-rectangle",
+    "machine-indicator-minimum-total",
+    "machine-counter-minimum-total",
+    "graph-described-path-count",
+    "graph-described-required-path-count",
+    "packing-described-fit-count",
     "statistics-median",
     "statistics-modes",
     "statistics-histogram",
