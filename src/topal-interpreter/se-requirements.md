@@ -1949,6 +1949,16 @@ missing or unreadable data, invalid UTF-8, a missing source file, and an absent
 or inapplicable `solve` function without granting ambient filesystem access to
 Topal code.
 
+## TOPAL-INTP-TEST-RUNNER-001 — Independent Topal test execution
+
+The interpreter shall provide a `topal test` command that recursively
+discovers Topal `.t` test programs, assigns one stable path identity to each
+file, and reports each result independently from Rust implementation tests. It
+shall support exact and substring selection, deterministic listing and output,
+bounded parallel execution, explicit library roots, and a failing process
+status when any selected Topal program fails. The legacy `--test` execution
+trace mode shall remain distinct.
+
 ## TOPAL-INTP-COMPILER-BOUNDARY-001 — Compiler-only static operations
 
 The interpreter shall use the shared GEIR boundary for artifact export,

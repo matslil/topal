@@ -9,6 +9,8 @@ use topal_language::{
     load_module_tree,
 };
 
+mod test_runner;
+
 enum Mode {
     Script,
     Interactive,
@@ -34,7 +36,15 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), String> {
-    let arguments = parse_arguments(env::args().skip(1))?;
+    let mut raw_arguments = env::args().skip(1).peekable();
+    if raw_arguments
+        .peek()
+        .is_some_and(|argument| argument == "test")
+    {
+        raw_arguments.next();
+        return test_runner::run(raw_arguments);
+    }
+    let arguments = parse_arguments(raw_arguments)?;
     if arguments.input.is_some() && matches!(arguments.mode, Mode::Interactive) {
         return Err("--input is available only in script and test modes".into());
     }
@@ -113,7 +123,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             "--help" => {
                 println!(
-                    "Usage: topal [--library-root DIR] [--input DATA] [--interactive [--language-version VERSION] | --test] [FILE]\n\nWith no FILE, source is read from standard input. --input evaluates FILE, then calls its `solve` function with the complete DATA file as a String. Source files declare their language and library dependencies."
+                    "Usage: topal [--library-root DIR] [--input DATA] [--interactive [--language-version VERSION] | --test] [FILE]\n       topal test [OPTIONS] [PATH...]\n\nWith no FILE, source is read from standard input. --input evaluates FILE, then calls its `solve` function with the complete DATA file as a String. `topal test` discovers and runs Topal test programs separately from Rust implementation tests. Source files declare their language and library dependencies."
                 );
                 std::process::exit(0);
             }
