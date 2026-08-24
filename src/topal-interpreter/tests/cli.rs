@@ -126,40 +126,24 @@ fn topal_test_command_discovers_filters_and_reports_individual_programs() {
 }
 
 #[test]
-fn every_advent_of_code_2025_solver_matches_its_topal_test_file() {
+fn topal_test_command_executes_application_manifests() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let examples = root.join("examples/advent-of-code/2025");
-    let tests = root.join("tests/advent-of-code/2025");
-    let mut solvers = std::fs::read_dir(&examples)
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
-        .collect::<Vec<_>>();
-    solvers.sort();
-    assert!(!solvers.is_empty());
-
-    for solver in solvers {
-        let name = solver.file_stem().unwrap().to_str().unwrap();
-        let input = tests.join(format!("{name}.input"));
-        let expected = std::fs::read(tests.join(format!("{name}.output"))).unwrap();
-        let output = Command::new(env!("CARGO_BIN_EXE_topal"))
-            .args([
-                "--library-root",
-                root.join("library").to_str().unwrap(),
-                "--input",
-                input.to_str().unwrap(),
-                solver.to_str().unwrap(),
-            ])
-            .output()
-            .unwrap();
-        assert!(
-            output.status.success(),
-            "{name} failed:\n{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert_eq!(output.stdout, expected, "{name} returned the wrong answer");
-        assert!(output.stderr.is_empty(), "{name} wrote diagnostics");
-    }
+    let manifest = "tests/advent-of-code/2025/day01-part1.t";
+    let output = Command::new(env!("CARGO_BIN_EXE_topal"))
+        .current_dir(&root)
+        .args(["test", "--exact", manifest, manifest])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("1 Topal tests: 1 passed; 0 failed")
+    );
 }
 
 #[test]

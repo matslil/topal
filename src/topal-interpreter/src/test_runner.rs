@@ -1,10 +1,11 @@
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
 
-use topal_language::{Session, declares_library, load_module_tree};
+use topal_language::{Session, Value, declares_library, load_module_tree};
 
 struct Arguments {
     paths: Vec<PathBuf>,
@@ -209,11 +210,81 @@ fn execute(path: &Path, library_root: &Path, working_directory: &Path) -> Outcom
                 load_module_tree(&mut session, library_root, &mut trace)
                     .map_err(|error| format!("{identity}: {error}"))?;
             }
-            session
+            let value = session
                 .evaluate_source_file(&source, &mut trace)
-                .map(|_| ())
-                .map_err(|error| error.render(&identity))
+                .map_err(|error| error.render(&identity))?;
+            execute_application_manifest(value, library_root, working_directory)
         })
         .err();
     Outcome { identity, failure }
+}
+
+fn execute_application_manifest(
+    value: Value,
+    library_root: &Path,
+    working_directory: &Path,
+) -> Result<(), String> {
+    let Value::Tuple(fields) = value else {
+        return Ok(());
+    };
+    let [
+        Value::String(kind),
+        Value::String(source),
+        Value::String(input),
+        Value::String(expected),
+    ] = fields.as_slice()
+    else {
+        return Ok(());
+    };
+    if kind != "application-test" {
+        return Ok(());
+    }
+    let resolve = |path: &str| {
+        let path = PathBuf::from(path);
+        if path.is_absolute() {
+            path
+        } else {
+            working_directory.join(path)
+        }
+    };
+    let source = resolve(source);
+    let input = resolve(input);
+    let expected = resolve(expected);
+    let expected_output = fs::read(&expected).map_err(|error| {
+        format!(
+            "cannot read expected output {}: {error}",
+            expected.display()
+        )
+    })?;
+    let output = Command::new(env::current_exe().map_err(|error| error.to_string())?)
+        .args(["--library-root"])
+        .arg(library_root)
+        .arg("--input")
+        .arg(&input)
+        .arg(&source)
+        .output()
+        .map_err(|error| format!("cannot run {}: {error}", source.display()))?;
+    if !output.status.success() {
+        return Err(format!(
+            "application {} failed:\n{}",
+            source.display(),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    if !output.stderr.is_empty() {
+        return Err(format!(
+            "application {} wrote diagnostics:\n{}",
+            source.display(),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    if output.stdout != expected_output {
+        return Err(format!(
+            "application {} returned the wrong output\nexpected: {:?}\nactual: {:?}",
+            source.display(),
+            String::from_utf8_lossy(&expected_output),
+            String::from_utf8_lossy(&output.stdout)
+        ));
+    }
+    Ok(())
 }

@@ -186,6 +186,15 @@ rectangular packing of requested free polyominoes, considering rotations and
 reflections without overlap. These operations SHALL return exact integer
 results and SHALL be deterministic.
 
+### TOPAL-LIB-TEST-001 — Topal test descriptions
+
+The `std test` namespace SHALL construct declarative application-test values
+from a Topal source path, input path, and exact expected-standard-output path.
+`topal test` SHALL interpret such a value as an application test without
+granting the tested Topal application ambient filesystem authority. Ordinary
+self-checking Topal programs SHALL remain valid tests without a description
+wrapper.
+
 ### TOPAL-LIB-GRAPH-001 — Finite directed reachability
 
 The `std graph` namespace SHALL provide reachability closure and membership for

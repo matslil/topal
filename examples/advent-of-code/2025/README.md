@@ -18,11 +18,11 @@ that directory is ignored because Advent of Code asks participants not to
 redistribute inputs.
 
 The committed `tests/advent-of-code/2025/` data is independently constructed
-and intentionally small. Run every example against its matching fixture with:
+and intentionally small. Each `.t` file is a Topal application-test manifest.
+Run every example against its matching fixture with:
 
 ```sh
-cargo test -p topal-interpreter --test cli \
-  every_advent_of_code_2025_solver_matches_its_topal_test_file
+topal test tests/advent-of-code/2025
 ```
 
 The fixtures test the same input shape and algorithmic edge as the puzzle, but
