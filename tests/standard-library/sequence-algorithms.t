@@ -22,6 +22,7 @@ enumerate is std sequence enumerate
 group-runs is std sequence group-runs
 zip-pairs is std sequence zip
 range-values is std sequence values
+transpose is std sequence transpose
 even? is fn (value : Int) -> Boolean
   value % 2 = 0
 
@@ -58,6 +59,11 @@ index-absent? is fn (candidate : Optional Nat) -> Boolean
     None then true
 left-rotated : List Int is Entry (3, Entry (4, Entry (1, Entry (2, Empty))))
 right-rotated : List Int is Entry (4, Entry (1, Entry (2, Entry (3, Empty))))
+short-row : List Int is Entry (5, Entry (6, Empty))
+matrix : List List Int is Entry (values, Entry (short-row, Empty))
+column-one : List Int is Entry (1, Entry (5, Empty))
+column-two : List Int is Entry (2, Entry (6, Empty))
+transposed : List List Int is Entry (column-one, Entry (column-two, Empty))
 
 take-prefix : Pass is Pass ((take (values, 2)) = prefix-two)
 take-clamps : Pass is Pass ((take (values, 20)) = values)
@@ -82,9 +88,10 @@ indexed-entries : Pass is Pass ((enumerate values) = enumerated-values)
 adjacent-groups : Pass is Pass ((group-runs run-input) = runs)
 shortest-pairs : Pass is Pass ((zip-pairs (values, letters)) = zipped)
 range-materialization : Pass is Pass ((range-values (2 ..= 4)) = range-list)
+shortest-transpose : Pass is Pass ((transpose matrix) = transposed)
 
 (take-prefix, take-clamps, drop-prefix, drop-clamps, split-list, take-text,
  drop-text, split-text, stable-retain, stable-reject, first-occurrences,
  first-index, last-index, absent-index, left-rotation, right-rotation-wraps,
  fixed-chunks, sliding-windows, oversized-windows, indexed-entries,
- adjacent-groups, shortest-pairs, range-materialization)
+ adjacent-groups, shortest-pairs, range-materialization, shortest-transpose)

@@ -317,6 +317,14 @@ range-last-int is fn (interval : Range Int) -> Int
     false then (range-upper interval) - 1
 range-last-int-callable is range-last-int
 
+### Normalize and merge overlapping or adjacent finite Int Ranges.
+pub coalesce is fn (intervals : List (Range Int)) -> List (Range Int)
+  range-coalesce-int intervals
+
+### Normalize closed endpoint pairs as inclusive Int intervals.
+pub coalesce is fn (intervals : List (Int, Int)) -> List (Int, Int)
+  range-coalesce-int intervals
+
 ### Test whether two Int Ranges touch without overlapping.
 pub adjacent? is fn (left : Range Int, right : Range Int) -> Boolean
   left-first is range-first-int-callable left
