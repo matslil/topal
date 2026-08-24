@@ -51,6 +51,17 @@ cargo build --workspace
 cargo test --workspace --all-targets
 ```
 
+The Cargo command tests the Rust tool implementations and bootstrap boundary.
+After building `topal`, run tests owned by Topal separately:
+
+```console
+target/debug/topal test tests/standard-library examples/data-transfer
+target/debug/topal test tests/advent-of-code/2025
+```
+
+Use `topal test --list`, `--exact`, or `--filter` to select individual Topal
+tests. These source tests are not aggregated into Cargo test cases.
+
 ## Use
 
 The `topal` binary defaults to script execution from a file or standard input:
@@ -60,7 +71,8 @@ cargo run -p topal-interpreter -- program.topal
 cargo run -p topal-interpreter < program.topal
 ```
 
-Use `--interactive` for a persistent exploratory session and `--test` for
+Use `--interactive` for a persistent exploratory session, and `--test` for
 script execution with stable JSON Lines decision traces on standard error. The
+`topal test` subcommand is the distinct Topal source test harness. The
 implemented subset and mode contracts are recorded in
 [`src/topal-interpreter/se-requirements.md`](src/topal-interpreter/se-requirements.md).

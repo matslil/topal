@@ -51,7 +51,7 @@ provide the same `topal test` behavior without Rust.
 
 ## Per-test resource regression baselines
 
-`scripts/test_resource_usage.py` runs each libtest case as an exact,
+`scripts/test_resource_usage.py --domain rust` runs each libtest case as an exact,
 single-threaded invocation in its own systemd user cgroup. A cgroup-local
 supervisor obtains cumulative child CPU time and maximum child resident memory
 from Linux resource accounting, while systemd enforces the memory and swap
@@ -60,13 +60,20 @@ executes several cases concurrently. The default worker count is bounded by
 both the logical CPU count and available memory relative to the per-test memory
 limit. Wall-clock duration is deliberately not a conformance metric.
 
+`scripts/test_resource_usage.py --domain topal` separately discovers every
+identity reported by `topal test --list` and measures an exact, single-job
+invocation of that Topal test in its own cgroup. Rust and Topal use distinct
+versioned baselines, `se/test-resource-baseline.json` and
+`se/topal-test-resource-baseline.json`, so removing a Rust wrapper cannot hide
+or merge the resource behavior of the Topal files it formerly aggregated.
+
 Each measured case runs 50 times in one cgroup by default. The recorded CPU
 time is the per-invocation average and peak memory is the maximum across those
 samples, reducing noise from process startup and page-level accounting without
 weakening the comparison threshold.
 
 Baseline mode records average child CPU time and peak child resident memory for
-every discovered test case in `se/test-resource-baseline.json`. Extending that
+every discovered test case in the selected domain's baseline. Extending that
 versioned baseline requires the explicit `--approve-baseline-update` argument.
 When the file already exists, ordinary baseline mode adds only newly discovered
 test identities: existing measurements and metadata remain unchanged, including
@@ -87,19 +94,22 @@ time from unlike systems as directly comparable.
 Create an approved baseline with:
 
 ```console
-scripts/test_resource_usage.py baseline --approve-baseline-update
+scripts/test_resource_usage.py baseline --domain rust --approve-baseline-update
+scripts/test_resource_usage.py baseline --domain topal --approve-baseline-update
 ```
 
 Replace existing measurements only after explicit human approval:
 
 ```console
-scripts/test_resource_usage.py baseline --approve-baseline-update --replace-existing-baseline
+scripts/test_resource_usage.py baseline --domain rust --approve-baseline-update --replace-existing-baseline
+scripts/test_resource_usage.py baseline --domain topal --approve-baseline-update --replace-existing-baseline
 ```
 
 Compare the current tests with it using:
 
 ```console
-scripts/test_resource_usage.py compare
+scripts/test_resource_usage.py compare --domain rust
+scripts/test_resource_usage.py compare --domain topal
 ```
 
 Functional and interoperability tests shall cite stable specification IDs.

@@ -3661,10 +3661,6 @@
       "cpu_time_ns": 15939580,
       "memory_peak_bytes": 17899520
     },
-    "topal-interpreter::test:cli::every_advent_of_code_2025_solver_matches_its_topal_test_file": {
-      "cpu_time_ns": 14720688860,
-      "memory_peak_bytes": 27627520
-    },
     "topal-interpreter::test:cli::every_mode_constructs_all_int_range_endpoint_forms": {
       "cpu_time_ns": 39834319,
       "memory_peak_bytes": 18112512
@@ -3688,14 +3684,6 @@
     "topal-language::test:core_language_coverage::every_system_and_tool_requirement_has_traceability_evidence": {
       "cpu_time_ns": 187910559,
       "memory_peak_bytes": 17887232
-    },
-    "topal-language::test:standard_library::false_topal_expectation_fails_without_a_rust_golden_value": {
-      "cpu_time_ns": 4963439,
-      "memory_peak_bytes": 17911808
-    },
-    "topal-language::test:standard_library::topal_standard_library_expectations_pass": {
-      "cpu_time_ns": 4147436620,
-      "memory_peak_bytes": 23015424
     },
     "topal-linter::lib:topal_linter::tests::every_language_example_uses_the_shared_linter_frontend": {
       "cpu_time_ns": 149508320,
@@ -3800,6 +3788,14 @@
     "topal-transfer::test:conformance_closure::closure_has_exact_terminal_evidence": {
       "cpu_time_ns": 2299279,
       "memory_peak_bytes": 17772544
+    },
+    "topal-interpreter::test:cli::topal_test_command_discovers_filters_and_reports_individual_programs": {
+      "cpu_time_ns": 17487979,
+      "memory_peak_bytes": 18194432
+    },
+    "topal-interpreter::test:cli::topal_test_command_executes_application_manifests": {
+      "cpu_time_ns": 564631900,
+      "memory_peak_bytes": 21565440
     }
   }
 }
