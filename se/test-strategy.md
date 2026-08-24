@@ -19,6 +19,36 @@ Specialized suites refine those classes where needed:
 - end-to-end toolchain tests; and
 - performance regressions tied to explicit performance requirements.
 
+## Separate implementation and Topal test systems
+
+Rust implementation tests and Topal source tests have separate owners and
+entry points. `cargo test` verifies the Rust implementations of the language
+tools, shared semantic machinery, native boundaries, and the small bootstrap
+surface needed to launch the Topal test runner. It shall not discover or own
+the Topal standard-library or application test corpus.
+
+`topal test` discovers `.t` programs recursively and verifies Topal libraries,
+applications, examples, and observable conformance behavior. Every file has an
+independent stable path identity and may be listed, selected exactly, filtered,
+or run in bounded parallelism. A constraint rejection, diagnostic, unreadable
+test, or failed application expectation fails that Topal test and the command.
+
+Run the implementation tests with:
+
+```console
+cargo test --workspace --all-targets
+```
+
+Run the standard-library Topal corpus with:
+
+```console
+topal test tests/standard-library examples/data-transfer
+```
+
+This bootstrap separation does not imply that the Rust implementation is part
+of the Topal language design. An independently implemented Topal toolchain may
+provide the same `topal test` behavior without Rust.
+
 ## Per-test resource regression baselines
 
 `scripts/test_resource_usage.py` runs each libtest case as an exact,
