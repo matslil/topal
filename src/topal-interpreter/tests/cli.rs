@@ -74,6 +74,58 @@ fn explicit_input_file_calls_solve_and_prints_only_its_result() {
 }
 
 #[test]
+fn topal_test_command_discovers_filters_and_reports_individual_programs() {
+    let directory = std::env::temp_dir().join(format!("topal-test-runner-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    std::fs::write(
+        directory.join("passes.t"),
+        "use language ( version is v0.1 )\nPass is Boolean constraint { value } value = true\npasses : Pass is Pass true\npasses\n",
+    )
+    .unwrap();
+    std::fs::write(
+        directory.join("fails.t"),
+        "use language ( version is v0.1 )\nPass is Boolean constraint { value } value = true\nfails : Pass is Pass false\nfails\n",
+    )
+    .unwrap();
+
+    let listed = Command::new(env!("CARGO_BIN_EXE_topal"))
+        .args(["test", "--list"])
+        .arg(&directory)
+        .output()
+        .unwrap();
+    assert!(listed.status.success());
+    let listing = String::from_utf8(listed.stdout).unwrap();
+    assert!(listing.contains("fails.t"));
+    assert!(listing.contains("passes.t"));
+
+    let passed = Command::new(env!("CARGO_BIN_EXE_topal"))
+        .args(["test", "--filter", "passes.t"])
+        .arg(&directory)
+        .output()
+        .unwrap();
+    assert!(passed.status.success());
+    assert!(
+        String::from_utf8(passed.stdout)
+            .unwrap()
+            .contains("1 Topal tests: 1 passed; 0 failed")
+    );
+
+    let failed = Command::new(env!("CARGO_BIN_EXE_topal"))
+        .args(["test", "--filter", "fails.t"])
+        .arg(&directory)
+        .output()
+        .unwrap();
+    std::fs::remove_dir_all(&directory).unwrap();
+    assert!(!failed.status.success());
+    assert!(String::from_utf8(failed.stdout).unwrap().contains("FAIL"));
+    assert!(
+        String::from_utf8(failed.stderr)
+            .unwrap()
+            .contains("E-CONSTRAINT-REJECTED")
+    );
+}
+
+#[test]
 fn every_advent_of_code_2025_solver_matches_its_topal_test_file() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let examples = root.join("examples/advent-of-code/2025");
