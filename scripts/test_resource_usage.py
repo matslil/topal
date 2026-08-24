@@ -21,6 +21,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BASELINE = ROOT / "se" / "test-resource-baseline.json"
+DEFAULT_TOPAL_BASELINE = ROOT / "se" / "topal-test-resource-baseline.json"
 THRESHOLD_PERCENT = 20
 PRINT_LOCK = threading.Lock()
 
@@ -29,7 +30,7 @@ PRINT_LOCK = threading.Lock()
 class TestCase:
     identity: str
     executable: str
-    name: str
+    arguments: tuple[str, ...]
     working_directory: str
 
 
@@ -104,13 +105,48 @@ def discover_tests(rust_min_stack: int) -> list[TestCase]:
                 TestCase(
                     identity=identity,
                     executable=executable,
-                    name=name,
+                    arguments=("--exact", name, "--test-threads=1"),
                     working_directory=package_directories[artifact["package_id"]],
                 )
             )
     identities = [test.identity for test in tests]
     if len(identities) != len(set(identities)):
         raise RuntimeError("test discovery produced duplicate stable identities")
+    return sorted(tests, key=lambda test: test.identity)
+
+
+def discover_topal_tests(rust_min_stack: int) -> list[TestCase]:
+    metadata = cargo_metadata()
+    target_directory = Path(metadata["target_directory"])
+    command(["cargo", "build", "-p", "topal-interpreter"], cwd=ROOT)
+    executable = target_directory / "debug" / (
+        "topal.exe" if platform.system() == "Windows" else "topal"
+    )
+    listed = command(
+        [
+            str(executable),
+            "test",
+            "--list",
+            "tests/standard-library",
+            "examples/data-transfer",
+            "tests/advent-of-code/2025",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        env={**os.environ, "RUST_MIN_STACK": str(rust_min_stack)},
+    )
+    tests = []
+    for name in listed.stdout.splitlines():
+        if not name.endswith(".t"):
+            continue
+        tests.append(
+            TestCase(
+                identity=f"topal::{name}",
+                executable=str(executable),
+                arguments=("test", "--jobs", "1", "--exact", name, name),
+                working_directory=str(ROOT),
+            )
+        )
     return sorted(tests, key=lambda test: test.identity)
 
 
@@ -169,7 +205,7 @@ def measure_test(
                 str(result_path),
                 str(samples),
                 test.executable,
-                test.name,
+                *test.arguments,
             ],
             capture_output=True,
         )
@@ -235,14 +271,14 @@ def measure_test(
 
 
 def worker(arguments: list[str]) -> int:
-    if len(arguments) != 4:
+    if len(arguments) < 4:
         return 2
-    result_path, samples_text, executable, test_name = arguments
+    result_path, samples_text, executable, *test_arguments = arguments
     samples = int(samples_text)
     status = "passed"
     for _ in range(samples):
         completed = subprocess.run(
-            [executable, "--exact", test_name, "--test-threads=1"],
+            [executable, *test_arguments],
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -298,7 +334,11 @@ def environment() -> dict[str, Any]:
 
 
 def run_measurements(arguments: argparse.Namespace) -> dict[str, Measurement]:
-    tests = discover_tests(arguments.rust_min_stack)
+    tests = (
+        discover_tests(arguments.rust_min_stack)
+        if arguments.domain == "rust"
+        else discover_topal_tests(arguments.rust_min_stack)
+    )
     jobs = worker_count(arguments.jobs, arguments.memory_limit)
     print(f"Measuring {len(tests)} tests with {jobs} workers", flush=True)
     run_identity = uuid.uuid4().hex[:10]
@@ -393,7 +433,8 @@ def compare(
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("baseline", "compare"))
-    parser.add_argument("--baseline", type=Path, default=DEFAULT_BASELINE)
+    parser.add_argument("--baseline", type=Path)
+    parser.add_argument("--domain", choices=("rust", "topal"), default="rust")
     parser.add_argument("--jobs", type=int)
     parser.add_argument("--memory-limit", default="4G")
     parser.add_argument("--rust-min-stack", type=int, default=32 * 1024 * 1024)
@@ -402,6 +443,10 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--approve-baseline-update", action="store_true")
     parser.add_argument("--replace-existing-baseline", action="store_true")
     parsed = parser.parse_args()
+    if parsed.baseline is None:
+        parsed.baseline = (
+            DEFAULT_BASELINE if parsed.domain == "rust" else DEFAULT_TOPAL_BASELINE
+        )
     if parsed.jobs is not None and parsed.jobs < 1:
         parser.error("--jobs must be at least 1")
     if parsed.samples < 1:

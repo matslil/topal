@@ -1,0 +1,185 @@
+{
+  "schema": 1,
+  "allowed_increase_percent": 20,
+  "samples_per_test": 50,
+  "environment": {
+    "architecture": "x86_64",
+    "logical_cpus": 8,
+    "operating_system": "Linux",
+    "rustc": [
+      "rustc 1.97.0 (2d8144b78 2026-07-07)",
+      "binary: rustc",
+      "commit-hash: 2d8144b7880597b6e6d3dfd63a9a9efae3f533d3",
+      "commit-date: 2026-07-07",
+      "host: x86_64-unknown-linux-gnu",
+      "release: 1.97.0",
+      "LLVM version: 22.1.6"
+    ]
+  },
+  "tests": {
+    "topal::examples/data-transfer/firewall.t": {
+      "cpu_time_ns": 276803900,
+      "memory_peak_bytes": 20811776
+    },
+    "topal::examples/data-transfer/packet-filter.t": {
+      "cpu_time_ns": 334502940,
+      "memory_peak_bytes": 21979136
+    },
+    "topal::examples/data-transfer/rest-controller.t": {
+      "cpu_time_ns": 341942579,
+      "memory_peak_bytes": 20803584
+    },
+    "topal::tests/advent-of-code/2025/day01-part1.t": {
+      "cpu_time_ns": 545414500,
+      "memory_peak_bytes": 21549056
+    },
+    "topal::tests/advent-of-code/2025/day01-part2.t": {
+      "cpu_time_ns": 553421020,
+      "memory_peak_bytes": 21434368
+    },
+    "topal::tests/advent-of-code/2025/day02-part1.t": {
+      "cpu_time_ns": 3345004340,
+      "memory_peak_bytes": 25337856
+    },
+    "topal::tests/advent-of-code/2025/day02-part2.t": {
+      "cpu_time_ns": 8277012259,
+      "memory_peak_bytes": 28553216
+    },
+    "topal::tests/advent-of-code/2025/day03-part1.t": {
+      "cpu_time_ns": 580214120,
+      "memory_peak_bytes": 21848064
+    },
+    "topal::tests/advent-of-code/2025/day03-part2.t": {
+      "cpu_time_ns": 821032500,
+      "memory_peak_bytes": 21790720
+    },
+    "topal::tests/advent-of-code/2025/day04-part1.t": {
+      "cpu_time_ns": 1466379419,
+      "memory_peak_bytes": 22241280
+    },
+    "topal::tests/advent-of-code/2025/day04-part2.t": {
+      "cpu_time_ns": 2107659700,
+      "memory_peak_bytes": 23420928
+    },
+    "topal::tests/advent-of-code/2025/day05-part1.t": {
+      "cpu_time_ns": 623595400,
+      "memory_peak_bytes": 22392832
+    },
+    "topal::tests/advent-of-code/2025/day05-part2.t": {
+      "cpu_time_ns": 572458220,
+      "memory_peak_bytes": 22372352
+    },
+    "topal::tests/advent-of-code/2025/day06-part1.t": {
+      "cpu_time_ns": 566577620,
+      "memory_peak_bytes": 21790720
+    },
+    "topal::tests/advent-of-code/2025/day06-part2.t": {
+      "cpu_time_ns": 609674300,
+      "memory_peak_bytes": 21635072
+    },
+    "topal::tests/advent-of-code/2025/day07-part1.t": {
+      "cpu_time_ns": 900329900,
+      "memory_peak_bytes": 21286912
+    },
+    "topal::tests/advent-of-code/2025/day07-part2.t": {
+      "cpu_time_ns": 828749900,
+      "memory_peak_bytes": 21110784
+    },
+    "topal::tests/advent-of-code/2025/day08-part1.t": {
+      "cpu_time_ns": 534483039,
+      "memory_peak_bytes": 21000192
+    },
+    "topal::tests/advent-of-code/2025/day08-part2.t": {
+      "cpu_time_ns": 530503719,
+      "memory_peak_bytes": 20840448
+    },
+    "topal::tests/advent-of-code/2025/day09-part1.t": {
+      "cpu_time_ns": 525702639,
+      "memory_peak_bytes": 20819968
+    },
+    "topal::tests/advent-of-code/2025/day09-part2.t": {
+      "cpu_time_ns": 526721060,
+      "memory_peak_bytes": 20729856
+    },
+    "topal::tests/advent-of-code/2025/day10-part1.t": {
+      "cpu_time_ns": 521313339,
+      "memory_peak_bytes": 20217856
+    },
+    "topal::tests/advent-of-code/2025/day10-part2.t": {
+      "cpu_time_ns": 523144720,
+      "memory_peak_bytes": 20242432
+    },
+    "topal::tests/advent-of-code/2025/day11-part1.t": {
+      "cpu_time_ns": 527683080,
+      "memory_peak_bytes": 19681280
+    },
+    "topal::tests/advent-of-code/2025/day11-part2.t": {
+      "cpu_time_ns": 518880020,
+      "memory_peak_bytes": 19640320
+    },
+    "topal::tests/advent-of-code/2025/day12-part1.t": {
+      "cpu_time_ns": 522543100,
+      "memory_peak_bytes": 20385792
+    },
+    "topal::tests/standard-library/build-graph.t": {
+      "cpu_time_ns": 421491360,
+      "memory_peak_bytes": 22171648
+    },
+    "topal::tests/standard-library/combinatorics-algorithms.t": {
+      "cpu_time_ns": 293023020,
+      "memory_peak_bytes": 20672512
+    },
+    "topal::tests/standard-library/data-spans.t": {
+      "cpu_time_ns": 307378060,
+      "memory_peak_bytes": 20729856
+    },
+    "topal::tests/standard-library/device-i2c.t": {
+      "cpu_time_ns": 286106880,
+      "memory_peak_bytes": 20213760
+    },
+    "topal::tests/standard-library/graph-algorithms.t": {
+      "cpu_time_ns": 340610620,
+      "memory_peak_bytes": 21512192
+    },
+    "topal::tests/standard-library/harness.t": {
+      "cpu_time_ns": 5555319,
+      "memory_peak_bytes": 18120704
+    },
+    "topal::tests/standard-library/network-addresses.t": {
+      "cpu_time_ns": 302239260,
+      "memory_peak_bytes": 20803584
+    },
+    "topal::tests/standard-library/ordered-algorithms.t": {
+      "cpu_time_ns": 374457920,
+      "memory_peak_bytes": 21585920
+    },
+    "topal::tests/standard-library/parse-algorithms.t": {
+      "cpu_time_ns": 311779420,
+      "memory_peak_bytes": 21762048
+    },
+    "topal::tests/standard-library/pattern-algorithms.t": {
+      "cpu_time_ns": 340973540,
+      "memory_peak_bytes": 21897216
+    },
+    "topal::tests/standard-library/sequence-algorithms.t": {
+      "cpu_time_ns": 460065460,
+      "memory_peak_bytes": 22302720
+    },
+    "topal::tests/standard-library/specialized-algorithms.t": {
+      "cpu_time_ns": 421608020,
+      "memory_peak_bytes": 22765568
+    },
+    "topal::tests/standard-library/statistics-algorithms.t": {
+      "cpu_time_ns": 338181880,
+      "memory_peak_bytes": 21065728
+    },
+    "topal::tests/standard-library/store-memory.t": {
+      "cpu_time_ns": 310557280,
+      "memory_peak_bytes": 22028288
+    },
+    "topal::tests/standard-library/transfer-queues.t": {
+      "cpu_time_ns": 307241620,
+      "memory_peak_bytes": 21200896
+    }
+  }
+}
