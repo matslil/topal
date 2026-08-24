@@ -101,3 +101,14 @@ pub weighted-shortest-path is fn (
   (destination : String, edges : List (String, String, Rational), nodes : List String)
 ) -> Optional (List String, Rational)
   graph-weighted-shortest-callable (start, destination, edges, nodes)
+
+### Count routes in a described finite DAG, with no mandatory intermediate nodes.
+pub described-path-count is fn (description : String, (start : String, destination : String)) -> Int
+  graph-described-path-count (description, start, destination, Empty String)
+
+### Count routes in a described finite DAG that visit every required node.
+pub described-required-path-count is fn (
+  description : String,
+  (start : String, destination : String, required : List String)
+) -> Int
+  graph-described-required-path-count (description, start, destination, required)

@@ -1,0 +1,4 @@
+svr: dac x
+dac: fft
+fft: out
+x: fft

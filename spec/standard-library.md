@@ -176,6 +176,16 @@ closed orthogonal polygon and reject rectangles crossed through their interior
 by a polygon edge. Equal-distance point pairs SHALL be ordered by their source
 indexes.
 
+### TOPAL-LIB-PLANNING-001 — Finite exact planning
+
+The `std machine` namespace SHALL minimize presses for finite binary-indicator
+and nonnegative additive-counter machines. The `std graph` namespace SHALL
+count routes in finite directed acyclic graphs, optionally requiring a finite
+set of intermediate nodes. The `std packing` namespace SHALL decide exact
+rectangular packing of requested free polyominoes, considering rotations and
+reflections without overlap. These operations SHALL return exact integer
+results and SHALL be deterministic.
+
 ### TOPAL-LIB-GRAPH-001 — Finite directed reachability
 
 The `std graph` namespace SHALL provide reachability closure and membership for
