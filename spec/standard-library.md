@@ -159,11 +159,22 @@ locale or encoded-byte policy.
 The `std parse` namespace SHALL provide strict complete signed ASCII decimal
 Int parsing, source-ordered signed and unsigned decimal extraction, decimal
 digit decomposition, row-wise and fixed-width vertical integer extraction,
+exact two- and three-integer row materialization,
 canonical base-ten Int formatting, and Unicode Character
 materialization. Complete parsing SHALL return `None Int` for malformed text.
 Digit decomposition SHALL reject any nondigit rather than discard it. These
 operations SHALL be locale independent and SHALL NOT expose encoded units.
 The namespace SHALL also reconstruct a String from complete Characters.
+
+### TOPAL-LIB-GEOMETRY-001 — Exact finite geometry
+
+The `std geometry` namespace SHALL provide deterministic nearest-first
+component clustering for exact three-dimensional integer points and inclusive
+axis-aligned rectangle maximization for exact two-dimensional integer points.
+The contained-rectangle operation SHALL interpret its vertices in order as a
+closed orthogonal polygon and reject rectangles crossed through their interior
+by a polygon edge. Equal-distance point pairs SHALL be ordered by their source
+indexes.
 
 ### TOPAL-LIB-GRAPH-001 — Finite directed reachability
 
