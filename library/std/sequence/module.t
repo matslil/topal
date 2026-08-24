@@ -156,3 +156,7 @@ pub zip is fn (
   right : List (Right : Type)
 ) -> List (Left, Right)
   zip-shortest-implementation-callable (left, right)
+
+### Materialize a finite Int range in ascending order.
+pub values is fn (range : Range Int) -> List Int
+  range-integers range

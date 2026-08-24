@@ -21,6 +21,8 @@ More specialized namespaces keep their policies visible:
 
 - `std text` applies the selected Unicode context to normalization, lines,
   whitespace words, and joining without silently adding locale or encoded-byte policy;
+- `std parse` handles strict ASCII decimal conversion, integer extraction,
+  decimal digits, and explicit Character materialization without locale policy;
 - `std graph` operates on explicit finite String nodes and directed edges,
   including deterministic breadth/depth traversal, minimum-edge and
   nonnegative exact-weight paths, topological ordering, and weak components,

@@ -3826,6 +3826,13 @@ impl Session {
                             | "string-words"
                             | "string-join"
                             | "string-regex-contains"
+                            | "string-parse-int"
+                            | "string-signed-integers"
+                            | "string-unsigned-integers"
+                            | "string-decimal-digits"
+                            | "string-characters"
+                            | "int-decimal-string"
+                            | "range-integers"
                     )
                 {
                     let operation = source.slice(*name);
@@ -12967,6 +12974,82 @@ fn apply_string_utility(
                 .map(|word| Value::String(word.to_owned()))
                 .collect(),
         },
+        ("string-parse-int", Value::String(text)) => Value::Optional {
+            payload_classifier: "Int".into(),
+            payload: parse_strict_decimal(&text).map(|value| Box::new(Value::Int(value))),
+        },
+        ("string-signed-integers" | "string-unsigned-integers", Value::String(text)) => {
+            let pattern = if operation == "string-signed-integers" {
+                r"-?[0-9]+"
+            } else {
+                r"[0-9]+"
+            };
+            let expression = Regex::new(pattern).expect("fixed decimal pattern is valid");
+            Value::List {
+                element_classifier: if operation == "string-signed-integers" {
+                    "Int"
+                } else {
+                    "Nat"
+                }
+                .into(),
+                entries: expression
+                    .find_iter(&text)
+                    .map(|found| {
+                        Value::Int(
+                            found
+                                .as_str()
+                                .parse::<BigInt>()
+                                .expect("matched decimal integer"),
+                        )
+                    })
+                    .collect(),
+            }
+        }
+        ("string-decimal-digits", Value::String(text)) => {
+            if !text.bytes().all(|byte| byte.is_ascii_digit()) {
+                return Err(diagnostic(
+                    source,
+                    "E-DECIMAL-DIGITS",
+                    span,
+                    "decimal-digits requires only ASCII decimal digits",
+                ));
+            }
+            Value::List {
+                element_classifier: "Nat".into(),
+                entries: text
+                    .bytes()
+                    .map(|byte| Value::Int(BigInt::from(byte - b'0')))
+                    .collect(),
+            }
+        }
+        ("string-characters", Value::String(text)) => Value::List {
+            element_classifier: "Character".into(),
+            entries: characters(&text)
+                .map(|character| Value::String(character.to_owned()))
+                .collect(),
+        },
+        ("int-decimal-string", Value::Int(value)) => Value::String(value.to_string()),
+        (
+            "range-integers",
+            Value::IntRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            },
+        ) => {
+            let mut current = lower + BigInt::from(!lower_inclusive);
+            let end = upper - BigInt::from(!upper_inclusive);
+            let mut entries = Vec::new();
+            while current <= end {
+                entries.push(Value::Int(current.clone()));
+                current += 1;
+            }
+            Value::List {
+                element_classifier: "Int".into(),
+                entries,
+            }
+        }
         ("string-join", Value::Tuple(values)) if values.len() == 2 => {
             let [
                 Value::List {
@@ -13032,6 +13115,16 @@ fn is_unicode_white_space(character: char) -> bool {
             | '\u{205F}'
             | '\u{3000}'
     )
+}
+
+fn parse_strict_decimal(text: &str) -> Option<BigInt> {
+    let unsigned = text
+        .strip_prefix('-')
+        .or_else(|| text.strip_prefix('+'))
+        .unwrap_or(text);
+    (!unsigned.is_empty() && unsigned.bytes().all(|byte| byte.is_ascii_digit()))
+        .then(|| text.parse::<BigInt>().ok())
+        .flatten()
 }
 
 fn glob_matches(text: &str, pattern: &str) -> bool {
@@ -16353,7 +16446,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 77] = [
+const ROOT_OPERATIONS: [&str; 84] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16418,6 +16511,13 @@ const ROOT_OPERATIONS: [&str; 77] = [
     "string-split-exact",
     "string-trim",
     "string-words",
+    "string-parse-int",
+    "string-signed-integers",
+    "string-unsigned-integers",
+    "string-decimal-digits",
+    "string-characters",
+    "int-decimal-string",
+    "range-integers",
     "statistics-median",
     "statistics-modes",
     "statistics-histogram",
