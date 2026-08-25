@@ -3822,17 +3822,10 @@ impl Session {
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
-                        "string-starts-with"
-                            | "string-ends-with"
-                            | "string-contains"
-                            | "string-trim"
+                        "string-trim"
                             | "string-replace-all"
-                            | "string-repeat"
-                            | "string-count-exact"
-                            | "string-find-all"
                             | "string-split-exact"
                             | "string-glob-matches"
-                            | "string-contains-any"
                             | "string-lines"
                             | "string-words"
                             | "string-join"
@@ -6203,6 +6196,23 @@ impl Session {
                     span,
                     trace,
                 );
+            }
+            if let Value::CharacterGenerator { generated, origin } = value {
+                trace.record(TraceEvent {
+                    event: "generator.consumed",
+                    rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
+                    detail: &origin,
+                });
+                let result = Value::List {
+                    element_classifier: "Character".into(),
+                    entries: generated.into_iter().map(Value::String).collect(),
+                };
+                trace.record(TraceEvent {
+                    event: "list.collected",
+                    rule: "TOPAL-COLLECTION-COLLECT-LIST-001",
+                    detail: "List Character",
+                });
+                return Ok(result);
             }
             if matches!(value, Value::List { .. }) {
                 trace.record(TraceEvent {
@@ -13182,23 +13192,6 @@ fn apply_string_utility(
         ("string-trim", Value::String(text)) => {
             Value::String(text.trim_matches(is_unicode_white_space).to_owned())
         }
-        ("string-starts-with" | "string-ends-with" | "string-contains", Value::Tuple(values))
-            if values.len() == 2 =>
-        {
-            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    format!("{operation} requires two String operands"),
-                ));
-            };
-            Value::Boolean(match operation {
-                "string-starts-with" => text.starts_with(pattern),
-                "string-ends-with" => text.ends_with(pattern),
-                _ => text.contains(pattern),
-            })
-        }
         ("string-replace-all", Value::Tuple(values)) if values.len() == 3 => {
             let [
                 Value::String(text),
@@ -13214,61 +13207,6 @@ fn apply_string_utility(
                 ));
             };
             Value::String(text.replace(pattern, replacement))
-        }
-        ("string-repeat", Value::Tuple(values)) if values.len() == 2 => {
-            let [Value::String(text), Value::Int(count)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-repeat requires String and Nat operands",
-                ));
-            };
-            let count = usize::try_from(count).map_err(|_| {
-                diagnostic(
-                    source,
-                    "E-STRING-REPEAT-COUNT",
-                    span,
-                    "string repetition count is outside the executable platform limit",
-                )
-            })?;
-            Value::String(text.repeat(count))
-        }
-        ("string-count-exact" | "string-find-all", Value::Tuple(values)) if values.len() == 2 => {
-            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    format!("{operation} requires two String operands"),
-                ));
-            };
-            let text = characters(text).collect::<Vec<_>>();
-            let pattern = characters(pattern).collect::<Vec<_>>();
-            if pattern.is_empty() {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-EMPTY-PATTERN",
-                    span,
-                    format!("{operation} requires a nonempty pattern"),
-                ));
-            }
-            let indexes = text
-                .windows(pattern.len())
-                .enumerate()
-                .filter_map(|(index, candidate)| (candidate == pattern.as_slice()).then_some(index))
-                .collect::<Vec<_>>();
-            if operation == "string-count-exact" {
-                Value::Int(BigInt::from(indexes.len()))
-            } else {
-                Value::List {
-                    element_classifier: "Nat".into(),
-                    entries: indexes
-                        .into_iter()
-                        .map(|index| Value::Int(BigInt::from(index)))
-                        .collect(),
-                }
-            }
         }
         ("string-split-exact", Value::Tuple(values)) if values.len() == 2 => {
             let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
@@ -13324,36 +13262,6 @@ fn apply_string_utility(
                 )
             })?;
             Value::Boolean(expression.is_match(text))
-        }
-        ("string-contains-any", Value::Tuple(values)) if values.len() == 2 => {
-            let [
-                Value::String(text),
-                Value::List {
-                    element_classifier,
-                    entries,
-                },
-            ] = values.as_slice()
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-contains-any requires String and List String operands",
-                ));
-            };
-            if element_classifier != "String" {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-contains-any requires List String patterns",
-                ));
-            }
-            Value::Boolean(
-                entries
-                    .iter()
-                    .any(|entry| matches!(entry, Value::String(pattern) if text.contains(pattern))),
-            )
         }
         ("string-lines", Value::String(text)) => Value::List {
             element_classifier: "String".into(),
@@ -16807,7 +16715,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 79] = [
+const ROOT_OPERATIONS: [&str; 72] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16838,18 +16746,11 @@ const ROOT_OPERATIONS: [&str; 79] = [
     "one",
     "rest",
     "reverse",
-    "string-contains",
-    "string-contains-any",
-    "string-count-exact",
-    "string-ends-with",
-    "string-find-all",
     "string-glob-matches",
     "string-join",
     "string-lines",
-    "string-repeat",
     "string-regex-contains",
     "string-replace-all",
-    "string-starts-with",
     "string-split-exact",
     "string-trim",
     "string-words",

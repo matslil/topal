@@ -406,15 +406,24 @@ pub caseless-equal is fn (left : String, right : String) -> Boolean
 
 ### Test whether text begins with an exact String prefix.
 pub starts-with? is fn (text : String, prefix : String) -> Boolean
-  string-starts-with (text, prefix)
+  text-characters is collect (characters text)
+  prefix-characters is collect (characters prefix)
+  length is entry-count prefix-characters
+  (text-characters select-index (0 .. length)) = prefix-characters
 
 ### Test whether text ends with an exact String suffix.
 pub ends-with? is fn (text : String, suffix : String) -> Boolean
-  string-ends-with (text, suffix)
+  text-characters is collect (characters text)
+  suffix-characters is collect (characters suffix)
+  text-length is entry-count text-characters
+  suffix-length is entry-count suffix-characters
+  suffix-length > text-length
+    true then false
+    false then (text-characters select-index ((text-length - suffix-length) .. text-length)) = suffix-characters
 
 ### Test whether text contains an exact String fragment.
 pub contains? is fn (text : String, fragment : String) -> Boolean
-  string-contains (text, fragment)
+  (collect (characters text)) contains-sequence (collect (characters fragment))
 
 ### Remove Unicode whitespace from both ends of text, not from its interior.
 pub trim is fn (text : String) -> String
@@ -427,8 +436,13 @@ pub replace-all is fn (
   string-replace-all (text, pattern, replacement)
 
 ### Concatenate text with itself count times; zero yields the empty String.
+repeat-step is fn ((repeated : String, text : String, index : Nat)) -> String
+  _ is index
+  repeated concat text
+
 pub repeat is fn (text : String, count : Nat) -> String
-  string-repeat (text, count)
+  indexes is collect (0 iterate ({ index } index + 1) take-while ({ index } index < count))
+  indexes fold "" { repeated, index } repeat-step (repeated, text, index)
 
 # Finite Lists.
 ### Test whether any List entry satisfies a predicate, stopping at the first match.
