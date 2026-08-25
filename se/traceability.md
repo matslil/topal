@@ -8,15 +8,8 @@ plan](data-transfer-standard-library-plan.md) to normative package rules
 scenario closure is tracked by the
 [`data-transfer-conformance-matrix.md`](data-transfer-conformance-matrix.md).
 
-`TOPAL-TRANSFER-ENDPOINT-001`, `TOPAL-TRANSFER-SERVICE-001`,
-`TOPAL-TRANSFER-PROTOCOL-001`, and `TOPAL-TRANSFER-MESSAGE-001` are implemented
-by `topal-transfer` endpoint identities, capabilities, protocol state, bounded
-local endpoint pairs, and their focused tests.
-
-`TOPAL-TRANSFER-OPERATION-001`, `TOPAL-TRANSFER-CANCEL-001`,
-`TOPAL-TRANSFER-BACKPRESSURE-001`, and `TOPAL-TRANSFER-RETRY-001` are
-implemented by `topal_transfer::operation` and its deterministic race, ordering,
-bound, and retry-admission tests.
+The implemented portable transfer slice is ordinary Topal source under
+`library/std`; `topal-transfer` contains only explicit native host adapters.
 
 This matrix connects system goals to core requirements and formal specification
 domains. Test and implementation columns will be added with those artifacts.
@@ -77,9 +70,9 @@ domains. Test and implementation columns will be added with those artifacts.
 | Tool requirement | Specification rules | Functional evidence | Implementation |
 | --- | --- | --- | --- |
 | extended transfer package boundary | `TOPAL-TRANSFER-PACKAGE-001`, `TOPAL-TRANSFER-PACKAGE-002`, `TOPAL-TRANSFER-PACKAGE-003`, `TOPAL-TRANSFER-PACKAGE-004`, `TOPAL-TRANSFER-PACKAGE-005` | nested-source loader, linter, and LSP tests | `library/std/{data,transfer,store,network,device}`; `topal-transfer` is native-boundary experiment only |
-| extended transfer foundation | `TOPAL-TRANSFER-ENDPOINT-001`, `TOPAL-TRANSFER-SERVICE-001`, `TOPAL-TRANSFER-PROTOCOL-001`, `TOPAL-TRANSFER-MESSAGE-001`, `TOPAL-TRANSFER-OPERATION-001`, `TOPAL-TRANSFER-CANCEL-001`, `TOPAL-TRANSFER-BACKPRESSURE-001`, `TOPAL-TRANSFER-RETRY-001`, `TOPAL-TRANSFER-SEQUENCE-001` | `tests/standard-library/transfer-queues.t` for the published slice; remaining laws tracked in the conformance matrix | `library/std/transfer/queues.t`; `topal-transfer` tests characterize only the legacy reference/native boundary |
+| extended transfer foundation | `TOPAL-TRANSFER-ENDPOINT-001`, `TOPAL-TRANSFER-SERVICE-001`, `TOPAL-TRANSFER-PROTOCOL-001`, `TOPAL-TRANSFER-MESSAGE-001`, `TOPAL-TRANSFER-OPERATION-001`, `TOPAL-TRANSFER-CANCEL-001`, `TOPAL-TRANSFER-BACKPRESSURE-001`, `TOPAL-TRANSFER-RETRY-001`, `TOPAL-TRANSFER-SEQUENCE-001` | `tests/standard-library/transfer-queues.t` for the published slice; remaining laws tracked in the conformance matrix | `library/std/transfer/queues.t` |
 | data regions and views | `TOPAL-DATA-REGION-001`, `TOPAL-DATA-SCATTER-001`, `TOPAL-DATA-VIEW-001`, `TOPAL-DATA-VIEW-INVALIDATE-001`, `TOPAL-DATA-OFFLOAD-001` | `tests/standard-library/data-spans.t` and self-checking Topal firewall and packet-filter examples; remaining native and measured laws tracked in the conformance matrix | `library/std/data/spans.t`; `library/std/packet/filter.t`; `examples/data-transfer/{firewall,packet-filter}.t` |
-| host and compatibility boundary | `TOPAL-HOST-ABI-001`, `TOPAL-HOST-REPLAY-001`, `TOPAL-HOST-NATIVE-001`, `TOPAL-TRANSFER-COMPAT-001` | virtual/replay/native manifest and revision-negotiation tests | `topal-transfer` host, native, and compatibility modules |
+| host and compatibility boundary | `TOPAL-HOST-ABI-001`, `TOPAL-HOST-REPLAY-001`, `TOPAL-HOST-NATIVE-001`, `TOPAL-TRANSFER-COMPAT-001` | Topal package tests and native support-manifest test | `library/std`; `topal-transfer::native` adapter boundary |
 | network and transport bindings | `TOPAL-NETWORK-IP-001`, `TOPAL-NETWORK-TRANSPORT-001` | `tests/standard-library/network-addresses.t`; native/reference tests are non-conformance characterization | `library/std/network/addresses.t`; native transport bindings remain deferred |
 | store specializations | `TOPAL-STORE-FOUNDATION-001`, `TOPAL-STORE-TRANSACTION-001`, `TOPAL-STORE-FILE-001`, `TOPAL-STORE-DATABASE-001` | `tests/standard-library/store-memory.t`; remaining backend laws tracked in the matrix | `library/std/store/memory.t`; file/database bindings remain deferred |
 | device bindings | `TOPAL-DEVICE-CONTROLLER-001`, `TOPAL-DEVICE-I2C-001` | `tests/standard-library/device-i2c.t`; platform tests cover only native mechanisms | `library/std/device/i2c.t`; native controller capability binding remains deferred |

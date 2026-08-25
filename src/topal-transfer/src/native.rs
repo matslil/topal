@@ -39,7 +39,7 @@ pub const fn support_manifest() -> SupportManifest {
         NativePlatform::Other
     };
     SupportManifest {
-        abi_revision: crate::host::HOST_ABI_REVISION,
+        abi_revision: crate::HOST_ABI_REVISION,
         platform,
         positioned_file_read: !matches!(platform, NativePlatform::Other),
         loopback_datagram: !matches!(platform, NativePlatform::Other),
