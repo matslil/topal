@@ -3552,29 +3552,6 @@ impl Session {
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
-                        "list-permutations"
-                            | "list-combinations"
-                            | "list-subsets"
-                            | "list-cartesian-product"
-                    )
-                {
-                    let operation = source.slice(*name);
-                    let operand_span = items[1].span();
-                    let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value = apply_combinatorial_construction(
-                        source,
-                        operation,
-                        operand,
-                        operand_span,
-                        trace,
-                    )?;
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
-                }
-                if items.len() == 2
-                    && let Expression::Identifier(name) = &items[0]
-                    && matches!(
-                        source.slice(*name),
                         "graph-bfs"
                             | "graph-dfs"
                             | "graph-shortest-path"
@@ -3762,8 +3739,9 @@ impl Session {
                             "E-FUNCTION-RESULT-TYPE",
                             result_span,
                             format!(
-                                "function `{name}` returned a value outside `{}`",
-                                function.result
+                                "function `{name}` returned `{}`, outside `{}`",
+                                structural_value_classifier(&value),
+                                function.result,
                             ),
                         ));
                     }
@@ -8103,7 +8081,10 @@ impl Execution {
                     &self.source,
                     "E-BINDING-CLASSIFIER",
                     initializer.span(),
-                    format!("initializer does not satisfy `{classifier_text}`"),
+                    format!(
+                        "initializer has `{}`, which does not satisfy `{classifier_text}`",
+                        structural_value_classifier(&evaluated)
+                    ),
                 ));
             }
             trace.record(TraceEvent {
@@ -8211,8 +8192,12 @@ fn evaluate_list_expression(
     element_classifier: &str,
     trace: &mut impl TraceSink,
 ) -> Result<Option<Value>, Diagnostic> {
-    let substituted_element_classifier =
-        substitute_classifier(element_classifier, &session.generic_types);
+    let grouped = tuple_classifiers(element_classifier);
+    let element_classifier = grouped
+        .as_ref()
+        .filter(|items| items.len() == 1)
+        .map_or(element_classifier, |items| items[0]);
+    let substituted_element_classifier = substitute_classifier(element_classifier, &session.generic_types);
     let element_classifier = substituted_element_classifier.as_str();
     if matches!(expression, Expression::Identifier(span) if source.slice(*span) == "Empty") {
         trace.record(TraceEvent {
@@ -9606,10 +9591,7 @@ fn substitute_classifier(classifier: &str, generic_types: &BTreeMap<String, Stri
     }
     for constructor in ["Optional", "List", "Range"] {
         if let Some(payload) = applied_classifier(classifier, constructor) {
-            return format!(
-                "{constructor} {}",
-                substitute_classifier(payload, generic_types)
-            );
+            return format!("{constructor} {}", substitute_classifier(payload, generic_types));
         }
     }
     if let Some((success, codes)) = result_classifier_parts(classifier) {
@@ -14378,182 +14360,6 @@ fn apply_planning_algorithm(source: &SourceText, operation: &str, argument: Valu
     Ok(value)
 }
 
-fn list_of_lists(element_classifier: &str, entries: Vec<Vec<Value>>) -> Value {
-    Value::List {
-        element_classifier: format!("List {element_classifier}"),
-        entries: entries
-            .into_iter()
-            .map(|entries| Value::List {
-                element_classifier: element_classifier.to_owned(),
-                entries,
-            })
-            .collect(),
-    }
-}
-
-fn permutations(entries: &[Value]) -> Vec<Vec<Value>> {
-    if entries.is_empty() {
-        return vec![Vec::new()];
-    }
-    let mut result = Vec::new();
-    for index in 0..entries.len() {
-        let mut remainder = entries.to_vec();
-        let selected = remainder.remove(index);
-        for mut suffix in permutations(&remainder) {
-            let mut permutation = vec![selected.clone()];
-            permutation.append(&mut suffix);
-            result.push(permutation);
-        }
-    }
-    result
-}
-
-fn combinations(entries: &[Value], count: usize) -> Vec<Vec<Value>> {
-    if count == 0 {
-        return vec![Vec::new()];
-    }
-    if count > entries.len() {
-        return Vec::new();
-    }
-    let mut result = Vec::new();
-    for index in 0..=entries.len() - count {
-        for mut suffix in combinations(&entries[index + 1..], count - 1) {
-            let mut combination = vec![entries[index].clone()];
-            combination.append(&mut suffix);
-            result.push(combination);
-        }
-    }
-    result
-}
-
-fn apply_combinatorial_construction(
-    source: &SourceText,
-    operation: &str,
-    argument: Value,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<Value, Diagnostic> {
-    let result = match (operation, argument) {
-        (
-            "list-permutations",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) => list_of_lists(&element_classifier, permutations(&entries)),
-        ("list-combinations", Value::Tuple(mut fields)) if fields.len() == 2 => {
-            let count = fields.pop().expect("length checked");
-            let values = fields.pop().expect("length checked");
-            let Value::Int(count) = count else {
-                return Err(diagnostic(
-                    source,
-                    "E-COMBINATORICS-COUNT",
-                    span,
-                    "combinations requires a Nat count",
-                ));
-            };
-            let count = usize::try_from(count).map_err(|_| {
-                diagnostic(
-                    source,
-                    "E-COMBINATORICS-COUNT",
-                    span,
-                    "combinations count exceeds this platform's addressable List size",
-                )
-            })?;
-            let Value::List {
-                element_classifier,
-                entries,
-            } = values
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-COMBINATORICS-OPERAND",
-                    span,
-                    "combinations requires a finite List",
-                ));
-            };
-            list_of_lists(&element_classifier, combinations(&entries, count))
-        }
-        (
-            "list-subsets",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) => {
-            let mut subsets = vec![Vec::new()];
-            for entry in entries {
-                let additions = subsets
-                    .iter()
-                    .map(|subset| {
-                        let mut addition = subset.clone();
-                        addition.push(entry.clone());
-                        addition
-                    })
-                    .collect::<Vec<_>>();
-                subsets.extend(additions);
-            }
-            list_of_lists(&element_classifier, subsets)
-        }
-        ("list-cartesian-product", Value::Tuple(mut fields)) if fields.len() == 2 => {
-            let right = fields.pop().expect("length checked");
-            let left = fields.pop().expect("length checked");
-            let Value::List {
-                element_classifier: right_classifier,
-                entries: right_entries,
-            } = right
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-COMBINATORICS-OPERAND",
-                    span,
-                    "Cartesian product requires two finite Lists",
-                ));
-            };
-            let Value::List {
-                element_classifier: left_classifier,
-                entries: left_entries,
-            } = left
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-COMBINATORICS-OPERAND",
-                    span,
-                    "Cartesian product requires two finite Lists",
-                ));
-            };
-            Value::List {
-                element_classifier: format!("({left_classifier}, {right_classifier})"),
-                entries: left_entries
-                    .iter()
-                    .flat_map(|left| {
-                        right_entries
-                            .iter()
-                            .map(move |right| Value::Tuple(vec![left.clone(), right.clone()]))
-                    })
-                    .collect(),
-            }
-        }
-        (_, value) => {
-            return Err(diagnostic(
-                source,
-                "E-COMBINATORICS-OPERAND",
-                span,
-                format!(
-                    "{operation} does not accept {}",
-                    structural_value_classifier(&value)
-                ),
-            ));
-        }
-    };
-    trace.record(TraceEvent {
-        event: "combinatorics.construction.applied",
-        rule: "TOPAL-LIB-COMBINATORICS-ADVANCED-001",
-        detail: operation,
-    });
-    Ok(result)
-}
-
 fn apply_structural_algorithm(
     source: &SourceText,
     operation: &str,
@@ -17199,7 +17005,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 87] = [
+const ROOT_OPERATIONS: [&str; 83] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -17209,10 +17015,6 @@ const ROOT_OPERATIONS: [&str; 87] = [
     "concat",
     "collect",
     "empty",
-    "list-permutations",
-    "list-combinations",
-    "list-subsets",
-    "list-cartesian-product",
     "entry-count",
     "first",
     "graph-bfs",
