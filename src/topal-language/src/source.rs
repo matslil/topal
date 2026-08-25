@@ -4261,11 +4261,6 @@ impl Session {
                                 | "remove-indexes"
                                 | "zip-exact"
                                 | "zip-shortest"
-                                | "list-zip-shortest"
-                                | "list-index-of"
-                                | "list-last-index-of"
-                                | "list-rotate-left"
-                                | "list-rotate-right"
                                 | "list-chunks"
                                 | "list-windows"
                                 | "ordered-binary-search"
@@ -8189,6 +8184,25 @@ fn evaluate_expression_with_optional_context(
     {
         return Ok(list);
     }
+    if let Some(payload_classifier) = expected_classifier.and_then(optional_payload_classifier)
+        && let Expression::Application { items, .. } = expression
+        && let [Expression::Identifier(constructor), payload] = items.as_slice()
+        && source.slice(*constructor) == "Some"
+    {
+        let payload_classifier = substitute_classifier(payload_classifier, &session.generic_types);
+        let value = session.evaluate_expression(source, payload, trace)?;
+        if value_has_classifier(&value, &payload_classifier) {
+            trace.record(TraceEvent {
+                event: "optional.some.constructed",
+                rule: "TOPAL-TYPE-OPTIONAL-CONTEXT-001",
+                detail: &payload_classifier,
+            });
+            return Ok(Value::Optional {
+                payload_classifier,
+                payload: Some(Box::new(value)),
+            });
+        }
+    }
     let contextual_none = expected_classifier
         .and_then(optional_payload_classifier)
         .filter(
@@ -9773,6 +9787,7 @@ fn supported_generic_classifier(
     enum_types: &BTreeMap<String, BTreeSet<String>>,
 ) -> bool {
     supported_value_classifier(classifier, enum_types)
+        || generic_capability_classifier(classifier).is_some()
         || generic_names.contains(classifier)
         || applied_classifier(classifier, "Optional").is_some_and(|payload| {
             supported_generic_classifier(payload, generic_names, enum_types)
@@ -15465,7 +15480,7 @@ fn apply_list_operation(
     }
     if matches!(
         operation,
-        "zip-exact" | "zip-shortest" | "list-zip-shortest"
+        "zip-exact" | "zip-shortest"
     ) {
         return apply_list_zip(
             source,
@@ -15476,34 +15491,6 @@ fn apply_list_operation(
             right_span,
             trace,
         );
-    }
-    if matches!(operation, "list-index-of" | "list-last-index-of") {
-        if !value_has_classifier(&right, &element_classifier) {
-            return Err(diagnostic(
-                source,
-                "E-LIST-SEARCH-CLASSIFIER",
-                right_span,
-                format!("{operation} requires an `{element_classifier}` value"),
-            ));
-        }
-        let indexes = entries.iter().enumerate().filter_map(|(index, entry)| {
-            values_equal(entry.clone(), right.clone(), trace)
-                .and_then(|equal| equal.then_some(index))
-        });
-        let index = if operation == "list-index-of" {
-            indexes.into_iter().next()
-        } else {
-            indexes.into_iter().last()
-        };
-        trace.record(TraceEvent {
-            event: "list.index.searched",
-            rule: "TOPAL-LIST-SEQUENCE-ALGORITHMS-001",
-            detail: operation,
-        });
-        return Ok(Value::Optional {
-            payload_classifier: "Nat".into(),
-            payload: index.map(|index| Box::new(Value::Int(BigInt::from(index)))),
-        });
     }
     if matches!(
         operation,
@@ -15623,10 +15610,7 @@ fn apply_list_operation(
             entries,
         });
     }
-    if matches!(
-        operation,
-        "list-rotate-left" | "list-rotate-right" | "list-chunks" | "list-windows"
-    ) {
+    if matches!(operation, "list-chunks" | "list-windows") {
         let Value::Int(amount) = right else {
             return Err(diagnostic(
                 source,
@@ -15644,20 +15628,6 @@ fn apply_list_operation(
             ));
         };
         let value = match operation {
-            "list-rotate-left" | "list-rotate-right" => {
-                if !entries.is_empty() {
-                    let shift = amount % entries.len();
-                    if operation == "list-rotate-left" {
-                        entries.rotate_left(shift);
-                    } else {
-                        entries.rotate_right(shift);
-                    }
-                }
-                Value::List {
-                    element_classifier,
-                    entries,
-                }
-            }
             "list-chunks" => {
                 if amount == 0 {
                     return Err(diagnostic(
@@ -17418,7 +17388,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 98] = [
+const ROOT_OPERATIONS: [&str; 93] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -17441,9 +17411,7 @@ const ROOT_OPERATIONS: [&str; 98] = [
     "graph-weak-components",
     "graph-weighted-shortest-path",
     "list-group-runs",
-    "list-index-of",
     "lower",
-    "list-last-index-of",
     "normalize",
     "range-lower",
     "range-lower-inclusive?",
@@ -17460,11 +17428,8 @@ const ROOT_OPERATIONS: [&str; 98] = [
     "ordered-smallest",
     "rest",
     "reverse",
-    "list-rotate-left",
-    "list-rotate-right",
     "list-chunks",
     "list-windows",
-    "list-zip-shortest",
     "stable-sort",
     "stable-sort-descending",
     "string-contains",
