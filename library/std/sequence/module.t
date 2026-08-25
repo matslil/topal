@@ -151,12 +151,37 @@ pub windows is fn (values : List (Value : Type), size : Nat) -> List List Value
 pub enumerate is fn (values : List (Value : Type)) -> List (Nat, Value)
   enumerate-source values
 
-### Group adjacent equal entries into nonempty runs.
-group-runs-implementation is fn (values : List (Value : Equality)) -> List List Value
-  values list-group-runs
+last-value is fn (values : List (Value : Type)) -> Optional Value
+  length is entry-count values
+  length = 0
+    true then None Value
+    false then first (values select-index ((length - 1) .. length))
 
+append-run is fn ((candidate : (Value : Equality), runs : List (List Value), run : List Value)) -> List (List Value)
+  length is entry-count runs
+  (runs select-index (0 .. (length - 1))) append (run append candidate)
+
+run-step-present is fn ((previous : (Value : Equality), candidate : Value, runs : List (List Value), run : List Value)) -> List (List Value)
+  previous = candidate
+    true then append-run (candidate, runs, run)
+    false then runs append (one candidate)
+
+run-step-with-last is fn ((candidate : (Value : Equality), runs : List (List Value), run : List Value)) -> List (List Value)
+  last-value run
+    Some previous then run-step-present (previous, candidate, runs, run)
+    None then runs append (one candidate)
+
+run-step is fn (candidate : (Value : Equality), runs : List (List Value)) -> List (List Value)
+  last-value runs
+    Some run then run-step-with-last (candidate, runs, run)
+    None then runs append (one candidate)
+
+### Group adjacent equal entries into nonempty runs.
 pub group-runs is fn (values : List (Value : Equality)) -> List List Value
-  group-runs-implementation values
+  empty-run : List Value is Empty
+  empty-runs is one empty-run
+  grouped is values fold empty-runs { runs, candidate } run-step (candidate, runs)
+  grouped select-index (1 .. (entry-count grouped))
 
 zip-step is fn ((left : (Left : Type), right : List (Right : Type), collected : List (Left, Right), index : Nat)) -> List (Left, Right)
   first (right select-index (index ..= index))
@@ -189,6 +214,41 @@ pub values is fn (range : Range Int) -> List Int
     true then Empty Int
     false then collect (start iterate ({ value } value + 1) take-while ({ value } value <= finish))
 
+present-count is fn (candidate : Nat) -> Optional Nat
+  present : Optional Nat is Some candidate
+  present
+
+minimum-present is fn (candidate : Nat, present : Nat) -> Optional Nat
+  candidate < present
+    true then present-count candidate
+    false then present-count present
+
+shorter-count is fn (candidate : Nat, shortest : Optional Nat) -> Optional Nat
+  shortest
+    Some present then minimum-present (candidate, present)
+    None then present-count candidate
+
+shortest-count is fn (rows : List (List (Value : Type))) -> Nat
+  shortest is rows fold (None Nat) { found, row } shorter-count (entry-count row, found)
+  shortest
+    Some count then count
+    None then 0
+
+column-step is fn ((row : List (Value : Type), column : List Value, index : Nat)) -> List Value
+  first (row select-index (index ..= index))
+    Some candidate then column append candidate
+    None then column
+
+column-at is fn (rows : List (List (Value : Type)), index : Nat) -> List Value
+  column : List Value is Empty
+  rows fold column { collected, row } column-step (row, collected, index)
+
+transpose-step is fn ((rows : List (List (Value : Type)), columns : List (List Value), index : Nat)) -> List (List Value)
+  columns append (column-at (rows, index))
+
 ### Transpose homogeneous rows through the shortest row boundary.
 pub transpose is fn (rows : List (List (Value : Type))) -> List (List Value)
-  list-transpose-shortest rows
+  empty-column : List Value is Empty
+  columns is (one empty-column) select-index (0 .. 0)
+  indexes is collect (0 iterate ({ index } index + 1) take-while ({ index } index < (shortest-count rows)))
+  indexes fold columns { transposed, index } transpose-step (rows, transposed, index)

@@ -3505,10 +3505,7 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
-                    && matches!(
-                        source.slice(*name),
-                        "list-transpose-shortest" | "character-list-string" | "range-coalesce-int"
-                    )
+                    && matches!(source.slice(*name), "character-list-string" | "range-coalesce-int")
                 {
                     let operation = source.slice(*name);
                     let operand_span = items[1].span();
@@ -4162,23 +4159,6 @@ impl Session {
                         && matches!(result, Value::List { .. })
                     {
                         apply_list_reverse(&mut result, trace);
-                        index += 1;
-                        continue;
-                    }
-                    if let Expression::Identifier(callable_span) = &items[index]
-                        && matches!(
-                            source.slice(*callable_span),
-                            "list-group-runs"
-                        )
-                        && matches!(result, Value::List { .. })
-                    {
-                        result = apply_list_sequence_unary(
-                            source,
-                            source.slice(*callable_span),
-                            result,
-                            *callable_span,
-                            trace,
-                        )?;
                         index += 1;
                         continue;
                     }
@@ -14369,54 +14349,6 @@ fn apply_structural_algorithm(
 ) -> Result<Value, Diagnostic> {
     let result = match (operation, argument) {
         (
-            "list-transpose-shortest",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) => {
-            let inner_classifier = element_classifier
-                .strip_prefix("List ")
-                .ok_or_else(|| {
-                    diagnostic(
-                        source,
-                        "E-TRANSPOSE-OPERAND",
-                        span,
-                        "transpose requires a List of Lists",
-                    )
-                })?
-                .to_owned();
-            let rows = entries
-                .into_iter()
-                .map(|entry| match entry {
-                    Value::List {
-                        element_classifier,
-                        entries,
-                    } if element_classifier == inner_classifier => Some(entries),
-                    _ => None,
-                })
-                .collect::<Option<Vec<_>>>()
-                .ok_or_else(|| {
-                    diagnostic(
-                        source,
-                        "E-TRANSPOSE-OPERAND",
-                        span,
-                        "transpose requires homogeneous inner Lists",
-                    )
-                })?;
-            let width = rows.iter().map(Vec::len).min().unwrap_or(0);
-            let entries = (0..width)
-                .map(|column| Value::List {
-                    element_classifier: inner_classifier.clone(),
-                    entries: rows.iter().map(|row| row[column].clone()).collect(),
-                })
-                .collect();
-            Value::List {
-                element_classifier: format!("List {inner_classifier}"),
-                entries,
-            }
-        }
-        (
             "character-list-string",
             Value::List {
                 element_classifier,
@@ -15096,67 +15028,6 @@ fn apply_list_reverse(value: &mut Value, trace: &mut impl TraceSink) {
         rule: "TOPAL-LIST-REVERSE-001",
         detail: &classifier,
     });
-}
-
-fn apply_list_sequence_unary(
-    source: &SourceText,
-    operation: &str,
-    value: Value,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<Value, Diagnostic> {
-    let Value::List {
-        element_classifier,
-        entries,
-    } = value
-    else {
-        unreachable!("sequence operation dispatched only for a List")
-    };
-    let result = match operation {
-        "list-group-runs" => {
-            let mut groups: Vec<Vec<Value>> = Vec::new();
-            for entry in entries {
-                if groups.is_empty() {
-                    groups.push(vec![entry]);
-                    continue;
-                }
-                let same_run = groups
-                    .last()
-                    .and_then(|group| group.last())
-                    .and_then(|previous| values_equal(previous.clone(), entry.clone(), trace));
-                let Some(same_run) = same_run else {
-                    return Err(diagnostic(
-                        source,
-                        "E-LIST-GROUP-CLASSIFIER",
-                        span,
-                        "group-runs requires entries with Equality",
-                    ));
-                };
-                if same_run {
-                    groups.last_mut().expect("a current run exists").push(entry);
-                } else {
-                    groups.push(vec![entry]);
-                }
-            }
-            Value::List {
-                element_classifier: format!("List {element_classifier}"),
-                entries: groups
-                    .into_iter()
-                    .map(|entries| Value::List {
-                        element_classifier: element_classifier.clone(),
-                        entries,
-                    })
-                    .collect(),
-            }
-        }
-        _ => unreachable!("known unary sequence operation"),
-    };
-    trace.record(TraceEvent {
-        event: "list.sequence.transformed",
-        rule: "TOPAL-LIST-SEQUENCE-ALGORITHMS-001",
-        detail: operation,
-    });
-    Ok(result)
 }
 
 #[allow(clippy::too_many_lines)] // Keep ordered List operation dispatch together.
@@ -17005,7 +16876,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 83] = [
+const ROOT_OPERATIONS: [&str; 81] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -17023,7 +16894,6 @@ const ROOT_OPERATIONS: [&str; 83] = [
     "graph-topological-sort",
     "graph-weak-components",
     "graph-weighted-shortest-path",
-    "list-group-runs",
     "lower",
     "normalize",
     "range-lower",
@@ -17064,7 +16934,6 @@ const ROOT_OPERATIONS: [&str; 83] = [
     "string-vertical-integers",
     "string-integer-pairs",
     "string-integer-triples",
-    "list-transpose-shortest",
     "character-list-string",
     "range-coalesce-int",
     "geometry-nearest-component-product",
