@@ -4,11 +4,10 @@ use language (
 
 octet? is fn (value : Nat) -> Boolean
   value <= 255
-octet?-callable is octet?
 
 ### Validate an IPv4 address represented by four octets.
 pub ipv4? is fn ((a : Nat, b : Nat, c : Nat, d : Nat)) -> Boolean
-  (((octet?-callable a) and (octet?-callable b)) and (octet?-callable c)) and (octet?-callable d)
+  (((octet? a) and (octet? b)) and (octet? c)) and (octet? d)
 
 ### Validate an IPv4 prefix length without treating it as IPv6.
 pub ipv4-prefix? is fn (length : Nat) -> Boolean

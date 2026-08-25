@@ -8,7 +8,6 @@ use language (
 ### Test whether a parsed packet belongs to a supported network family.
 pub supported-family? is fn (family : String) -> Boolean
   (family = "ipv4") or (family = "ipv6")
-supported-family?-callable is supported-family?
 
 ### Validate monotonic, non-overlapping link, network, and transport views.
 pub layout? is fn ((
@@ -57,7 +56,7 @@ pub source-verdict is fn (source-policy : String, next : String) -> String
 
 ### Fail closed for an unsupported network family.
 pub family-verdict is fn (family-name : String, next : String) -> String
-  supported-family?-callable family-name
+  supported-family? family-name
     true then next
     false then "drop-malformed"
 

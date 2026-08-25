@@ -24,16 +24,14 @@ pub mean is fn (values : List Rational) -> Optional Rational
 
 median-int is fn (values : List Int) -> Optional Rational
   statistics-median values
-median-int-callable is median-int
 median-rational is fn (values : List Rational) -> Optional Rational
   statistics-median values
-median-rational-callable is median-rational
 
 ### Return the exact median, or absence for an empty List.
 pub median is fn (values : List Int) -> Optional Rational
-  median-int-callable values
+  median-int values
 pub median is fn (values : List Rational) -> Optional Rational
-  median-rational-callable values
+  median-rational values
 
 ### Return every most-frequent value in first-occurrence order.
 pub modes is fn (values : List Int) -> List Int

@@ -28,7 +28,6 @@ pub spans-overlap? is fn (
 ### Return the total element count described by scatter/gather spans.
 gathered-length-step is fn (total : Nat, (start : Nat, length : Nat)) -> Nat
   total + length
-gathered-length-step-callable is gathered-length-step
 
 pub gathered-length is fn (spans : List (Nat, Nat)) -> Nat
-  spans fold 0 { total, span } gathered-length-step-callable (total, span)
+  spans fold 0 { total, span } gathered-length-step (total, span)

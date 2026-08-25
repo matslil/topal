@@ -3361,7 +3361,12 @@ impl Session {
                 }
                 if items.len() == 3
                     && let Expression::Identifier(name_span) = items[1]
-                    && !self.bindings.contains_key(source.slice(name_span))
+                    && (!self.bindings.contains_key(source.slice(name_span))
+                        || matches!(
+                            self.bindings.get(source.slice(name_span)),
+                            Some(Value::NamedFunction(function))
+                                if function.name == source.slice(name_span)
+                        ))
                     && self.functions.contains_key(source.slice(name_span))
                 {
                     let argument_span = cover(items[0].span(), items[2].span());
@@ -3582,7 +3587,12 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name_span) = &items[0]
-                    && !self.bindings.contains_key(source.slice(*name_span))
+                    && (!self.bindings.contains_key(source.slice(*name_span))
+                        || matches!(
+                            self.bindings.get(source.slice(*name_span)),
+                            Some(Value::NamedFunction(function))
+                                if function.name == source.slice(*name_span)
+                        ))
                     && let Some(candidates) = self.functions.get(source.slice(*name_span)).cloned()
                 {
                     let name = source.slice(*name_span);
@@ -7330,6 +7340,17 @@ impl Execution {
         let termination_rule =
             direct_termination_rule.or_else(|| mutual_edge.as_ref().map(|(_, rule)| *rule));
         let rule = function_rule(is_static, parameters.len());
+        let mut bindings = session.bindings.clone();
+        for (captured_name, candidates) in session.functions.iter() {
+            bindings
+                .entry(captured_name.clone())
+                .or_insert_with(|| {
+                    Value::NamedFunction(Rc::new(NamedFunction {
+                        name: captured_name.clone(),
+                        candidates: candidates.clone(),
+                    }))
+                });
+        }
         let function = UserFunction {
             source: self.source.clone(),
             is_static,
@@ -7339,7 +7360,7 @@ impl Execution {
             generic_names,
             effect_bound: effect_bound_text.clone(),
             body: body.to_vec(),
-            bindings: session.bindings.clone(),
+            bindings,
             termination_rule,
             recursion_target: recursion_target.clone(),
         };
@@ -21013,6 +21034,26 @@ fn loaded_modules_expose_only_published_members() {
     );
     let error = session
         .evaluate("math private-value", &mut Vec::new())
+        .unwrap_err();
+    assert_eq!(error.code, "E-NAMESPACE-MEMBER-NOT-FOUND");
+}
+
+#[test]
+fn published_functions_capture_private_named_functions() {
+    let mut session = Session::new();
+    session
+        .load_module(
+            "math",
+            "use language (\n  version is v0.1\n)\nincrement is fn (value : Int) -> Int\n  value + 1\npub answer is fn (value : Int) -> Int\n  increment value\n",
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(
+        session.evaluate("math answer 41", &mut Vec::new()).unwrap(),
+        Value::Int(BigInt::from(42))
+    );
+    let error = session
+        .evaluate("math increment 41", &mut Vec::new())
         .unwrap_err();
     assert_eq!(error.code, "E-NAMESPACE-MEMBER-NOT-FOUND");
 }

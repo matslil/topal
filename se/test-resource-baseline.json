@@ -3804,6 +3804,10 @@
     "topal-language::lib:topal_language::modules::tests::string_solver_detection_requires_the_application_entry_shape": {
       "cpu_time_ns": 3499739,
       "memory_peak_bytes": 17981440
+    },
+    "topal-language::lib:topal_language::source::published_functions_capture_private_named_functions": {
+      "cpu_time_ns": 6440920,
+      "memory_peak_bytes": 18132992
     }
   }
 }

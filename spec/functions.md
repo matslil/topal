@@ -401,3 +401,7 @@ The value may be bound under another name and applied there; application shall
 perform ordinary argument evaluation, overload selection, static-context,
 termination, entry, and result checks against the retained declarations. It
 shall not resolve unrelated declarations that happen to use the new name.
+A function body that refers to an earlier function declaration in its defining
+context SHALL retain that named function value without requiring an explicit
+alias binding. A private retained function SHALL NOT thereby become a published
+member of an enclosing module.

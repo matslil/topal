@@ -1694,8 +1694,10 @@ examples.
 All interpreter modes shall retain declared functions and their ordered
 overloads as immutable values and apply them after rebinding under
 `TOPAL-FUNCTION-VALUE-001`. Existing typed selection, recursion, and result
-checks shall remain effective. Formal traces, LSP validation, and reversible
-scripted-debugger history shall cover commented examples.
+checks shall remain effective. Published module functions shall retain earlier
+private function declarations from their defining context without publishing
+those helpers or requiring alias bindings. Formal traces, LSP validation, and
+reversible scripted-debugger history shall cover commented examples.
 
 ## TOPAL-INTP-SUBSET-202 — Lazy iterate generators
 
