@@ -4201,8 +4201,6 @@ impl Session {
                                 | "remove-indexes"
                                 | "zip-exact"
                                 | "zip-shortest"
-                                | "list-chunks"
-                                | "list-windows"
                                 | "remove-first"
                                 | "remove-all"
                         )
@@ -15098,73 +15096,6 @@ fn apply_list_operation(
             trace,
         );
     }
-    if matches!(operation, "list-chunks" | "list-windows") {
-        let Value::Int(amount) = right else {
-            return Err(diagnostic(
-                source,
-                "E-LIST-SEQUENCE-COUNT",
-                right_span,
-                format!("{operation} requires a Nat count"),
-            ));
-        };
-        let Ok(amount) = usize::try_from(amount) else {
-            return Err(diagnostic(
-                source,
-                "E-LIST-SEQUENCE-COUNT",
-                right_span,
-                format!("{operation} requires a representable Nat count"),
-            ));
-        };
-        let value = match operation {
-            "list-chunks" => {
-                if amount == 0 {
-                    return Err(diagnostic(
-                        source,
-                        "E-LIST-SEQUENCE-COUNT",
-                        right_span,
-                        "chunks requires a positive count",
-                    ));
-                }
-                Value::List {
-                    element_classifier: format!("List {element_classifier}"),
-                    entries: entries
-                        .chunks(amount)
-                        .map(|chunk| Value::List {
-                            element_classifier: element_classifier.clone(),
-                            entries: chunk.to_vec(),
-                        })
-                        .collect(),
-                }
-            }
-            "list-windows" => {
-                if amount == 0 {
-                    return Err(diagnostic(
-                        source,
-                        "E-LIST-SEQUENCE-COUNT",
-                        right_span,
-                        "windows requires a positive count",
-                    ));
-                }
-                Value::List {
-                    element_classifier: format!("List {element_classifier}"),
-                    entries: entries
-                        .windows(amount)
-                        .map(|window| Value::List {
-                            element_classifier: element_classifier.clone(),
-                            entries: window.to_vec(),
-                        })
-                        .collect(),
-                }
-            }
-            _ => unreachable!(),
-        };
-        trace.record(TraceEvent {
-            event: "list.sequence.transformed",
-            rule: "TOPAL-LIST-SEQUENCE-ALGORITHMS-001",
-            detail: operation,
-        });
-        return Ok(value);
-    }
     match operation {
         "prepend" | "append" => {
             if !value_has_classifier(&right, &element_classifier) {
@@ -16876,7 +16807,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 81] = [
+const ROOT_OPERATIONS: [&str; 79] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16907,8 +16838,6 @@ const ROOT_OPERATIONS: [&str; 81] = [
     "one",
     "rest",
     "reverse",
-    "list-chunks",
-    "list-windows",
     "string-contains",
     "string-contains-any",
     "string-count-exact",

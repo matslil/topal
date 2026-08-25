@@ -133,19 +133,31 @@ pub rotate-right is fn (values : List (Value : Type), count : Nat) -> List Value
     true then values
     false then rotate-right-nonempty (values, count)
 
-### Divide a List into nonempty consecutive Lists of at most `size` entries.
-chunks-implementation is fn (values : List (Value : Type), size : Nat) -> List List Value
-  values list-chunks size
+PositiveSize is Nat constraint { size } size > 0
 
+chunk-step is fn ((values : List (Value : Type), size : Nat, chunks : List (List Value), start : Nat)) -> List (List Value)
+  finish is clamp-count (start + size, entry-count values)
+  chunks append (values select-index (start .. finish))
+
+### Divide a List into nonempty consecutive Lists of at most `size` entries.
 pub chunks is fn (values : List (Value : Type), size : Nat) -> List List Value
-  chunks-implementation (values, size)
+  checked : PositiveSize is PositiveSize size
+  empty-chunk is values select-index (0 .. 0)
+  result is (one empty-chunk) select-index (0 .. 0)
+  starts is collect (0 iterate ({ index } index + checked) take-while ({ index } index < (entry-count values)))
+  starts fold result { collected, start } chunk-step (values, checked, collected, start)
+
+window-step is fn ((values : List (Value : Type), size : Nat, windows : List (List Value), start : Nat)) -> List (List Value)
+  windows append (values select-index (start .. (start + size)))
 
 ### Return every consecutive List window with exactly `size` entries.
-windows-implementation is fn (values : List (Value : Type), size : Nat) -> List List Value
-  values list-windows size
-
 pub windows is fn (values : List (Value : Type), size : Nat) -> List List Value
-  windows-implementation (values, size)
+  checked : PositiveSize is PositiveSize size
+  empty-window is values select-index (0 .. 0)
+  result is (one empty-window) select-index (0 .. 0)
+  length is entry-count values
+  starts is collect (0 iterate ({ index } index + 1) take-while ({ index } index + checked <= length))
+  starts fold result { collected, start } window-step (values, checked, collected, start)
 
 ### Pair each entry with its zero-based index.
 pub enumerate is fn (values : List (Value : Type)) -> List (Nat, Value)
