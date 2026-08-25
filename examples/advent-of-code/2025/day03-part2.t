@@ -17,43 +17,35 @@ required-index is fn (candidate : Optional Nat) -> Nat
   candidate
     Some value then value
     None then 0
-required-index-callable is required-index
 
 larger is fn (left : Nat, right : Nat) -> Nat
   left >= right
     true then left
     false then right
-larger-callable is larger
 
 remaining-of is fn ((remaining : Int, values : List Nat, accumulated : Int)) -> Int
   remaining
-remaining-of-callable is remaining-of
 values-of is fn ((remaining : Int, values : List Nat, accumulated : Int)) -> List Nat
   values
-values-of-callable is values-of
 accumulated-of is fn ((remaining : Int, values : List Nat, accumulated : Int)) -> Int
   accumulated
-accumulated-of-callable is accumulated-of
 
 pick-step is fn (state : (Int, List Nat, Int), iteration : Int) -> (Int, List Nat, Int)
   _ is iteration
-  remaining is remaining-of-callable state
-  values is values-of-callable state
-  accumulated is accumulated-of-callable state
+  remaining is remaining-of state
+  values is values-of state
+  accumulated is accumulated-of state
   available is (entry-count values) - remaining + 1
-  selected is (take (values, available)) fold 0 { maximum, value } larger-callable (maximum, value)
-  index is required-index-callable (values list-index-of selected)
+  selected is (take (values, available)) fold 0 { maximum, value } larger (maximum, value)
+  index is required-index (values list-index-of selected)
   (remaining - 1, drop (values, index + 1), accumulated * 10 + selected)
-pick-step-callable is pick-step
 
 pick is fn (count : Nat, values : List Nat) -> Int
-  final is (range-values (1 ..= count)) fold (count, values, 0) { state, iteration } pick-step-callable (state, iteration)
-  accumulated-of-callable final
-pick-callable is pick
+  final is (range-values (1 ..= count)) fold (count, values, 0) { state, iteration } pick-step (state, iteration)
+  accumulated-of final
 
 add-bank is fn (total : Int, line : String) -> Int
-  total + (pick-callable (12, digits line))
-add-bank-callable is add-bank
+  total + (pick (12, digits line))
 
 solve is fn (input : String) -> Int
-  (lines input) fold 0 { total, line } add-bank-callable (total, line)
+  (lines input) fold 0 { total, line } add-bank (total, line)

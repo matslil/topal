@@ -22,7 +22,6 @@ read-result is fn (missing : Boolean) -> (Nat, String, String, Nat)
   missing
     true then problem (404, "urn:topal:todo:not-found", "Todo not found")
     false then response (200, "application/json", "todo", 7)
-read-result-callable is read-result
 
 stale-result is fn (
   stale-request : Boolean,
@@ -31,7 +30,6 @@ stale-result is fn (
   stale-request
     true then problem (412, "urn:topal:todo:stale", "Version precondition failed")
     false then current-result
-stale-result-callable is stale-result
 
 invalid-result is fn (
   invalid-request : Boolean,
@@ -40,7 +38,6 @@ invalid-result is fn (
   invalid-request
     true then problem (422, "urn:topal:todo:invalid", "Todo is invalid")
     false then valid-result
-invalid-result-callable is invalid-result
 
 TodoController is Interface
   read is fn (request : String) -> (Nat, String, String, Nat)
@@ -49,17 +46,14 @@ TodoController is Interface
 
 TodoController
   read is fn (request : String) -> (Nat, String, String, Nat)
-    read-result-callable (request = "missing")
+    read-result (request = "missing")
   replace is fn (request : String) -> (Nat, String, String, Nat)
     success is response (200, "application/json", request, 8)
-    current-result is stale-result-callable (request = "stale", success)
-    invalid-result-callable (request = "invalid", current-result)
+    current-result is stale-result (request = "stale", success)
+    invalid-result (request = "invalid", current-result)
   delete is fn (request : String) -> (Nat, String, String, Nat)
-    stale-result-callable (request = "stale", response (204, "application/json", "", 8))
+    stale-result (request = "stale", response (204, "application/json", "", 8))
 
-read-callable is read
-replace-callable is replace
-delete-callable is delete
 
 # The adapter's routing result is data. It invokes only the selected embedded
 # function and can reject unsupported methods before reading a request body.
@@ -68,13 +62,13 @@ put-operation is operation "PUT"
 delete-operation is operation "DELETE"
 post-operation is operation "POST"
 
-found is read-callable "42"
-missing is read-callable "missing"
-replaced is replace-callable "updated todo"
-invalid is replace-callable "invalid"
-stale is replace-callable "stale"
-deleted is delete-callable "42"
-stale-delete is delete-callable "stale"
+found is read "42"
+missing is read "missing"
+replaced is replace "updated todo"
+invalid is replace "invalid"
+stale is replace "stale"
+deleted is delete "42"
+stale-delete is delete "stale"
 unsupported is problem (405, "urn:topal:http:method", "Method not allowed")
 
 Pass is Boolean constraint { value } value = true

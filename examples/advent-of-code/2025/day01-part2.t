@@ -16,26 +16,21 @@ required-int is fn (candidate : Optional Int) -> Int
   candidate
     Some value then value
     None then 0
-required-int-callable is required-int
 
 quotient-from is fn (quotient : Int, remainder : Int) -> Int
   quotient
-quotient-from-callable is quotient-from
 floor-hundred is fn (value : Int) -> Int
-  quotient-from-callable (value /% 100)
-floor-hundred-callable is floor-hundred
+  quotient-from (value /% 100)
 
 signed-distance is fn (left : Boolean, distance : Int) -> Int
   left
     true then negate distance
     false then distance
-signed-distance-callable is signed-distance
 
 crossing-count is fn (left : Boolean, (position : Int, distance : Int)) -> Int
   left
-    true then (floor-hundred-callable (position - 1)) - (floor-hundred-callable (position - distance - 1))
-    false then (floor-hundred-callable (position + distance)) - (floor-hundred-callable position)
-crossing-count-callable is crossing-count
+    true then (floor-hundred (position - 1)) - (floor-hundred (position - distance - 1))
+    false then (floor-hundred (position + distance)) - (floor-hundred position)
 
 turn is fn (state : (Int, Int), instruction : String) -> (Int, Int)
   position-extract is fn (position : Int, count : Int) -> Int
@@ -44,18 +39,16 @@ turn is fn (state : (Int, Int), instruction : String) -> (Int, Int)
     count
   position is position-extract state
   count is count-extract state
-  distance is required-int-callable (parse-int (drop (instruction, 1)))
+  distance is required-int (parse-int (drop (instruction, 1)))
   left is starts-with? (instruction, "L")
-  delta is signed-distance-callable (left, distance)
-  crossings is crossing-count-callable (left, (position, distance))
+  delta is signed-distance (left, distance)
+  crossings is crossing-count (left, (position, distance))
   ((position + delta) % 100, count + crossings)
-turn-callable is turn
 
 answer is fn (state : (Int, Int)) -> Int
   count-extract is fn (position : Int, count : Int) -> Int
     count
   count-extract state
-answer-callable is answer
 
 solve is fn (input : String) -> Int
-  answer-callable ((lines input) fold (50, 0) { state, instruction } turn-callable (state, instruction))
+  answer ((lines input) fold (50, 0) { state, instruction } turn (state, instruction))

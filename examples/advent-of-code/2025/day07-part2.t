@@ -21,27 +21,23 @@ select-marked is fn (arguments : (List Int, Character), (index : Nat, value : Ch
   value = marker
     true then (columns append index, marker)
     false then arguments
-select-marked-callable is select-marked
 
 marked-columns is fn (row : String, marker : Character) -> List Int
-  final is (enumerate (character-list row)) fold ((Empty Int), marker) { state, pair } select-marked-callable (state, pair)
+  final is (enumerate (character-list row)) fold ((Empty Int), marker) { state, pair } select-marked (state, pair)
   columns-of is fn (columns : List Int, ignored : Character) -> List Int
     columns
   columns-of final
-marked-columns-callable is marked-columns
 
 advance is fn (beams : List Int, row : String) -> List Int
-  splitters is marked-columns-callable (row, "^")
+  splitters is marked-columns (row, "^")
   add-beam is fn (result : List Int, column : Int) -> List Int
     splitters contains-entry column
       true then (result append (column - 1)) append (column + 1)
       false then result append column
-  add-beam-callable is add-beam
-  beams fold (Empty Int) { result, column } add-beam-callable (result, column)
-advance-callable is advance
+  beams fold (Empty Int) { result, column } add-beam (result, column)
 
 solve is fn (input : String) -> Int
   rows is lines input
-  starts is rows fold (Empty Int) { found, row } found concat (marked-columns-callable (row, "S"))
-  timelines is rows fold starts { beams, row } advance-callable (beams, row)
+  starts is rows fold (Empty Int) { found, row } found concat (marked-columns (row, "S"))
+  timelines is rows fold starts { beams, row } advance (beams, row)
   entry-count timelines
