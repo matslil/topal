@@ -1166,6 +1166,33 @@ fn every_mode_executes_proven_nat_recursion() {
 }
 
 #[test]
+fn every_mode_executes_an_explicit_multi_parameter_measure() {
+    let source = include_str!("../../../examples/language/explicit-multi-parameter-decreases.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"12\n"));
+    }
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-DECREASES-001"));
+    assert_eq!(trace.matches("function.recursion.descended").count(), 4);
+
+    let unproven = source.replace("count - 1", "count - total");
+    let output = run(&[], &unproven);
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-UNPROVEN-RECURSION")
+    );
+}
+
+#[test]
 fn nat_recursion_accepts_only_bound_preserving_decrements() {
     let safe = "count-down is fn (value : Nat) -> Nat\n  value\n    <= 2 then value\n    otherwise count-down (value - 3)\ncount-down 8\n";
     let output = run(&["--test"], safe);

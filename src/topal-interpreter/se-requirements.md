@@ -545,6 +545,16 @@ independently progresses according to `TOPAL-FUNCTION-RECURSION-ALL-CALLS-001`.
 Test traces and reversible debugger history shall retain every resulting
 descent in evaluation order.
 
+## TOPAL-INTP-SUBSET-199 — Verified explicit integer measures
+
+All interpreter modes shall accept an ordinary function carrying a directly
+named `Int` or `Nat` `Decreases` measure only after statically proving the
+inclusive base decision, domain preservation, and positive literal progress of
+the corresponding argument on every recursive edge according to
+`TOPAL-FUNCTION-DECREASES-001`. Additional parameters shall not prevent that
+proof and shall not be mistaken for the measured argument. Unproven evidence
+shall remain `E-UNPROVEN-RECURSION`.
+
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 
 All interpreter modes shall evaluate `Rational ^ Nat` exactly according to

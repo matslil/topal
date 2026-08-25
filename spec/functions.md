@@ -326,6 +326,26 @@ operands, and their results may be combined after each call returns.
 Test traces and debugger history shall retain every proven recursive descent in
 ordinary evaluation order.
 
+### TOPAL-FUNCTION-DECREASES-001 — Explicit well-founded measures
+
+When ordinary structural termination inference does not establish totality, a
+function may declare `Decreases ( Measures )` after its result classifier. Each
+measure SHALL be a pure expression over the function inputs whose classifier
+has a well-founded order. Multiple measures form a lexicographic product in
+source order. Every recursive edge in every cycle SHALL be proven to decrease
+that product while preserving the measure domains; the declaration SHALL be
+rejected as termination evidence when any edge cannot be proven.
+
+For an `Int` or `Nat` input named directly as a measure, the initial explicit
+proof SHALL accept the same inclusive bounded decision shapes and positive
+literal progress required by `TOPAL-FUNCTION-RECURSION-INT-001`,
+`TOPAL-FUNCTION-RECURSION-INT-INCREASING-001`,
+`TOPAL-FUNCTION-RECURSION-NAT-001`, and
+`TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001`, including when other function
+inputs remain unchanged or are transformed independently. The checker SHALL
+inspect the corresponding packaged argument on every recursive call. Merely
+writing `Decreases` SHALL NOT constitute trusted evidence.
+
 For a mutual-cycle member, one action may contain multiple calls to its next
 member within product fields or nested application operands. Every discovered
 cycle call shall name the same next member and independently satisfy the

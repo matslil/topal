@@ -7331,6 +7331,15 @@ impl Execution {
             effect_bound_text.as_deref(),
             body,
         )
+        .or_else(|| {
+            prove_explicit_parameter_recursion(
+                &self.source,
+                name_text,
+                &parameters,
+                effect_bound_text.as_deref(),
+                body,
+            )
+        })
         .or_else(|| prove_int_recursion(&self.source, name_text, &parameters, body));
         let mutual_edge = direct_termination_rule
             .is_none()
@@ -10249,6 +10258,269 @@ fn prove_int_recursion(
     (found && valid && preserves_nat).then_some(proof_rule)
 }
 
+fn prove_explicit_parameter_recursion(
+    source: &SourceText,
+    function_name: &str,
+    parameters: &[(String, String)],
+    effect_bound: Option<&str>,
+    body: &[Statement],
+) -> Option<&'static str> {
+    let measure = explicit_single_measure(effect_bound?)?;
+    let measure_index = parameters
+        .iter()
+        .position(|(name, classifier)| name == measure && matches!(classifier.as_str(), "Int" | "Nat"))?;
+    let (parameter, classifier) = &parameters[measure_index];
+    let [Statement::Expression(Expression::DecisionTable { subject, rules, .. })] = body else {
+        return None;
+    };
+    if !matches!(subject.as_ref(), Expression::Identifier(span) if source.slice(*span) == parameter)
+    {
+        return None;
+    }
+    let [base, recursive] = rules.as_slice() else {
+        return None;
+    };
+    let (step, proof_rule) = match (classifier.as_str(), &base.matcher) {
+        (
+            "Nat",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::LessEqual,
+                operand: Expression::Integer(bound),
+                ..
+            },
+        ) if parse_integer(source.slice(*bound)).is_some_and(|value| value >= BigInt::from(0)) => {
+            (CallableKind::Minus, "TOPAL-FUNCTION-DECREASES-001")
+        }
+        (
+            "Nat",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::GreaterEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (CallableKind::Plus, "TOPAL-FUNCTION-DECREASES-001"),
+        (
+            "Int",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::LessEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (CallableKind::Minus, "TOPAL-FUNCTION-DECREASES-001"),
+        (
+            "Int",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::GreaterEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (CallableKind::Plus, "TOPAL-FUNCTION-DECREASES-001"),
+        _ => return None,
+    };
+    if !matches!(&recursive.matcher, DecisionMatcher::Otherwise(_))
+        || contains_self_call(source, function_name, &base.action)
+    {
+        return None;
+    }
+    let (found, valid) = measured_self_calls(
+        source,
+        function_name,
+        parameter,
+        measure_index,
+        parameters.len(),
+        step,
+        &recursive.action,
+    );
+    let nat_step_limit = nat_decrement_step_limit(source, &base.matcher);
+    let preserves_nat = classifier != "Nat"
+        || step == CallableKind::Plus
+        || nat_step_limit.is_some_and(|limit| {
+            measured_recursive_calls_fit_nat_bound(
+                source,
+                function_name,
+                parameter,
+                measure_index,
+                parameters.len(),
+                &recursive.action,
+                &limit,
+            )
+        });
+    (found && valid && preserves_nat).then_some(proof_rule)
+}
+
+fn explicit_single_measure(effect_bound: &str) -> Option<&str> {
+    let measure = effect_bound.trim().strip_prefix("Decreases")?.trim();
+    let measure = measure
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .unwrap_or(measure)
+        .trim();
+    (!measure.is_empty()
+        && measure
+            .chars()
+            .all(|character| character == '-' || character.is_alphanumeric()))
+    .then_some(measure)
+}
+
+fn recursive_call_argument<'a>(
+    source: &SourceText,
+    function_name: &str,
+    parameter_index: usize,
+    parameter_count: usize,
+    expression: &'a Expression,
+) -> Option<&'a Expression> {
+    let Expression::Application { items, .. } = expression else {
+        return None;
+    };
+    if !matches!(items.first(), Some(Expression::Identifier(span)) if source.slice(*span) == function_name)
+    {
+        return None;
+    }
+    let argument = items.get(1)?;
+    if parameter_count == 1 {
+        return (items.len() == 2).then_some(argument);
+    }
+    let Expression::Product { fields, .. } = argument else {
+        return None;
+    };
+    (items.len() == 2 && fields.len() == parameter_count)
+        .then(|| &fields[parameter_index].value)
+}
+
+fn measured_self_calls(
+    source: &SourceText,
+    function_name: &str,
+    parameter: &str,
+    parameter_index: usize,
+    parameter_count: usize,
+    step: CallableKind,
+    expression: &Expression,
+) -> (bool, bool) {
+    if let Some(argument) = recursive_call_argument(
+        source,
+        function_name,
+        parameter_index,
+        parameter_count,
+        expression,
+    ) {
+        return (true, is_positive_literal_step(source, parameter, step, argument));
+    }
+    match expression {
+        Expression::Application { items, .. } => combine_call_checks(items.iter().map(|item| {
+            measured_self_calls(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                step,
+                item,
+            )
+        })),
+        Expression::Product { fields, .. } => combine_call_checks(fields.iter().map(|field| {
+            measured_self_calls(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                step,
+                &field.value,
+            )
+        })),
+        Expression::DecisionTable { subject, rules, .. } => combine_call_checks(
+            std::iter::once(measured_self_calls(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                step,
+                subject,
+            ))
+            .chain(rules.iter().map(|rule| {
+                measured_self_calls(
+                    source,
+                    function_name,
+                    parameter,
+                    parameter_index,
+                    parameter_count,
+                    step,
+                    &rule.action,
+                )
+            })),
+        ),
+        _ => (false, true),
+    }
+}
+
+fn measured_recursive_calls_fit_nat_bound(
+    source: &SourceText,
+    function_name: &str,
+    parameter: &str,
+    parameter_index: usize,
+    parameter_count: usize,
+    expression: &Expression,
+    maximum_step: &BigInt,
+) -> bool {
+    if let Some(argument) = recursive_call_argument(
+        source,
+        function_name,
+        parameter_index,
+        parameter_count,
+        expression,
+    ) {
+        return literal_step_value(source, parameter, CallableKind::Minus, argument)
+            .is_some_and(|step| step <= *maximum_step);
+    }
+    match expression {
+        Expression::Application { items, .. } => items.iter().all(|item| {
+            measured_recursive_calls_fit_nat_bound(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                item,
+                maximum_step,
+            )
+        }),
+        Expression::Product { fields, .. } => fields.iter().all(|field| {
+            measured_recursive_calls_fit_nat_bound(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                &field.value,
+                maximum_step,
+            )
+        }),
+        Expression::DecisionTable { subject, rules, .. } => {
+            measured_recursive_calls_fit_nat_bound(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                subject,
+                maximum_step,
+            ) && rules.iter().all(|rule| {
+                measured_recursive_calls_fit_nat_bound(
+                    source,
+                    function_name,
+                    parameter,
+                    parameter_index,
+                    parameter_count,
+                    &rule.action,
+                    maximum_step,
+                )
+            })
+        }
+        _ => true,
+    }
+}
+
 fn prove_euclidean_recursion(
     source: &SourceText,
     function_name: &str,
@@ -10635,6 +10907,29 @@ fn is_positive_literal_step(
                     && parse_integer(source.slice(*amount)).is_some_and(|value| value > BigInt::from(0_u8))
             )
     )
+}
+
+fn literal_step_value(
+    source: &SourceText,
+    parameter: &str,
+    step: CallableKind,
+    expression: &Expression,
+) -> Option<BigInt> {
+    let Expression::Application { items, .. } = expression else {
+        return None;
+    };
+    let [
+        Expression::Identifier(name),
+        Expression::Callable { kind, .. },
+        Expression::Integer(amount),
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    (source.slice(*name) == parameter && *kind == step)
+        .then(|| parse_integer(source.slice(*amount)))
+        .flatten()
+        .filter(|value| value > &BigInt::from(0_u8))
 }
 
 fn supported_value_classifier(
