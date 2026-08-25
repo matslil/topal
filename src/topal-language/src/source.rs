@@ -4205,24 +4205,6 @@ impl Session {
                         continue;
                     }
                     if let Expression::Identifier(callable_span) = &items[index]
-                        && matches!(
-                            source.slice(*callable_span),
-                            "stable-sort" | "stable-sort-descending"
-                        )
-                        && matches!(result, Value::List { .. })
-                    {
-                        let descending = source.slice(*callable_span) == "stable-sort-descending";
-                        apply_list_stable_sort(
-                            source,
-                            &mut result,
-                            descending,
-                            *callable_span,
-                            trace,
-                        )?;
-                        index += 1;
-                        continue;
-                    }
-                    if let Expression::Identifier(callable_span) = &items[index]
                         && source.slice(*callable_span) == "entries"
                         && matches!(result, Value::List { .. })
                     {
@@ -4263,10 +4245,6 @@ impl Session {
                                 | "zip-shortest"
                                 | "list-chunks"
                                 | "list-windows"
-                                | "ordered-binary-search"
-                                | "ordered-merge"
-                                | "ordered-nth"
-                                | "ordered-smallest"
                                 | "remove-first"
                                 | "remove-all"
                         )
@@ -15314,55 +15292,6 @@ fn apply_list_reverse(value: &mut Value, trace: &mut impl TraceSink) {
     });
 }
 
-fn apply_list_stable_sort(
-    source: &SourceText,
-    value: &mut Value,
-    descending: bool,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<(), Diagnostic> {
-    let Value::List {
-        element_classifier,
-        entries,
-    } = value
-    else {
-        unreachable!("stable sort dispatched only for a List")
-    };
-    if !matches!(element_classifier.as_str(), "Int" | "Rational") {
-        return Err(diagnostic(
-            source,
-            "E-LIST-SORT-CLASSIFIER",
-            span,
-            "stable sorting currently requires List Int or List Rational",
-        ));
-    }
-    entries.sort_by(|left, right| {
-        let ordering = values_compare(left.clone(), right.clone(), trace)
-            .expect("validated exact numeric entries are totally ordered");
-        if descending {
-            ordering.reverse()
-        } else {
-            ordering
-        }
-    });
-    let classifier = format!("List {element_classifier}");
-    trace.record(TraceEvent {
-        event: "operator.selected",
-        rule: "TOPAL-TYPE-CALL-001",
-        detail: if descending {
-            "root.stable-sort-descending(List)"
-        } else {
-            "root.stable-sort(List)"
-        },
-    });
-    trace.record(TraceEvent {
-        event: "list.stably-sorted",
-        rule: "TOPAL-LIST-STABLE-SORT-001",
-        detail: &classifier,
-    });
-    Ok(())
-}
-
 fn apply_list_sequence_unary(
     source: &SourceText,
     operation: &str,
@@ -15491,124 +15420,6 @@ fn apply_list_operation(
             right_span,
             trace,
         );
-    }
-    if matches!(
-        operation,
-        "ordered-binary-search" | "ordered-nth" | "ordered-smallest"
-    ) {
-        if !matches!(element_classifier.as_str(), "Int" | "Rational") {
-            return Err(diagnostic(
-                source,
-                "E-LIST-ORDERED-CLASSIFIER",
-                right_span,
-                "ordered selection currently requires List Int or List Rational",
-            ));
-        }
-        if operation == "ordered-binary-search" {
-            if !value_has_classifier(&right, &element_classifier) {
-                return Err(diagnostic(
-                    source,
-                    "E-LIST-SEARCH-CLASSIFIER",
-                    right_span,
-                    format!("binary search requires an `{element_classifier}` value"),
-                ));
-            }
-            let index = entries
-                .binary_search_by(|entry| {
-                    values_compare(entry.clone(), right.clone(), trace)
-                        .expect("validated exact numeric entries are totally ordered")
-                })
-                .ok();
-            trace.record(TraceEvent {
-                event: "list.binary.searched",
-                rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
-                detail: operation,
-            });
-            return Ok(Value::Optional {
-                payload_classifier: "Nat".into(),
-                payload: index.map(|index| Box::new(Value::Int(BigInt::from(index)))),
-            });
-        }
-        let Value::Int(count) = right else {
-            return Err(diagnostic(
-                source,
-                "E-LIST-ORDERED-INDEX",
-                right_span,
-                format!("{operation} requires a Nat index or count"),
-            ));
-        };
-        let Ok(count) = usize::try_from(count) else {
-            return Err(diagnostic(
-                source,
-                "E-LIST-ORDERED-INDEX",
-                right_span,
-                format!("{operation} requires a representable Nat"),
-            ));
-        };
-        entries.sort_by(|left, right| {
-            values_compare(left.clone(), right.clone(), trace)
-                .expect("validated exact numeric entries are totally ordered")
-        });
-        if operation == "ordered-nth" {
-            let payload = entries.get(count).cloned().map(Box::new);
-            trace.record(TraceEvent {
-                event: "list.order.selected",
-                rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
-                detail: operation,
-            });
-            return Ok(Value::Optional {
-                payload_classifier: element_classifier,
-                payload,
-            });
-        }
-        entries.truncate(count);
-        trace.record(TraceEvent {
-            event: "list.order.selected",
-            rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
-            detail: operation,
-        });
-        return Ok(Value::List {
-            element_classifier,
-            entries,
-        });
-    }
-    if operation == "ordered-merge" {
-        let Value::List {
-            element_classifier: right_classifier,
-            entries: right_entries,
-        } = right
-        else {
-            return Err(diagnostic(
-                source,
-                "E-LIST-ORDERED-MERGE",
-                right_span,
-                "ordered merge requires another List",
-            ));
-        };
-        if right_classifier != element_classifier
-            || !matches!(element_classifier.as_str(), "Int" | "Rational")
-        {
-            return Err(diagnostic(
-                source,
-                "E-LIST-ORDERED-MERGE",
-                right_span,
-                "ordered merge requires exact matching Int or Rational Lists",
-            ));
-        }
-        entries.extend(right_entries);
-        entries.sort_by(|left, right| {
-            values_compare(left.clone(), right.clone(), trace)
-                .expect("validated exact numeric entries are totally ordered")
-        });
-        trace.record(TraceEvent {
-            event: "list.ordered.merged",
-            rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
-            detail: operation,
-        });
-        return Ok(Value::List {
-            element_classifier,
-            entries,
-        });
     }
     if matches!(operation, "list-chunks" | "list-windows") {
         let Value::Int(amount) = right else {
@@ -17388,7 +17199,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 93] = [
+const ROOT_OPERATIONS: [&str; 87] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -17422,16 +17233,10 @@ const ROOT_OPERATIONS: [&str; 93] = [
     "not",
     "negate",
     "one",
-    "ordered-binary-search",
-    "ordered-merge",
-    "ordered-nth",
-    "ordered-smallest",
     "rest",
     "reverse",
     "list-chunks",
     "list-windows",
-    "stable-sort",
-    "stable-sort-descending",
     "string-contains",
     "string-contains-any",
     "string-count-exact",
