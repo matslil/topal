@@ -16,24 +16,20 @@ select-splitter is fn (columns : List Int, (index : Nat, value : Character)) -> 
   value = "^"
     true then columns append index
     false then columns
-select-splitter-callable is select-splitter
 
 splitter-columns is fn (row : String) -> List Int
   indexed is enumerate (character-list row)
-  indexed fold (Empty Int) { columns, pair } select-splitter-callable (columns, pair)
-splitter-columns-callable is splitter-columns
+  indexed fold (Empty Int) { columns, pair } select-splitter (columns, pair)
 
 propagate-beam is fn ((splitters : List Int, beams : List Int), column : Int) -> List Int
   splitters contains-entry column
     true then (beams append (column - 1)) append (column + 1)
     false then beams append column
-propagate-beam-callable is propagate-beam
 
 count-split is fn (splitters : List Int, (count : Int, column : Int)) -> Int
   splitters contains-entry column
     true then count + 1
     false then count
-count-split-callable is count-split
 
 advance is fn (state : (List Int, Int), row : String) -> (List Int, Int)
   beams-of is fn (beams : List Int, events : Int) -> List Int
@@ -41,14 +37,12 @@ advance is fn (state : (List Int, Int), row : String) -> (List Int, Int)
   events-of is fn (beams : List Int, events : Int) -> Int
     events
   beams is beams-of state
-  splitters is splitter-columns-callable row
+  splitters is splitter-columns row
   count-here is fn (count : Int, column : Int) -> Int
-    count-split-callable (splitters, (count, column))
-  count-here-callable is count-here
-  events is beams fold 0 { count, column } count-here-callable (count, column)
-  next is beams fold (Empty Int) { result, column } propagate-beam-callable ((splitters, result), column)
+    count-split (splitters, (count, column))
+  events is beams fold 0 { count, column } count-here (count, column)
+  next is beams fold (Empty Int) { result, column } propagate-beam ((splitters, result), column)
   (unique next, (events-of state) + events)
-advance-callable is advance
 
 collect-starts is fn (columns : List Int, row : String) -> List Int
   indexed is enumerate (character-list row)
@@ -56,20 +50,18 @@ collect-starts is fn (columns : List Int, row : String) -> List Int
     value = "S"
       true then result append index
       false then result
-  add-start-callable is add-start
-  found is indexed fold (Empty Int) { result, pair } add-start-callable (result, pair)
+  found is indexed fold (Empty Int) { result, pair } add-start (result, pair)
   columns concat found
-collect-starts-callable is collect-starts
 
 solve is fn (input : String) -> Int
   rows is lines input
-  starts is rows fold (Empty Int) { columns, row } collect-starts-callable (columns, row)
+  starts is rows fold (Empty Int) { columns, row } collect-starts (columns, row)
   required is fn (candidate : Optional Int) -> Int
     candidate
       Some value then value
       None then 0
   start is required (first starts)
-  final is rows fold (one start, 0) { state, row } advance-callable (state, row)
+  final is rows fold (one start, 0) { state, row } advance (state, row)
   events-of is fn (beams : List Int, events : Int) -> Int
     events
   events-of final

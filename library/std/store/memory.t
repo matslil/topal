@@ -9,14 +9,12 @@ lookup-present-if is fn (accepted : Boolean, value : (Value : Type)) -> Optional
   accepted
     true then Some value
     false then None Value
-lookup-present-if-callable is lookup-present-if
 
 lookup-missing is fn (
   requested : String,
   (identity : String, value : String)
 ) -> Optional String
-  lookup-present-if-callable (identity = requested, value)
-lookup-missing-callable is lookup-missing
+  lookup-present-if (identity = requested, value)
 
 lookup-step is fn (
   (found : Optional String, requested : String),
@@ -24,15 +22,14 @@ lookup-step is fn (
 ) -> Optional String
   found
     Some present then found
-    None then lookup-missing-callable (requested, (identity, value))
-lookup-step-callable is lookup-step
+    None then lookup-missing (requested, (identity, value))
 
 ### Look up an object by stable identity rather than by a path or address.
 pub lookup is fn (
   entries : List (String, String),
   requested : String
 ) -> Optional String
-  entries fold (None String) { found, entry } lookup-step-callable ((found, requested), entry)
+  entries fold (None String) { found, entry } lookup-step ((found, requested), entry)
 
 ### Return the object count without exposing representation order.
 pub object-count is fn (entries : List (String, String)) -> Nat

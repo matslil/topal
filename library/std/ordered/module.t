@@ -58,20 +58,17 @@ increment-when is fn (count : Int, accepted : Boolean) -> Int
   accepted
     true then count + 1
     false then count
-increment-when-callable is increment-when
 
 ### Return the insertion index before equal entries in an ascending List.
 pub lower-bound is fn (values : List (Value : TotalOrder), sought : Value) -> Int
-  values fold 0 { count, candidate } increment-when-callable (count, candidate < sought)
-lower-bound-callable is lower-bound
+  values fold 0 { count, candidate } increment-when (count, candidate < sought)
 
 ### Return the insertion index after equal entries in an ascending List.
 pub upper-bound is fn (values : List (Value : TotalOrder), sought : Value) -> Int
-  values fold 0 { count, candidate } increment-when-callable (count, candidate <= sought)
-upper-bound-callable is upper-bound
+  values fold 0 { count, candidate } increment-when (count, candidate <= sought)
 
 ### Return the half-open index range containing entries equal to `sought`.
 pub equal-range is fn (values : List (Value : TotalOrder), sought : Value) -> Range Int
-  lower is lower-bound-callable (values, sought)
-  upper is upper-bound-callable (values, sought)
+  lower is lower-bound (values, sought)
+  upper is upper-bound (values, sought)
   lower .. upper

@@ -6,7 +6,6 @@ queue-present-if is fn (accepted : Boolean, value : (Value : Type)) -> Optional 
   accepted
     true then Some value
     false then None Value
-queue-present-if-callable is queue-present-if
 
 ### Enqueue one complete message when the explicit queue bound permits it.
 pub enqueue? is fn ((
@@ -14,7 +13,7 @@ pub enqueue? is fn ((
   message : Message,
   capacity : Nat
 )) -> Optional List Message
-  queue-present-if-callable ((entry-count messages) < capacity, messages append message)
+  queue-present-if ((entry-count messages) < capacity, messages append message)
 
 ### Dequeue one complete message together with the remaining queue.
 pub dequeue is fn (messages : List (Message : Type)) -> Optional (Message, List Message)

@@ -64,7 +64,6 @@ optional-keep-when is fn (
   condition
     true then candidate
     false then None Value
-optional-keep-when-callable is optional-keep-when
 
 ### Retain a present Optional value only when it satisfies a predicate.
 pub filter is fn (
@@ -72,7 +71,7 @@ pub filter is fn (
   predicate : fn (Value) -> Boolean
 ) -> Optional Value
   candidate
-    Some payload then optional-keep-when-callable (predicate payload, candidate)
+    Some payload then optional-keep-when (predicate payload, candidate)
     None then None Value
 
 ### Return a present value or the eagerly evaluated fallback.
@@ -97,7 +96,6 @@ optional-zip-present is fn (
   right
     Some right-value then Some (left, right-value)
     None then None (Left, Right)
-optional-zip-present-callable is optional-zip-present
 
 ### Pair two present Optional values, or return absence if either is absent.
 pub zip is fn (
@@ -105,7 +103,7 @@ pub zip is fn (
   right : Optional (Right : Type)
 ) -> Optional (Left, Right)
   left
-    Some left-value then optional-zip-present-callable (left-value, right)
+    Some left-value then optional-zip-present (left-value, right)
     None then None (Left, Right)
 
 ### Remove one level of Optional nesting.
@@ -192,7 +190,6 @@ result-zip-ok is fn (
   right
     Ok right-value then (left, right-value)
     Error problem then problem
-result-zip-ok-callable is result-zip-ok
 
 ### Pair two successful Results, preserving the first Error encountered.
 pub zip is fn (
@@ -200,7 +197,7 @@ pub zip is fn (
   right : Result ((Right : Type), Codes)
 ) -> Result ((Left, Right), Codes)
   left
-    Ok left-value then result-zip-ok-callable (left-value, right)
+    Ok left-value then result-zip-ok (left-value, right)
     Error problem then problem
 
 ### Remove one level of Result nesting with the same Error vocabulary.
@@ -228,8 +225,6 @@ pub lower-inclusive? is fn (interval : Range (Value : TotalOrder)) -> Boolean
 pub upper-inclusive? is fn (interval : Range (Value : TotalOrder)) -> Boolean
   range-upper-inclusive? interval
 
-range-lower-inclusive-callable is lower-inclusive?
-range-upper-inclusive-callable is upper-inclusive?
 
 ### Return the lower and upper endpoints of a Range.
 pub bounds is fn (interval : Range (Value : TotalOrder)) -> (Value, Value)
@@ -253,13 +248,11 @@ range-min is fn (left : (Value : TotalOrder), right : Value) -> Value
   left
     <= right then left
     otherwise right
-range-min-callable is range-min
 
 range-max is fn (left : (Value : TotalOrder), right : Value) -> Value
   left
     >= right then left
     otherwise right
-range-max-callable is range-max
 
 range-hull-lower-inclusive is fn (
   left : Range (Value : TotalOrder),
@@ -267,13 +260,12 @@ range-hull-lower-inclusive is fn (
 ) -> Boolean
   left-lower is range-lower left
   right-lower is range-lower right
-  left-inclusive is range-lower-inclusive-callable left
-  right-inclusive is range-lower-inclusive-callable right
+  left-inclusive is lower-inclusive? left
+  right-inclusive is lower-inclusive? right
   left-lower
     < right-lower then left-inclusive
     > right-lower then right-inclusive
     otherwise left-inclusive or right-inclusive
-range-hull-lower-inclusive-callable is range-hull-lower-inclusive
 
 range-hull-upper-inclusive is fn (
   left : Range (Value : TotalOrder),
@@ -281,23 +273,22 @@ range-hull-upper-inclusive is fn (
 ) -> Boolean
   left-upper is range-upper left
   right-upper is range-upper right
-  left-inclusive is range-upper-inclusive-callable left
-  right-inclusive is range-upper-inclusive-callable right
+  left-inclusive is upper-inclusive? left
+  right-inclusive is upper-inclusive? right
   left-upper
     > right-upper then left-inclusive
     < right-upper then right-inclusive
     otherwise left-inclusive or right-inclusive
-range-hull-upper-inclusive-callable is range-hull-upper-inclusive
 
 ### Return the smallest Range containing both input Ranges.
 pub hull is fn (
   left : Range (Value : TotalOrder),
   right : Range Value
 ) -> Range Value
-  lower is range-min-callable (range-lower left, range-lower right)
-  upper is range-max-callable (range-upper left, range-upper right)
-  include-lower is range-hull-lower-inclusive-callable (left, right)
-  include-upper is range-hull-upper-inclusive-callable (left, right)
+  lower is range-min (range-lower left, range-lower right)
+  upper is range-max (range-upper left, range-upper right)
+  include-lower is range-hull-lower-inclusive (left, right)
+  include-upper is range-hull-upper-inclusive (left, right)
   inclusivity is (include-lower, include-upper)
   inclusivity
     = (true, true) then lower ..= upper
@@ -306,16 +297,14 @@ pub hull is fn (
     otherwise lower <.. upper
 
 range-first-int is fn (interval : Range Int) -> Int
-  range-lower-inclusive-callable interval
+  lower-inclusive? interval
     true then range-lower interval
     false then (range-lower interval) + 1
-range-first-int-callable is range-first-int
 
 range-last-int is fn (interval : Range Int) -> Int
-  range-upper-inclusive-callable interval
+  upper-inclusive? interval
     true then range-upper interval
     false then (range-upper interval) - 1
-range-last-int-callable is range-last-int
 
 ### Normalize and merge overlapping or adjacent finite Int Ranges.
 pub coalesce is fn (intervals : List (Range Int)) -> List (Range Int)
@@ -327,10 +316,10 @@ pub coalesce is fn (intervals : List (Int, Int)) -> List (Int, Int)
 
 ### Test whether two Int Ranges touch without overlapping.
 pub adjacent? is fn (left : Range Int, right : Range Int) -> Boolean
-  left-first is range-first-int-callable left
-  left-last is range-last-int-callable left
-  right-first is range-first-int-callable right
-  right-last is range-last-int-callable right
+  left-first is range-first-int left
+  left-last is range-last-int left
+  right-first is range-first-int right
+  right-last is range-last-int right
   (left-last + 1 = right-first) or (right-last + 1 = left-first)
 
 # Exact numbers.
@@ -467,35 +456,32 @@ increment-if is fn (count : Int, accepted : Boolean) -> Int
   accepted
     true then count + 1
     false then count
-increment-if-callable is increment-if
 
 ### Count List entries satisfying a predicate.
 pub count-where is fn (
   values : List (Value : Type),
   predicate : fn (Value) -> Boolean
 ) -> Int
-  values fold 0 { count, value } increment-if-callable (count, predicate value)
+  values fold 0 { count, value } increment-if (count, predicate value)
 
 present-if is fn (accepted : Boolean, value : (Value : Type)) -> Optional Value
   accepted
     true then Some value
     false then None Value
-present-if-callable is present-if
 
 find-step is fn (
   (found : Optional (Value : Type), accepted : Boolean, value : Value)
 ) -> Optional Value
   found
     Some payload then found
-    None then present-if-callable (accepted, value)
-find-step-callable is find-step
+    None then present-if (accepted, value)
 
 ### Return the first List entry satisfying a predicate, or absence.
 pub find is fn (
   values : List (Value : Type),
   predicate : fn (Value) -> Boolean
 ) -> Optional Value
-  values fold (None Value) { found, value } find-step-callable (found, predicate value, value)
+  values fold (None Value) { found, value } find-step (found, predicate value, value)
 
 filter-map-step is fn (
   collected : List (Output : Type),
@@ -504,14 +490,13 @@ filter-map-step is fn (
   candidate
     Some value then collected append value
     None then collected
-filter-map-step-callable is filter-map-step
 
 ### Transform List entries and retain only present Optional results.
 pub filter-map is fn (
   values : List (Input : Type),
   transformation : fn (Input) -> Optional Output
 ) -> List Output
-  values fold (Empty Output) { collected, value } filter-map-step-callable (collected, transformation value)
+  values fold (Empty Output) { collected, value } filter-map-step (collected, transformation value)
 
 ### Transform each List entry to a List and concatenate the results in order.
 pub flat-map is fn (

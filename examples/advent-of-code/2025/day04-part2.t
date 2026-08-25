@@ -32,14 +32,12 @@ collect-row is fn (state : (List (Int, Int), Int), line : String) -> (List (Int,
       = "@" then selected append (column-of cell, current-row)
       otherwise selected
   ((enumerate row-characters) fold points { selected, cell } collect-cell (selected, cell), current-row + 1)
-collect-row-callable is collect-row
 
 points-from is fn (input : String) -> List (Int, Int)
-  final is (lines input) fold (no-points, 0) { state, line } collect-row-callable (state, line)
+  final is (lines input) fold (no-points, 0) { state, line } collect-row (state, line)
   points-of is fn (points : List (Int, Int), row : Int) -> List (Int, Int)
     points
   points-of final
-points-from-callable is points-from
 
 point-key is fn (point : (Int, Int)) -> String
   x-of is fn (x : Int, y : Int) -> Int
@@ -47,7 +45,6 @@ point-key is fn (point : (Int, Int)) -> String
   y-of is fn (x : Int, y : Int) -> Int
     y
   (decimal (x-of point)) concat "," concat (decimal (y-of point))
-point-key-callable is point-key
 
 accessible is fn (occupied : List String, point : (Int, Int)) -> Boolean
   neighbor is fn (point : (Int, Int), offset : (Int, Int)) -> (Int, Int)
@@ -57,32 +54,28 @@ accessible is fn (occupied : List String, point : (Int, Int)) -> Boolean
       y
     ((x-of point) + (x-of offset), (y-of point) + (y-of offset))
   count-neighbor is fn (count : Int, offset : (Int, Int)) -> Int
-    occupied contains-entry (point-key-callable (neighbor (point, offset)))
+    occupied contains-entry (point-key (neighbor (point, offset)))
       true then count + 1
       false then count
   (offsets fold 0 { count, offset } count-neighbor (count, offset)) < 4
-accessible-callable is accessible
 
 points-of-state is fn (points : List (Int, Int), removed : Int) -> List (Int, Int)
   points
-points-of-state-callable is points-of-state
 removed-of-state is fn (points : List (Int, Int), removed : Int) -> Int
   removed
-removed-of-state-callable is removed-of-state
 
 remove-round is fn (state : (List (Int, Int), Int), iteration : Int) -> (List (Int, Int), Int)
   _ is iteration
-  points is points-of-state-callable state
-  occupied is points fold (Empty String) { selected, point } selected append (point-key-callable point)
+  points is points-of-state state
+  occupied is points fold (Empty String) { selected, point } selected append (point-key point)
   retain is fn (selected : List (Int, Int), point : (Int, Int)) -> List (Int, Int)
-    accessible-callable (occupied, point)
+    accessible (occupied, point)
       true then selected
       false then selected append point
   remaining is points fold no-points { selected, point } retain (selected, point)
-  (remaining, (removed-of-state-callable state) + (entry-count points) - (entry-count remaining))
-remove-round-callable is remove-round
+  (remaining, (removed-of-state state) + (entry-count points) - (entry-count remaining))
 
 solve is fn (input : String) -> Int
-  points is points-from-callable input
-  final is (range-values (1 ..= (entry-count points))) fold (points, 0) { state, iteration } remove-round-callable (state, iteration)
-  removed-of-state-callable final
+  points is points-from input
+  final is (range-values (1 ..= (entry-count points))) fold (points, 0) { state, iteration } remove-round (state, iteration)
+  removed-of-state final

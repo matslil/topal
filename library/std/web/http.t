@@ -15,24 +15,21 @@ delete-operation is fn (matches : Boolean) -> String
   matches
     true then "delete"
     false then "unsupported"
-delete-operation-callable is delete-operation
 
 replace-operation is fn (matches : Boolean, next : String) -> String
   matches
     true then "replace"
     false then next
-replace-operation-callable is replace-operation
 
 read-operation is fn (matches : Boolean, next : String) -> String
   matches
     true then "read"
     false then next
-read-operation-callable is read-operation
 
 pub operation is fn (verb : String) -> String
-  delete-result is delete-operation-callable (verb = "DELETE")
-  replace-result is replace-operation-callable (verb = "PUT", delete-result)
-  read-operation-callable (verb = "GET", replace-result)
+  delete-result is delete-operation (verb = "DELETE")
+  replace-result is replace-operation (verb = "PUT", delete-result)
+  read-operation (verb = "GET", replace-result)
 
 ### Test an explicit representation-version precondition.
 pub version-matches? is fn (expected : Nat, current : Nat) -> Boolean
