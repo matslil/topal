@@ -3796,6 +3796,14 @@
     "topal-interpreter::test:cli::positional_and_explicit_input_call_solve_and_print_only_its_result": {
       "cpu_time_ns": 11353039,
       "memory_peak_bytes": 18120704
+    },
+    "topal-interpreter::test:cli::application_without_input_reports_the_missing_argument": {
+      "cpu_time_ns": 5251800,
+      "memory_peak_bytes": 18100224
+    },
+    "topal-language::lib:topal_language::modules::tests::string_solver_detection_requires_the_application_entry_shape": {
+      "cpu_time_ns": 3499739,
+      "memory_peak_bytes": 17981440
     }
   }
 }
