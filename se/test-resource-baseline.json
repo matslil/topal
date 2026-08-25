@@ -3665,10 +3665,6 @@
       "cpu_time_ns": 39834319,
       "memory_peak_bytes": 18112512
     },
-    "topal-interpreter::test:cli::explicit_input_file_calls_solve_and_prints_only_its_result": {
-      "cpu_time_ns": 7187140,
-      "memory_peak_bytes": 17842176
-    },
     "topal-language::lib:topal_language::modules::tests::shared_library_retains_flat_fundamentals_and_nested_extensions": {
       "cpu_time_ns": 263054160,
       "memory_peak_bytes": 19968000
@@ -3796,6 +3792,10 @@
     "topal-interpreter::test:cli::topal_test_command_executes_application_manifests": {
       "cpu_time_ns": 564631900,
       "memory_peak_bytes": 21565440
+    },
+    "topal-interpreter::test:cli::positional_and_explicit_input_call_solve_and_print_only_its_result": {
+      "cpu_time_ns": 11353039,
+      "memory_peak_bytes": 18120704
     }
   }
 }
