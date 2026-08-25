@@ -118,16 +118,13 @@ windows-implementation is fn (values : List (Value : Type), size : Nat) -> List 
 pub windows is fn (values : List (Value : Type), size : Nat) -> List List Value
   windows-implementation (values, size)
 
+enumerate-step is fn (candidate : (Value : Type), indexed : List (Nat, Value)) -> List (Nat, Value)
+  indexed append (Nat (entry-count indexed), candidate)
+
 ### Pair each entry with its zero-based index.
-enumerate-implementation is fn (values : List (Value : Type)) -> List (Nat, Value)
-  values list-enumerate
-
 pub enumerate is fn (values : List (Value : Type)) -> List (Nat, Value)
-  enumerate-implementation values
-
-### Pair Characters with indexes without erasing their exact classifier.
-pub enumerate is fn (values : List Character) -> List (Nat, Character)
-  values list-enumerate
+  indexed : List (Nat, Value) is Empty
+  values fold indexed { collected, candidate } enumerate-step (candidate, collected)
 
 ### Group adjacent equal entries into nonempty runs.
 group-runs-implementation is fn (values : List (Value : Equality)) -> List List Value
@@ -149,9 +146,23 @@ pub zip is fn (
 ) -> List (Left, Right)
   zip-shortest-implementation (left, right)
 
+range-start is fn (range : Range Int) -> Int
+  range-lower-inclusive? range
+    true then range-lower range
+    false then (range-lower range) + 1
+
+range-finish is fn (range : Range Int) -> Int
+  range-upper-inclusive? range
+    true then range-upper range
+    false then (range-upper range) - 1
+
 ### Materialize a finite Int range in ascending order.
 pub values is fn (range : Range Int) -> List Int
-  range-integers range
+  start is range-start range
+  finish is range-finish range
+  start > finish
+    true then Empty Int
+    false then collect (start iterate ({ value } value + 1) take-while ({ value } value <= finish))
 
 ### Transpose homogeneous rows through the shortest row boundary.
 pub transpose is fn (rows : List (List (Value : Type))) -> List (List Value)

@@ -555,6 +555,14 @@ the corresponding argument on every recursive edge according to
 proof and shall not be mistaken for the measured argument. Unproven evidence
 shall remain `E-UNPROVEN-RECURSION`.
 
+## TOPAL-INTP-SUBSET-200 — Anonymous product-pattern binding
+
+All interpreter modes shall bind a positional product supplied to an inferred
+anonymous-function product pattern according to `TOPAL-FUNCTION-ANONYMOUS-001`.
+The pattern shall preserve the context-selected field classifiers, including
+generic classifier substitutions, and shall reject nonproducts or mismatched
+field counts before evaluating the body.
+
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 
 All interpreter modes shall evaluate `Rational ^ Nat` exactly according to

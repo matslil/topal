@@ -1193,6 +1193,20 @@ fn every_mode_executes_an_explicit_multi_parameter_measure() {
 }
 
 #[test]
+fn every_mode_destructures_an_anonymous_product_pattern() {
+    let source = include_str!("../../../examples/language/anonymous-product-pattern.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"Entry ( 5, Entry ( 12, Empty ) )\n"));
+    }
+}
+
+#[test]
 fn nat_recursion_accepts_only_bound_preserving_decrements() {
     let safe = "count-down is fn (value : Nat) -> Nat\n  value\n    <= 2 then value\n    otherwise count-down (value - 3)\ncount-down 8\n";
     let output = run(&["--test"], safe);

@@ -18,8 +18,8 @@ use topal_source::{
     characters, lowercase, normalize_nfc, normalize_nfd, uppercase,
 };
 use topal_syntax::{
-    CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, extract_documentation,
-    lex, parse,
+    AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement,
+    extract_documentation, lex, parse,
 };
 
 use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
@@ -255,9 +255,15 @@ pub struct GeneratorScopeState {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AnonymousFunction {
     source: SourceText,
-    parameters: Vec<String>,
+    parameters: Vec<CapturedPattern>,
     body: Box<Expression>,
     bindings: BTreeMap<String, Value>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum CapturedPattern {
+    Binding(String),
+    Product(Vec<String>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -3862,7 +3868,6 @@ impl Session {
                             | "string-decimal-digits"
                             | "string-characters"
                             | "int-decimal-string"
-                            | "range-integers"
                             | "string-integer-rows"
                             | "string-vertical-integers"
                             | "string-integer-pairs"
@@ -4185,7 +4190,7 @@ impl Session {
                     if let Expression::Identifier(callable_span) = &items[index]
                         && matches!(
                             source.slice(*callable_span),
-                            "list-enumerate" | "list-group-runs"
+                            "list-group-runs"
                         )
                         && matches!(result, Value::List { .. })
                     {
@@ -5970,7 +5975,7 @@ impl Session {
         let mut invocation = self.clone();
         invocation.bindings = bindings.clone();
         for (parameter, argument) in parameters.iter().zip(arguments) {
-            invocation.bindings.insert(parameter.clone(), argument);
+            bind_anonymous_pattern(source, &mut invocation, parameter, argument, call_span)?;
         }
         let detail = format!("arguments={}", parameters.len());
         trace.record(TraceEvent {
@@ -5984,13 +5989,23 @@ impl Session {
     fn capture_anonymous_function(
         &self,
         source: &SourceText,
-        parameters: &[Span],
+        parameters: &[AnonymousPattern],
         body: &Expression,
         trace: &mut impl TraceSink,
     ) -> Value {
         let parameters = parameters
             .iter()
-            .map(|parameter| source.slice(*parameter).to_owned())
+            .map(|parameter| match parameter {
+                AnonymousPattern::Binding(span) => {
+                    CapturedPattern::Binding(source.slice(*span).to_owned())
+                }
+                AnonymousPattern::Product { bindings, .. } => CapturedPattern::Product(
+                    bindings
+                        .iter()
+                        .map(|binding| source.slice(*binding).to_owned())
+                        .collect(),
+                ),
+            })
             .collect::<Vec<_>>();
         let detail = format!("parameters={}", parameters.len());
         trace.record(TraceEvent {
@@ -6547,6 +6562,46 @@ impl Session {
         self.checkpoint(trace, Some(&value), Some(result_span));
         Ok(value)
     }
+}
+
+fn bind_anonymous_pattern(
+    source: &SourceText,
+    invocation: &mut Session,
+    pattern: &CapturedPattern,
+    argument: Value,
+    span: Span,
+) -> Result<(), Diagnostic> {
+    match pattern {
+        CapturedPattern::Binding(name) => {
+            invocation.bindings.insert(name.clone(), argument);
+        }
+        CapturedPattern::Product(bindings) => {
+            let Value::Tuple(values) = argument else {
+                return Err(diagnostic(
+                    source,
+                    "E-ANONYMOUS-PRODUCT-PATTERN",
+                    span,
+                    "anonymous product pattern requires a positional product",
+                ));
+            };
+            if values.len() != bindings.len() {
+                return Err(diagnostic(
+                    source,
+                    "E-ANONYMOUS-PRODUCT-PATTERN",
+                    span,
+                    format!(
+                        "anonymous product pattern expects {} fields, found {}",
+                        bindings.len(),
+                        values.len()
+                    ),
+                ));
+            }
+            for (name, value) in bindings.iter().zip(values) {
+                invocation.bindings.insert(name.clone(), value);
+            }
+        }
+    }
+    Ok(())
 }
 
 fn known_enum_alternatives(session: &Session, type_name: &str) -> Option<BTreeSet<String>> {
@@ -8019,12 +8074,15 @@ impl Execution {
             evaluate_binding_initializer(&self.source, session, initializer, classifier, trace)?;
         consume_generator_argument(&self.source, session, initializer);
         if let Some(classifier) = classifier {
-            let classifier_text = self.source.slice(classifier);
+            let classifier_text = substitute_classifier(
+                self.source.slice(classifier),
+                &session.generic_types,
+            );
             evaluated = narrow_rational_to_int(
                 &self.source,
                 initializer,
                 evaluated,
-                classifier_text,
+                &classifier_text,
                 self.return_classifier.as_deref(),
                 trace,
             )?;
@@ -8054,7 +8112,7 @@ impl Execution {
                 });
                 return Ok(BindingOutcome::Returned(evaluated, initializer.span()));
             }
-            if !value_has_classifier(&evaluated, classifier_text) {
+            if !value_has_classifier(&evaluated, &classifier_text) {
                 if classifier_text == "Character"
                     && let Value::String(text) = &evaluated
                 {
@@ -8161,6 +8219,9 @@ fn evaluate_list_expression(
     element_classifier: &str,
     trace: &mut impl TraceSink,
 ) -> Result<Option<Value>, Diagnostic> {
+    let substituted_element_classifier =
+        substitute_classifier(element_classifier, &session.generic_types);
+    let element_classifier = substituted_element_classifier.as_str();
     if matches!(expression, Expression::Identifier(span) if source.slice(*span) == "Empty") {
         trace.record(TraceEvent {
             event: "list.empty.constructed",
@@ -9550,6 +9611,21 @@ fn generic_classifier_accepts_name(
 fn substitute_classifier(classifier: &str, generic_types: &BTreeMap<String, String>) -> String {
     if let Some(concrete) = generic_types.get(classifier) {
         return concrete.clone();
+    }
+    for constructor in ["Optional", "List", "Range"] {
+        if let Some(payload) = applied_classifier(classifier, constructor) {
+            return format!(
+                "{constructor} {}",
+                substitute_classifier(payload, generic_types)
+            );
+        }
+    }
+    if let Some((success, codes)) = result_classifier_parts(classifier) {
+        return format!(
+            "Result {} {}",
+            substitute_classifier(success, generic_types),
+            substitute_classifier(codes, generic_types)
+        );
     }
     if let Some(items) = tuple_classifiers(classifier) {
         return format!(
@@ -13468,27 +13544,6 @@ fn apply_string_utility(
                 entries,
             }
         }
-        (
-            "range-integers",
-            Value::IntRange {
-                lower,
-                upper,
-                lower_inclusive,
-                upper_inclusive,
-            },
-        ) => {
-            let mut current = lower + BigInt::from(!lower_inclusive);
-            let end = upper - BigInt::from(!upper_inclusive);
-            let mut entries = Vec::new();
-            while current <= end {
-                entries.push(Value::Int(current.clone()));
-                current += 1;
-            }
-            Value::List {
-                element_classifier: "Int".into(),
-                entries,
-            }
-        }
         ("string-join", Value::Tuple(values)) if values.len() == 2 => {
             let [
                 Value::List {
@@ -15308,14 +15363,6 @@ fn apply_list_sequence_unary(
         unreachable!("sequence operation dispatched only for a List")
     };
     let result = match operation {
-        "list-enumerate" => Value::List {
-            element_classifier: format!("(Nat, {element_classifier})"),
-            entries: entries
-                .into_iter()
-                .enumerate()
-                .map(|(index, entry)| Value::Tuple(vec![Value::Int(BigInt::from(index)), entry]))
-                .collect(),
-        },
         "list-group-runs" => {
             let mut groups: Vec<Vec<Value>> = Vec::new();
             for entry in entries {
@@ -17371,7 +17418,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 100] = [
+const ROOT_OPERATIONS: [&str; 98] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -17381,7 +17428,6 @@ const ROOT_OPERATIONS: [&str; 100] = [
     "concat",
     "collect",
     "empty",
-    "list-enumerate",
     "list-permutations",
     "list-combinations",
     "list-subsets",
@@ -17442,7 +17488,6 @@ const ROOT_OPERATIONS: [&str; 100] = [
     "string-decimal-digits",
     "string-characters",
     "int-decimal-string",
-    "range-integers",
     "string-integer-rows",
     "string-vertical-integers",
     "string-integer-pairs",

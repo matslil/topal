@@ -8,7 +8,7 @@ mod documentation;
 mod parser;
 pub use documentation::{DocumentedDeclaration, DocumentedParameter, extract_documentation};
 pub use parser::{
-    CallableKind, DecisionMatcher, DecisionRule, DiagnosticControlKind, Expression,
+    AnonymousPattern, CallableKind, DecisionMatcher, DecisionRule, DiagnosticControlKind, Expression,
     FunctionParameter, InterfaceFunction, ParsedSource, ProductField, Statement, UnionAlternative,
     parse,
 };

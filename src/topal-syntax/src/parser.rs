@@ -31,7 +31,7 @@ pub enum Expression {
     ContextIdentifier(Span),
     Discard(Span),
     AnonymousFunction {
-        parameters: Vec<Span>,
+        parameters: Vec<AnonymousPattern>,
         body: Box<Self>,
         span: Span,
     },
@@ -43,6 +43,12 @@ pub enum Expression {
         items: Vec<Self>,
         span: Span,
     },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum AnonymousPattern {
+    Binding(Span),
+    Product { bindings: Vec<Span>, span: Span },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -2367,14 +2373,47 @@ impl Parser<'_> {
             .iter()
             .filter(|token| !token.kind.is_trivia())
             .collect::<Vec<_>>();
-        let parameters = !content.is_empty()
-            && content.iter().enumerate().all(|(index, token)| {
-                if index % 2 == 0 {
-                    token.kind == TokenKind::Identifier
-                } else {
-                    token.kind == TokenKind::Comma
+        let mut index = 0;
+        let mut parameters = !content.is_empty();
+        while parameters && index < content.len() {
+            if content[index].kind == TokenKind::Identifier {
+                index += 1;
+            } else if content[index].kind == TokenKind::LeftParen {
+                index += 1;
+                let mut expect_binding = true;
+                while index < content.len() && content[index].kind != TokenKind::RightParen {
+                    let expected = if expect_binding {
+                        TokenKind::Identifier
+                    } else {
+                        TokenKind::Comma
+                    };
+                    if content[index].kind != expected {
+                        parameters = false;
+                        break;
+                    }
+                    expect_binding = !expect_binding;
+                    index += 1;
                 }
-            });
+                if expect_binding
+                    || index == content.len()
+                    || content[index].kind != TokenKind::RightParen
+                {
+                    parameters = false;
+                    break;
+                }
+                index += 1;
+            } else {
+                parameters = false;
+                break;
+            }
+            if index < content.len() {
+                if content[index].kind != TokenKind::Comma {
+                    parameters = false;
+                    break;
+                }
+                index += 1;
+            }
+        }
         if !parameters {
             return false;
         }
@@ -2415,19 +2454,54 @@ impl Parser<'_> {
                     span,
                 });
             }
-            if token.kind != TokenKind::Identifier {
+            let parameter = if token.kind == TokenKind::Identifier {
+                AnonymousPattern::Binding(token.span)
+            } else if token.kind == TokenKind::LeftParen {
+                let mut bindings = Vec::new();
+                let closing = loop {
+                    let binding = self.take_nontrivia()?;
+                    if binding.kind != TokenKind::Identifier {
+                        self.diagnostics.push(SyntaxDiagnostic {
+                            code: "E-EXPECTED-ANONYMOUS-FUNCTION-PARAMETER",
+                            span: binding.span,
+                            message: "expected a binding in the product pattern".into(),
+                        });
+                        return None;
+                    }
+                    bindings.push(binding.span);
+                    let separator = self.take_nontrivia()?;
+                    if separator.kind == TokenKind::RightParen {
+                        break separator;
+                    }
+                    if separator.kind != TokenKind::Comma {
+                        self.diagnostics.push(SyntaxDiagnostic {
+                            code: "E-EXPECTED-ANONYMOUS-FUNCTION-SEPARATOR",
+                            span: separator.span,
+                            message: "expected `,` or `)` in the product pattern".into(),
+                        });
+                        return None;
+                    }
+                };
+                AnonymousPattern::Product {
+                    bindings,
+                    span: Span::new(token.span.start, closing.span.end),
+                }
+            } else {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-EXPECTED-ANONYMOUS-FUNCTION-PARAMETER",
                     span: token.span,
-                    message: "expected a parameter name or closing brace".into(),
+                    message: "expected a parameter pattern or closing brace".into(),
                 });
                 return None;
-            }
-            parameters.push(token.span);
+            };
+            let parameter_span = match &parameter {
+                AnonymousPattern::Binding(span) | AnonymousPattern::Product { span, .. } => *span,
+            };
+            parameters.push(parameter);
             let Some(separator) = self.peek_nontrivia() else {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-EXPECTED-RBRACE",
-                    span: token.span,
+                    span: parameter_span,
                     message: "expected `}` after anonymous-function parameters".into(),
                 });
                 return None;
