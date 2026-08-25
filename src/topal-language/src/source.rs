@@ -3824,7 +3824,6 @@ impl Session {
                         source.slice(*name),
                         "string-trim"
                             | "string-replace-all"
-                            | "string-split-exact"
                             | "string-glob-matches"
                             | "string-lines"
                             | "string-words"
@@ -13208,31 +13207,6 @@ fn apply_string_utility(
             };
             Value::String(text.replace(pattern, replacement))
         }
-        ("string-split-exact", Value::Tuple(values)) if values.len() == 2 => {
-            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-split-exact requires two String operands",
-                ));
-            };
-            if pattern.is_empty() {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-EMPTY-PATTERN",
-                    span,
-                    "string-split-exact requires a nonempty pattern",
-                ));
-            }
-            Value::List {
-                element_classifier: "String".into(),
-                entries: text
-                    .split(pattern)
-                    .map(|part| Value::String(part.to_owned()))
-                    .collect(),
-            }
-        }
         ("string-glob-matches", Value::Tuple(values)) if values.len() == 2 => {
             let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
                 return Err(diagnostic(
@@ -16715,7 +16689,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 72] = [
+const ROOT_OPERATIONS: [&str; 71] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16751,7 +16725,6 @@ const ROOT_OPERATIONS: [&str; 72] = [
     "string-lines",
     "string-regex-contains",
     "string-replace-all",
-    "string-split-exact",
     "string-trim",
     "string-words",
     "string-parse-int",

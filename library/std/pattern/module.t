@@ -27,13 +27,6 @@ pub ends-with? is fn (text : String, pattern : String) -> Boolean
 pub contains? is fn (text : String, pattern : String) -> Boolean
   (collect (characters text)) contains-sequence (collect (characters pattern))
 
-### Replace every nonoverlapping exact String pattern from left to right.
-pub replace-all is fn (
-  text : String,
-  (pattern : String, replacement : String)
-) -> String
-  string-replace-all (text, pattern, replacement)
-
 ### Test whether a List contains an exact consecutive List pattern.
 pub contains? is fn (
   values : List (Value : Equality),
@@ -75,9 +68,49 @@ pub count is fn (text : String, pattern : String) -> Nat
 pub find-all is fn (text : String, pattern : String) -> List Nat
   find-source (text, pattern)
 
+split-parts is fn ((parts : List String, start : Nat)) -> List String
+  parts
+
+split-start is fn ((parts : List String, start : Nat)) -> Nat
+  start
+
+split-step is fn ((text : String, pattern-length : Nat, state : (List String, Nat), index : Nat)) -> (List String, Nat)
+  parts is split-parts state
+  start is split-start state
+  index < start
+    true then state
+    false then (parts append (text select-index (start .. index)), index + pattern-length)
+
 ### Split text at every nonoverlapping exact pattern occurrence.
 pub split is fn (text : String, pattern : String) -> List String
-  string-split-exact (text, pattern)
+  indexes is find-source (text, pattern)
+  pattern-length is entry-count (collect (characters pattern))
+  final is indexes fold ((Empty String), 0) { state, index } split-step (text, pattern-length, state, index)
+  (split-parts final) append (text select-index ((split-start final) .. (entry-count text)))
+
+joined-text is fn ((joined : String, first? : Boolean)) -> String
+  joined
+
+joined-first? is fn ((joined : String, first? : Boolean)) -> Boolean
+  first?
+
+join-step is fn ((separator : String, state : (String, Boolean), part : String)) -> (String, Boolean)
+  joined is joined-text state
+  first? is joined-first? state
+  first?
+    true then (part, false)
+    false then (joined concat separator concat part, false)
+
+join-text is fn (parts : List String, separator : String) -> String
+  final is parts fold ("", true) { state, part } join-step (separator, state, part)
+  joined-text final
+
+### Replace every nonoverlapping exact String pattern from left to right.
+pub replace-all is fn (
+  text : String,
+  (pattern : String, replacement : String)
+) -> String
+  join-text (split (text, pattern), replacement)
 
 ### Match a complete String using `*` and `?` Character wildcards.
 pub glob? is fn (text : String, pattern : String) -> Boolean
