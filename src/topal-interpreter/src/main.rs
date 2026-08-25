@@ -6,7 +6,7 @@ use std::process::ExitCode;
 
 use topal_language::{
     JsonLines, LanguageVersion, Session, TraceSink, UNICODE_VERSION, Value, declares_library,
-    load_module_tree,
+    declares_string_solver, load_module_tree,
 };
 
 mod test_runner;
@@ -276,6 +276,11 @@ fn evaluate_input(
     let source = read_source(path)?;
     if declares_library(&source, "std") {
         load_module_tree(session, library_root, trace)?;
+    }
+    if input.is_none() && path.is_some() && declares_string_solver(&source) {
+        return Err(format!(
+            "application `{source_name}` requires an input file\nusage: topal APPLICATION INPUT"
+        ));
     }
     if let Some(input) = input {
         session

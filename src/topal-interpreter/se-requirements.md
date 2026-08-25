@@ -1950,7 +1950,9 @@ application shall therefore accept the input path as its sole user argument.
 The interpreter shall reject missing or unreadable data, invalid UTF-8, a
 missing source file, additional application arguments, and an absent or
 inapplicable `solve` function without granting ambient filesystem access to
-Topal code.
+Topal code. When a source file declares `solve` with one String parameter, an
+omitted input path shall be diagnosed as a missing application argument rather
+than printing the source file's ordinary top-level value.
 
 ## TOPAL-INTP-TEST-RUNNER-001 — Independent Topal test execution
 

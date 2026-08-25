@@ -80,6 +80,33 @@ fn positional_and_explicit_input_call_solve_and_print_only_its_result() {
 }
 
 #[test]
+fn application_without_input_reports_the_missing_argument() {
+    let directory = std::env::temp_dir().join(format!(
+        "topal-missing-application-input-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&directory).unwrap();
+    let source = directory.join("solver.t");
+    std::fs::write(
+        &source,
+        "use language ( version is v0.1 )\nsolve is fn (input : String) -> Nat\n  entry-count input\n",
+    )
+    .unwrap();
+
+    let output = run_file(&source);
+    std::fs::remove_dir_all(&directory).unwrap();
+
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("requires an input file"), "{stderr}");
+    assert!(
+        stderr.contains("usage: topal APPLICATION INPUT"),
+        "{stderr}"
+    );
+}
+
+#[test]
 fn topal_test_command_discovers_filters_and_reports_individual_programs() {
     let directory = std::env::temp_dir().join(format!("topal-test-runner-{}", std::process::id()));
     std::fs::create_dir_all(&directory).unwrap();

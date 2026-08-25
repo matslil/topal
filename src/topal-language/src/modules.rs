@@ -22,6 +22,34 @@ pub fn declares_library(source: &str, identity: &str) -> bool {
         })
 }
 
+/// Test whether a source file declares the conventional string-input
+/// application entry point.
+#[must_use]
+pub fn declares_string_solver(source: &str) -> bool {
+    fn is_string_solver(statement: &Statement, source: &SourceText) -> bool {
+        match statement {
+            Statement::Function {
+                name, parameters, ..
+            } => {
+                source.slice(*name) == "solve"
+                    && parameters.len() == 1
+                    && parameters[0].fields.is_empty()
+                    && source.slice(parameters[0].classifier) == "String"
+            }
+            Statement::Published { declaration, .. } => is_string_solver(declaration, source),
+            _ => false,
+        }
+    }
+
+    let Ok(source) = SourceText::new(source) else {
+        return false;
+    };
+    parse(&source, &lex(&source))
+        .statements
+        .iter()
+        .any(|statement| is_string_solver(statement, &source))
+}
+
 /// Load every ordinary source module and constructed child module below one
 /// package directory into an existing session.
 ///
@@ -112,6 +140,22 @@ mod tests {
     use super::*;
     use crate::Value;
     use num_bigint::BigInt;
+
+    #[test]
+    fn string_solver_detection_requires_the_application_entry_shape() {
+        assert!(declares_string_solver(
+            "use language ( version is v0.1 )\nsolve is fn (input : String) -> Nat\n  entry-count input\n"
+        ));
+        assert!(declares_string_solver(
+            "use language ( version is v0.1 )\npub solve is fn (input : String) -> Nat\n  entry-count input\n"
+        ));
+        assert!(!declares_string_solver(
+            "use language ( version is v0.1 )\nsolve is fn (input : Nat) -> Nat\n  input\n"
+        ));
+        assert!(!declares_string_solver(
+            "use language ( version is v0.1 )\nresult is \"solve is fn (input : String)\"\n"
+        ));
+    }
 
     #[test]
     fn shared_loader_executes_the_first_library_definition() {
