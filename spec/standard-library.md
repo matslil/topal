@@ -191,7 +191,9 @@ results and SHALL be deterministic.
 The `std test` namespace SHALL construct declarative application-test values
 from a Topal source path, input path, and exact expected-standard-output path.
 `topal test` SHALL interpret such a value as an application test without
-granting the tested Topal application ambient filesystem authority. Ordinary
+granting the tested Topal application ambient filesystem authority, invoking
+the source with the input path as its sole application argument exactly as a
+command-line user would. Ordinary
 self-checking Topal programs SHALL remain valid tests without a description
 wrapper.
 

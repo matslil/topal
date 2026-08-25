@@ -1939,14 +1939,17 @@ module attachment shall use the shared package-loader implementation rather
 than an interpreter-private module graph, so a compiler frontend can consume
 the same canonical source layout.
 
-## TOPAL-INTP-APPLICATION-INPUT-001 — Explicit script input file
+## TOPAL-INTP-APPLICATION-INPUT-001 — Application input file
 
-Script and test modes shall accept an explicit `--input DATA` option together
-with a Topal source file. The interpreter shall evaluate the source, call its
-`solve` function exactly once with the complete UTF-8 DATA contents as a
-String, and print only the returned value to standard output. It shall reject
-missing or unreadable data, invalid UTF-8, a missing source file, and an absent
-or inapplicable `solve` function without granting ambient filesystem access to
+Script and test modes shall accept `topal APPLICATION INPUT` as the ordinary
+command-line application form, with `--input INPUT APPLICATION` retained as an
+explicit equivalent. The interpreter shall evaluate APPLICATION, call its
+`solve` function exactly once with the complete UTF-8 INPUT contents as a
+String, and print only the returned value to standard output. A hashbang Topal
+application shall therefore accept the input path as its sole user argument.
+The interpreter shall reject missing or unreadable data, invalid UTF-8, a
+missing source file, additional application arguments, and an absent or
+inapplicable `solve` function without granting ambient filesystem access to
 Topal code.
 
 ## TOPAL-INTP-TEST-RUNNER-001 — Independent Topal test execution

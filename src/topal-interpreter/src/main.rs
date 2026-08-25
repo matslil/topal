@@ -123,7 +123,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             "--help" => {
                 println!(
-                    "Usage: topal [--library-root DIR] [--input DATA] [--interactive [--language-version VERSION] | --test] [FILE]\n       topal test [OPTIONS] [PATH...]\n\nWith no FILE, source is read from standard input. --input evaluates FILE, then calls its `solve` function with the complete DATA file as a String. `topal test` discovers and runs Topal test programs separately from Rust implementation tests. Source files declare their language and library dependencies."
+                    "Usage: topal [--library-root DIR] [--input DATA] [--interactive [--language-version VERSION] | --test] [APPLICATION [INPUT]]\n       topal test [OPTIONS] [PATH...]\n\nWith no APPLICATION, source is read from standard input. APPLICATION INPUT is the ordinary application form: it evaluates APPLICATION, then calls its `solve` function with the complete UTF-8 INPUT file and prints only the result. --input DATA remains an explicit equivalent. `topal test` discovers and runs Topal test programs separately from Rust implementation tests. Source files declare their language and library dependencies."
                 );
                 std::process::exit(0);
             }
@@ -140,7 +140,8 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             option if option.starts_with('-') => return Err(format!("unknown option: {option}")),
             path if source.is_none() => source = Some(path.to_owned()),
-            path => return Err(format!("unexpected second source file: {path}")),
+            path if input.is_none() => input = Some(PathBuf::from(path)),
+            path => return Err(format!("unexpected application argument: {path}")),
         }
     }
     Ok(Arguments {

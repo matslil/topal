@@ -259,9 +259,8 @@ fn execute_application_manifest(
     let output = Command::new(env::current_exe().map_err(|error| error.to_string())?)
         .args(["--library-root"])
         .arg(library_root)
-        .arg("--input")
-        .arg(&input)
         .arg(&source)
+        .arg(&input)
         .output()
         .map_err(|error| format!("cannot run {}: {error}", source.display()))?;
     if !output.status.success() {

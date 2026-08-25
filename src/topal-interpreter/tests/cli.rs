@@ -45,7 +45,7 @@ fn run_file(path: &Path) -> std::process::Output {
 }
 
 #[test]
-fn explicit_input_file_calls_solve_and_prints_only_its_result() {
+fn positional_and_explicit_input_call_solve_and_print_only_its_result() {
     let directory =
         std::env::temp_dir().join(format!("topal-explicit-input-{}", std::process::id()));
     std::fs::create_dir_all(&directory).unwrap();
@@ -58,19 +58,25 @@ fn explicit_input_file_calls_solve_and_prints_only_its_result() {
     .unwrap();
     std::fs::write(&input, "åb\n").unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_topal"))
+    let explicit = Command::new(env!("CARGO_BIN_EXE_topal"))
         .args(["--input", input.to_str().unwrap(), source.to_str().unwrap()])
+        .output()
+        .unwrap();
+    let positional = Command::new(env!("CARGO_BIN_EXE_topal"))
+        .args([source.to_str().unwrap(), input.to_str().unwrap()])
         .output()
         .unwrap();
 
     std::fs::remove_dir_all(&directory).unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(output.stdout, b"3\n");
-    assert!(output.stderr.is_empty());
+    for output in [explicit, positional] {
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(output.stdout, b"3\n");
+        assert!(output.stderr.is_empty());
+    }
 }
 
 #[test]
