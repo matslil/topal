@@ -3858,8 +3858,6 @@ impl Session {
                         source.slice(*name),
                         "machine-indicator-minimum-total"
                             | "machine-counter-minimum-total"
-                            | "graph-described-path-count"
-                            | "graph-described-required-path-count"
                             | "packing-described-fit-count"
                     )
                 {
@@ -13237,26 +13235,6 @@ fn is_unicode_white_space(character: char) -> bool {
     )
 }
 
-fn string_list(value: &Value) -> Option<Vec<String>> {
-    let Value::List {
-        element_classifier,
-        entries,
-    } = value
-    else {
-        return None;
-    };
-    if element_classifier != "String" {
-        return None;
-    }
-    entries
-        .iter()
-        .map(|entry| match entry {
-            Value::String(value) => Some(value.clone()),
-            _ => None,
-        })
-        .collect()
-}
-
 fn parse_machine_manual(text: &str) -> Vec<(Vec<usize>, Vec<Vec<usize>>, Vec<usize>)> {
     let indicator = Regex::new(r"\[([.#]+)\]").expect("fixed pattern");
     let button = Regex::new(r"\(([0-9,]+)\)").expect("fixed pattern");
@@ -13307,37 +13285,6 @@ fn minimum_counter_presses(target: &[usize], buttons: &[Vec<usize>]) -> usize {
         best
     }
     solve(target.to_vec(), buttons, &mut BTreeMap::new())
-}
-
-fn parse_described_graph(text: &str) -> BTreeMap<String, Vec<String>> {
-    text.lines().filter_map(|line| {
-        let (source, destinations) = line.split_once(": ")?;
-        Some((source.to_owned(), destinations.split_whitespace().map(str::to_owned).collect()))
-    }).collect()
-}
-
-fn count_required_paths(
-    graph: &BTreeMap<String, Vec<String>>,
-    node: &str,
-    destination: &str,
-    required: &[String],
-    seen: u64,
-    memo: &mut BTreeMap<(String, u64), BigInt>,
-) -> BigInt {
-    let mut seen = seen;
-    for (index, required_node) in required.iter().enumerate() {
-        if node == required_node { seen |= 1 << index; }
-    }
-    if node == destination {
-        return BigInt::from(seen == (1u64 << required.len()) - 1);
-    }
-    let key = (node.to_owned(), seen);
-    if let Some(value) = memo.get(&key) { return value.clone(); }
-    let value: BigInt = graph.get(node).into_iter().flatten().map(|next| {
-        count_required_paths(graph, next, destination, required, seen, memo)
-    }).sum();
-    memo.insert(key, value.clone());
-    value
 }
 
 fn normalized_shape(points: &[(isize, isize)]) -> Vec<(isize, isize)> {
@@ -13415,13 +13362,6 @@ fn apply_planning_algorithm(source: &SourceText, operation: &str, argument: Valu
                 if operation == "machine-indicator-minimum-total" { minimum_indicator_presses(indicator, buttons) } else { minimum_counter_presses(counters, buttons) }
             }).sum::<usize>();
             Value::Int(BigInt::from(total))
-        }
-        "graph-described-path-count" | "graph-described-required-path-count" => {
-            let Value::Tuple(fields) = argument else { return Err(invalid()) };
-            let [Value::String(text), Value::String(start), Value::String(destination), required] = fields.as_slice() else { return Err(invalid()) };
-            let required = string_list(required).ok_or_else(invalid)?;
-            let graph = parse_described_graph(text);
-            Value::Int(count_required_paths(&graph, start, destination, if operation.ends_with("required-path-count") { &required } else { &[] }, 0, &mut BTreeMap::new()))
         }
         "packing-described-fit-count" => {
             let Value::String(text) = argument else { return Err(invalid()) };
@@ -15472,7 +15412,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 36] = [
+const ROOT_OPERATIONS: [&str; 34] = [
     "absolute",
     "ascii-decimal-digit",
     "ascii-decimal-text?",
@@ -15505,8 +15445,6 @@ const ROOT_OPERATIONS: [&str; 36] = [
     "string-regex-contains",
     "machine-indicator-minimum-total",
     "machine-counter-minimum-total",
-    "graph-described-path-count",
-    "graph-described-required-path-count",
     "packing-described-fit-count",
     "zero",
 ];
