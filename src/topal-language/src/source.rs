@@ -3505,7 +3505,12 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
-                    && source.slice(*name) == "unicode-whitespace-character"
+                    && matches!(
+                        source.slice(*name),
+                        "unicode-whitespace-character"
+                            | "unicode-line-feed-character"
+                            | "unicode-carriage-return-character"
+                    )
                 {
                     let operand_span = items[1].span();
                     let operand = self.evaluate_expression(source, &items[1], trace)?;
@@ -3517,10 +3522,19 @@ impl Session {
                             "Unicode whitespace classification requires Character",
                         ));
                     };
+                    let operation = source.slice(*name);
                     let mut scalars = character.chars();
-                    let whitespace = scalars.next().is_some_and(is_unicode_white_space)
-                        && scalars.next().is_none();
-                    let value = Value::Boolean(whitespace);
+                    let first = scalars.next();
+                    let matches = scalars.next().is_none()
+                        && match operation {
+                            "unicode-whitespace-character" => {
+                                first.is_some_and(is_unicode_white_space)
+                            }
+                            "unicode-line-feed-character" => first == Some('\n'),
+                            "unicode-carriage-return-character" => first == Some('\r'),
+                            _ => unreachable!("Unicode Character primitive is dispatched"),
+                        };
+                    let value = Value::Boolean(matches);
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -3803,8 +3817,6 @@ impl Session {
                         source.slice(*name),
                         "string-replace-all"
                             | "string-glob-matches"
-                            | "string-lines"
-                            | "string-words"
                             | "string-regex-contains"
                             | "string-parse-int"
                             | "string-signed-integers"
@@ -13211,20 +13223,6 @@ fn apply_string_utility(
             })?;
             Value::Boolean(expression.is_match(text))
         }
-        ("string-lines", Value::String(text)) => Value::List {
-            element_classifier: "String".into(),
-            entries: text
-                .lines()
-                .map(|line| Value::String(line.to_owned()))
-                .collect(),
-        },
-        ("string-words", Value::String(text)) => Value::List {
-            element_classifier: "String".into(),
-            entries: text
-                .split_whitespace()
-                .map(|word| Value::String(word.to_owned()))
-                .collect(),
-        },
         ("string-parse-int", Value::String(text)) => Value::Optional {
             payload_classifier: "Int".into(),
             payload: parse_strict_decimal(&text).map(|value| Box::new(Value::Int(value))),
@@ -16227,6 +16225,8 @@ const ROOT_OPERATIONS: [&str; 56] = [
     "range-upper-inclusive?",
     "upper",
     "unicode-whitespace-character",
+    "unicode-line-feed-character",
+    "unicode-carriage-return-character",
     "uncons",
     "not",
     "negate",
@@ -16234,10 +16234,8 @@ const ROOT_OPERATIONS: [&str; 56] = [
     "rest",
     "reverse",
     "string-glob-matches",
-    "string-lines",
     "string-regex-contains",
     "string-replace-all",
-    "string-words",
     "string-parse-int",
     "string-signed-integers",
     "string-unsigned-integers",
