@@ -25,56 +25,135 @@ pub equal-range is fn (values : List (Value : TotalOrder), sought : Value) -> Ra
   upper is upper-bound (values, sought)
   lower .. upper
 
-insert-ordered is fn (candidate : (Value : TotalOrder), values : List Value) -> List Value
-  boundary is lower-bound (values, candidate)
-  length is entry-count values
-  (values select-index (0 .. boundary)) concat (one candidate) concat (values select-index (boundary .. length))
-
-sort-step is fn (candidate : (Value : TotalOrder), sorted : List Value) -> List Value
-  insert-ordered (candidate, sorted)
-
 sort-source is fn (values : List (Value : TotalOrder)) -> List Value
-  sorted : List Value is Empty
-  values fold sorted { collected, candidate } sort-step (candidate, collected)
+  values stable-sort
 
 ### Return Int entries in ascending order, preserving the order of equal entries.
 pub sort is fn (values : List Int) -> List Int
-  sort-source values
+  values stable-sort
 
 ### Return Rational entries in ascending order, preserving equal-entry order.
 pub sort is fn (values : List Rational) -> List Rational
-  sort-source values
+  values stable-sort
 
 ### Return Int entries in descending order, preserving the order of equal entries.
 pub sort-descending is fn (values : List Int) -> List Int
-  (sort-source values) reverse
+  values stable-sort-descending
 
 ### Return Rational entries in descending order, preserving equal-entry order.
 pub sort-descending is fn (values : List Rational) -> List Rational
-  (sort-source values) reverse
+  values stable-sort-descending
 
 present-index is fn (boundary : Nat) -> Optional Nat
   present : Optional Nat is Some boundary
   present
 
-index-if-equal is fn ((candidate : (Value : TotalOrder), sought : Value, boundary : Nat)) -> Optional Nat
-  candidate = sought
-    true then present-index boundary
-    false then None Nat
+midpoint is fn (lower : Nat, upper : Nat) -> Nat
+  quotient is fn (value : Int, remainder : Int) -> Int
+    value
+  Nat (lower + (quotient ((upper - lower) /% 2)))
 
-search-source is fn (values : List (Value : TotalOrder), sought : Value) -> Optional Nat
-  boundary is lower-bound (values, sought)
-  first (values select-index (boundary ..= boundary))
-    Some candidate then index-if-equal (candidate, sought, boundary)
-    None then None Nat
+half is fn (value : Int) -> Int
+  quotient is fn (result : Int, remainder : Int) -> Int
+    result
+  quotient (value /% 2)
+search-depth is fn (length : Nat) -> Nat
+  halves : List Int is collect (length iterate ({ value } half value) take-while ({ value } value > 0))
+  (entry-count halves) + 1
+
+search-values is fn ((values : List Int, sought : Int, lower : Nat, upper : Nat, found : Int)) -> List Int
+  values
+search-values is fn ((values : List Rational, sought : Rational, lower : Nat, upper : Nat, found : Int)) -> List Rational
+  values
+search-sought is fn ((values : List Int, sought : Int, lower : Nat, upper : Nat, found : Int)) -> Int
+  sought
+search-sought is fn ((values : List Rational, sought : Rational, lower : Nat, upper : Nat, found : Int)) -> Rational
+  sought
+search-lower is fn ((values : List Int, sought : Int, lower : Nat, upper : Nat, found : Int)) -> Nat
+  lower
+search-lower is fn ((values : List Rational, sought : Rational, lower : Nat, upper : Nat, found : Int)) -> Nat
+  lower
+search-upper is fn ((values : List Int, sought : Int, lower : Nat, upper : Nat, found : Int)) -> Nat
+  upper
+search-upper is fn ((values : List Rational, sought : Rational, lower : Nat, upper : Nat, found : Int)) -> Nat
+  upper
+search-found is fn ((values : List Int, sought : Int, lower : Nat, upper : Nat, found : Int)) -> Int
+  found
+search-found is fn ((values : List Rational, sought : Rational, lower : Nat, upper : Nat, found : Int)) -> Int
+  found
+
+int-search-present is fn (state : (List Int, Int, Nat, Nat, Int), candidate : Int) -> (List Int, Int, Nat, Nat, Int)
+  middle is midpoint (search-lower state, search-upper state)
+  candidate
+    = (search-sought state) then (search-values state, search-sought state, search-lower state, search-upper state, middle)
+    < (search-sought state) then (search-values state, search-sought state, middle + 1, search-upper state, -2)
+    otherwise (search-values state, search-sought state, search-lower state, middle, -2)
+int-search-candidate is fn (state : (List Int, Int, Nat, Nat, Int), candidate : Optional Int) -> (List Int, Int, Nat, Nat, Int)
+  candidate
+    Some present then int-search-present (state, present)
+    None then (search-values state, search-sought state, search-lower state, search-upper state, -1)
+int-search-nonempty is fn (state : (List Int, Int, Nat, Nat, Int)) -> (List Int, Int, Nat, Nat, Int)
+  middle is midpoint (search-lower state, search-upper state)
+  int-search-candidate (state, first ((search-values state) select-index (middle ..= middle)))
+int-search-active-step is fn (state : (List Int, Int, Nat, Nat, Int)) -> (List Int, Int, Nat, Nat, Int)
+  (search-lower state) < (search-upper state)
+    true then int-search-nonempty state
+    false then (search-values state, search-sought state, search-lower state, search-upper state, -1)
+int-search-step is fn (state : (List Int, Int, Nat, Nat, Int)) -> (List Int, Int, Nat, Nat, Int)
+  (search-found state) = -2
+    true then int-search-active-step state
+    false then state
+int-search-loop is fn (
+  state : (List Int, Int, Nat, Nat, Int),
+  remaining : Nat
+) -> (List Int, Int, Nat, Nat, Int) : Decreases remaining
+  remaining
+    <= 0 then state
+    otherwise int-search-loop (int-search-step state, remaining - 1)
+
+rational-search-present is fn (state : (List Rational, Rational, Nat, Nat, Int), candidate : Rational) -> (List Rational, Rational, Nat, Nat, Int)
+  middle is midpoint (search-lower state, search-upper state)
+  candidate
+    = (search-sought state) then (search-values state, search-sought state, search-lower state, search-upper state, middle)
+    < (search-sought state) then (search-values state, search-sought state, middle + 1, search-upper state, -2)
+    otherwise (search-values state, search-sought state, search-lower state, middle, -2)
+rational-search-candidate is fn (state : (List Rational, Rational, Nat, Nat, Int), candidate : Optional Rational) -> (List Rational, Rational, Nat, Nat, Int)
+  candidate
+    Some present then rational-search-present (state, present)
+    None then (search-values state, search-sought state, search-lower state, search-upper state, -1)
+rational-search-nonempty is fn (state : (List Rational, Rational, Nat, Nat, Int)) -> (List Rational, Rational, Nat, Nat, Int)
+  middle is midpoint (search-lower state, search-upper state)
+  rational-search-candidate (state, first ((search-values state) select-index (middle ..= middle)))
+rational-search-active-step is fn (state : (List Rational, Rational, Nat, Nat, Int)) -> (List Rational, Rational, Nat, Nat, Int)
+  (search-lower state) < (search-upper state)
+    true then rational-search-nonempty state
+    false then (search-values state, search-sought state, search-lower state, search-upper state, -1)
+rational-search-step is fn (state : (List Rational, Rational, Nat, Nat, Int)) -> (List Rational, Rational, Nat, Nat, Int)
+  (search-found state) = -2
+    true then rational-search-active-step state
+    false then state
+rational-search-loop is fn (
+  state : (List Rational, Rational, Nat, Nat, Int),
+  remaining : Nat
+) -> (List Rational, Rational, Nat, Nat, Int) : Decreases remaining
+  remaining
+    <= 0 then state
+    otherwise rational-search-loop (rational-search-step state, remaining - 1)
+
+optional-found-index is fn (found : Int) -> Optional Nat
+  found >= 0
+    true then present-index (Nat found)
+    false then None Nat
 
 ### Find an equal Int in an ascending List.
 pub binary-search is fn (values : List Int, sought : Int) -> Optional Nat
-  search-source (values, sought)
+  final is int-search-loop ((values, sought, Nat 0, entry-count values, -2), search-depth (entry-count values))
+  optional-found-index (search-found final)
 
 ### Find an equal Rational in an ascending List.
 pub binary-search is fn (values : List Rational, sought : Rational) -> Optional Nat
-  search-source (values, sought)
+  final is rational-search-loop ((values, sought, Nat 0, entry-count values, -2), search-depth (entry-count values))
+  optional-found-index (search-found final)
 
 ### Merge two ascending Int Lists into one ascending List.
 pub merge is fn (left : List Int, right : List Int) -> List Int

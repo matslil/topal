@@ -46,14 +46,14 @@ Move these operations to `std.sequence` or the extended range library:
   `list-rotate-right`, `list-chunks`, `list-windows`, `list-enumerate`,
   `list-group-runs`, `list-zip-shortest`, and `list-transpose-shortest`;
 - `range-integers` and `range-coalesce-int`;
-- the library-facing behavior of `reverse`, `stable-sort`,
-  `stable-sort-descending`, `ordered-binary-search`, `ordered-merge`,
+- the library-facing behavior of `ordered-binary-search`, `ordered-merge`,
   `ordered-smallest`, and `ordered-nth`.
 
 Fundamental immutable `List` construction/decomposition, entry count, checked
-index/range selection, append/concatenation, fold, equality, and comparison
-remain core operations. They are the substrate on which the Topal algorithms
-are implemented.
+index/range selection, append/concatenation, fold, equality, comparison,
+reversal, and stable exact-numeric sorting remain core operations. They are the
+documented representation substrate on which the Topal algorithms are
+implemented.
 
 ### Combinatorics
 
@@ -138,8 +138,9 @@ The following are not migration targets:
    final Topal caller disappears.
 6. Delete portable `topal-transfer` models after their Topal tests provide
    equivalent evidence; retain only explicit native adapter boundaries.
-7. Verify that no hidden algorithm operation remains in the root operation
-   catalog and that every `std` public behavior resolves to `.t` source.
+7. Verify that no migration-target algorithm operation remains in the root
+   operation catalog and that every `std` public behavior resolves to `.t`
+   source; documented fundamental representation mechanisms remain permitted.
 
 The migration is complete only when searching Rust sources for every operation
 listed above finds neither dispatch nor an algorithm implementation, while all
