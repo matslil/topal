@@ -188,7 +188,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 192);
+    assert_eq!(examples.len(), 194);
     for example in examples {
         let output = run_file(&example);
         assert!(
