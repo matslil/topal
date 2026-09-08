@@ -3861,15 +3861,7 @@ impl Session {
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
-                        "string-replace-all"
-                            | "string-glob-matches"
-                            | "string-regex-contains"
-                            | "string-signed-integers"
-                            | "string-unsigned-integers"
-                            | "string-integer-rows"
-                            | "string-vertical-integers"
-                            | "string-integer-pairs"
-                            | "string-integer-triples"
+                        "string-replace-all" | "string-glob-matches" | "string-regex-contains"
                     )
                 {
                     let operation = source.slice(*name);
@@ -13265,106 +13257,6 @@ fn apply_string_utility(
             })?;
             Value::Boolean(expression.is_match(text))
         }
-        ("string-signed-integers" | "string-unsigned-integers", Value::String(text)) => {
-            let pattern = if operation == "string-signed-integers" {
-                r"-?[0-9]+"
-            } else {
-                r"[0-9]+"
-            };
-            let expression = Regex::new(pattern).expect("fixed decimal pattern is valid");
-            Value::List {
-                element_classifier: if operation == "string-signed-integers" {
-                    "Int"
-                } else {
-                    "Nat"
-                }
-                .into(),
-                entries: expression
-                    .find_iter(&text)
-                    .map(|found| {
-                        Value::Int(
-                            found
-                                .as_str()
-                                .parse::<BigInt>()
-                                .expect("matched decimal integer"),
-                        )
-                    })
-                    .collect(),
-            }
-        }
-        ("string-integer-rows", Value::String(text)) => {
-            let expression = Regex::new(r"-?[0-9]+").expect("fixed decimal pattern is valid");
-            Value::List {
-                element_classifier: "List Int".into(),
-                entries: text
-                    .lines()
-                    .filter_map(|line| {
-                        let entries = expression
-                            .find_iter(line)
-                            .map(|found| {
-                                Value::Int(
-                                    found
-                                        .as_str()
-                                        .parse::<BigInt>()
-                                        .expect("matched decimal integer"),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        (!entries.is_empty()).then_some(Value::List {
-                            element_classifier: "Int".into(),
-                            entries,
-                        })
-                    })
-                    .collect(),
-            }
-        }
-        ("string-vertical-integers", Value::String(text)) => {
-            let lines = text.lines().collect::<Vec<_>>();
-            let width = lines.iter().map(|line| line.len()).max().unwrap_or(0);
-            let number_lines = lines.get(..lines.len().saturating_sub(1)).unwrap_or(&[]);
-            let entries = (0..width)
-                .map(|column| {
-                    let digits = number_lines
-                        .iter()
-                        .filter_map(|line| line.as_bytes().get(column).copied())
-                        .filter(u8::is_ascii_digit)
-                        .collect::<Vec<_>>();
-                    Value::Optional {
-                        payload_classifier: "Int".into(),
-                        payload: (!digits.is_empty()).then(|| {
-                            Box::new(Value::Int(
-                                String::from_utf8(digits)
-                                    .expect("ASCII digits are UTF-8")
-                                    .parse::<BigInt>()
-                                    .expect("digit column is an integer"),
-                            ))
-                        }),
-                    }
-                })
-                .collect();
-            Value::List {
-                element_classifier: "Optional Int".into(),
-                entries,
-            }
-        }
-        ("string-integer-pairs" | "string-integer-triples", Value::String(text)) => {
-            let arity = if operation == "string-integer-pairs" { 2 } else { 3 };
-            let expression = Regex::new(r"-?[0-9]+").expect("fixed decimal pattern is valid");
-            let entries = text
-                .lines()
-                .filter_map(|line| {
-                    let values = expression
-                        .find_iter(line)
-                        .map(|found| Value::Int(found.as_str().parse::<BigInt>().expect("matched integer")))
-                        .collect::<Vec<_>>();
-                    (values.len() == arity).then_some(Value::Tuple(values))
-                })
-                .collect();
-            Value::List {
-                element_classifier: if arity == 2 { "(Int, Int)" } else { "(Int, Int, Int)" }.into(),
-                entries,
-            }
-        }
         _ => {
             return Err(diagnostic(
                 source,
@@ -16203,7 +16095,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 54] = [
+const ROOT_OPERATIONS: [&str; 48] = [
     "absolute",
     "ascii-decimal-digit",
     "ascii-decimal-text?",
@@ -16242,12 +16134,6 @@ const ROOT_OPERATIONS: [&str; 54] = [
     "string-glob-matches",
     "string-regex-contains",
     "string-replace-all",
-    "string-signed-integers",
-    "string-unsigned-integers",
-    "string-integer-rows",
-    "string-vertical-integers",
-    "string-integer-pairs",
-    "string-integer-triples",
     "geometry-nearest-component-product",
     "geometry-final-connection-x-product",
     "geometry-largest-point-rectangle",
