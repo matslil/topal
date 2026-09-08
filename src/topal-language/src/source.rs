@@ -3852,21 +3852,6 @@ impl Session {
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
-                if items.len() == 2
-                    && let Expression::Identifier(name) = &items[0]
-                    && matches!(
-                        source.slice(*name),
-                        "packing-described-fit-count"
-                    )
-                {
-                    let operation = source.slice(*name);
-                    let operand_span = items[1].span();
-                    let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value =
-                        apply_planning_algorithm(source, operation, operand, operand_span)?;
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
-                }
                 if is_list_uncons(source, items) {
                     return evaluate_list_uncons(source, self, items, *span, trace);
                 }
@@ -13233,84 +13218,6 @@ fn is_unicode_white_space(character: char) -> bool {
     )
 }
 
-fn normalized_shape(points: &[(isize, isize)]) -> Vec<(isize, isize)> {
-    let min_row = points.iter().map(|point| point.0).min().unwrap_or(0);
-    let min_column = points.iter().map(|point| point.1).min().unwrap_or(0);
-    let mut result = points.iter().map(|point| (point.0 - min_row, point.1 - min_column)).collect::<Vec<_>>();
-    result.sort();
-    result
-}
-
-fn shape_orientations(shape: &[(isize, isize)]) -> Vec<Vec<(isize, isize)>> {
-    let mut result = Vec::new();
-    for flip in [false, true] {
-        for rotation in 0..4 {
-            let transformed = shape.iter().map(|&(mut row, mut column)| {
-                if flip { row = -row; }
-                for _ in 0..rotation { (row, column) = (column, -row); }
-                (row, column)
-            }).collect::<Vec<_>>();
-            let transformed = normalized_shape(&transformed);
-            if !result.contains(&transformed) { result.push(transformed); }
-        }
-    }
-    result
-}
-
-fn region_can_fit(width: usize, height: usize, shapes: &[Vec<Vec<(isize, isize)>>], quantities: &[usize]) -> bool {
-    let occupied_cells: usize = quantities.iter().zip(shapes).map(|(count, shape)| count * shape[0].len()).sum();
-    if occupied_cells > width * height { return false; }
-    let pieces = quantities.iter().enumerate().flat_map(|(index, count)| std::iter::repeat_n(index, *count)).collect::<Vec<_>>();
-    fn place(index: usize, pieces: &[usize], shapes: &[Vec<Vec<(isize, isize)>>], width: usize, height: usize, occupied: &mut BTreeSet<(usize, usize)>) -> bool {
-        if index == pieces.len() { return true; }
-        for shape in &shapes[pieces[index]] {
-            for row in 0..height {
-                for column in 0..width {
-                    let cells = shape.iter().map(|&(dr, dc)| (row as isize + dr, column as isize + dc)).collect::<Vec<_>>();
-                    if cells.iter().all(|&(r, c)| r >= 0 && c >= 0 && r < height as isize && c < width as isize && !occupied.contains(&(r as usize, c as usize))) {
-                        for &(r, c) in &cells { occupied.insert((r as usize, c as usize)); }
-                        if place(index + 1, pieces, shapes, width, height, occupied) { return true; }
-                        for &(r, c) in &cells { occupied.remove(&(r as usize, c as usize)); }
-                    }
-                }
-            }
-        }
-        false
-    }
-    place(0, &pieces, shapes, width, height, &mut BTreeSet::new())
-}
-
-fn described_fit_count(text: &str) -> usize {
-    let sections = text.split("\n\n").collect::<Vec<_>>();
-    let mut shapes = Vec::new();
-    let mut regions = Vec::new();
-    for section in sections {
-        if section.lines().next().is_some_and(|line| line.contains('x')) {
-            for line in section.lines().filter(|line| !line.trim().is_empty()) {
-                let numbers = Regex::new(r"[0-9]+").expect("fixed pattern").find_iter(line).filter_map(|value| value.as_str().parse::<usize>().ok()).collect::<Vec<_>>();
-                if numbers.len() >= 2 { regions.push((numbers[0], numbers[1], numbers[2..].to_vec())); }
-            }
-        } else {
-            let rows = section.lines().skip(1).collect::<Vec<_>>();
-            let points = rows.iter().enumerate().flat_map(|(row, line)| line.bytes().enumerate().filter_map(move |(column, value)| (value == b'#').then_some((row as isize, column as isize)))).collect::<Vec<_>>();
-            if !points.is_empty() { shapes.push(shape_orientations(&points)); }
-        }
-    }
-    regions.into_iter().filter(|(width, height, quantities)| region_can_fit(*width, *height, &shapes, quantities)).count()
-}
-
-fn apply_planning_algorithm(source: &SourceText, operation: &str, argument: Value, span: Span) -> Result<Value, Diagnostic> {
-    let invalid = || diagnostic(source, "E-PLANNING-OPERANDS", span, format!("invalid operands for {operation}"));
-    let value = match operation {
-        "packing-described-fit-count" => {
-            let Value::String(text) = argument else { return Err(invalid()) };
-            Value::Int(BigInt::from(described_fit_count(&text)))
-        }
-        _ => unreachable!("planning operation is dispatched explicitly"),
-    };
-    Ok(value)
-}
-
 fn apply_count(
     source: &SourceText,
     operation: &str,
@@ -15351,7 +15258,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 32] = [
+const ROOT_OPERATIONS: [&str; 31] = [
     "absolute",
     "ascii-decimal-digit",
     "ascii-decimal-text?",
@@ -15382,7 +15289,6 @@ const ROOT_OPERATIONS: [&str; 32] = [
     "rest",
     "reverse",
     "string-regex-contains",
-    "packing-described-fit-count",
     "zero",
 ];
 
