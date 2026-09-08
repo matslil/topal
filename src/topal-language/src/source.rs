@@ -3505,6 +3505,52 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
+                    && source.slice(*name) == "ascii-decimal-text?"
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(text) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-ASCII-DIGIT-OPERAND",
+                            operand_span,
+                            "ASCII decimal text classification requires String",
+                        ));
+                    };
+                    let value = Value::Boolean(text.bytes().all(|byte| byte.is_ascii_digit()));
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && source.slice(*name) == "ascii-decimal-digit"
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(character) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-ASCII-DIGIT-OPERAND",
+                            operand_span,
+                            "ASCII decimal digit classification requires Character",
+                        ));
+                    };
+                    let payload = character
+                        .as_bytes()
+                        .first()
+                        .copied()
+                        .filter(|_| character.len() == 1)
+                        .filter(u8::is_ascii_digit)
+                        .map(|digit| Box::new(Value::Int(BigInt::from(digit - b'0'))));
+                    let value = Value::Optional {
+                        payload_classifier: "Nat".into(),
+                        payload,
+                    };
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
                         "unicode-whitespace-character"
@@ -3818,12 +3864,8 @@ impl Session {
                         "string-replace-all"
                             | "string-glob-matches"
                             | "string-regex-contains"
-                            | "string-parse-int"
                             | "string-signed-integers"
                             | "string-unsigned-integers"
-                            | "string-decimal-digits"
-                            | "string-characters"
-                            | "int-decimal-string"
                             | "string-integer-rows"
                             | "string-vertical-integers"
                             | "string-integer-pairs"
@@ -13223,10 +13265,6 @@ fn apply_string_utility(
             })?;
             Value::Boolean(expression.is_match(text))
         }
-        ("string-parse-int", Value::String(text)) => Value::Optional {
-            payload_classifier: "Int".into(),
-            payload: parse_strict_decimal(&text).map(|value| Box::new(Value::Int(value))),
-        },
         ("string-signed-integers" | "string-unsigned-integers", Value::String(text)) => {
             let pattern = if operation == "string-signed-integers" {
                 r"-?[0-9]+"
@@ -13254,30 +13292,6 @@ fn apply_string_utility(
                     .collect(),
             }
         }
-        ("string-decimal-digits", Value::String(text)) => {
-            if !text.bytes().all(|byte| byte.is_ascii_digit()) {
-                return Err(diagnostic(
-                    source,
-                    "E-DECIMAL-DIGITS",
-                    span,
-                    "decimal-digits requires only ASCII decimal digits",
-                ));
-            }
-            Value::List {
-                element_classifier: "Nat".into(),
-                entries: text
-                    .bytes()
-                    .map(|byte| Value::Int(BigInt::from(byte - b'0')))
-                    .collect(),
-            }
-        }
-        ("string-characters", Value::String(text)) => Value::List {
-            element_classifier: "Character".into(),
-            entries: characters(&text)
-                .map(|character| Value::String(character.to_owned()))
-                .collect(),
-        },
-        ("int-decimal-string", Value::Int(value)) => Value::String(value.to_string()),
         ("string-integer-rows", Value::String(text)) => {
             let expression = Regex::new(r"-?[0-9]+").expect("fixed decimal pattern is valid");
             Value::List {
@@ -13383,16 +13397,6 @@ fn is_unicode_white_space(character: char) -> bool {
             | '\u{205F}'
             | '\u{3000}'
     )
-}
-
-fn parse_strict_decimal(text: &str) -> Option<BigInt> {
-    let unsigned = text
-        .strip_prefix('-')
-        .or_else(|| text.strip_prefix('+'))
-        .unwrap_or(text);
-    (!unsigned.is_empty() && unsigned.bytes().all(|byte| byte.is_ascii_digit()))
-        .then(|| text.parse::<BigInt>().ok())
-        .flatten()
 }
 
 fn glob_matches(text: &str, pattern: &str) -> bool {
@@ -16199,8 +16203,10 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 56] = [
+const ROOT_OPERATIONS: [&str; 54] = [
     "absolute",
+    "ascii-decimal-digit",
+    "ascii-decimal-text?",
     "byte-count",
     "case-fold",
     "canonically-equals",
@@ -16236,12 +16242,8 @@ const ROOT_OPERATIONS: [&str; 56] = [
     "string-glob-matches",
     "string-regex-contains",
     "string-replace-all",
-    "string-parse-int",
     "string-signed-integers",
     "string-unsigned-integers",
-    "string-decimal-digits",
-    "string-characters",
-    "int-decimal-string",
     "string-integer-rows",
     "string-vertical-integers",
     "string-integer-pairs",
