@@ -333,12 +333,16 @@ def environment() -> dict[str, Any]:
     }
 
 
-def run_measurements(arguments: argparse.Namespace) -> dict[str, Measurement]:
+def run_measurements(
+    arguments: argparse.Namespace, identities: set[str] | None = None
+) -> dict[str, Measurement]:
     tests = (
         discover_tests(arguments.rust_min_stack)
         if arguments.domain == "rust"
         else discover_topal_tests(arguments.rust_min_stack)
     )
+    if identities is not None:
+        tests = [test for test in tests if test.identity in identities]
     jobs = worker_count(arguments.jobs, arguments.memory_limit)
     print(f"Measuring {len(tests)} tests with {jobs} workers", flush=True)
     run_identity = uuid.uuid4().hex[:10]
@@ -464,7 +468,27 @@ def arguments() -> argparse.Namespace:
 
 def main() -> int:
     parsed = arguments()
-    measured = run_measurements(parsed)
+    existing = None
+    identities = None
+    if (
+        parsed.mode == "baseline"
+        and parsed.baseline.exists()
+        and not parsed.replace_existing_baseline
+    ):
+        existing = json.loads(parsed.baseline.read_text(encoding="utf-8"))
+        if existing.get("schema") != 1:
+            raise RuntimeError("unsupported baseline schema")
+        if existing.get("samples_per_test") != parsed.samples:
+            raise RuntimeError("baseline sample count differs from --samples")
+        discovered = (
+            discover_tests(parsed.rust_min_stack)
+            if parsed.domain == "rust"
+            else discover_topal_tests(parsed.rust_min_stack)
+        )
+        identities = {
+            test.identity for test in discovered
+        } - set(existing["tests"])
+    measured = run_measurements(parsed, identities)
     failures = failed_tests(measured)
     if failures:
         for failure in sorted(failures):
@@ -474,12 +498,7 @@ def main() -> int:
         parsed.baseline.parent.mkdir(parents=True, exist_ok=True)
         added = len(measured)
         document = baseline_document(measured, parsed.samples)
-        if parsed.baseline.exists() and not parsed.replace_existing_baseline:
-            existing = json.loads(parsed.baseline.read_text(encoding="utf-8"))
-            if existing.get("schema") != 1:
-                raise RuntimeError("unsupported baseline schema")
-            if existing.get("samples_per_test") != parsed.samples:
-                raise RuntimeError("baseline sample count differs from --samples")
+        if existing is not None:
             document, added = extend_baseline(existing, measured)
         parsed.baseline.write_text(
             json.dumps(document, indent=2) + "\n",
