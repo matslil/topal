@@ -3856,9 +3856,7 @@ impl Session {
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
-                        "machine-indicator-minimum-total"
-                            | "machine-counter-minimum-total"
-                            | "packing-described-fit-count"
+                        "packing-described-fit-count"
                     )
                 {
                     let operation = source.slice(*name);
@@ -13235,58 +13233,6 @@ fn is_unicode_white_space(character: char) -> bool {
     )
 }
 
-fn parse_machine_manual(text: &str) -> Vec<(Vec<usize>, Vec<Vec<usize>>, Vec<usize>)> {
-    let indicator = Regex::new(r"\[([.#]+)\]").expect("fixed pattern");
-    let button = Regex::new(r"\(([0-9,]+)\)").expect("fixed pattern");
-    let counters = Regex::new(r"\{([0-9,]+)\}").expect("fixed pattern");
-    text.lines().filter_map(|line| {
-        let target = indicator.captures(line)?[1].bytes().map(|byte| usize::from(byte == b'#')).collect();
-        let buttons = button.captures_iter(line).map(|capture| {
-            capture[1].split(',').filter_map(|value| value.parse().ok()).collect()
-        }).collect();
-        let counters = counters.captures(line)?[1].split(',').filter_map(|value| value.parse().ok()).collect();
-        Some((target, buttons, counters))
-    }).collect()
-}
-
-fn minimum_indicator_presses(target: &[usize], buttons: &[Vec<usize>]) -> usize {
-    let mut best = usize::MAX;
-    for mask in 0usize..(1usize << buttons.len()) {
-        let mut state = vec![0usize; target.len()];
-        for (index, button) in buttons.iter().enumerate() {
-            if mask & (1 << index) != 0 {
-                for &light in button { state[light] ^= 1; }
-            }
-        }
-        if state == target { best = best.min(mask.count_ones() as usize); }
-    }
-    (best != usize::MAX).then_some(best).unwrap_or(0)
-}
-
-fn minimum_counter_presses(target: &[usize], buttons: &[Vec<usize>]) -> usize {
-    fn solve(
-        remaining: Vec<usize>,
-        buttons: &[Vec<usize>],
-        memo: &mut BTreeMap<Vec<usize>, usize>,
-    ) -> usize {
-        if remaining.iter().all(|value| *value == 0) { return 0; }
-        if let Some(value) = memo.get(&remaining) { return *value; }
-        let row = remaining.iter().position(|value| *value > 0).expect("nonzero state");
-        let mut best = usize::MAX;
-        for button in buttons.iter().filter(|button| button.contains(&row)) {
-            if button.iter().all(|index| remaining[*index] > 0) {
-                let mut next = remaining.clone();
-                for &index in button { next[index] -= 1; }
-                let suffix = solve(next, buttons, memo);
-                if suffix != usize::MAX { best = best.min(1 + suffix); }
-            }
-        }
-        memo.insert(remaining, best);
-        best
-    }
-    solve(target.to_vec(), buttons, &mut BTreeMap::new())
-}
-
 fn normalized_shape(points: &[(isize, isize)]) -> Vec<(isize, isize)> {
     let min_row = points.iter().map(|point| point.0).min().unwrap_or(0);
     let min_column = points.iter().map(|point| point.1).min().unwrap_or(0);
@@ -13356,13 +13302,6 @@ fn described_fit_count(text: &str) -> usize {
 fn apply_planning_algorithm(source: &SourceText, operation: &str, argument: Value, span: Span) -> Result<Value, Diagnostic> {
     let invalid = || diagnostic(source, "E-PLANNING-OPERANDS", span, format!("invalid operands for {operation}"));
     let value = match operation {
-        "machine-indicator-minimum-total" | "machine-counter-minimum-total" => {
-            let Value::String(text) = argument else { return Err(invalid()) };
-            let total = parse_machine_manual(&text).iter().map(|(indicator, buttons, counters)| {
-                if operation == "machine-indicator-minimum-total" { minimum_indicator_presses(indicator, buttons) } else { minimum_counter_presses(counters, buttons) }
-            }).sum::<usize>();
-            Value::Int(BigInt::from(total))
-        }
         "packing-described-fit-count" => {
             let Value::String(text) = argument else { return Err(invalid()) };
             Value::Int(BigInt::from(described_fit_count(&text)))
@@ -15412,7 +15351,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 34] = [
+const ROOT_OPERATIONS: [&str; 32] = [
     "absolute",
     "ascii-decimal-digit",
     "ascii-decimal-text?",
@@ -15443,8 +15382,6 @@ const ROOT_OPERATIONS: [&str; 34] = [
     "rest",
     "reverse",
     "string-regex-contains",
-    "machine-indicator-minimum-total",
-    "machine-counter-minimum-total",
     "packing-described-fit-count",
     "zero",
 ];
