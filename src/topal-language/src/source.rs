@@ -3505,23 +3505,6 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
-                    && source.slice(*name) == "character-list-string"
-                {
-                    let operation = source.slice(*name);
-                    let operand_span = items[1].span();
-                    let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value = apply_structural_algorithm(
-                        source,
-                        operation,
-                        operand,
-                        operand_span,
-                        trace,
-                    )?;
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
-                }
-                if items.len() == 2
-                    && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
                         "graph-bfs"
@@ -14195,53 +14178,6 @@ fn apply_planning_algorithm(source: &SourceText, operation: &str, argument: Valu
     Ok(value)
 }
 
-fn apply_structural_algorithm(
-    source: &SourceText,
-    operation: &str,
-    argument: Value,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<Value, Diagnostic> {
-    let result = match (operation, argument) {
-        (
-            "character-list-string",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) if element_classifier == "Character" => {
-            let mut text = String::new();
-            for entry in entries {
-                let Value::String(character) = entry else {
-                    unreachable!("List Character stores Character values")
-                };
-                text.push_str(&character);
-            }
-            Value::String(text)
-        }
-        (_, value) => {
-            return Err(diagnostic(
-                source,
-                "E-STRUCTURAL-ALGORITHM-OPERAND",
-                span,
-                format!(
-                    "{operation} does not accept {}",
-                    structural_value_classifier(&value)
-                ),
-            ));
-        }
-    };
-    trace.record(TraceEvent {
-        event: "structural.algorithm.applied",
-        rule: match operation {
-            "character-list-string" => "TOPAL-LIB-PARSE-001",
-            _ => unreachable!("known structural operation"),
-        },
-        detail: operation,
-    });
-    Ok(result)
-}
-
 fn apply_count(
     source: &SourceText,
     operation: &str,
@@ -16282,7 +16218,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 58] = [
+const ROOT_OPERATIONS: [&str; 57] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16330,7 +16266,6 @@ const ROOT_OPERATIONS: [&str; 58] = [
     "string-vertical-integers",
     "string-integer-pairs",
     "string-integer-triples",
-    "character-list-string",
     "geometry-nearest-component-product",
     "geometry-final-connection-x-product",
     "geometry-largest-point-rectangle",

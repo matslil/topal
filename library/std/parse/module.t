@@ -48,4 +48,4 @@ pub character-list is fn (text : String) -> List Character
 
 ### Construct a String from complete Unicode Characters.
 pub string is fn (values : List Character) -> String
-  character-list-string values
+  values fold "" { text, character } text concat character
