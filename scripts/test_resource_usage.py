@@ -402,6 +402,13 @@ def extend_baseline(
     return extended, len(additions)
 
 
+def missing_test_identities(
+    tests: list[TestCase], baseline: dict[str, Any]
+) -> set[str]:
+    """Select only discovered identities that have never been baselined."""
+    return {test.identity for test in tests} - set(baseline["tests"])
+
+
 def failed_tests(measured: dict[str, Measurement]) -> list[str]:
     return [identity for identity, result in measured.items() if result.status != "passed"]
 
@@ -485,9 +492,7 @@ def main() -> int:
             if parsed.domain == "rust"
             else discover_topal_tests(parsed.rust_min_stack)
         )
-        identities = {
-            test.identity for test in discovered
-        } - set(existing["tests"])
+        identities = missing_test_identities(discovered, existing)
     measured = run_measurements(parsed, identities)
     failures = failed_tests(measured)
     if failures:

@@ -3839,10 +3839,7 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
-                    && matches!(
-                        source.slice(*name),
-                        "string-regex-contains"
-                    )
+                    && matches!(source.slice(*name), "string-regex-contains")
                 {
                     let operation = source.slice(*name);
                     let operand_span = items[1].span();
@@ -7321,14 +7318,12 @@ impl Execution {
         let rule = function_rule(is_static, parameters.len());
         let mut bindings = session.bindings.clone();
         for (captured_name, candidates) in session.functions.iter() {
-            bindings
-                .entry(captured_name.clone())
-                .or_insert_with(|| {
-                    Value::NamedFunction(Rc::new(NamedFunction {
-                        name: captured_name.clone(),
-                        candidates: candidates.clone(),
-                    }))
-                });
+            bindings.entry(captured_name.clone()).or_insert_with(|| {
+                Value::NamedFunction(Rc::new(NamedFunction {
+                    name: captured_name.clone(),
+                    candidates: candidates.clone(),
+                }))
+            });
         }
         let function = UserFunction {
             source: self.source.clone(),
@@ -7989,10 +7984,8 @@ impl Execution {
             evaluate_binding_initializer(&self.source, session, initializer, classifier, trace)?;
         consume_generator_argument(&self.source, session, initializer);
         if let Some(classifier) = classifier {
-            let classifier_text = substitute_classifier(
-                self.source.slice(classifier),
-                &session.generic_types,
-            );
+            let classifier_text =
+                substitute_classifier(self.source.slice(classifier), &session.generic_types);
             evaluated = narrow_rational_to_int(
                 &self.source,
                 initializer,
@@ -8161,7 +8154,8 @@ fn evaluate_list_expression(
         .as_ref()
         .filter(|items| items.len() == 1)
         .map_or(element_classifier, |items| items[0]);
-    let substituted_element_classifier = substitute_classifier(element_classifier, &session.generic_types);
+    let substituted_element_classifier =
+        substitute_classifier(element_classifier, &session.generic_types);
     let element_classifier = substituted_element_classifier.as_str();
     if matches!(expression, Expression::Identifier(span) if source.slice(*span) == "Empty") {
         trace.record(TraceEvent {
@@ -9555,7 +9549,10 @@ fn substitute_classifier(classifier: &str, generic_types: &BTreeMap<String, Stri
     }
     for constructor in ["Optional", "List", "Range"] {
         if let Some(payload) = applied_classifier(classifier, constructor) {
-            return format!("{constructor} {}", substitute_classifier(payload, generic_types));
+            return format!(
+                "{constructor} {}",
+                substitute_classifier(payload, generic_types)
+            );
         }
     }
     if let Some((success, codes)) = result_classifier_parts(classifier) {
@@ -10281,9 +10278,9 @@ fn prove_explicit_parameter_recursion(
     body: &[Statement],
 ) -> Option<&'static str> {
     let measure = explicit_single_measure(effect_bound?)?;
-    let measure_index = parameters
-        .iter()
-        .position(|(name, classifier)| name == measure && matches!(classifier.as_str(), "Int" | "Nat"))?;
+    let measure_index = parameters.iter().position(|(name, classifier)| {
+        name == measure && matches!(classifier.as_str(), "Int" | "Nat")
+    })?;
     let (parameter, classifier) = &parameters[measure_index];
     let [Statement::Expression(Expression::DecisionTable { subject, rules, .. })] = body else {
         return None;
@@ -10398,8 +10395,7 @@ fn recursive_call_argument<'a>(
     let Expression::Product { fields, .. } = argument else {
         return None;
     };
-    (items.len() == 2 && fields.len() == parameter_count)
-        .then(|| &fields[parameter_index].value)
+    (items.len() == 2 && fields.len() == parameter_count).then(|| &fields[parameter_index].value)
 }
 
 fn measured_self_calls(
@@ -10418,7 +10414,10 @@ fn measured_self_calls(
         parameter_count,
         expression,
     ) {
-        return (true, is_positive_literal_step(source, parameter, step, argument));
+        return (
+            true,
+            is_positive_literal_step(source, parameter, step, argument),
+        );
     }
     match expression {
         Expression::Application { items, .. } => combine_call_checks(items.iter().map(|item| {
@@ -13533,10 +13532,7 @@ fn apply_list_operation(
             trace,
         );
     }
-    if matches!(
-        operation,
-        "zip-exact" | "zip-shortest"
-    ) {
+    if matches!(operation, "zip-exact" | "zip-shortest") {
         return apply_list_zip(
             source,
             operation,

@@ -1202,7 +1202,11 @@ fn every_mode_destructures_an_anonymous_product_pattern() {
             "{}",
             String::from_utf8_lossy(&output.stderr)
         );
-        assert!(output.stdout.ends_with(b"Entry ( 5, Entry ( 12, Empty ) )\n"));
+        assert!(
+            output
+                .stdout
+                .ends_with(b"Entry ( 5, Entry ( 12, Empty ) )\n")
+        );
     }
 }
 

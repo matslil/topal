@@ -70,6 +70,17 @@ class CompareTests(unittest.TestCase):
 
 
 class BaselineExtensionTests(unittest.TestCase):
+    def test_additive_measurement_selects_only_unbaselined_tests(self) -> None:
+        tests = [
+            RESOURCE_USAGE.TestCase("existing", "runner", (), "."),
+            RESOURCE_USAGE.TestCase("new", "runner", (), "."),
+        ]
+        baseline = {"tests": {"existing": {}}}
+
+        self.assertEqual(
+            RESOURCE_USAGE.missing_test_identities(tests, baseline), {"new"}
+        )
+
     def test_only_new_tests_are_added(self) -> None:
         baseline = {
             "schema": 1,
