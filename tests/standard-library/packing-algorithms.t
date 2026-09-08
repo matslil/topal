@@ -5,12 +5,14 @@ Pass is Boolean constraint { value } value = true
 fitting-region-count is std packing fitting-region-count
 
 description is packing"0:
-##
+#
+#
 
 2x1: 1
-1x1: 1
+3x1: 2
+4x1: 2
 "packing
 
-one-region-fits : Pass is Pass ((fitting-region-count description) = 1)
+rotation-and-nonoverlap : Pass is Pass ((fitting-region-count description) = 2)
 
-one-region-fits
+rotation-and-nonoverlap

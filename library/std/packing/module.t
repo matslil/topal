@@ -159,11 +159,41 @@ normalize-min-y is fn (minimum : Int, point : (Int, Int)) -> Int
   minimum-int (minimum, point-y point)
 translate-normal is fn ((minimum-x : Int, minimum-y : Int, normalized : List (Int, Int), point : (Int, Int))) -> List (Int, Int)
   normalized append ((point-x point) - minimum-x, (point-y point) - minimum-y)
-normalize-shape is fn (points : List (Int, Int)) -> List (Int, Int)
-  minimum-x is points fold 0 { minimum, point } normalize-min-x (minimum, point)
-  minimum-y is points fold 0 { minimum, point } normalize-min-y (minimum, point)
+
+point-before? is fn (left : (Int, Int), right : (Int, Int)) -> Boolean
+  ((point-x left) < (point-x right)) or (((point-x left) = (point-x right)) and ((point-y left) < (point-y right)))
+insert-values is fn ((values : List (Int, Int), inserted? : Boolean)) -> List (Int, Int)
+  values
+insert-done? is fn ((values : List (Int, Int), inserted? : Boolean)) -> Boolean
+  inserted?
+insert-point-step is fn ((sought : (Int, Int), state : (List (Int, Int), Boolean), candidate : (Int, Int))) -> (List (Int, Int), Boolean)
+  (not (insert-done? state)) and (point-before? (sought, candidate))
+    true then (((insert-values state) append sought) append candidate, true)
+    false then ((insert-values state) append candidate, insert-done? state)
+finish-insert-point is fn (sought : (Int, Int), state : (List (Int, Int), Boolean)) -> List (Int, Int)
+  insert-done? state
+    true then insert-values state
+    false then (insert-values state) append sought
+insert-point is fn (values : List (Int, Int), sought : (Int, Int)) -> List (Int, Int)
+  empty-values : List (Int, Int) is Empty
+  final is values fold (empty-values, false) { state, candidate } insert-point-step (sought, state, candidate)
+  finish-insert-point (sought, final)
+sort-point-step is fn (values : List (Int, Int), point : (Int, Int)) -> List (Int, Int)
+  insert-point (values, point)
+sort-points is fn (points : List (Int, Int)) -> List (Int, Int)
+  empty-values : List (Int, Int) is Empty
+  points fold empty-values { values, point } sort-point-step (values, point)
+
+normalize-present-shape is fn (points : List (Int, Int), first-point : (Int, Int)) -> List (Int, Int)
+  minimum-x is points fold (point-x first-point) { minimum, point } normalize-min-x (minimum, point)
+  minimum-y is points fold (point-y first-point) { minimum, point } normalize-min-y (minimum, point)
   empty-points : List (Int, Int) is Empty
-  points fold empty-points { normalized, point } translate-normal (minimum-x, minimum-y, normalized, point)
+  translated is points fold empty-points { normalized, point } translate-normal (minimum-x, minimum-y, normalized, point)
+  sort-points translated
+normalize-shape is fn (points : List (Int, Int)) -> List (Int, Int)
+  first points
+    Some first-point then normalize-present-shape (points, first-point)
+    None then points
 
 flip-x is fn (flip? : Boolean, x : Int) -> Int
   flip?
@@ -232,7 +262,7 @@ configuration-present? is fn (configurations : List List (Int, Int), sought : Li
   configurations fold false { found?, candidate } configuration-present-step (sought, found?, candidate)
 append-placement is fn ((configurations : List List (Int, Int), occupied : List (Int, Int), placement : List (Int, Int))) -> List List (Int, Int)
   valid? is placement-free? (occupied, placement)
-  combined is occupied concat placement
+  combined is sort-points (occupied concat placement)
   valid? and (not (configuration-present? (configurations, combined)))
     true then configurations append combined
     false then configurations
