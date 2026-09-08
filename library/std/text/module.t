@@ -14,9 +14,35 @@ pub canonical-equal? is fn (left : String, right : String) -> Boolean
 pub caseless-equal? is fn (left : String, right : String) -> Boolean
   (case-fold left) = (case-fold right)
 
+unicode-whitespace? is fn (character : Character) -> Boolean
+  unicode-whitespace-character character
+
+leading-count is fn ((count : Nat, leading? : Boolean)) -> Nat
+  count
+leading-active? is fn ((count : Nat, leading? : Boolean)) -> Boolean
+  leading?
+
+leading-step is fn (state : (Nat, Boolean), character : Character) -> (Nat, Boolean)
+  active? is leading-active? state
+  whitespace? is unicode-whitespace? character
+  active? and whitespace?
+    true then ((leading-count state) + 1, true)
+    false then (leading-count state, false)
+
+trim-boundary is fn (characters : List Character) -> Nat
+  zero : Nat is Nat 0
+  final is characters fold (zero, true) { state, character } leading-step (state, character)
+  leading-count final
+
+trim-source is fn (text : String) -> String
+  characters is collect (characters text)
+  leading is trim-boundary characters
+  trailing is trim-boundary ((collect (characters text)) reverse)
+  text select-index (leading .. ((entry-count characters) - trailing))
+
 ### Test whether a String contains only Unicode whitespace or is empty.
 pub blank? is fn (text : String) -> Boolean
-  trimmed is string-trim text
+  trimmed is trim-source text
   empty? trimmed
 
 ### Return text normalized to Unicode NFC.
@@ -37,4 +63,13 @@ pub words is fn (text : String) -> List String
 
 ### Join String entries with one exact separator.
 pub join is fn (values : List String, separator : String) -> String
-  string-join (values, separator)
+  joined-text is fn ((text : String, first? : Boolean)) -> String
+    text
+  joined-first? is fn ((text : String, first? : Boolean)) -> Boolean
+    first?
+  join-step is fn ((state : (String, Boolean), value : String, separator : String)) -> (String, Boolean)
+    joined-first? state
+      true then (value, false)
+      false then ((joined-text state) concat separator concat value, false)
+  final is values fold ("", true) { state, value } join-step (state, value, separator)
+  joined-text final

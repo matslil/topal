@@ -506,9 +506,29 @@ pub ends-with? is fn (text : String, suffix : String) -> Boolean
 pub contains? is fn (text : String, fragment : String) -> Boolean
   (collect (characters text)) contains-sequence (collect (characters fragment))
 
+trim-leading-count is fn ((count : Nat, leading? : Boolean)) -> Nat
+  count
+trim-leading-active? is fn ((count : Nat, leading? : Boolean)) -> Boolean
+  leading?
+
+trim-leading-step is fn (state : (Nat, Boolean), character : Character) -> (Nat, Boolean)
+  active? is trim-leading-active? state
+  whitespace? is unicode-whitespace-character character
+  active? and whitespace?
+    true then ((trim-leading-count state) + 1, true)
+    false then (trim-leading-count state, false)
+
+trim-boundary is fn (values : List Character) -> Nat
+  zero : Nat is Nat 0
+  final is values fold (zero, true) { state, character } trim-leading-step (state, character)
+  trim-leading-count final
+
 ### Remove Unicode whitespace from both ends of text, not from its interior.
 pub trim is fn (text : String) -> String
-  string-trim text
+  values is collect (characters text)
+  leading is trim-boundary values
+  trailing is trim-boundary ((collect (characters text)) reverse)
+  text select-index (leading .. ((entry-count values) - trailing))
 
 ### Replace every non-overlapping exact occurrence; an empty target is rejected.
 pub replace-all is fn (

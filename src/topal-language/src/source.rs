@@ -3505,6 +3505,27 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
+                    && source.slice(*name) == "unicode-whitespace-character"
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(character) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-UNICODE-WHITESPACE-OPERAND",
+                            operand_span,
+                            "Unicode whitespace classification requires Character",
+                        ));
+                    };
+                    let mut scalars = character.chars();
+                    let whitespace = scalars.next().is_some_and(is_unicode_white_space)
+                        && scalars.next().is_none();
+                    let value = Value::Boolean(whitespace);
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
                         "graph-bfs"
@@ -3780,12 +3801,10 @@ impl Session {
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
-                        "string-trim"
-                            | "string-replace-all"
+                        "string-replace-all"
                             | "string-glob-matches"
                             | "string-lines"
                             | "string-words"
-                            | "string-join"
                             | "string-regex-contains"
                             | "string-parse-int"
                             | "string-signed-integers"
@@ -13146,9 +13165,6 @@ fn apply_string_utility(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let result = match (operation, argument) {
-        ("string-trim", Value::String(text)) => {
-            Value::String(text.trim_matches(is_unicode_white_space).to_owned())
-        }
         ("string-replace-all", Value::Tuple(values)) if values.len() == 3 => {
             let [
                 Value::String(text),
@@ -13336,39 +13352,6 @@ fn apply_string_utility(
                 element_classifier: if arity == 2 { "(Int, Int)" } else { "(Int, Int, Int)" }.into(),
                 entries,
             }
-        }
-        ("string-join", Value::Tuple(values)) if values.len() == 2 => {
-            let [
-                Value::List {
-                    element_classifier,
-                    entries,
-                },
-                Value::String(separator),
-            ] = values.as_slice()
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-join requires List String and String operands",
-                ));
-            };
-            if element_classifier != "String" {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-join requires List String entries",
-                ));
-            }
-            let parts = entries
-                .iter()
-                .map(|entry| match entry {
-                    Value::String(part) => part.as_str(),
-                    _ => unreachable!("List String contains String values"),
-                })
-                .collect::<Vec<_>>();
-            Value::String(parts.join(separator))
         }
         _ => {
             return Err(diagnostic(
@@ -16218,7 +16201,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 57] = [
+const ROOT_OPERATIONS: [&str; 56] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16243,6 +16226,7 @@ const ROOT_OPERATIONS: [&str; 57] = [
     "range-upper",
     "range-upper-inclusive?",
     "upper",
+    "unicode-whitespace-character",
     "uncons",
     "not",
     "negate",
@@ -16250,11 +16234,9 @@ const ROOT_OPERATIONS: [&str; 57] = [
     "rest",
     "reverse",
     "string-glob-matches",
-    "string-join",
     "string-lines",
     "string-regex-contains",
     "string-replace-all",
-    "string-trim",
     "string-words",
     "string-parse-int",
     "string-signed-integers",
