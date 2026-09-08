@@ -112,9 +112,71 @@ pub replace-all is fn (
 ) -> String
   join-text (split (text, pattern), replacement)
 
+optional-boolean is fn (value : Optional Boolean) -> Boolean
+  value
+    Some present then present
+    None then false
+
+boolean-at is fn (values : List Boolean, index : Nat) -> Boolean
+  optional-boolean (first (values select-index (index ..= index)))
+
+last-boolean is fn (values : List Boolean) -> Boolean
+  length is entry-count values
+  length = 0
+    true then false
+    false then boolean-at (values, length - 1)
+
+initial-row-step is fn (row : List Boolean, ignored : Character) -> List Boolean
+  row append false
+
+initial-glob-row is fn (text : List Character) -> List Boolean
+  row : List Boolean is one true
+  text fold row { values, ignored } initial-row-step (values, ignored)
+
+glob-row-values is fn ((values : List Boolean, previous : List Boolean, index : Nat)) -> List Boolean
+  values
+glob-row-previous is fn ((values : List Boolean, previous : List Boolean, index : Nat)) -> List Boolean
+  previous
+glob-row-index is fn ((values : List Boolean, previous : List Boolean, index : Nat)) -> Nat
+  index
+
+glob-star-step is fn (state : (List Boolean, List Boolean, Nat), ignored : Character) -> (List Boolean, List Boolean, Nat)
+  index is glob-row-index state
+  matched is (boolean-at (glob-row-previous state, index + 1)) or (last-boolean (glob-row-values state))
+  ((glob-row-values state) append matched, glob-row-previous state, index + 1)
+
+glob-character-matches? is fn (pattern : Character, candidate : Character) -> Boolean
+  (pattern = "?") or (pattern = candidate)
+
+glob-character-step is fn ((pattern : Character, state : (List Boolean, List Boolean, Nat), candidate : Character)) -> (List Boolean, List Boolean, Nat)
+  index is glob-row-index state
+  matched is (glob-character-matches? (pattern, candidate)) and (boolean-at (glob-row-previous state, index))
+  ((glob-row-values state) append matched, glob-row-previous state, index + 1)
+
+glob-star-row is fn (text : List Character, previous : List Boolean) -> List Boolean
+  initial : List Boolean is one (boolean-at (previous, 0))
+  final is text fold (initial, previous, Nat 0) { state, candidate } glob-star-step (state, candidate)
+  glob-row-values final
+
+glob-character-row is fn ((text : List Character, previous : List Boolean, pattern : Character)) -> List Boolean
+  initial : List Boolean is one false
+  final is text fold (initial, previous, Nat 0) { state, candidate } glob-character-step (pattern, state, candidate)
+  glob-row-values final
+
+glob-pattern-step is fn ((text : List Character, previous : List Boolean, pattern : Character)) -> List Boolean
+  pattern = "*"
+    true then glob-star-row (text, previous)
+    false then glob-character-row (text, previous, pattern)
+
+glob-source is fn (text : String, pattern : String) -> Boolean
+  text-characters is collect (characters text)
+  pattern-characters is collect (characters pattern)
+  final is pattern-characters fold (initial-glob-row text-characters) { previous, candidate } glob-pattern-step (text-characters, previous, candidate)
+  last-boolean final
+
 ### Match a complete String using `*` and `?` Character wildcards.
 pub glob? is fn (text : String, pattern : String) -> Boolean
-  string-glob-matches (text, pattern)
+  glob-source (text, pattern)
 
 ### Test whether a Unicode regular expression occurs in text.
 pub regex-contains? is fn (text : String, pattern : String) -> Boolean

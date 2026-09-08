@@ -530,11 +530,61 @@ pub trim is fn (text : String) -> String
   trailing is trim-boundary ((collect (characters text)) reverse)
   text select-index (leading .. ((entry-count values) - trailing))
 
+ReplacePattern is String constraint { pattern } (entry-count (collect (characters pattern))) > 0
+
+replace-find-step is fn ((text : List Character, pattern : List Character, indexes : List Nat, index : Nat)) -> List Nat
+  length is entry-count pattern
+  (text select-index (index .. (index + length))) = pattern
+    true then indexes append index
+    false then indexes
+
+replace-find is fn (text : String, pattern : String) -> List Nat
+  checked : ReplacePattern is ReplacePattern pattern
+  _ is checked
+  text-characters is collect (characters text)
+  pattern-characters is collect (characters pattern)
+  pattern-length is entry-count pattern-characters
+  text-length is entry-count text-characters
+  candidates is collect (0 iterate ({ index } index + 1) take-while ({ index } index + pattern-length <= text-length))
+  indexes : List Nat is Empty
+  candidates fold indexes { found, index } replace-find-step (text-characters, pattern-characters, found, index)
+
+replace-parts is fn ((parts : List String, start : Nat)) -> List String
+  parts
+replace-start is fn ((parts : List String, start : Nat)) -> Nat
+  start
+
+replace-split-step is fn ((text : String, pattern-length : Nat, state : (List String, Nat), index : Nat)) -> (List String, Nat)
+  start is replace-start state
+  index < start
+    true then state
+    false then ((replace-parts state) append (text select-index (start .. index)), index + pattern-length)
+
+replace-split is fn (text : String, pattern : String) -> List String
+  indexes is replace-find (text, pattern)
+  pattern-length is entry-count (collect (characters pattern))
+  final is indexes fold ((Empty String), Nat 0) { state, index } replace-split-step (text, pattern-length, state, index)
+  (replace-parts final) append (text select-index ((replace-start final) .. (entry-count text)))
+
+replace-joined is fn ((text : String, first? : Boolean)) -> String
+  text
+replace-first? is fn ((text : String, first? : Boolean)) -> Boolean
+  first?
+
+replace-join-step is fn ((replacement : String, state : (String, Boolean), part : String)) -> (String, Boolean)
+  replace-first? state
+    true then (part, false)
+    false then ((replace-joined state) concat replacement concat part, false)
+
+replace-source is fn ((text : String, pattern : String, replacement : String)) -> String
+  final is (replace-split (text, pattern)) fold ("", true) { state, part } replace-join-step (replacement, state, part)
+  replace-joined final
+
 ### Replace every non-overlapping exact occurrence; an empty target is rejected.
 pub replace-all is fn (
   (text : String, pattern : String, replacement : String)
 ) -> String
-  string-replace-all (text, pattern, replacement)
+  replace-source (text, pattern, replacement)
 
 ### Concatenate text with itself count times; zero yields the empty String.
 repeat-step is fn ((repeated : String, text : String, index : Nat)) -> String

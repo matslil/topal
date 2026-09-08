@@ -3861,7 +3861,7 @@ impl Session {
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
-                        "string-replace-all" | "string-glob-matches" | "string-regex-contains"
+                        "string-regex-contains"
                     )
                 {
                     let operation = source.slice(*name);
@@ -13211,33 +13211,6 @@ fn apply_string_utility(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     let result = match (operation, argument) {
-        ("string-replace-all", Value::Tuple(values)) if values.len() == 3 => {
-            let [
-                Value::String(text),
-                Value::String(pattern),
-                Value::String(replacement),
-            ] = values.as_slice()
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-replace-all requires three String operands",
-                ));
-            };
-            Value::String(text.replace(pattern, replacement))
-        }
-        ("string-glob-matches", Value::Tuple(values)) if values.len() == 2 => {
-            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-glob-matches requires two String operands",
-                ));
-            };
-            Value::Boolean(glob_matches(text, pattern))
-        }
         ("string-regex-contains", Value::Tuple(values)) if values.len() == 2 => {
             let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
                 return Err(diagnostic(
@@ -13289,28 +13262,6 @@ fn is_unicode_white_space(character: char) -> bool {
             | '\u{205F}'
             | '\u{3000}'
     )
-}
-
-fn glob_matches(text: &str, pattern: &str) -> bool {
-    let text = characters(text).collect::<Vec<_>>();
-    let pattern = characters(pattern).collect::<Vec<_>>();
-    let mut matched = vec![vec![false; text.len() + 1]; pattern.len() + 1];
-    matched[0][0] = true;
-    for pattern_index in 1..=pattern.len() {
-        if pattern[pattern_index - 1] == "*" {
-            matched[pattern_index][0] = matched[pattern_index - 1][0];
-        }
-        for text_index in 1..=text.len() {
-            matched[pattern_index][text_index] = if pattern[pattern_index - 1] == "*" {
-                matched[pattern_index - 1][text_index] || matched[pattern_index][text_index - 1]
-            } else {
-                (pattern[pattern_index - 1] == "?"
-                    || pattern[pattern_index - 1] == text[text_index - 1])
-                    && matched[pattern_index - 1][text_index - 1]
-            };
-        }
-    }
-    matched[pattern.len()][text.len()]
 }
 
 fn string_list(value: &Value) -> Option<Vec<String>> {
@@ -16095,7 +16046,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 48] = [
+const ROOT_OPERATIONS: [&str; 46] = [
     "absolute",
     "ascii-decimal-digit",
     "ascii-decimal-text?",
@@ -16131,9 +16082,7 @@ const ROOT_OPERATIONS: [&str; 48] = [
     "one",
     "rest",
     "reverse",
-    "string-glob-matches",
     "string-regex-contains",
-    "string-replace-all",
     "geometry-nearest-component-product",
     "geometry-final-connection-x-product",
     "geometry-largest-point-rectangle",
