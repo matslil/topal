@@ -190,8 +190,8 @@
       "memory_peak_bytes": 1618509824
     },
     "topal::tests/standard-library/packing-algorithms.t": {
-      "cpu_time_ns": 5132889900,
-      "memory_peak_bytes": 1617235968
+      "cpu_time_ns": 12581291820,
+      "memory_peak_bytes": 1707479040
     }
   }
 }
