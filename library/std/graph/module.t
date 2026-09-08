@@ -484,9 +484,25 @@ description-lines-start is fn ((values : List String, start : Nat, index : Nat))
 description-lines-index is fn ((values : List String, start : Nat, index : Nat)) -> Nat
   index
 
+description-optional-carriage-return? is fn (value : Optional Character) -> Boolean
+  value
+    Some previous then unicode-carriage-return-character previous
+    None then false
+
+description-previous-is-carriage-return? is fn ((text : String, start : Nat, index : Nat)) -> Boolean
+  index > start
+    true then description-optional-carriage-return? (first (collect (characters (text select-index ((index - 1) .. index)))))
+    false then false
+
+description-line-content-end is fn ((text : String, start : Nat, index : Nat)) -> Nat
+  description-previous-is-carriage-return? (text, start, index)
+    true then index - 1
+    false then index
+
 description-append-line is fn ((text : String, state : (List String, Nat, Nat))) -> (List String, Nat, Nat)
   index is description-lines-index state
-  ((description-lines-values state) append (text select-index ((description-lines-start state) .. index)), index + 1, index + 1)
+  finish is description-line-content-end (text, description-lines-start state, index)
+  ((description-lines-values state) append (text select-index ((description-lines-start state) .. finish)), index + 1, index + 1)
 
 description-line-step is fn ((text : String, state : (List String, Nat, Nat), character : Character)) -> (List String, Nat, Nat)
   unicode-line-feed-character character

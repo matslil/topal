@@ -42,10 +42,9 @@ order-absent? is fn (candidate : Optional (List String)) -> Boolean
 weighted-payload-is is fn (path : List String, weight : Rational) -> Boolean
   _ is weight
   (join (path, ",")) = "a,c,b,d"
-weighted-payload-is-callable is weighted-payload-is
 weighted-is is fn (candidate : Optional (List String, Rational)) -> Boolean
   candidate
-    Some payload then weighted-payload-is-callable payload
+    Some payload then weighted-payload-is payload
     None then false
 
 breadth-order : Pass is Pass ((join (breadth-first ("a", (edges, nodes)), ",")) = "a,b,c,d")

@@ -10,9 +10,22 @@ line-start is fn ((values : List String, start : Nat, index : Nat)) -> Nat
   start
 line-index is fn ((values : List String, start : Nat, index : Nat)) -> Nat
   index
+optional-carriage-return? is fn (value : Optional Character) -> Boolean
+  value
+    Some previous then unicode-carriage-return-character previous
+    None then false
+previous-is-carriage-return? is fn ((text : String, start : Nat, index : Nat)) -> Boolean
+  index > start
+    true then optional-carriage-return? (first (collect (characters (text select-index ((index - 1) .. index)))))
+    false then false
+line-content-end is fn ((text : String, start : Nat, index : Nat)) -> Nat
+  previous-is-carriage-return? (text, start, index)
+    true then index - 1
+    false then index
 append-line is fn ((text : String, state : (List String, Nat, Nat))) -> (List String, Nat, Nat)
   index is line-index state
-  ((line-values state) append (text select-index ((line-start state) .. index)), index + 1, index + 1)
+  finish is line-content-end (text, line-start state, index)
+  ((line-values state) append (text select-index ((line-start state) .. finish)), index + 1, index + 1)
 line-step is fn ((text : String, state : (List String, Nat, Nat), character : Character)) -> (List String, Nat, Nat)
   unicode-line-feed-character character
     true then append-line (text, state)
