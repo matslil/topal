@@ -306,13 +306,94 @@ range-last-int is fn (interval : Range Int) -> Int
     true then range-upper interval
     false then (range-upper interval) - 1
 
+interval-lower is fn ((lower : Int, upper : Int)) -> Int
+  lower
+interval-upper is fn ((lower : Int, upper : Int)) -> Int
+  upper
+
+interval-before? is fn (left : (Int, Int), right : (Int, Int)) -> Boolean
+  left-lower is interval-lower left
+  right-lower is interval-lower right
+  left-lower < right-lower
+    true then true
+    false then (left-lower = right-lower) and ((interval-upper left) < (interval-upper right))
+
+increment-interval-bound is fn (count : Nat, accepted : Boolean) -> Nat
+  accepted
+    true then count + 1
+    false then count
+
+interval-lower-bound is fn (values : List (Int, Int), sought : (Int, Int)) -> Nat
+  zero : Nat is Nat 0
+  values fold zero { count, candidate } increment-interval-bound (count, interval-before? (candidate, sought))
+
+insert-interval is fn (candidate : (Int, Int), values : List (Int, Int)) -> List (Int, Int)
+  boundary is interval-lower-bound (values, candidate)
+  length is entry-count values
+  (values select-index (0 .. boundary)) concat (one candidate) concat (values select-index (boundary .. length))
+
+sort-interval-step is fn (sorted : List (Int, Int), candidate : (Int, Int)) -> List (Int, Int)
+  insert-interval (candidate, sorted)
+
+sort-intervals is fn (values : List (Int, Int)) -> List (Int, Int)
+  empty-intervals : List (Int, Int) is Empty
+  values fold empty-intervals { sorted, candidate } sort-interval-step (sorted, candidate)
+
+last-interval is fn (values : List (Int, Int)) -> Optional (Int, Int)
+  length is entry-count values
+  length = 0
+    true then None (Int, Int)
+    false then first (values select-index ((length - 1) .. length))
+
+replace-last-interval is fn (values : List (Int, Int), replacement : (Int, Int)) -> List (Int, Int)
+  length is entry-count values
+  (values select-index (0 .. (length - 1))) append replacement
+
+merge-interval-present is fn ((merged : List (Int, Int), previous : (Int, Int), candidate : (Int, Int))) -> List (Int, Int)
+  lower is interval-lower candidate
+  upper is interval-upper candidate
+  previous-upper is interval-upper previous
+  lower <= (previous-upper + 1)
+    true then replace-last-interval (merged, (interval-lower previous, range-max (previous-upper, upper)))
+    false then merged append candidate
+
+merge-interval-step is fn (merged : List (Int, Int), candidate : (Int, Int)) -> List (Int, Int)
+  last-interval merged
+    Some previous then merge-interval-present (merged, previous, candidate)
+    None then merged append candidate
+
+valid-interval-step is fn (selected : List (Int, Int), candidate : (Int, Int)) -> List (Int, Int)
+  (interval-lower candidate) <= (interval-upper candidate)
+    true then selected append candidate
+    false then selected
+
+coalesce-intervals is fn (intervals : List (Int, Int)) -> List (Int, Int)
+  empty-intervals : List (Int, Int) is Empty
+  valid is intervals fold empty-intervals { selected, candidate } valid-interval-step (selected, candidate)
+  (sort-intervals valid) fold empty-intervals { merged, candidate } merge-interval-step (merged, candidate)
+
+normalize-range-step is fn (selected : List (Int, Int), interval : Range Int) -> List (Int, Int)
+  candidate is (range-first-int interval, range-last-int interval)
+  valid-interval-step (selected, candidate)
+
+ranges-to-intervals is fn (intervals : List (Range Int)) -> List (Int, Int)
+  empty-intervals : List (Int, Int) is Empty
+  intervals fold empty-intervals { selected, interval } normalize-range-step (selected, interval)
+
+interval-range-step is fn (selected : List (Range Int), interval : (Int, Int)) -> List (Range Int)
+  selected append ((interval-lower interval) ..= (interval-upper interval))
+
+intervals-to-ranges is fn (intervals : List (Int, Int)) -> List (Range Int)
+  empty-ranges : List (Range Int) is Empty
+  intervals fold empty-ranges { selected, interval } interval-range-step (selected, interval)
+
 ### Normalize and merge overlapping or adjacent finite Int Ranges.
 pub coalesce is fn (intervals : List (Range Int)) -> List (Range Int)
-  range-coalesce-int intervals
+  intervals-to-ranges (coalesce-intervals (ranges-to-intervals intervals))
 
 ### Normalize closed endpoint pairs as inclusive Int intervals.
 pub coalesce is fn (intervals : List (Int, Int)) -> List (Int, Int)
-  range-coalesce-int intervals
+  coalesce-intervals intervals
 
 ### Test whether two Int Ranges touch without overlapping.
 pub adjacent? is fn (left : Range Int, right : Range Int) -> Boolean

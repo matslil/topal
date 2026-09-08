@@ -3505,7 +3505,7 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
-                    && matches!(source.slice(*name), "character-list-string" | "range-coalesce-int")
+                    && source.slice(*name) == "character-list-string"
                 {
                     let operation = source.slice(*name);
                     let operand_span = items[1].span();
@@ -14219,95 +14219,6 @@ fn apply_structural_algorithm(
             }
             Value::String(text)
         }
-        (
-            "range-coalesce-int",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) if element_classifier == "Range Int" => {
-            let mut intervals = entries
-                .into_iter()
-                .filter_map(|entry| match entry {
-                    Value::IntRange {
-                        lower,
-                        upper,
-                        lower_inclusive,
-                        upper_inclusive,
-                    } => {
-                        let lower = lower + BigInt::from(!lower_inclusive);
-                        let upper = upper - BigInt::from(!upper_inclusive);
-                        (lower <= upper).then_some((lower, upper))
-                    }
-                    _ => None,
-                })
-                .collect::<Vec<_>>();
-            intervals.sort();
-            let mut merged: Vec<(BigInt, BigInt)> = Vec::new();
-            for (lower, upper) in intervals {
-                if let Some((_, previous_upper)) = merged.last_mut()
-                    && lower <= previous_upper.clone() + BigInt::from(1)
-                {
-                    if upper > *previous_upper {
-                        *previous_upper = upper;
-                    }
-                } else {
-                    merged.push((lower, upper));
-                }
-            }
-            Value::List {
-                element_classifier: "Range Int".into(),
-                entries: merged
-                    .into_iter()
-                    .map(|(lower, upper)| Value::IntRange {
-                        lower,
-                        upper,
-                        lower_inclusive: true,
-                        upper_inclusive: true,
-                    })
-                    .collect(),
-            }
-        }
-        (
-            "range-coalesce-int",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) if element_classifier == "(Int, Int)" => {
-            let mut intervals = entries
-                .into_iter()
-                .filter_map(|entry| match entry {
-                    Value::Tuple(fields) => match fields.as_slice() {
-                        [Value::Int(lower), Value::Int(upper)] if lower <= upper => {
-                            Some((lower.clone(), upper.clone()))
-                        }
-                        _ => None,
-                    },
-                    _ => None,
-                })
-                .collect::<Vec<_>>();
-            intervals.sort();
-            let mut merged: Vec<(BigInt, BigInt)> = Vec::new();
-            for (lower, upper) in intervals {
-                if let Some((_, previous_upper)) = merged.last_mut()
-                    && lower <= previous_upper.clone() + BigInt::from(1)
-                {
-                    if upper > *previous_upper {
-                        *previous_upper = upper;
-                    }
-                } else {
-                    merged.push((lower, upper));
-                }
-            }
-            Value::List {
-                element_classifier: "(Int, Int)".into(),
-                entries: merged
-                    .into_iter()
-                    .map(|(lower, upper)| Value::Tuple(vec![Value::Int(lower), Value::Int(upper)]))
-                    .collect(),
-            }
-        }
         (_, value) => {
             return Err(diagnostic(
                 source,
@@ -14323,9 +14234,7 @@ fn apply_structural_algorithm(
     trace.record(TraceEvent {
         event: "structural.algorithm.applied",
         rule: match operation {
-            "list-transpose-shortest" => "TOPAL-LIB-SEQUENCE-001",
             "character-list-string" => "TOPAL-LIB-PARSE-001",
-            "range-coalesce-int" => "TOPAL-LIB-RANGE-001",
             _ => unreachable!("known structural operation"),
         },
         detail: operation,
@@ -16373,7 +16282,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 59] = [
+const ROOT_OPERATIONS: [&str; 58] = [
     "absolute",
     "byte-count",
     "case-fold",
@@ -16422,7 +16331,6 @@ const ROOT_OPERATIONS: [&str; 59] = [
     "string-integer-pairs",
     "string-integer-triples",
     "character-list-string",
-    "range-coalesce-int",
     "geometry-nearest-component-product",
     "geometry-final-connection-x-product",
     "geometry-largest-point-rectangle",
