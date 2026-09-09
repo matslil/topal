@@ -148,7 +148,7 @@ policy.
 
 ### TOPAL-LIB-REGEX-001 — Unicode regular-expression dialect
 
-`std pattern regex-contains?` SHALL search for a matching substring at Unicode
+`std pattern regex contains?` SHALL search for a matching substring at Unicode
 scalar-value boundaries. `^` and `$` SHALL instead constrain the beginning and
 end of the complete String. Dot SHALL match one scalar value other than line
 feed. Concatenation SHALL bind more tightly than `|`, and postfix repetition
@@ -170,11 +170,22 @@ less than `n`. Empty alternatives, unmatched delimiters, unsupported escapes,
 repetition without a preceding expression, repeated postfix quantifiers, and
 malformed bounds SHALL produce a source-located invalid-pattern diagnostic.
 
-Design 0 SHALL NOT provide backreferences, look-around, conditionals, inline
-mode flags, or observable captures. A conforming portable implementation SHALL
-use finite-automaton evaluation without input-dependent backtracking and SHALL
-take time linear in the searched-text length for a compiled pattern, apart
-from the finite active-state factor determined by that pattern.
+Ordinary parentheses SHALL create capture groups numbered in opening-
+parenthesis order; `(?:...)` SHALL group without capturing.
+`std pattern regex captures` SHALL return a product whose first field states
+whether a match exists and whose second field is a List of `(participated?,
+text)` products. On success, List entry zero SHALL describe the complete match
+and later entries SHALL describe numbered groups. On failure the Boolean SHALL
+be false and the List SHALL be empty. A nonparticipating group SHALL be
+`(false, "")`; a participating empty group SHALL be `(true, "")`. Selection
+SHALL be leftmost-longest, and a repeated group SHALL retain its last
+participation.
+
+Design 0 SHALL NOT provide backreferences, look-around, conditionals, or inline
+mode flags. A conforming portable implementation SHALL use tagged finite-
+automaton evaluation without input-dependent backtracking and SHALL take time
+linear in the searched-text length for a compiled pattern, apart from the
+finite active-state and capture-storage factors determined by that pattern.
 
 ### TOPAL-LIB-TEXT-ALGORITHMS-001 — Unicode text algorithms
 

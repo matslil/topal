@@ -496,6 +496,11 @@ mod tests {
         assert!(!is_identifier_start('7'));
         assert!(!is_identifier_start('٧'));
         assert!(is_decimal_digit('٧'));
+        assert!(is_regex_word('字'));
+        assert!(is_regex_word('\u{301}'));
+        assert!(is_regex_word('_'));
+        assert!(is_regex_word('\u{200d}'));
+        assert!(!is_regex_word('-'));
         assert!(!is_identifier_character('#'));
         assert!(!is_identifier_character('\u{200b}'));
         assert!(!is_identifier_character('\u{e000}'));
@@ -509,6 +514,14 @@ mod tests {
         assert_eq!(character_at(text, 1), Some("👩‍🔬"));
         assert_eq!(character_at(text, 2), Some("🇸🇪"));
         assert_eq!(character_at(text, 3), None);
+    }
+
+    #[test]
+    fn decomposes_text_at_scalar_boundaries() {
+        assert_eq!(
+            scalar_characters("a\u{301}👩‍🔬"),
+            ["a", "\u{301}", "👩", "\u{200d}", "🔬"]
+        );
     }
 
     #[test]

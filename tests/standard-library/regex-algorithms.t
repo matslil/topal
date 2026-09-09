@@ -6,10 +6,11 @@ use library std (
 )
 
 Pass is Boolean constraint { value } value = true
-matches? is std pattern regex-contains?
+matches? is std pattern regex contains?
 
 literal-substring : Pass is Pass (matches? ("a Topal program", "Topal"))
 dot : Pass is Pass (matches? ("Topal", "T.pal"))
+scalar-dot : Pass is Pass (matches? ("👩‍🔬", "^...$"))
 class-range : Pass is Pass (matches? ("version b", "[a-c]"))
 class-complement : Pass is Pass (matches? ("123x", "[^0-9]"))
 decimal : Pass is Pass (matches? ("value ٤٢", "\d+"))
@@ -28,7 +29,7 @@ anchored-rejection : Pass is Pass (not (matches? ("aTopal", "^Topal$")))
 empty-expression : Pass is Pass (matches? ("Topal", ""))
 quoted-metacharacter : Pass is Pass (matches? ("a+b", "a\+b"))
 
-(literal-substring, dot, class-range, class-complement, decimal, nondecimal,
+(literal-substring, dot, scalar-dot, class-range, class-complement, decimal, nondecimal,
  whitespace, word, alternative, optional, zero-or-more, one-or-more,
  exact-repeat, bounded-repeat, unbounded-repeat, whole-text,
  anchored-rejection, empty-expression, quoted-metacharacter)

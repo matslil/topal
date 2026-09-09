@@ -1509,6 +1509,22 @@ fn overload_failure_lists_available_signatures() {
 }
 
 #[test]
+fn malformed_source_regex_reports_a_diagnostic_instead_of_a_nonmatch() {
+    let library_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("library");
+    let output = run(
+        &["--library-root", library_root.to_str().unwrap()],
+        "use library std ( version is v0.1 )\nmatches? is std pattern regex contains?\nmatches? (\"text\", \"[\")\n",
+    );
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    let error = String::from_utf8(output.stderr).unwrap();
+    assert!(error.contains("E-RESULT-PROJECTION-INFALLIBLE"));
+    assert!(error.contains("RegexValid"));
+}
+
+#[test]
 fn every_mode_executes_complete_boolean_decisions() {
     let source = "choose is fn (condition : Boolean) -> Int\n  condition\n    true then 42\n    otherwise 0\n(choose true, choose false)\n";
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {

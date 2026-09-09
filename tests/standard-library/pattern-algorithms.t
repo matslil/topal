@@ -15,7 +15,7 @@ count is std pattern count
 find-all is std pattern find-all
 split is std pattern split
 glob? is std pattern glob?
-regex-contains? is std pattern regex-contains?
+regex-contains? is std pattern regex contains?
 contains-any? is std pattern contains-any?
 join is std text join
 

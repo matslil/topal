@@ -21,13 +21,19 @@ complement; `\d`, `\s`, and `\w` select Unicode decimal digits, whitespace,
 and word characters, with `\D`, `\S`, and `\W` as their complements. A
 backslash quotes a metacharacter.
 
-Parentheses initially group without exposing captures. Backreferences,
-look-around, conditionals, inline mode flags, and other backtracking-only
-constructs are deliberately absent. Malformed patterns are rejected rather
-than treated as a non-match. Matching uses a finite-automaton strategy, so a
-compiled pattern scales linearly with the searched text and cannot trigger
-catastrophic backtracking. A subsequent `std pattern` extension exposes
-capture groups without changing the Boolean containment operation.
+Ordinary parentheses both group and capture; `(?:...)` groups without
+capturing. `std pattern regex captures` reports whether a match exists and, when it does,
+returns entry zero for the complete match followed by captures in opening-
+parenthesis order. Each entry separately reports participation, so an
+unmatched optional group differs from a group that captured an empty String.
+Selection is leftmost-longest; a group repeated more than once retains its
+last participation.
+
+Backreferences, look-around, conditionals, inline mode flags, and other
+backtracking-only constructs are deliberately absent. Malformed patterns are
+rejected rather than treated as a non-match. Matching uses a tagged finite-
+automaton strategy, so a compiled pattern scales linearly with the searched
+text and cannot trigger catastrophic backtracking.
 
 More specialized namespaces keep their policies visible:
 
