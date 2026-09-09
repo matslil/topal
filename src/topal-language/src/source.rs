@@ -788,6 +788,133 @@ struct GeneratorDeclaration<'a> {
     span: Span,
 }
 
+fn expression_mentions_name(source: &SourceText, expression: &Expression, name: &str) -> bool {
+    match expression {
+        Expression::Identifier(span) => source.slice(*span) == name,
+        Expression::Block { statements, .. } => statements
+            .iter()
+            .any(|statement| statement_mentions_name(source, statement, name)),
+        Expression::Product { fields, .. } => fields
+            .iter()
+            .any(|field| expression_mentions_name(source, &field.value, name)),
+        Expression::DecisionTable { subject, rules, .. } => {
+            expression_mentions_name(source, subject, name)
+                || rules.iter().any(|rule| {
+                    decision_matcher_mentions_name(source, &rule.matcher, name)
+                        || expression_mentions_name(source, &rule.action, name)
+                })
+        }
+        Expression::AnonymousFunction { body, .. } => expression_mentions_name(source, body, name),
+        Expression::Application { items, .. } => items
+            .iter()
+            .any(|item| expression_mentions_name(source, item, name)),
+        Expression::Unit(_)
+        | Expression::Boolean(_)
+        | Expression::Integer(_)
+        | Expression::Measured { .. }
+        | Expression::Rational(_)
+        | Expression::String(_)
+        | Expression::ContextIdentifier(_)
+        | Expression::Discard(_)
+        | Expression::Callable { .. } => false,
+    }
+}
+
+fn decision_matcher_mentions_name(
+    source: &SourceText,
+    matcher: &DecisionMatcher,
+    name: &str,
+) -> bool {
+    match matcher {
+        DecisionMatcher::Identifier(span) => source.slice(*span) == name,
+        DecisionMatcher::Union { alternative, .. } => source.slice(*alternative) == name,
+        DecisionMatcher::Variant {
+            type_name, index, ..
+        } => source.slice(*type_name) == name || source.slice(*index) == name,
+        DecisionMatcher::ErrorCode {
+            namespace,
+            vocabulary,
+            code,
+            ..
+        } => {
+            source.slice(*namespace) == name
+                || source.slice(*vocabulary) == name
+                || source.slice(*code) == name
+        }
+        DecisionMatcher::Comparison { operand, .. } => {
+            expression_mentions_name(source, operand, name)
+        }
+        DecisionMatcher::Boolean { .. }
+        | DecisionMatcher::Result { .. }
+        | DecisionMatcher::Optional { .. }
+        | DecisionMatcher::ListEmpty(_)
+        | DecisionMatcher::ListEntry { .. }
+        | DecisionMatcher::Otherwise(_) => false,
+    }
+}
+
+fn statement_mentions_name(source: &SourceText, statement: &Statement, name: &str) -> bool {
+    match statement {
+        Statement::Published { declaration, .. } => {
+            statement_mentions_name(source, declaration, name)
+        }
+        Statement::Binding { value, .. }
+        | Statement::ContextAssignment { value, .. }
+        | Statement::Discard { value, .. }
+        | Statement::Return { value, .. }
+        | Statement::Expression(value) => expression_mentions_name(source, value, name),
+        Statement::Implementation {
+            classifier,
+            declarations,
+            ..
+        } => {
+            expression_mentions_name(source, classifier, name)
+                || declarations
+                    .iter()
+                    .any(|declaration| statement_mentions_name(source, declaration, name))
+        }
+        Statement::Function {
+            parameters, body, ..
+        }
+        | Statement::Generator {
+            parameters, body, ..
+        } => {
+            parameters.iter().any(|parameter| {
+                parameter
+                    .default
+                    .as_ref()
+                    .is_some_and(|default| expression_mentions_name(source, default, name))
+            }) || body
+                .iter()
+                .any(|statement| statement_mentions_name(source, statement, name))
+        }
+        Statement::InterfaceImplementation { declarations, .. } => declarations
+            .iter()
+            .any(|declaration| statement_mentions_name(source, declaration, name)),
+        Statement::Foreach {
+            source: input,
+            body,
+            ..
+        } => {
+            expression_mentions_name(source, input, name)
+                || body
+                    .iter()
+                    .any(|statement| statement_mentions_name(source, statement, name))
+        }
+        Statement::LanguageSelection { .. }
+        | Statement::LibrarySelection { .. }
+        | Statement::DiagnosticControl { .. }
+        | Statement::StateField { .. }
+        | Statement::Union { .. }
+        | Statement::Interface { .. } => false,
+    }
+}
+
+fn body_mentions_name(source: &SourceText, body: &[Statement], name: &str) -> bool {
+    body.iter()
+        .any(|statement| statement_mentions_name(source, statement, name))
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ExecutionStep {
     Advanced { value: Value, span: Span },
@@ -5972,11 +6099,17 @@ impl Session {
             rule: "TOPAL-FUNCTION-ANONYMOUS-001",
             detail: &detail,
         });
+        let bindings = self
+            .bindings
+            .iter()
+            .filter(|(name, _)| expression_mentions_name(source, body, name))
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect();
         Value::AnonymousFunction(Rc::new(AnonymousFunction {
             source: source.clone(),
             parameters,
             body: Box::new(body.clone()),
-            bindings: self.bindings.clone(),
+            bindings,
         }))
     }
 
@@ -7380,8 +7513,17 @@ impl Execution {
         let termination_rule =
             direct_termination_rule.or_else(|| mutual_edge.as_ref().map(|(_, rule)| *rule));
         let rule = function_rule(is_static, parameters.len());
-        let mut bindings = session.bindings.clone();
-        for (captured_name, candidates) in session.functions.iter() {
+        let mut bindings = session
+            .bindings
+            .iter()
+            .filter(|(captured_name, _)| body_mentions_name(&self.source, body, captured_name))
+            .map(|(captured_name, value)| (captured_name.clone(), value.clone()))
+            .collect::<BTreeMap<_, _>>();
+        for (captured_name, candidates) in session
+            .functions
+            .iter()
+            .filter(|(captured_name, _)| body_mentions_name(&self.source, body, captured_name))
+        {
             bindings.entry(captured_name.clone()).or_insert_with(|| {
                 Value::NamedFunction(Rc::new(NamedFunction {
                     name: captured_name.clone(),
