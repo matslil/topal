@@ -12,10 +12,22 @@ grouping, and shortest zip. `std ordered` adds stable Int and Rational sorting,
 binary search, merge, partial and nth-order selection, and insertion boundaries.
 `std pattern` distinguishes consecutive exact matching from ordered subsequence
 matching and provides overlapping search, alternative patterns, and explicit
-whole-text `*`/`?` glob policy. Its design-0 regular expressions are Unicode
-aware and support literals, classes, grouping, alternation, repetition, and
-anchors. They deliberately omit backreferences and look-around so matching has
-a linear-time bound in the searched text.
+whole-text `*`/`?` glob policy. Its design-0 regular expressions search for a
+matching substring unless anchored. They operate on Unicode scalar values and
+provide literals, `.`, bracket classes and ranges, grouping, alternation,
+repetition with `?`, `*`, `+`, `{n}`, `{n,}`, or `{n,m}`, and whole-text `^` and
+`$` anchors. Dot excludes line feed. Bracket classes use `[^...]` for
+complement; `\d`, `\s`, and `\w` select Unicode decimal digits, whitespace,
+and word characters, with `\D`, `\S`, and `\W` as their complements. A
+backslash quotes a metacharacter.
+
+Parentheses initially group without exposing captures. Backreferences,
+look-around, conditionals, inline mode flags, and other backtracking-only
+constructs are deliberately absent. Malformed patterns are rejected rather
+than treated as a non-match. Matching uses a finite-automaton strategy, so a
+compiled pattern scales linearly with the searched text and cannot trigger
+catastrophic backtracking. A subsequent `std pattern` extension exposes
+capture groups without changing the Boolean containment operation.
 
 More specialized namespaces keep their policies visible:
 

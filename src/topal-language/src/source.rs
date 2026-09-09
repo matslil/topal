@@ -6,7 +6,6 @@ use std::rc::Rc;
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use regex::Regex;
 use topal_semantics::{LanguageVersion, ObjectKind};
 use topal_serialization::{
     Event as SerializedEvent, Header as SerializationHeader, Limits as SerializationLimits,
@@ -15,7 +14,8 @@ use topal_serialization::{
 };
 use topal_source::{
     Diagnostic, SourceText, Span, canonically_equal, case_fold, character_at, character_count,
-    characters, lowercase, normalize_nfc, normalize_nfd, uppercase,
+    characters, is_decimal_digit, is_regex_word, lowercase, normalize_nfc, normalize_nfd,
+    scalar_characters, uppercase,
 };
 use topal_syntax::{
     AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement,
@@ -3551,11 +3551,65 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
+                    && source.slice(*name) == "unicode-scalar-characters"
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(text) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-UNICODE-SCALAR-OPERAND",
+                            operand_span,
+                            "Unicode scalar decomposition requires String",
+                        ));
+                    };
+                    let value = Value::List {
+                        element_classifier: "Character".into(),
+                        entries: scalar_characters(&text)
+                            .into_iter()
+                            .map(Value::String)
+                            .collect(),
+                    };
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && source.slice(*name) == "unicode-scalar-value"
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(character) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-UNICODE-SCALAR-OPERAND",
+                            operand_span,
+                            "Unicode scalar value requires Character",
+                        ));
+                    };
+                    let mut scalars = character.chars();
+                    let first = scalars.next();
+                    let Some(first) = first.filter(|_| scalars.next().is_none()) else {
+                        return Err(diagnostic(
+                            source,
+                            "E-UNICODE-SCALAR-OPERAND",
+                            operand_span,
+                            "Unicode scalar value requires exactly one scalar value",
+                        ));
+                    };
+                    let value = Value::Int(BigInt::from(u32::from(first)));
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
                         "unicode-whitespace-character"
                             | "unicode-line-feed-character"
                             | "unicode-carriage-return-character"
+                            | "unicode-decimal-digit-character"
+                            | "unicode-word-character"
                     )
                 {
                     let operand_span = items[1].span();
@@ -3578,6 +3632,10 @@ impl Session {
                             }
                             "unicode-line-feed-character" => first == Some('\n'),
                             "unicode-carriage-return-character" => first == Some('\r'),
+                            "unicode-decimal-digit-character" => {
+                                first.is_some_and(is_decimal_digit)
+                            }
+                            "unicode-word-character" => first.is_some_and(is_regex_word),
                             _ => unreachable!("Unicode Character primitive is dispatched"),
                         };
                     let value = Value::Boolean(matches);
@@ -3834,18 +3892,6 @@ impl Session {
                     let operand_span = items[1].span();
                     let operand = self.evaluate_expression(source, &items[1], trace)?;
                     let value = apply_range_bound(source, operation, operand, operand_span, trace)?;
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
-                }
-                if items.len() == 2
-                    && let Expression::Identifier(name) = &items[0]
-                    && matches!(source.slice(*name), "string-regex-contains")
-                {
-                    let operation = source.slice(*name);
-                    let operand_span = items[1].span();
-                    let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value =
-                        apply_string_utility(source, operation, operand, operand_span, trace)?;
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -13174,50 +13220,6 @@ fn evaluate_list_projection(
     Ok(value)
 }
 
-fn apply_string_utility(
-    source: &SourceText,
-    operation: &str,
-    argument: Value,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<Value, Diagnostic> {
-    let result = match (operation, argument) {
-        ("string-regex-contains", Value::Tuple(values)) if values.len() == 2 => {
-            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-regex-contains requires two String operands",
-                ));
-            };
-            let expression = Regex::new(pattern).map_err(|error| {
-                diagnostic(
-                    source,
-                    "E-REGEX-PATTERN",
-                    span,
-                    format!("invalid regular expression: {error}"),
-                )
-            })?;
-            Value::Boolean(expression.is_match(text))
-        }
-        _ => {
-            return Err(diagnostic(
-                source,
-                "E-STRING-UTILITY-OPERANDS",
-                span,
-                format!("{operation} received unsupported operands"),
-            ));
-        }
-    };
-    trace.record(TraceEvent {
-        event: "string.utility.applied",
-        rule: "TOPAL-STRING-UTILITY-001",
-        detail: operation,
-    });
-    Ok(result)
-}
-
 fn is_unicode_white_space(character: char) -> bool {
     matches!(
         character,
@@ -15321,7 +15323,7 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 33] = [
+const ROOT_OPERATIONS: [&str; 36] = [
     "absolute",
     "ascii-decimal-digit",
     "ascii-decimal-text?",
@@ -15345,13 +15347,16 @@ const ROOT_OPERATIONS: [&str; 33] = [
     "unicode-whitespace-character",
     "unicode-line-feed-character",
     "unicode-carriage-return-character",
+    "unicode-decimal-digit-character",
+    "unicode-scalar-characters",
+    "unicode-scalar-value",
+    "unicode-word-character",
     "uncons",
     "not",
     "negate",
     "one",
     "rest",
     "reverse",
-    "string-regex-contains",
     "stable-sort",
     "stable-sort-descending",
     "zero",

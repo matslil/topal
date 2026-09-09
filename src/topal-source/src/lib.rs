@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use icu_properties::props::{DefaultIgnorableCodePoint, GeneralCategory};
+use icu_properties::props::{Alphabetic, DefaultIgnorableCodePoint, GeneralCategory, JoinControl};
 use icu_properties::{CodePointMapData, CodePointSetData};
 
 /// Unicode data version fixed by the initial Topal language context.
@@ -46,6 +46,30 @@ pub fn is_identifier_start(character: char) -> bool {
 #[must_use]
 pub fn is_decimal_digit(character: char) -> bool {
     CodePointMapData::<GeneralCategory>::new().get(character) == GeneralCategory::DecimalNumber
+}
+
+/// Tests the Unicode `\\w` set used by the standard-library regex dialect.
+#[must_use]
+pub fn is_regex_word(character: char) -> bool {
+    let category = CodePointMapData::<GeneralCategory>::new().get(character);
+    CodePointSetData::new::<Alphabetic>().contains(character)
+        || matches!(
+            category,
+            GeneralCategory::NonspacingMark
+                | GeneralCategory::EnclosingMark
+                | GeneralCategory::SpacingMark
+                | GeneralCategory::DecimalNumber
+                | GeneralCategory::ConnectorPunctuation
+        )
+        || CodePointSetData::new::<JoinControl>().contains(character)
+}
+
+/// Decomposes preserved text into Unicode scalar values without normalization.
+#[must_use]
+pub fn scalar_characters(text: &str) -> Vec<String> {
+    text.chars()
+        .map(|character| character.to_string())
+        .collect()
 }
 
 #[must_use]

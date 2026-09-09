@@ -146,6 +146,36 @@ follow the underlying String and List containment laws; these exact operations
 SHALL NOT silently introduce regular-expression, locale, or normalization
 policy.
 
+### TOPAL-LIB-REGEX-001 — Unicode regular-expression dialect
+
+`std pattern regex-contains?` SHALL search for a matching substring at Unicode
+scalar-value boundaries. `^` and `$` SHALL instead constrain the beginning and
+end of the complete String. Dot SHALL match one scalar value other than line
+feed. Concatenation SHALL bind more tightly than `|`, and postfix repetition
+SHALL bind more tightly than concatenation. Parentheses SHALL group an
+expression without changing Boolean matching.
+
+A bracket expression SHALL support literal scalar values, inclusive scalar
+ranges written `a-z`, and leading `^` complement. `\d`, `\s`, and `\w`
+SHALL denote the selected Unicode context's Decimal_Number, White_Space, and
+word sets; their uppercase forms SHALL denote the corresponding complements.
+The word set SHALL comprise Alphabetic, Mark, Decimal_Number,
+Connector_Punctuation, and Join_Control scalar values. A backslash before a
+regular-expression metacharacter SHALL quote that metacharacter.
+
+Postfix `?`, `*`, `+`, `{n}`, `{n,}`, and `{n,m}` SHALL mean zero-or-one,
+zero-or-more, one-or-more, exactly `n`, at least `n`, and from `n` through `m`
+occurrences. Bounds SHALL be ASCII decimal natural numbers and `m` SHALL NOT be
+less than `n`. Empty alternatives, unmatched delimiters, unsupported escapes,
+repetition without a preceding expression, repeated postfix quantifiers, and
+malformed bounds SHALL produce a source-located invalid-pattern diagnostic.
+
+Design 0 SHALL NOT provide backreferences, look-around, conditionals, inline
+mode flags, or observable captures. A conforming portable implementation SHALL
+use finite-automaton evaluation without input-dependent backtracking and SHALL
+take time linear in the searched-text length for a compiled pattern, apart
+from the finite active-state factor determined by that pattern.
+
 ### TOPAL-LIB-TEXT-ALGORITHMS-001 — Unicode text algorithms
 
 The `std text` namespace SHALL provide canonical and default-caseless equality,
