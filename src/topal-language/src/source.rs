@@ -790,7 +790,9 @@ struct GeneratorDeclaration<'a> {
 
 fn expression_mentions_name(source: &SourceText, expression: &Expression, name: &str) -> bool {
     match expression {
-        Expression::Identifier(span) => source.slice(*span) == name,
+        Expression::Identifier(span) | Expression::ContextIdentifier(span) => {
+            source.slice(*span) == name
+        }
         Expression::Block { statements, .. } => statements
             .iter()
             .any(|statement| statement_mentions_name(source, statement, name)),
@@ -814,7 +816,6 @@ fn expression_mentions_name(source: &SourceText, expression: &Expression, name: 
         | Expression::Measured { .. }
         | Expression::Rational(_)
         | Expression::String(_)
-        | Expression::ContextIdentifier(_)
         | Expression::Discard(_)
         | Expression::Callable { .. } => false,
     }
