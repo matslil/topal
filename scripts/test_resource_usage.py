@@ -386,7 +386,7 @@ def baseline_document(
 
 
 def extend_baseline(
-    baseline: dict[str, Any], measured: dict[str, Measurement]
+    baseline: dict[str, Any], measured: dict[str, Measurement], measured_samples: int
 ) -> tuple[dict[str, Any], int]:
     """Add measurements for new identities without changing existing entries."""
     expected = baseline["tests"]
@@ -394,6 +394,7 @@ def extend_baseline(
         identity: {
             "cpu_time_ns": measured[identity].cpu_time_ns,
             "memory_peak_bytes": measured[identity].memory_peak_bytes,
+            "samples_per_test": measured_samples,
         }
         for identity in sorted(set(measured) - set(expected))
     }
@@ -485,8 +486,6 @@ def main() -> int:
         existing = json.loads(parsed.baseline.read_text(encoding="utf-8"))
         if existing.get("schema") != 1:
             raise RuntimeError("unsupported baseline schema")
-        if existing.get("samples_per_test") != parsed.samples:
-            raise RuntimeError("baseline sample count differs from --samples")
         discovered = (
             discover_tests(parsed.rust_min_stack)
             if parsed.domain == "rust"
@@ -504,7 +503,7 @@ def main() -> int:
         added = len(measured)
         document = baseline_document(measured, parsed.samples)
         if existing is not None:
-            document, added = extend_baseline(existing, measured)
+            document, added = extend_baseline(existing, measured, parsed.samples)
         parsed.baseline.write_text(
             json.dumps(document, indent=2) + "\n",
             encoding="utf-8",

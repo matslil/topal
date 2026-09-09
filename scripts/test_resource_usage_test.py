@@ -103,7 +103,7 @@ class BaselineExtensionTests(unittest.TestCase):
             "new": RESOURCE_USAGE.Measurement(300, 3_000, "passed"),
         }
 
-        extended, additions = RESOURCE_USAGE.extend_baseline(baseline, measured)
+        extended, additions = RESOURCE_USAGE.extend_baseline(baseline, measured, 3)
 
         self.assertEqual(additions, 1)
         self.assertEqual(extended["environment"], {"host": "original"})
@@ -111,7 +111,11 @@ class BaselineExtensionTests(unittest.TestCase):
         self.assertEqual(extended["tests"]["removed"], baseline["tests"]["removed"])
         self.assertEqual(
             extended["tests"]["new"],
-            {"cpu_time_ns": 300, "memory_peak_bytes": 3_000},
+            {
+                "cpu_time_ns": 300,
+                "memory_peak_bytes": 3_000,
+                "samples_per_test": 3,
+            },
         )
 
 

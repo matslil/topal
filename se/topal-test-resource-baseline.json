@@ -192,6 +192,31 @@
     "topal::tests/standard-library/packing-algorithms.t": {
       "cpu_time_ns": 12581291820,
       "memory_peak_bytes": 1707479040
+    },
+    "topal::tests/standard-library/regex-anchors.t": {
+      "cpu_time_ns": 43386756000,
+      "memory_peak_bytes": 204161024,
+      "samples_per_test": 3
+    },
+    "topal::tests/standard-library/regex-basics.t": {
+      "cpu_time_ns": 102737603000,
+      "memory_peak_bytes": 312463360,
+      "samples_per_test": 3
+    },
+    "topal::tests/standard-library/regex-captures.t": {
+      "cpu_time_ns": 108357511666,
+      "memory_peak_bytes": 316121088,
+      "samples_per_test": 3
+    },
+    "topal::tests/standard-library/regex-classes.t": {
+      "cpu_time_ns": 99879263333,
+      "memory_peak_bytes": 313495552,
+      "samples_per_test": 3
+    },
+    "topal::tests/standard-library/regex-repetition.t": {
+      "cpu_time_ns": 75930047666,
+      "memory_peak_bytes": 282456064,
+      "samples_per_test": 3
     }
   }
 }
