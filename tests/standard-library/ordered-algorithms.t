@@ -57,6 +57,9 @@ equal-subrange : Pass is Pass ((ones-lower = 0) and (ones-upper = 2))
 rational-sort : Pass is Pass ((sort rational-values) = rational-ascending)
 binary-found : Pass is Pass (index-is (binary-search (ascending, 3), 3))
 binary-absent : Pass is Pass (index-absent? (binary-search (ascending, 9)))
+binary-last : Pass is Pass (index-is (binary-search (ascending, 4), 4))
+binary-empty : Pass is Pass (index-absent? (binary-search (none, 1)))
+binary-rational : Pass is Pass (index-is (binary-search (rational-ascending, Rational (1, 1)), 1))
 stable-merge : Pass is Pass ((merge (merge-left, merge-right)) = merged)
 partial-selection : Pass is Pass ((smallest (values, 3)) = smallest-three)
 nth-selection : Pass is Pass (value-is (nth (values, 2), 2))
@@ -64,5 +67,6 @@ nth-absence : Pass is Pass (value-absent? (nth (values, 20)))
 
 (ascending-order, descending-order, empty-sort, lower-before-equals,
  upper-after-equals, middle-absence, equal-subrange, rational-sort,
- binary-found, binary-absent, stable-merge, partial-selection,
+ binary-found, binary-absent, binary-last, binary-empty, binary-rational,
+ stable-merge, partial-selection,
  nth-selection, nth-absence)

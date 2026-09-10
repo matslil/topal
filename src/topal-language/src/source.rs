@@ -1,12 +1,11 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::rc::Rc;
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use regex::Regex;
 use topal_semantics::{LanguageVersion, ObjectKind};
 use topal_serialization::{
     Event as SerializedEvent, Header as SerializationHeader, Limits as SerializationLimits,
@@ -15,11 +14,12 @@ use topal_serialization::{
 };
 use topal_source::{
     Diagnostic, SourceText, Span, canonically_equal, case_fold, character_at, character_count,
-    characters, lowercase, normalize_nfc, normalize_nfd, uppercase,
+    characters, is_decimal_digit, is_regex_word, lowercase, normalize_nfc, normalize_nfd,
+    scalar_characters, uppercase,
 };
 use topal_syntax::{
-    CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement, extract_documentation,
-    lex, parse,
+    AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement,
+    extract_documentation, lex, parse,
 };
 
 use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
@@ -255,9 +255,15 @@ pub struct GeneratorScopeState {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AnonymousFunction {
     source: SourceText,
-    parameters: Vec<String>,
+    parameters: Vec<CapturedPattern>,
     body: Box<Expression>,
     bindings: BTreeMap<String, Value>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum CapturedPattern {
+    Binding(String),
+    Product(Vec<String>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -780,6 +786,134 @@ struct GeneratorDeclaration<'a> {
     result: Span,
     body: &'a [Statement],
     span: Span,
+}
+
+fn expression_mentions_name(source: &SourceText, expression: &Expression, name: &str) -> bool {
+    match expression {
+        Expression::Identifier(span) | Expression::ContextIdentifier(span) => {
+            source.slice(*span) == name
+        }
+        Expression::Block { statements, .. } => statements
+            .iter()
+            .any(|statement| statement_mentions_name(source, statement, name)),
+        Expression::Product { fields, .. } => fields
+            .iter()
+            .any(|field| expression_mentions_name(source, &field.value, name)),
+        Expression::DecisionTable { subject, rules, .. } => {
+            expression_mentions_name(source, subject, name)
+                || rules.iter().any(|rule| {
+                    decision_matcher_mentions_name(source, &rule.matcher, name)
+                        || expression_mentions_name(source, &rule.action, name)
+                })
+        }
+        Expression::AnonymousFunction { body, .. } => expression_mentions_name(source, body, name),
+        Expression::Application { items, .. } => items
+            .iter()
+            .any(|item| expression_mentions_name(source, item, name)),
+        Expression::Unit(_)
+        | Expression::Boolean(_)
+        | Expression::Integer(_)
+        | Expression::Measured { .. }
+        | Expression::Rational(_)
+        | Expression::String(_)
+        | Expression::Discard(_)
+        | Expression::Callable { .. } => false,
+    }
+}
+
+fn decision_matcher_mentions_name(
+    source: &SourceText,
+    matcher: &DecisionMatcher,
+    name: &str,
+) -> bool {
+    match matcher {
+        DecisionMatcher::Identifier(span) => source.slice(*span) == name,
+        DecisionMatcher::Union { alternative, .. } => source.slice(*alternative) == name,
+        DecisionMatcher::Variant {
+            type_name, index, ..
+        } => source.slice(*type_name) == name || source.slice(*index) == name,
+        DecisionMatcher::ErrorCode {
+            namespace,
+            vocabulary,
+            code,
+            ..
+        } => {
+            source.slice(*namespace) == name
+                || source.slice(*vocabulary) == name
+                || source.slice(*code) == name
+        }
+        DecisionMatcher::Comparison { operand, .. } => {
+            expression_mentions_name(source, operand, name)
+        }
+        DecisionMatcher::Boolean { .. }
+        | DecisionMatcher::Result { .. }
+        | DecisionMatcher::Optional { .. }
+        | DecisionMatcher::ListEmpty(_)
+        | DecisionMatcher::ListEntry { .. }
+        | DecisionMatcher::Otherwise(_) => false,
+    }
+}
+
+fn statement_mentions_name(source: &SourceText, statement: &Statement, name: &str) -> bool {
+    match statement {
+        Statement::Published { declaration, .. } => {
+            statement_mentions_name(source, declaration, name)
+        }
+        Statement::Binding { value, .. }
+        | Statement::ContextAssignment { value, .. }
+        | Statement::Discard { value, .. }
+        | Statement::Return { value, .. }
+        | Statement::Expression(value) => expression_mentions_name(source, value, name),
+        Statement::Implementation {
+            classifier,
+            declarations,
+            ..
+        } => {
+            expression_mentions_name(source, classifier, name)
+                || declarations
+                    .iter()
+                    .any(|declaration| statement_mentions_name(source, declaration, name))
+        }
+        Statement::Function {
+            parameters, body, ..
+        }
+        | Statement::Generator {
+            parameters, body, ..
+        } => {
+            parameters.iter().any(|parameter| {
+                parameter
+                    .default
+                    .as_ref()
+                    .is_some_and(|default| expression_mentions_name(source, default, name))
+            }) || body
+                .iter()
+                .any(|statement| statement_mentions_name(source, statement, name))
+        }
+        Statement::InterfaceImplementation { declarations, .. } => declarations
+            .iter()
+            .any(|declaration| statement_mentions_name(source, declaration, name)),
+        Statement::Foreach {
+            source: input,
+            body,
+            ..
+        } => {
+            expression_mentions_name(source, input, name)
+                || body
+                    .iter()
+                    .any(|statement| statement_mentions_name(source, statement, name))
+        }
+        Statement::LanguageSelection { .. }
+        | Statement::LibrarySelection { .. }
+        | Statement::DiagnosticControl { .. }
+        | Statement::StateField { .. }
+        | Statement::Union { .. }
+        | Statement::Interface { .. } => false,
+    }
+}
+
+fn body_mentions_name(source: &SourceText, body: &[Statement], name: &str) -> bool {
+    body.iter()
+        .any(|statement| statement_mentions_name(source, statement, name))
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -3499,21 +3633,99 @@ impl Session {
                 }
                 if items.len() == 2
                     && let Expression::Identifier(name) = &items[0]
-                    && matches!(
-                        source.slice(*name),
-                        "list-transpose-shortest" | "character-list-string" | "range-coalesce-int"
-                    )
+                    && source.slice(*name) == "ascii-decimal-text?"
                 {
-                    let operation = source.slice(*name);
                     let operand_span = items[1].span();
                     let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value = apply_structural_algorithm(
-                        source,
-                        operation,
-                        operand,
-                        operand_span,
-                        trace,
-                    )?;
+                    let Value::String(text) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-ASCII-DIGIT-OPERAND",
+                            operand_span,
+                            "ASCII decimal text classification requires String",
+                        ));
+                    };
+                    let value = Value::Boolean(text.bytes().all(|byte| byte.is_ascii_digit()));
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && source.slice(*name) == "ascii-decimal-digit"
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(character) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-ASCII-DIGIT-OPERAND",
+                            operand_span,
+                            "ASCII decimal digit classification requires Character",
+                        ));
+                    };
+                    let payload = character
+                        .as_bytes()
+                        .first()
+                        .copied()
+                        .filter(|_| character.len() == 1)
+                        .filter(u8::is_ascii_digit)
+                        .map(|digit| Box::new(Value::Int(BigInt::from(digit - b'0'))));
+                    let value = Value::Optional {
+                        payload_classifier: "Nat".into(),
+                        payload,
+                    };
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && source.slice(*name) == "unicode-scalar-characters"
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(text) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-UNICODE-SCALAR-OPERAND",
+                            operand_span,
+                            "Unicode scalar decomposition requires String",
+                        ));
+                    };
+                    let value = Value::List {
+                        element_classifier: "Character".into(),
+                        entries: scalar_characters(&text)
+                            .into_iter()
+                            .map(Value::String)
+                            .collect(),
+                    };
+                    self.checkpoint(trace, Some(&value), Some(*span));
+                    return Ok(value);
+                }
+                if items.len() == 2
+                    && let Expression::Identifier(name) = &items[0]
+                    && source.slice(*name) == "unicode-scalar-value"
+                {
+                    let operand_span = items[1].span();
+                    let operand = self.evaluate_expression(source, &items[1], trace)?;
+                    let Value::String(character) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-UNICODE-SCALAR-OPERAND",
+                            operand_span,
+                            "Unicode scalar value requires Character",
+                        ));
+                    };
+                    let mut scalars = character.chars();
+                    let first = scalars.next();
+                    let Some(first) = first.filter(|_| scalars.next().is_none()) else {
+                        return Err(diagnostic(
+                            source,
+                            "E-UNICODE-SCALAR-OPERAND",
+                            operand_span,
+                            "Unicode scalar value requires exactly one scalar value",
+                        ));
+                    };
+                    let value = Value::Int(BigInt::from(u32::from(first)));
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -3521,67 +3733,40 @@ impl Session {
                     && let Expression::Identifier(name) = &items[0]
                     && matches!(
                         source.slice(*name),
-                        "statistics-median"
-                            | "statistics-modes"
-                            | "statistics-histogram"
-                            | "statistics-population-variance"
-                            | "statistics-sample-variance"
-                            | "statistics-quantile"
-                            | "statistics-covariance"
-                            | "statistics-summary"
-                            | "statistics-summary-add"
-                            | "statistics-summary-merge"
-                            | "statistics-summary-mean"
-                            | "statistics-summary-variance"
+                        "unicode-whitespace-character"
+                            | "unicode-line-feed-character"
+                            | "unicode-carriage-return-character"
+                            | "unicode-decimal-digit-character"
+                            | "unicode-word-character"
                     )
                 {
-                    let operation = source.slice(*name);
                     let operand_span = items[1].span();
                     let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value = apply_statistics(source, operation, operand, operand_span, trace)?;
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
-                }
-                if items.len() == 2
-                    && let Expression::Identifier(name) = &items[0]
-                    && matches!(
-                        source.slice(*name),
-                        "list-permutations"
-                            | "list-combinations"
-                            | "list-subsets"
-                            | "list-cartesian-product"
-                    )
-                {
+                    let Value::String(character) = operand else {
+                        return Err(diagnostic(
+                            source,
+                            "E-UNICODE-WHITESPACE-OPERAND",
+                            operand_span,
+                            "Unicode whitespace classification requires Character",
+                        ));
+                    };
                     let operation = source.slice(*name);
-                    let operand_span = items[1].span();
-                    let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value = apply_combinatorial_construction(
-                        source,
-                        operation,
-                        operand,
-                        operand_span,
-                        trace,
-                    )?;
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
-                }
-                if items.len() == 2
-                    && let Expression::Identifier(name) = &items[0]
-                    && matches!(
-                        source.slice(*name),
-                        "graph-bfs"
-                            | "graph-dfs"
-                            | "graph-shortest-path"
-                            | "graph-topological-sort"
-                            | "graph-weak-components"
-                            | "graph-weighted-shortest-path"
-                    )
-                {
-                    let operation = source.slice(*name);
-                    let operand_span = items[1].span();
-                    let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value =
-                        apply_graph_algorithm(source, operation, operand, operand_span, trace)?;
+                    let mut scalars = character.chars();
+                    let first = scalars.next();
+                    let matches = scalars.next().is_none()
+                        && match operation {
+                            "unicode-whitespace-character" => {
+                                first.is_some_and(is_unicode_white_space)
+                            }
+                            "unicode-line-feed-character" => first == Some('\n'),
+                            "unicode-carriage-return-character" => first == Some('\r'),
+                            "unicode-decimal-digit-character" => {
+                                first.is_some_and(is_decimal_digit)
+                            }
+                            "unicode-word-character" => first.is_some_and(is_regex_word),
+                            _ => unreachable!("Unicode Character primitive is dispatched"),
+                        };
+                    let value = Value::Boolean(matches);
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -3756,8 +3941,9 @@ impl Session {
                             "E-FUNCTION-RESULT-TYPE",
                             result_span,
                             format!(
-                                "function `{name}` returned a value outside `{}`",
-                                function.result
+                                "function `{name}` returned `{}`, outside `{}`",
+                                structural_value_classifier(&value),
+                                function.result,
                             ),
                         ));
                     }
@@ -3834,72 +4020,6 @@ impl Session {
                     let operand_span = items[1].span();
                     let operand = self.evaluate_expression(source, &items[1], trace)?;
                     let value = apply_range_bound(source, operation, operand, operand_span, trace)?;
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
-                }
-                if items.len() == 2
-                    && let Expression::Identifier(name) = &items[0]
-                    && matches!(
-                        source.slice(*name),
-                        "string-starts-with"
-                            | "string-ends-with"
-                            | "string-contains"
-                            | "string-trim"
-                            | "string-replace-all"
-                            | "string-repeat"
-                            | "string-count-exact"
-                            | "string-find-all"
-                            | "string-split-exact"
-                            | "string-glob-matches"
-                            | "string-contains-any"
-                            | "string-lines"
-                            | "string-words"
-                            | "string-join"
-                            | "string-regex-contains"
-                            | "string-parse-int"
-                            | "string-signed-integers"
-                            | "string-unsigned-integers"
-                            | "string-decimal-digits"
-                            | "string-characters"
-                            | "int-decimal-string"
-                            | "range-integers"
-                            | "string-integer-rows"
-                            | "string-vertical-integers"
-                            | "string-integer-pairs"
-                            | "string-integer-triples"
-                    )
-                {
-                    let operation = source.slice(*name);
-                    let operand_span = items[1].span();
-                    let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value =
-                        apply_string_utility(source, operation, operand, operand_span, trace)?;
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
-                }
-                if items.len() == 2
-                    && let Expression::Identifier(name) = &items[0]
-                    && matches!(
-                        source.slice(*name),
-                        "geometry-nearest-component-product"
-                            | "geometry-final-connection-x-product"
-                            | "geometry-largest-point-rectangle"
-                            | "geometry-largest-contained-rectangle"
-                            | "machine-indicator-minimum-total"
-                            | "machine-counter-minimum-total"
-                            | "graph-described-path-count"
-                            | "graph-described-required-path-count"
-                            | "packing-described-fit-count"
-                    )
-                {
-                    let operation = source.slice(*name);
-                    let operand_span = items[1].span();
-                    let operand = self.evaluate_expression(source, &items[1], trace)?;
-                    let value = if operation.starts_with("geometry-") {
-                        apply_geometry_algorithm(source, operation, operand, operand_span)?
-                    } else {
-                        apply_planning_algorithm(source, operation, operand, operand_span)?
-                    };
                     self.checkpoint(trace, Some(&value), Some(*span));
                     return Ok(value);
                 }
@@ -4185,23 +4305,6 @@ impl Session {
                     if let Expression::Identifier(callable_span) = &items[index]
                         && matches!(
                             source.slice(*callable_span),
-                            "list-enumerate" | "list-group-runs"
-                        )
-                        && matches!(result, Value::List { .. })
-                    {
-                        result = apply_list_sequence_unary(
-                            source,
-                            source.slice(*callable_span),
-                            result,
-                            *callable_span,
-                            trace,
-                        )?;
-                        index += 1;
-                        continue;
-                    }
-                    if let Expression::Identifier(callable_span) = &items[index]
-                        && matches!(
-                            source.slice(*callable_span),
                             "stable-sort" | "stable-sort-descending"
                         )
                         && matches!(result, Value::List { .. })
@@ -4256,17 +4359,6 @@ impl Session {
                                 | "remove-indexes"
                                 | "zip-exact"
                                 | "zip-shortest"
-                                | "list-zip-shortest"
-                                | "list-index-of"
-                                | "list-last-index-of"
-                                | "list-rotate-left"
-                                | "list-rotate-right"
-                                | "list-chunks"
-                                | "list-windows"
-                                | "ordered-binary-search"
-                                | "ordered-merge"
-                                | "ordered-nth"
-                                | "ordered-smallest"
                                 | "remove-first"
                                 | "remove-all"
                         )
@@ -5970,7 +6062,7 @@ impl Session {
         let mut invocation = self.clone();
         invocation.bindings = bindings.clone();
         for (parameter, argument) in parameters.iter().zip(arguments) {
-            invocation.bindings.insert(parameter.clone(), argument);
+            bind_anonymous_pattern(source, &mut invocation, parameter, argument, call_span)?;
         }
         let detail = format!("arguments={}", parameters.len());
         trace.record(TraceEvent {
@@ -5984,13 +6076,23 @@ impl Session {
     fn capture_anonymous_function(
         &self,
         source: &SourceText,
-        parameters: &[Span],
+        parameters: &[AnonymousPattern],
         body: &Expression,
         trace: &mut impl TraceSink,
     ) -> Value {
         let parameters = parameters
             .iter()
-            .map(|parameter| source.slice(*parameter).to_owned())
+            .map(|parameter| match parameter {
+                AnonymousPattern::Binding(span) => {
+                    CapturedPattern::Binding(source.slice(*span).to_owned())
+                }
+                AnonymousPattern::Product { bindings, .. } => CapturedPattern::Product(
+                    bindings
+                        .iter()
+                        .map(|binding| source.slice(*binding).to_owned())
+                        .collect(),
+                ),
+            })
             .collect::<Vec<_>>();
         let detail = format!("parameters={}", parameters.len());
         trace.record(TraceEvent {
@@ -5998,11 +6100,17 @@ impl Session {
             rule: "TOPAL-FUNCTION-ANONYMOUS-001",
             detail: &detail,
         });
+        let bindings = self
+            .bindings
+            .iter()
+            .filter(|(name, _)| expression_mentions_name(source, body, name))
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect();
         Value::AnonymousFunction(Rc::new(AnonymousFunction {
             source: source.clone(),
             parameters,
             body: Box::new(body.clone()),
-            bindings: self.bindings.clone(),
+            bindings,
         }))
     }
 
@@ -6259,6 +6367,23 @@ impl Session {
                     span,
                     trace,
                 );
+            }
+            if let Value::CharacterGenerator { generated, origin } = value {
+                trace.record(TraceEvent {
+                    event: "generator.consumed",
+                    rule: "TOPAL-STRING-CHARACTERS-GENERATOR-001",
+                    detail: &origin,
+                });
+                let result = Value::List {
+                    element_classifier: "Character".into(),
+                    entries: generated.into_iter().map(Value::String).collect(),
+                };
+                trace.record(TraceEvent {
+                    event: "list.collected",
+                    rule: "TOPAL-COLLECTION-COLLECT-LIST-001",
+                    detail: "List Character",
+                });
+                return Ok(result);
             }
             if matches!(value, Value::List { .. }) {
                 trace.record(TraceEvent {
@@ -6547,6 +6672,46 @@ impl Session {
         self.checkpoint(trace, Some(&value), Some(result_span));
         Ok(value)
     }
+}
+
+fn bind_anonymous_pattern(
+    source: &SourceText,
+    invocation: &mut Session,
+    pattern: &CapturedPattern,
+    argument: Value,
+    span: Span,
+) -> Result<(), Diagnostic> {
+    match pattern {
+        CapturedPattern::Binding(name) => {
+            invocation.bindings.insert(name.clone(), argument);
+        }
+        CapturedPattern::Product(bindings) => {
+            let Value::Tuple(values) = argument else {
+                return Err(diagnostic(
+                    source,
+                    "E-ANONYMOUS-PRODUCT-PATTERN",
+                    span,
+                    "anonymous product pattern requires a positional product",
+                ));
+            };
+            if values.len() != bindings.len() {
+                return Err(diagnostic(
+                    source,
+                    "E-ANONYMOUS-PRODUCT-PATTERN",
+                    span,
+                    format!(
+                        "anonymous product pattern expects {} fields, found {}",
+                        bindings.len(),
+                        values.len()
+                    ),
+                ));
+            }
+            for (name, value) in bindings.iter().zip(values) {
+                invocation.bindings.insert(name.clone(), value);
+            }
+        }
+    }
+    Ok(())
 }
 
 fn known_enum_alternatives(session: &Session, type_name: &str) -> Option<BTreeSet<String>> {
@@ -7331,6 +7496,15 @@ impl Execution {
             effect_bound_text.as_deref(),
             body,
         )
+        .or_else(|| {
+            prove_explicit_parameter_recursion(
+                &self.source,
+                name_text,
+                &parameters,
+                effect_bound_text.as_deref(),
+                body,
+            )
+        })
         .or_else(|| prove_int_recursion(&self.source, name_text, &parameters, body));
         let mutual_edge = direct_termination_rule
             .is_none()
@@ -7340,16 +7514,23 @@ impl Execution {
         let termination_rule =
             direct_termination_rule.or_else(|| mutual_edge.as_ref().map(|(_, rule)| *rule));
         let rule = function_rule(is_static, parameters.len());
-        let mut bindings = session.bindings.clone();
-        for (captured_name, candidates) in session.functions.iter() {
-            bindings
-                .entry(captured_name.clone())
-                .or_insert_with(|| {
-                    Value::NamedFunction(Rc::new(NamedFunction {
-                        name: captured_name.clone(),
-                        candidates: candidates.clone(),
-                    }))
-                });
+        let mut bindings = session
+            .bindings
+            .iter()
+            .filter(|(captured_name, _)| body_mentions_name(&self.source, body, captured_name))
+            .map(|(captured_name, value)| (captured_name.clone(), value.clone()))
+            .collect::<BTreeMap<_, _>>();
+        for (captured_name, candidates) in session
+            .functions
+            .iter()
+            .filter(|(captured_name, _)| body_mentions_name(&self.source, body, captured_name))
+        {
+            bindings.entry(captured_name.clone()).or_insert_with(|| {
+                Value::NamedFunction(Rc::new(NamedFunction {
+                    name: captured_name.clone(),
+                    candidates: candidates.clone(),
+                }))
+            });
         }
         let function = UserFunction {
             source: self.source.clone(),
@@ -8010,12 +8191,13 @@ impl Execution {
             evaluate_binding_initializer(&self.source, session, initializer, classifier, trace)?;
         consume_generator_argument(&self.source, session, initializer);
         if let Some(classifier) = classifier {
-            let classifier_text = self.source.slice(classifier);
+            let classifier_text =
+                substitute_classifier(self.source.slice(classifier), &session.generic_types);
             evaluated = narrow_rational_to_int(
                 &self.source,
                 initializer,
                 evaluated,
-                classifier_text,
+                &classifier_text,
                 self.return_classifier.as_deref(),
                 trace,
             )?;
@@ -8045,7 +8227,7 @@ impl Execution {
                 });
                 return Ok(BindingOutcome::Returned(evaluated, initializer.span()));
             }
-            if !value_has_classifier(&evaluated, classifier_text) {
+            if !value_has_classifier(&evaluated, &classifier_text) {
                 if classifier_text == "Character"
                     && let Value::String(text) = &evaluated
                 {
@@ -8063,7 +8245,10 @@ impl Execution {
                     &self.source,
                     "E-BINDING-CLASSIFIER",
                     initializer.span(),
-                    format!("initializer does not satisfy `{classifier_text}`"),
+                    format!(
+                        "initializer has `{}`, which does not satisfy `{classifier_text}`",
+                        structural_value_classifier(&evaluated)
+                    ),
                 ));
             }
             trace.record(TraceEvent {
@@ -8122,6 +8307,25 @@ fn evaluate_expression_with_optional_context(
     {
         return Ok(list);
     }
+    if let Some(payload_classifier) = expected_classifier.and_then(optional_payload_classifier)
+        && let Expression::Application { items, .. } = expression
+        && let [Expression::Identifier(constructor), payload] = items.as_slice()
+        && source.slice(*constructor) == "Some"
+    {
+        let payload_classifier = substitute_classifier(payload_classifier, &session.generic_types);
+        let value = session.evaluate_expression(source, payload, trace)?;
+        if value_has_classifier(&value, &payload_classifier) {
+            trace.record(TraceEvent {
+                event: "optional.some.constructed",
+                rule: "TOPAL-TYPE-OPTIONAL-CONTEXT-001",
+                detail: &payload_classifier,
+            });
+            return Ok(Value::Optional {
+                payload_classifier,
+                payload: Some(Box::new(value)),
+            });
+        }
+    }
     let contextual_none = expected_classifier
         .and_then(optional_payload_classifier)
         .filter(
@@ -8152,6 +8356,14 @@ fn evaluate_list_expression(
     element_classifier: &str,
     trace: &mut impl TraceSink,
 ) -> Result<Option<Value>, Diagnostic> {
+    let grouped = tuple_classifiers(element_classifier);
+    let element_classifier = grouped
+        .as_ref()
+        .filter(|items| items.len() == 1)
+        .map_or(element_classifier, |items| items[0]);
+    let substituted_element_classifier =
+        substitute_classifier(element_classifier, &session.generic_types);
+    let element_classifier = substituted_element_classifier.as_str();
     if matches!(expression, Expression::Identifier(span) if source.slice(*span) == "Empty") {
         trace.record(TraceEvent {
             event: "list.empty.constructed",
@@ -9542,6 +9754,21 @@ fn substitute_classifier(classifier: &str, generic_types: &BTreeMap<String, Stri
     if let Some(concrete) = generic_types.get(classifier) {
         return concrete.clone();
     }
+    for constructor in ["Optional", "List", "Range"] {
+        if let Some(payload) = applied_classifier(classifier, constructor) {
+            return format!(
+                "{constructor} {}",
+                substitute_classifier(payload, generic_types)
+            );
+        }
+    }
+    if let Some((success, codes)) = result_classifier_parts(classifier) {
+        return format!(
+            "Result {} {}",
+            substitute_classifier(success, generic_types),
+            substitute_classifier(codes, generic_types)
+        );
+    }
     if let Some(items) = tuple_classifiers(classifier) {
         return format!(
             "({})",
@@ -9688,6 +9915,7 @@ fn supported_generic_classifier(
     enum_types: &BTreeMap<String, BTreeSet<String>>,
 ) -> bool {
     supported_value_classifier(classifier, enum_types)
+        || generic_capability_classifier(classifier).is_some()
         || generic_names.contains(classifier)
         || applied_classifier(classifier, "Optional").is_some_and(|payload| {
             supported_generic_classifier(payload, generic_names, enum_types)
@@ -10249,6 +10477,271 @@ fn prove_int_recursion(
     (found && valid && preserves_nat).then_some(proof_rule)
 }
 
+fn prove_explicit_parameter_recursion(
+    source: &SourceText,
+    function_name: &str,
+    parameters: &[(String, String)],
+    effect_bound: Option<&str>,
+    body: &[Statement],
+) -> Option<&'static str> {
+    let measure = explicit_single_measure(effect_bound?)?;
+    let measure_index = parameters.iter().position(|(name, classifier)| {
+        name == measure && matches!(classifier.as_str(), "Int" | "Nat")
+    })?;
+    let (parameter, classifier) = &parameters[measure_index];
+    let [Statement::Expression(Expression::DecisionTable { subject, rules, .. })] = body else {
+        return None;
+    };
+    if !matches!(subject.as_ref(), Expression::Identifier(span) if source.slice(*span) == parameter)
+    {
+        return None;
+    }
+    let [base, recursive] = rules.as_slice() else {
+        return None;
+    };
+    let (step, proof_rule) = match (classifier.as_str(), &base.matcher) {
+        (
+            "Nat",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::LessEqual,
+                operand: Expression::Integer(bound),
+                ..
+            },
+        ) if parse_integer(source.slice(*bound)).is_some_and(|value| value >= BigInt::from(0)) => {
+            (CallableKind::Minus, "TOPAL-FUNCTION-DECREASES-001")
+        }
+        (
+            "Nat",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::GreaterEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (CallableKind::Plus, "TOPAL-FUNCTION-DECREASES-001"),
+        (
+            "Int",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::LessEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (CallableKind::Minus, "TOPAL-FUNCTION-DECREASES-001"),
+        (
+            "Int",
+            DecisionMatcher::Comparison {
+                kind: CallableKind::GreaterEqual,
+                operand: Expression::Integer(_),
+                ..
+            },
+        ) => (CallableKind::Plus, "TOPAL-FUNCTION-DECREASES-001"),
+        _ => return None,
+    };
+    if !matches!(&recursive.matcher, DecisionMatcher::Otherwise(_))
+        || contains_self_call(source, function_name, &base.action)
+    {
+        return None;
+    }
+    let (found, valid) = measured_self_calls(
+        source,
+        function_name,
+        parameter,
+        measure_index,
+        parameters.len(),
+        step,
+        &recursive.action,
+    );
+    let nat_step_limit = nat_decrement_step_limit(source, &base.matcher);
+    let preserves_nat = classifier != "Nat"
+        || step == CallableKind::Plus
+        || nat_step_limit.is_some_and(|limit| {
+            measured_recursive_calls_fit_nat_bound(
+                source,
+                function_name,
+                parameter,
+                measure_index,
+                parameters.len(),
+                &recursive.action,
+                &limit,
+            )
+        });
+    (found && valid && preserves_nat).then_some(proof_rule)
+}
+
+fn explicit_single_measure(effect_bound: &str) -> Option<&str> {
+    let measure = effect_bound.trim().strip_prefix("Decreases")?.trim();
+    let measure = measure
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .unwrap_or(measure)
+        .trim();
+    (!measure.is_empty()
+        && measure
+            .chars()
+            .all(|character| character == '-' || character.is_alphanumeric()))
+    .then_some(measure)
+}
+
+fn recursive_call_argument<'a>(
+    source: &SourceText,
+    function_name: &str,
+    parameter_index: usize,
+    parameter_count: usize,
+    expression: &'a Expression,
+) -> Option<&'a Expression> {
+    let Expression::Application { items, .. } = expression else {
+        return None;
+    };
+    if !matches!(items.first(), Some(Expression::Identifier(span)) if source.slice(*span) == function_name)
+    {
+        return None;
+    }
+    let argument = items.get(1)?;
+    if parameter_count == 1 {
+        return (items.len() == 2).then_some(argument);
+    }
+    let Expression::Product { fields, .. } = argument else {
+        return None;
+    };
+    (items.len() == 2 && fields.len() == parameter_count).then(|| &fields[parameter_index].value)
+}
+
+fn measured_self_calls(
+    source: &SourceText,
+    function_name: &str,
+    parameter: &str,
+    parameter_index: usize,
+    parameter_count: usize,
+    step: CallableKind,
+    expression: &Expression,
+) -> (bool, bool) {
+    if let Some(argument) = recursive_call_argument(
+        source,
+        function_name,
+        parameter_index,
+        parameter_count,
+        expression,
+    ) {
+        return (
+            true,
+            is_positive_literal_step(source, parameter, step, argument),
+        );
+    }
+    match expression {
+        Expression::Application { items, .. } => combine_call_checks(items.iter().map(|item| {
+            measured_self_calls(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                step,
+                item,
+            )
+        })),
+        Expression::Product { fields, .. } => combine_call_checks(fields.iter().map(|field| {
+            measured_self_calls(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                step,
+                &field.value,
+            )
+        })),
+        Expression::DecisionTable { subject, rules, .. } => combine_call_checks(
+            std::iter::once(measured_self_calls(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                step,
+                subject,
+            ))
+            .chain(rules.iter().map(|rule| {
+                measured_self_calls(
+                    source,
+                    function_name,
+                    parameter,
+                    parameter_index,
+                    parameter_count,
+                    step,
+                    &rule.action,
+                )
+            })),
+        ),
+        _ => (false, true),
+    }
+}
+
+fn measured_recursive_calls_fit_nat_bound(
+    source: &SourceText,
+    function_name: &str,
+    parameter: &str,
+    parameter_index: usize,
+    parameter_count: usize,
+    expression: &Expression,
+    maximum_step: &BigInt,
+) -> bool {
+    if let Some(argument) = recursive_call_argument(
+        source,
+        function_name,
+        parameter_index,
+        parameter_count,
+        expression,
+    ) {
+        return literal_step_value(source, parameter, CallableKind::Minus, argument)
+            .is_some_and(|step| step <= *maximum_step);
+    }
+    match expression {
+        Expression::Application { items, .. } => items.iter().all(|item| {
+            measured_recursive_calls_fit_nat_bound(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                item,
+                maximum_step,
+            )
+        }),
+        Expression::Product { fields, .. } => fields.iter().all(|field| {
+            measured_recursive_calls_fit_nat_bound(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                &field.value,
+                maximum_step,
+            )
+        }),
+        Expression::DecisionTable { subject, rules, .. } => {
+            measured_recursive_calls_fit_nat_bound(
+                source,
+                function_name,
+                parameter,
+                parameter_index,
+                parameter_count,
+                subject,
+                maximum_step,
+            ) && rules.iter().all(|rule| {
+                measured_recursive_calls_fit_nat_bound(
+                    source,
+                    function_name,
+                    parameter,
+                    parameter_index,
+                    parameter_count,
+                    &rule.action,
+                    maximum_step,
+                )
+            })
+        }
+        _ => true,
+    }
+}
+
 fn prove_euclidean_recursion(
     source: &SourceText,
     function_name: &str,
@@ -10635,6 +11128,29 @@ fn is_positive_literal_step(
                     && parse_integer(source.slice(*amount)).is_some_and(|value| value > BigInt::from(0_u8))
             )
     )
+}
+
+fn literal_step_value(
+    source: &SourceText,
+    parameter: &str,
+    step: CallableKind,
+    expression: &Expression,
+) -> Option<BigInt> {
+    let Expression::Application { items, .. } = expression else {
+        return None;
+    };
+    let [
+        Expression::Identifier(name),
+        Expression::Callable { kind, .. },
+        Expression::Integer(amount),
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    (source.slice(*name) == parameter && *kind == step)
+        .then(|| parse_integer(source.slice(*amount)))
+        .flatten()
+        .filter(|value| value > &BigInt::from(0_u8))
 }
 
 fn supported_value_classifier(
@@ -12847,403 +13363,6 @@ fn evaluate_list_projection(
     Ok(value)
 }
 
-fn apply_string_utility(
-    source: &SourceText,
-    operation: &str,
-    argument: Value,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<Value, Diagnostic> {
-    let result = match (operation, argument) {
-        ("string-trim", Value::String(text)) => {
-            Value::String(text.trim_matches(is_unicode_white_space).to_owned())
-        }
-        ("string-starts-with" | "string-ends-with" | "string-contains", Value::Tuple(values))
-            if values.len() == 2 =>
-        {
-            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    format!("{operation} requires two String operands"),
-                ));
-            };
-            Value::Boolean(match operation {
-                "string-starts-with" => text.starts_with(pattern),
-                "string-ends-with" => text.ends_with(pattern),
-                _ => text.contains(pattern),
-            })
-        }
-        ("string-replace-all", Value::Tuple(values)) if values.len() == 3 => {
-            let [
-                Value::String(text),
-                Value::String(pattern),
-                Value::String(replacement),
-            ] = values.as_slice()
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-replace-all requires three String operands",
-                ));
-            };
-            Value::String(text.replace(pattern, replacement))
-        }
-        ("string-repeat", Value::Tuple(values)) if values.len() == 2 => {
-            let [Value::String(text), Value::Int(count)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-repeat requires String and Nat operands",
-                ));
-            };
-            let count = usize::try_from(count).map_err(|_| {
-                diagnostic(
-                    source,
-                    "E-STRING-REPEAT-COUNT",
-                    span,
-                    "string repetition count is outside the executable platform limit",
-                )
-            })?;
-            Value::String(text.repeat(count))
-        }
-        ("string-count-exact" | "string-find-all", Value::Tuple(values)) if values.len() == 2 => {
-            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    format!("{operation} requires two String operands"),
-                ));
-            };
-            let text = characters(text).collect::<Vec<_>>();
-            let pattern = characters(pattern).collect::<Vec<_>>();
-            if pattern.is_empty() {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-EMPTY-PATTERN",
-                    span,
-                    format!("{operation} requires a nonempty pattern"),
-                ));
-            }
-            let indexes = text
-                .windows(pattern.len())
-                .enumerate()
-                .filter_map(|(index, candidate)| (candidate == pattern.as_slice()).then_some(index))
-                .collect::<Vec<_>>();
-            if operation == "string-count-exact" {
-                Value::Int(BigInt::from(indexes.len()))
-            } else {
-                Value::List {
-                    element_classifier: "Nat".into(),
-                    entries: indexes
-                        .into_iter()
-                        .map(|index| Value::Int(BigInt::from(index)))
-                        .collect(),
-                }
-            }
-        }
-        ("string-split-exact", Value::Tuple(values)) if values.len() == 2 => {
-            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-split-exact requires two String operands",
-                ));
-            };
-            if pattern.is_empty() {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-EMPTY-PATTERN",
-                    span,
-                    "string-split-exact requires a nonempty pattern",
-                ));
-            }
-            Value::List {
-                element_classifier: "String".into(),
-                entries: text
-                    .split(pattern)
-                    .map(|part| Value::String(part.to_owned()))
-                    .collect(),
-            }
-        }
-        ("string-glob-matches", Value::Tuple(values)) if values.len() == 2 => {
-            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-glob-matches requires two String operands",
-                ));
-            };
-            Value::Boolean(glob_matches(text, pattern))
-        }
-        ("string-regex-contains", Value::Tuple(values)) if values.len() == 2 => {
-            let [Value::String(text), Value::String(pattern)] = values.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-regex-contains requires two String operands",
-                ));
-            };
-            let expression = Regex::new(pattern).map_err(|error| {
-                diagnostic(
-                    source,
-                    "E-REGEX-PATTERN",
-                    span,
-                    format!("invalid regular expression: {error}"),
-                )
-            })?;
-            Value::Boolean(expression.is_match(text))
-        }
-        ("string-contains-any", Value::Tuple(values)) if values.len() == 2 => {
-            let [
-                Value::String(text),
-                Value::List {
-                    element_classifier,
-                    entries,
-                },
-            ] = values.as_slice()
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-contains-any requires String and List String operands",
-                ));
-            };
-            if element_classifier != "String" {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-contains-any requires List String patterns",
-                ));
-            }
-            Value::Boolean(
-                entries
-                    .iter()
-                    .any(|entry| matches!(entry, Value::String(pattern) if text.contains(pattern))),
-            )
-        }
-        ("string-lines", Value::String(text)) => Value::List {
-            element_classifier: "String".into(),
-            entries: text
-                .lines()
-                .map(|line| Value::String(line.to_owned()))
-                .collect(),
-        },
-        ("string-words", Value::String(text)) => Value::List {
-            element_classifier: "String".into(),
-            entries: text
-                .split_whitespace()
-                .map(|word| Value::String(word.to_owned()))
-                .collect(),
-        },
-        ("string-parse-int", Value::String(text)) => Value::Optional {
-            payload_classifier: "Int".into(),
-            payload: parse_strict_decimal(&text).map(|value| Box::new(Value::Int(value))),
-        },
-        ("string-signed-integers" | "string-unsigned-integers", Value::String(text)) => {
-            let pattern = if operation == "string-signed-integers" {
-                r"-?[0-9]+"
-            } else {
-                r"[0-9]+"
-            };
-            let expression = Regex::new(pattern).expect("fixed decimal pattern is valid");
-            Value::List {
-                element_classifier: if operation == "string-signed-integers" {
-                    "Int"
-                } else {
-                    "Nat"
-                }
-                .into(),
-                entries: expression
-                    .find_iter(&text)
-                    .map(|found| {
-                        Value::Int(
-                            found
-                                .as_str()
-                                .parse::<BigInt>()
-                                .expect("matched decimal integer"),
-                        )
-                    })
-                    .collect(),
-            }
-        }
-        ("string-decimal-digits", Value::String(text)) => {
-            if !text.bytes().all(|byte| byte.is_ascii_digit()) {
-                return Err(diagnostic(
-                    source,
-                    "E-DECIMAL-DIGITS",
-                    span,
-                    "decimal-digits requires only ASCII decimal digits",
-                ));
-            }
-            Value::List {
-                element_classifier: "Nat".into(),
-                entries: text
-                    .bytes()
-                    .map(|byte| Value::Int(BigInt::from(byte - b'0')))
-                    .collect(),
-            }
-        }
-        ("string-characters", Value::String(text)) => Value::List {
-            element_classifier: "Character".into(),
-            entries: characters(&text)
-                .map(|character| Value::String(character.to_owned()))
-                .collect(),
-        },
-        ("int-decimal-string", Value::Int(value)) => Value::String(value.to_string()),
-        ("string-integer-rows", Value::String(text)) => {
-            let expression = Regex::new(r"-?[0-9]+").expect("fixed decimal pattern is valid");
-            Value::List {
-                element_classifier: "List Int".into(),
-                entries: text
-                    .lines()
-                    .filter_map(|line| {
-                        let entries = expression
-                            .find_iter(line)
-                            .map(|found| {
-                                Value::Int(
-                                    found
-                                        .as_str()
-                                        .parse::<BigInt>()
-                                        .expect("matched decimal integer"),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        (!entries.is_empty()).then_some(Value::List {
-                            element_classifier: "Int".into(),
-                            entries,
-                        })
-                    })
-                    .collect(),
-            }
-        }
-        ("string-vertical-integers", Value::String(text)) => {
-            let lines = text.lines().collect::<Vec<_>>();
-            let width = lines.iter().map(|line| line.len()).max().unwrap_or(0);
-            let number_lines = lines.get(..lines.len().saturating_sub(1)).unwrap_or(&[]);
-            let entries = (0..width)
-                .map(|column| {
-                    let digits = number_lines
-                        .iter()
-                        .filter_map(|line| line.as_bytes().get(column).copied())
-                        .filter(u8::is_ascii_digit)
-                        .collect::<Vec<_>>();
-                    Value::Optional {
-                        payload_classifier: "Int".into(),
-                        payload: (!digits.is_empty()).then(|| {
-                            Box::new(Value::Int(
-                                String::from_utf8(digits)
-                                    .expect("ASCII digits are UTF-8")
-                                    .parse::<BigInt>()
-                                    .expect("digit column is an integer"),
-                            ))
-                        }),
-                    }
-                })
-                .collect();
-            Value::List {
-                element_classifier: "Optional Int".into(),
-                entries,
-            }
-        }
-        ("string-integer-pairs" | "string-integer-triples", Value::String(text)) => {
-            let arity = if operation == "string-integer-pairs" { 2 } else { 3 };
-            let expression = Regex::new(r"-?[0-9]+").expect("fixed decimal pattern is valid");
-            let entries = text
-                .lines()
-                .filter_map(|line| {
-                    let values = expression
-                        .find_iter(line)
-                        .map(|found| Value::Int(found.as_str().parse::<BigInt>().expect("matched integer")))
-                        .collect::<Vec<_>>();
-                    (values.len() == arity).then_some(Value::Tuple(values))
-                })
-                .collect();
-            Value::List {
-                element_classifier: if arity == 2 { "(Int, Int)" } else { "(Int, Int, Int)" }.into(),
-                entries,
-            }
-        }
-        (
-            "range-integers",
-            Value::IntRange {
-                lower,
-                upper,
-                lower_inclusive,
-                upper_inclusive,
-            },
-        ) => {
-            let mut current = lower + BigInt::from(!lower_inclusive);
-            let end = upper - BigInt::from(!upper_inclusive);
-            let mut entries = Vec::new();
-            while current <= end {
-                entries.push(Value::Int(current.clone()));
-                current += 1;
-            }
-            Value::List {
-                element_classifier: "Int".into(),
-                entries,
-            }
-        }
-        ("string-join", Value::Tuple(values)) if values.len() == 2 => {
-            let [
-                Value::List {
-                    element_classifier,
-                    entries,
-                },
-                Value::String(separator),
-            ] = values.as_slice()
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-join requires List String and String operands",
-                ));
-            };
-            if element_classifier != "String" {
-                return Err(diagnostic(
-                    source,
-                    "E-STRING-UTILITY-OPERANDS",
-                    span,
-                    "string-join requires List String entries",
-                ));
-            }
-            let parts = entries
-                .iter()
-                .map(|entry| match entry {
-                    Value::String(part) => part.as_str(),
-                    _ => unreachable!("List String contains String values"),
-                })
-                .collect::<Vec<_>>();
-            Value::String(parts.join(separator))
-        }
-        _ => {
-            return Err(diagnostic(
-                source,
-                "E-STRING-UTILITY-OPERANDS",
-                span,
-                format!("{operation} received unsupported operands"),
-            ));
-        }
-    };
-    trace.record(TraceEvent {
-        event: "string.utility.applied",
-        rule: "TOPAL-STRING-UTILITY-001",
-        detail: operation,
-    });
-    Ok(result)
-}
-
 fn is_unicode_white_space(character: char) -> bool {
     matches!(
         character,
@@ -13259,1433 +13378,6 @@ fn is_unicode_white_space(character: char) -> bool {
             | '\u{205F}'
             | '\u{3000}'
     )
-}
-
-fn parse_strict_decimal(text: &str) -> Option<BigInt> {
-    let unsigned = text
-        .strip_prefix('-')
-        .or_else(|| text.strip_prefix('+'))
-        .unwrap_or(text);
-    (!unsigned.is_empty() && unsigned.bytes().all(|byte| byte.is_ascii_digit()))
-        .then(|| text.parse::<BigInt>().ok())
-        .flatten()
-}
-
-fn glob_matches(text: &str, pattern: &str) -> bool {
-    let text = characters(text).collect::<Vec<_>>();
-    let pattern = characters(pattern).collect::<Vec<_>>();
-    let mut matched = vec![vec![false; text.len() + 1]; pattern.len() + 1];
-    matched[0][0] = true;
-    for pattern_index in 1..=pattern.len() {
-        if pattern[pattern_index - 1] == "*" {
-            matched[pattern_index][0] = matched[pattern_index - 1][0];
-        }
-        for text_index in 1..=text.len() {
-            matched[pattern_index][text_index] = if pattern[pattern_index - 1] == "*" {
-                matched[pattern_index - 1][text_index] || matched[pattern_index][text_index - 1]
-            } else {
-                (pattern[pattern_index - 1] == "?"
-                    || pattern[pattern_index - 1] == text[text_index - 1])
-                    && matched[pattern_index - 1][text_index - 1]
-            };
-        }
-    }
-    matched[pattern.len()][text.len()]
-}
-
-fn string_list(value: &Value) -> Option<Vec<String>> {
-    let Value::List {
-        element_classifier,
-        entries,
-    } = value
-    else {
-        return None;
-    };
-    if element_classifier != "String" {
-        return None;
-    }
-    entries
-        .iter()
-        .map(|entry| match entry {
-            Value::String(value) => Some(value.clone()),
-            _ => None,
-        })
-        .collect()
-}
-
-fn graph_edges(value: &Value) -> Option<Vec<(String, String)>> {
-    let Value::List { entries, .. } = value else {
-        return None;
-    };
-    entries
-        .iter()
-        .map(|entry| match entry {
-            Value::Tuple(fields) if fields.len() == 2 => match fields.as_slice() {
-                [Value::String(source), Value::String(destination)] => {
-                    Some((source.clone(), destination.clone()))
-                }
-                _ => None,
-            },
-            _ => None,
-        })
-        .collect()
-}
-
-fn weighted_graph_edges(value: &Value) -> Option<Vec<(String, String, BigRational)>> {
-    let Value::List { entries, .. } = value else {
-        return None;
-    };
-    entries
-        .iter()
-        .map(|entry| match entry {
-            Value::Tuple(fields) if fields.len() == 3 => match fields.as_slice() {
-                [
-                    Value::String(source),
-                    Value::String(destination),
-                    Value::Rational(weight),
-                ] => Some((source.clone(), destination.clone(), weight.clone())),
-                [
-                    Value::String(source),
-                    Value::String(destination),
-                    Value::Int(weight),
-                ] => Some((
-                    source.clone(),
-                    destination.clone(),
-                    BigRational::from_integer(weight.clone()),
-                )),
-                _ => None,
-            },
-            _ => None,
-        })
-        .collect()
-}
-
-fn adjacency(
-    nodes: &[String],
-    edges: &[(String, String)],
-    undirected: bool,
-) -> BTreeMap<String, Vec<String>> {
-    let mut result = nodes
-        .iter()
-        .cloned()
-        .map(|node| (node, Vec::new()))
-        .collect::<BTreeMap<_, _>>();
-    for (source, destination) in edges {
-        result
-            .entry(source.clone())
-            .or_default()
-            .push(destination.clone());
-        result.entry(destination.clone()).or_default();
-        if undirected {
-            result
-                .entry(destination.clone())
-                .or_default()
-                .push(source.clone());
-        }
-    }
-    result
-}
-
-fn string_list_value(entries: Vec<String>) -> Value {
-    Value::List {
-        element_classifier: "String".into(),
-        entries: entries.into_iter().map(Value::String).collect(),
-    }
-}
-
-fn reconstruct_path(
-    start: &str,
-    destination: &str,
-    previous: &BTreeMap<String, String>,
-) -> Option<Vec<String>> {
-    let mut path = vec![destination.to_owned()];
-    while path.last().is_some_and(|node| node != start) {
-        path.push(previous.get(path.last()?)?.clone());
-    }
-    path.reverse();
-    Some(path)
-}
-
-fn apply_graph_algorithm(
-    source: &SourceText,
-    operation: &str,
-    argument: Value,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<Value, Diagnostic> {
-    let Value::Tuple(fields) = argument else {
-        return Err(diagnostic(
-            source,
-            "E-GRAPH-OPERANDS",
-            span,
-            format!("{operation} requires a packaged graph"),
-        ));
-    };
-    let result = match operation {
-        "graph-bfs" | "graph-dfs" => {
-            let [Value::String(start), edges, nodes] = fields.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    format!("{operation} requires (String, edges, nodes)"),
-                ));
-            };
-            let edges = graph_edges(edges).ok_or_else(|| {
-                diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph edges require List (String, String)",
-                )
-            })?;
-            let nodes = string_list(nodes).ok_or_else(|| {
-                diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph nodes require List String",
-                )
-            })?;
-            let adjacent = adjacency(&nodes, &edges, false);
-            let mut visited = BTreeSet::new();
-            let mut order = Vec::new();
-            let mut frontier = VecDeque::from([start.clone()]);
-            while let Some(node) = if operation == "graph-bfs" {
-                frontier.pop_front()
-            } else {
-                frontier.pop_back()
-            } {
-                if !visited.insert(node.clone()) {
-                    continue;
-                }
-                order.push(node.clone());
-                let neighbors = adjacent.get(&node).cloned().unwrap_or_default();
-                if operation == "graph-bfs" {
-                    frontier.extend(neighbors);
-                } else {
-                    frontier.extend(neighbors.into_iter().rev());
-                }
-            }
-            string_list_value(order)
-        }
-        "graph-shortest-path" => {
-            let [
-                Value::String(start),
-                Value::String(destination),
-                edges,
-                nodes,
-            ] = fields.as_slice()
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph-shortest-path requires (start, destination, edges, nodes)",
-                ));
-            };
-            let edges = graph_edges(edges).ok_or_else(|| {
-                diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph edges require List (String, String)",
-                )
-            })?;
-            let nodes = string_list(nodes).ok_or_else(|| {
-                diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph nodes require List String",
-                )
-            })?;
-            let adjacent = adjacency(&nodes, &edges, false);
-            let mut visited = BTreeSet::from([start.clone()]);
-            let mut previous = BTreeMap::new();
-            let mut frontier = VecDeque::from([start.clone()]);
-            while let Some(node) = frontier.pop_front() {
-                if &node == destination {
-                    break;
-                }
-                for neighbor in adjacent.get(&node).into_iter().flatten() {
-                    if visited.insert(neighbor.clone()) {
-                        previous.insert(neighbor.clone(), node.clone());
-                        frontier.push_back(neighbor.clone());
-                    }
-                }
-            }
-            let path = visited
-                .contains(destination)
-                .then(|| reconstruct_path(start, destination, &previous))
-                .flatten();
-            Value::Optional {
-                payload_classifier: "List String".into(),
-                payload: path.map(|path| Box::new(string_list_value(path))),
-            }
-        }
-        "graph-topological-sort" => {
-            let [edges, nodes] = fields.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph-topological-sort requires (edges, nodes)",
-                ));
-            };
-            let edges = graph_edges(edges).ok_or_else(|| {
-                diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph edges require List (String, String)",
-                )
-            })?;
-            let nodes = string_list(nodes).ok_or_else(|| {
-                diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph nodes require List String",
-                )
-            })?;
-            let adjacent = adjacency(&nodes, &edges, false);
-            let mut incoming = nodes
-                .iter()
-                .cloned()
-                .map(|node| (node, 0usize))
-                .collect::<BTreeMap<_, _>>();
-            for (_, destination) in &edges {
-                *incoming.entry(destination.clone()).or_default() += 1;
-            }
-            let mut ready = VecDeque::from(
-                nodes
-                    .iter()
-                    .filter(|node| incoming.get(*node) == Some(&0))
-                    .cloned()
-                    .collect::<Vec<_>>(),
-            );
-            let mut order = Vec::new();
-            while let Some(node) = ready.pop_front() {
-                order.push(node.clone());
-                for destination in adjacent.get(&node).into_iter().flatten() {
-                    let count = incoming
-                        .get_mut(destination)
-                        .expect("destination is registered");
-                    *count -= 1;
-                    if *count == 0 {
-                        ready.push_back(destination.clone());
-                    }
-                }
-            }
-            Value::Optional {
-                payload_classifier: "List String".into(),
-                payload: (order.len() == incoming.len())
-                    .then(|| Box::new(string_list_value(order))),
-            }
-        }
-        "graph-weak-components" => {
-            let [edges, nodes] = fields.as_slice() else {
-                return Err(diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph-weak-components requires (edges, nodes)",
-                ));
-            };
-            let edges = graph_edges(edges).ok_or_else(|| {
-                diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph edges require List (String, String)",
-                )
-            })?;
-            let nodes = string_list(nodes).ok_or_else(|| {
-                diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph nodes require List String",
-                )
-            })?;
-            let adjacent = adjacency(&nodes, &edges, true);
-            let mut visited = BTreeSet::new();
-            let mut components = Vec::new();
-            for start in nodes {
-                if visited.contains(&start) {
-                    continue;
-                }
-                let mut component = Vec::new();
-                let mut frontier = VecDeque::from([start]);
-                while let Some(node) = frontier.pop_front() {
-                    if !visited.insert(node.clone()) {
-                        continue;
-                    }
-                    component.push(node.clone());
-                    frontier.extend(adjacent.get(&node).into_iter().flatten().cloned());
-                }
-                components.push(string_list_value(component));
-            }
-            Value::List {
-                element_classifier: "List String".into(),
-                entries: components,
-            }
-        }
-        "graph-weighted-shortest-path" => {
-            let [
-                Value::String(start),
-                Value::String(destination),
-                edges,
-                nodes,
-            ] = fields.as_slice()
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph-weighted-shortest-path requires (start, destination, weighted-edges, nodes)",
-                ));
-            };
-            let edges = weighted_graph_edges(edges).ok_or_else(|| {
-                diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "weighted edges require List (String, String, Rational)",
-                )
-            })?;
-            if edges
-                .iter()
-                .any(|(_, _, weight)| weight < &BigRational::from_integer(BigInt::from(0)))
-            {
-                return Err(diagnostic(
-                    source,
-                    "E-GRAPH-NEGATIVE-WEIGHT",
-                    span,
-                    "weighted shortest path requires nonnegative weights",
-                ));
-            }
-            let nodes = string_list(nodes).ok_or_else(|| {
-                diagnostic(
-                    source,
-                    "E-GRAPH-OPERANDS",
-                    span,
-                    "graph nodes require List String",
-                )
-            })?;
-            let mut distance =
-                BTreeMap::from([(start.clone(), BigRational::from_integer(BigInt::from(0)))]);
-            let mut previous = BTreeMap::new();
-            let mut unvisited = nodes.into_iter().collect::<BTreeSet<_>>();
-            while !unvisited.is_empty() {
-                let current = unvisited
-                    .iter()
-                    .filter_map(|node| {
-                        distance
-                            .get(node)
-                            .map(|value| (node.clone(), value.clone()))
-                    })
-                    .min_by(|left, right| left.1.cmp(&right.1));
-                let Some((node, node_distance)) = current else {
-                    break;
-                };
-                unvisited.remove(&node);
-                if &node == destination {
-                    break;
-                }
-                for (source_node, next, weight) in edges
-                    .iter()
-                    .filter(|(source_node, _, _)| source_node == &node)
-                {
-                    let _ = source_node;
-                    let candidate = node_distance.clone() + weight;
-                    if distance
-                        .get(next)
-                        .is_none_or(|existing| candidate < *existing)
-                    {
-                        distance.insert(next.clone(), candidate);
-                        previous.insert(next.clone(), node.clone());
-                    }
-                }
-            }
-            let payload = distance
-                .get(destination)
-                .and_then(|total| {
-                    reconstruct_path(start, destination, &previous).map(|path| {
-                        Value::Tuple(vec![
-                            string_list_value(path),
-                            Value::Rational(total.clone()),
-                        ])
-                    })
-                })
-                .map(Box::new);
-            Value::Optional {
-                payload_classifier: "(List String, Rational)".into(),
-                payload,
-            }
-        }
-        _ => unreachable!("known graph algorithm"),
-    };
-    trace.record(TraceEvent {
-        event: "graph.algorithm.applied",
-        rule: "TOPAL-LIB-GRAPH-ADVANCED-001",
-        detail: operation,
-    });
-    Ok(result)
-}
-
-fn integer_points(value: &Value, arity: usize) -> Option<Vec<Vec<BigInt>>> {
-    let Value::List { entries, .. } = value else { return None };
-    entries
-        .iter()
-        .map(|entry| {
-            let Value::Tuple(fields) = entry else { return None };
-            if fields.len() != arity { return None; }
-            fields
-                .iter()
-                .map(|field| match field { Value::Int(value) => Some(value.clone()), _ => None })
-                .collect()
-        })
-        .collect()
-}
-
-fn union_find_root(parents: &mut [usize], mut node: usize) -> usize {
-    while parents[node] != node {
-        parents[node] = parents[parents[node]];
-        node = parents[node];
-    }
-    node
-}
-
-fn union_find_join(parents: &mut [usize], left: usize, right: usize) -> bool {
-    let left = union_find_root(parents, left);
-    let right = union_find_root(parents, right);
-    if left == right { false } else { parents[left] = right; true }
-}
-
-fn point_pairs_by_distance(points: &[Vec<BigInt>]) -> Vec<(BigInt, usize, usize)> {
-    let mut pairs = Vec::new();
-    for left in 0..points.len() {
-        for right in left + 1..points.len() {
-            let distance = points[left]
-                .iter()
-                .zip(&points[right])
-                .map(|(left, right)| { let delta = right - left; &delta * &delta })
-                .sum();
-            pairs.push((distance, left, right));
-        }
-    }
-    pairs.sort();
-    pairs
-}
-
-fn rectangle_area(left: &[BigInt], right: &[BigInt]) -> BigInt {
-    let width = if right[0] >= left[0] { &right[0] - &left[0] } else { &left[0] - &right[0] };
-    let height = if right[1] >= left[1] { &right[1] - &left[1] } else { &left[1] - &right[1] };
-    (width + 1) * (height + 1)
-}
-
-fn edge_crosses_rectangle(
-    left: &[BigInt],
-    right: &[BigInt],
-    edge_start: &[BigInt],
-    edge_end: &[BigInt],
-) -> bool {
-    let min_x = left[0].clone().min(right[0].clone());
-    let max_x = left[0].clone().max(right[0].clone());
-    let min_y = left[1].clone().min(right[1].clone());
-    let max_y = left[1].clone().max(right[1].clone());
-    let vertical = edge_start[0] > min_x
-        && edge_start[0] < max_x
-        && edge_start[1].clone().min(edge_end[1].clone()) < max_y
-        && edge_start[1].clone().max(edge_end[1].clone()) > min_y;
-    let horizontal = edge_start[1] > min_y
-        && edge_start[1] < max_y
-        && edge_start[0].clone().min(edge_end[0].clone()) < max_x
-        && edge_start[0].clone().max(edge_end[0].clone()) > min_x;
-    vertical || horizontal
-}
-
-fn apply_geometry_algorithm(
-    source: &SourceText,
-    operation: &str,
-    argument: Value,
-    span: Span,
-) -> Result<Value, Diagnostic> {
-    let invalid = || diagnostic(source, "E-GEOMETRY-OPERANDS", span, format!("invalid operands for {operation}"));
-    let result = match operation {
-        "geometry-nearest-component-product" => {
-            let Value::Tuple(fields) = argument else { return Err(invalid()) };
-            let [points, Value::Int(limit)] = fields.as_slice() else { return Err(invalid()) };
-            let points = integer_points(points, 3).ok_or_else(invalid)?;
-            let limit = usize::try_from(limit).map_err(|_| invalid())?;
-            let mut parents = (0..points.len()).collect::<Vec<_>>();
-            for (_, left, right) in point_pairs_by_distance(&points).into_iter().take(limit) {
-                union_find_join(&mut parents, left, right);
-            }
-            let mut sizes = BTreeMap::new();
-            for node in 0..points.len() { *sizes.entry(union_find_root(&mut parents, node)).or_insert(0usize) += 1; }
-            let mut sizes = sizes.into_values().collect::<Vec<_>>();
-            sizes.sort_by(|left, right| right.cmp(left));
-            Value::Int(sizes.into_iter().take(3).map(BigInt::from).product())
-        }
-        "geometry-final-connection-x-product" => {
-            let points = integer_points(&argument, 3).ok_or_else(invalid)?;
-            let mut parents = (0..points.len()).collect::<Vec<_>>();
-            let mut answer = None;
-            for (_, left, right) in point_pairs_by_distance(&points) {
-                if union_find_join(&mut parents, left, right) { answer = Some(&points[left][0] * &points[right][0]); }
-            }
-            Value::Int(answer.unwrap_or_default())
-        }
-        "geometry-largest-point-rectangle" | "geometry-largest-contained-rectangle" => {
-            let points = integer_points(&argument, 2).ok_or_else(invalid)?;
-            let contained = operation == "geometry-largest-contained-rectangle";
-            let mut best = BigInt::from(0);
-            for left in 0..points.len() {
-                for right in left + 1..points.len() {
-                    let valid = !contained || (0..points.len()).all(|edge| {
-                        !edge_crosses_rectangle(
-                            &points[left], &points[right], &points[edge], &points[(edge + 1) % points.len()]
-                        )
-                    });
-                    if valid { best = best.max(rectangle_area(&points[left], &points[right])); }
-                }
-            }
-            Value::Int(best)
-        }
-        _ => unreachable!("geometry operation is dispatched explicitly"),
-    };
-    Ok(result)
-}
-
-fn parse_machine_manual(text: &str) -> Vec<(Vec<usize>, Vec<Vec<usize>>, Vec<usize>)> {
-    let indicator = Regex::new(r"\[([.#]+)\]").expect("fixed pattern");
-    let button = Regex::new(r"\(([0-9,]+)\)").expect("fixed pattern");
-    let counters = Regex::new(r"\{([0-9,]+)\}").expect("fixed pattern");
-    text.lines().filter_map(|line| {
-        let target = indicator.captures(line)?[1].bytes().map(|byte| usize::from(byte == b'#')).collect();
-        let buttons = button.captures_iter(line).map(|capture| {
-            capture[1].split(',').filter_map(|value| value.parse().ok()).collect()
-        }).collect();
-        let counters = counters.captures(line)?[1].split(',').filter_map(|value| value.parse().ok()).collect();
-        Some((target, buttons, counters))
-    }).collect()
-}
-
-fn minimum_indicator_presses(target: &[usize], buttons: &[Vec<usize>]) -> usize {
-    let mut best = usize::MAX;
-    for mask in 0usize..(1usize << buttons.len()) {
-        let mut state = vec![0usize; target.len()];
-        for (index, button) in buttons.iter().enumerate() {
-            if mask & (1 << index) != 0 {
-                for &light in button { state[light] ^= 1; }
-            }
-        }
-        if state == target { best = best.min(mask.count_ones() as usize); }
-    }
-    (best != usize::MAX).then_some(best).unwrap_or(0)
-}
-
-fn minimum_counter_presses(target: &[usize], buttons: &[Vec<usize>]) -> usize {
-    fn solve(
-        remaining: Vec<usize>,
-        buttons: &[Vec<usize>],
-        memo: &mut BTreeMap<Vec<usize>, usize>,
-    ) -> usize {
-        if remaining.iter().all(|value| *value == 0) { return 0; }
-        if let Some(value) = memo.get(&remaining) { return *value; }
-        let row = remaining.iter().position(|value| *value > 0).expect("nonzero state");
-        let mut best = usize::MAX;
-        for button in buttons.iter().filter(|button| button.contains(&row)) {
-            if button.iter().all(|index| remaining[*index] > 0) {
-                let mut next = remaining.clone();
-                for &index in button { next[index] -= 1; }
-                let suffix = solve(next, buttons, memo);
-                if suffix != usize::MAX { best = best.min(1 + suffix); }
-            }
-        }
-        memo.insert(remaining, best);
-        best
-    }
-    solve(target.to_vec(), buttons, &mut BTreeMap::new())
-}
-
-fn parse_described_graph(text: &str) -> BTreeMap<String, Vec<String>> {
-    text.lines().filter_map(|line| {
-        let (source, destinations) = line.split_once(": ")?;
-        Some((source.to_owned(), destinations.split_whitespace().map(str::to_owned).collect()))
-    }).collect()
-}
-
-fn count_required_paths(
-    graph: &BTreeMap<String, Vec<String>>,
-    node: &str,
-    destination: &str,
-    required: &[String],
-    seen: u64,
-    memo: &mut BTreeMap<(String, u64), BigInt>,
-) -> BigInt {
-    let mut seen = seen;
-    for (index, required_node) in required.iter().enumerate() {
-        if node == required_node { seen |= 1 << index; }
-    }
-    if node == destination {
-        return BigInt::from(seen == (1u64 << required.len()) - 1);
-    }
-    let key = (node.to_owned(), seen);
-    if let Some(value) = memo.get(&key) { return value.clone(); }
-    let value: BigInt = graph.get(node).into_iter().flatten().map(|next| {
-        count_required_paths(graph, next, destination, required, seen, memo)
-    }).sum();
-    memo.insert(key, value.clone());
-    value
-}
-
-fn normalized_shape(points: &[(isize, isize)]) -> Vec<(isize, isize)> {
-    let min_row = points.iter().map(|point| point.0).min().unwrap_or(0);
-    let min_column = points.iter().map(|point| point.1).min().unwrap_or(0);
-    let mut result = points.iter().map(|point| (point.0 - min_row, point.1 - min_column)).collect::<Vec<_>>();
-    result.sort();
-    result
-}
-
-fn shape_orientations(shape: &[(isize, isize)]) -> Vec<Vec<(isize, isize)>> {
-    let mut result = Vec::new();
-    for flip in [false, true] {
-        for rotation in 0..4 {
-            let transformed = shape.iter().map(|&(mut row, mut column)| {
-                if flip { row = -row; }
-                for _ in 0..rotation { (row, column) = (column, -row); }
-                (row, column)
-            }).collect::<Vec<_>>();
-            let transformed = normalized_shape(&transformed);
-            if !result.contains(&transformed) { result.push(transformed); }
-        }
-    }
-    result
-}
-
-fn region_can_fit(width: usize, height: usize, shapes: &[Vec<Vec<(isize, isize)>>], quantities: &[usize]) -> bool {
-    let occupied_cells: usize = quantities.iter().zip(shapes).map(|(count, shape)| count * shape[0].len()).sum();
-    if occupied_cells > width * height { return false; }
-    let pieces = quantities.iter().enumerate().flat_map(|(index, count)| std::iter::repeat_n(index, *count)).collect::<Vec<_>>();
-    fn place(index: usize, pieces: &[usize], shapes: &[Vec<Vec<(isize, isize)>>], width: usize, height: usize, occupied: &mut BTreeSet<(usize, usize)>) -> bool {
-        if index == pieces.len() { return true; }
-        for shape in &shapes[pieces[index]] {
-            for row in 0..height {
-                for column in 0..width {
-                    let cells = shape.iter().map(|&(dr, dc)| (row as isize + dr, column as isize + dc)).collect::<Vec<_>>();
-                    if cells.iter().all(|&(r, c)| r >= 0 && c >= 0 && r < height as isize && c < width as isize && !occupied.contains(&(r as usize, c as usize))) {
-                        for &(r, c) in &cells { occupied.insert((r as usize, c as usize)); }
-                        if place(index + 1, pieces, shapes, width, height, occupied) { return true; }
-                        for &(r, c) in &cells { occupied.remove(&(r as usize, c as usize)); }
-                    }
-                }
-            }
-        }
-        false
-    }
-    place(0, &pieces, shapes, width, height, &mut BTreeSet::new())
-}
-
-fn described_fit_count(text: &str) -> usize {
-    let sections = text.split("\n\n").collect::<Vec<_>>();
-    let mut shapes = Vec::new();
-    let mut regions = Vec::new();
-    for section in sections {
-        if section.lines().next().is_some_and(|line| line.contains('x')) {
-            for line in section.lines().filter(|line| !line.trim().is_empty()) {
-                let numbers = Regex::new(r"[0-9]+").expect("fixed pattern").find_iter(line).filter_map(|value| value.as_str().parse::<usize>().ok()).collect::<Vec<_>>();
-                if numbers.len() >= 2 { regions.push((numbers[0], numbers[1], numbers[2..].to_vec())); }
-            }
-        } else {
-            let rows = section.lines().skip(1).collect::<Vec<_>>();
-            let points = rows.iter().enumerate().flat_map(|(row, line)| line.bytes().enumerate().filter_map(move |(column, value)| (value == b'#').then_some((row as isize, column as isize)))).collect::<Vec<_>>();
-            if !points.is_empty() { shapes.push(shape_orientations(&points)); }
-        }
-    }
-    regions.into_iter().filter(|(width, height, quantities)| region_can_fit(*width, *height, &shapes, quantities)).count()
-}
-
-fn apply_planning_algorithm(source: &SourceText, operation: &str, argument: Value, span: Span) -> Result<Value, Diagnostic> {
-    let invalid = || diagnostic(source, "E-PLANNING-OPERANDS", span, format!("invalid operands for {operation}"));
-    let value = match operation {
-        "machine-indicator-minimum-total" | "machine-counter-minimum-total" => {
-            let Value::String(text) = argument else { return Err(invalid()) };
-            let total = parse_machine_manual(&text).iter().map(|(indicator, buttons, counters)| {
-                if operation == "machine-indicator-minimum-total" { minimum_indicator_presses(indicator, buttons) } else { minimum_counter_presses(counters, buttons) }
-            }).sum::<usize>();
-            Value::Int(BigInt::from(total))
-        }
-        "graph-described-path-count" | "graph-described-required-path-count" => {
-            let Value::Tuple(fields) = argument else { return Err(invalid()) };
-            let [Value::String(text), Value::String(start), Value::String(destination), required] = fields.as_slice() else { return Err(invalid()) };
-            let required = string_list(required).ok_or_else(invalid)?;
-            let graph = parse_described_graph(text);
-            Value::Int(count_required_paths(&graph, start, destination, if operation.ends_with("required-path-count") { &required } else { &[] }, 0, &mut BTreeMap::new()))
-        }
-        "packing-described-fit-count" => {
-            let Value::String(text) = argument else { return Err(invalid()) };
-            Value::Int(BigInt::from(described_fit_count(&text)))
-        }
-        _ => unreachable!("planning operation is dispatched explicitly"),
-    };
-    Ok(value)
-}
-
-fn list_of_lists(element_classifier: &str, entries: Vec<Vec<Value>>) -> Value {
-    Value::List {
-        element_classifier: format!("List {element_classifier}"),
-        entries: entries
-            .into_iter()
-            .map(|entries| Value::List {
-                element_classifier: element_classifier.to_owned(),
-                entries,
-            })
-            .collect(),
-    }
-}
-
-fn permutations(entries: &[Value]) -> Vec<Vec<Value>> {
-    if entries.is_empty() {
-        return vec![Vec::new()];
-    }
-    let mut result = Vec::new();
-    for index in 0..entries.len() {
-        let mut remainder = entries.to_vec();
-        let selected = remainder.remove(index);
-        for mut suffix in permutations(&remainder) {
-            let mut permutation = vec![selected.clone()];
-            permutation.append(&mut suffix);
-            result.push(permutation);
-        }
-    }
-    result
-}
-
-fn combinations(entries: &[Value], count: usize) -> Vec<Vec<Value>> {
-    if count == 0 {
-        return vec![Vec::new()];
-    }
-    if count > entries.len() {
-        return Vec::new();
-    }
-    let mut result = Vec::new();
-    for index in 0..=entries.len() - count {
-        for mut suffix in combinations(&entries[index + 1..], count - 1) {
-            let mut combination = vec![entries[index].clone()];
-            combination.append(&mut suffix);
-            result.push(combination);
-        }
-    }
-    result
-}
-
-fn apply_combinatorial_construction(
-    source: &SourceText,
-    operation: &str,
-    argument: Value,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<Value, Diagnostic> {
-    let result = match (operation, argument) {
-        (
-            "list-permutations",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) => list_of_lists(&element_classifier, permutations(&entries)),
-        ("list-combinations", Value::Tuple(mut fields)) if fields.len() == 2 => {
-            let count = fields.pop().expect("length checked");
-            let values = fields.pop().expect("length checked");
-            let Value::Int(count) = count else {
-                return Err(diagnostic(
-                    source,
-                    "E-COMBINATORICS-COUNT",
-                    span,
-                    "combinations requires a Nat count",
-                ));
-            };
-            let count = usize::try_from(count).map_err(|_| {
-                diagnostic(
-                    source,
-                    "E-COMBINATORICS-COUNT",
-                    span,
-                    "combinations count exceeds this platform's addressable List size",
-                )
-            })?;
-            let Value::List {
-                element_classifier,
-                entries,
-            } = values
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-COMBINATORICS-OPERAND",
-                    span,
-                    "combinations requires a finite List",
-                ));
-            };
-            list_of_lists(&element_classifier, combinations(&entries, count))
-        }
-        (
-            "list-subsets",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) => {
-            let mut subsets = vec![Vec::new()];
-            for entry in entries {
-                let additions = subsets
-                    .iter()
-                    .map(|subset| {
-                        let mut addition = subset.clone();
-                        addition.push(entry.clone());
-                        addition
-                    })
-                    .collect::<Vec<_>>();
-                subsets.extend(additions);
-            }
-            list_of_lists(&element_classifier, subsets)
-        }
-        ("list-cartesian-product", Value::Tuple(mut fields)) if fields.len() == 2 => {
-            let right = fields.pop().expect("length checked");
-            let left = fields.pop().expect("length checked");
-            let Value::List {
-                element_classifier: right_classifier,
-                entries: right_entries,
-            } = right
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-COMBINATORICS-OPERAND",
-                    span,
-                    "Cartesian product requires two finite Lists",
-                ));
-            };
-            let Value::List {
-                element_classifier: left_classifier,
-                entries: left_entries,
-            } = left
-            else {
-                return Err(diagnostic(
-                    source,
-                    "E-COMBINATORICS-OPERAND",
-                    span,
-                    "Cartesian product requires two finite Lists",
-                ));
-            };
-            Value::List {
-                element_classifier: format!("({left_classifier}, {right_classifier})"),
-                entries: left_entries
-                    .iter()
-                    .flat_map(|left| {
-                        right_entries
-                            .iter()
-                            .map(move |right| Value::Tuple(vec![left.clone(), right.clone()]))
-                    })
-                    .collect(),
-            }
-        }
-        (_, value) => {
-            return Err(diagnostic(
-                source,
-                "E-COMBINATORICS-OPERAND",
-                span,
-                format!(
-                    "{operation} does not accept {}",
-                    structural_value_classifier(&value)
-                ),
-            ));
-        }
-    };
-    trace.record(TraceEvent {
-        event: "combinatorics.construction.applied",
-        rule: "TOPAL-LIB-COMBINATORICS-ADVANCED-001",
-        detail: operation,
-    });
-    Ok(result)
-}
-
-fn apply_structural_algorithm(
-    source: &SourceText,
-    operation: &str,
-    argument: Value,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<Value, Diagnostic> {
-    let result = match (operation, argument) {
-        (
-            "list-transpose-shortest",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) => {
-            let inner_classifier = element_classifier
-                .strip_prefix("List ")
-                .ok_or_else(|| {
-                    diagnostic(
-                        source,
-                        "E-TRANSPOSE-OPERAND",
-                        span,
-                        "transpose requires a List of Lists",
-                    )
-                })?
-                .to_owned();
-            let rows = entries
-                .into_iter()
-                .map(|entry| match entry {
-                    Value::List {
-                        element_classifier,
-                        entries,
-                    } if element_classifier == inner_classifier => Some(entries),
-                    _ => None,
-                })
-                .collect::<Option<Vec<_>>>()
-                .ok_or_else(|| {
-                    diagnostic(
-                        source,
-                        "E-TRANSPOSE-OPERAND",
-                        span,
-                        "transpose requires homogeneous inner Lists",
-                    )
-                })?;
-            let width = rows.iter().map(Vec::len).min().unwrap_or(0);
-            let entries = (0..width)
-                .map(|column| Value::List {
-                    element_classifier: inner_classifier.clone(),
-                    entries: rows.iter().map(|row| row[column].clone()).collect(),
-                })
-                .collect();
-            Value::List {
-                element_classifier: format!("List {inner_classifier}"),
-                entries,
-            }
-        }
-        (
-            "character-list-string",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) if element_classifier == "Character" => {
-            let mut text = String::new();
-            for entry in entries {
-                let Value::String(character) = entry else {
-                    unreachable!("List Character stores Character values")
-                };
-                text.push_str(&character);
-            }
-            Value::String(text)
-        }
-        (
-            "range-coalesce-int",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) if element_classifier == "Range Int" => {
-            let mut intervals = entries
-                .into_iter()
-                .filter_map(|entry| match entry {
-                    Value::IntRange {
-                        lower,
-                        upper,
-                        lower_inclusive,
-                        upper_inclusive,
-                    } => {
-                        let lower = lower + BigInt::from(!lower_inclusive);
-                        let upper = upper - BigInt::from(!upper_inclusive);
-                        (lower <= upper).then_some((lower, upper))
-                    }
-                    _ => None,
-                })
-                .collect::<Vec<_>>();
-            intervals.sort();
-            let mut merged: Vec<(BigInt, BigInt)> = Vec::new();
-            for (lower, upper) in intervals {
-                if let Some((_, previous_upper)) = merged.last_mut()
-                    && lower <= previous_upper.clone() + BigInt::from(1)
-                {
-                    if upper > *previous_upper {
-                        *previous_upper = upper;
-                    }
-                } else {
-                    merged.push((lower, upper));
-                }
-            }
-            Value::List {
-                element_classifier: "Range Int".into(),
-                entries: merged
-                    .into_iter()
-                    .map(|(lower, upper)| Value::IntRange {
-                        lower,
-                        upper,
-                        lower_inclusive: true,
-                        upper_inclusive: true,
-                    })
-                    .collect(),
-            }
-        }
-        (
-            "range-coalesce-int",
-            Value::List {
-                element_classifier,
-                entries,
-            },
-        ) if element_classifier == "(Int, Int)" => {
-            let mut intervals = entries
-                .into_iter()
-                .filter_map(|entry| match entry {
-                    Value::Tuple(fields) => match fields.as_slice() {
-                        [Value::Int(lower), Value::Int(upper)] if lower <= upper => {
-                            Some((lower.clone(), upper.clone()))
-                        }
-                        _ => None,
-                    },
-                    _ => None,
-                })
-                .collect::<Vec<_>>();
-            intervals.sort();
-            let mut merged: Vec<(BigInt, BigInt)> = Vec::new();
-            for (lower, upper) in intervals {
-                if let Some((_, previous_upper)) = merged.last_mut()
-                    && lower <= previous_upper.clone() + BigInt::from(1)
-                {
-                    if upper > *previous_upper {
-                        *previous_upper = upper;
-                    }
-                } else {
-                    merged.push((lower, upper));
-                }
-            }
-            Value::List {
-                element_classifier: "(Int, Int)".into(),
-                entries: merged
-                    .into_iter()
-                    .map(|(lower, upper)| Value::Tuple(vec![Value::Int(lower), Value::Int(upper)]))
-                    .collect(),
-            }
-        }
-        (_, value) => {
-            return Err(diagnostic(
-                source,
-                "E-STRUCTURAL-ALGORITHM-OPERAND",
-                span,
-                format!(
-                    "{operation} does not accept {}",
-                    structural_value_classifier(&value)
-                ),
-            ));
-        }
-    };
-    trace.record(TraceEvent {
-        event: "structural.algorithm.applied",
-        rule: match operation {
-            "list-transpose-shortest" => "TOPAL-LIB-SEQUENCE-001",
-            "character-list-string" => "TOPAL-LIB-PARSE-001",
-            "range-coalesce-int" => "TOPAL-LIB-RANGE-001",
-            _ => unreachable!("known structural operation"),
-        },
-        detail: operation,
-    });
-    Ok(result)
-}
-
-fn exact_numeric_list(value: Value) -> Option<(String, Vec<Value>, Vec<BigRational>)> {
-    let Value::List {
-        element_classifier,
-        entries,
-    } = value
-    else {
-        return None;
-    };
-    let numbers = entries
-        .iter()
-        .map(|entry| match entry {
-            Value::Int(value) => Some(BigRational::from_integer(value.clone())),
-            Value::Rational(value) => Some(value.clone()),
-            _ => None,
-        })
-        .collect::<Option<Vec<_>>>()?;
-    Some((element_classifier, entries, numbers))
-}
-
-fn rational_optional(payload: Option<BigRational>) -> Value {
-    Value::Optional {
-        payload_classifier: "Rational".into(),
-        payload: payload.map(|value| Box::new(Value::Rational(value))),
-    }
-}
-
-fn exact_mean(values: &[BigRational]) -> Option<BigRational> {
-    (!values.is_empty()).then(|| {
-        values.iter().cloned().sum::<BigRational>()
-            / BigRational::from_integer(BigInt::from(values.len()))
-    })
-}
-
-fn exact_variance(values: &[BigRational], sample: bool) -> Option<BigRational> {
-    let divisor = values.len().checked_sub(usize::from(sample))?;
-    if divisor == 0 {
-        return None;
-    }
-    let mean = exact_mean(values)?;
-    let squared = values
-        .iter()
-        .map(|value| {
-            let difference = value - &mean;
-            &difference * &difference
-        })
-        .sum::<BigRational>();
-    Some(squared / BigRational::from_integer(BigInt::from(divisor)))
-}
-
-fn statistics_summary(values: &[BigRational]) -> Value {
-    let sum = values.iter().cloned().sum::<BigRational>();
-    let square_sum = values
-        .iter()
-        .map(|value| value * value)
-        .sum::<BigRational>();
-    Value::Tuple(vec![
-        Value::Int(BigInt::from(values.len())),
-        Value::Rational(sum),
-        Value::Rational(square_sum),
-    ])
-}
-
-fn summary_fields(value: Value) -> Option<(BigInt, BigRational, BigRational)> {
-    let Value::Tuple(fields) = value else {
-        return None;
-    };
-    match fields.as_slice() {
-        [
-            Value::Int(count),
-            Value::Rational(sum),
-            Value::Rational(square_sum),
-        ] if count >= &BigInt::from(0) => Some((count.clone(), sum.clone(), square_sum.clone())),
-        _ => None,
-    }
-}
-
-fn apply_statistics(
-    source: &SourceText,
-    operation: &str,
-    argument: Value,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<Value, Diagnostic> {
-    let bad = || {
-        diagnostic(
-            source,
-            "E-STATISTICS-OPERAND",
-            span,
-            format!("{operation} requires exact Int or Rational data"),
-        )
-    };
-    let result = match operation {
-        "statistics-median" => {
-            let (_, _, mut values) = exact_numeric_list(argument).ok_or_else(bad)?;
-            values.sort();
-            if values.is_empty() {
-                rational_optional(None)
-            } else if values.len() % 2 == 1 {
-                rational_optional(Some(values[values.len() / 2].clone()))
-            } else {
-                let upper = values.len() / 2;
-                rational_optional(Some(
-                    (&values[upper - 1] + &values[upper])
-                        / BigRational::from_integer(BigInt::from(2)),
-                ))
-            }
-        }
-        "statistics-population-variance" | "statistics-sample-variance" => {
-            let (_, _, values) = exact_numeric_list(argument).ok_or_else(bad)?;
-            rational_optional(exact_variance(
-                &values,
-                operation == "statistics-sample-variance",
-            ))
-        }
-        "statistics-modes" | "statistics-histogram" => {
-            let (classifier, entries, _) = exact_numeric_list(argument).ok_or_else(bad)?;
-            let mut counts: Vec<(Value, usize)> = Vec::new();
-            for entry in entries {
-                if let Some((_, count)) =
-                    counts.iter_mut().find(|(candidate, _)| candidate == &entry)
-                {
-                    *count += 1;
-                } else {
-                    counts.push((entry, 1));
-                }
-            }
-            if operation == "statistics-modes" {
-                let maximum = counts.iter().map(|(_, count)| *count).max().unwrap_or(0);
-                Value::List {
-                    element_classifier: classifier,
-                    entries: counts
-                        .into_iter()
-                        .filter(|(_, count)| *count == maximum)
-                        .map(|(value, _)| value)
-                        .collect(),
-                }
-            } else {
-                Value::List {
-                    element_classifier: format!("({classifier}, Nat)"),
-                    entries: counts
-                        .into_iter()
-                        .map(|(value, count)| {
-                            Value::Tuple(vec![value, Value::Int(BigInt::from(count))])
-                        })
-                        .collect(),
-                }
-            }
-        }
-        "statistics-quantile" => {
-            let Value::Tuple(mut fields) = argument else {
-                return Err(bad());
-            };
-            if fields.len() != 2 {
-                return Err(bad());
-            }
-            let probability = fields.pop().expect("length checked");
-            let values = fields.pop().expect("length checked");
-            let Value::Rational(probability) = probability else {
-                return Err(diagnostic(
-                    source,
-                    "E-STATISTICS-PROBABILITY",
-                    span,
-                    "quantile probability requires Rational",
-                ));
-            };
-            if probability < BigRational::from_integer(BigInt::from(0))
-                || probability > BigRational::from_integer(BigInt::from(1))
-            {
-                return Err(diagnostic(
-                    source,
-                    "E-STATISTICS-PROBABILITY",
-                    span,
-                    "quantile probability must be within 0 ..= 1",
-                ));
-            }
-            let (_, _, mut values) = exact_numeric_list(values).ok_or_else(bad)?;
-            values.sort();
-            if values.is_empty() {
-                rational_optional(None)
-            } else {
-                let position =
-                    probability * BigRational::from_integer(BigInt::from(values.len() - 1));
-                let lower_big = position.numer() / position.denom();
-                let lower = usize::try_from(lower_big.clone()).expect("bounded by List length");
-                let fraction = position - BigRational::from_integer(lower_big);
-                let value = if fraction == BigRational::from_integer(BigInt::from(0)) {
-                    values[lower].clone()
-                } else {
-                    &values[lower] + fraction * (&values[lower + 1] - &values[lower])
-                };
-                rational_optional(Some(value))
-            }
-        }
-        "statistics-covariance" => {
-            let Value::Tuple(mut fields) = argument else {
-                return Err(bad());
-            };
-            if fields.len() != 2 {
-                return Err(bad());
-            }
-            let right = exact_numeric_list(fields.pop().expect("length checked"))
-                .ok_or_else(bad)?
-                .2;
-            let left = exact_numeric_list(fields.pop().expect("length checked"))
-                .ok_or_else(bad)?
-                .2;
-            if left.len() != right.len() {
-                return Err(diagnostic(
-                    source,
-                    "E-STATISTICS-PAIRS",
-                    span,
-                    "covariance requires Lists of equal length",
-                ));
-            }
-            let payload =
-                exact_mean(&left)
-                    .zip(exact_mean(&right))
-                    .map(|(left_mean, right_mean)| {
-                        left.iter()
-                            .zip(&right)
-                            .map(|(left, right)| (left - &left_mean) * (right - &right_mean))
-                            .sum::<BigRational>()
-                            / BigRational::from_integer(BigInt::from(left.len()))
-                    });
-            rational_optional(payload)
-        }
-        "statistics-summary" => {
-            let (_, _, values) = exact_numeric_list(argument).ok_or_else(bad)?;
-            statistics_summary(&values)
-        }
-        "statistics-summary-add" => {
-            let Value::Tuple(mut fields) = argument else {
-                return Err(bad());
-            };
-            if fields.len() != 2 {
-                return Err(bad());
-            }
-            let value = fields.pop().expect("length checked");
-            let summary = fields.pop().expect("length checked");
-            let value = match value {
-                Value::Int(value) => BigRational::from_integer(value),
-                Value::Rational(value) => value,
-                _ => return Err(bad()),
-            };
-            let (count, sum, square_sum) = summary_fields(summary).ok_or_else(bad)?;
-            Value::Tuple(vec![
-                Value::Int(count + 1),
-                Value::Rational(sum + &value),
-                Value::Rational(square_sum + &value * &value),
-            ])
-        }
-        "statistics-summary-merge" => {
-            let Value::Tuple(mut fields) = argument else {
-                return Err(bad());
-            };
-            if fields.len() != 2 {
-                return Err(bad());
-            }
-            let right = summary_fields(fields.pop().expect("length checked")).ok_or_else(bad)?;
-            let left = summary_fields(fields.pop().expect("length checked")).ok_or_else(bad)?;
-            Value::Tuple(vec![
-                Value::Int(left.0 + right.0),
-                Value::Rational(left.1 + right.1),
-                Value::Rational(left.2 + right.2),
-            ])
-        }
-        "statistics-summary-mean" | "statistics-summary-variance" => {
-            let (count, sum, square_sum) = summary_fields(argument).ok_or_else(bad)?;
-            if count == BigInt::from(0) {
-                rational_optional(None)
-            } else {
-                let divisor = BigRational::from_integer(count);
-                let mean = &sum / &divisor;
-                let value = if operation == "statistics-summary-mean" {
-                    mean
-                } else {
-                    square_sum / divisor - &mean * &mean
-                };
-                rational_optional(Some(value))
-            }
-        }
-        _ => unreachable!("known statistics operation"),
-    };
-    trace.record(TraceEvent {
-        event: "statistics.algorithm.applied",
-        rule: "TOPAL-LIB-STATISTICS-ADVANCED-001",
-        detail: operation,
-    });
-    Ok(result)
 }
 
 fn apply_count(
@@ -14998,75 +13690,6 @@ fn apply_list_stable_sort(
     Ok(())
 }
 
-fn apply_list_sequence_unary(
-    source: &SourceText,
-    operation: &str,
-    value: Value,
-    span: Span,
-    trace: &mut impl TraceSink,
-) -> Result<Value, Diagnostic> {
-    let Value::List {
-        element_classifier,
-        entries,
-    } = value
-    else {
-        unreachable!("sequence operation dispatched only for a List")
-    };
-    let result = match operation {
-        "list-enumerate" => Value::List {
-            element_classifier: format!("(Nat, {element_classifier})"),
-            entries: entries
-                .into_iter()
-                .enumerate()
-                .map(|(index, entry)| Value::Tuple(vec![Value::Int(BigInt::from(index)), entry]))
-                .collect(),
-        },
-        "list-group-runs" => {
-            let mut groups: Vec<Vec<Value>> = Vec::new();
-            for entry in entries {
-                if groups.is_empty() {
-                    groups.push(vec![entry]);
-                    continue;
-                }
-                let same_run = groups
-                    .last()
-                    .and_then(|group| group.last())
-                    .and_then(|previous| values_equal(previous.clone(), entry.clone(), trace));
-                let Some(same_run) = same_run else {
-                    return Err(diagnostic(
-                        source,
-                        "E-LIST-GROUP-CLASSIFIER",
-                        span,
-                        "group-runs requires entries with Equality",
-                    ));
-                };
-                if same_run {
-                    groups.last_mut().expect("a current run exists").push(entry);
-                } else {
-                    groups.push(vec![entry]);
-                }
-            }
-            Value::List {
-                element_classifier: format!("List {element_classifier}"),
-                entries: groups
-                    .into_iter()
-                    .map(|entries| Value::List {
-                        element_classifier: element_classifier.clone(),
-                        entries,
-                    })
-                    .collect(),
-            }
-        }
-        _ => unreachable!("known unary sequence operation"),
-    };
-    trace.record(TraceEvent {
-        event: "list.sequence.transformed",
-        rule: "TOPAL-LIST-SEQUENCE-ALGORITHMS-001",
-        detail: operation,
-    });
-    Ok(result)
-}
-
 #[allow(clippy::too_many_lines)] // Keep ordered List operation dispatch together.
 fn apply_list_operation(
     source: &SourceText,
@@ -15121,10 +13744,7 @@ fn apply_list_operation(
             trace,
         );
     }
-    if matches!(
-        operation,
-        "zip-exact" | "zip-shortest" | "list-zip-shortest"
-    ) {
+    if matches!(operation, "zip-exact" | "zip-shortest") {
         return apply_list_zip(
             source,
             operation,
@@ -15134,236 +13754,6 @@ fn apply_list_operation(
             right_span,
             trace,
         );
-    }
-    if matches!(operation, "list-index-of" | "list-last-index-of") {
-        if !value_has_classifier(&right, &element_classifier) {
-            return Err(diagnostic(
-                source,
-                "E-LIST-SEARCH-CLASSIFIER",
-                right_span,
-                format!("{operation} requires an `{element_classifier}` value"),
-            ));
-        }
-        let indexes = entries.iter().enumerate().filter_map(|(index, entry)| {
-            values_equal(entry.clone(), right.clone(), trace)
-                .and_then(|equal| equal.then_some(index))
-        });
-        let index = if operation == "list-index-of" {
-            indexes.into_iter().next()
-        } else {
-            indexes.into_iter().last()
-        };
-        trace.record(TraceEvent {
-            event: "list.index.searched",
-            rule: "TOPAL-LIST-SEQUENCE-ALGORITHMS-001",
-            detail: operation,
-        });
-        return Ok(Value::Optional {
-            payload_classifier: "Nat".into(),
-            payload: index.map(|index| Box::new(Value::Int(BigInt::from(index)))),
-        });
-    }
-    if matches!(
-        operation,
-        "ordered-binary-search" | "ordered-nth" | "ordered-smallest"
-    ) {
-        if !matches!(element_classifier.as_str(), "Int" | "Rational") {
-            return Err(diagnostic(
-                source,
-                "E-LIST-ORDERED-CLASSIFIER",
-                right_span,
-                "ordered selection currently requires List Int or List Rational",
-            ));
-        }
-        if operation == "ordered-binary-search" {
-            if !value_has_classifier(&right, &element_classifier) {
-                return Err(diagnostic(
-                    source,
-                    "E-LIST-SEARCH-CLASSIFIER",
-                    right_span,
-                    format!("binary search requires an `{element_classifier}` value"),
-                ));
-            }
-            let index = entries
-                .binary_search_by(|entry| {
-                    values_compare(entry.clone(), right.clone(), trace)
-                        .expect("validated exact numeric entries are totally ordered")
-                })
-                .ok();
-            trace.record(TraceEvent {
-                event: "list.binary.searched",
-                rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
-                detail: operation,
-            });
-            return Ok(Value::Optional {
-                payload_classifier: "Nat".into(),
-                payload: index.map(|index| Box::new(Value::Int(BigInt::from(index)))),
-            });
-        }
-        let Value::Int(count) = right else {
-            return Err(diagnostic(
-                source,
-                "E-LIST-ORDERED-INDEX",
-                right_span,
-                format!("{operation} requires a Nat index or count"),
-            ));
-        };
-        let Ok(count) = usize::try_from(count) else {
-            return Err(diagnostic(
-                source,
-                "E-LIST-ORDERED-INDEX",
-                right_span,
-                format!("{operation} requires a representable Nat"),
-            ));
-        };
-        entries.sort_by(|left, right| {
-            values_compare(left.clone(), right.clone(), trace)
-                .expect("validated exact numeric entries are totally ordered")
-        });
-        if operation == "ordered-nth" {
-            let payload = entries.get(count).cloned().map(Box::new);
-            trace.record(TraceEvent {
-                event: "list.order.selected",
-                rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
-                detail: operation,
-            });
-            return Ok(Value::Optional {
-                payload_classifier: element_classifier,
-                payload,
-            });
-        }
-        entries.truncate(count);
-        trace.record(TraceEvent {
-            event: "list.order.selected",
-            rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
-            detail: operation,
-        });
-        return Ok(Value::List {
-            element_classifier,
-            entries,
-        });
-    }
-    if operation == "ordered-merge" {
-        let Value::List {
-            element_classifier: right_classifier,
-            entries: right_entries,
-        } = right
-        else {
-            return Err(diagnostic(
-                source,
-                "E-LIST-ORDERED-MERGE",
-                right_span,
-                "ordered merge requires another List",
-            ));
-        };
-        if right_classifier != element_classifier
-            || !matches!(element_classifier.as_str(), "Int" | "Rational")
-        {
-            return Err(diagnostic(
-                source,
-                "E-LIST-ORDERED-MERGE",
-                right_span,
-                "ordered merge requires exact matching Int or Rational Lists",
-            ));
-        }
-        entries.extend(right_entries);
-        entries.sort_by(|left, right| {
-            values_compare(left.clone(), right.clone(), trace)
-                .expect("validated exact numeric entries are totally ordered")
-        });
-        trace.record(TraceEvent {
-            event: "list.ordered.merged",
-            rule: "TOPAL-LIST-ORDERED-ALGORITHMS-001",
-            detail: operation,
-        });
-        return Ok(Value::List {
-            element_classifier,
-            entries,
-        });
-    }
-    if matches!(
-        operation,
-        "list-rotate-left" | "list-rotate-right" | "list-chunks" | "list-windows"
-    ) {
-        let Value::Int(amount) = right else {
-            return Err(diagnostic(
-                source,
-                "E-LIST-SEQUENCE-COUNT",
-                right_span,
-                format!("{operation} requires a Nat count"),
-            ));
-        };
-        let Ok(amount) = usize::try_from(amount) else {
-            return Err(diagnostic(
-                source,
-                "E-LIST-SEQUENCE-COUNT",
-                right_span,
-                format!("{operation} requires a representable Nat count"),
-            ));
-        };
-        let value = match operation {
-            "list-rotate-left" | "list-rotate-right" => {
-                if !entries.is_empty() {
-                    let shift = amount % entries.len();
-                    if operation == "list-rotate-left" {
-                        entries.rotate_left(shift);
-                    } else {
-                        entries.rotate_right(shift);
-                    }
-                }
-                Value::List {
-                    element_classifier,
-                    entries,
-                }
-            }
-            "list-chunks" => {
-                if amount == 0 {
-                    return Err(diagnostic(
-                        source,
-                        "E-LIST-SEQUENCE-COUNT",
-                        right_span,
-                        "chunks requires a positive count",
-                    ));
-                }
-                Value::List {
-                    element_classifier: format!("List {element_classifier}"),
-                    entries: entries
-                        .chunks(amount)
-                        .map(|chunk| Value::List {
-                            element_classifier: element_classifier.clone(),
-                            entries: chunk.to_vec(),
-                        })
-                        .collect(),
-                }
-            }
-            "list-windows" => {
-                if amount == 0 {
-                    return Err(diagnostic(
-                        source,
-                        "E-LIST-SEQUENCE-COUNT",
-                        right_span,
-                        "windows requires a positive count",
-                    ));
-                }
-                Value::List {
-                    element_classifier: format!("List {element_classifier}"),
-                    entries: entries
-                        .windows(amount)
-                        .map(|window| Value::List {
-                            element_classifier: element_classifier.clone(),
-                            entries: window.to_vec(),
-                        })
-                        .collect(),
-                }
-            }
-            _ => unreachable!(),
-        };
-        trace.record(TraceEvent {
-            event: "list.sequence.transformed",
-            rule: "TOPAL-LIST-SEQUENCE-ALGORITHMS-001",
-            detail: operation,
-        });
-        return Ok(value);
     }
     match operation {
         "prepend" | "append" => {
@@ -17076,8 +15466,10 @@ fn closest_name<'a>(name: &str, candidates: impl Iterator<Item = &'a String>) ->
         .map(|(_, candidate)| candidate)
 }
 
-const ROOT_OPERATIONS: [&str; 100] = [
+const ROOT_OPERATIONS: [&str; 36] = [
     "absolute",
+    "ascii-decimal-digit",
+    "ascii-decimal-text?",
     "byte-count",
     "case-fold",
     "canonically-equals",
@@ -17086,96 +15478,30 @@ const ROOT_OPERATIONS: [&str; 100] = [
     "concat",
     "collect",
     "empty",
-    "list-enumerate",
-    "list-permutations",
-    "list-combinations",
-    "list-subsets",
-    "list-cartesian-product",
     "entry-count",
     "first",
-    "graph-bfs",
-    "graph-dfs",
-    "graph-shortest-path",
-    "graph-topological-sort",
-    "graph-weak-components",
-    "graph-weighted-shortest-path",
-    "list-group-runs",
-    "list-index-of",
     "lower",
-    "list-last-index-of",
     "normalize",
     "range-lower",
     "range-lower-inclusive?",
     "range-upper",
     "range-upper-inclusive?",
     "upper",
+    "unicode-whitespace-character",
+    "unicode-line-feed-character",
+    "unicode-carriage-return-character",
+    "unicode-decimal-digit-character",
+    "unicode-scalar-characters",
+    "unicode-scalar-value",
+    "unicode-word-character",
     "uncons",
     "not",
     "negate",
     "one",
-    "ordered-binary-search",
-    "ordered-merge",
-    "ordered-nth",
-    "ordered-smallest",
     "rest",
     "reverse",
-    "list-rotate-left",
-    "list-rotate-right",
-    "list-chunks",
-    "list-windows",
-    "list-zip-shortest",
     "stable-sort",
     "stable-sort-descending",
-    "string-contains",
-    "string-contains-any",
-    "string-count-exact",
-    "string-ends-with",
-    "string-find-all",
-    "string-glob-matches",
-    "string-join",
-    "string-lines",
-    "string-repeat",
-    "string-regex-contains",
-    "string-replace-all",
-    "string-starts-with",
-    "string-split-exact",
-    "string-trim",
-    "string-words",
-    "string-parse-int",
-    "string-signed-integers",
-    "string-unsigned-integers",
-    "string-decimal-digits",
-    "string-characters",
-    "int-decimal-string",
-    "range-integers",
-    "string-integer-rows",
-    "string-vertical-integers",
-    "string-integer-pairs",
-    "string-integer-triples",
-    "list-transpose-shortest",
-    "character-list-string",
-    "range-coalesce-int",
-    "geometry-nearest-component-product",
-    "geometry-final-connection-x-product",
-    "geometry-largest-point-rectangle",
-    "geometry-largest-contained-rectangle",
-    "machine-indicator-minimum-total",
-    "machine-counter-minimum-total",
-    "graph-described-path-count",
-    "graph-described-required-path-count",
-    "packing-described-fit-count",
-    "statistics-median",
-    "statistics-modes",
-    "statistics-histogram",
-    "statistics-population-variance",
-    "statistics-sample-variance",
-    "statistics-quantile",
-    "statistics-covariance",
-    "statistics-summary",
-    "statistics-summary-add",
-    "statistics-summary-merge",
-    "statistics-summary-mean",
-    "statistics-summary-variance",
     "zero",
 ];
 

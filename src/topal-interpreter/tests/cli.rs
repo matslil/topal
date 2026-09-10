@@ -188,7 +188,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 192);
+    assert_eq!(examples.len(), 194);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1166,6 +1166,51 @@ fn every_mode_executes_proven_nat_recursion() {
 }
 
 #[test]
+fn every_mode_executes_an_explicit_multi_parameter_measure() {
+    let source = include_str!("../../../examples/language/explicit-multi-parameter-decreases.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"12\n"));
+    }
+    let output = run(&["--test"], source);
+    let trace = String::from_utf8(output.stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-DECREASES-001"));
+    assert_eq!(trace.matches("function.recursion.descended").count(), 4);
+
+    let unproven = source.replace("count - 1", "count - total");
+    let output = run(&[], &unproven);
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("E-UNPROVEN-RECURSION")
+    );
+}
+
+#[test]
+fn every_mode_destructures_an_anonymous_product_pattern() {
+    let source = include_str!("../../../examples/language/anonymous-product-pattern.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            output
+                .stdout
+                .ends_with(b"Entry ( 5, Entry ( 12, Empty ) )\n")
+        );
+    }
+}
+
+#[test]
 fn nat_recursion_accepts_only_bound_preserving_decrements() {
     let safe = "count-down is fn (value : Nat) -> Nat\n  value\n    <= 2 then value\n    otherwise count-down (value - 3)\ncount-down 8\n";
     let output = run(&["--test"], safe);
@@ -1461,6 +1506,22 @@ fn overload_failure_lists_available_signatures() {
     let error = String::from_utf8(output.stderr).unwrap();
     assert!(error.contains("E-NO-APPLICABLE-OVERLOAD"));
     assert!(error.contains("available overloads: describe (Int), describe (String)"));
+}
+
+#[test]
+fn malformed_source_regex_reports_a_diagnostic_instead_of_a_nonmatch() {
+    let library_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("library");
+    let output = run(
+        &["--library-root", library_root.to_str().unwrap()],
+        "use library std ( version is v0.1 )\nmatches? is std pattern regex contains?\nmatches? (\"text\", \"[\")\n",
+    );
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    let error = String::from_utf8(output.stderr).unwrap();
+    assert!(error.contains("E-RESULT-PROJECTION-INFALLIBLE"));
+    assert!(error.contains("RegexValid"));
 }
 
 #[test]

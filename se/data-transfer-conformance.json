@@ -1,5 +1,5 @@
 {
-  "revision": 3,
+  "revision": 4,
   "phases": [
     {"phase":1,"disposition":"implemented","evidence":["spec/data-transfer-packages.md"]},
     {"phase":2,"disposition":"deferred","evidence":["se/data-transfer-conformance-matrix.md"]},
@@ -21,7 +21,7 @@
     {"phase":18,"disposition":"deferred","evidence":["se/data-transfer-conformance-matrix.md"]}
   ],
   "platforms": [
-    {"platform":"linux","disposition":"implemented","evidence":["native tests and Linux i2c-dev compile/test"]},
+    {"platform":"linux","disposition":"implemented","evidence":["native support-manifest test and Linux i2c-dev compile/test"]},
     {"platform":"windows","disposition":"platform-specific","evidence":["requires Windows native runner qualification"]},
     {"platform":"macos","disposition":"platform-specific","evidence":["requires macOS native runner qualification"]},
     {"platform":"android","disposition":"platform-specific","evidence":["requires Android host grants and device runner qualification"]},

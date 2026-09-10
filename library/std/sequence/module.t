@@ -76,83 +76,191 @@ unique-step is fn (selected : List (Value : Equality), candidate : Value) -> Lis
 pub unique is fn (values : List (Value : Equality)) -> List Value
   values fold (Empty Value) { selected, candidate } unique-step (selected, candidate)
 
-### Return the first index containing an equal value, or absence.
-index-of-implementation is fn (values : List (Value : Equality), sought : Value) -> Optional Nat
-  values list-index-of sought
+enumerate-step is fn (candidate : (Value : Type), indexed : List (Nat, Value)) -> List (Nat, Value)
+  indexed append (Nat (entry-count indexed), candidate)
 
+enumerate-source is fn (values : List (Value : Type)) -> List (Nat, Value)
+  indexed : List (Nat, Value) is Empty
+  values fold indexed { collected, candidate } enumerate-step (candidate, collected)
+
+present-index is fn (index : Nat) -> Optional Nat
+  present : Optional Nat is Some index
+  present
+
+index-when is fn (accepted : Boolean, index : Nat) -> Optional Nat
+  accepted
+    true then present-index index
+    false then None Nat
+
+index-step is fn ((found : Optional Nat, index : Nat, candidate : (Value : Equality), sought : Value)) -> Optional Nat
+  found
+    Some present then found
+    None then index-when (candidate = sought, index)
+
+### Return the first index containing an equal value, or absence.
 pub index-of is fn (values : List (Value : Equality), sought : Value) -> Optional Nat
-  index-of-implementation (values, sought)
+  (enumerate-source values) fold (None Nat) { found, (index, candidate) } index-step (found, index, candidate, sought)
+
+last-index-step is fn ((found : Optional Nat, index : Nat, candidate : (Value : Equality), sought : Value)) -> Optional Nat
+  candidate = sought
+    true then present-index index
+    false then found
 
 ### Return the last index containing an equal value, or absence.
-last-index-of-implementation is fn (values : List (Value : Equality), sought : Value) -> Optional Nat
-  values list-last-index-of sought
-
 pub last-index-of is fn (values : List (Value : Equality), sought : Value) -> Optional Nat
-  last-index-of-implementation (values, sought)
+  (enumerate-source values) fold (None Nat) { found, (index, candidate) } last-index-step (found, index, candidate, sought)
 
 ### Rotate entries left, wrapping by the List entry count.
-rotate-left-implementation is fn (values : List (Value : Type), count : Nat) -> List Value
-  values list-rotate-left count
+rotate-left-nonempty is fn (values : List (Value : Type), count : Nat) -> List Value
+  length is entry-count values
+  boundary is count % length
+  (values select-index (boundary .. length)) concat (values select-index (0 .. boundary))
 
 pub rotate-left is fn (values : List (Value : Type), count : Nat) -> List Value
-  rotate-left-implementation (values, count)
+  length is entry-count values
+  length = 0
+    true then values
+    false then rotate-left-nonempty (values, count)
 
 ### Rotate entries right, wrapping by the List entry count.
-rotate-right-implementation is fn (values : List (Value : Type), count : Nat) -> List Value
-  values list-rotate-right count
+rotate-right-nonempty is fn (values : List (Value : Type), count : Nat) -> List Value
+  length is entry-count values
+  rotate-left (values, length - (count % length))
 
 pub rotate-right is fn (values : List (Value : Type), count : Nat) -> List Value
-  rotate-right-implementation (values, count)
+  length is entry-count values
+  length = 0
+    true then values
+    false then rotate-right-nonempty (values, count)
+
+PositiveSize is Nat constraint { size } size > 0
+
+chunk-step is fn ((values : List (Value : Type), size : Nat, chunks : List (List Value), start : Nat)) -> List (List Value)
+  finish is clamp-count (start + size, entry-count values)
+  chunks append (values select-index (start .. finish))
 
 ### Divide a List into nonempty consecutive Lists of at most `size` entries.
-chunks-implementation is fn (values : List (Value : Type), size : Nat) -> List List Value
-  values list-chunks size
-
 pub chunks is fn (values : List (Value : Type), size : Nat) -> List List Value
-  chunks-implementation (values, size)
+  checked : PositiveSize is PositiveSize size
+  empty-chunk is values select-index (0 .. 0)
+  result is (one empty-chunk) select-index (0 .. 0)
+  starts is collect (0 iterate ({ index } index + checked) take-while ({ index } index < (entry-count values)))
+  starts fold result { collected, start } chunk-step (values, checked, collected, start)
+
+window-step is fn ((values : List (Value : Type), size : Nat, windows : List (List Value), start : Nat)) -> List (List Value)
+  windows append (values select-index (start .. (start + size)))
 
 ### Return every consecutive List window with exactly `size` entries.
-windows-implementation is fn (values : List (Value : Type), size : Nat) -> List List Value
-  values list-windows size
-
 pub windows is fn (values : List (Value : Type), size : Nat) -> List List Value
-  windows-implementation (values, size)
+  checked : PositiveSize is PositiveSize size
+  empty-window is values select-index (0 .. 0)
+  result is (one empty-window) select-index (0 .. 0)
+  length is entry-count values
+  starts is collect (0 iterate ({ index } index + 1) take-while ({ index } index + checked <= length))
+  starts fold result { collected, start } window-step (values, checked, collected, start)
 
 ### Pair each entry with its zero-based index.
-enumerate-implementation is fn (values : List (Value : Type)) -> List (Nat, Value)
-  values list-enumerate
-
 pub enumerate is fn (values : List (Value : Type)) -> List (Nat, Value)
-  enumerate-implementation values
+  enumerate-source values
 
-### Pair Characters with indexes without erasing their exact classifier.
-pub enumerate is fn (values : List Character) -> List (Nat, Character)
-  values list-enumerate
+last-value is fn (values : List (Value : Type)) -> Optional Value
+  length is entry-count values
+  length = 0
+    true then None Value
+    false then first (values select-index ((length - 1) .. length))
+
+append-run is fn ((candidate : (Value : Equality), runs : List (List Value), run : List Value)) -> List (List Value)
+  length is entry-count runs
+  (runs select-index (0 .. (length - 1))) append (run append candidate)
+
+run-step-present is fn ((previous : (Value : Equality), candidate : Value, runs : List (List Value), run : List Value)) -> List (List Value)
+  previous = candidate
+    true then append-run (candidate, runs, run)
+    false then runs append (one candidate)
+
+run-step-with-last is fn ((candidate : (Value : Equality), runs : List (List Value), run : List Value)) -> List (List Value)
+  last-value run
+    Some previous then run-step-present (previous, candidate, runs, run)
+    None then runs append (one candidate)
+
+run-step is fn (candidate : (Value : Equality), runs : List (List Value)) -> List (List Value)
+  last-value runs
+    Some run then run-step-with-last (candidate, runs, run)
+    None then runs append (one candidate)
 
 ### Group adjacent equal entries into nonempty runs.
-group-runs-implementation is fn (values : List (Value : Equality)) -> List List Value
-  values list-group-runs
-
 pub group-runs is fn (values : List (Value : Equality)) -> List List Value
-  group-runs-implementation values
+  empty-run : List Value is Empty
+  empty-runs is one empty-run
+  grouped is values fold empty-runs { runs, candidate } run-step (candidate, runs)
+  grouped select-index (1 .. (entry-count grouped))
+
+zip-step is fn ((left : (Left : Type), right : List (Right : Type), collected : List (Left, Right), index : Nat)) -> List (Left, Right)
+  first (right select-index (index ..= index))
+    Some present then collected append (left, present)
+    None then collected
 
 ### Pair entries until either List is exhausted.
-zip-shortest-implementation is fn (
-  left : List (Left : Type),
-  right : List (Right : Type)
-) -> List (Left, Right)
-  left list-zip-shortest right
-
 pub zip is fn (
   left : List (Left : Type),
   right : List (Right : Type)
 ) -> List (Left, Right)
-  zip-shortest-implementation (left, right)
+  collected : List (Left, Right) is Empty
+  (enumerate-source left) fold collected { pairs, (index, candidate) } zip-step (candidate, right, pairs, index)
+
+range-start is fn (range : Range Int) -> Int
+  range-lower-inclusive? range
+    true then range-lower range
+    false then (range-lower range) + 1
+
+range-finish is fn (range : Range Int) -> Int
+  range-upper-inclusive? range
+    true then range-upper range
+    false then (range-upper range) - 1
 
 ### Materialize a finite Int range in ascending order.
 pub values is fn (range : Range Int) -> List Int
-  range-integers range
+  start is range-start range
+  finish is range-finish range
+  start > finish
+    true then Empty Int
+    false then collect (start iterate ({ value } value + 1) take-while ({ value } value <= finish))
+
+present-count is fn (candidate : Nat) -> Optional Nat
+  present : Optional Nat is Some candidate
+  present
+
+minimum-present is fn (candidate : Nat, present : Nat) -> Optional Nat
+  candidate < present
+    true then present-count candidate
+    false then present-count present
+
+shorter-count is fn (candidate : Nat, shortest : Optional Nat) -> Optional Nat
+  shortest
+    Some present then minimum-present (candidate, present)
+    None then present-count candidate
+
+shortest-count is fn (rows : List (List (Value : Type))) -> Nat
+  shortest is rows fold (None Nat) { found, row } shorter-count (entry-count row, found)
+  shortest
+    Some count then count
+    None then 0
+
+column-step is fn ((row : List (Value : Type), column : List Value, index : Nat)) -> List Value
+  first (row select-index (index ..= index))
+    Some candidate then column append candidate
+    None then column
+
+column-at is fn (rows : List (List (Value : Type)), index : Nat) -> List Value
+  column : List Value is Empty
+  rows fold column { collected, row } column-step (row, collected, index)
+
+transpose-step is fn ((rows : List (List (Value : Type)), columns : List (List Value), index : Nat)) -> List (List Value)
+  columns append (column-at (rows, index))
 
 ### Transpose homogeneous rows through the shortest row boundary.
 pub transpose is fn (rows : List (List (Value : Type))) -> List (List Value)
-  list-transpose-shortest rows
+  empty-column : List Value is Empty
+  columns is (one empty-column) select-index (0 .. 0)
+  indexes is collect (0 iterate ({ index } index + 1) take-while ({ index } index < (shortest-count rows)))
+  indexes fold columns { transposed, index } transpose-step (rows, transposed, index)

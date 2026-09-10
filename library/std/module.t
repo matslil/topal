@@ -306,13 +306,94 @@ range-last-int is fn (interval : Range Int) -> Int
     true then range-upper interval
     false then (range-upper interval) - 1
 
+interval-lower is fn ((lower : Int, upper : Int)) -> Int
+  lower
+interval-upper is fn ((lower : Int, upper : Int)) -> Int
+  upper
+
+interval-before? is fn (left : (Int, Int), right : (Int, Int)) -> Boolean
+  left-lower is interval-lower left
+  right-lower is interval-lower right
+  left-lower < right-lower
+    true then true
+    false then (left-lower = right-lower) and ((interval-upper left) < (interval-upper right))
+
+increment-interval-bound is fn (count : Nat, accepted : Boolean) -> Nat
+  accepted
+    true then count + 1
+    false then count
+
+interval-lower-bound is fn (values : List (Int, Int), sought : (Int, Int)) -> Nat
+  zero : Nat is Nat 0
+  values fold zero { count, candidate } increment-interval-bound (count, interval-before? (candidate, sought))
+
+insert-interval is fn (candidate : (Int, Int), values : List (Int, Int)) -> List (Int, Int)
+  boundary is interval-lower-bound (values, candidate)
+  length is entry-count values
+  (values select-index (0 .. boundary)) concat (one candidate) concat (values select-index (boundary .. length))
+
+sort-interval-step is fn (sorted : List (Int, Int), candidate : (Int, Int)) -> List (Int, Int)
+  insert-interval (candidate, sorted)
+
+sort-intervals is fn (values : List (Int, Int)) -> List (Int, Int)
+  empty-intervals : List (Int, Int) is Empty
+  values fold empty-intervals { sorted, candidate } sort-interval-step (sorted, candidate)
+
+last-interval is fn (values : List (Int, Int)) -> Optional (Int, Int)
+  length is entry-count values
+  length = 0
+    true then None (Int, Int)
+    false then first (values select-index ((length - 1) .. length))
+
+replace-last-interval is fn (values : List (Int, Int), replacement : (Int, Int)) -> List (Int, Int)
+  length is entry-count values
+  (values select-index (0 .. (length - 1))) append replacement
+
+merge-interval-present is fn ((merged : List (Int, Int), previous : (Int, Int), candidate : (Int, Int))) -> List (Int, Int)
+  lower is interval-lower candidate
+  upper is interval-upper candidate
+  previous-upper is interval-upper previous
+  lower <= (previous-upper + 1)
+    true then replace-last-interval (merged, (interval-lower previous, range-max (previous-upper, upper)))
+    false then merged append candidate
+
+merge-interval-step is fn (merged : List (Int, Int), candidate : (Int, Int)) -> List (Int, Int)
+  last-interval merged
+    Some previous then merge-interval-present (merged, previous, candidate)
+    None then merged append candidate
+
+valid-interval-step is fn (selected : List (Int, Int), candidate : (Int, Int)) -> List (Int, Int)
+  (interval-lower candidate) <= (interval-upper candidate)
+    true then selected append candidate
+    false then selected
+
+coalesce-intervals is fn (intervals : List (Int, Int)) -> List (Int, Int)
+  empty-intervals : List (Int, Int) is Empty
+  valid is intervals fold empty-intervals { selected, candidate } valid-interval-step (selected, candidate)
+  (sort-intervals valid) fold empty-intervals { merged, candidate } merge-interval-step (merged, candidate)
+
+normalize-range-step is fn (selected : List (Int, Int), interval : Range Int) -> List (Int, Int)
+  candidate is (range-first-int interval, range-last-int interval)
+  valid-interval-step (selected, candidate)
+
+ranges-to-intervals is fn (intervals : List (Range Int)) -> List (Int, Int)
+  empty-intervals : List (Int, Int) is Empty
+  intervals fold empty-intervals { selected, interval } normalize-range-step (selected, interval)
+
+interval-range-step is fn (selected : List (Range Int), interval : (Int, Int)) -> List (Range Int)
+  selected append ((interval-lower interval) ..= (interval-upper interval))
+
+intervals-to-ranges is fn (intervals : List (Int, Int)) -> List (Range Int)
+  empty-ranges : List (Range Int) is Empty
+  intervals fold empty-ranges { selected, interval } interval-range-step (selected, interval)
+
 ### Normalize and merge overlapping or adjacent finite Int Ranges.
 pub coalesce is fn (intervals : List (Range Int)) -> List (Range Int)
-  range-coalesce-int intervals
+  intervals-to-ranges (coalesce-intervals (ranges-to-intervals intervals))
 
 ### Normalize closed endpoint pairs as inclusive Int intervals.
 pub coalesce is fn (intervals : List (Int, Int)) -> List (Int, Int)
-  range-coalesce-int intervals
+  coalesce-intervals intervals
 
 ### Test whether two Int Ranges touch without overlapping.
 pub adjacent? is fn (left : Range Int, right : Range Int) -> Boolean
@@ -406,29 +487,113 @@ pub caseless-equal is fn (left : String, right : String) -> Boolean
 
 ### Test whether text begins with an exact String prefix.
 pub starts-with? is fn (text : String, prefix : String) -> Boolean
-  string-starts-with (text, prefix)
+  text-characters is collect (characters text)
+  prefix-characters is collect (characters prefix)
+  length is entry-count prefix-characters
+  (text-characters select-index (0 .. length)) = prefix-characters
 
 ### Test whether text ends with an exact String suffix.
 pub ends-with? is fn (text : String, suffix : String) -> Boolean
-  string-ends-with (text, suffix)
+  text-characters is collect (characters text)
+  suffix-characters is collect (characters suffix)
+  text-length is entry-count text-characters
+  suffix-length is entry-count suffix-characters
+  suffix-length > text-length
+    true then false
+    false then (text-characters select-index ((text-length - suffix-length) .. text-length)) = suffix-characters
 
 ### Test whether text contains an exact String fragment.
 pub contains? is fn (text : String, fragment : String) -> Boolean
-  string-contains (text, fragment)
+  (collect (characters text)) contains-sequence (collect (characters fragment))
+
+trim-leading-count is fn ((count : Nat, leading? : Boolean)) -> Nat
+  count
+trim-leading-active? is fn ((count : Nat, leading? : Boolean)) -> Boolean
+  leading?
+
+trim-leading-step is fn (state : (Nat, Boolean), character : Character) -> (Nat, Boolean)
+  active? is trim-leading-active? state
+  whitespace? is unicode-whitespace-character character
+  active? and whitespace?
+    true then ((trim-leading-count state) + 1, true)
+    false then (trim-leading-count state, false)
+
+trim-boundary is fn (values : List Character) -> Nat
+  zero : Nat is Nat 0
+  final is values fold (zero, true) { state, character } trim-leading-step (state, character)
+  trim-leading-count final
 
 ### Remove Unicode whitespace from both ends of text, not from its interior.
 pub trim is fn (text : String) -> String
-  string-trim text
+  values is collect (characters text)
+  leading is trim-boundary values
+  trailing is trim-boundary ((collect (characters text)) reverse)
+  text select-index (leading .. ((entry-count values) - trailing))
+
+ReplacePattern is String constraint { pattern } (entry-count (collect (characters pattern))) > 0
+
+replace-find-step is fn ((text : List Character, pattern : List Character, indexes : List Nat, index : Nat)) -> List Nat
+  length is entry-count pattern
+  (text select-index (index .. (index + length))) = pattern
+    true then indexes append index
+    false then indexes
+
+replace-find is fn (text : String, pattern : String) -> List Nat
+  checked : ReplacePattern is ReplacePattern pattern
+  _ is checked
+  text-characters is collect (characters text)
+  pattern-characters is collect (characters pattern)
+  pattern-length is entry-count pattern-characters
+  text-length is entry-count text-characters
+  candidates is collect (0 iterate ({ index } index + 1) take-while ({ index } index + pattern-length <= text-length))
+  indexes : List Nat is Empty
+  candidates fold indexes { found, index } replace-find-step (text-characters, pattern-characters, found, index)
+
+replace-parts is fn ((parts : List String, start : Nat)) -> List String
+  parts
+replace-start is fn ((parts : List String, start : Nat)) -> Nat
+  start
+
+replace-split-step is fn ((text : String, pattern-length : Nat, state : (List String, Nat), index : Nat)) -> (List String, Nat)
+  start is replace-start state
+  index < start
+    true then state
+    false then ((replace-parts state) append (text select-index (start .. index)), index + pattern-length)
+
+replace-split is fn (text : String, pattern : String) -> List String
+  indexes is replace-find (text, pattern)
+  pattern-length is entry-count (collect (characters pattern))
+  final is indexes fold ((Empty String), Nat 0) { state, index } replace-split-step (text, pattern-length, state, index)
+  (replace-parts final) append (text select-index ((replace-start final) .. (entry-count text)))
+
+replace-joined is fn ((text : String, first? : Boolean)) -> String
+  text
+replace-first? is fn ((text : String, first? : Boolean)) -> Boolean
+  first?
+
+replace-join-step is fn ((replacement : String, state : (String, Boolean), part : String)) -> (String, Boolean)
+  replace-first? state
+    true then (part, false)
+    false then ((replace-joined state) concat replacement concat part, false)
+
+replace-source is fn ((text : String, pattern : String, replacement : String)) -> String
+  final is (replace-split (text, pattern)) fold ("", true) { state, part } replace-join-step (replacement, state, part)
+  replace-joined final
 
 ### Replace every non-overlapping exact occurrence; an empty target is rejected.
 pub replace-all is fn (
   (text : String, pattern : String, replacement : String)
 ) -> String
-  string-replace-all (text, pattern, replacement)
+  replace-source (text, pattern, replacement)
 
 ### Concatenate text with itself count times; zero yields the empty String.
+repeat-step is fn ((repeated : String, text : String, index : Nat)) -> String
+  _ is index
+  repeated concat text
+
 pub repeat is fn (text : String, count : Nat) -> String
-  string-repeat (text, count)
+  indexes is collect (0 iterate ({ index } index + 1) take-while ({ index } index < count))
+  indexes fold "" { repeated, index } repeat-step (repeated, text, index)
 
 # Finite Lists.
 ### Test whether any List entry satisfies a predicate, stopping at the first match.
