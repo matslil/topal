@@ -21,3 +21,7 @@ The design currently covers:
 - layouts, addressed storage, sensitive values, tracing, debugger scripting,
   source documentation, generated API reference material, and performance; and
 - unit testing, structural path coverage, and the best-practice database.
+
+The [design-pattern research library](design-patterns/README.md) is a
+non-normative survey used to test the breadth of the core design. Its pattern
+requirements and tradeoffs do not state that Topal already supplies a feature.
