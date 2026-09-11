@@ -1,7 +1,14 @@
 //! Shared, deterministic semantic identities for every Topal source tool.
 
+mod assurance;
 pub mod introspection;
+mod layout_and_information;
+mod portable_runtime;
 pub mod tracing;
+
+pub use assurance::*;
+pub use layout_and_information::*;
+pub use portable_runtime::*;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -23,6 +30,19 @@ impl LanguageVersion {
         patch: 0,
         build: 0,
     };
+
+    /// Portable design-pattern assurance revision.
+    pub const DESIGN_1: Self = Self {
+        major: 0,
+        minor: 2,
+        patch: 0,
+        build: 0,
+    };
+
+    #[must_use]
+    pub const fn is_supported_core(self) -> bool {
+        matches!(self, Self::DESIGN_0 | Self::DESIGN_1)
+    }
 }
 
 impl Default for LanguageVersion {

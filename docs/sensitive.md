@@ -220,3 +220,24 @@ This system is intended to prevent mistakes and provide useful quantitative
 checking. It does not replace cryptography, platform memory protection, secret
 storage, review of explicitly sensitive boundaries, or analysis of side
 channels outside the selected leakage model.
+
+## Revision `v0.2` information-flow policies
+
+`InformationPolicy` defines finite or symbolically decidable confidentiality
+and integrity label types, `can-flow-to`, `join`, and `meet`; the checker proves
+the lattice laws. `InformationLabel` selects one pair of policy labels and
+`Labeled` classifies a value. Explicit data flow joins labels. A branch on
+labeled data applies the program-counter label to returned values, effects, and
+messages selected by that branch, so implicit flow cannot bypass a boundary.
+
+Confidentiality moves only in the policy's permitted direction and integrity
+in its declared dual direction. `declassify` and `endorse` require distinct
+unforgeable authorities naming policy, source, target, purpose, and scope. Each
+is an auditable effect and preserves provenance. An authority may enter only
+through an application-approved capability boundary; source, generated code,
+and foreign adapters cannot construct, copy, or widen it.
+
+Static labels erase only after verification. Dynamic labels retain explicit
+runtime policy checks. `Sensitive` and quantitative `Leakage` remain the simpler
+model and may be required together with a general policy. Architecture-specific
+cache, speculation, power, and physical observation models remain deferred.

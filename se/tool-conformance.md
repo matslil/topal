@@ -1,7 +1,7 @@
 # Source-tool conformance matrix
 
-This matrix refines `TOPAL-REQ-TOOLS-001` for the accepted `design-0`
-specification. Each row applies to every stable rule in the named specification
+This matrix refines `TOPAL-REQ-TOOLS-001` for the accepted `v0.1` and `v0.2`
+specifications. Each row applies to every stable rule in the named specification
 file. It makes applicability explicit for the interpreter, language server,
 linter, and source debugger instead of treating a mention anywhere in the
 traceability ledger as proof for every tool.
@@ -26,6 +26,8 @@ applicable to the interpreter and debugger.
 | `spec/abstractions.md` | direct | shared | shared | shared | `topal-semantics`; interpreter and debugger functional suites; LSP and linter source corpora |
 | `spec/best-practices.md` | not-applicable | direct | direct | not-applicable | `topal-best-practices`; `topal-linter`; LSP lint adapter tests |
 | `spec/concurrency-model.md` | shared | not-applicable | shared | shared | `topal-semantics`; task source tests; contained task-rule views; reversible message tests |
+| `spec/concurrency-implementations.md` | shared | shared | shared | shared | `topal-semantics::portable_runtime` reference models and unit tests; source-operation and debugger integration remains planned |
+| `spec/contracts-and-evidence.md` | direct | shared | shared | shared | v0.2 function-clause parser and interpreter tests; `topal-semantics::assurance`; `topal-geir` revision-2 evidence tests |
 | `spec/containers.md` | direct | shared | shared | shared | `topal-language`; cross-tool source corpora |
 | `spec/data-transfer-packages.md` | boundary | shared | shared | boundary | explicit host-capability boundary; package source corpora; debugger replay boundary |
 | `spec/data-transfers.md` | direct | shared | shared | shared | Topal standard-library tests and cross-tool package corpus; native adapter boundary tests |
@@ -33,6 +35,7 @@ applicable to the interpreter and debugger.
 | `spec/decisions.md` | direct | shared | shared | shared | `topal-syntax`; `topal-language`; cross-tool source corpora |
 | `spec/diagnostics.md` | shared | direct | direct | shared | `topal-source`; tool adapter and functional suites |
 | `spec/effects.md` | shared | shared | shared | shared | `topal-semantics`; effect source corpus and debugger history tests |
+| `spec/effect-handlers-and-plans.md` | shared | shared | shared | shared | shared handler and compiler-owned plan models; handler source execution and compiler lowering remain planned |
 | `spec/functions.md` | direct | shared | shared | shared | `topal-language`; cross-tool source and standard-library corpora |
 | `spec/generators.md` | direct | shared | shared | shared | `topal-language`; cross-tool source corpora and close-history tests |
 | `spec/generic-ir.md` | boundary | boundary | not-applicable | boundary | `topal-geir` compiler-only boundary matrix |
@@ -41,14 +44,17 @@ applicable to the interpreter and debugger.
 | `spec/numbers.md` | direct | shared | shared | shared | `topal-language`; cross-tool source corpora |
 | `spec/ranges.md` | direct | shared | shared | shared | `topal-language`; cross-tool source corpora |
 | `spec/resources.md` | shared | not-applicable | shared | shared | `topal-semantics` ownership tests; shared semantic views and execution |
+| `spec/resource-evidence.md` | shared | shared | shared | shared | shared bounds, progress, exclusivity, and region models; compiler inference and source-region integration remain planned |
 | `spec/serialization.md` | direct | shared | shared | shared | `topal-serialization`; source serialization and checked-location corpora |
 | `spec/source-documentation.md` | shared | shared | not-applicable | direct | `topal-syntax`; `topal-language`; LSP corpus; debugger help tests |
 | `spec/standard-library.md` | direct | shared | shared | shared | shared library application and cross-tool conformance suites |
 | `spec/strings.md` | direct | shared | shared | shared | `topal-source`; `topal-language`; cross-tool source corpora |
 | `spec/syntax.md` | shared | direct | shared | shared | `topal-source`; `topal-syntax`; all four source-tool corpora |
 | `spec/tasks.md` | direct | shared | shared | shared | task examples, contained rule views, and reversible transaction tests |
+| `spec/time-and-dataflow.md` | shared | shared | shared | shared | shared clock, periodic-release, balance, causality, and schedule models; source execution integration remains planned |
 | `spec/tracing.md` | direct | not-applicable | shared | direct | `topal-semantics`; interpreter test traces; supplied lint trace views; debugger history |
 | `spec/type-system.md` | direct | shared | shared | shared | `topal-semantics`; `topal-language`; cross-tool source corpora |
+| `spec/composite-layouts-and-information-flow.md` | shared | shared | shared | shared | shared shape, sparse, lattice, propagation, and authority models; source checking and backend selection remain planned |
 
 The repository conformance test expands these domain rows to every stable rule,
 requires one row per stable specification file, validates every disposition,

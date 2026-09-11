@@ -7,7 +7,8 @@ use sha2::{Digest, Sha256};
 use topal_semantics::LanguageVersion;
 use topal_source::is_nfc;
 
-pub const ARTIFACT_REVISION: u64 = 1;
+pub const LEGACY_ARTIFACT_REVISION: u64 = 1;
+pub const ARTIFACT_REVISION: u64 = 2;
 
 pub const COMPILER_ONLY_ERROR_CODE: &str = "E-COMPILER-ONLY";
 
@@ -31,10 +32,15 @@ impl SourcePackageKey {
         dependencies: &BTreeMap<String, [u8; 32]>,
     ) -> Self {
         let unicode_revision = unicode_revision.into();
+        let artifact_revision = if language_revision == LanguageVersion::DESIGN_0 {
+            LEGACY_ARTIFACT_REVISION
+        } else {
+            ARTIFACT_REVISION
+        };
         let mut hasher = Sha256::new();
         hash_field(&mut hasher, &language_revision.to_string());
         hash_field(&mut hasher, &unicode_revision);
-        hasher.update(ARTIFACT_REVISION.to_be_bytes());
+        hasher.update(artifact_revision.to_be_bytes());
         for (path, source) in sources {
             hash_field(&mut hasher, path);
             hash_field(&mut hasher, source);
@@ -46,7 +52,7 @@ impl SourcePackageKey {
         Self {
             language_revision,
             unicode_revision,
-            artifact_revision: ARTIFACT_REVISION,
+            artifact_revision,
             digest: hasher.finalize().into(),
         }
     }
@@ -145,6 +151,25 @@ pub enum Type {
 pub enum EvidenceStatus {
     Verified,
     TrustedUnverified,
+    ExternallyAssumed,
+    Refuted,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EvidenceKind {
+    Semantic,
+    Implementation,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EvidenceContext {
+    pub kind: EvidenceKind,
+    pub subject: usize,
+    pub static_parameters: Vec<(String, String)>,
+    pub producer: usize,
+    pub assumptions: Vec<usize>,
+    pub language_revision: LanguageVersion,
+    pub architecture_model: Option<usize>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -153,6 +178,7 @@ pub struct Evidence {
     pub calculus: String,
     pub certificate: Vec<u8>,
     pub status: EvidenceStatus,
+    pub context: Option<EvidenceContext>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -287,8 +313,16 @@ pub struct Function {
     pub result: usize,
     pub effects: Vec<usize>,
     pub guarantees: Vec<usize>,
+    pub contracts: Option<FunctionContracts>,
     pub blocks: Vec<Block>,
     pub entry: usize,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FunctionContracts {
+    pub precondition: Option<usize>,
+    pub result_binding: Option<String>,
+    pub postcondition: Option<usize>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -379,9 +413,9 @@ pub fn decode_canonical(bytes: &[u8], limits: ArtifactLimits) -> Result<Module, 
     let imports = reader.identities()?;
     let identities = reader.identities()?;
     let types = reader.types()?;
-    let evidence = reader.evidence()?;
+    let evidence = reader.evidence(revision)?;
     let capabilities = reader.ids()?;
-    let functions = reader.functions()?;
+    let functions = reader.functions(revision)?;
     let exports = reader.ids()?;
     if reader.offset != bytes.len() {
         return fail(ValidationStage::Framing, "artifact has trailing bytes");
@@ -433,10 +467,15 @@ impl Module {
     }
 
     fn validate_framing(&self) -> Result<(), ArtifactError> {
-        if self.revision != ARTIFACT_REVISION {
+        if !matches!(self.revision, LEGACY_ARTIFACT_REVISION | ARTIFACT_REVISION) {
             return fail(ValidationStage::Framing, "unsupported artifact revision");
         }
-        if self.language != LanguageVersion::DESIGN_0 {
+        let language_matches_artifact = match self.revision {
+            LEGACY_ARTIFACT_REVISION => self.language == LanguageVersion::DESIGN_0,
+            ARTIFACT_REVISION => self.language == LanguageVersion::DESIGN_1,
+            _ => false,
+        };
+        if !language_matches_artifact {
             return fail(ValidationStage::Framing, "unsupported language revision");
         }
         Ok(())
@@ -624,6 +663,7 @@ impl Module {
         Ok(())
     }
 
+    #[allow(clippy::too_many_lines)] // Complete function semantics stay in validation order.
     fn validate_semantics(&self) -> Result<(), ArtifactError> {
         if self
             .capabilities
@@ -653,6 +693,51 @@ impl Module {
                     ValidationStage::Semantics,
                     "function semantic reference is out of bounds",
                 );
+            }
+            match (self.revision, &function.contracts) {
+                (ARTIFACT_REVISION, Some(contracts)) => {
+                    if contracts
+                        .precondition
+                        .into_iter()
+                        .chain(contracts.postcondition)
+                        .any(|identity| identity >= self.identities.len())
+                    {
+                        return fail(
+                            ValidationStage::Semantics,
+                            "function contract identity is out of bounds",
+                        );
+                    }
+                    if contracts.postcondition.is_some() != contracts.result_binding.is_some() {
+                        return fail(
+                            ValidationStage::Semantics,
+                            "a postcondition requires exactly one named result binding",
+                        );
+                    }
+                    if contracts
+                        .result_binding
+                        .as_deref()
+                        .is_some_and(|binding| !canonical_text(binding))
+                    {
+                        return fail(
+                            ValidationStage::Semantics,
+                            "function result binding is not canonical",
+                        );
+                    }
+                }
+                (LEGACY_ARTIFACT_REVISION, None) => {}
+                (ARTIFACT_REVISION, None) => {
+                    return fail(
+                        ValidationStage::Semantics,
+                        "v0.2 function contract record is missing",
+                    );
+                }
+                (LEGACY_ARTIFACT_REVISION, Some(_)) => {
+                    return fail(
+                        ValidationStage::Semantics,
+                        "legacy function contains a v0.2 contract record",
+                    );
+                }
+                _ => unreachable!("artifact revision is validated first"),
             }
             for block in &function.blocks {
                 if block.parameters.iter().any(|id| *id >= self.types.len())
@@ -800,12 +885,76 @@ impl Module {
     }
 
     fn validate_evidence(&self) -> Result<(), ArtifactError> {
-        if self
-            .evidence
-            .iter()
-            .any(|proof| proof.identity >= self.identities.len() || proof.calculus.is_empty())
-        {
-            return fail(ValidationStage::Evidence, "invalid proof evidence");
+        for proof in &self.evidence {
+            if proof.identity >= self.identities.len() || !canonical_text(&proof.calculus) {
+                return fail(ValidationStage::Evidence, "invalid proof evidence");
+            }
+            match (self.revision, &proof.context) {
+                (LEGACY_ARTIFACT_REVISION, None)
+                    if matches!(
+                        proof.status,
+                        EvidenceStatus::Verified | EvidenceStatus::TrustedUnverified
+                    ) => {}
+                (LEGACY_ARTIFACT_REVISION, _) => {
+                    return fail(
+                        ValidationStage::Evidence,
+                        "legacy evidence contains v0.2 metadata or status",
+                    );
+                }
+                (ARTIFACT_REVISION, Some(context)) => {
+                    if context.subject >= self.identities.len()
+                        || context.producer >= self.identities.len()
+                        || context
+                            .architecture_model
+                            .is_some_and(|identity| identity >= self.identities.len())
+                        || context
+                            .assumptions
+                            .iter()
+                            .any(|identity| *identity >= self.identities.len())
+                    {
+                        return fail(
+                            ValidationStage::Evidence,
+                            "v0.2 evidence identity is out of bounds",
+                        );
+                    }
+                    if !strictly_sorted(&context.assumptions)
+                        || !context
+                            .static_parameters
+                            .windows(2)
+                            .all(|pair| pair[0].0 < pair[1].0)
+                        || context
+                            .static_parameters
+                            .iter()
+                            .any(|(name, value)| !canonical_text(name) || !canonical_text(value))
+                    {
+                        return fail(
+                            ValidationStage::Evidence,
+                            "v0.2 evidence metadata is not canonical",
+                        );
+                    }
+                    if context.language_revision != self.language {
+                        return fail(
+                            ValidationStage::Evidence,
+                            "evidence language revision does not match the module",
+                        );
+                    }
+                    if context.kind == EvidenceKind::Implementation
+                        && proof.status == EvidenceStatus::TrustedUnverified
+                    {
+                        return fail(
+                            ValidationStage::Evidence,
+                            "implementation evidence cannot be programmer-trusted",
+                        );
+                    }
+                }
+                (ARTIFACT_REVISION, None) => {
+                    return fail(
+                        ValidationStage::Evidence,
+                        "v0.2 evidence metadata is missing",
+                    );
+                }
+                _ => unreachable!("artifact revision is validated first"),
+            }
         }
         if self
             .functions
@@ -881,19 +1030,56 @@ impl ValidatedModule<'_> {
             output.push(match proof.status {
                 EvidenceStatus::Verified => 0,
                 EvidenceStatus::TrustedUnverified => 1,
+                EvidenceStatus::ExternallyAssumed => 2,
+                EvidenceStatus::Refuted => 3,
             });
+            if self.0.revision == ARTIFACT_REVISION
+                && let Some(context) = &proof.context
+            {
+                encode_evidence_context(context, &mut output);
+            }
         }
         encode_ids(&self.0.capabilities, &mut output);
         encode_u64(self.0.functions.len() as u64, &mut output);
         for function in &self.0.functions {
-            encode_function(function, &mut output);
+            encode_function(function, self.0.revision, &mut output);
         }
         encode_ids(&self.0.exports, &mut output);
         output
     }
 }
 
-fn encode_function(function: &Function, output: &mut Vec<u8>) {
+fn encode_evidence_context(context: &EvidenceContext, output: &mut Vec<u8>) {
+    output.push(match context.kind {
+        EvidenceKind::Semantic => 0,
+        EvidenceKind::Implementation => 1,
+    });
+    encode_u64(context.subject as u64, output);
+    encode_u64(context.static_parameters.len() as u64, output);
+    for (name, value) in &context.static_parameters {
+        encode_text(name, output);
+        encode_text(value, output);
+    }
+    encode_u64(context.producer as u64, output);
+    encode_ids(&context.assumptions, output);
+    for part in [
+        context.language_revision.major,
+        context.language_revision.minor,
+        context.language_revision.patch,
+        context.language_revision.build,
+    ] {
+        encode_u64(part, output);
+    }
+    match context.architecture_model {
+        Some(identity) => {
+            output.push(1);
+            encode_u64(identity as u64, output);
+        }
+        None => output.push(0),
+    }
+}
+
+fn encode_function(function: &Function, revision: u64, output: &mut Vec<u8>) {
     encode_u64(function.identity as u64, output);
     output.push(u8::from(function.visibility == Visibility::Public));
     encode_ids(&function.static_parameters, output);
@@ -901,6 +1087,13 @@ fn encode_function(function: &Function, output: &mut Vec<u8>) {
     encode_u64(function.result as u64, output);
     encode_ids(&function.effects, output);
     encode_ids(&function.guarantees, output);
+    if revision == ARTIFACT_REVISION
+        && let Some(contracts) = &function.contracts
+    {
+        encode_optional_id(contracts.precondition, output);
+        encode_optional_text(contracts.result_binding.as_deref(), output);
+        encode_optional_id(contracts.postcondition, output);
+    }
     encode_u64(function.blocks.len() as u64, output);
     for block in &function.blocks {
         encode_ids(&block.parameters, output);
@@ -911,6 +1104,26 @@ fn encode_function(function: &Function, output: &mut Vec<u8>) {
         encode_terminator(&block.terminator, output);
     }
     encode_u64(function.entry as u64, output);
+}
+
+fn encode_optional_id(value: Option<usize>, output: &mut Vec<u8>) {
+    match value {
+        Some(value) => {
+            output.push(1);
+            encode_u64(value as u64, output);
+        }
+        None => output.push(0),
+    }
+}
+
+fn encode_optional_text(value: Option<&str>, output: &mut Vec<u8>) {
+    match value {
+        Some(value) => {
+            output.push(1);
+            encode_text(value, output);
+        }
+        None => output.push(0),
+    }
 }
 
 fn encode_instruction(value: &Instruction, output: &mut Vec<u8>) {
@@ -1315,7 +1528,7 @@ impl<'a> ArtifactReader<'a> {
             .collect()
     }
 
-    fn evidence(&mut self) -> Result<Vec<Evidence>, ArtifactError> {
+    fn evidence(&mut self, revision: u64) -> Result<Vec<Evidence>, ArtifactError> {
         let count = self.count(self.limits.table_entries)?;
         (0..count)
             .map(|_| {
@@ -1325,24 +1538,70 @@ impl<'a> ArtifactReader<'a> {
                 let status = match self.byte()? {
                     0 => EvidenceStatus::Verified,
                     1 => EvidenceStatus::TrustedUnverified,
+                    2 if revision == ARTIFACT_REVISION => EvidenceStatus::ExternallyAssumed,
+                    3 if revision == ARTIFACT_REVISION => EvidenceStatus::Refuted,
                     _ => return fail(ValidationStage::Evidence, "unknown evidence status"),
                 };
+                let context = (revision == ARTIFACT_REVISION)
+                    .then(|| self.evidence_context())
+                    .transpose()?;
                 Ok(Evidence {
                     identity,
                     calculus,
                     certificate,
                     status,
+                    context,
                 })
             })
             .collect()
     }
 
-    fn functions(&mut self) -> Result<Vec<Function>, ArtifactError> {
-        let count = self.count(self.limits.table_entries)?;
-        (0..count).map(|_| self.function()).collect()
+    fn evidence_context(&mut self) -> Result<EvidenceContext, ArtifactError> {
+        let kind = match self.byte()? {
+            0 => EvidenceKind::Semantic,
+            1 => EvidenceKind::Implementation,
+            _ => return fail(ValidationStage::Evidence, "unknown evidence kind"),
+        };
+        let subject = self.index()?;
+        let parameter_count = self.count(self.limits.table_entries)?;
+        let static_parameters = (0..parameter_count)
+            .map(|_| Ok((self.text()?, self.text()?)))
+            .collect::<Result<Vec<_>, ArtifactError>>()?;
+        let producer = self.index()?;
+        let assumptions = self.ids()?;
+        let language_revision = LanguageVersion {
+            major: self.uvarint()?,
+            minor: self.uvarint()?,
+            patch: self.uvarint()?,
+            build: self.uvarint()?,
+        };
+        let architecture_model = match self.byte()? {
+            0 => None,
+            1 => Some(self.index()?),
+            _ => {
+                return fail(
+                    ValidationStage::Evidence,
+                    "invalid architecture-model presence tag",
+                );
+            }
+        };
+        Ok(EvidenceContext {
+            kind,
+            subject,
+            static_parameters,
+            producer,
+            assumptions,
+            language_revision,
+            architecture_model,
+        })
     }
 
-    fn function(&mut self) -> Result<Function, ArtifactError> {
+    fn functions(&mut self, revision: u64) -> Result<Vec<Function>, ArtifactError> {
+        let count = self.count(self.limits.table_entries)?;
+        (0..count).map(|_| self.function(revision)).collect()
+    }
+
+    fn function(&mut self, revision: u64) -> Result<Function, ArtifactError> {
         let identity = self.index()?;
         let visibility = match self.byte()? {
             0 => Visibility::Private,
@@ -1354,6 +1613,15 @@ impl<'a> ArtifactReader<'a> {
         let result = self.index()?;
         let effects = self.ids()?;
         let guarantees = self.ids()?;
+        let contracts = (revision == ARTIFACT_REVISION)
+            .then(|| {
+                Ok(FunctionContracts {
+                    precondition: self.optional_index()?,
+                    result_binding: self.optional_text()?,
+                    postcondition: self.optional_index()?,
+                })
+            })
+            .transpose()?;
         let block_count = self.count(self.limits.blocks)?;
         let blocks = (0..block_count)
             .map(|_| self.block())
@@ -1367,6 +1635,7 @@ impl<'a> ArtifactReader<'a> {
             result,
             effects,
             guarantees,
+            contracts,
             blocks,
             entry,
         })
@@ -1483,6 +1752,22 @@ impl<'a> ArtifactReader<'a> {
             message: "artifact index exceeds host limits",
         })
     }
+
+    fn optional_index(&mut self) -> Result<Option<usize>, ArtifactError> {
+        match self.byte()? {
+            0 => Ok(None),
+            1 => self.index().map(Some),
+            _ => fail(ValidationStage::Framing, "invalid optional-index tag"),
+        }
+    }
+
+    fn optional_text(&mut self) -> Result<Option<String>, ArtifactError> {
+        match self.byte()? {
+            0 => Ok(None),
+            1 => self.text().map(Some),
+            _ => fail(ValidationStage::Framing, "invalid optional-text tag"),
+        }
+    }
 }
 
 fn terminator_targets(value: &Terminator) -> Vec<usize> {
@@ -1568,14 +1853,14 @@ mod tests {
             package: "example".into(),
             module_path: vec!["main".into()],
             declaration_path: vec![name.into()],
-            language_revision: LanguageVersion::DESIGN_0,
+            language_revision: LanguageVersion::DESIGN_1,
         }
     }
 
     fn module() -> Module {
         Module {
             revision: ARTIFACT_REVISION,
-            language: LanguageVersion::DESIGN_0,
+            language: LanguageVersion::DESIGN_1,
             imports: vec![],
             identities: vec![identity("answer")],
             types: vec![Type::Primitive("Int".into())],
@@ -1589,6 +1874,7 @@ mod tests {
                 result: 0,
                 effects: vec![],
                 guarantees: vec![],
+                contracts: Some(FunctionContracts::default()),
                 blocks: vec![Block {
                     parameters: vec![0],
                     instructions: vec![],
@@ -1607,14 +1893,7 @@ mod tests {
         let second = module.validate().unwrap().canonical_bytes();
         assert_eq!(first, second);
         assert!(first.starts_with(b"TOPALGEIR"));
-        assert_eq!(
-            first,
-            [
-                84, 79, 80, 65, 76, 71, 69, 73, 82, 1, 0, 1, 0, 0, 0, 1, 7, 101, 120, 97, 109, 112,
-                108, 101, 1, 4, 109, 97, 105, 110, 1, 6, 97, 110, 115, 119, 101, 114, 0, 1, 0, 0,
-                1, 0, 3, 73, 110, 116, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0,
-            ]
-        );
+        assert_eq!(u64::from(first[9]), ARTIFACT_REVISION);
         assert_eq!(
             decode_canonical(&first, ArtifactLimits::default()).unwrap(),
             module
@@ -1672,6 +1951,92 @@ mod tests {
     }
 
     #[test]
+    fn revision_two_round_trips_contract_and_implementation_evidence_context() {
+        let mut module = module();
+        module
+            .identities
+            .extend([identity("compiler"), identity("lock-free")]);
+        module.evidence.push(Evidence {
+            identity: 2,
+            calculus: "topal.progress.v1".into(),
+            certificate: vec![1, 2, 3],
+            status: EvidenceStatus::Verified,
+            context: Some(EvidenceContext {
+                kind: EvidenceKind::Implementation,
+                subject: 0,
+                static_parameters: vec![("capacity".into(), "64".into())],
+                producer: 1,
+                assumptions: vec![],
+                language_revision: LanguageVersion::DESIGN_1,
+                architecture_model: None,
+            }),
+        });
+        module.functions[0].guarantees.push(0);
+        module.functions[0].contracts = Some(FunctionContracts {
+            precondition: Some(0),
+            result_binding: Some("result".into()),
+            postcondition: Some(0),
+        });
+        let bytes = module.validate().unwrap().canonical_bytes();
+        assert_eq!(
+            decode_canonical(&bytes, ArtifactLimits::default()).unwrap(),
+            module
+        );
+    }
+
+    #[test]
+    fn legacy_revision_remains_decodable_without_v02_fields() {
+        let mut legacy = module();
+        legacy.revision = LEGACY_ARTIFACT_REVISION;
+        legacy.language = LanguageVersion::DESIGN_0;
+        legacy.identities[0].language_revision = LanguageVersion::DESIGN_0;
+        legacy.functions[0].contracts = None;
+        let bytes = legacy.validate().unwrap().canonical_bytes();
+        assert_eq!(
+            decode_canonical(&bytes, ArtifactLimits::default()).unwrap(),
+            legacy
+        );
+    }
+
+    #[test]
+    fn revision_two_rejects_missing_or_impermissibly_trusted_metadata() {
+        let mut missing_contracts = module();
+        missing_contracts.functions[0].contracts = None;
+        assert_eq!(
+            missing_contracts.validate().unwrap_err().message,
+            "v0.2 function contract record is missing"
+        );
+
+        let mut trusted_implementation = module();
+        trusted_implementation.evidence.push(Evidence {
+            identity: 0,
+            calculus: "topal.progress.v1".into(),
+            certificate: vec![],
+            status: EvidenceStatus::TrustedUnverified,
+            context: Some(EvidenceContext {
+                kind: EvidenceKind::Implementation,
+                subject: 0,
+                static_parameters: vec![],
+                producer: 0,
+                assumptions: vec![],
+                language_revision: LanguageVersion::DESIGN_1,
+                architecture_model: None,
+            }),
+        });
+        assert_eq!(
+            trusted_implementation.validate().unwrap_err().message,
+            "implementation evidence cannot be programmer-trusted"
+        );
+
+        trusted_implementation.evidence[0].status = EvidenceStatus::Verified;
+        trusted_implementation.evidence[0].context = None;
+        assert_eq!(
+            trusted_implementation.validate().unwrap_err().message,
+            "v0.2 evidence metadata is missing"
+        );
+    }
+
+    #[test]
     fn structural_identity_is_normative_sha256() {
         assert_eq!(
             structural_identity(b""),
@@ -1692,7 +2057,11 @@ mod tests {
         let dependencies = BTreeMap::from([("example.base".into(), [7; 32])]);
         let key =
             SourcePackageKey::derive(LanguageVersion::DESIGN_0, "17.0.0", &sources, &dependencies);
-        assert_eq!(key.artifact_revision, ARTIFACT_REVISION);
+        assert_eq!(key.artifact_revision, LEGACY_ARTIFACT_REVISION);
+        let v02_key =
+            SourcePackageKey::derive(LanguageVersion::DESIGN_1, "17.0.0", &sources, &dependencies);
+        assert_eq!(v02_key.artifact_revision, ARTIFACT_REVISION);
+        assert_ne!(key, v02_key);
         assert_ne!(
             key,
             SourcePackageKey::derive(LanguageVersion::DESIGN_0, "18.0.0", &sources, &dependencies,)

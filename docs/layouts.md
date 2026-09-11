@@ -622,3 +622,25 @@ their own safety and interface systems.
 Foreign integration, its declaration grammar, and its ABI catalogs are not part
 of the current language commitment. ABI families may later belong to selected
 language features rather than the portable bootstrap grammar.
+
+## Revision `v0.2` compositional layouts
+
+`Shape` is an ordered static product of dimension identities and exact `Nat`
+extents. The extended `Layout` separates semantic shape from representation and
+adds complete `dimension-order`, optional strides, positive blocking extents,
+and `Interleaved`, `Separated`, or `Blocked` component organization. The checker
+validates permutation coverage, non-overlap, alignment, boundary tiles, and
+total storage size. Padding remains unobservable.
+
+These rules express multidimensional row/column orders, AoS, SoA, AoSoA, and
+tiled layouts without changing the semantic record or tensor. A zero-copy view
+exists only when both layouts describe the same storage and lifetimes/access
+rights agree; otherwise conversion is explicit and carries allocation,
+transfer, and peak-space evidence.
+
+`SparseArray` is a standard semantic type. Coordinate, compressed-dimension,
+and blocked sparse layouts record value/index layouts, compressed dimensions,
+block shape, ordering, duplicate policy, and zero policy. Construction validates
+and canonicalizes those invariants; a format name alone provides no speed
+evidence. Foreign layout translators may emit checked shapes and layouts, but
+this still creates no ABI, symbol, pointer, or trusted offset.

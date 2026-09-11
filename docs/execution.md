@@ -228,3 +228,15 @@ result leaves the traversal call.
 Bidirectional generator drivers explicitly match `Yielded` and `Returned` and
 resume the linear continuation with its declared input. Convenience operations
 may be added without introducing a second generator state model.
+
+## Revision `v0.2` continuation and implementation rules
+
+Lexical effect handlers use affine resumptions with deterministic cleanup as
+described in [effects](effects.md#closed-lexical-effect-handlers). A handler
+which returns without resuming abandons the continuation and releases its owned
+resources. Only verified `MultiShot` evidence permits duplication.
+
+The evaluator and compiler share one semantic trace for contracts,
+transactions, time observations, snapshots, and dataflow ticks. Implementation
+evidence may select storage, synchronization, scheduling, or specialization,
+but cannot add, remove, or reorder an observable semantic event.

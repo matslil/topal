@@ -424,3 +424,10 @@ It should not initially provide:
 - private implementation or declaration inspection;
 - compiler intermediate representation or optimization inspection; or
 - target- or compiler-version-dependent program behavior.
+
+Revision `v0.2` function and declaration views additionally expose contracts,
+effect bounds, requested guarantees, evidence kind/status, subject identity,
+producer, and assumptions. The views are typed and read-only. They exclude
+architecture facts and implementation-plan nodes from ordinary static
+introspection so a program cannot branch on a target or compiler decision. A
+separate diagnostic projection may display those facts to tools and people.

@@ -497,5 +497,31 @@ as `Indexed` may be combined with applicable performance evidence to name
 stronger classifiers such as `RandomAccess`, while callers may forget that
 evidence and retain the semantic capability.
 
-Elapsed-time guarantees, peak live-memory bounds, and platform-specific
-resource dimensions remain future refinements.
+For `v0.1`, elapsed-time guarantees, peak live-memory bounds, and
+platform-specific resource dimensions remain future refinements. Revision
+`v0.2` below adds portable peak-live evidence and semantic time/deadline values;
+physical elapsed-time guarantees and platform dimensions still require the
+deferred architecture model.
+
+## Design-pattern coverage revision
+
+Revision `v0.2` adopts the portable design in
+[contracts and evidence](docs/contracts-and-evidence.md), together with the
+linked resource, concurrency, transaction, time, dataflow, effect-handler,
+layout, and information-flow designs. Function-wide `requires`, `effects`, and
+`guarantees` occur before `->`; a named result and `ensures` occur after it;
+parameter properties remain with parameters; invariants remain on their owned
+type or task.
+
+The retry property is `RetrySafe`. Capitalized standard property constructors
+are unqualified language-context objects, not keywords or `lang` members.
+Implementation evidence is compiler/provider-owned and cannot change semantic
+results. Topal exposes no source atomic, lock, fence, memory order, or
+reclamation operation; a compiler may synthesize and certify such mechanisms
+behind safe semantic constructs.
+
+Foreign ABIs and the concrete architecture model remain deferred. The portable
+core defines only the typed evidence seam needed to consume their later checked
+results. Physical scheduling, timing, placement, transfers, instructions,
+compartments, and fault domains cannot satisfy hard requirements until those
+models are approved.

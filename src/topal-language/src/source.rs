@@ -18,8 +18,8 @@ use topal_source::{
     scalar_characters, uppercase,
 };
 use topal_syntax::{
-    AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionParameter, Statement,
-    extract_documentation, lex, parse,
+    AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionClauses,
+    FunctionParameter, Statement, extract_documentation, lex, parse,
 };
 
 use crate::{ExecutionSnapshot, TraceEvent, TraceSink};
@@ -298,7 +298,23 @@ pub struct ConstraintValue {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InterfaceValue {
     name: String,
-    functions: BTreeMap<String, (Vec<String>, String)>,
+    functions: BTreeMap<String, InterfaceFunctionShape>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct InterfaceFunctionShape {
+    parameters: Vec<(String, Option<String>)>,
+    result: String,
+    clauses: InterfaceClauseShape,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct InterfaceClauseShape {
+    requires: Option<String>,
+    effects: Option<String>,
+    guarantees: Option<String>,
+    result_binding: Option<String>,
+    ensures: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -696,6 +712,7 @@ pub struct Session {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[allow(clippy::box_collection)] // Keep recursive evaluator state below the tested stack ceiling.
 struct UserFunction {
     source: SourceText,
     is_static: bool,
@@ -703,11 +720,25 @@ struct UserFunction {
     parameter_packages: BTreeMap<usize, Vec<UserParameterField>>,
     result: String,
     generic_names: BTreeSet<String>,
-    effect_bound: Option<String>,
-    body: Vec<Statement>,
+    metadata: Box<UserFunctionMetadata>,
+    body: Box<Vec<Statement>>,
     bindings: BTreeMap<String, Value>,
     termination_rule: Option<&'static str>,
     recursion_target: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct UserFunctionContracts {
+    requires: Option<Expression>,
+    guarantees: Option<Expression>,
+    result_binding: Option<String>,
+    ensures: Option<Expression>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct UserFunctionMetadata {
+    effect_bound: Option<String>,
+    contracts: Option<UserFunctionContracts>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -773,6 +804,7 @@ struct FunctionDeclaration<'a> {
     parameters: &'a [FunctionParameter],
     result: Span,
     effect_bound: Option<Span>,
+    clauses: &'a FunctionClauses,
     body: &'a [Statement],
     span: Span,
 }
@@ -875,9 +907,30 @@ fn statement_mentions_name(source: &SourceText, statement: &Statement, name: &st
                     .any(|declaration| statement_mentions_name(source, declaration, name))
         }
         Statement::Function {
-            parameters, body, ..
+            parameters,
+            clauses,
+            body,
+            ..
+        } => {
+            parameters.iter().any(|parameter| {
+                parameter
+                    .default
+                    .as_ref()
+                    .is_some_and(|default| expression_mentions_name(source, default, name))
+            }) || [
+                clauses.requires.as_deref(),
+                clauses.effects.as_deref(),
+                clauses.guarantees.as_deref(),
+                clauses.ensures.as_deref(),
+            ]
+            .into_iter()
+            .flatten()
+            .any(|expression| expression_mentions_name(source, expression, name))
+                || body
+                    .iter()
+                    .any(|statement| statement_mentions_name(source, statement, name))
         }
-        | Statement::Generator {
+        Statement::Generator {
             parameters, body, ..
         } => {
             parameters.iter().any(|parameter| {
@@ -1691,9 +1744,25 @@ impl Session {
             trace,
             "TOPAL-FUNCTION-ORDINARY-001",
         )?;
+        if let Some(requirement) = function
+            .metadata
+            .contracts
+            .as_ref()
+            .and_then(|contracts| contracts.requires.as_ref())
+        {
+            let proof = scope.evaluate_expression(&function.source, requirement, trace)?;
+            if proof != Value::Boolean(true) {
+                return Err(diagnostic(
+                    &function.source,
+                    "E-CONTRACT-REQUIRES",
+                    requirement.span(),
+                    "task handler precondition is not proven for this invocation",
+                ));
+            }
+        }
         let mut execution = Execution {
             source: definition.source.clone(),
-            statements: function.body.clone(),
+            statements: (*function.body).clone(),
             cursor: 0,
             return_classifier: Some(function.result.clone()),
         };
@@ -1716,7 +1785,122 @@ impl Session {
                 ),
             ));
         }
+        if let Some(relation) = function
+            .metadata
+            .contracts
+            .as_ref()
+            .and_then(|contracts| contracts.ensures.as_ref())
+        {
+            let binding = function
+                .metadata
+                .contracts
+                .as_ref()
+                .and_then(|contracts| contracts.result_binding.as_ref())
+                .expect("parser requires a result binding for ensures");
+            scope.bindings.insert(binding.clone(), value.clone());
+            let proof = scope.evaluate_expression(&function.source, relation, trace)?;
+            if proof != Value::Boolean(true) {
+                return Err(diagnostic(
+                    &function.source,
+                    "E-CONTRACT-ENSURES",
+                    relation.span(),
+                    "task handler result does not satisfy its postcondition",
+                ));
+            }
+        }
         Ok((value, scope.task_state.unwrap_or_default()))
+    }
+
+    #[inline(never)]
+    fn enforce_function_precondition(
+        &mut self,
+        function: &UserFunction,
+        name: &str,
+        trace: &mut impl TraceSink,
+    ) -> Result<(), Diagnostic> {
+        let Some(requirement) = function
+            .metadata
+            .contracts
+            .as_ref()
+            .and_then(|contracts| contracts.requires.as_ref())
+        else {
+            return Ok(());
+        };
+        self.enforce_required_precondition(function, name, requirement, trace)
+    }
+
+    #[inline(never)]
+    fn enforce_required_precondition(
+        &mut self,
+        function: &UserFunction,
+        name: &str,
+        requirement: &Expression,
+        trace: &mut impl TraceSink,
+    ) -> Result<(), Diagnostic> {
+        let proof = self.evaluate_expression(&function.source, requirement, trace)?;
+        if proof != Value::Boolean(true) {
+            return Err(diagnostic(
+                &function.source,
+                "E-CONTRACT-REQUIRES",
+                requirement.span(),
+                "function precondition is not proven for this invocation",
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "function.precondition.proven",
+            rule: "TOPAL-CONTRACT-REQUIRES-001",
+            detail: name,
+        });
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn enforce_function_postcondition(
+        &mut self,
+        function: &UserFunction,
+        name: &str,
+        value: &Value,
+        trace: &mut impl TraceSink,
+    ) -> Result<(), Diagnostic> {
+        let Some(contracts) = function.metadata.contracts.as_ref() else {
+            return Ok(());
+        };
+        let Some(relation) = contracts.ensures.as_ref() else {
+            return Ok(());
+        };
+        self.enforce_required_postcondition(function, name, value, contracts, relation, trace)
+    }
+
+    #[inline(never)]
+    fn enforce_required_postcondition(
+        &mut self,
+        function: &UserFunction,
+        name: &str,
+        value: &Value,
+        contracts: &UserFunctionContracts,
+        relation: &Expression,
+        trace: &mut impl TraceSink,
+    ) -> Result<(), Diagnostic> {
+        let binding = contracts
+            .result_binding
+            .as_ref()
+            .expect("parser requires a result binding for ensures");
+        self.bindings.insert(binding.clone(), value.clone());
+        let proof = self.evaluate_expression(&function.source, relation, trace)?;
+        if proof != Value::Boolean(true) {
+            return Err(diagnostic(
+                &function.source,
+                "E-CONTRACT-ENSURES",
+                relation.span(),
+                "function result does not satisfy its postcondition",
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "function.postcondition.proven",
+            rule: "TOPAL-CONTRACT-ENSURES-001",
+            detail: name,
+        });
+        Ok(())
     }
 
     fn is_lang_operation(source: &SourceText, expression: &Expression, expected: &str) -> bool {
@@ -2098,8 +2282,8 @@ impl Session {
     ///
     /// Returns an error when this tool does not implement `language_version`.
     pub fn for_language_version(language_version: LanguageVersion) -> Result<Self, &'static str> {
-        if language_version != LanguageVersion::DESIGN_0 {
-            return Err("the highest language version supported by this tool is v0.1");
+        if !language_version.is_supported_core() {
+            return Err("the highest language version supported by this tool is v0.2");
         }
         Ok(Self {
             language_version,
@@ -2110,7 +2294,7 @@ impl Session {
     /// The highest source language version implemented by this evaluator.
     #[must_use]
     pub const fn highest_supported_language_version() -> LanguageVersion {
-        LanguageVersion::DESIGN_0
+        LanguageVersion::DESIGN_1
     }
 
     /// Evaluate one source file as an isolated module and bind its published
@@ -2324,7 +2508,7 @@ impl Session {
             .map_err(|message| {
                 diagnostic(&execution.source, "E-LANGUAGE-VERSION", *version, message)
             })?;
-        if requested != Self::highest_supported_language_version() {
+        if !requested.is_supported_core() {
             return Err(diagnostic(
                 &execution.source,
                 "E-UNSUPPORTED-LANGUAGE-VERSION",
@@ -3778,209 +3962,10 @@ impl Session {
                             Some(Value::NamedFunction(function))
                                 if function.name == source.slice(*name_span)
                         ))
-                    && let Some(candidates) = self.functions.get(source.slice(*name_span)).cloned()
+                    && self.functions.contains_key(source.slice(*name_span))
                 {
-                    let name = source.slice(*name_span);
-                    let argument_span = items[1].span();
-                    let argument = self.evaluate_expression(source, &items[1], trace)?;
-                    let function = candidates
-                        .iter()
-                        .find(|function| {
-                            (!self.static_context || function.is_static)
-                                && user_function_accepts(function, &argument)
-                        })
-                        .cloned();
-                    let Some(function) = function else {
-                        if self.static_context
-                            && candidates.iter().all(|function| !function.is_static)
-                        {
-                            return Err(diagnostic(
-                                source,
-                                "E-STATIC-CALLS-RUNTIME-FUNCTION",
-                                *name_span,
-                                format!("static execution cannot call ordinary function `{name}`"),
-                            ));
-                        }
-                        return Err(no_applicable_overload(
-                            source,
-                            name,
-                            argument_span,
-                            &argument,
-                            &candidates,
-                            self.static_context,
-                        ));
-                    };
-                    if matches!(
-                        argument,
-                        Value::CharacterGenerator { .. }
-                            | Value::CharacterReturningGenerator { .. }
-                            | Value::SuspendedGenerator { .. }
-                    ) {
-                        let classifier = structural_value_classifier(&argument);
-                        trace.record(TraceEvent {
-                            event: "generator.parameter.transferred",
-                            rule: if matches!(argument, Value::SuspendedGenerator { .. }) {
-                                "TOPAL-GENERATOR-FUNCTION-PARAMETER-001"
-                            } else {
-                                "TOPAL-STRING-CHARACTERS-PARAMETER-001"
-                            },
-                            detail: &classifier,
-                        });
-                    }
-                    let signature = function_signature(name, &function);
-                    let recursion_rule =
-                        recursion_rule_for_call(&self.call_stack, name, &signature, &function);
-                    if self
-                        .call_stack
-                        .iter()
-                        .any(|active| active.signature == signature)
-                        && recursion_rule.is_none()
-                    {
-                        return Err(diagnostic(
-                            source,
-                            "E-UNPROVEN-RECURSION",
-                            *name_span,
-                            format!(
-                                "recursive cycle returning to `{name}` requires termination proof on every call edge"
-                            ),
-                        ));
-                    }
-                    let rule = function_rule(function.is_static, function.parameters.len());
-                    if let Some(recursion_rule) = recursion_rule {
-                        if is_mutual_recursion_rule(recursion_rule) {
-                            trace.record(TraceEvent {
-                                event: "function.recursion.cycle.proven",
-                                rule: recursion_rule,
-                                detail: name,
-                            });
-                        }
-                        trace.record(TraceEvent {
-                            event: "function.recursion.descended",
-                            rule: recursion_rule,
-                            detail: name,
-                        });
-                    }
-                    if candidates.len() > 1 {
-                        trace.record(TraceEvent {
-                            event: "function.overload.selected",
-                            rule: "TOPAL-FUNCTION-OVERLOAD-001",
-                            detail: &signature,
-                        });
-                    }
-                    let mut function_scope = Self {
-                        bindings: function.bindings.clone(),
-                        functions: self.functions.clone(),
-                        generators: self.generators.clone(),
-                        declared_names: BTreeSet::new(),
-                        published_names: BTreeSet::new(),
-                        documentation: self.documentation.clone(),
-                        language_version: self.language_version,
-                        language_features: self.language_features.clone(),
-                        declared_libraries: self.declared_libraries.clone(),
-                        consumed_names: BTreeSet::new(),
-                        local_function_names: BTreeSet::new(),
-                        enum_types: self.enum_types.clone(),
-                        union_types: self.union_types.clone(),
-                        generic_types: BTreeMap::new(),
-                        call_stack: self.call_stack.clone(),
-                        static_context: function.is_static,
-                        task_state: None,
-                        next_task_identity: Cell::new(self.next_task_identity.get()),
-                        next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
-                    };
-                    function_scope.call_stack.push(ActiveCall {
-                        name: name.to_owned(),
-                        signature: signature.clone(),
-                        termination_rule: function.termination_rule,
-                        recursion_target: function.recursion_target.clone(),
-                    });
-                    bind_function_arguments(&mut function_scope, &function, argument, trace, rule)?;
-                    let mut invocation_generics = BTreeMap::new();
-                    populate_function_generics(
-                        &function,
-                        &function_scope,
-                        &mut invocation_generics,
-                    );
-                    function_scope.generic_types = invocation_generics;
-                    trace.record(TraceEvent {
-                        event: "function.selected",
-                        rule: "TOPAL-TYPE-CALL-001",
-                        detail: &signature,
-                    });
-                    trace.record(TraceEvent {
-                        event: "function.entry",
-                        rule,
-                        detail: name,
-                    });
-                    let mut body_execution = Execution {
-                        source: function.source.clone(),
-                        statements: function.body.clone(),
-                        cursor: 0,
-                        return_classifier: Some(function.result.clone()),
-                    };
-                    let (value, result_span) = loop {
-                        match body_execution.step(&mut function_scope, trace)? {
-                            ExecutionStep::Advanced { .. } => {}
-                            ExecutionStep::Complete(value) => {
-                                break (
-                                    value,
-                                    statement_span(
-                                        function.body.last().expect("function body is nonempty"),
-                                    ),
-                                );
-                            }
-                            ExecutionStep::Returned { value, span } => break (value, span),
-                        }
-                    };
-                    if !function.result.starts_with("Generator ") {
-                        close_remaining_character_generators(&mut function_scope, trace)?;
-                    }
-                    if !generic_result_accepts(&function, &function_scope, &value) {
-                        return Err(diagnostic(
-                            &function.source,
-                            "E-FUNCTION-RESULT-TYPE",
-                            result_span,
-                            format!(
-                                "function `{name}` returned `{}`, outside `{}`",
-                                structural_value_classifier(&value),
-                                function.result,
-                            ),
-                        ));
-                    }
-                    if let Value::Error { domain, code, .. } = &value
-                        && result_success_classifier(&function.result).is_some()
-                    {
-                        let detail = format!("domain={domain};code={code}");
-                        trace.record(TraceEvent {
-                            event: "result.error.propagated",
-                            rule: "TOPAL-TYPE-RESULT-001",
-                            detail: &detail,
-                        });
-                    }
-                    if matches!(
-                        value,
-                        Value::CharacterGenerator { .. }
-                            | Value::CharacterReturningGenerator { .. }
-                            | Value::SuspendedGenerator { .. }
-                    ) {
-                        let classifier = structural_value_classifier(&value);
-                        trace.record(TraceEvent {
-                            event: "generator.result.transferred",
-                            rule: if matches!(value, Value::SuspendedGenerator { .. }) {
-                                "TOPAL-GENERATOR-FUNCTION-RESULT-001"
-                            } else {
-                                "TOPAL-STRING-CHARACTERS-RESULT-001"
-                            },
-                            detail: &classifier,
-                        });
-                    }
-                    trace.record(TraceEvent {
-                        event: "function.exit",
-                        rule,
-                        detail: name,
-                    });
-                    self.checkpoint(trace, Some(&value), Some(*span));
-                    return Ok(value);
+                    return self
+                        .evaluate_user_function_call(source, *name_span, &items[1], *span, trace);
                 }
                 if items.len() == 2
                     && matches!(&items[0], Expression::Identifier(name) if source.slice(*name) == "empty?")
@@ -5149,7 +5134,7 @@ impl Session {
         let Some(Value::NamedFunction(function)) = self.bindings.get(alias) else {
             unreachable!("preselected named function binding")
         };
-        let mut invocation = self.clone();
+        let mut invocation = Box::new(self.clone());
         invocation.bindings.remove(alias);
         invocation
             .functions
@@ -5160,6 +5145,230 @@ impl Session {
             detail: &function.name,
         });
         invocation.evaluate_expression(source, expression, trace)
+    }
+
+    #[inline(never)]
+    fn evaluate_user_function_call(
+        &self,
+        source: &SourceText,
+        name_span: Span,
+        argument_expression: &Expression,
+        call_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let argument_span = argument_expression.span();
+        let argument = self.evaluate_expression(source, argument_expression, trace)?;
+        self.invoke_user_function(source, name_span, argument_span, argument, call_span, trace)
+    }
+
+    #[inline(never)]
+    #[allow(clippy::too_many_lines)] // Call admission, scope setup, and cleanup remain ordered.
+    fn invoke_user_function(
+        &self,
+        source: &SourceText,
+        name_span: Span,
+        argument_span: Span,
+        argument: Value,
+        call_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        let name = source.slice(name_span);
+        let candidates = self
+            .functions
+            .get(name)
+            .expect("preselected user function")
+            .clone();
+        let function = candidates
+            .iter()
+            .find(|function| {
+                (!self.static_context || function.is_static)
+                    && user_function_accepts(function, &argument)
+            })
+            .cloned();
+        let Some(function) = function else {
+            if self.static_context && candidates.iter().all(|function| !function.is_static) {
+                return Err(diagnostic(
+                    source,
+                    "E-STATIC-CALLS-RUNTIME-FUNCTION",
+                    name_span,
+                    format!("static execution cannot call ordinary function `{name}`"),
+                ));
+            }
+            return Err(no_applicable_overload(
+                source,
+                name,
+                argument_span,
+                &argument,
+                &candidates,
+                self.static_context,
+            ));
+        };
+        if matches!(
+            argument,
+            Value::CharacterGenerator { .. }
+                | Value::CharacterReturningGenerator { .. }
+                | Value::SuspendedGenerator { .. }
+        ) {
+            let classifier = structural_value_classifier(&argument);
+            trace.record(TraceEvent {
+                event: "generator.parameter.transferred",
+                rule: if matches!(argument, Value::SuspendedGenerator { .. }) {
+                    "TOPAL-GENERATOR-FUNCTION-PARAMETER-001"
+                } else {
+                    "TOPAL-STRING-CHARACTERS-PARAMETER-001"
+                },
+                detail: &classifier,
+            });
+        }
+        let signature = function_signature(name, &function);
+        let recursion_rule = recursion_rule_for_call(&self.call_stack, name, &signature, &function);
+        if self
+            .call_stack
+            .iter()
+            .any(|active| active.signature == signature)
+            && recursion_rule.is_none()
+        {
+            return Err(diagnostic(
+                source,
+                "E-UNPROVEN-RECURSION",
+                name_span,
+                format!(
+                    "recursive cycle returning to `{name}` requires termination proof on every call edge"
+                ),
+            ));
+        }
+        let rule = function_rule(function.is_static, function.parameters.len());
+        if let Some(recursion_rule) = recursion_rule {
+            if is_mutual_recursion_rule(recursion_rule) {
+                trace.record(TraceEvent {
+                    event: "function.recursion.cycle.proven",
+                    rule: recursion_rule,
+                    detail: name,
+                });
+            }
+            trace.record(TraceEvent {
+                event: "function.recursion.descended",
+                rule: recursion_rule,
+                detail: name,
+            });
+        }
+        if candidates.len() > 1 {
+            trace.record(TraceEvent {
+                event: "function.overload.selected",
+                rule: "TOPAL-FUNCTION-OVERLOAD-001",
+                detail: &signature,
+            });
+        }
+        let mut function_scope = Box::new(Self {
+            bindings: function.bindings.clone(),
+            functions: self.functions.clone(),
+            generators: self.generators.clone(),
+            declared_names: BTreeSet::new(),
+            published_names: BTreeSet::new(),
+            documentation: self.documentation.clone(),
+            language_version: self.language_version,
+            language_features: self.language_features.clone(),
+            declared_libraries: self.declared_libraries.clone(),
+            consumed_names: BTreeSet::new(),
+            local_function_names: BTreeSet::new(),
+            enum_types: self.enum_types.clone(),
+            union_types: self.union_types.clone(),
+            generic_types: BTreeMap::new(),
+            call_stack: self.call_stack.clone(),
+            static_context: function.is_static,
+            task_state: None,
+            next_task_identity: Cell::new(self.next_task_identity.get()),
+            next_transaction_identity: Cell::new(self.next_transaction_identity.get()),
+        });
+        function_scope.call_stack.push(ActiveCall {
+            name: name.to_owned(),
+            signature: signature.clone(),
+            termination_rule: function.termination_rule,
+            recursion_target: function.recursion_target.clone(),
+        });
+        bind_function_arguments(&mut function_scope, &function, argument, trace, rule)?;
+        function_scope.enforce_function_precondition(&function, name, trace)?;
+        let mut invocation_generics = BTreeMap::new();
+        populate_function_generics(&function, &function_scope, &mut invocation_generics);
+        function_scope.generic_types = invocation_generics;
+        trace.record(TraceEvent {
+            event: "function.selected",
+            rule: "TOPAL-TYPE-CALL-001",
+            detail: &signature,
+        });
+        trace.record(TraceEvent {
+            event: "function.entry",
+            rule,
+            detail: name,
+        });
+        let mut body_execution = Execution {
+            source: function.source.clone(),
+            statements: (*function.body).clone(),
+            cursor: 0,
+            return_classifier: Some(function.result.clone()),
+        };
+        let (value, result_span) = loop {
+            match body_execution.step(&mut function_scope, trace)? {
+                ExecutionStep::Advanced { .. } => {}
+                ExecutionStep::Complete(value) => {
+                    break (
+                        value,
+                        statement_span(function.body.last().expect("function body is nonempty")),
+                    );
+                }
+                ExecutionStep::Returned { value, span } => break (value, span),
+            }
+        };
+        if !function.result.starts_with("Generator ") {
+            close_remaining_character_generators(&mut function_scope, trace)?;
+        }
+        if !generic_result_accepts(&function, &function_scope, &value) {
+            return Err(diagnostic(
+                &function.source,
+                "E-FUNCTION-RESULT-TYPE",
+                result_span,
+                format!(
+                    "function `{name}` returned `{}`, outside `{}`",
+                    structural_value_classifier(&value),
+                    function.result,
+                ),
+            ));
+        }
+        function_scope.enforce_function_postcondition(&function, name, &value, trace)?;
+        if let Value::Error { domain, code, .. } = &value
+            && result_success_classifier(&function.result).is_some()
+        {
+            let detail = format!("domain={domain};code={code}");
+            trace.record(TraceEvent {
+                event: "result.error.propagated",
+                rule: "TOPAL-TYPE-RESULT-001",
+                detail: &detail,
+            });
+        }
+        if matches!(
+            value,
+            Value::CharacterGenerator { .. }
+                | Value::CharacterReturningGenerator { .. }
+                | Value::SuspendedGenerator { .. }
+        ) {
+            let classifier = structural_value_classifier(&value);
+            trace.record(TraceEvent {
+                event: "generator.result.transferred",
+                rule: if matches!(value, Value::SuspendedGenerator { .. }) {
+                    "TOPAL-GENERATOR-FUNCTION-RESULT-001"
+                } else {
+                    "TOPAL-STRING-CHARACTERS-RESULT-001"
+                },
+                detail: &classifier,
+            });
+        }
+        trace.record(TraceEvent {
+            event: "function.exit",
+            rule,
+            detail: name,
+        });
+        self.checkpoint(trace, Some(&value), Some(call_span));
+        Ok(value)
     }
 
     fn evaluate_bound_callable_call(
@@ -6059,7 +6268,7 @@ impl Session {
                 ),
             ));
         }
-        let mut invocation = self.clone();
+        let mut invocation = Box::new(self.clone());
         invocation.bindings = bindings.clone();
         for (parameter, argument) in parameters.iter().zip(arguments) {
             bind_anonymous_pattern(source, &mut invocation, parameter, argument, call_span)?;
@@ -7180,6 +7389,7 @@ impl Execution {
                     parameters,
                     result,
                     effect_bound,
+                    clauses,
                     body,
                     span,
                 } => {
@@ -7192,6 +7402,7 @@ impl Execution {
                             parameters,
                             result: *result,
                             effect_bound: *effect_bound,
+                            clauses,
                             body,
                             span: *span,
                         },
@@ -7362,6 +7573,7 @@ impl Execution {
             parameters,
             result,
             effect_bound,
+            clauses,
             body,
             span,
         } = declaration;
@@ -7377,7 +7589,65 @@ impl Execution {
             ));
         }
         let result_text = self.source.slice(result);
-        let effect_bound_text = effect_bound.map(|bound| self.source.slice(bound).to_owned());
+        if session.language_version == LanguageVersion::DESIGN_0
+            && (clauses.requires.is_some()
+                || clauses.effects.is_some()
+                || clauses.guarantees.is_some()
+                || clauses.result_binding.is_some()
+                || clauses.ensures.is_some()
+                || parameters
+                    .iter()
+                    .any(|parameter| parameter.qualifier.is_some()))
+        {
+            return Err(diagnostic(
+                &self.source,
+                "E-UNSUPPORTED-LANGUAGE-CONSTRUCT",
+                span,
+                "function contracts and parameter qualifiers require language version v0.2",
+            ));
+        }
+        if session.language_version == LanguageVersion::DESIGN_1
+            && let Some(effect_bound) = effect_bound
+        {
+            return Err(diagnostic(
+                &self.source,
+                "E-FUNCTION-CLAUSE-PLACEMENT",
+                effect_bound,
+                "v0.2 uses `effects` or `guarantees` before the function arrow",
+            ));
+        }
+        if session.language_version == LanguageVersion::DESIGN_1
+            && let Some(qualifier) = parameters.iter().find_map(|parameter| parameter.qualifier)
+        {
+            return Err(diagnostic(
+                &self.source,
+                "E-PARAMETER-EVIDENCE-UNAVAILABLE",
+                qualifier,
+                "this interpreter cannot prove invocation-local exclusivity or enforce caller consumption",
+            ));
+        }
+        let effect_bound_text = clauses.effects.as_deref().map_or_else(
+            || effect_bound.map(|bound| self.source.slice(bound).to_owned()),
+            |bound| Some(self.source.slice(bound.span()).to_owned()),
+        );
+        let implementation_guarantee = clauses
+            .guarantees
+            .as_deref()
+            .map(|guarantees| self.source.slice(guarantees.span()));
+        if let Some(guarantee) = implementation_guarantee
+            && !guarantee.trim_start().starts_with("Prefer")
+        {
+            return Err(diagnostic(
+                &self.source,
+                "E-IMPLEMENTATION-EVIDENCE-UNAVAILABLE",
+                clauses
+                    .guarantees
+                    .as_deref()
+                    .expect("known implementation guarantee")
+                    .span(),
+                "the interpreter cannot verify this hard implementation guarantee",
+            ));
+        }
         let mut generic_names = BTreeSet::new();
         for parameter in parameters {
             collect_generic_names(
@@ -7539,8 +7809,22 @@ impl Execution {
             parameter_packages,
             result: result_text.to_owned(),
             generic_names,
-            effect_bound: effect_bound_text.clone(),
-            body: body.to_vec(),
+            metadata: Box::new(UserFunctionMetadata {
+                effect_bound: effect_bound_text.clone(),
+                contracts: (clauses.requires.is_some()
+                    || clauses.guarantees.is_some()
+                    || clauses.result_binding.is_some()
+                    || clauses.ensures.is_some())
+                .then(|| UserFunctionContracts {
+                    requires: clauses.requires.as_deref().cloned(),
+                    guarantees: clauses.guarantees.as_deref().cloned(),
+                    result_binding: clauses
+                        .result_binding
+                        .map(|binding| self.source.slice(binding).to_owned()),
+                    ensures: clauses.ensures.as_deref().cloned(),
+                }),
+            }),
+            body: Box::new(body.to_vec()),
             bindings,
             termination_rule,
             recursion_target: recursion_target.clone(),
@@ -7565,6 +7849,28 @@ impl Execution {
                 event: "function.effect-bound.declared",
                 rule: "TOPAL-FUNCTION-EFFECT-BOUND-001",
                 detail: effect_bound,
+            });
+        }
+        if let Some(requirement) = &clauses.requires {
+            trace.record(TraceEvent {
+                event: "function.precondition.declared",
+                rule: "TOPAL-CONTRACT-REQUIRES-001",
+                detail: self.source.slice(requirement.span()),
+            });
+        }
+        if let Some(guarantees) = &clauses.guarantees {
+            let guarantee = self.source.slice(guarantees.span());
+            trace.record(TraceEvent {
+                event: "function.guarantee.declared",
+                rule: "TOPAL-IMPL-SELECTION-001",
+                detail: guarantee,
+            });
+        }
+        if let Some(relation) = &clauses.ensures {
+            trace.record(TraceEvent {
+                event: "function.postcondition.declared",
+                rule: "TOPAL-CONTRACT-ENSURES-001",
+                detail: self.source.slice(relation.span()),
             });
         }
         if result_success_classifier(result_text).is_some() {
@@ -7708,6 +8014,9 @@ impl Execution {
         trace: &mut impl TraceSink,
     ) -> Result<ExecutionStep, Diagnostic> {
         let statement = &self.statements[self.cursor];
+        if let Some(name) = declaration_name_span(statement) {
+            reject_v02_language_object_shadowing(&self.source, session, name)?;
+        }
         let (value, span) = match statement {
             Statement::LanguageSelection {
                 version,
@@ -7721,14 +8030,14 @@ impl Execution {
                     .map_err(|message| {
                         diagnostic(&self.source, "E-LANGUAGE-VERSION", *version, message)
                     })?;
-                if requested != LanguageVersion::DESIGN_0 {
+                if !requested.is_supported_core() {
                     return Err(diagnostic(
                         &self.source,
                         "E-UNSUPPORTED-LANGUAGE-VERSION",
                         *version,
                         format!(
                             "language version `{requested}` is not supported; highest supported version is `{}`",
-                            LanguageVersion::DESIGN_0
+                            LanguageVersion::DESIGN_1
                         ),
                     ));
                 }
@@ -7873,6 +8182,7 @@ impl Execution {
                 parameters,
                 result,
                 effect_bound,
+                clauses,
                 body,
                 span,
             } => self.declare_function(
@@ -7884,6 +8194,7 @@ impl Execution {
                     parameters,
                     result: *result,
                     effect_bound: *effect_bound,
+                    clauses,
                     body,
                     span: *span,
                 },
@@ -7930,20 +8241,44 @@ impl Execution {
                 }
                 let mut operations = BTreeMap::new();
                 for function in functions {
+                    if session.language_version == LanguageVersion::DESIGN_0
+                        && (function.clauses.requires.is_some()
+                            || function.clauses.effects.is_some()
+                            || function.clauses.guarantees.is_some()
+                            || function.clauses.result_binding.is_some()
+                            || function.clauses.ensures.is_some()
+                            || function
+                                .parameters
+                                .iter()
+                                .any(|parameter| parameter.qualifier.is_some()))
+                    {
+                        return Err(diagnostic(
+                            &self.source,
+                            "E-UNSUPPORTED-LANGUAGE-CONSTRUCT",
+                            function.span,
+                            "interface contracts and parameter qualifiers require language version v0.2",
+                        ));
+                    }
                     let operation = self.source.slice(function.name).to_owned();
                     if operations
                         .insert(
                             operation.clone(),
-                            (
-                                function
+                            InterfaceFunctionShape {
+                                parameters: function
                                     .parameters
                                     .iter()
                                     .map(|parameter| {
-                                        self.source.slice(parameter.classifier).to_owned()
+                                        (
+                                            self.source.slice(parameter.classifier).to_owned(),
+                                            parameter.qualifier.map(|qualifier| {
+                                                self.source.slice(qualifier).to_owned()
+                                            }),
+                                        )
                                     })
                                     .collect(),
-                                self.source.slice(function.result).to_owned(),
-                            ),
+                                result: self.source.slice(function.result).to_owned(),
+                                clauses: interface_clause_shape(&self.source, &function.clauses),
+                            },
                         )
                         .is_some()
                     {
@@ -7989,18 +8324,25 @@ impl Execution {
                             name,
                             parameters,
                             result,
+                            clauses,
                             ..
                         } => Some((
                             self.source.slice(*name).to_owned(),
-                            (
-                                parameters
+                            InterfaceFunctionShape {
+                                parameters: parameters
                                     .iter()
                                     .map(|parameter| {
-                                        self.source.slice(parameter.classifier).to_owned()
+                                        (
+                                            self.source.slice(parameter.classifier).to_owned(),
+                                            parameter.qualifier.map(|qualifier| {
+                                                self.source.slice(qualifier).to_owned()
+                                            }),
+                                        )
                                     })
                                     .collect::<Vec<_>>(),
-                                self.source.slice(*result).to_owned(),
-                            ),
+                                result: self.source.slice(*result).to_owned(),
+                                clauses: interface_clause_shape(&self.source, clauses),
+                            },
                         )),
                         _ => None,
                     })
@@ -8275,6 +8617,76 @@ impl Execution {
             Value::Unit,
             cover(name, initializer.span()),
         ))
+    }
+}
+
+fn reject_v02_language_object_shadowing(
+    source: &SourceText,
+    session: &Session,
+    name: Span,
+) -> Result<(), Diagnostic> {
+    let name_text = source.slice(name);
+    if session.language_version == LanguageVersion::DESIGN_1
+        && session.call_stack.is_empty()
+        && is_v02_language_owned_object(name_text)
+    {
+        return Err(diagnostic(
+            source,
+            "E-LANGUAGE-NAME-CONFLICT",
+            name,
+            format!(
+                "`{name_text}` is supplied by the v0.2 language context and cannot be declared in the root scope"
+            ),
+        ));
+    }
+    Ok(())
+}
+
+fn is_v02_language_owned_object(name: &str) -> bool {
+    matches!(
+        name,
+        "AtomicCommit"
+            | "Compensates"
+            | "Consumes"
+            | "DeadlineMet"
+            | "Durable"
+            | "Exclusive"
+            | "ImmediateHandler"
+            | "MultiShot"
+            | "NoAlloc"
+            | "OAlloc"
+            | "OExec"
+            | "Progress"
+            | "ReleaseJitter"
+            | "ResourceBound"
+            | "ResponseWithin"
+            | "RetrySafe"
+            | "Specialized"
+            | "WorstCaseExecution"
+    )
+}
+
+fn interface_clause_shape(source: &SourceText, clauses: &FunctionClauses) -> InterfaceClauseShape {
+    InterfaceClauseShape {
+        requires: clauses
+            .requires
+            .as_deref()
+            .map(|expression| source.slice(expression.span()).to_owned()),
+        effects: clauses
+            .effects
+            .as_deref()
+            .map(|expression| source.slice(expression.span()).to_owned()),
+        guarantees: clauses
+            .guarantees
+            .as_deref()
+            .map(|expression| source.slice(expression.span()).to_owned()),
+        result_binding: clauses
+            .result_binding
+            .map(|binding| source.slice(binding).to_owned()),
+        ensures: clauses
+            .ensures
+            .as_deref()
+            .map(|expression| source.slice(expression.span()).to_owned()),
     }
 }
 
@@ -8733,6 +9145,10 @@ fn statement_span(statement: &Statement) -> Span {
 }
 
 fn declaration_name<'a>(source: &'a SourceText, statement: &Statement) -> Option<&'a str> {
+    declaration_name_span(statement).map(|name| source.slice(name))
+}
+
+fn declaration_name_span(statement: &Statement) -> Option<Span> {
     let name = match statement {
         Statement::Binding { name, .. }
         | Statement::Implementation { name, .. }
@@ -8740,10 +9156,10 @@ fn declaration_name<'a>(source: &'a SourceText, statement: &Statement) -> Option
         | Statement::Generator { name, .. }
         | Statement::Union { name, .. }
         | Statement::Interface { name, .. } => *name,
-        Statement::Published { declaration, .. } => return declaration_name(source, declaration),
+        Statement::Published { declaration, .. } => return declaration_name_span(declaration),
         _ => return None,
     };
-    Some(source.slice(name))
+    Some(name)
 }
 
 fn supported_generator_body(source: &SourceText, body: &[Statement]) -> bool {
@@ -10511,7 +10927,7 @@ fn prove_explicit_parameter_recursion(
             (CallableKind::Minus, "TOPAL-FUNCTION-DECREASES-001")
         }
         (
-            "Nat",
+            "Nat" | "Int",
             DecisionMatcher::Comparison {
                 kind: CallableKind::GreaterEqual,
                 operand: Expression::Integer(_),
@@ -10526,14 +10942,6 @@ fn prove_explicit_parameter_recursion(
                 ..
             },
         ) => (CallableKind::Minus, "TOPAL-FUNCTION-DECREASES-001"),
-        (
-            "Int",
-            DecisionMatcher::Comparison {
-                kind: CallableKind::GreaterEqual,
-                operand: Expression::Integer(_),
-                ..
-            },
-        ) => (CallableKind::Plus, "TOPAL-FUNCTION-DECREASES-001"),
         _ => return None,
     };
     if !matches!(&recursive.matcher, DecisionMatcher::Otherwise(_))
@@ -11756,7 +12164,7 @@ fn introspection_view(source: &SourceText, value: Value, span: Span) -> Result<V
                     .collect(),
                 output: first.result.clone(),
                 is_static: first.is_static,
-                effects: first.effect_bound.iter().cloned().collect(),
+                effects: first.metadata.effect_bound.iter().cloned().collect(),
             }
         }
         Value::Namespace(namespace) => {
@@ -12655,11 +13063,8 @@ fn apply_range_bound(
             "range-lower-inclusive?",
             Value::IntRange {
                 lower_inclusive, ..
-            },
-        )
-        | (
-            "range-lower-inclusive?",
-            Value::RationalRange {
+            }
+            | Value::RationalRange {
                 lower_inclusive, ..
             },
         ) => Value::Boolean(lower_inclusive),
@@ -12667,11 +13072,8 @@ fn apply_range_bound(
             "range-upper-inclusive?",
             Value::IntRange {
                 upper_inclusive, ..
-            },
-        )
-        | (
-            "range-upper-inclusive?",
-            Value::RationalRange {
+            }
+            | Value::RationalRange {
                 upper_inclusive, ..
             },
         ) => Value::Boolean(upper_inclusive),
@@ -12795,6 +13197,7 @@ fn apply_range_membership(
     Ok(Value::Boolean(accepted))
 }
 
+#[allow(clippy::too_many_lines)] // Each supported conjunction kind has an explicit trace path.
 fn apply_and(
     source: &SourceText,
     left: Value,
@@ -14983,6 +15386,7 @@ fn euclidean_remainder(left: BigInt, right: &BigInt) -> BigInt {
     remainder
 }
 
+#[allow(clippy::too_many_lines)] // Numeric operations retain explicit diagnostic and trace branches.
 fn apply_rational_binary(
     source: &SourceText,
     kind: CallableKind,
@@ -15920,6 +16324,147 @@ mod tests {
             Value::Introspection(view)
                 if matches!(&*view, IntrospectionValue::FunctionView { effects, .. } if effects == &["Effects ()"])
         ));
+    }
+
+    #[test]
+    fn v02_enforces_function_preconditions_and_named_result_postconditions() {
+        let source = "use language ( version is v0.2 )\nincrement is fn ( value : Int )\n  requires ( value >= 0 )\n  effects ( Effects () )\n-> result : Int\n  ensures ( result > value )\n  value + 1\nincrement 41\n";
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate_source_file(source, &mut trace)
+            .unwrap();
+        assert_eq!(value, Value::Int(BigInt::from(42)));
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("TOPAL-CONTRACT-REQUIRES-001"))
+        );
+        assert!(
+            trace
+                .iter()
+                .any(|event| event.contains("TOPAL-CONTRACT-ENSURES-001"))
+        );
+
+        let error = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.2 )\nidentity is fn ( value : Int ) requires ( value >= 0 ) -> Int\n  value\nnegative is 0 - 1\nidentity negative\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "E-CONTRACT-REQUIRES", "{error:?}");
+
+        let error = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.2 )\nidentity is fn ( value : Int ) -> result : Int ensures ( result > value )\n  value\nidentity 1\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "E-CONTRACT-ENSURES");
+    }
+
+    #[test]
+    fn language_revisions_keep_function_clause_syntax_disjoint() {
+        let v01 = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\nidentity is fn ( value : Int ) requires true -> Int\n  value\nidentity 1\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(v01.code, "E-UNSUPPORTED-LANGUAGE-CONSTRUCT");
+
+        let v02 = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.2 )\nidentity is fn ( value : Int ) -> Int : Effects ()\n  value\nidentity 1\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(v02.code, "E-FUNCTION-CLAUSE-PLACEMENT");
+    }
+
+    #[test]
+    fn v02_language_owned_properties_cannot_be_shadowed_at_root() {
+        for property in [
+            "AtomicCommit",
+            "Compensates",
+            "Consumes",
+            "DeadlineMet",
+            "Durable",
+            "Exclusive",
+            "ImmediateHandler",
+            "MultiShot",
+            "NoAlloc",
+            "OAlloc",
+            "OExec",
+            "Progress",
+            "ReleaseJitter",
+            "ResourceBound",
+            "ResponseWithin",
+            "RetrySafe",
+            "Specialized",
+            "WorstCaseExecution",
+        ] {
+            let source = format!("use language ( version is v0.2 )\n{property} is 1\n");
+            let error = Session::new()
+                .evaluate_source_file(&source, &mut std::io::sink())
+                .unwrap_err();
+            assert_eq!(error.code, "E-LANGUAGE-NAME-CONFLICT");
+        }
+
+        let value = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.1 )\nRetrySafe is 1\nRetrySafe\n",
+                &mut std::io::sink(),
+            )
+            .unwrap();
+        assert_eq!(value, Value::Int(BigInt::from(1)));
+
+        let ordinary_mechanism_names = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.2 )\natomic is 40\nlock is 2\natomic + lock\n",
+                &mut std::io::sink(),
+            )
+            .unwrap();
+        assert_eq!(ordinary_mechanism_names, Value::Int(BigInt::from(42)));
+    }
+
+    #[test]
+    fn interpreter_requires_evidence_for_hard_implementation_guarantees() {
+        let hard = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.2 )\nidentity is fn ( value : Int ) guarantees ( Progress LockFree ) -> Int\n  value\nidentity 1\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(hard.code, "E-IMPLEMENTATION-EVIDENCE-UNAVAILABLE");
+
+        let unknown_hard = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.2 )\nidentity is fn ( value : Int ) guarantees ( LibraryProperty value ) -> Int\n  value\nidentity 1\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(unknown_hard.code, "E-IMPLEMENTATION-EVIDENCE-UNAVAILABLE");
+
+        let preferred = Session::new()
+            .evaluate_source_file(
+                "use language ( version is v0.2 )\nidentity is fn ( value : Int ) guarantees ( Prefer ( Progress LockFree ) ) -> Int\n  value\nidentity 1\n",
+                &mut std::io::sink(),
+            )
+            .unwrap();
+        assert_eq!(preferred, Value::Int(BigInt::from(1)));
+    }
+
+    #[test]
+    fn interpreter_fails_closed_for_unproved_parameter_evidence() {
+        for qualifier in ["Exclusive", "Consumes"] {
+            let source = format!(
+                "use language ( version is v0.2 )\nidentity is fn ( value : String : {qualifier} ) -> String\n  value\n"
+            );
+            let error = Session::new()
+                .evaluate_source_file(&source, &mut std::io::sink())
+                .unwrap_err();
+            assert_eq!(error.code, "E-PARAMETER-EVIDENCE-UNAVAILABLE");
+        }
     }
 
     #[test]
@@ -19389,6 +19934,21 @@ fn interface_implementations_require_exact_shapes() {
     let source = "Parser is Interface\n  parse is fn (source : String) -> Boolean\nParser\n  other is fn (source : String) -> Boolean\n    true\n()";
     let error = Session::new()
         .evaluate(source, &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-INTERFACE-IMPLEMENTATION");
+}
+
+#[test]
+fn v02_interface_contracts_are_retained_and_required_of_implementations() {
+    let source = "use language ( version is v0.2 )\nParser is Interface\n  parse is fn (source : String) requires true -> result : Boolean ensures result\nParser\n  parse is fn (source : String) requires true -> result : Boolean ensures result\n    true\nparse \"input\"";
+    let value = Session::new()
+        .evaluate_source_file(source, &mut std::io::sink())
+        .unwrap();
+    assert_eq!(value, Value::Boolean(true));
+
+    let mismatch = "use language ( version is v0.2 )\nParser is Interface\n  parse is fn (source : String) requires true -> result : Boolean ensures result\nParser\n  parse is fn (source : String) -> Boolean\n    true\n()";
+    let error = Session::new()
+        .evaluate_source_file(mismatch, &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-INTERFACE-IMPLEMENTATION");
 }

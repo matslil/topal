@@ -60,11 +60,23 @@ fn declaration(
             parameters,
             result,
             effect_bound,
+            clauses,
             ..
         } => (
             *name,
             "function",
-            line_end(source, effect_bound.unwrap_or(*result).end),
+            line_end(
+                source,
+                clauses
+                    .ensures
+                    .as_deref()
+                    .or(clauses.guarantees.as_deref())
+                    .or(clauses.effects.as_deref())
+                    .or(clauses.requires.as_deref())
+                    .map_or(effect_bound.unwrap_or(*result).end, |value| {
+                        value.span().end
+                    }),
+            ),
             parameters.as_slice(),
         ),
         Statement::Generator {
@@ -107,10 +119,10 @@ fn documented_parameters(
     parameters
         .iter()
         .map(|parameter| {
-            let end = parameter
-                .default
-                .as_ref()
-                .map_or(parameter.classifier.end, |value| value.span().end);
+            let end = parameter.default.as_ref().map_or_else(
+                || parameter.qualifier.unwrap_or(parameter.classifier).end,
+                |value| value.span().end,
+            );
             let documented = DocumentedParameter {
                 name: source.slice(parameter.name).to_owned(),
                 syntax: source.as_str()[parameter.name.start..end].trim().to_owned(),

@@ -343,3 +343,50 @@ Foreign-boundary grammar is postponed with foreign-language integration.
 Private inferred effects may eventually receive an optional display
 abbreviation. Compiler diagnostics and static introspection should display the
 full semantic row regardless of any shorthand.
+
+## Revision `v0.2` clause placement
+
+The earlier examples above show the `v0.1` post-result classifier. In `v0.2`,
+an explicit effect upper bound describes invocation and therefore occurs before
+the arrow:
+
+```topal
+copy-file is fn (
+  source : File,
+  destination : File
+)
+  effects ( Read source and Write destination )
+-> Result ( Completed, FileErrorCode )
+```
+
+`effects` is structural in that position. The effect expression retains its
+ordinary static object identities and composition rules.
+
+Transactions add `TransactionRead domain`, `TransactionWrite domain`, and
+`Transact domain`. A transaction callback may perform only pure computation
+and its declared transaction-scoped effects; all other observable work must be
+staged as domain data. Declassification and endorsement likewise add effects
+naming the exact authority used.
+
+## Closed lexical effect handlers
+
+`EffectProtocol` declares a closed set of typed operations and whether each
+resumption is `OneShot` or `Multiple`. `Handler P R` implements every operation
+for a handled result `R`; each member receives the operation arguments followed
+by `Resumption OperationResult R`. The expression `handle body with handler`
+selects the handler lexically and subtracts the handled abstract effects from
+the enclosing inferred row. Unhandled implementation effects propagate.
+
+A resumption is affine and may be resumed once or abandoned. Abandonment runs
+deterministic cleanup. Resuming twice, escaping the handler scope, or retaining
+an affine captured value across duplicated execution is invalid. A `Multiple`
+operation is accepted only when the checker derives verified `MultiShot`
+evidence for the continuation and retained values. Errors remain explicit
+`Result` values and are not caught by handlers.
+
+The architecture-neutral reference semantics represents resumptions explicitly.
+An interpreter may consume that form, and a compiler may use direct,
+selective-CPS, or state-machine lowering when each has identical results,
+effects, and cleanup. Source authors declare protocols, operations, handlers,
+and handle sites; only the checker establishes completeness, effect subtraction,
+affinity, or `MultiShot` evidence.

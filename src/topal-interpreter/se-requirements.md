@@ -51,6 +51,21 @@ The interpreter shall implement every runtime-applicable, non-deferred
 shall diagnose syntax absent from the selected formal language revision and
 shall never guess semantics for another revision.
 
+## TOPAL-INTP-ASSURANCE-001 — Portable `v0.2` assurance semantics
+
+The interpreter shall accept the implemented portable `v0.2` ordinary and
+interface function-header syntax and enforce the executable contract subset.
+Any supported snapshot, transaction, clock, flow, handler, layout, or
+information-flow source binding shall consume the shared reference model rather
+than define private semantics. Until such a binding is implemented, the
+interpreter shall diagnose it as outside its explicit subset; the presence of a
+shared model alone is not source-language conformance. It shall reject
+unavailable hard implementation evidence and honor preferred fallbacks.
+Parameter-level `Exclusive` and `Consumes` contracts shall fail closed until
+the interpreter can establish and enforce their call-site obligations. It shall
+not claim machine-code specialization, physical timing, architecture placement,
+or nonblocking progress which its concrete implementation does not provide.
+
 ## TOPAL-INTP-SUBSET-002 — Immutable bindings
 
 The implemented subset shall execute source-ordered `is` bindings and name

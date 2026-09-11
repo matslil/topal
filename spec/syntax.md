@@ -13,7 +13,7 @@ error. Tabs are forbidden in indentation. This realizes
 
 ### TOPAL-SYN-UNICODE-001 — Revisioned Unicode semantics
 
-The initial `design-0` language context shall use Unicode 17.0.0 for every
+The `v0.1` and `v0.2` language contexts shall use Unicode 17.0.0 for every
 Unicode-derived semantic operation, including normalization, identifier
 properties, character segmentation, and case operations. A conforming tool
 shall use the data for that exact version and shall expose the selected version
@@ -32,8 +32,9 @@ lines, with `use language ( version is V, features is F )`, where `features`
 may be omitted when empty, line breaks are permitted by the ordinary product
 grammar, `V` is a `Version` literal, and `F` is a finite collection of feature
 identities. A tool shall preserve the selected feature identities in the
-constructed language context. The stable
-`design-0` context is identified by `v0.1`, canonically `v0.1.0-0`. A source
+constructed language context. The stable `design-0` context is identified by
+`v0.1`, canonically `v0.1.0-0`; the compatible design-pattern context is
+identified by `v0.2`, canonically `v0.2.0-0`. A source
 tool shall use that selection for the file even when its command line selected
 a different interactive default, and shall diagnose unsupported versions.
 
@@ -248,6 +249,42 @@ referenced. An unbound identifier is a static name-resolution error.
 `name : Classifier is expression` is a classified binding; the classifier is
 part of the binding's immediate context. `name is expression` remains an
 unclassified binding, and `_` cannot carry a classifier in this form.
+
+### TOPAL-SYN-FUNCTION-V02-001 — `v0.2` assurance grammar
+
+Revision `v0.2` replaces only the `function` production of
+`TOPAL-SYN-GRAMMAR-001` and adds the following declaration members and handle
+expression. All unmentioned productions remain unchanged.
+
+```ebnf
+function-v02 ::= "fn" static? input-v02 requires-clause? effects-clause?
+                 guarantees-clause? "->" result-v02 ensures-clause? suite ;
+input-v02 ::= parameter-v02
+            | "(" [ parameter-v02 ( "," parameter-v02 )* ] ")" ;
+requires-clause ::= clause-separator "requires" expression ;
+effects-clause ::= clause-separator "effects" expression ;
+guarantees-clause ::= clause-separator "guarantees" expression ;
+result-v02 ::= classifier | identifier ":" classifier ;
+ensures-clause ::= clause-separator "ensures" expression ;
+clause-separator ::= whitespace | NEWLINE indentation ;
+parameter-v02 ::= pattern ":" classifier [ ":" parameter-classifier ] ;
+parameter-classifier ::= "Exclusive" | "Consumes" ;
+invariant-member ::= "invariant" identifier expression ;
+effect-protocol ::= identifier "is" "EffectProtocol" NEWLINE INDENT
+                    effect-operation+ DEDENT ;
+effect-operation ::= identifier "is" "operation" input
+                     resumption-clause? "->" classifier ;
+resumption-clause ::= clause-separator "resumption" "is"
+                      ( "OneShot" | "Multiple" ) ;
+handle-expression ::= "handle" expression "with" expression ;
+```
+
+The pre-arrow clauses SHALL use the displayed order and each SHALL occur at
+most once. The named result is mandatory when `ensures` occurs. `invariant`
+SHALL occur at most once after stored fields and before operations in a nominal
+type or task definition. These structural words are recognized only at their
+grammar insertion points. Capitalized classifier/property names remain
+ordinary language-context identifiers.
 
 ### TOPAL-SYN-ORDER-001 — Declaration and overload order
 

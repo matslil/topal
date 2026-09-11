@@ -1159,3 +1159,20 @@ Copyright years are source metadata, not build timestamps. Rebuilding an
 artifact in a later year does not modify its notices. A tool may compare years
 with version-control history and warn about a possible stale declaration, but
 such evidence does not prove ownership or the legally correct year.
+
+## Revision `v0.2` public evidence
+
+Public and generic artifacts retain the complete function clauses, result
+binding relation, owned invariants, evidence kind and status, subject and
+static parameters, producer, assumptions, and language revision. Symbolic
+resource bounds, region identities, lifetime relationships, and exclusivity
+requirements survive generic substitution. Importing code can therefore prove
+a call without source access and cannot silently strengthen an opaque
+precondition.
+
+The language context introduces the standard `v0.2` property constructors
+unqualified. A conflicting root declaration is an error; an identically named
+object inside an explicitly selected library namespace has only that library's
+ordinary meaning. Evidence descriptors are read-only through qualified `lang`
+introspection. Architecture evidence and compiler plans are excluded from
+ordinary value-level introspection.

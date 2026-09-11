@@ -26,20 +26,17 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> Result<(), String>
     let arguments = parse_arguments(arguments)?;
     let mut tests = discover(&arguments.paths)?;
     let working_directory = env::current_dir().map_err(|error| error.to_string())?;
-    tests = tests
-        .into_iter()
-        .filter(|path| {
-            let identity = identity(path, &working_directory);
-            arguments
-                .exact
+    tests.retain(|path| {
+        let identity = identity(path, &working_directory);
+        arguments
+            .exact
+            .as_ref()
+            .is_none_or(|exact| exact == &identity)
+            && arguments
+                .filter
                 .as_ref()
-                .is_none_or(|exact| exact == &identity)
-                && arguments
-                    .filter
-                    .as_ref()
-                    .is_none_or(|filter| identity.contains(filter))
-        })
-        .collect();
+                .is_none_or(|filter| identity.contains(filter))
+    });
     if tests.is_empty() {
         return Err("no Topal tests matched".into());
     }
@@ -119,7 +116,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
                     arguments
                         .next()
                         .ok_or("--library-root requires a directory")?,
-                )
+                );
             }
             "--exact" => exact = Some(arguments.next().ok_or("--exact requires a test identity")?),
             "--filter" => filter = Some(arguments.next().ok_or("--filter requires text")?),

@@ -19,8 +19,14 @@ The specification is divided into:
 - [standard-library conformance](standard-library.md);
 - [data-transfer package boundaries](data-transfer-packages.md);
 - [data-transfer semantics](data-transfers.md);
-- [memory model](memory-model.md); and
-- [concurrency model](concurrency-model.md).
+- [memory model](memory-model.md);
+- [concurrency model](concurrency-model.md);
+- [contracts and evidence](contracts-and-evidence.md);
+- [resource evidence](resource-evidence.md);
+- [synthesized concurrency and transactions](concurrency-implementations.md);
+- [time and static-rate dataflow](time-and-dataflow.md);
+- [effect handlers and implementation plans](effect-handlers-and-plans.md); and
+- [composite layouts and information flow](composite-layouts-and-information-flow.md).
 
 Each normative rule has a stable ID. **Shall**, **must**, and **is** are
 normative; **should** is a recommendation; **may** grants permission. Mermaid
@@ -29,7 +35,9 @@ sections are informative unless they cite a normative rule.
 
 ## Revision and conformance
 
-These documents describe revision `design-0`. A source, artifact, or protocol
+The original documents describe revision `design-0` (`v0.1`). The added
+design-pattern support documents define the compatible `v0.2` revision. A
+source, artifact, or protocol
 participant shall declare the revision it implements when it crosses a tool or
 storage boundary. A conforming implementation shall either implement every
 applicable rule or reject the revision or feature before processing it. Silent

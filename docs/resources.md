@@ -302,3 +302,27 @@ weak access.
 Pure immutable values may use cyclic representations internally when their
 observable semantics remain finite. Recursive source values are nevertheless
 constructed algebraically rather than through mutable cyclic references.
+
+## Revision `v0.2` exclusivity and allocation regions
+
+`Exclusive` is an invocation-local parameter classifier derived from last use,
+escape, alias, lifetime, and disjoint-span analysis. It states that no other
+observable value refers to storage which an implementation may reuse. It does
+not turn the value into a mutable reference. `Consumes` is the stronger public
+call contract: after successful entry the caller has relinquished that semantic
+version. Both appear on the parameter, as `input : Buffer : Exclusive`.
+
+Source may require either property, but only the checker establishes
+exclusivity and enforces consumption. When an immutable fallback exists the
+compiler normally infers and uses exclusivity without an annotation; an
+interpreter may use that fallback for an unqualified parameter. A written
+`Exclusive` or `Consumes` classifier remains a hard contract and a tool which
+cannot establish it must reject the declaration rather than ignore it.
+
+`AllocationRegion` is a scoped owning resource. Values allocated through
+`Allocate region` retain a hidden lifetime dependency. Such a value leaves the
+scope only by moving the complete region, by a checked promotion or copy to an
+enclosing lifetime, or by proving it has no storage dependency. Region cleanup
+is deterministic and composes with ordinary destructors. Authors name a region
+only for an API boundary, capacity, bulk release, or resource bound; pointer
+arithmetic and allocator identity are not observable.
