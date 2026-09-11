@@ -1,7 +1,7 @@
 #!/usr/bin/env topal
 use language (version is v0.1)
 
-### Revision of the finite additive-machine planning namespace.
+### Revision of the Advent of Code additive-machine planning namespace.
 pub revision is 1
 
 line-values is fn ((values : List String, start : Nat, index : Nat)) -> List String

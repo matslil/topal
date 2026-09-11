@@ -26,8 +26,9 @@ exact-guarantees-satisfy : Pass is Pass (guarantees-satisfy? ((2, 2), (2, 2)))
 stronger-durability-satisfies : Pass is Pass (guarantees-satisfy? ((2, 3), (2, 2)))
 insufficient-durability-rejects : Pass is Pass (not (guarantees-satisfy? ((2, 1), (2, 2))))
 weaker-consistency-rejects : Pass is Pass (not (guarantees-satisfy? ((3, 2), (2, 2))))
+both-guarantees-reject : Pass is Pass (not (guarantees-satisfy? ((3, 1), (2, 2))))
 
 (empty-lookup-is-absent, unknown-identity-is-absent, identity-finds-value,
  first-identity-wins, empty-count, stored-count, exact-guarantees-satisfy,
  stronger-durability-satisfies, insufficient-durability-rejects,
- weaker-consistency-rejects)
+ weaker-consistency-rejects, both-guarantees-reject)

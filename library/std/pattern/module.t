@@ -60,11 +60,11 @@ find-source is fn (text : String, pattern : String) -> List Nat
   indexes : List Nat is Empty
   candidates fold indexes { found, index } find-step (text-characters, pattern-characters, found, index)
 
-### Count overlapping exact String occurrences at Character boundaries.
+### Count overlapping exact String occurrences at Character boundaries; reject an empty pattern.
 pub count is fn (text : String, pattern : String) -> Nat
   entry-count (find-source (text, pattern))
 
-### Return every overlapping exact-match Character index.
+### Return every overlapping exact-match Character index; reject an empty pattern.
 pub find-all is fn (text : String, pattern : String) -> List Nat
   find-source (text, pattern)
 
@@ -81,7 +81,7 @@ split-step is fn ((text : String, pattern-length : Nat, state : (List String, Na
     true then state
     false then (parts append (text select-index (start .. index)), index + pattern-length)
 
-### Split text at every nonoverlapping exact pattern occurrence.
+### Split text at every nonoverlapping exact pattern occurrence; reject an empty pattern.
 pub split is fn (text : String, pattern : String) -> List String
   indexes is find-source (text, pattern)
   pattern-length is entry-count (collect (characters pattern))
@@ -105,7 +105,7 @@ join-text is fn (parts : List String, separator : String) -> String
   final is parts fold ("", true) { state, part } join-step (separator, state, part)
   joined-text final
 
-### Replace every nonoverlapping exact String pattern from left to right.
+### Replace every nonoverlapping exact String pattern from left to right; reject an empty pattern.
 pub replace-all is fn (
   text : String,
   (pattern : String, replacement : String)
@@ -178,9 +178,9 @@ glob-source is fn (text : String, pattern : String) -> Boolean
 pub glob? is fn (text : String, pattern : String) -> Boolean
   glob-source (text, pattern)
 
-### Test whether any exact String pattern occurs.
 contains-any-step is fn ((found : Boolean, text : String, pattern : String)) -> Boolean
   found or (contains? (text, pattern))
 
+### Test whether any exact String pattern occurs.
 pub contains-any? is fn (text : String, patterns : List String) -> Boolean
   patterns fold false { found, pattern } contains-any-step (found, text, pattern)

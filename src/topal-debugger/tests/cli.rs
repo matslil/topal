@@ -129,25 +129,31 @@ fn declared_standard_library_file_executes_directly() {
         env!("CARGO_MANIFEST_DIR"),
         "/../../examples/data-transfer/rest-controller.t"
     );
-    let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
-        .args(["--library-root", root, "--script", "-", rest])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(b"use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n")
-        .unwrap();
-    let output = child.wait_with_output().unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
+    let advent_of_code = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/advent-of-code/2025/day10-part1.t"
     );
+    for source in [rest, advent_of_code] {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+            .args(["--library-root", root, "--script", "-", source])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n")
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(
+            output.status.success(),
+            "{source}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
 
 #[test]
@@ -169,7 +175,7 @@ fn step_enters_declared_library_while_next_stays_in_the_current_file() {
         .take()
         .unwrap()
         .write_all(
-            b"use language ( version is v0.1, features is ( debug ) )\nnext\nstep\nbacktrace\nbreak 18\nbreakpoints\ncontinue\nnext\nreverse-next\nfinish\nquit\n",
+            b"use language ( version is v0.1, features is ( debug ) )\nnext\nstep\nbacktrace\nbreak 10\nbreakpoints\ncontinue\nnext\nreverse-next\nfinish\nquit\n",
         )
         .unwrap();
     let output = child.wait_with_output().unwrap();
@@ -180,15 +186,13 @@ fn step_enters_declared_library_while_next_stays_in_the_current_file() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("examples/data-transfer/rest-controller.t:5:1"));
-    assert!(stdout.contains("library/std/module.t:12:1"));
+    assert!(stdout.contains("library/advent-of-code/module.t:10:17"));
     assert!(stdout.contains("#0 <dependency> at"));
-    assert!(stdout.contains("library/std/module.t:12:1"));
+    assert!(stdout.contains("library/advent-of-code/module.t:10:17"));
     assert!(stdout.contains("#1 <script> at"));
-    assert!(stdout.contains("breakpoint set at line 18 in"));
-    assert!(stdout.contains("library/std/module.t:18"));
-    assert!(stdout.contains("pub min is fn"));
-    assert!(stdout.contains("library/std/module.t:18:1"));
-    assert!(stdout.contains("pub max is fn"));
+    assert!(stdout.contains("breakpoint set at line 10 in"));
+    assert!(stdout.contains("library/advent-of-code/module.t:10"));
+    assert!(stdout.contains("pub revision is 1"));
     assert!(
         stdout
             .matches("examples/data-transfer/rest-controller.t:5:1")
@@ -3708,7 +3712,7 @@ fn help_prints_source_standard_library_and_builtin_documentation() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("Return the documented answer"));
     assert!(stdout.contains("Return the smaller value"));
-    assert!(stdout.contains("Construct the design-0 response shape"));
+    assert!(stdout.contains("Test whether an HTTP method has safe semantics"));
     assert!(stdout.contains("Arbitrary-precision signed integers"));
     assert!(stdout.contains("next: advance to the next location in the current source file"));
     assert!(stdout.contains("no visible bindings"));

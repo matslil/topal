@@ -3,7 +3,7 @@ use language (
   version is v0.1
 )
 
-### Revision of the exact finite geometry algorithm namespace.
+### Revision of the Advent of Code finite-geometry namespace.
 pub revision is 1
 
 point3-x is fn ((x : Int, y : Int, z : Int)) -> Int
@@ -160,7 +160,6 @@ nearest-source is fn (points : List (Int, Int, Int), connections : Nat) -> Int
 pub nearest-component-product is fn (points : List (Int, Int, Int), connections : Nat) -> Int
   nearest-source (points, connections)
 
-### Complete nearest-first 3D clustering and multiply the x coordinates of the final joining pair.
 connection-labels is fn ((labels : List Int, answer : Int)) -> List Int
   labels
 connection-answer is fn ((labels : List Int, answer : Int)) -> Int
@@ -184,10 +183,10 @@ final-connection-source is fn (points : List (Int, Int, Int)) -> Int
   final is (sort-pairs (point-pairs points)) fold (initial-labels points, 0) { state, pair } connection-step (points, state, pair)
   connection-answer final
 
+### Complete nearest-first 3D clustering and multiply the x coordinates of the final joining pair.
 pub final-connection-x-product is fn (points : List (Int, Int, Int)) -> Int
   final-connection-source points
 
-### Return the largest inclusive axis-aligned rectangle having two supplied 2D points as corners.
 point-x is fn ((x : Int, y : Int)) -> Int
   x
 point-y is fn ((x : Int, y : Int)) -> Int
@@ -210,10 +209,10 @@ largest-point-step is fn ((points : List (Int, Int), largest : Int, left : (Int,
 largest-point-source is fn (points : List (Int, Int)) -> Int
   points fold 0 { largest, left } largest-point-step (points, largest, left)
 
+### Return the largest inclusive axis-aligned rectangle having two supplied 2D points as corners.
 pub largest-point-rectangle is fn (points : List (Int, Int)) -> Int
   largest-point-source points
 
-### Return the largest such rectangle contained by the closed orthogonal polygon in vertex order.
 minimum-int is fn (left : Int, right : Int) -> Int
   left < right
     true then left
@@ -284,5 +283,6 @@ contained-point-step is fn ((points : List (Int, Int), largest : Int, left : (In
 largest-contained-source is fn (points : List (Int, Int)) -> Int
   points fold 0 { largest, left } contained-point-step (points, largest, left)
 
+### Return the largest inclusive rectangle contained by the closed orthogonal polygon in vertex order.
 pub largest-contained-rectangle is fn (vertices : List (Int, Int)) -> Int
   largest-contained-source vertices

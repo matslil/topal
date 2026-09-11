@@ -1,15 +1,15 @@
 use language (
   version is v0.1
 )
-use library std (
+use library advent-of-code (
   version is v0.1
 )
 
 Pass is Boolean constraint { value } value = true
-nearest-component-product is std geometry nearest-component-product
-final-connection-x-product is std geometry final-connection-x-product
-largest-point-rectangle is std geometry largest-point-rectangle
-largest-contained-rectangle is std geometry largest-contained-rectangle
+nearest-component-product is advent-of-code geometry nearest-component-product
+final-connection-x-product is advent-of-code geometry final-connection-x-product
+largest-point-rectangle is advent-of-code geometry largest-point-rectangle
+largest-contained-rectangle is advent-of-code geometry largest-contained-rectangle
 
 points3 : List (Int, Int, Int) is Entry (
   (0, 0, 0),

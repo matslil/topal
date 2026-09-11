@@ -12,6 +12,7 @@ digits is std parse decimal-digits
 take is std sequence take
 drop is std sequence drop
 range-values is std sequence values
+list-index-of is std sequence index-of
 
 required-index is fn (candidate : Optional Nat) -> Nat
   candidate
@@ -37,7 +38,7 @@ pick-step is fn (state : (Int, List Nat, Int), iteration : Int) -> (Int, List Na
   accumulated is accumulated-of state
   available is (entry-count values) - remaining + 1
   selected is (take (values, available)) fold 0 { maximum, value } larger (maximum, value)
-  index is required-index (values list-index-of selected)
+  index is required-index (list-index-of (values, selected))
   (remaining - 1, drop (values, index + 1), accumulated * 10 + selected)
 
 pick is fn (count : Nat, values : List Nat) -> Int

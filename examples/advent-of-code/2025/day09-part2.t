@@ -5,9 +5,12 @@ use language (
 use library std (
   version is v0.1
 )
+use library advent-of-code (
+  version is v0.1
+)
 
 parse is std parse integer-pairs
-largest-contained is std geometry largest-contained-rectangle
+largest-contained is advent-of-code geometry largest-contained-rectangle
 
 solve is fn (input : String) -> Int
   largest-contained (parse input)

@@ -5,9 +5,12 @@ use language (
 use library std (
   version is v0.1
 )
+use library advent-of-code (
+  version is v0.1
+)
 
 parse is std parse integer-triples
-final-product is std geometry final-connection-x-product
+final-product is advent-of-code geometry final-connection-x-product
 
 solve is fn (input : String) -> Int
   final-product (parse input)

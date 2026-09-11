@@ -32,7 +32,7 @@ fn run(arguments: impl Iterator<Item = String>) -> Result<(), String> {
     let mut pages = Vec::new();
     let mut names = BTreeSet::new();
     for path in files {
-        let page = page_name(&path);
+        let page = page_name(&path, &options.inputs);
         if !names.insert(page.clone()) {
             return Err(format!("multiple inputs would produce `{page}.rst`"));
         }
@@ -143,15 +143,8 @@ fn visit_directory(
     Ok(())
 }
 
-fn page_name(path: &Path) -> String {
-    let canonical = if path.file_name().is_some_and(|name| name == "module.t") {
-        path.parent().and_then(Path::file_name)
-    } else {
-        path.file_stem()
-    };
-    canonical
-        .and_then(std::ffi::OsStr::to_str)
-        .unwrap_or("source")
+fn sanitize_page_component(component: &str) -> String {
+    component
         .chars()
         .map(|character| {
             if character.is_alphanumeric() || character == '-' {
@@ -163,11 +156,56 @@ fn page_name(path: &Path) -> String {
         .collect()
 }
 
+fn page_name(path: &Path, inputs: &[PathBuf]) -> String {
+    let directory_root = inputs
+        .iter()
+        .filter(|input| input.is_dir() && path.starts_with(input))
+        .max_by_key(|input| input.components().count());
+    if let Some(root) = directory_root {
+        let relative = path.strip_prefix(root).expect("selected input is a prefix");
+        let page = if path.file_name().is_some_and(|name| name == "module.t") {
+            relative
+                .parent()
+                .unwrap_or_else(|| Path::new(""))
+                .to_path_buf()
+        } else {
+            relative.with_extension("")
+        };
+        let components = page
+            .components()
+            .filter_map(|component| component.as_os_str().to_str())
+            .map(sanitize_page_component)
+            .collect::<Vec<_>>();
+        if !components.is_empty() {
+            return components.join("/");
+        }
+        return sanitize_page_component(
+            root.file_name()
+                .and_then(std::ffi::OsStr::to_str)
+                .unwrap_or("source"),
+        );
+    }
+
+    let canonical = if path.file_name().is_some_and(|name| name == "module.t") {
+        path.parent().and_then(Path::file_name)
+    } else {
+        path.file_stem()
+    };
+    sanitize_page_component(
+        canonical
+            .and_then(std::ffi::OsStr::to_str)
+            .unwrap_or("source"),
+    )
+}
+
 fn write_page(
     path: &Path,
     title: &str,
     declarations: &[DocumentedDeclaration],
 ) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
     let mut output = format!("{title}\n{}\n\n", "=".repeat(title.chars().count()));
     for declaration in declarations {
         let _ = writeln!(

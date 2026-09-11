@@ -20,12 +20,15 @@ values : List Int is Entry (4, Entry (1, Entry (3, Entry (1, Entry (2, Empty))))
 ascending : List Int is Entry (1, Entry (1, Entry (2, Entry (3, Entry (4, Empty)))))
 descending : List Int is Entry (4, Entry (3, Entry (2, Entry (1, Entry (1, Empty)))))
 none : List Int is Empty
+no-rationals : List Rational is Empty
 rational-values : List Rational is Entry (Rational (3, 2), Entry (Rational (1, 2), Entry (Rational (1, 1), Empty)))
 rational-ascending : List Rational is Entry (Rational (1, 2), Entry (Rational (1, 1), Entry (Rational (3, 2), Empty)))
+rational-descending : List Rational is Entry (Rational (3, 2), Entry (Rational (1, 1), Entry (Rational (1, 2), Empty)))
 merge-left : List Int is Entry (1, Entry (3, Entry (5, Empty)))
 merge-right : List Int is Entry (2, Entry (4, Entry (6, Empty)))
 merged : List Int is Entry (1, Entry (2, Entry (3, Entry (4, Entry (5, Entry (6, Empty))))))
 smallest-three : List Int is Entry (1, Entry (1, Entry (2, Empty)))
+rational-smallest-two : List Rational is Entry (Rational (1, 2), Entry (Rational (1, 1), Empty))
 
 index-is is fn (candidate : Optional Nat, expected : Int) -> Boolean
   candidate
@@ -47,26 +50,40 @@ value-absent? is fn (candidate : Optional Int) -> Boolean
 ascending-order : Pass is Pass ((sort values) = ascending)
 descending-order : Pass is Pass ((sort-descending values) = descending)
 empty-sort : Pass is Pass ((sort none) = none)
+empty-descending-sort : Pass is Pass ((sort-descending none) = none)
+lower-before-all : Pass is Pass ((lower-bound (ascending, 0)) = 0)
 lower-before-equals : Pass is Pass ((lower-bound (ascending, 1)) = 0)
+lower-after-all : Pass is Pass ((lower-bound (ascending, 9)) = 5)
 upper-after-equals : Pass is Pass ((upper-bound (ascending, 1)) = 2)
+upper-before-all : Pass is Pass ((upper-bound (ascending, 0)) = 0)
+upper-after-all : Pass is Pass ((upper-bound (ascending, 9)) = 5)
 middle-absence : Pass is Pass (empty? (equal-range (ascending, 5)))
 ones is equal-range (ascending, 1)
 ones-lower is range-lower ones
 ones-upper is range-upper ones
 equal-subrange : Pass is Pass ((ones-lower = 0) and (ones-upper = 2))
 rational-sort : Pass is Pass ((sort rational-values) = rational-ascending)
+rational-descending-sort : Pass is Pass ((sort-descending rational-values) = rational-descending)
 binary-found : Pass is Pass (index-is (binary-search (ascending, 3), 3))
+binary-first : Pass is Pass (index-is (binary-search (ascending, 1), 1))
 binary-absent : Pass is Pass (index-absent? (binary-search (ascending, 9)))
 binary-last : Pass is Pass (index-is (binary-search (ascending, 4), 4))
 binary-empty : Pass is Pass (index-absent? (binary-search (none, 1)))
 binary-rational : Pass is Pass (index-is (binary-search (rational-ascending, Rational (1, 1)), 1))
 stable-merge : Pass is Pass ((merge (merge-left, merge-right)) = merged)
+merge-empty-left : Pass is Pass ((merge (none, values)) = ascending)
+rational-merge : Pass is Pass ((merge (rational-ascending, no-rationals)) = rational-ascending)
 partial-selection : Pass is Pass ((smallest (values, 3)) = smallest-three)
+clamped-selection : Pass is Pass ((smallest (values, 20)) = ascending)
+rational-selection : Pass is Pass ((smallest (rational-values, 2)) = rational-smallest-two)
 nth-selection : Pass is Pass (value-is (nth (values, 2), 2))
 nth-absence : Pass is Pass (value-absent? (nth (values, 20)))
+rational-nth : Pass is Pass ((nth (rational-values, 1)) = (Some (Rational (1, 1))))
 
-(ascending-order, descending-order, empty-sort, lower-before-equals,
- upper-after-equals, middle-absence, equal-subrange, rational-sort,
- binary-found, binary-absent, binary-last, binary-empty, binary-rational,
- stable-merge, partial-selection,
- nth-selection, nth-absence)
+(ascending-order, descending-order, empty-sort, empty-descending-sort,
+ lower-before-all, lower-before-equals, lower-after-all, upper-after-equals,
+ upper-before-all, upper-after-all, middle-absence, equal-subrange,
+ rational-sort, rational-descending-sort, binary-found, binary-first,
+ binary-absent, binary-last, binary-empty, binary-rational, stable-merge,
+ merge-empty-left, rational-merge, partial-selection, clamped-selection,
+ rational-selection, nth-selection, nth-absence, rational-nth)

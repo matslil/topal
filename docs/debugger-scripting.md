@@ -74,7 +74,7 @@ numbered lines in different modules remain distinct.
 `help COMMAND` explains debugger commands. `help NAME` searches the debuggee,
 the complete configured standard-library source tree, and qualified built-in
 declarations. Qualified library names follow their source namespace, for
-example `help std web http response`.
+example `help std web http safe-method?`.
 
 A diagnostic raised while advancing the debuggee does not close the command
 session. The user may inspect bindings and history or move backward from the

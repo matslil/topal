@@ -14,7 +14,9 @@ candidate is std network addresses candidate
 all-zero-ipv4 : Pass is Pass (ipv4? (0, 0, 0, 0))
 all-maximum-ipv4 : Pass is Pass (ipv4? (255, 255, 255, 255))
 first-octet-overflow : Pass is Pass (not (ipv4? (256, 0, 0, 0)))
-middle-octet-overflow : Pass is Pass (not (ipv4? (192, 0, 256, 1)))
+second-octet-overflow : Pass is Pass (not (ipv4? (192, 256, 0, 1)))
+third-octet-overflow : Pass is Pass (not (ipv4? (192, 0, 256, 1)))
+fourth-octet-overflow : Pass is Pass (not (ipv4? (192, 0, 2, 256)))
 ipv4-zero-prefix : Pass is Pass (ipv4-prefix? 0)
 ipv4-full-prefix : Pass is Pass (ipv4-prefix? 32)
 ipv4-prefix-overflow : Pass is Pass (not (ipv4-prefix? 33))
@@ -26,7 +28,8 @@ candidate-preserves-service : Pass is Pass ((candidate ("dns", "udp", "192.0.2.1
 same-service-allows-ipv6 : Pass is Pass ((candidate ("dns", "udp", "[2001:db8::1]:53")) = ("dns", "udp", "[2001:db8::1]:53"))
 
 (all-zero-ipv4, all-maximum-ipv4, first-octet-overflow,
- middle-octet-overflow, ipv4-zero-prefix, ipv4-full-prefix,
+ second-octet-overflow, third-octet-overflow, fourth-octet-overflow,
+ ipv4-zero-prefix, ipv4-full-prefix,
  ipv4-prefix-overflow, ipv6-zero-prefix, ipv6-full-prefix,
  ipv6-prefix-overflow, families-retain-distinct-bounds,
  candidate-preserves-service, same-service-allows-ipv6)
