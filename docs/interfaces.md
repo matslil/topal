@@ -27,9 +27,11 @@ Lexer is Interface
 ```
 
 The declarations specify interaction shapes, not implementation bodies,
-locations, effects, scheduling, or representation. A function declaration
-specifies its classified inputs and result. A generator additionally specifies
-its yield, resume, and final return directions.
+locations, schedules, or representations. A function declaration specifies its
+classified inputs and result. In revision `v0.2` it may additionally specify
+the public `requires`, `effects`, `guarantees`, named-result, and `ensures`
+contract that every implementation must meet. A generator additionally
+specifies its yield, resume, and final return directions.
 
 ## Context implementations
 
@@ -313,3 +315,10 @@ Capabilities remain appropriate when generic code requires those laws.
 Interfaces remain appropriate when code needs one implementation of a related
 call surface which may be local, packaged, wrapped, or reached through message
 passing.
+
+Revision `v0.2` interface operations use the same pre-arrow and post-arrow
+clause placement as ordinary functions. Their published contract is an
+obligation on every implementation. Implementation-specific effect rows,
+resource bounds, progress, specialization, assumptions, and provider identity
+remain attached to concrete implementation evidence, so forgetting them keeps
+the interface meaning but may make a hard implementation selection unavailable.

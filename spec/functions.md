@@ -97,6 +97,10 @@ shall fail rather than erase or widen an unsatisfied bound. Static function
 views and tool traces shall retain the declared bound without performing its
 effects.
 
+This rule applies only to revision `v0.1`. Revision `v0.2` uses
+`TOPAL-FUNCTION-CLAUSE-PLACEMENT-001`; a tool SHALL NOT reinterpret the old
+post-result colon as a `v0.2` clause.
+
 ### TOPAL-FUNCTION-PACKAGED-OPERAND-001 — Packaged operand patterns
 
 Either syntactic operand may be a parenthesized field package whose declarations

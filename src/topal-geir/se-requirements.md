@@ -17,3 +17,9 @@ resource limits, validated as a complete module, and byte-for-byte re-encoded
 before exposure. Anonymous structural identities shall use SHA-256 over their
 canonical definition as required by `TOPAL-GIR-ID-001`. Validation shall
 rederive SSA edge, return, application, product, projection, and effect types.
+
+For `v0.2` artifacts the model shall additionally retain contract clauses,
+evidence kind, classified subject and static parameters, external-assumption
+status, producer and assumption identities, and optional architecture-model
+identity. Implementation-plan and specialization evidence shall remain
+compiler-only and shall not acquire an interpreter operation.

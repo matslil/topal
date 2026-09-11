@@ -129,3 +129,92 @@ transports. A binding shall preserve the service protocol or reject unmet
 requirements, and shall expose transport-specific correctness properties such
 as addressing, scope, transaction boundaries, retry safety, security,
 completion ordering, and resource constraints.
+
+## TOPAL-REQ-CONTRACT-001 — Relational contracts
+
+Revisioned function and state contracts shall express pure total preconditions,
+postconditions, effect bounds, implementation requirements, and invariants with
+unambiguous scope. Calls and public transitions shall prove their obligations;
+protected safety obligations shall not be discharged by unverified trust.
+
+## TOPAL-REQ-EVIDENCE-001 — Typed evidence provenance
+
+Semantic and implementation evidence shall retain property, subject, static
+parameters, status, producer, assumptions, language revision, and optional
+architecture-model identity. Ordinary or generated source shall not mint proof
+status, and implementation evidence shall not change semantic results.
+
+## TOPAL-REQ-RESOURCE-BOUND-001 — Composable portable bounds
+
+The language shall represent and conservatively compose portable work, span,
+allocation, peak-live, retained, stack, queue, transfer, code-size, and progress
+requirements. Unknown evidence shall fail a hard requirement, while an explicit
+preference may use a semantically correct fallback.
+
+## TOPAL-REQ-EXCLUSIVE-001 — Safe reuse and scoped allocation
+
+The checker shall infer invocation-local exclusivity and enforce explicit
+consumption without exposing mutable references. Named allocation regions shall
+prevent dependent values from escaping except through checked move, promotion,
+copy, or independence evidence and shall clean up deterministically.
+
+## TOPAL-REQ-CONC-SYNTH-001 — Synthesized concurrency mechanisms
+
+The language shall expose bounded interaction policies and immutable published
+snapshots while keeping atomics, locks, fences, memory orders, and reclamation
+mechanisms out of portable source. Only a verified selected implementation may
+publish nonblocking progress evidence.
+
+## TOPAL-REQ-TRANSACTION-001 — Structured atomic state
+
+Transaction domains shall isolate candidate state, publish one complete commit
+or none, expose conflict and abort outcomes, define cancellation winners and
+same-domain nesting, and reject un-staged observable effects. Cross-domain
+atomicity and durability shall require exact checked provider evidence.
+
+## TOPAL-REQ-TIME-001 — Explicit temporal observations
+
+Clock identity, instants, absolute deadlines, periodic release, lateness, and
+timeout races shall be explicit semantic values and trace observations.
+Relative timeouts shall create and propagate one deadline. Physical timing
+claims shall fail closed without approved implementation evidence.
+
+## TOPAL-REQ-STATIC-FLOW-001 — Checked static-rate flow
+
+Closed static-rate flow graphs shall have checked balance and causality,
+deterministically derived schedules and finite buffers, and identical logical
+traces under interpreted and optimized execution.
+
+## TOPAL-REQ-EFFECT-HANDLER-001 — Typed lexical handling
+
+Effect protocols shall resolve handlers lexically, require complete typed
+implementations, subtract handled effects, and use affine one-shot resumptions
+with deterministic cleanup. Multiple resumption shall require verified safety
+evidence.
+
+## TOPAL-REQ-SPECIALIZE-001 — Verifiable specialization
+
+A hard specialization requirement shall be satisfied only by compiler-owned or
+checked-artifact code-shape evidence. Implementation plans shall be typed,
+reproducible, read-only outside the compiler, and unable to change program
+meaning.
+
+## TOPAL-REQ-LAYOUT-COMPOSE-001 — Compositional representation
+
+Semantic shapes and multidimensional, blocked, component-organized, sparse,
+view, and conversion layouts shall have checked coverage, arithmetic,
+lifetimes, access, and canonicalization. Foreign layout descriptions shall
+receive no unchecked ABI or address authority.
+
+## TOPAL-REQ-INFOFLOW-001 — Confidentiality and integrity flow
+
+Information policies shall verify their label lattice, propagate explicit and
+implicit control flow through values, effects, and messages, and permit
+declassification or endorsement only with exact unforgeable scoped authority.
+
+## TOPAL-REQ-ARCH-EVIDENCE-001 — Opaque architecture-evidence seam
+
+Hard target-dependent requirements shall consume typed provider evidence
+without exposing target facts to ordinary semantic computation. Architecture,
+scheduler, device, fault-domain, and foreign-ABI schemas remain separately
+deferred and shall not be inferred from this seam.

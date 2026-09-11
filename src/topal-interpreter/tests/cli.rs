@@ -8,8 +8,15 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 fn run(arguments: &[&str], input: &str) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_topal"))
-        .args(arguments)
+    let carries_v01_context = arguments.contains(&"--interactive")
+        && !arguments.contains(&"--language-version")
+        && input.contains("use language (\n  version is v0.1\n)");
+    let mut command = Command::new(env!("CARGO_BIN_EXE_topal"));
+    command.args(arguments);
+    if carries_v01_context {
+        command.args(["--language-version", "v0.1"]);
+    }
+    let mut child = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -270,7 +277,7 @@ fn version_output_is_reproducible() {
     assert!(
         String::from_utf8(first.stdout)
             .unwrap()
-            .contains("highest language v0.1")
+            .contains("highest language v0.2")
     );
 }
 
@@ -472,7 +479,7 @@ fn version_exposes_the_language_context_unicode_version() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8(output.stdout).unwrap(),
-        "topal 0.1.0 (highest language v0.1; Unicode 17.0.0)\n"
+        "topal 0.1.0 (highest language v0.2; Unicode 17.0.0)\n"
     );
 }
 

@@ -43,6 +43,11 @@ An interface shall retain its nominal declaration identity and a uniquely named
 set of function or generator operation shapes. A function shape contains its
 classified inputs and result; a generator shape additionally contains its
 yielded and resumed classifiers. Shapes do not select implementation locations.
+In `v0.2`, a function shape shall also retain its parameter classifiers and the
+complete clauses defined by `TOPAL-FUNCTION-CLAUSE-PLACEMENT-001`. Every
+implementation shall prove those clauses. A tool subset may require a
+textually identical contract when it cannot prove implication, but shall not
+accept an implementation with a weaker contract.
 
 ### TOPAL-INTERFACE-IMPLEMENTATION-001 — Intentional complete implementation
 

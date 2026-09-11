@@ -880,3 +880,17 @@ package.
 
 Those choices should be made together with the final grammar. They must not
 change the classifications, evidence, coherence, or conversion rules above.
+
+## Revision `v0.2` relational contracts
+
+Revision `v0.2` adopts the function and invariant model in
+[contracts and evidence](contracts-and-evidence.md). `requires`, `effects`, and
+`guarantees` occur between the complete parameter list and the function arrow;
+an optional named result and `ensures` occur after the arrow. This placement is
+used recursively for higher-order function classifiers. An invariant belongs
+to the nominal type or task state it governs, not to a return type.
+
+Contract predicates are pure and total. Calls prove preconditions, every
+return proves its postcondition, and public transitions preserve their owning
+invariant. Only verified evidence may discharge protected safety obligations.
+Generated and translated source receives no additional authority.

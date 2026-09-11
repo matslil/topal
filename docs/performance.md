@@ -35,9 +35,12 @@ example, publish:
 ```topal
 sort is fn (
   values : C : Sortable
-) -> C
-  : OExec ( (values size) ^ 2 )
+)
+  guarantees (
+    OExec ( (values size) ^ 2 )
     and OAlloc ( values size )
+  )
+-> C
 ```
 
 This says that execution work grows no faster than the square of the input
@@ -50,9 +53,12 @@ Several arguments may contribute independent measures:
 combine is fn (
   left : ( L : Counted ),
   right : ( R : Counted )
-) -> Combined
-  : OExec ( (left size) * (right size) )
+)
+  guarantees (
+    OExec ( (left size) * (right size) )
     and OAlloc ( (left size) + (right size) )
+  )
+-> Combined
 ```
 
 The measure operations available to an expression must be static, pure, total,
@@ -233,7 +239,46 @@ unproved. An opaque or foreign implementation must publish checked, trusted, or
 conservatively enforced evidence before a caller may rely on its bound.
 
 Execution work is intentionally abstract. Mapping it to elapsed-time or
-real-time deadlines is target-specific and requires platform evidence outside
-this initial model. Total allocation is likewise distinct from peak live
-memory; a future resource dimension may describe space complexity without
-changing `OAlloc`.
+real-time deadlines is target-specific and requires platform evidence. In
+`v0.1`, total allocation is likewise distinct from peak live memory. Revision
+`v0.2` adds the portable space dimensions below without changing `OAlloc`.
+
+## Revision `v0.2` resource bounds
+
+`v0.2` supplies `ResourceBound ( dimension is D, scope is S, bound is B )`.
+Portable dimensions are `Work`, `Span`, `AllocationTotal`, `PeakLive`,
+`Retained`, `Stack`, `QueueEntries`, `TransferCount`, and `CodeSize`. `OExec`
+and `OAlloc` remain asymptotic shorthands for work and total allocation;
+`NoAlloc` remains exact.
+
+Sequential work, total allocation, and dependent span add. Alternatives take a
+conservative maximum. Independent span takes a maximum. Peak and retained
+storage use lifetime overlap rather than total allocation. Queue entries and
+transfers compose for the named endpoint or boundary. Stack and code size are
+facts about a concrete lowering. An unknown bound is distinct from infinity
+and never satisfies a hard requirement.
+
+`ProgressClass` is the closed order `MayBlock`, `ObstructionFree`, `LockFree`,
+and `WaitFree ( maximum-own-steps is B )`. It classifies a complete selected
+interaction implementation. A programmer may require or prefer a class but
+cannot create its evidence. Progress is conditional on recorded scheduling and
+hardware-completion assumptions and does not imply an elapsed-time bound.
+
+All function-level requirements use the pre-arrow `guarantees` clause shown at
+the start of this document. `Prefer` remains a soft lexicographic choice. A
+diagnostic for a failed hard bound names the dimension, scope, derived or
+unknown value, assumptions, and candidate implementations.
+
+## Specialization and implementation plans
+
+`Specialized ( static-inputs is S )` requires that the final compiled
+implementation substitute `S` and contain no residual tag, dictionary, closure,
+or dispatch attributable solely to those inputs. It does not require unrelated
+dynamic work to be inlined. Only a compiler or checked precompiled artifact can
+establish this code-shape evidence.
+
+The compiler owns a typed implementation-plan IR containing fusion,
+materialization, iteration, tiling, buffer reuse, channel choice, layout,
+conversion, transfer, and dependency decisions with their evidence. Programs
+cannot read or edit it. Tools may request a stable diagnostic projection, but
+editing that projection cannot feed a plan or proof back into compilation.

@@ -17,11 +17,11 @@ domains. Test and implementation columns will be added with those artifacts.
 | Goal | Requirements |
 | --- | --- |
 | `TOPAL-GOAL-COMPOSE-001` | `TOPAL-REQ-MODEL-001`, `TOPAL-REQ-GENERIC-001`, `TOPAL-REQ-TRANSFER-001`, `TOPAL-REQ-STORE-001` |
-| `TOPAL-GOAL-SAFE-001` | `TOPAL-REQ-SAFE-001`, `TOPAL-REQ-TOTAL-001`, `TOPAL-REQ-CONC-001`, `TOPAL-REQ-RESOURCE-001`, `TOPAL-REQ-DATA-VIEW-001`, `TOPAL-REQ-TRANSPORT-BINDING-001` |
-| `TOPAL-GOAL-DETERMINISTIC-001` | `TOPAL-REQ-DETERMINISM-001`, `TOPAL-REQ-INTEROP-001` |
-| `TOPAL-GOAL-EXPLICIT-001` | `TOPAL-REQ-EFFECT-001`, `TOPAL-REQ-RESOURCE-001`, `TOPAL-REQ-SERIAL-001`, `TOPAL-REQ-TRANSFER-001`, `TOPAL-REQ-STORE-001`, `TOPAL-REQ-TRANSPORT-BINDING-001` |
-| `TOPAL-GOAL-ZEROCOST-001` | `TOPAL-REQ-DETERMINISM-001`, `TOPAL-REQ-RESOURCE-001`, `TOPAL-REQ-DATA-VIEW-001` |
-| `TOPAL-GOAL-PRECISE-001` | `TOPAL-REQ-GENERIC-001`, `TOPAL-REQ-SERIAL-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001` |
+| `TOPAL-GOAL-SAFE-001` | `TOPAL-REQ-SAFE-001`, `TOPAL-REQ-TOTAL-001`, `TOPAL-REQ-CONC-001`, `TOPAL-REQ-RESOURCE-001`, `TOPAL-REQ-DATA-VIEW-001`, `TOPAL-REQ-TRANSPORT-BINDING-001`, `TOPAL-REQ-CONTRACT-001`, `TOPAL-REQ-EVIDENCE-001`, `TOPAL-REQ-EXCLUSIVE-001`, `TOPAL-REQ-CONC-SYNTH-001`, `TOPAL-REQ-TRANSACTION-001`, `TOPAL-REQ-EFFECT-HANDLER-001`, `TOPAL-REQ-INFOFLOW-001` |
+| `TOPAL-GOAL-DETERMINISTIC-001` | `TOPAL-REQ-DETERMINISM-001`, `TOPAL-REQ-INTEROP-001`, `TOPAL-REQ-TIME-001`, `TOPAL-REQ-STATIC-FLOW-001` |
+| `TOPAL-GOAL-EXPLICIT-001` | `TOPAL-REQ-EFFECT-001`, `TOPAL-REQ-RESOURCE-001`, `TOPAL-REQ-SERIAL-001`, `TOPAL-REQ-TRANSFER-001`, `TOPAL-REQ-STORE-001`, `TOPAL-REQ-TRANSPORT-BINDING-001`, `TOPAL-REQ-CONTRACT-001`, `TOPAL-REQ-EVIDENCE-001`, `TOPAL-REQ-TRANSACTION-001`, `TOPAL-REQ-TIME-001`, `TOPAL-REQ-INFOFLOW-001`, `TOPAL-REQ-ARCH-EVIDENCE-001` |
+| `TOPAL-GOAL-ZEROCOST-001` | `TOPAL-REQ-DETERMINISM-001`, `TOPAL-REQ-RESOURCE-001`, `TOPAL-REQ-DATA-VIEW-001`, `TOPAL-REQ-RESOURCE-BOUND-001`, `TOPAL-REQ-EXCLUSIVE-001`, `TOPAL-REQ-CONC-SYNTH-001`, `TOPAL-REQ-STATIC-FLOW-001`, `TOPAL-REQ-SPECIALIZE-001`, `TOPAL-REQ-LAYOUT-COMPOSE-001` |
+| `TOPAL-GOAL-PRECISE-001` | `TOPAL-REQ-GENERIC-001`, `TOPAL-REQ-SERIAL-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001`, `TOPAL-REQ-EVIDENCE-001`, `TOPAL-REQ-RESOURCE-BOUND-001`, `TOPAL-REQ-LAYOUT-COMPOSE-001` |
 | `TOPAL-GOAL-EVOLVE-001` | `TOPAL-REQ-TRACE-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-BEST-PRACTICE-001` |
 | `TOPAL-GOAL-TOOLCHAIN-001` | `TOPAL-REQ-SHARED-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001`, `TOPAL-REQ-BEST-PRACTICE-001`, `TOPAL-REQ-LINT-001` |
 
@@ -46,6 +46,19 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-REQ-DATA-VIEW-001` | `TOPAL-DATA-REGION-001`, `TOPAL-DATA-SCATTER-001`, `TOPAL-DATA-VIEW-001`, `TOPAL-DATA-VIEW-INVALIDATE-001`, `TOPAL-DATA-OFFLOAD-001` |
 | `TOPAL-REQ-STORE-001` | `TOPAL-STORE-FOUNDATION-001`, `TOPAL-STORE-TRANSACTION-001`, `TOPAL-STORE-FILE-001`, `TOPAL-STORE-DATABASE-001` |
 | `TOPAL-REQ-TRANSPORT-BINDING-001` | `TOPAL-NETWORK-IP-001`, `TOPAL-NETWORK-TRANSPORT-001`, `TOPAL-DEVICE-CONTROLLER-001`, `TOPAL-DEVICE-I2C-001` |
+| `TOPAL-REQ-CONTRACT-001` | `TOPAL-FUNCTION-CLAUSE-PLACEMENT-001`, `TOPAL-CONTRACT-REQUIRES-001`, `TOPAL-CONTRACT-ENSURES-001`, `TOPAL-CONTRACT-INVARIANT-001` |
+| `TOPAL-REQ-EVIDENCE-001` | `TOPAL-EVIDENCE-KIND-001` through `TOPAL-EVIDENCE-ASSUMPTION-001`, `TOPAL-IMPL-EVIDENCE-001`, `TOPAL-GIR-EVIDENCE-001` |
+| `TOPAL-REQ-RESOURCE-BOUND-001` | `TOPAL-PERF-DIMENSION-001` through `TOPAL-PERF-PROGRESS-001` |
+| `TOPAL-REQ-EXCLUSIVE-001` | `TOPAL-VALUE-EXCLUSIVE-001`, `TOPAL-VALUE-CONSUMES-001`, `TOPAL-RESOURCE-REGION-001`, `TOPAL-RESOURCE-ESCAPE-001` |
+| `TOPAL-REQ-CONC-SYNTH-001` | `TOPAL-CONC-TOPOLOGY-001` through `TOPAL-CONC-PROTECTED-001` |
+| `TOPAL-REQ-TRANSACTION-001` | `TOPAL-TXN-DOMAIN-001` through `TOPAL-TXN-COMPOSE-001` |
+| `TOPAL-REQ-TIME-001` | `TOPAL-TIME-CLOCK-001` through `TOPAL-TIME-TRACE-001` |
+| `TOPAL-REQ-STATIC-FLOW-001` | `TOPAL-FLOW-RATE-001` through `TOPAL-FLOW-SCHEDULE-001` |
+| `TOPAL-REQ-EFFECT-HANDLER-001` | `TOPAL-EFFECT-HANDLE-001` through `TOPAL-EFFECT-MULTISHOT-001` |
+| `TOPAL-REQ-SPECIALIZE-001` | `TOPAL-FUNCTION-SPECIALIZED-001`, `TOPAL-IMPL-PLAN-001`, `TOPAL-IMPL-REPRODUCIBLE-001`, `TOPAL-IMPL-SELECTION-001`, `TOPAL-IMPL-UNAVAILABLE-001` |
+| `TOPAL-REQ-LAYOUT-COMPOSE-001` | `TOPAL-LAYOUT-SHAPE-001` through `TOPAL-LAYOUT-VIEW-001`, `TOPAL-LAYOUT-SPARSE-001` |
+| `TOPAL-REQ-INFOFLOW-001` | `TOPAL-INFO-LATTICE-001` through `TOPAL-INFO-ENDORSE-001` |
+| `TOPAL-REQ-ARCH-EVIDENCE-001` | `TOPAL-IMPL-EVIDENCE-001`, `TOPAL-EVIDENCE-BOUNDARY-001`, `TOPAL-GIR-EVIDENCE-001` |
 
 ## Maintenance rules
 
@@ -57,6 +70,25 @@ domains. Test and implementation columns will be added with those artifacts.
 - A functional test without a specification-rule reference is incomplete.
 
 ## Implementation coverage
+
+The rows below record implemented foundations. Their remaining-closure column
+is normative status information; none of these domains is terminal while its
+coverage-ledger row remains `planned`.
+
+| Assurance slice | Specification rules | Functional evidence | Implementation | Remaining closure |
+| --- | --- | --- | --- | --- |
+| function contracts and evidence authority | `TOPAL-SYN-FUNCTION-V02-001`, `TOPAL-EFFECT-CLAUSE-V02-001`, `TOPAL-FUNCTION-CLAUSE-PLACEMENT-001`, `TOPAL-CONTRACT-REQUIRES-001`, `TOPAL-CONTRACT-ENSURES-001`, `TOPAL-CONTRACT-INVARIANT-001`, `TOPAL-EVIDENCE-KIND-001`, `TOPAL-EVIDENCE-STATUS-001`, `TOPAL-EVIDENCE-NAME-001`, `TOPAL-EVIDENCE-PRODUCER-001`, `TOPAL-EVIDENCE-BOUNDARY-001`, `TOPAL-EVIDENCE-ASSUMPTION-001`, `TOPAL-IMPL-EVIDENCE-001`, `TOPAL-IMPL-SELECTION-001`, `TOPAL-IMPL-UNAVAILABLE-001` | v0.2 ordinary/interface parser tests; interpreter pre/postcondition, name-authority, and hard/preferred guarantee tests; evidence-policy tests; GEIR revision-2 tests | `topal-syntax::FunctionClauses`; `topal-language` contract admission; `topal-semantics::assurance`; `topal-geir` revision 2 | static proof/erasure, invariant syntax/preservation, nested function-type clauses, compiled proof consumption |
+| portable resources, exclusivity, and regions | `TOPAL-PERF-DIMENSION-001`, `TOPAL-PERF-COMPOSE-001`, `TOPAL-PERF-PREFER-001`, `TOPAL-PERF-PROGRESS-001`, `TOPAL-VALUE-EXCLUSIVE-001`, `TOPAL-VALUE-CONSUMES-001`, `TOPAL-RESOURCE-REGION-001`, `TOPAL-RESOURCE-ESCAPE-001` | dimension-composition, progress-order, exclusivity, consumption, and region-escape tests; parameter-classifier parser and interpreter rejection tests | `topal-semantics::assurance`; v0.2 shared syntax tree | compiler inference, source region operations, concrete selector integration, successful interpreter consumption path |
+| synthesized interactions and transactions | `TOPAL-CONC-TOPOLOGY-001`, `TOPAL-CONC-IMPL-001`, `TOPAL-CONC-SNAPSHOT-001`, `TOPAL-CONC-PROTECTED-001`, `TOPAL-TXN-DOMAIN-001`, `TOPAL-TXN-COMMIT-001`, `TOPAL-TXN-CONFLICT-001`, `TOPAL-TXN-CANCEL-001`, `TOPAL-TXN-COMPOSE-001` | topology/mechanism, snapshot retention, commit/conflict, cancellation, and composition tests | `topal-semantics::portable_runtime` | Topal source operations and effects, debugger traces, certified generated mechanisms |
+| time and static-rate flow | `TOPAL-TIME-CLOCK-001`, `TOPAL-TIME-DEADLINE-001`, `TOPAL-TIME-PERIODIC-001`, `TOPAL-TIME-TRACE-001`, `TOPAL-FLOW-RATE-001`, `TOPAL-FLOW-BALANCE-001`, `TOPAL-FLOW-CAUSAL-001`, `TOPAL-FLOW-SCHEDULE-001` | monotonic-clock, deadline, periodic-lateness, balance, cycle, schedule, and finite-buffer tests | `topal-semantics::portable_runtime` | Topal source operations, semantic trace integration, mode changes, compiled differential execution |
+| effect handlers and implementation plans | `TOPAL-EFFECT-HANDLE-001`, `TOPAL-EFFECT-RESUME-001`, `TOPAL-EFFECT-CLEANUP-001`, `TOPAL-EFFECT-MULTISHOT-001`, `TOPAL-FUNCTION-SPECIALIZED-001`, `TOPAL-IMPL-PLAN-001`, `TOPAL-IMPL-REPRODUCIBLE-001` | handler-completeness, affine resumption, multi-shot rejection, typed-decision, compiler-authority, and reproducible-plan tests | `topal-semantics::portable_runtime`; `topal-semantics::assurance` | handler grammar/execution and cleanup; compiler lowerings and emitted-code evidence |
+| layouts and information flow | `TOPAL-LAYOUT-SHAPE-001`, `TOPAL-LAYOUT-BLOCK-001`, `TOPAL-LAYOUT-COMPONENT-001`, `TOPAL-LAYOUT-SPARSE-001`, `TOPAL-LAYOUT-VIEW-001`, `TOPAL-INFO-LATTICE-001`, `TOPAL-INFO-IMPLICIT-001`, `TOPAL-INFO-DECLASSIFY-001`, `TOPAL-INFO-ENDORSE-001` | multidimensional address/size, stride, sparse canonicalization, zero-copy, lattice, program-counter join, and scoped-authority tests | `topal-semantics::layout_and_information` | complete component paths, source checking, label propagation through effects/messages, backend representation proof |
+
+| Tool requirement | Specification rules | Functional evidence | Implementation |
+| --- | --- | --- | --- |
+| `TOPAL-INTP-ASSURANCE-001` | `TOPAL-FUNCTION-CLAUSE-PLACEMENT-001`, `TOPAL-CONTRACT-REQUIRES-001`, `TOPAL-CONTRACT-ENSURES-001`, `TOPAL-IMPL-SELECTION-001`, `TOPAL-IMPL-UNAVAILABLE-001` | `topal-language` v0.2 clause, revision-separation, and evidence-availability tests | shared parser and interpreter session |
+| `TOPAL-GEIR-VALIDATED-001` (v0.2 assurance metadata) | `TOPAL-GIR-MODULE-001`, `TOPAL-GIR-VALID-001`, `TOPAL-GIR-EVIDENCE-001`, `TOPAL-GIR-CANON-001`, `TOPAL-GIR-COMPAT-001` | `topal-geir` revision-1 compatibility, revision-2 round-trip, malformed-input, canonicality, and evidence-validation tests | `topal-geir` canonical artifact revision 2 |
+| `TOPAL-SEM-ASSURANCE-001`, `TOPAL-SEM-PORTABLE-RUNTIME-001`, `TOPAL-SEM-LAYOUT-INFOFLOW-001`, `TOPAL-SEM-INTEGRATION-001` | phase-12 assurance, resource, concurrency, transaction, time, flow, handler, plan, layout, and information-flow rules | unit tests in `topal-semantics`; coverage-ledger status gate | `topal-semantics::{assurance,portable_runtime,layout_and_information}` |
 
 | Build-tool requirement | Design/plan | Functional evidence | Implementation |
 | --- | --- | --- | --- |

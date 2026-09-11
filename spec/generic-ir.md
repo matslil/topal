@@ -16,9 +16,10 @@ reachable through the published interface. This realizes
 
 ```text
 Module      = { revision, language, imports[], identities[], types[],
-                capabilities[], functions[], exports[] }
+                evidence[], capabilities[], functions[], exports[] }
 Function    = { id, static_parameters[], input_pattern, result_type,
-                effects, guarantees, blocks[], entry }
+                effects, guarantees, contracts?, blocks[], entry }
+Contracts   = { precondition?, result_binding?, postcondition? }
 Block       = { id, parameters[], instructions[], terminator }
 Instruction = Const | Product | Project | Construct | Validate | Convert
             | Capability | Apply | Effect | PackExists | UnpackExists
@@ -26,8 +27,9 @@ Instruction = Const | Product | Project | Construct | Validate | Convert
 Terminator  = Return | Branch | Match | Yield | Suspend | TailApply
 Type        = Primitive | Tuple | Record | Variant | Union | Constraint
             | Function | Existential | Nominal | Application | RecursiveRef
-Evidence    = Identity | ConstraintProof | CapabilityProof | LawProof
-            | EffectRelation | DecreasesProof | ProtocolProof
+Evidence    = { property, calculus, certificate, status, context? }
+Context     = { kind, subject, static_parameters[], producer, assumptions[],
+                language_revision, architecture_model? }
 ```
 
 Arrays preserve order. Maps are encoded as arrays sorted by canonical key.
@@ -97,6 +99,23 @@ accepted by the language revision. `trusted-unverified` law evidence is retained
 with that status and is never promoted by export. Evidence involving private
 structure may be sealed behind a published claim identity but shall remain
 checkable without revealing that structure.
+
+For a `v0.2` module every evidence record SHALL additionally preserve its
+semantic/implementation kind, classified subject and static parameters,
+`externally-assumed` or `refuted` status when applicable, producer, transitive
+assumptions, language revision, and optional architecture-model identity.
+Function records SHALL preserve precondition, postcondition, named result,
+effect bound, and requested guarantees. A missing required field SHALL reject
+the artifact rather than receive a default proof meaning.
+
+Artifact revision 1 encodes `v0.1` only and omits `Context` and `Contracts`;
+its evidence status is restricted to `verified` and `trusted-unverified`.
+Artifact revision 2 encodes `v0.2` only, requires `Context` on every evidence
+record, and requires `Contracts` on every function even when all three clause
+fields are absent. A postcondition and result binding SHALL either both be
+present or both be absent. Identity and evidence indices use the ordinary
+preceding-table rules. Static-parameter pairs and assumption indices SHALL be
+strictly ordered and unique in canonical form.
 
 ### TOPAL-GIR-CANON-001 — Canonical form
 

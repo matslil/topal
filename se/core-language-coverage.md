@@ -11,7 +11,7 @@ listed disposition or an individually recorded, authoritative deferral.
 
 | Specification | Rules | Phase | Owner | Terminal disposition | Status |
 | --- | ---: | ---: | --- | --- | --- |
-| `spec/syntax.md` | 12 | 2 | `topal-source`, `topal-syntax`, shared library resolver | static, runtime | complete |
+| `spec/syntax.md` | 13 | 2 | `topal-source`, `topal-syntax`, shared library resolver | static, runtime | complete |
 | `spec/type-system.md` | 45 | 2 | `topal-language` shared semantics | static, runtime | complete |
 | `spec/functions.md` | 35 | 4 | `topal-language` execution | runtime | complete |
 | `spec/decisions.md` | 6 | 2 | `topal-syntax`, `topal-language` | static, runtime | complete |
@@ -22,7 +22,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/generators.md` | 27 | 3 | `topal-language` execution | runtime | complete |
 | `spec/modules.md` | 11 | 4 | shared loader and `topal-language` | static, runtime | complete |
 | `spec/abstractions.md` | 7 | 5 | `topal-semantics`, shared source tools | static | complete |
-| `spec/effects.md` | 3 | 6 | `topal-semantics`, shared source tools | static, runtime | complete |
+| `spec/effects.md` | 4 | 6 | `topal-semantics`, shared source tools | static, runtime | complete |
 | `spec/resources.md` | 3 | 6 | `topal-semantics`, shared execution tools | static, runtime | complete |
 | `spec/memory-model.md` | 9 | 6 | shared resource and memory semantics | static, runtime | complete |
 | `spec/concurrency-model.md` | 12 | 7 | shared execution scheduler | static, runtime | complete |
@@ -37,6 +37,12 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/diagnostics.md` | 2 | 9 | `topal-source`, source-facing tool adapters | static, presentation | complete |
 | `spec/data-transfer-packages.md` | 5 | 10 | nested `std` namespaces and shared host boundary | static, runtime, platform-specific | planned |
 | `spec/data-transfers.md` | 26 | 11 | ordinary Topal library and irreducible host boundary | static, runtime, platform-specific | planned |
+| `spec/contracts-and-evidence.md` | 13 | 12 | `topal-syntax`, `topal-language`, `topal-semantics`, `topal-geir` | static, runtime, artifact | planned |
+| `spec/resource-evidence.md` | 8 | 12 | `topal-semantics`, shared implementation selectors | static, artifact | planned |
+| `spec/concurrency-implementations.md` | 9 | 12 | `topal-semantics`, shared execution providers | static, runtime | planned |
+| `spec/time-and-dataflow.md` | 8 | 12 | `topal-semantics`, shared execution providers | static, runtime | planned |
+| `spec/effect-handlers-and-plans.md` | 7 | 12 | `topal-semantics`, compiler-only implementation planner | static, runtime, compiler-only | planned |
+| `spec/composite-layouts-and-information-flow.md` | 9 | 12 | `topal-semantics`, checked layout and policy providers | static, runtime, artifact | planned |
 
 ## Cross-tool evidence
 

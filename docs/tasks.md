@@ -837,3 +837,14 @@ Queue capacity is an implementation choice only within the declared admission
 behavior. A sender which may suspend or fail because of backpressure exposes
 that interaction in its protocol and effect contract, allowing queue
 dependencies to participate in deadlock checking.
+
+Revision `v0.2` makes capacity, ordering, and admission explicit through
+`InteractionPolicy`, while producer/consumer counts and queue implementation
+remain inferred as described in
+[synthesized concurrency implementations](concurrency-implementations.md).
+
+A relative request timeout constructs one absolute [deadline](time.md) at the
+outer entry. Nested requests, structured cancellation, and joins propagate the
+same deadline rather than resetting a duration. Reply, timeout, and cancellation
+commit at explicit protocol points; exactly one wins and late events cannot
+resume the handler again.

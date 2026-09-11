@@ -106,8 +106,18 @@ pub struct ProductField {
 pub struct FunctionParameter {
     pub name: Span,
     pub classifier: Span,
+    pub qualifier: Option<Span>,
     pub fields: Vec<Self>,
     pub default: Option<Expression>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FunctionClauses {
+    pub requires: Option<Box<Expression>>,
+    pub effects: Option<Box<Expression>>,
+    pub guarantees: Option<Box<Expression>>,
+    pub result_binding: Option<Span>,
+    pub ensures: Option<Box<Expression>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -115,6 +125,7 @@ pub struct InterfaceFunction {
     pub name: Span,
     pub parameters: Vec<FunctionParameter>,
     pub result: Span,
+    pub clauses: FunctionClauses,
     pub span: Span,
 }
 
@@ -226,6 +237,7 @@ pub enum Statement {
         parameters: Vec<FunctionParameter>,
         result: Span,
         effect_bound: Option<Span>,
+        clauses: Box<FunctionClauses>,
         body: Vec<Statement>,
         span: Span,
     },
@@ -962,9 +974,84 @@ impl Parser<'_> {
             self.skip_to_newline();
             return None;
         }
-        let arrow = self.take_nontrivia()?;
+        let mut clauses = FunctionClauses::default();
+        let mut clause_order = 0_u8;
+        let arrow = loop {
+            let token = self.take_function_header_token()?;
+            if token.kind == TokenKind::Arrow {
+                break token;
+            }
+            let clause = self.source.slice(token.span);
+            let (order, slot) = match clause {
+                "requires" => (1, &mut clauses.requires),
+                "effects" => (2, &mut clauses.effects),
+                "guarantees" => (3, &mut clauses.guarantees),
+                _ => {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-FUNCTION-CLAUSE-PLACEMENT",
+                        span: token.span,
+                        message: "expected `requires`, `effects`, `guarantees`, or `->` after the parameter list".into(),
+                    });
+                    self.skip_to_newline();
+                    return None;
+                }
+            };
+            if order <= clause_order || slot.is_some() {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-FUNCTION-CLAUSE-ORDER",
+                    span: token.span,
+                    message:
+                        "function clauses occur once in `requires`, `effects`, `guarantees` order"
+                            .into(),
+                });
+                self.skip_to_newline();
+                return None;
+            }
+            clause_order = order;
+            let Some(expression) =
+                self.function_clause_expression(&["requires", "effects", "guarantees"])
+            else {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-FUNCTION-CLAUSE-EXPRESSION",
+                    span: token.span,
+                    message: "function clause requires an expression on the same logical line"
+                        .into(),
+                });
+                return None;
+            };
+            *slot = Some(Box::new(expression));
+        };
         let result_token = self.take_nontrivia()?;
-        let result = self.function_result(result_token)?;
+        let first_result = self.function_result(result_token)?;
+        let (result, effect_bound) = if self
+            .peek_nontrivia()
+            .is_some_and(|token| token.kind == TokenKind::Colon)
+            && self
+                .source
+                .slice(result_token.span)
+                .chars()
+                .next()
+                .is_some_and(char::is_lowercase)
+        {
+            self.take_nontrivia();
+            let classifier_start = self.take_nontrivia()?;
+            let result = self.function_result(classifier_start)?;
+            clauses.result_binding = Some(result_token.span);
+            (result, None)
+        } else {
+            let effect_bound = if self
+                .peek_nontrivia()
+                .is_some_and(|token| token.kind == TokenKind::Colon)
+            {
+                self.function_effect_bound()
+            } else if self.effect_bound_on_following_line() {
+                self.cursor += 1;
+                self.function_effect_bound()
+            } else {
+                None
+            };
+            (first_result, effect_bound)
+        };
         let valid = self.source.slice(function.span) == "fn"
             && opening.kind == TokenKind::LeftParen
             && closing.kind == TokenKind::RightParen
@@ -982,17 +1069,31 @@ impl Parser<'_> {
             self.skip_to_newline();
             return None;
         }
-        let effect_bound = if self
-            .peek_nontrivia()
-            .is_some_and(|token| token.kind == TokenKind::Colon)
-        {
-            self.function_effect_bound()
-        } else if self.effect_bound_on_following_line() {
-            self.cursor += 1;
-            self.function_effect_bound()
-        } else {
-            None
-        };
+        let checkpoint = self.cursor;
+        if let Some(token) = self.take_function_header_token() {
+            if token.kind == TokenKind::Identifier && self.source.slice(token.span) == "ensures" {
+                if clauses.result_binding.is_none() {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-FUNCTION-RESULT-BINDING",
+                        span: token.span,
+                        message: "`ensures` requires `-> result : ResultClassifier`".into(),
+                    });
+                    self.skip_to_newline();
+                    return None;
+                }
+                clauses.ensures = self.function_clause_expression(&[]).map(Box::new);
+                if clauses.ensures.is_none() {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-FUNCTION-CLAUSE-EXPRESSION",
+                        span: token.span,
+                        message: "`ensures` requires a relation expression".into(),
+                    });
+                    return None;
+                }
+            } else {
+                self.cursor = checkpoint;
+            }
+        }
         if !self
             .peek()
             .is_some_and(|token| token.kind == TokenKind::Newline)
@@ -1045,9 +1146,65 @@ impl Parser<'_> {
             parameters,
             result,
             effect_bound,
+            clauses: Box::new(clauses),
             span: Span::new(name.span.start, body_end),
             body,
         })
+    }
+
+    fn function_clause_expression(&mut self, following_clauses: &[&str]) -> Option<Expression> {
+        let start = self.cursor;
+        let mut depth = 0_usize;
+        let end = self.tokens[start..]
+            .iter()
+            .position(|token| {
+                match token.kind {
+                    TokenKind::LeftParen | TokenKind::LeftBrace | TokenKind::LeftBracket => {
+                        depth += 1;
+                    }
+                    TokenKind::RightParen | TokenKind::RightBrace | TokenKind::RightBracket => {
+                        depth = depth.saturating_sub(1);
+                    }
+                    _ => {}
+                }
+                depth == 0
+                    && (token.kind == TokenKind::Newline
+                        || token.kind == TokenKind::Arrow
+                        || (token.kind == TokenKind::Identifier
+                            && following_clauses.contains(&self.source.slice(token.span))))
+            })
+            .map_or(self.tokens.len(), |offset| start + offset);
+        let mut parser = Self {
+            source: self.source,
+            tokens: &self.tokens[start..end],
+            cursor: 0,
+            delimiter_depth: 0,
+            current_indent: self.current_indent,
+            diagnostics: Vec::new(),
+        };
+        let expression = parser.expression();
+        self.diagnostics.extend(parser.diagnostics);
+        self.cursor = end;
+        expression
+    }
+
+    fn take_function_header_token(&mut self) -> Option<Token> {
+        if let Some(token) = self.take_nontrivia() {
+            return Some(token);
+        }
+        let checkpoint = self.cursor;
+        if !self
+            .peek()
+            .is_some_and(|token| token.kind == TokenKind::Newline)
+        {
+            return None;
+        }
+        self.cursor += 1;
+        let token = self.take_nontrivia();
+        if token.is_none() {
+            self.cursor = checkpoint;
+        }
+        token
     }
 
     fn effect_bound_on_following_line(&self) -> bool {
@@ -1151,6 +1308,7 @@ impl Parser<'_> {
         })
     }
 
+    #[allow(clippy::too_many_lines)] // Interface clauses mirror complete function headers.
     fn interface(&mut self, name: Token) -> Option<Statement> {
         let interface = self.take_nontrivia()?;
         let newline = self.peek()?;
@@ -1187,9 +1345,102 @@ impl Parser<'_> {
             let function = self.take_nontrivia()?;
             let opening = self.take_nontrivia()?;
             let (parameters, closing) = self.static_function_parameters(opening)?;
-            let arrow = self.take_nontrivia()?;
+            let mut clauses = FunctionClauses::default();
+            let mut clause_order = 0_u8;
+            let arrow = loop {
+                let token = self.take_function_header_token()?;
+                if token.kind == TokenKind::Arrow {
+                    break token;
+                }
+                let clause = self.source.slice(token.span);
+                let (order, slot) = match clause {
+                    "requires" => (1, &mut clauses.requires),
+                    "effects" => (2, &mut clauses.effects),
+                    "guarantees" => (3, &mut clauses.guarantees),
+                    _ => {
+                        self.diagnostics.push(SyntaxDiagnostic {
+                            code: "E-FUNCTION-CLAUSE-PLACEMENT",
+                            span: token.span,
+                            message: "expected `requires`, `effects`, `guarantees`, or `->` after the interface-operation parameter list".into(),
+                        });
+                        self.skip_to_newline();
+                        return None;
+                    }
+                };
+                if order <= clause_order || slot.is_some() {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-FUNCTION-CLAUSE-ORDER",
+                        span: token.span,
+                        message:
+                            "function clauses occur once in `requires`, `effects`, `guarantees` order"
+                                .into(),
+                    });
+                    self.skip_to_newline();
+                    return None;
+                }
+                clause_order = order;
+                let Some(expression) =
+                    self.function_clause_expression(&["requires", "effects", "guarantees"])
+                else {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-FUNCTION-CLAUSE-EXPRESSION",
+                        span: token.span,
+                        message: "function clause requires an expression on the same logical line"
+                            .into(),
+                    });
+                    return None;
+                };
+                *slot = Some(Box::new(expression));
+            };
             let result_token = self.take_nontrivia()?;
-            let result = self.function_result(result_token)?;
+            let first_result = self.function_result(result_token)?;
+            let result = if self
+                .peek_nontrivia()
+                .is_some_and(|token| token.kind == TokenKind::Colon)
+                && self
+                    .source
+                    .slice(result_token.span)
+                    .chars()
+                    .next()
+                    .is_some_and(char::is_lowercase)
+            {
+                self.take_nontrivia();
+                let classifier_start = self.take_nontrivia()?;
+                clauses.result_binding = Some(result_token.span);
+                self.function_result(classifier_start)?
+            } else {
+                first_result
+            };
+            let checkpoint = self.cursor;
+            if let Some(token) = self.take_function_header_token() {
+                if token.kind == TokenKind::Identifier && self.source.slice(token.span) == "ensures"
+                {
+                    if clauses.result_binding.is_none() {
+                        self.diagnostics.push(SyntaxDiagnostic {
+                            code: "E-FUNCTION-RESULT-BINDING",
+                            span: token.span,
+                            message: "`ensures` requires `-> result : ResultClassifier`".into(),
+                        });
+                        self.skip_to_newline();
+                        return None;
+                    }
+                    clauses.ensures = self.function_clause_expression(&[]).map(Box::new);
+                    if clauses.ensures.is_none() {
+                        self.diagnostics.push(SyntaxDiagnostic {
+                            code: "E-FUNCTION-CLAUSE-EXPRESSION",
+                            span: token.span,
+                            message: "`ensures` requires a relation expression".into(),
+                        });
+                        return None;
+                    }
+                } else {
+                    self.cursor = checkpoint;
+                }
+            }
+            let end = clauses
+                .ensures
+                .as_deref()
+                .map_or(result.end, |relation| relation.span().end);
             if operation.kind != TokenKind::Identifier
                 || self.source.slice(separator.span) != "is"
                 || self.source.slice(function.span) != "fn"
@@ -1198,7 +1449,7 @@ impl Parser<'_> {
             {
                 self.diagnostics.push(SyntaxDiagnostic {
                     code: "E-INTERFACE-OPERATION",
-                    span: Span::new(operation.span.start, result.end),
+                    span: Span::new(operation.span.start, end),
                     message: "expected `name is fn (inputs) -> Result`".into(),
                 });
                 return None;
@@ -1207,7 +1458,8 @@ impl Parser<'_> {
                 name: operation.span,
                 parameters,
                 result,
-                span: Span::new(operation.span.start, result.end),
+                clauses,
+                span: Span::new(operation.span.start, end),
             });
             let checkpoint = self.cursor;
             if self
@@ -2035,6 +2287,7 @@ impl Parser<'_> {
                 parameters.push(FunctionParameter {
                     name: input.span,
                     classifier: Span::new(input.span.start, package_closing.span.end),
+                    qualifier: None,
                     fields,
                     default: None,
                 });
@@ -2047,7 +2300,26 @@ impl Parser<'_> {
             let colon = self.take_nontrivia()?;
             let classifier_start = self.take_nontrivia()?;
             let classifier = self.classifier_from_first(classifier_start)?;
-            let separator = self.take_nontrivia()?;
+            let mut separator = self.take_nontrivia()?;
+            let qualifier = if separator.kind == TokenKind::Colon {
+                let qualifier = self.take_nontrivia()?;
+                if qualifier.kind != TokenKind::Identifier
+                    || !matches!(self.source.slice(qualifier.span), "Exclusive" | "Consumes")
+                {
+                    self.diagnostics.push(SyntaxDiagnostic {
+                        code: "E-FUNCTION-PARAMETER-QUALIFIER",
+                        span: qualifier.span,
+                        message:
+                            "the implemented parameter qualifiers are `Exclusive` and `Consumes`"
+                                .into(),
+                    });
+                    return None;
+                }
+                separator = self.take_nontrivia()?;
+                Some(qualifier.span)
+            } else {
+                None
+            };
             if !matches!(input.kind, TokenKind::Identifier | TokenKind::Discard)
                 || colon.kind != TokenKind::Colon
                 || !matches!(
@@ -2069,6 +2341,7 @@ impl Parser<'_> {
             parameters.push(FunctionParameter {
                 name: input.span,
                 classifier,
+                qualifier,
                 fields: Vec::new(),
                 default: None,
             });
@@ -2114,6 +2387,7 @@ impl Parser<'_> {
             fields.push(FunctionParameter {
                 name: name.span,
                 classifier,
+                qualifier: None,
                 fields: Vec::new(),
                 default,
             });
@@ -2971,6 +3245,57 @@ mod tests {
     }
 
     #[test]
+    fn retains_v02_function_clauses_around_their_arrow() {
+        let text = "withdraw is fn ( account : Int, amount : Int )\n  requires ( amount <= account )\n  effects ( Effects () )\n  guarantees ( Prefer NoAlloc )\n-> result : Int\n  ensures ( result <= account )\n  result\n";
+        let source = SourceText::new(text).unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function {
+            result, clauses, ..
+        } = &parsed.statements[0]
+        else {
+            panic!("expected function");
+        };
+        assert_eq!(source.slice(*result), "Int");
+        assert_eq!(
+            source.slice(clauses.result_binding.expect("result binding")),
+            "result"
+        );
+        assert!(clauses.requires.is_some());
+        assert!(clauses.effects.is_some());
+        assert!(clauses.guarantees.is_some());
+        assert!(clauses.ensures.is_some());
+    }
+
+    #[test]
+    fn keeps_exclusive_and_consumes_on_parameters() {
+        let text = "rewrite is fn ( input : String : Exclusive ) -> String\n  input\n";
+        let source = SourceText::new(text).unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function { parameters, .. } = &parsed.statements[0] else {
+            panic!("expected function");
+        };
+        assert_eq!(
+            source.slice(parameters[0].qualifier.expect("qualifier")),
+            "Exclusive"
+        );
+    }
+
+    #[test]
+    fn rejects_out_of_order_function_clauses() {
+        let text = "bad is fn ()\n  guarantees NoAlloc\n  requires true\n-> Unit\n  ()\n";
+        let source = SourceText::new(text).unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "E-FUNCTION-CLAUSE-ORDER")
+        );
+    }
+
+    #[test]
     fn retains_packaged_operand_fields_and_defaults() {
         let source = SourceText::new(
             "choose is fn ( ( value : Int, fallback : Int default 0 ) ) -> Int\n  value\n",
@@ -3791,5 +4116,26 @@ mod tests {
             parsed.statements.first(),
             Some(Statement::Interface { functions, .. }) if functions.len() == 1
         ));
+    }
+
+    #[test]
+    fn retains_v02_clauses_on_interface_operations() {
+        let source = SourceText::new(
+            "Parser is Interface\n  parse is fn (source : String) requires true effects (Effects ()) -> result : Boolean ensures result\nParser",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Some(Statement::Interface { functions, .. }) = parsed.statements.first() else {
+            panic!("expected interface");
+        };
+        assert_eq!(functions.len(), 1);
+        assert!(functions[0].clauses.requires.is_some());
+        assert!(functions[0].clauses.effects.is_some());
+        assert_eq!(
+            source.slice(functions[0].clauses.result_binding.expect("result binding")),
+            "result"
+        );
+        assert!(functions[0].clauses.ensures.is_some());
     }
 }
