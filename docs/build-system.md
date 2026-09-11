@@ -82,3 +82,32 @@ as small as one declaration, but automatic declaration/identifier dependency
 extraction is not yet implemented. Filesystem watchers, observed dynamic
 dependencies, remote caching, distributed execution, and native sandboxing are
 also later increments.
+
+## Native compilation
+
+`topalc` is the ahead-of-time compiler. Its first native target is
+`x86_64-unknown-linux-gnu`; selecting another triple is rejected until that
+platform has its own qualified lowering and test baseline. The normal command
+creates a position-independent ELF executable:
+
+```console
+topalc -O0 -g -o hello hello.t
+```
+
+`--emit llvm-ir` retains the compiler's LLVM input for inspection and
+`--emit object` stops before linking. These implementation formats do not
+replace Topal's versioned library interface and generic metadata.
+
+Topal executables are freestanding with respect to other language runtimes.
+They do not acquire a C or C++ standard library, process-startup object, or
+dynamic loader dependency merely because the compiler uses LLVM. The Linux
+x86-64 platform implementation owns `_start` and implements its initial
+standard output and process termination operations directly over the qualified
+Linux system-call interface. Future operating-system services belong in
+versioned Topal platform libraries with typed effects and failures, not hidden
+calls into a foreign standard library.
+
+This does not prohibit an explicitly declared foreign interface in a future
+language revision. Such an interface will use checked target adapters and a
+concrete published ABI rather than exposing the compiler's private value
+representation.

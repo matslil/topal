@@ -22,6 +22,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BASELINE = ROOT / "se" / "test-resource-baseline.json"
 DEFAULT_TOPAL_BASELINE = ROOT / "se" / "topal-test-resource-baseline.json"
+DEFAULT_COMPILER_BASELINE = ROOT / "se" / "compiler-test-resource-baseline.json"
 THRESHOLD_PERCENT = 20
 PRINT_LOCK = threading.Lock()
 
@@ -32,6 +33,7 @@ class TestCase:
     executable: str
     arguments: tuple[str, ...]
     working_directory: str
+    samples_multiplier: int = 1
 
 
 @dataclasses.dataclass(frozen=True)
@@ -39,6 +41,7 @@ class Measurement:
     cpu_time_ns: int
     memory_peak_bytes: int
     status: str
+    samples_per_test: int
 
 
 def command(arguments: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
@@ -150,6 +153,60 @@ def discover_topal_tests(rust_min_stack: int) -> list[TestCase]:
     return sorted(tests, key=lambda test: test.identity)
 
 
+def discover_compiler_tests(rust_min_stack: int) -> list[TestCase]:
+    """Measure compilation and native execution independently for shared cases."""
+    metadata = cargo_metadata()
+    target_directory = Path(metadata["target_directory"])
+    command(["cargo", "build", "-p", "topal-compiler"], cwd=ROOT)
+    compiler = target_directory / "debug" / (
+        "topalc.exe" if platform.system() == "Windows" else "topalc"
+    )
+    listed = command(
+        [str(compiler), "test", "--list"],
+        cwd=ROOT,
+        capture_output=True,
+        env={**os.environ, "RUST_MIN_STACK": str(rust_min_stack)},
+    )
+    artifact_directory = target_directory / "test-resource-usage" / "compiler"
+    artifact_directory.mkdir(parents=True, exist_ok=True)
+    tests = []
+    for index, name in enumerate(
+        line for line in listed.stdout.splitlines() if line.endswith(".t")
+    ):
+        executable = artifact_directory / f"case-{index}"
+        command(
+            [str(compiler), "-O0", "-g", "-o", str(executable), name],
+            cwd=ROOT,
+            capture_output=True,
+        )
+        tests.extend(
+            [
+                TestCase(
+                    identity=f"topalc-build::{name}",
+                    executable=str(compiler),
+                    arguments=("-O0", "-g", "-o", str(executable), name),
+                    working_directory=str(ROOT),
+                ),
+                TestCase(
+                    identity=f"topalc-run::{name}",
+                    executable=str(executable),
+                    arguments=(),
+                    working_directory=str(ROOT),
+                    samples_multiplier=10,
+                ),
+            ]
+        )
+    return sorted(tests, key=lambda test: test.identity)
+
+
+def discover_domain(domain: str, rust_min_stack: int) -> list[TestCase]:
+    if domain == "rust":
+        return discover_tests(rust_min_stack)
+    if domain == "topal":
+        return discover_topal_tests(rust_min_stack)
+    return discover_compiler_tests(rust_min_stack)
+
+
 def systemctl_properties(unit: str) -> dict[str, str]:
     result = command(
         [
@@ -203,7 +260,7 @@ def measure_test(
                 str(Path(__file__).resolve()),
                 "__worker",
                 str(result_path),
-                str(samples),
+                str(samples * test.samples_multiplier),
                 test.executable,
                 *test.arguments,
             ],
@@ -224,7 +281,7 @@ def measure_test(
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
-                return test.identity, Measurement(0, 0, "timeout")
+                return test.identity, Measurement(0, 0, "timeout", 0)
             time.sleep(0.02)
         result = properties.get("Result", "unknown")
         exit_status = properties.get("ExecMainStatus", "unknown")
@@ -244,6 +301,7 @@ def measure_test(
             cpu_time_ns=int(worker_result.get("cpu_time_ns", 0)),
             memory_peak_bytes=int(worker_result.get("memory_peak_bytes", 0)),
             status=status,
+            samples_per_test=samples * test.samples_multiplier,
         )
         with PRINT_LOCK:
             print(
@@ -271,7 +329,7 @@ def measure_test(
 
 
 def worker(arguments: list[str]) -> int:
-    if len(arguments) < 4:
+    if len(arguments) < 3:
         return 2
     result_path, samples_text, executable, *test_arguments = arguments
     samples = int(samples_text)
@@ -336,11 +394,7 @@ def environment() -> dict[str, Any]:
 def run_measurements(
     arguments: argparse.Namespace, identities: set[str] | None = None
 ) -> dict[str, Measurement]:
-    tests = (
-        discover_tests(arguments.rust_min_stack)
-        if arguments.domain == "rust"
-        else discover_topal_tests(arguments.rust_min_stack)
-    )
+    tests = discover_domain(arguments.domain, arguments.rust_min_stack)
     if identities is not None:
         tests = [test for test in tests if test.identity in identities]
     jobs = worker_count(arguments.jobs, arguments.memory_limit)
@@ -379,6 +433,7 @@ def baseline_document(
             identity: {
                 "cpu_time_ns": measurement.cpu_time_ns,
                 "memory_peak_bytes": measurement.memory_peak_bytes,
+                "samples_per_test": measurement.samples_per_test,
             }
             for identity, measurement in sorted(measured.items())
         },
@@ -386,7 +441,7 @@ def baseline_document(
 
 
 def extend_baseline(
-    baseline: dict[str, Any], measured: dict[str, Measurement], measured_samples: int
+    baseline: dict[str, Any], measured: dict[str, Measurement]
 ) -> tuple[dict[str, Any], int]:
     """Add measurements for new identities without changing existing entries."""
     expected = baseline["tests"]
@@ -394,7 +449,7 @@ def extend_baseline(
         identity: {
             "cpu_time_ns": measured[identity].cpu_time_ns,
             "memory_peak_bytes": measured[identity].memory_peak_bytes,
-            "samples_per_test": measured_samples,
+            "samples_per_test": measured[identity].samples_per_test,
         }
         for identity in sorted(set(measured) - set(expected))
     }
@@ -430,6 +485,15 @@ def compare(
         if current.status != "passed":
             problems.append(f"test did not pass ({current.status}): {identity}")
             continue
+        expected_samples = int(
+            expected[identity].get("samples_per_test", baseline["samples_per_test"])
+        )
+        if current.samples_per_test != expected_samples:
+            problems.append(
+                f"sample count changed: {identity} "
+                f"(baseline={expected_samples}, current={current.samples_per_test})"
+            )
+            continue
         for metric in ("cpu_time_ns", "memory_peak_bytes"):
             old = int(expected[identity][metric])
             new = getattr(current, metric)
@@ -446,7 +510,9 @@ def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("baseline", "compare"))
     parser.add_argument("--baseline", type=Path)
-    parser.add_argument("--domain", choices=("rust", "topal"), default="rust")
+    parser.add_argument(
+        "--domain", choices=("rust", "topal", "compiler"), default="rust"
+    )
     parser.add_argument("--jobs", type=int)
     parser.add_argument("--memory-limit", default="4G")
     parser.add_argument("--rust-min-stack", type=int, default=32 * 1024 * 1024)
@@ -456,9 +522,11 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--replace-existing-baseline", action="store_true")
     parsed = parser.parse_args()
     if parsed.baseline is None:
-        parsed.baseline = (
-            DEFAULT_BASELINE if parsed.domain == "rust" else DEFAULT_TOPAL_BASELINE
-        )
+        parsed.baseline = {
+            "rust": DEFAULT_BASELINE,
+            "topal": DEFAULT_TOPAL_BASELINE,
+            "compiler": DEFAULT_COMPILER_BASELINE,
+        }[parsed.domain]
     if parsed.jobs is not None and parsed.jobs < 1:
         parser.error("--jobs must be at least 1")
     if parsed.samples < 1:
@@ -486,11 +554,7 @@ def main() -> int:
         existing = json.loads(parsed.baseline.read_text(encoding="utf-8"))
         if existing.get("schema") != 1:
             raise RuntimeError("unsupported baseline schema")
-        discovered = (
-            discover_tests(parsed.rust_min_stack)
-            if parsed.domain == "rust"
-            else discover_topal_tests(parsed.rust_min_stack)
-        )
+        discovered = discover_domain(parsed.domain, parsed.rust_min_stack)
         identities = missing_test_identities(discovered, existing)
     measured = run_measurements(parsed, identities)
     failures = failed_tests(measured)
@@ -503,7 +567,7 @@ def main() -> int:
         added = len(measured)
         document = baseline_document(measured, parsed.samples)
         if existing is not None:
-            document, added = extend_baseline(existing, measured, parsed.samples)
+            document, added = extend_baseline(existing, measured)
         parsed.baseline.write_text(
             json.dumps(document, indent=2) + "\n",
             encoding="utf-8",

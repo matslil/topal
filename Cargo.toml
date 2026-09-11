@@ -2,6 +2,7 @@
 members = [
     "src/topal-best-practices",
     "src/topal-build",
+    "src/topal-compiler",
     "src/topal-interpreter",
     "src/topal-debugger",
     "src/topal-doc",

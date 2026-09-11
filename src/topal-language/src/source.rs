@@ -492,7 +492,7 @@ impl fmt::Display for Value {
                 formatter,
                 "<Generator {yield_classifier} Unit {return_classifier}>"
             ),
-            Self::String(value) => formatter.write_str(&display_string(value)),
+            Self::String(value) => formatter.write_str(&display_string_literal(value)),
             Self::Tuple(items) => {
                 formatter.write_str("(")?;
                 for (index, item) in items.iter().enumerate() {
@@ -12915,14 +12915,15 @@ fn evaluate_string_literal(
     Ok(Value::String(value.to_owned()))
 }
 
-fn parse_string(lexeme: &str) -> Option<&str> {
+pub(crate) fn parse_string(lexeme: &str) -> Option<&str> {
     let opening = lexeme.find('"')?;
     let closing_length = opening + 1;
     (lexeme.len() >= opening + 1 + closing_length)
         .then(|| &lexeme[opening + 1..lexeme.len() - closing_length])
 }
 
-fn display_string(value: &str) -> String {
+#[must_use]
+pub fn display_string_literal(value: &str) -> String {
     if !value.contains('"') {
         return format!("\"{value}\"");
     }
@@ -16148,7 +16149,7 @@ fn raw_position(source: &str, offset: usize) -> (usize, usize) {
     (line, column)
 }
 
-fn parse_integer(token: &str) -> Option<BigInt> {
+pub(crate) fn parse_integer(token: &str) -> Option<BigInt> {
     if let Some(unsigned) = token.strip_prefix('-') {
         return parse_unsigned_integer(unsigned).map(std::ops::Neg::neg);
     }

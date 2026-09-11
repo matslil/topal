@@ -40,3 +40,10 @@ specifications, tests, and implementations throughout language evolution.
 The interpreter, compiler, language server, linter, and debuggers should share
 one source, syntax, and semantic understanding so their accepted programs,
 locations, diagnostics, and completion models do not drift apart.
+
+## TOPAL-GOAL-NATIVE-001 — Direct native execution
+
+Compiled Topal applications should integrate directly with their selected
+operating-system platform without an accidental dependency on another
+language's standard library or runtime. Target-specific mechanisms should
+remain behind typed, reviewable Topal platform boundaries.

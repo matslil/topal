@@ -56,6 +56,7 @@ applicable to the interpreter and debugger.
 | `spec/tracing.md` | direct | not-applicable | shared | direct | `topal-semantics`; interpreter test traces; supplied lint trace views; debugger history |
 | `spec/type-system.md` | direct | shared | shared | shared | `topal-semantics`; `topal-language`; cross-tool source corpora |
 | `spec/composite-layouts-and-information-flow.md` | shared | shared | shared | shared | shared shape, sparse, lattice, propagation, and authority models; source checking and backend selection remain planned |
+| `spec/compiler.md` | not-applicable | not-applicable | not-applicable | not-applicable | native compiler unit, CLI, ELF, GDB, differential-execution, metadata, and resource tests; compiler coverage is tracked separately in `se/compiler-conformance.md` |
 
 The repository conformance test expands these domain rows to every stable rule,
 requires one row per stable specification file, validates every disposition,

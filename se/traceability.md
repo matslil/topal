@@ -24,6 +24,7 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-GOAL-PRECISE-001` | `TOPAL-REQ-GENERIC-001`, `TOPAL-REQ-SERIAL-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001`, `TOPAL-REQ-EVIDENCE-001`, `TOPAL-REQ-RESOURCE-BOUND-001`, `TOPAL-REQ-LAYOUT-COMPOSE-001` |
 | `TOPAL-GOAL-EVOLVE-001` | `TOPAL-REQ-TRACE-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-BEST-PRACTICE-001` |
 | `TOPAL-GOAL-TOOLCHAIN-001` | `TOPAL-REQ-SHARED-001`, `TOPAL-REQ-TOOLS-001`, `TOPAL-REQ-INTEROP-001`, `TOPAL-REQ-BEST-PRACTICE-001`, `TOPAL-REQ-LINT-001` |
+| `TOPAL-GOAL-NATIVE-001` | `TOPAL-REQ-COMPILER-001`, `TOPAL-REQ-NATIVE-PLATFORM-001`, `TOPAL-REQ-NATIVE-ABI-001`, `TOPAL-REQ-NATIVE-ARTIFACT-001`, `TOPAL-REQ-NATIVE-DEBUG-001`, `TOPAL-REQ-LLVM-001` |
 
 | Requirement | Governing specification rules |
 | --- | --- |
@@ -59,6 +60,12 @@ domains. Test and implementation columns will be added with those artifacts.
 | `TOPAL-REQ-LAYOUT-COMPOSE-001` | `TOPAL-LAYOUT-SHAPE-001` through `TOPAL-LAYOUT-VIEW-001`, `TOPAL-LAYOUT-SPARSE-001` |
 | `TOPAL-REQ-INFOFLOW-001` | `TOPAL-INFO-LATTICE-001` through `TOPAL-INFO-ENDORSE-001` |
 | `TOPAL-REQ-ARCH-EVIDENCE-001` | `TOPAL-IMPL-EVIDENCE-001`, `TOPAL-EVIDENCE-BOUNDARY-001`, `TOPAL-GIR-EVIDENCE-001` |
+| `TOPAL-REQ-COMPILER-001` | `TOPAL-COMPILER-O0-001`, `TOPAL-COMPILER-SUBSET-001`, `TOPAL-COMPILER-TEST-001` |
+| `TOPAL-REQ-NATIVE-PLATFORM-001` | `TOPAL-COMPILER-PLATFORM-001` |
+| `TOPAL-REQ-NATIVE-ABI-001` | `TOPAL-COMPILER-TARGET-001`, `TOPAL-COMPILER-ABI-001` |
+| `TOPAL-REQ-NATIVE-ARTIFACT-001` | `TOPAL-COMPILER-ARTIFACT-001`, `TOPAL-COMPILER-ABI-001` |
+| `TOPAL-REQ-NATIVE-DEBUG-001` | `TOPAL-COMPILER-DEBUG-001` |
+| `TOPAL-REQ-LLVM-001` | `TOPAL-COMPILER-LLVM-001`, `TOPAL-COMPILER-TOOL-001` |
 
 ## Maintenance rules
 
@@ -77,6 +84,7 @@ coverage-ledger row remains `planned`.
 
 | Assurance slice | Specification rules | Functional evidence | Implementation | Remaining closure |
 | --- | --- | --- | --- | --- |
+| first freestanding native compiler increment (`TOPAL-COMP-TARGET-001`, `TOPAL-COMP-LLVM-001`, `TOPAL-COMP-PLATFORM-001`, `TOPAL-COMP-O0-001`, `TOPAL-COMP-DEBUG-001`, `TOPAL-COMP-ARTIFACT-001`, `TOPAL-COMP-TEST-001`) | `TOPAL-COMPILER-TARGET-001`, `TOPAL-COMPILER-PLATFORM-001`, `TOPAL-COMPILER-O0-001`, `TOPAL-COMPILER-LLVM-001`, `TOPAL-COMPILER-ABI-001`, `TOPAL-COMPILER-ARTIFACT-001`, `TOPAL-COMPILER-DEBUG-001`, `TOPAL-COMPILER-TEST-001`, `TOPAL-COMPILER-SUBSET-001`, `TOPAL-COMPILER-TOOL-001`; admitted source rules listed in `src/topal-compiler/se-requirements.md` | compiler unit and CLI tests; four shared `examples/language/*.t` interpreter/compiler regressions; ELF and GDB inspection; separate compiler build/run resource baseline | shared `topal-source`, `topal-syntax`, and `topal-language` checked model; `topal-compiler`; LLVM 22 command-line tools; versioned Linux x86-64 syscall layer | arbitrary exact numbers, remaining core values and control flow, libraries and GEIR interfaces, full core differential corpus |
 | function contracts and evidence authority | `TOPAL-SYN-FUNCTION-V02-001`, `TOPAL-EFFECT-CLAUSE-V02-001`, `TOPAL-FUNCTION-CLAUSE-PLACEMENT-001`, `TOPAL-CONTRACT-REQUIRES-001`, `TOPAL-CONTRACT-ENSURES-001`, `TOPAL-CONTRACT-INVARIANT-001`, `TOPAL-EVIDENCE-KIND-001`, `TOPAL-EVIDENCE-STATUS-001`, `TOPAL-EVIDENCE-NAME-001`, `TOPAL-EVIDENCE-PRODUCER-001`, `TOPAL-EVIDENCE-BOUNDARY-001`, `TOPAL-EVIDENCE-ASSUMPTION-001`, `TOPAL-IMPL-EVIDENCE-001`, `TOPAL-IMPL-SELECTION-001`, `TOPAL-IMPL-UNAVAILABLE-001` | v0.2 ordinary/interface parser tests; interpreter pre/postcondition, name-authority, and hard/preferred guarantee tests; evidence-policy tests; GEIR revision-2 tests | `topal-syntax::FunctionClauses`; `topal-language` contract admission; `topal-semantics::assurance`; `topal-geir` revision 2 | static proof/erasure, invariant syntax/preservation, nested function-type clauses, compiled proof consumption |
 | portable resources, exclusivity, and regions | `TOPAL-PERF-DIMENSION-001`, `TOPAL-PERF-COMPOSE-001`, `TOPAL-PERF-PREFER-001`, `TOPAL-PERF-PROGRESS-001`, `TOPAL-VALUE-EXCLUSIVE-001`, `TOPAL-VALUE-CONSUMES-001`, `TOPAL-RESOURCE-REGION-001`, `TOPAL-RESOURCE-ESCAPE-001` | dimension-composition, progress-order, exclusivity, consumption, and region-escape tests; parameter-classifier parser and interpreter rejection tests | `topal-semantics::assurance`; v0.2 shared syntax tree | compiler inference, source region operations, concrete selector integration, successful interpreter consumption path |
 | synthesized interactions and transactions | `TOPAL-CONC-TOPOLOGY-001`, `TOPAL-CONC-IMPL-001`, `TOPAL-CONC-SNAPSHOT-001`, `TOPAL-CONC-PROTECTED-001`, `TOPAL-TXN-DOMAIN-001`, `TOPAL-TXN-COMMIT-001`, `TOPAL-TXN-CONFLICT-001`, `TOPAL-TXN-CANCEL-001`, `TOPAL-TXN-COMPOSE-001` | topology/mechanism, snapshot retention, commit/conflict, cancellation, and composition tests | `topal-semantics::portable_runtime` | Topal source operations and effects, debugger traces, certified generated mechanisms |
