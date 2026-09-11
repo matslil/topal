@@ -1,7 +1,7 @@
 #!/usr/bin/env topal
 use language (version is v0.1)
 
-### Revision of the exact finite polyomino-packing namespace.
+### Revision of the Advent of Code polyomino-packing namespace.
 pub revision is 1
 
 line-values is fn ((values : List String, start : Nat, index : Nat)) -> List String

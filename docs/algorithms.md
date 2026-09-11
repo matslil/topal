@@ -52,6 +52,12 @@ More specialized namespaces keep their policies visible:
   population/sample variance, population covariance, and mergeable count/sum/
   square-sum summaries. Undefined results are represented explicitly.
 
+Problem-specific parsing, route constraints, machine descriptions, and packing
+rules do not become standard merely because several related applications use
+them. The Advent of Code examples share those policies through the separate
+`advent-of-code` companion library. An operation moves into `std` only after it
+has an application-independent contract and representation.
+
 The first revision intentionally favors small composable operations. More
 specialized search structures, negative graph weights, approximate sampling,
 and approximate numeric methods belong in later namespaces with their policy

@@ -274,7 +274,7 @@ fn evaluate_input(
         return evaluate_directory(session, Path::new(path), trace);
     }
     let source = read_source(path)?;
-    if declares_library(&source, "std") {
+    if declares_library(&source, "std") || declares_library(&source, "advent-of-code") {
         load_module_tree(session, library_root, trace)?;
     }
     if input.is_none() && path.is_some() && declares_string_solver(&source) {

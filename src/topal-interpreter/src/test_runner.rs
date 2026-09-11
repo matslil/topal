@@ -203,7 +203,7 @@ fn execute(path: &Path, library_root: &Path, working_directory: &Path) -> Outcom
         .and_then(|source| {
             let mut session = Session::new();
             let mut trace = Vec::new();
-            if declares_library(&source, "std") {
+            if declares_library(&source, "std") || declares_library(&source, "advent-of-code") {
                 load_module_tree(&mut session, library_root, &mut trace)
                     .map_err(|error| format!("{identity}: {error}"))?;
             }

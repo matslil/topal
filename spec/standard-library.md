@@ -207,26 +207,6 @@ Digit decomposition SHALL reject any nondigit rather than discard it. These
 operations SHALL be locale independent and SHALL NOT expose encoded units.
 The namespace SHALL also reconstruct a String from complete Characters.
 
-### TOPAL-LIB-GEOMETRY-001 — Exact finite geometry
-
-The `std geometry` namespace SHALL provide deterministic nearest-first
-component clustering for exact three-dimensional integer points and inclusive
-axis-aligned rectangle maximization for exact two-dimensional integer points.
-The contained-rectangle operation SHALL interpret its vertices in order as a
-closed orthogonal polygon and reject rectangles crossed through their interior
-by a polygon edge. Equal-distance point pairs SHALL be ordered by their source
-indexes.
-
-### TOPAL-LIB-PLANNING-001 — Finite exact planning
-
-The `std machine` namespace SHALL minimize presses for finite binary-indicator
-and nonnegative additive-counter machines. The `std graph` namespace SHALL
-count routes in finite directed acyclic graphs, optionally requiring a finite
-set of intermediate nodes. The `std packing` namespace SHALL decide exact
-rectangular packing of requested free polyominoes, considering rotations and
-reflections without overlap. These operations SHALL return exact integer
-results and SHALL be deterministic.
-
 ### TOPAL-LIB-TEST-001 — Topal test descriptions
 
 The `std test` namespace SHALL construct declarative application-test values

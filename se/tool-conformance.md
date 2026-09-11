@@ -24,6 +24,7 @@ applicable to the interpreter and debugger.
 | Specification | Interpreter | LSP | Linter | Debugger | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | `spec/abstractions.md` | direct | shared | shared | shared | `topal-semantics`; interpreter and debugger functional suites; LSP and linter source corpora |
+| `spec/advent-of-code-library.md` | direct | shared | shared | shared | companion-library Topal tests and Advent of Code application corpus; shared loader and source-tool acceptance suites |
 | `spec/best-practices.md` | not-applicable | direct | direct | not-applicable | `topal-best-practices`; `topal-linter`; LSP lint adapter tests |
 | `spec/concurrency-model.md` | shared | not-applicable | shared | shared | `topal-semantics`; task source tests; contained task-rule views; reversible message tests |
 | `spec/concurrency-implementations.md` | shared | shared | shared | shared | `topal-semantics::portable_runtime` reference models and unit tests; source-operation and debugger integration remains planned |

@@ -110,7 +110,7 @@ fn prepare_debuggee(arguments: &Arguments) -> Result<(String, String, Debuggee),
     let mut history = ExecutionHistory::new();
     if Path::new(&arguments.source).is_dir() {
         load_module_tree(&mut session, Path::new(&arguments.source), &mut history)?;
-    } else if declares_library(&source, "std") {
+    } else if declares_library(&source, "std") || declares_library(&source, "advent-of-code") {
         load_module_tree(&mut session, &arguments.library_root, &mut history)?;
     }
     let documentation_root = if Path::new(&arguments.source).is_dir() {

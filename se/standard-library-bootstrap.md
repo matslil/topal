@@ -53,9 +53,10 @@ The completed fundamental API and its deliberate omissions are recorded in
 The data-transfer implementation phases and shared native-boundary architecture
 are maintained in
 [`data-transfer-standard-library-plan.md`](data-transfer-standard-library-plan.md).
-The fundamental API is published directly through the flat `std` namespace;
-extended libraries use nested scopes beneath `std` so their growth does not
-change fundamental names.
+The fundamental API is published directly through the flat `std` namespace.
+Application-independent standard algorithms use nested scopes beneath `std`;
+policy-bearing companion packages use distinct root namespaces so their growth
+does not change standard-library names.
 
 ## Initial development gate
 

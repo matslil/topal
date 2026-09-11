@@ -11,12 +11,49 @@ use library std (
 # syntax and limits, selects the operation, and serializes these semantic
 # responses; the controller itself needs neither a socket nor ambient authority.
 
-response is std web http response
-problem is std web http problem
-operation is std web http operation
+select-delete-operation is fn (matches : Boolean) -> String
+  matches
+    true then "delete"
+    false then "unsupported"
+
+select-replace-operation is fn (matches : Boolean, next : String) -> String
+  matches
+    true then "replace"
+    false then next
+
+select-read-operation is fn (matches : Boolean, next : String) -> String
+  matches
+    true then "read"
+    false then next
+
+### Select the example controller operation for GET, PUT, or DELETE.
+operation is fn (verb : String) -> String
+  delete-result is select-delete-operation (verb = "DELETE")
+  replace-result is select-replace-operation (verb = "PUT", delete-result)
+  select-read-operation (verb = "GET", replace-result)
+
+### Test an explicit representation-version precondition.
+version-matches? is fn (expected : Nat, current : Nat) -> Boolean
+  expected = current
+
+### Construct the design-0 response shape `(status, media type, body, version)`.
+response is fn ((
+  status : Nat,
+  media-type : String,
+  body : String,
+  version : Nat
+)) -> (Nat, String, String, Nat)
+  (status, media-type, body, version)
+
+### Construct an RFC 9457-style problem response without internal detail.
+problem is fn ((
+  status : Nat,
+  problem-type : String,
+  title : String
+)) -> (Nat, String, String, Nat)
+  (status, "application/problem+json", problem-type concat ": " concat title, 0)
 safe-method? is std web http safe-method?
 idempotent-method? is std web http idempotent-method?
-version-matches? is std web http version-matches?
 
 read-result is fn (missing : Boolean) -> (Nat, String, String, Nat)
   missing

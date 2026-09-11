@@ -76,12 +76,12 @@ unique-step is fn (selected : List (Value : Equality), candidate : Value) -> Lis
 pub unique is fn (values : List (Value : Equality)) -> List Value
   values fold (Empty Value) { selected, candidate } unique-step (selected, candidate)
 
-enumerate-step is fn (candidate : (Value : Type), indexed : List (Nat, Value)) -> List (Nat, Value)
+enumerate-step is fn (indexed : List (Nat, Value), candidate : (Value : Type)) -> List (Nat, Value)
   indexed append (Nat (entry-count indexed), candidate)
 
 enumerate-source is fn (values : List (Value : Type)) -> List (Nat, Value)
   indexed : List (Nat, Value) is Empty
-  values fold indexed { collected, candidate } enumerate-step (candidate, collected)
+  values fold indexed { collected, candidate } enumerate-step (collected, candidate)
 
 present-index is fn (index : Nat) -> Optional Nat
   present : Optional Nat is Some index
@@ -110,23 +110,23 @@ last-index-step is fn ((found : Optional Nat, index : Nat, candidate : (Value : 
 pub last-index-of is fn (values : List (Value : Equality), sought : Value) -> Optional Nat
   (enumerate-source values) fold (None Nat) { found, (index, candidate) } last-index-step (found, index, candidate, sought)
 
-### Rotate entries left, wrapping by the List entry count.
 rotate-left-nonempty is fn (values : List (Value : Type), count : Nat) -> List Value
   length is entry-count values
   boundary is count % length
   (values select-index (boundary .. length)) concat (values select-index (0 .. boundary))
 
+### Rotate entries left, wrapping by the List entry count.
 pub rotate-left is fn (values : List (Value : Type), count : Nat) -> List Value
   length is entry-count values
   length = 0
     true then values
     false then rotate-left-nonempty (values, count)
 
-### Rotate entries right, wrapping by the List entry count.
 rotate-right-nonempty is fn (values : List (Value : Type), count : Nat) -> List Value
   length is entry-count values
   rotate-left (values, length - (count % length))
 
+### Rotate entries right, wrapping by the List entry count.
 pub rotate-right is fn (values : List (Value : Type), count : Nat) -> List Value
   length is entry-count values
   length = 0
@@ -139,7 +139,7 @@ chunk-step is fn ((values : List (Value : Type), size : Nat, chunks : List (List
   finish is clamp-count (start + size, entry-count values)
   chunks append (values select-index (start .. finish))
 
-### Divide a List into nonempty consecutive Lists of at most `size` entries.
+### Divide a List into nonempty consecutive Lists of at most `size` entries; reject a zero size.
 pub chunks is fn (values : List (Value : Type), size : Nat) -> List List Value
   checked : PositiveSize is PositiveSize size
   empty-chunk is values select-index (0 .. 0)
@@ -150,7 +150,7 @@ pub chunks is fn (values : List (Value : Type), size : Nat) -> List List Value
 window-step is fn ((values : List (Value : Type), size : Nat, windows : List (List Value), start : Nat)) -> List (List Value)
   windows append (values select-index (start .. (start + size)))
 
-### Return every consecutive List window with exactly `size` entries.
+### Return every consecutive List window with exactly `size` entries; reject a zero size.
 pub windows is fn (values : List (Value : Type), size : Nat) -> List List Value
   checked : PositiveSize is PositiveSize size
   empty-window is values select-index (0 .. 0)

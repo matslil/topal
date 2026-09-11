@@ -9,6 +9,8 @@ Pass is Boolean constraint { value } value = true
 blank? is std text blank?
 canonical-equal? is std text canonical-equal?
 caseless-equal? is std text caseless-equal?
+nfc is std text nfc
+nfd is std text nfd
 reachable is std graph reachable
 reachable? is std graph reachable?
 factorial is std combinatorics factorial
@@ -37,10 +39,12 @@ actual-words : List String is words " one  two  three "
 actual-lines-joined is join (actual-lines, "|")
 actual-words-joined is join (actual-words, "|")
 
+empty-blank : Pass is Pass (blank? "")
 unicode-blank : Pass is Pass (blank? "   ")
 nonblank : Pass is Pass (not (blank? " x "))
 canonical : Pass is Pass (canonical-equal? ("é", "é"))
 caseless : Pass is Pass (caseless-equal? ("Straße", "STRASSE"))
+normal-form-round-trip : Pass is Pass ((nfc (nfd "é")) = "é")
 transitive-reachability : Pass is Pass (reachable? ("a", ("c", edges, nodes)))
 isolated-component : Pass is Pass (not (reachable? ("a", ("y", edges, nodes))))
 closure-order : Pass is Pass ((entry-count (reachable (starts, (edges, nodes)))) = 3)
@@ -51,10 +55,16 @@ exact-mean : Pass is Pass ((mean four) = two-and-half)
 rational-mean : Pass is Pass ((mean rationals) = one-rational)
 empty-mean : Pass is Pass ((mean none) = no-mean)
 line-splitting : Pass is Pass (actual-lines-joined = "one|two")
+empty-lines : Pass is Pass ((lines "") = (Empty String))
 unicode-words : Pass is Pass (actual-words-joined = "one|two|three")
+empty-words : Pass is Pass ((words "") = (Empty String))
+empty-join : Pass is Pass ((join ((Empty String), "--")) = "")
+single-join : Pass is Pass ((join ((one "one"), "--")) = "one")
 exact-join : Pass is Pass ((join (word-parts, "--")) = "one--two--three")
 
-(unicode-blank, nonblank, canonical, caseless, transitive-reachability,
+(empty-blank, unicode-blank, nonblank, canonical, caseless,
+ normal-form-round-trip, transitive-reachability,
  isolated-component, closure-order, zero-factorial, five-factorial,
  power-set-size, exact-mean, rational-mean, empty-mean, line-splitting,
- unicode-words, exact-join)
+ empty-lines, unicode-words, empty-words, empty-join, single-join,
+ exact-join)

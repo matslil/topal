@@ -5,9 +5,12 @@ use language (
 use library std (
   version is v0.1
 )
+use library advent-of-code (
+  version is v0.1
+)
 
 parse is std parse integer-triples
-component-product is std geometry nearest-component-product
+component-product is advent-of-code geometry nearest-component-product
 
 solve is fn (input : String) -> Int
   component-product (parse input, 1000)

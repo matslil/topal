@@ -87,8 +87,10 @@ Primary design references:
 
 ## Implementation sequence
 
-1. Add reusable Topal policy modules below `std packet filter` and `std web`
-   only where more than one example or test needs the operation.
+1. Keep policy used by only one application local to that example. Promote an
+   operation to a separate reusable library only after more than one
+   independent application needs the same contract; admit it to `std` only
+   when the contract is application independent.
 2. Implement self-checking examples under `examples/data-transfer/`; retain the
    existing simple firewall as an introductory example.
 3. Cover positive, negative, boundary, IPv4/IPv6, default-deny, rule-order,

@@ -230,7 +230,7 @@ pub upper-inclusive? is fn (interval : Range (Value : TotalOrder)) -> Boolean
 pub bounds is fn (interval : Range (Value : TotalOrder)) -> (Value, Value)
   (range-lower interval, range-upper interval)
 
-### Return the shared portion of two Ranges, or absence when disjoint.
+### Return the shared portion of two Ranges; the result is empty when disjoint.
 pub intersection is fn (
   left : Range (Value : TotalOrder),
   right : Range Value
@@ -376,19 +376,19 @@ normalize-range-step is fn (selected : List (Int, Int), interval : Range Int) ->
   candidate is (range-first-int interval, range-last-int interval)
   valid-interval-step (selected, candidate)
 
-ranges-to-intervals is fn (intervals : List (Range Int)) -> List (Int, Int)
+ranges-to-intervals is fn (intervals : List Range Int) -> List (Int, Int)
   empty-intervals : List (Int, Int) is Empty
   intervals fold empty-intervals { selected, interval } normalize-range-step (selected, interval)
 
-interval-range-step is fn (selected : List (Range Int), interval : (Int, Int)) -> List (Range Int)
+interval-range-step is fn (selected : List Range Int, interval : (Int, Int)) -> List Range Int
   selected append ((interval-lower interval) ..= (interval-upper interval))
 
-intervals-to-ranges is fn (intervals : List (Int, Int)) -> List (Range Int)
-  empty-ranges : List (Range Int) is Empty
+intervals-to-ranges is fn (intervals : List (Int, Int)) -> List Range Int
+  empty-ranges : List Range Int is Empty
   intervals fold empty-ranges { selected, interval } interval-range-step (selected, interval)
 
 ### Normalize and merge overlapping or adjacent finite Int Ranges.
-pub coalesce is fn (intervals : List (Range Int)) -> List (Range Int)
+pub coalesce is fn (intervals : List Range Int) -> List Range Int
   intervals-to-ranges (coalesce-intervals (ranges-to-intervals intervals))
 
 ### Normalize closed endpoint pairs as inclusive Int intervals.
@@ -443,7 +443,7 @@ pub odd? is fn (value : Int) -> Boolean
 ### Test exact divisibility. A zero divisor never divides a value.
 pub divides? is fn (divisor : Int, dividend : Int) -> Boolean
   divisor
-    = 0 then dividend = 0
+    = 0 then false
     otherwise dividend % divisor = 0
 
 ### Return the exact reciprocal, or absence for zero.
@@ -586,31 +586,31 @@ pub replace-all is fn (
 ) -> String
   replace-source (text, pattern, replacement)
 
-### Concatenate text with itself count times; zero yields the empty String.
 repeat-step is fn ((repeated : String, text : String, index : Nat)) -> String
   _ is index
   repeated concat text
 
+### Concatenate text with itself `count` times; zero yields the empty String.
 pub repeat is fn (text : String, count : Nat) -> String
   indexes is collect (0 iterate ({ index } index + 1) take-while ({ index } index < count))
   indexes fold "" { repeated, index } repeat-step (repeated, text, index)
 
 # Finite Lists.
-### Test whether any List entry satisfies a predicate, stopping at the first match.
+### Test whether any List entry satisfies a predicate.
 pub any? is fn (
   values : List (Value : Type),
   predicate : fn (Value) -> Boolean
 ) -> Boolean
   values fold false { found, value } found or (predicate value)
 
-### Test whether every List entry satisfies a predicate, stopping at the first failure.
+### Test whether every List entry satisfies a predicate.
 pub all? is fn (
   values : List (Value : Type),
   predicate : fn (Value) -> Boolean
 ) -> Boolean
   values fold true { accepted, value } accepted and (predicate value)
 
-### Test whether no List entry satisfies a predicate, stopping at the first match.
+### Test whether no List entry satisfies a predicate.
 pub none? is fn (
   values : List (Value : Type),
   predicate : fn (Value) -> Boolean

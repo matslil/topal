@@ -3724,6 +3724,21 @@
     "topal-language::lib:topal_language::source::published_functions_capture_private_named_functions": {
       "cpu_time_ns": 6440920,
       "memory_peak_bytes": 18132992
+    },
+    "topal-doc::test:cli::every_public_standard_library_function_has_documentation": {
+      "cpu_time_ns": 967819900,
+      "memory_peak_bytes": 18169856,
+      "samples_per_test": 50
+    },
+    "topal-doc::test:cli::recursively_generates_the_complete_standard_library": {
+      "cpu_time_ns": 905516200,
+      "memory_peak_bytes": 18153472,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::source::lists_with_the_same_element_classifier_and_different_lengths_are_unequal": {
+      "cpu_time_ns": 3341579,
+      "memory_peak_bytes": 18235392,
+      "samples_per_test": 50
     }
   }
 }

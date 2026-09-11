@@ -217,6 +217,16 @@
       "cpu_time_ns": 75930047666,
       "memory_peak_bytes": 282456064,
       "samples_per_test": 3
+    },
+    "topal::tests/standard-library/fundamental-boundaries.t": {
+      "cpu_time_ns": 1953350560,
+      "memory_peak_bytes": 103747584,
+      "samples_per_test": 50
+    },
+    "topal::tests/standard-library/web-http.t": {
+      "cpu_time_ns": 1824679340,
+      "memory_peak_bytes": 101728256,
+      "samples_per_test": 50
     }
   }
 }

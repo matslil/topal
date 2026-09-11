@@ -25,6 +25,7 @@ cycle-change : List String is Entry ("a", Empty)
 units : List String is Entry ("compile-core", Entry ("compile-app", Entry ("test-app", Entry ("compile-other", Entry ("test-other", Empty)))))
 cycle-units : List String is Entry ("a", Entry ("b", Entry ("test-b", Empty)))
 no-units : List String is Empty
+no-changes : List String is Empty
 
 direct-dependent-selected : Pass is Pass (affected? ("compile-app", (changed, edges, units)))
 indirect-test-selected : Pass is Pass (affected? ("test-app", (changed, edges, units)))
@@ -34,8 +35,9 @@ changed-unit-selected : Pass is Pass (affected? ("compile-core", (changed, edges
 cycle-terminates-and-selects-test : Pass is Pass (affected? ("test-b", (cycle-change, cycle-edges, cycle-units)))
 selection-has-no-duplicates : Pass is Pass ((entry-count (selected (cycle-change, (cycle-edges, cycle-units)))) = 3)
 zero-pass-keeps_changed_only : Pass is Pass ((selected (changed, (edges, no-units))) = changed)
+empty-selection-stays-empty : Pass is Pass ((selected (no-changes, (edges, units))) = no-changes)
 
 (direct-dependent-selected, indirect-test-selected, independent-build-skipped,
  independent-test-skipped, changed-unit-selected,
  cycle-terminates-and-selects-test, selection-has-no-duplicates,
- zero-pass-keeps_changed_only)
+ zero-pass-keeps_changed_only, empty-selection-stays-empty)

@@ -29,5 +29,6 @@ pub spans-overlap? is fn (
 gathered-length-step is fn (total : Nat, (start : Nat, length : Nat)) -> Nat
   total + length
 
+### Return the sum of all span lengths without merging overlaps.
 pub gathered-length is fn (spans : List (Nat, Nat)) -> Nat
   spans fold 0 { total, span } gathered-length-step (total, span)

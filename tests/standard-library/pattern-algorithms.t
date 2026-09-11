@@ -23,9 +23,11 @@ values : List Int is Entry (1, Entry (2, Entry (3, Entry (4, Empty))))
 consecutive : List Int is Entry (2, Entry (3, Empty))
 gapped : List Int is Entry (1, Entry (3, Entry (4, Empty)))
 reversed : List Int is Entry (3, Entry (1, Empty))
+no-values : List Int is Empty
 overlap-indexes : List Nat is Entry (0, Entry (1, Entry (2, Empty)))
 split-parts : List String is Entry ("one", Entry ("two", Entry ("three", Empty)))
 alternatives : List String is Entry ("Rust", Entry ("language", Empty))
+no-alternatives : List String is Empty
 split-result : List String is split ("one--two--three", "--")
 split-result-joined is join (split-result, "|")
 
@@ -33,24 +35,41 @@ empty-prefix : Pass is Pass (starts-with? ("Topal", ""))
 exact-prefix : Pass is Pass (starts-with? ("Topal", "Top"))
 wrong-prefix : Pass is Pass (not (starts-with? ("Topal", "opal")))
 exact-suffix : Pass is Pass (ends-with? ("Topal", "pal"))
+empty-suffix : Pass is Pass (ends-with? ("Topal", ""))
+long-suffix : Pass is Pass (not (ends-with? ("Topal", "A Topal")))
+wrong-suffix : Pass is Pass (not (ends-with? ("Topal", "Top")))
+empty-text-pattern : Pass is Pass (contains? ("Topal", ""))
 text-contained : Pass is Pass (contains? ("Topal language", "language"))
 text-absent : Pass is Pass (not (contains? ("Topal", "Rust")))
 replacement : Pass is Pass ((replace-all ("one two one", ("one", "1"))) = "1 two 1")
 list-consecutive : Pass is Pass (contains? (values, consecutive))
+list-empty-pattern : Pass is Pass (contains? (values, no-values))
 list-not-consecutive : Pass is Pass (not (contains? (values, gapped)))
 list-subsequence : Pass is Pass (subsequence? (values, gapped))
+list-empty-subsequence : Pass is Pass (subsequence? (values, no-values))
 subsequence-order : Pass is Pass (not (subsequence? (values, reversed)))
 overlapping-count : Pass is Pass ((count ("aaaa", "aa")) = 3)
+absent-count : Pass is Pass ((count ("aaaa", "b")) = 0)
 overlapping-indexes : Pass is Pass ((find-all ("aaaa", "aa")) = overlap-indexes)
+absent-indexes : Pass is Pass ((find-all ("aaaa", "b")) = (Empty Nat))
 exact-split : Pass is Pass (split-result-joined = "one|two|three")
+no-split : Pass is Pass ((join (split ("one", "--"), "|")) = "one")
+boundary-split : Pass is Pass ((join (split ("--one--", "--"), "|")) = "|one|")
 glob-star : Pass is Pass (glob? ("topal-language", "t*lang?age"))
+glob-empty : Pass is Pass (glob? ("", "*"))
+glob-question-rejects-empty : Pass is Pass (not (glob? ("", "?")))
 glob-whole-text : Pass is Pass (not (glob? ("topal", "opa")))
 alternative-match : Pass is Pass (contains-any? ("Topal language", alternatives))
+alternative-absence : Pass is Pass (not (contains-any? ("Topal", alternatives)))
+empty-alternatives : Pass is Pass (not (contains-any? ("Topal", no-alternatives)))
 regex-match : Pass is Pass (regex-contains? ("Topal language", "T.pal +lang(uage)?"))
 regex-absence : Pass is Pass (not (regex-contains? ("Topal", "^Rust$")))
 
-(empty-prefix, exact-prefix, wrong-prefix, exact-suffix, text-contained,
- text-absent, replacement, list-consecutive, list-not-consecutive,
- list-subsequence, subsequence-order, overlapping-count, overlapping-indexes,
- exact-split, glob-star, glob-whole-text, alternative-match, regex-match,
- regex-absence)
+(empty-prefix, exact-prefix, wrong-prefix, exact-suffix, empty-suffix,
+ long-suffix, wrong-suffix, empty-text-pattern, text-contained, text-absent,
+ replacement, list-consecutive, list-empty-pattern, list-not-consecutive,
+ list-subsequence, list-empty-subsequence, subsequence-order,
+ overlapping-count, absent-count, overlapping-indexes, absent-indexes,
+ exact-split, no-split, boundary-split, glob-star, glob-empty,
+ glob-question-rejects-empty, glob-whole-text, alternative-match,
+ alternative-absence, empty-alternatives, regex-match, regex-absence)

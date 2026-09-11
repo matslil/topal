@@ -7,7 +7,7 @@ use language (
 help documented-answer
 help min
 help std min
-help std web http response
+help std web http safe-method?
 help lang Int
 help next
 help

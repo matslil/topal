@@ -116,6 +116,7 @@ median-int is fn (values : List Int) -> Optional Rational
 ### Return the exact median, or absence for an empty List.
 pub median is fn (values : List Int) -> Optional Rational
   median-int values
+### Return the exact median, or absence for an empty List.
 pub median is fn (values : List Rational) -> Optional Rational
   median-rational values
 
@@ -184,6 +185,7 @@ pub modes is fn (values : List Int) -> List Int
   histogram-values is histogram-int-source values
   maximum is histogram-values fold 0 { count, pair } maximum-count (count, pair-count pair)
   histogram-values fold (Empty Int) { selected, pair } select-int-mode (selected, pair, maximum)
+### Return every most-frequent value in first-occurrence order.
 pub modes is fn (values : List Rational) -> List Rational
   histogram-values is histogram-rational-source values
   maximum is histogram-values fold 0 { count, pair } maximum-count (count, rational-pair-count pair)
@@ -192,6 +194,7 @@ pub modes is fn (values : List Rational) -> List Rational
 ### Return first-occurrence ordered value-frequency pairs.
 pub histogram is fn (values : List Int) -> List (Int, Nat)
   histogram-int-source values
+### Return first-occurrence ordered value-frequency pairs.
 pub histogram is fn (values : List Rational) -> List (Rational, Nat)
   histogram-rational-source values
 
@@ -234,16 +237,17 @@ summary-variance-source is fn (summary : (Nat, Rational, Rational), sample? : Bo
 ### Return exact population variance, or absence for an empty List.
 pub population-variance is fn (values : List Int) -> Optional Rational
   summary-variance-source (summarize-int values, false)
+### Return exact population variance, or absence for an empty List.
 pub population-variance is fn (values : List Rational) -> Optional Rational
   summary-variance-source (summarize-rational values, false)
 
 ### Return exact sample variance, or absence when fewer than two entries exist.
 pub sample-variance is fn (values : List Int) -> Optional Rational
   summary-variance-source (summarize-int values, true)
+### Return exact sample variance, or absence when fewer than two entries exist.
 pub sample-variance is fn (values : List Rational) -> Optional Rational
   summary-variance-source (summarize-rational values, true)
 
-### Return the linearly interpolated exact quantile for a probability in 0 ..= 1.
 Probability is Rational constraint { probability } (probability >= (Rational 0)) and (probability <= (Rational 1))
 
 position-index is fn ((index : Nat, accepted : Nat)) -> Nat
@@ -294,8 +298,10 @@ int-list-rationals is fn (values : List Int) -> List Rational
   empty-rationals : List Rational is Empty
   values fold empty-rationals { converted, value } append-rational (converted, value)
 
+### Return the linearly interpolated exact quantile for an Int List and a probability in 0 ..= 1.
 pub quantile is fn (values : List Int, probability : Rational) -> Optional Rational
   quantile-rational-source (int-list-rationals values, probability)
+### Return the linearly interpolated exact quantile for a Rational List and a probability in 0 ..= 1.
 pub quantile is fn (values : List Rational, probability : Rational) -> Optional Rational
   quantile-rational-source (values, probability)
 
@@ -327,18 +333,25 @@ covariance-source is fn (pairs : List (Rational, Rational)) -> Optional Rational
     true then None Rational
     false then covariance-present (final, count)
 
-to-rational is fn (value : Int) -> Rational
-  Rational value
+EqualLengths is Boolean constraint { equal? } equal? = true
 
 ### Return exact population covariance for equally sized paired Lists.
 pub covariance is fn (left : List Int, right : List Int) -> Optional Rational
-  covariance-source ((left map { value } to-rational value) zip-shortest (right map { value } to-rational value))
+  checked : EqualLengths is EqualLengths ((entry-count left) = (entry-count right))
+  _ is checked
+  left-values : List Rational is int-list-rationals left
+  right-values : List Rational is int-list-rationals right
+  covariance-source (left-values zip-shortest right-values)
+### Return exact population covariance for equally sized paired Lists.
 pub covariance is fn (left : List Rational, right : List Rational) -> Optional Rational
+  checked : EqualLengths is EqualLengths ((entry-count left) = (entry-count right))
+  _ is checked
   covariance-source (left zip-shortest right)
 
 ### Produce an exact mergeable summary: count, sum, and sum of squares.
 pub summarize is fn (values : List Int) -> (Nat, Rational, Rational)
   summarize-int values
+### Produce an exact mergeable summary: count, sum, and sum of squares.
 pub summarize is fn (values : List Rational) -> (Nat, Rational, Rational)
   summarize-rational values
 

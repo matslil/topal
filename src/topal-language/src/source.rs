@@ -4800,12 +4800,12 @@ impl Session {
             });
             return Ok(Value::Capability(vec![BTreeSet::from([name.to_owned()])]));
         }
-        if name == "std" && !self.declared_libraries.contains("std") {
+        if matches!(name, "std" | "advent-of-code") && !self.declared_libraries.contains(name) {
             return Err(diagnostic(
                 source,
                 "E-UNDECLARED-LIBRARY",
                 span,
-                "the `std` namespace requires `use library std ( version is v0.1 )`",
+                format!("the `{name}` namespace requires `use library {name} ( version is v0.1 )`"),
             ));
         }
         if name == "root" {
@@ -5033,12 +5033,17 @@ impl Session {
         let Some(Value::Namespace(namespace)) = self.bindings.get(source.slice(*alias)) else {
             unreachable!("preselected namespace alias")
         };
-        if source.slice(*alias) == "std" && !self.declared_libraries.contains("std") {
+        let alias_name = source.slice(*alias);
+        if matches!(alias_name, "std" | "advent-of-code")
+            && !self.declared_libraries.contains(alias_name)
+        {
             return Err(diagnostic(
                 source,
                 "E-UNDECLARED-LIBRARY",
                 *alias,
-                "the `std` namespace requires `use library std ( version is v0.1 )`",
+                format!(
+                    "the `{alias_name}` namespace requires `use library {alias_name} ( version is v0.1 )`"
+                ),
             ));
         }
         let member_name = source.slice(*member);
@@ -8070,7 +8075,7 @@ impl Execution {
             } => {
                 let library_name = self.source.slice(*name);
                 let requested = self.source.slice(*version);
-                if library_name != "std" {
+                if !matches!(library_name, "std" | "advent-of-code") {
                     return Err(diagnostic(
                         &self.source,
                         "E-UNSUPPORTED-LIBRARY",
@@ -8084,7 +8089,7 @@ impl Execution {
                         "E-UNSUPPORTED-LIBRARY-VERSION",
                         *version,
                         format!(
-                            "standard-library version `{requested}` is not supported; available version is `v0.1`"
+                            "library `{library_name}` version `{requested}` is not supported; available version is `v0.1`"
                         ),
                     ));
                 }
@@ -8092,7 +8097,11 @@ impl Execution {
                 trace.record(TraceEvent {
                     event: "library.dependency.selected",
                     rule: "TOPAL-SYN-LIBRARY-001",
-                    detail: "std@v0.1",
+                    detail: if library_name == "std" {
+                        "std@v0.1"
+                    } else {
+                        "advent-of-code@v0.1"
+                    },
                 });
                 (Value::Unit, *span)
             }
@@ -9852,6 +9861,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
+        | (Value::Error { .. }, "Error")
         | (Value::Continue(_) | Value::Finish(_), "TraversalControl")
         | (Value::Completed, "Completed")
         | (Value::Unit, "Unit") => true,
@@ -10030,6 +10040,12 @@ fn user_function_accepts(function: &UserFunction, argument: &Value) -> bool {
                 package_generic_accepts(fields, argument, &mut generic_types)
             } else {
                 generic_parameter_accepts(argument, classifier, &mut generic_types)
+                    || value_matches_substituted_classifier(
+                        argument,
+                        classifier,
+                        &function.generic_names,
+                        &mut generic_types,
+                    )
             }
         },
     )
@@ -10052,13 +10068,17 @@ fn generic_parameter_accepts(
         if !value_has_capability(argument, capability) {
             return false;
         }
+        if let Some(existing) = generic_types.get(name) {
+            return value_has_classifier(argument, existing)
+                || structural_value_classifier(argument) == *existing;
+        }
         let actual = structural_value_classifier(argument);
-        return generic_types
-            .insert(name.to_owned(), actual.clone())
-            .is_none_or(|existing| existing == actual);
+        generic_types.insert(name.to_owned(), actual);
+        return true;
     }
     if let Some(expected) = generic_types.get(classifier) {
-        return structural_value_classifier(argument) == *expected;
+        return value_has_classifier(argument, expected)
+            || structural_value_classifier(argument) == *expected;
     }
     if let Some(payload_classifier) = applied_classifier(classifier, "Optional") {
         let Value::Optional {
@@ -10233,7 +10253,14 @@ fn populate_function_generics(
                 }
             }
         } else if let Some(argument) = scope.bindings.get(parameter) {
-            let _ = generic_parameter_accepts(argument, classifier, generic_types);
+            if !generic_parameter_accepts(argument, classifier, generic_types) {
+                let _ = value_matches_substituted_classifier(
+                    argument,
+                    classifier,
+                    &function.generic_names,
+                    generic_types,
+                );
+            }
             if let (Some((_, expected_result)), Value::NamedFunction(named_function)) =
                 (function_classifier_parts(classifier), argument)
                 && named_function.candidates.len() == 1
@@ -10249,6 +10276,94 @@ fn populate_function_generics(
     }
 }
 
+fn generic_capability_value_matches(
+    value: &Value,
+    classifier: &str,
+    generic_types: &mut BTreeMap<String, String>,
+) -> bool {
+    let Some((name, capability)) = generic_capability_classifier(classifier) else {
+        return false;
+    };
+    if !value_has_capability(value, capability) {
+        return false;
+    }
+    if let Some(existing) = generic_types.get(name) {
+        return value_has_classifier(value, existing)
+            || structural_value_classifier(value) == *existing;
+    }
+    let actual = structural_value_classifier(value);
+    generic_types.insert(name.to_owned(), actual);
+    true
+}
+
+fn generic_classifier_accepts_declared_name(
+    actual: &str,
+    expected: &str,
+    generic_names: &BTreeSet<String>,
+    generic_types: &mut BTreeMap<String, String>,
+) -> bool {
+    if let Some((name, _)) = generic_capability_classifier(expected) {
+        if let Some(existing) = generic_types.get(name) {
+            return existing == actual;
+        }
+        generic_types.insert(name.to_owned(), actual.to_owned());
+        return true;
+    }
+    if generic_names.contains(expected) {
+        if let Some(existing) = generic_types.get(expected) {
+            return existing == actual;
+        }
+        generic_types.insert(expected.to_owned(), actual.to_owned());
+        return true;
+    }
+    for constructor in ["Optional", "List", "Range"] {
+        if let (Some(actual_payload), Some(expected_payload)) = (
+            applied_classifier(actual, constructor),
+            applied_classifier(expected, constructor),
+        ) {
+            return generic_classifier_accepts_declared_name(
+                actual_payload,
+                expected_payload,
+                generic_names,
+                generic_types,
+            );
+        }
+    }
+    if let (Some(actual_payload), Some(expected_payload)) = (
+        result_classifier_parts(actual),
+        result_classifier_parts(expected),
+    ) {
+        return generic_classifier_accepts_declared_name(
+            actual_payload.0,
+            expected_payload.0,
+            generic_names,
+            generic_types,
+        ) && generic_classifier_accepts_declared_name(
+            actual_payload.1,
+            expected_payload.1,
+            generic_names,
+            generic_types,
+        );
+    }
+    if let (Some(actual_items), Some(expected_items)) =
+        (tuple_classifiers(actual), tuple_classifiers(expected))
+    {
+        return actual_items.len() == expected_items.len()
+            && actual_items
+                .into_iter()
+                .zip(expected_items)
+                .all(|(actual, expected)| {
+                    generic_classifier_accepts_declared_name(
+                        actual,
+                        expected,
+                        generic_names,
+                        generic_types,
+                    )
+                });
+    }
+    generic_classifier_accepts_name(actual, expected, generic_types)
+}
+
 fn value_matches_substituted_classifier(
     value: &Value,
     classifier: &str,
@@ -10256,7 +10371,11 @@ fn value_matches_substituted_classifier(
     generic_types: &mut BTreeMap<String, String>,
 ) -> bool {
     if let Some(expected) = generic_types.get(classifier) {
-        return structural_value_classifier(value) == *expected;
+        return value_has_classifier(value, expected)
+            || structural_value_classifier(value) == *expected;
+    }
+    if generic_capability_classifier(classifier).is_some() {
+        return generic_capability_value_matches(value, classifier, generic_types);
     }
     if generic_names.contains(classifier) {
         generic_types.insert(classifier.to_owned(), structural_value_classifier(value));
@@ -10274,9 +10393,10 @@ fn value_matches_substituted_classifier(
             generic_types.insert(expected_payload.to_owned(), payload_classifier.clone());
             return true;
         }
-        return generic_classifier_accepts_name(
+        return generic_classifier_accepts_declared_name(
             payload_classifier,
             expected_payload,
+            generic_names,
             generic_types,
         );
     }
@@ -10287,7 +10407,12 @@ fn value_matches_substituted_classifier(
         else {
             return false;
         };
-        return generic_classifier_accepts_name(element_classifier, element, generic_types);
+        return generic_classifier_accepts_declared_name(
+            element_classifier,
+            element,
+            generic_names,
+            generic_types,
+        );
     }
     if let Some(endpoint) = applied_classifier(classifier, "Range") {
         let actual = match value {
@@ -10295,7 +10420,12 @@ fn value_matches_substituted_classifier(
             Value::RationalRange { .. } => "Rational",
             _ => return false,
         };
-        return generic_classifier_accepts_name(actual, endpoint, generic_types);
+        return generic_classifier_accepts_declared_name(
+            actual,
+            endpoint,
+            generic_names,
+            generic_types,
+        );
     }
     if let Some((success, codes)) = result_classifier_parts(classifier) {
         if let Value::Error { code, .. } = value {
@@ -10303,9 +10433,10 @@ fn value_matches_substituted_classifier(
                 generic_types.insert(codes.to_owned(), error_code_classifier(code).to_owned());
                 return true;
             }
-            return generic_classifier_accepts_name(
+            return generic_classifier_accepts_declared_name(
                 error_code_classifier(code),
                 codes,
+                generic_names,
                 generic_types,
             );
         }
@@ -15112,12 +15243,15 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
                 element_classifier: right_classifier,
                 entries: right,
             },
-        ) if left_classifier == right_classifier && left.len() == right.len() => {
+        ) if left_classifier == right_classifier => {
             trace.record(TraceEvent {
                 event: "equality.list",
                 rule: "TOPAL-TYPE-LIST-EQUALITY-001",
                 detail: &left_classifier,
             });
+            if left.len() != right.len() {
+                return Some(false);
+            }
             left.into_iter()
                 .zip(right)
                 .try_fold(true, |equal, (left, right)| {
@@ -19726,6 +19860,17 @@ fn lists_construct_compare_and_decompose() {
     ] {
         assert!(trace.iter().any(|record| record.contains(event)), "{event}");
     }
+}
+
+#[test]
+fn lists_with_the_same_element_classifier_and_different_lengths_are_unequal() {
+    let value = Session::new()
+        .evaluate(
+            "left : List Int is one 1\nright : List Int is Entry (1, Entry (2, Empty))\nleft = right\n",
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(value, Value::Boolean(false));
 }
 
 #[test]

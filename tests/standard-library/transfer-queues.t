@@ -18,11 +18,14 @@ one : List Int is Entry (7, Empty)
 two : List Int is Entry (7, Entry (9, Empty))
 remaining : List Int is Entry (9, Empty)
 first-two : (Int, List Int) is (7, remaining)
+first-one : (Int, List Int) is (7, empty)
 
 zero-capacity-rejects : Pass is Pass (absent? (enqueue? (empty, 7, 0)))
+empty-queue-accepts : Pass is Pass ((value-or ((enqueue? (empty, 7, 1)), empty)) = one)
 room-appends-at-tail : Pass is Pass ((value-or ((enqueue? (one, 9, 2)), empty)) = two)
 full-queue-rejects : Pass is Pass (absent? (enqueue? (one, 9, 1)))
 empty-dequeue-is-absent : Pass is Pass (absent? (dequeue empty))
+singleton-dequeue-empties : Pass is Pass ((value-or ((dequeue one), (0, one))) = first-one)
 dequeue-preserves-fifo : Pass is Pass ((value-or ((dequeue two), (0, empty))) = first-two)
 no-retry-evidence-rejects : Pass is Pass (not (retry-safe? (false, false, false)))
 idempotence-admits-retry : Pass is Pass (retry-safe? (true, false, false))
@@ -31,8 +34,9 @@ transaction-admits-retry : Pass is Pass (retry-safe? (false, false, true))
 evidence-composition-admits-retry : Pass is Pass (retry-safe? (true, true, true))
 completion-keeps-operation : Pass is Pass ((completion (42, ("ok", "written"))) = (42, "ok", "written"))
 
-(zero-capacity-rejects, room-appends-at-tail, full-queue-rejects,
- empty-dequeue-is-absent, dequeue-preserves-fifo, no-retry-evidence-rejects,
+(zero-capacity-rejects, empty-queue-accepts, room-appends-at-tail,
+ full-queue-rejects, empty-dequeue-is-absent, singleton-dequeue-empties,
+ dequeue-preserves-fifo, no-retry-evidence-rejects,
  idempotence-admits-retry, deduplication-admits-retry,
  transaction-admits-retry, evidence-composition-admits-retry,
  completion-keeps-operation)

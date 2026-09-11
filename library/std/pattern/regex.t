@@ -413,27 +413,31 @@ regex-postfix-repeat-valid is fn (state : (List (Int, String), List (Nat, Nat, S
   applicable?
     true then (regex-expand-repeat-valid (regex-postfix-output state, minimum bounds, maximum bounds), regex-postfix-groups state, regex-postfix-alternatives state, regex-postfix-atoms state, regex-postfix-valid? state, true)
     false then (regex-postfix-output state, regex-postfix-groups state, regex-postfix-alternatives state, regex-postfix-atoms state, false, true)
+regex-active-number is fn (accepted : Boolean, value : Int) -> Int
+  accepted
+    true then value
+    false then -1
 regex-postfix-token is fn (state : (List (Int, String), List (Nat, Nat, String, Nat), Nat, Nat, Boolean, Boolean), token : (Int, String)) -> (List (Int, String), List (Nat, Nat, String, Nat), Nat, Nat, Boolean, Boolean)
-  regex-postfix-valid? state
-    false then state
-    true then regex-token-kind token
-      <= 4 then regex-postfix-atom (state, token)
-      = 5 then regex-postfix-open (state, token)
-      = 6 then regex-postfix-close state
-      = 7 then regex-postfix-alt state
-      = 8 then regex-postfix-unary (state, token)
-      = 9 then regex-postfix-unary (state, token)
-      = 10 then regex-postfix-unary (state, token)
-      = 11 then regex-postfix-repeat-valid (state, regex-repeat-bounds (regex-token-payload token))
-      otherwise state
+  kind is regex-active-number (regex-postfix-valid? state, regex-token-kind token)
+  kind
+    < 0 then state
+    <= 4 then regex-postfix-atom (state, token)
+    = 5 then regex-postfix-open (state, token)
+    = 6 then regex-postfix-close state
+    = 7 then regex-postfix-alt state
+    = 8 then regex-postfix-unary (state, token)
+    = 9 then regex-postfix-unary (state, token)
+    = 10 then regex-postfix-unary (state, token)
+    = 11 then regex-postfix-repeat-valid (state, regex-repeat-bounds (regex-token-payload token))
+    otherwise state
 regex-postfix-finish is fn (state : (List (Int, String), List (Nat, Nat, String, Nat), Nat, Nat, Boolean, Boolean)) -> (List (Int, String), Boolean)
   groups-empty? is (entry-count (regex-postfix-groups state)) = 0
   valid? is (regex-postfix-valid? state) and groups-empty?
-  valid?
-    false then (regex-postfix-output state, false)
-    true then (regex-postfix-atoms state) = 0
-      true then ((regex-postfix-output state) append (12, ""), (regex-postfix-alternatives state) = 0)
-      false then (regex-collapse-alternatives (regex-collapse-concats (regex-postfix-output state, regex-postfix-atoms state), regex-postfix-alternatives state), true)
+  atoms is regex-active-number (valid?, regex-postfix-atoms state)
+  atoms
+    < 0 then (regex-postfix-output state, false)
+    = 0 then ((regex-postfix-output state) append (12, ""), (regex-postfix-alternatives state) = 0)
+    otherwise (regex-collapse-alternatives (regex-collapse-concats (regex-postfix-output state, regex-postfix-atoms state), regex-postfix-alternatives state), true)
 regex-to-postfix-valid is fn (tokens : List (Int, String)) -> (List (Int, String), Boolean)
   empty-output : List (Int, String) is Empty
   empty-groups : List (Nat, Nat, String, Nat) is Empty
@@ -1027,7 +1031,7 @@ regex-tokenized-tokens is fn ((tokens : List (Int, String), valid? : Boolean)) -
   tokens
 RegexValid is Boolean constraint { valid } valid
 
-### Test whether the capture-free regular expression matches a substring.
+### Test whether a valid regular expression matches a substring; reject invalid patterns.
 pub contains? is fn (text : String, pattern : String) -> Boolean
   tokenized is regex-tokenize pattern
   compiled is regex-compile-postfix (regex-to-postfix (regex-annotate-groups tokenized))
@@ -1037,7 +1041,7 @@ pub contains? is fn (text : String, pattern : String) -> Boolean
   group-count is regex-group-count (regex-prepare-group-tokens (regex-tokenized-tokens tokenized))
   regex-capture-result-present? (regex-capture-run (text, compiled, group-count))
 
-### Return the leftmost-longest match and its groups; entry zero is the whole match.
+### Return the leftmost-longest match and its groups; reject invalid patterns, and use entry zero for the whole match.
 pub captures is fn (text : String, pattern : String) -> (Boolean, List (Boolean, String))
   tokenized is regex-tokenize pattern
   annotated is regex-annotate-groups tokenized
@@ -1048,5 +1052,3 @@ pub captures is fn (text : String, pattern : String) -> (Boolean, List (Boolean,
   group-count is regex-group-count (regex-prepare-group-tokens (regex-tokenized-tokens tokenized))
   source is unicode-scalar-characters text
   regex-captures-present (source, group-count, regex-capture-run (text, compiled, group-count))
-
-
