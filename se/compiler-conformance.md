@@ -20,7 +20,7 @@ evidence.
 | 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |
 | 2d-b | unbounded range construction and infinity endpoints after their prerequisite normative and runtime work | planned |
 | 2e | Nat constraint-evidence forgetting for exact equality, ordering, three-way comparison, mixed Nat/Int/Rational comparison, and derived product equality | complete |
-| 3a | source-ordered statically decidable scalar overloads and basic static nullary, unary, and binary functions | complete |
+| 3a | source-ordered statically decidable scalar overloads, complete-header forward calls, and basic static nullary, unary, and binary functions | complete |
 | 3b1 | root-scope payload-free nominal enum declarations, classification, equality, functions, display, exhaustive decisions, and debugging | complete |
 | 3b2-a | direct explicit early return from admitted linear function bodies | complete |
 | 3b2-b1 | value-producing lexical blocks with fresh binding scope, shadowing, non-escape, and lexical DWARF | complete |
@@ -78,8 +78,9 @@ closes unbounded and infinite endpoints after increment 2c-c.
 Range-based collection selection remains grouped with containers. Increment 2e
 reuses the validated Nat value as its exact Int representation for comparison,
 without an unsigned conversion or a second numeric runtime. Increment 3a
-admits the statically decidable scalar overload and basic static-function
-foundation. Increment 3b1 adds the first root-scope user-declared nominal value
+admits the statically decidable scalar overload, complete-header acyclic forward
+calls, and basic static-function foundation. Increment 3b1 adds the first
+root-scope user-declared nominal value
 representation without conflating payload-free `Enum` with general `Union`;
 3b2-a makes direct early return a mandatory frontend control-flow boundary;
 3b2-b1 adds ordinary lexical block values and truthful nested debug scope;

@@ -1479,3 +1479,55 @@ fn gdb_distinguishes_overloads_and_static_functions() {
     assert!(text.contains("$3 = 20"), "{text}");
     assert!(text.contains("$4 = 22"), "{text}");
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_retains_forward_callee_and_caller_frames() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-FUNCTION-FORWARD-DECLARATION-001
+    let directory = temporary("gdb-forward-function");
+    let source = directory.join("forward-function-declarations.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/forward-function-declarations.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break forward-function-declarations.t:10",
+            "-ex",
+            "run",
+            "-ex",
+            "print text",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = \"Topal\""), "{text}");
+    assert!(text.contains("topal.fn.decorate.0"), "{text}");
+    assert!(text.contains("topal.fn.render.1"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
