@@ -47,8 +47,22 @@ later source declaration. Depth-first instantiation emits the selected callee
 before its caller while retaining source locations for both DWARF frames;
 ordinary initializer bindings remain source-ordered. This increment covers
 statically decidable scalar headers. Dynamic structural classifier dispatch,
-function values, closures, and recursive call graphs remain later frontend work
-and do not leak into the private ABI prematurely.
+function values, closures, and remaining recursive call graphs remain later
+frontend work and do not leak into the private ABI prematurely.
+
+The initial recursive closure reuses the interpreter's structural termination
+proof rather than defining a compiler-only proof language. For a proven unary
+decreasing `Int` overload, the model reserves one symbol before checking the
+body, generalizes its parameter facts to the declared classifier, and directs
+each self-edge to that symbol. The emitted definition and calls have the exact
+same LLVM [`fastcc` calling convention and
+prototype](https://llvm.org/docs/LangRef.html#calling-conventions). They retain
+`noinline` for predictable O0 frame inspection and never claim the LLVM
+[`norecurse` attribute](https://llvm.org/docs/LangRef.html#function-attributes),
+which would be false for the admitted call graph. Tail-call formation remains
+an optional later LLVM optimization, not a termination or correctness premise.
+Exact Int representation, allocation, and Linux integration remain unchanged,
+so this closure adds no dispatch runtime, foreign dependency, or ABI revision.
 
 `topal-native/6` represents finite `Int` values as immutable pointers to a
 canonical sign-and-magnitude object with little-endian base-2^32 limbs. The
@@ -272,7 +286,7 @@ work rather than being inferred by the backend. Because this increment has no
 single machine product value, it does not yet publish product bindings as DWARF
 locals; their source lines and lowered field operations remain debuggable, while
 a truthful aggregate DWARF representation is retained with general product
-storage and ABI work in increment 3b2-b5e.
+storage and ABI work in increment 3b2-b5e2.
 
 An anonymous labeled Record uses the same decomposed expression-local strategy.
 The checked model evaluates fields in source order, rejects duplicate labels,
@@ -283,7 +297,7 @@ evaluated field and display recursively emits `label is value` through existing
 Topal syscall-backed value printers. This adds no record runtime or ABI. Scalar
 values projected from a record retain ordinary DWARF locals and can be inspected
 in GDB. The record binding itself is deliberately absent from DWARF until
-increment 3b2-b5e supplies a truthful aggregate storage and debug representation
+increment 3b2-b5e2 supplies a truthful aggregate storage and debug representation
 rather than describing a layout that does not exist.
 
 Structural comparison also remains over decomposed values. The frontend
@@ -305,7 +319,7 @@ aggregate remains unchanged because its value vector is cloned, and neither
 path acquires storage. This introduces no allocator, reconstruction runtime,
 foreign dependency, or ABI revision. Scalar projections from both versions use
 the existing DWARF path; aggregate layout and machine-boundary passage remain
-in increment 3b2-b5e.
+in increment 3b2-b5e2.
 
 Nat validation already preserves an unchanged arbitrary-precision Int object
 with distinct checked constraint evidence and DWARF type identity. Comparison

@@ -182,6 +182,25 @@ SHALL NOT select an ordinary callee. LLVM lowering and DWARF SHALL retain each
 selected overload's source function, typed parameters, invocation-local
 bindings, and frame without exposing staticness as an unqualified foreign ABI.
 
+### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
+
+The compiler SHALL admit a direct unary decreasing `Int` recursion edge only
+when the shared language proof establishes
+`TOPAL-FUNCTION-RECURSION-INT-001`, including the strict literal-step rule of
+`TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001` for every self-call. The base
+action, zero or invalid steps, and indirect cycles without an implemented proof
+SHALL remain rejected. Static facts from the initial call argument SHALL NOT be
+assumed for the recursive function parameter; checking the body SHALL use the
+declared `Int` classifier conservatively across every invocation.
+
+One proven recursive overload SHALL lower to one compiler-private function and
+one exact LLVM prototype. Every self-call SHALL use the same calling convention
+and symbol. Correctness at O0 SHALL NOT depend on inlining, tail-call conversion,
+or any other LLVM optimization, and the function SHALL NOT be marked
+`norecurse`. DWARF SHALL retain each non-inlined recursive frame and its current
+source parameter. This admission SHALL add no runtime dispatch, foreign
+dependency, standard library, or native ABI revision.
+
 ### TOPAL-COMPILER-ENUM-001 — Sealed nominal enum lowering
 
 Each admitted payload-free source enum SHALL retain a distinct nominal identity

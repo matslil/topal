@@ -726,6 +726,26 @@
       "cpu_time_ns": 165240,
       "memory_peak_bytes": 18358272,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/decreasing-int-recursion.t": {
+      "cpu_time_ns": 120641780,
+      "memory_peak_bytes": 41521152,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/multiple-recursive-calls.t": {
+      "cpu_time_ns": 121188560,
+      "memory_peak_bytes": 41508864,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/decreasing-int-recursion.t": {
+      "cpu_time_ns": 191682,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/multiple-recursive-calls.t": {
+      "cpu_time_ns": 212216,
+      "memory_peak_bytes": 18415616,
+      "samples_per_test": 500
     }
   }
 }
