@@ -853,7 +853,7 @@ fn records_reversible_character_classification() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("function.argument.bound"));
     assert!(stdout.contains("string.from-character"));
-    assert!(stdout.contains("(\"🙂\", \"a\u{301}\")"));
+    assert!(stdout.contains("(\"🙂\", \"a\u{301}\", true, true, true)"));
 }
 
 #[test]

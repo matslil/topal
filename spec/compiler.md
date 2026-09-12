@@ -333,6 +333,23 @@ shortest collision-free tagged Topal literal directly from its preserved bytes.
 Generated execution and GDB SHALL expose the same valid String value without a
 foreign allocator, runtime, standard library, locale, or text transformation.
 
+### TOPAL-COMPILER-CHARACTER-001 — Retained static Character evidence
+
+For a closed String expression whose preserved sequence is known during
+checking, the compiler SHALL classify it as Character exactly when the pinned
+language-context segmentation counts one extended grapheme cluster. It SHALL
+diagnose a closed zero- or multiple-character expression and SHALL reject
+dynamic Character validation until its explicit Result and runtime Unicode
+path are admitted; it SHALL NOT substitute byte or Unicode-scalar count.
+
+An admitted Character SHALL retain its classifier through classified bindings,
+ordinary function parameters and results, direct returns, equality, product
+fields, DWARF, and GDB. Forgetting Character evidence through `String value`
+or an implicit base conversion SHALL preserve the exact sequence and require no
+generated instruction. The machine value SHALL remain the same immutable
+String descriptor, exact equality SHALL reuse canonical String equality, and
+no native ABI revision or foreign Unicode/runtime dependency SHALL result.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate

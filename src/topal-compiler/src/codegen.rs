@@ -39,7 +39,8 @@ fn block_uses_extended_debug(block: &CompilerBlock) -> bool {
 
 fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::String
+        CompilerType::Character
+        | CompilerType::String
         | CompilerType::Error
         | CompilerType::ErrorCode
         | CompilerType::ErrorDomain
@@ -236,37 +237,7 @@ impl<'a> Generator<'a> {
         let mut body = FunctionBody::new(subprogram);
         let mut environment = BTreeMap::new();
         for (index, parameter) in function.parameters.iter().enumerate() {
-            let value = match &parameter.value_type {
-                CompilerType::Unit => LlValue::Unit,
-                CompilerType::Completed => LlValue::Completed(format!("%arg{index}")),
-                CompilerType::Boolean => LlValue::Boolean(format!("%arg{index}")),
-                CompilerType::Int | CompilerType::Nat => LlValue::Int(format!("%arg{index}")),
-                CompilerType::Rational => LlValue::Rational(format!("%arg{index}")),
-                CompilerType::Comparison => LlValue::Comparison(format!("%arg{index}")),
-                CompilerType::Error => LlValue::Error(format!("%arg{index}")),
-                CompilerType::ErrorCode => LlValue::ErrorCode(format!("%arg{index}")),
-                CompilerType::ErrorDomain => LlValue::ErrorDomain(format!("%arg{index}")),
-                CompilerType::Enum(enumeration) => LlValue::Enum {
-                    value: format!("%arg{index}"),
-                    enumeration: enumeration.clone(),
-                },
-                CompilerType::String => LlValue::String(format!("%arg{index}")),
-                CompilerType::Range(endpoint) => LlValue::Range {
-                    value: format!("%arg{index}"),
-                    endpoint: endpoint.as_ref().clone(),
-                },
-                CompilerType::Result(success) => LlValue::Result {
-                    value: format!("%arg{index}"),
-                    success: success.as_ref().clone(),
-                },
-                CompilerType::Optional(payload) => LlValue::Optional {
-                    value: format!("%arg{index}"),
-                    payload: payload.as_ref().clone(),
-                },
-                CompilerType::Tuple(_) => {
-                    unreachable!("shared model restricts machine parameters")
-                }
-            };
+            let value = function_parameter_value(&parameter.value_type, index);
             if parameter.discarded {
                 continue;
             }
@@ -778,11 +749,13 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
-                    CompilerType::String => LlValue::String(body.instruction(
-                        &format!("call fastcc ptr @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
+                    CompilerType::Character | CompilerType::String => {
+                        LlValue::String(body.instruction(
+                            &format!("call fastcc ptr @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ))
+                    }
                     CompilerType::Range(ref endpoint) => LlValue::Range {
                         value: body.instruction(
                             &format!("call fastcc ptr @{symbol}({arguments})"),
@@ -2550,6 +2523,7 @@ struct DebugInfo {
     int_type: usize,
     nat_type: usize,
     rational_type: usize,
+    character_type: usize,
     string_type: usize,
     error_type: usize,
     error_code_type: usize,
@@ -2592,6 +2566,7 @@ impl DebugInfo {
             int_type: 0,
             nat_type: 0,
             rational_type: 0,
+            character_type: 0,
             string_type: 0,
             error_type: 0,
             error_code_type: 0,
@@ -2746,6 +2721,10 @@ impl DebugInfo {
         ));
         self.string_type = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_typedef, name: \"String\", file: !{}, baseType: !{string_pointer})",
+            self.file
+        ));
+        self.character_type = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Character\", file: !{}, baseType: !{string_pointer})",
             self.file
         ));
         self.error_domain_type = self.node(format!(
@@ -2923,6 +2902,7 @@ impl DebugInfo {
             CompilerType::ErrorCode => self.error_code_type,
             CompilerType::ErrorDomain => self.error_domain_type,
             CompilerType::Enum(enumeration) => self.enum_type(enumeration),
+            CompilerType::Character => self.character_type,
             CompilerType::String => self.string_type,
             CompilerType::Range(endpoint) if endpoint.as_ref() == &CompilerType::Int => {
                 self.int_range_type
@@ -3118,6 +3098,7 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
         CompilerType::Int
         | CompilerType::Nat
         | CompilerType::Rational
+        | CompilerType::Character
         | CompilerType::Error
         | CompilerType::ErrorDomain
         | CompilerType::String
@@ -3129,6 +3110,39 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
     }
 }
 
+fn function_parameter_value(value_type: &CompilerType, index: usize) -> LlValue {
+    let value = format!("%arg{index}");
+    match value_type {
+        CompilerType::Unit => LlValue::Unit,
+        CompilerType::Completed => LlValue::Completed(value),
+        CompilerType::Boolean => LlValue::Boolean(value),
+        CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
+        CompilerType::Rational => LlValue::Rational(value),
+        CompilerType::Comparison => LlValue::Comparison(value),
+        CompilerType::Error => LlValue::Error(value),
+        CompilerType::ErrorCode => LlValue::ErrorCode(value),
+        CompilerType::ErrorDomain => LlValue::ErrorDomain(value),
+        CompilerType::Enum(enumeration) => LlValue::Enum {
+            value,
+            enumeration: enumeration.clone(),
+        },
+        CompilerType::Character | CompilerType::String => LlValue::String(value),
+        CompilerType::Range(endpoint) => LlValue::Range {
+            value,
+            endpoint: endpoint.as_ref().clone(),
+        },
+        CompilerType::Result(success) => LlValue::Result {
+            value,
+            success: success.as_ref().clone(),
+        },
+        CompilerType::Optional(payload) => LlValue::Optional {
+            value,
+            payload: payload.as_ref().clone(),
+        },
+        CompilerType::Tuple(_) => unreachable!("shared model restricts machine parameters"),
+    }
+}
+
 fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Unit | CompilerType::Completed => "i8",
@@ -3136,6 +3150,7 @@ fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
         CompilerType::Int
         | CompilerType::Nat
         | CompilerType::Rational
+        | CompilerType::Character
         | CompilerType::Error
         | CompilerType::ErrorDomain
         | CompilerType::String
@@ -3307,6 +3322,21 @@ mod tests {
         assert!(llvm.contains("define internal fastcc ptr @topal.fn.preserve.0(ptr %arg0)"));
         assert!(llvm.contains("optional.decision.some"));
         assert!(llvm.contains("optional.decision.none"));
+    }
+
+    #[test]
+    fn emits_static_character_evidence_as_the_string_carrier() {
+        // TOPAL-COMPILER-CHARACTER-001
+        let source = include_str!("../../../examples/language/character-classification.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/character-classification.t").emit();
+        assert!(llvm.contains("name: \"Character\""));
+        assert!(llvm.contains("define internal fastcc ptr @topal.fn.identity.0(ptr %arg0)"));
+        assert_eq!(
+            llvm.matches("call i1 @topal.runtime.string.equal").count(),
+            5
+        );
+        assert!(!llvm.contains("runtime.character.validate"));
     }
 
     #[test]

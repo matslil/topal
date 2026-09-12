@@ -8,4 +8,4 @@ identity is fn (value : Character) -> Character
   value
 composed : Character is "á"
 # String construction forgets the Character constraint but preserves text.
-(String (identity "🙂"), String composed)
+(String (identity "🙂"), String composed, composed = (identity "á"), composed = (String composed), (composed, identity "á") = (identity "á", composed))

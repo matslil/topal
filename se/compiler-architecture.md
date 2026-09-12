@@ -84,7 +84,7 @@ The syscall runtime writes canonical ordinary or tagged Topal literals without
 relying on a C locale or string library. This descriptor foundation admits
 literal transport and display; subsequent increments reuse it for byte count,
 exact equality, and concatenation, while the remaining Unicode String
-operations stay in roadmap increment 4b3.
+operations stay in roadmap increment 4b3b.
 
 The prospective UTF-8 byte-count operation reads the preserved-byte length
 already stored in that descriptor; it does not scan display spelling, attach an
@@ -126,6 +126,17 @@ The GDB renderer continues to decode the preserved data and therefore observes
 literal and concatenated Strings identically. String emptiness reads only the
 preserved-byte length, which is zero exactly when the valid UTF-8 scalar
 sequence is empty.
+
+Static Character evidence is a checked-model refinement over that same String
+descriptor. For closed expressions the frontend asks the shared, pinned
+Unicode 17 language-context implementation for the extended-grapheme count;
+one retains Character identity, while zero or multiple clusters are a static
+diagnostic. Function signatures and DWARF keep the refined identity, but LLVM
+continues to carry the identical descriptor pointer and exact equality uses the
+String comparator. Forgetting the evidence is therefore an IR no-op. Dynamic
+validation is rejected until a Result-producing, freestanding segmentation
+path is admitted, so generated behavior never falls back to host or OS Unicode
+tables.
 
 Fallible exact operations return immutable Result headers containing a
 canonical success-or-error tag and one opaque payload pointer. Successful
