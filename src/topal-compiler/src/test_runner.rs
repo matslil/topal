@@ -27,9 +27,11 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/finite-range-observation.t",
     "examples/language/function-call-chains.t",
     "examples/language/function-local-shadowing.t",
+    "examples/language/function-overloads.t",
     "examples/language/inclusive-int-ranges.t",
     "examples/language/int-checked-construction.t",
     "examples/language/int-euclidean-modulo.t",
+    "examples/language/nat-functions.t",
     "examples/language/nat-checked-construction.t",
     "examples/language/ordinary-functions.t",
     "examples/language/rational-exact-construction.t",
@@ -42,6 +44,8 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/result-decisions.t",
     "examples/language/result-success.t",
     "examples/language/result-success-projection.t",
+    "examples/language/static-nullary-functions.t",
+    "examples/language/static-product-functions.t",
     "examples/language/string-display-delimiters.t",
 ];
 

@@ -654,3 +654,75 @@ fn gdb_renders_string_and_error_fields() {
     assert!(text.contains("$6 = root./(Rational,Rational)"), "{text}");
     assert!(text.contains("$7 = root./(Rational,Rational)"), "{text}");
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_distinguishes_overloads_and_static_functions() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-FUNCTION-OVERLOAD-001,
+    // TOPAL-FUNCTION-STATIC-NULLARY-001, TOPAL-FUNCTION-STATIC-BINARY-001
+    let directory = temporary("gdb-function-overloads");
+    let source = directory.join("function-overloads-debug.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ndescribe is fn (value : Int) -> Int\n  value\ndescribe is fn (value : String) -> String\n  value\nanswer is fn static () -> Int\n  42\nadd is fn static (left : Int, right : Int) -> Int\n  left + right\n(describe 42, describe \"Topal\", answer (), 20 add 22)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-overloads-debug.t:3",
+            "-ex",
+            "break function-overloads-debug.t:5",
+            "-ex",
+            "break function-overloads-debug.t:7",
+            "-ex",
+            "break function-overloads-debug.t:9",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "continue",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "print left",
+            "-ex",
+            "print right",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 42"), "{text}");
+    assert!(text.contains("$2 = \"Topal\""), "{text}");
+    assert!(text.contains("topal.fn.answer."), "{text}");
+    assert!(text.contains("$3 = 20"), "{text}");
+    assert!(text.contains("$4 = 22"), "{text}");
+}

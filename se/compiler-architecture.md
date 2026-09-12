@@ -34,6 +34,17 @@ foreign adapters may use target `ccc` only with fixed-width scalars or opaque
 handles. Aggregate classification is adapter work and will be checked against
 the target's reference C frontend before a foreign interface is admitted.
 
+The checked frontend resolves each admitted source-ordered overload before IR
+generation and gives every selected input signature a distinct call-graph node
+and private LLVM symbol. Argument expressions are modeled once before candidate
+filtering; only the selected candidate's canonical scalar conversions reach
+code generation. Staticness is retained as semantic availability rather than a
+different machine convention: a static body may select only another static
+declaration, while root and ordinary runtime contexts may select either form.
+This increment covers statically decidable scalar headers. Dynamic structural
+classifier dispatch, function values, closures, and recursive call graphs remain
+later frontend work and do not leak into the private ABI prematurely.
+
 `topal-native/6` represents finite `Int` values as immutable pointers to a
 canonical sign-and-magnitude object with little-endian base-2^32 limbs. The
 private signature passes that pointer directly; it never exposes the object to

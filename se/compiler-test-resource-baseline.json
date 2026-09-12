@@ -376,6 +376,46 @@
       "cpu_time_ns": 146284,
       "memory_peak_bytes": 18542592,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/function-overloads.t": {
+      "cpu_time_ns": 116629320,
+      "memory_peak_bytes": 41250816,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/nat-functions.t": {
+      "cpu_time_ns": 115494080,
+      "memory_peak_bytes": 41377792,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/static-nullary-functions.t": {
+      "cpu_time_ns": 116363400,
+      "memory_peak_bytes": 41353216,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/static-product-functions.t": {
+      "cpu_time_ns": 116170720,
+      "memory_peak_bytes": 41336832,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/function-overloads.t": {
+      "cpu_time_ns": 142480,
+      "memory_peak_bytes": 18481152,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/nat-functions.t": {
+      "cpu_time_ns": 136956,
+      "memory_peak_bytes": 18612224,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/static-nullary-functions.t": {
+      "cpu_time_ns": 159458,
+      "memory_peak_bytes": 18546688,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/static-product-functions.t": {
+      "cpu_time_ns": 145748,
+      "memory_peak_bytes": 18546688,
+      "samples_per_test": 500
     }
   }
 }
