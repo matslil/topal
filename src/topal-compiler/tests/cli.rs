@@ -421,6 +421,62 @@ fn gdb_observes_innermost_lexical_block_binding() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn gdb_renders_completed_evidence_by_source_name() {
+    // TOPAL-EXEC-COMPLETED-001, TOPAL-COMP-COMPLETED-001,
+    // TOPAL-COMPILER-COMPLETED-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-completed");
+    let source = directory.join("completed-debug.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nfinish is fn () -> Completed\n  result is Completed\n  return result\nfinish ()\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let tools = LlvmTools::discover(None).unwrap();
+    let dwarf_tool = tools.directory.join("llvm-dwarfdump");
+    if dwarf_tool.is_file() {
+        let dwarf = run(Command::new(dwarf_tool).arg("--verify").arg(&executable));
+        assert!(
+            dwarf.status.success(),
+            "{}",
+            String::from_utf8_lossy(&dwarf.stderr)
+        );
+    }
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            "break completed-debug.t:4",
+            "-ex",
+            "run",
+            "-ex",
+            "print result",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("Breakpoint 1, topal.fn.finish.0"), "{text}");
+    assert!(text.contains("$1 = Completed"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_renders_canonical_rational_parameters_and_locals() {
     // TOPAL-COMP-DEBUG-001, TOPAL-COMP-EXACT-001
     let directory = temporary("gdb-rational");

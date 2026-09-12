@@ -148,6 +148,14 @@ zero-data Unit value and allocates nothing. Returns through a nested block,
 nested declarations, and scopes requiring cleanup retain their later explicit
 exit-edge and lifetime lowering.
 
+`Completed` uses a private `i8` singleton carrier at function boundaries while
+Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
+its purpose is to keep a typed SSA result and therefore an explicit completion
+dependency for every admitted call at O0. Literal construction requires no
+allocation, equality compares the sealed singleton carrier, display writes the
+source name through the Topal syscall layer, and DWARF describes a singleton
+enumeration so GDB does not mislabel the value as an integer or Unit.
+
 The correctness-first exact runtime uses binary long division, Euclidean sign
 correction, Euclid's greatest-common-divisor algorithm, and exponentiation by
 squaring. LLVM's documented `llvm.ctlz.i32` intrinsic determines the last
