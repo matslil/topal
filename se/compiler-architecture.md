@@ -29,12 +29,12 @@ LLVM lowers an already selected LLVM calling convention to physical registers
 and stack locations, but a source-language frontend still owns semantic value
 representation and any coercion needed to form that LLVM signature. The C
 calling convention is therefore not a portable Topal ABI. Internal functions
-use an exact compiler-private signature keyed by `topal-native/4`, and future
+use an exact compiler-private signature keyed by `topal-native/5`, and future
 foreign adapters may use target `ccc` only with fixed-width scalars or opaque
 handles. Aggregate classification is adapter work and will be checked against
 the target's reference C frontend before a foreign interface is admitted.
 
-`topal-native/4` represents finite `Int` values as immutable pointers to a
+`topal-native/5` represents finite `Int` values as immutable pointers to a
 canonical sign-and-magnitude object with little-endian base-2^32 limbs. The
 private signature passes that pointer directly; it never exposes the object to
 a foreign calling convention. Runtime allocation uses the qualified Linux
@@ -59,6 +59,14 @@ construction remains a predicate value: the runtime compares exact endpoints
 for membership, emptiness, and intersection and never enumerates or adjusts an
 open endpoint. Pointer-bearing range objects are also constructed at run time
 to preserve relocation-free no-loader PIE output.
+
+Fallible exact operations return immutable Result headers containing a
+canonical success-or-error tag and one opaque payload pointer. Successful
+payloads retain their statically known Topal type. Error payloads use an
+intrinsic record containing the reporting domain, arithmetic code, absent
+detail and cause fields, and source file, line, and column provenance. This
+`topal-native/5` layout is private to Topal signatures and GDB renderers; it is
+never classified as a C aggregate or passed through a foreign runtime.
 
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
@@ -236,7 +244,7 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
-| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, and Comparison decision control flow with typed result joins |
+| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, and fallible arithmetic control flow with typed result joins |
 | DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, with bundled renderers for private Int, Rational, and finite exact Range objects |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |

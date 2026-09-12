@@ -6,8 +6,8 @@ use num_bigint::{BigInt, Sign};
 use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerExpression,
-    CompilerExpressionKind, CompilerFunction, CompilerProgram, CompilerStatement, CompilerType,
-    display_string_literal,
+    CompilerExpressionKind, CompilerFallible, CompilerFunction, CompilerProgram, CompilerStatement,
+    CompilerType, display_string_literal,
 };
 use topal_source::Span;
 
@@ -19,6 +19,7 @@ pub fn emit_llvm(program: &CompilerProgram, source_name: &str) -> String {
 
 struct Generator<'a> {
     program: &'a CompilerProgram,
+    source_name: &'a str,
     globals: Vec<String>,
     functions: Vec<String>,
     next_global: usize,
@@ -26,11 +27,12 @@ struct Generator<'a> {
 }
 
 impl<'a> Generator<'a> {
-    fn new(program: &'a CompilerProgram, source_name: &str) -> Self {
+    fn new(program: &'a CompilerProgram, source_name: &'a str) -> Self {
         let mut debug = DebugInfo::new(source_name);
         debug.set_source(program.source.clone());
         Self {
             program,
+            source_name,
             globals: Vec::new(),
             functions: Vec::new(),
             next_global: 0,
@@ -103,6 +105,10 @@ impl<'a> Generator<'a> {
                     value: format!("%arg{index}"),
                     endpoint: endpoint.as_ref().clone(),
                 },
+                CompilerType::Result(success) => LlValue::Result {
+                    value: format!("%arg{index}"),
+                    success: success.as_ref().clone(),
+                },
                 _ => unreachable!("shared model restricts machine parameters"),
             };
             let variable = self.debug.parameter(
@@ -121,7 +127,10 @@ impl<'a> Generator<'a> {
         match result {
             LlValue::Unit => body.terminator("ret void", location),
             LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
-            LlValue::Int(value) | LlValue::Rational(value) | LlValue::Range { value, .. } => {
+            LlValue::Int(value)
+            | LlValue::Rational(value)
+            | LlValue::Range { value, .. }
+            | LlValue::Result { value, .. } => {
                 body.terminator(&format!("ret ptr {value}"), location);
             }
             LlValue::Comparison(value) => body.terminator(&format!("ret i32 {value}"), location),
@@ -272,6 +281,33 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ))
             }
+            CompilerExpressionKind::ResultSuccess(value) => {
+                let success = self.emit_expression(value, body, environment);
+                let payload =
+                    self.emit_result_payload(&success, &value.value_type, body, value.span);
+                LlValue::Result {
+                    value: body.instruction(
+                        &format!("call ptr @topal.runtime.result.success(ptr {payload})"),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    success: value.value_type.clone(),
+                }
+            }
+            CompilerExpressionKind::Fallible {
+                operation,
+                left,
+                right,
+                error_span,
+            } => self.emit_fallible(
+                *operation,
+                left,
+                right,
+                *error_span,
+                body,
+                environment,
+                expression.span,
+            ),
             CompilerExpressionKind::RangeLower(operand)
             | CompilerExpressionKind::RangeUpper(operand) => {
                 let emitted = self.emit_expression(operand, body, environment);
@@ -392,6 +428,14 @@ impl<'a> Generator<'a> {
                         ),
                         endpoint: endpoint.as_ref().clone(),
                     },
+                    CompilerType::Result(ref success) => LlValue::Result {
+                        value: body.instruction(
+                            &format!("call fastcc ptr @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        success: success.as_ref().clone(),
+                    },
                     _ => unreachable!("shared model restricts call result types"),
                 }
             }
@@ -433,6 +477,143 @@ impl<'a> Generator<'a> {
                 environment,
                 expression.span,
             ),
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)] // Fallible ABI arguments keep structured provenance explicit.
+    fn emit_fallible(
+        &mut self,
+        operation: CompilerFallible,
+        left: &CompilerExpression,
+        right: &CompilerExpression,
+        error_span: Span,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let left = self.emit_expression(left, body, environment);
+        let right = self.emit_expression(right, body, environment);
+        let (runtime, domain, success, left, right) = match operation {
+            CompilerFallible::RationalConstruct => (
+                "rational.try.make",
+                "root.Rational(Int,Int)",
+                CompilerType::Rational,
+                left.integer(),
+                right.integer(),
+            ),
+            CompilerFallible::RationalDivide => (
+                "rational.try.divide",
+                "root./(Rational,Rational)",
+                CompilerType::Rational,
+                left.rational(),
+                right.rational(),
+            ),
+            CompilerFallible::RationalPower => (
+                "rational.try.power",
+                "root.^(Rational,Int)",
+                CompilerType::Rational,
+                left.rational(),
+                right.integer(),
+            ),
+            CompilerFallible::IntModulo => (
+                "int.try.modulo",
+                "root.%(Int,Int)",
+                CompilerType::Int,
+                left.integer(),
+                right.integer(),
+            ),
+            CompilerFallible::IntQuotientModulo => (
+                "int.try.quotient.modulo",
+                "root./%(Int,Int)",
+                CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int]),
+                left.integer(),
+                right.integer(),
+            ),
+        };
+        let (domain_global, domain_length) = self.emit_bytes_global(domain);
+        let (source_global, source_length) = self.emit_bytes_global(self.source_name);
+        let position = self.program.source.position(error_span.start);
+        LlValue::Result {
+            value: body.instruction(
+                &format!(
+                    "call ptr @topal.runtime.{runtime}(ptr {left}, ptr {right}, ptr {domain_global}, i64 {domain_length}, ptr {source_global}, i64 {source_length}, i64 {}, i64 {})",
+                    position.line, position.column
+                ),
+                span,
+                &mut self.debug,
+            ),
+            success,
+        }
+    }
+
+    fn emit_result_payload(
+        &mut self,
+        value: &LlValue,
+        value_type: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        match (value, value_type) {
+            (LlValue::Unit, CompilerType::Unit) => "null".into(),
+            (LlValue::Int(value), CompilerType::Int)
+            | (LlValue::Rational(value), CompilerType::Rational)
+            | (LlValue::Range { value, .. }, CompilerType::Range(_))
+            | (LlValue::Result { value, .. }, CompilerType::Result(_)) => value.clone(),
+            (LlValue::Tuple(fields), CompilerType::Tuple(types))
+                if matches!(types.as_slice(), [CompilerType::Int, CompilerType::Int]) =>
+            {
+                let [quotient, remainder] = fields.as_slice() else {
+                    unreachable!("checked quotient/modulo payload has two fields")
+                };
+                body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.int.divmod.pair(ptr {}, ptr {})",
+                        quotient.integer(),
+                        remainder.integer()
+                    ),
+                    span,
+                    &mut self.debug,
+                )
+            }
+            _ => unreachable!("checked Result success has a pointer payload representation"),
+        }
+    }
+
+    fn result_success_value(
+        &mut self,
+        payload: &str,
+        success: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        match success {
+            CompilerType::Unit => LlValue::Unit,
+            CompilerType::Int => LlValue::Int(payload.into()),
+            CompilerType::Rational => LlValue::Rational(payload.into()),
+            CompilerType::Range(endpoint) => LlValue::Range {
+                value: payload.into(),
+                endpoint: endpoint.as_ref().clone(),
+            },
+            CompilerType::Result(nested) => LlValue::Result {
+                value: payload.into(),
+                success: nested.as_ref().clone(),
+            },
+            CompilerType::Tuple(types)
+                if matches!(types.as_slice(), [CompilerType::Int, CompilerType::Int]) =>
+            {
+                let quotient = body.instruction(
+                    &format!("call ptr @topal.runtime.int.divmod.quotient(ptr {payload})"),
+                    span,
+                    &mut self.debug,
+                );
+                let remainder = body.instruction(
+                    &format!("call ptr @topal.runtime.int.divmod.remainder(ptr {payload})"),
+                    span,
+                    &mut self.debug,
+                );
+                LlValue::Tuple(vec![LlValue::Int(quotient), LlValue::Int(remainder)])
+            }
+            _ => unreachable!("checked Result success has a pointer payload representation"),
         }
     }
 
@@ -714,64 +895,14 @@ impl<'a> Generator<'a> {
         body.terminator(&format!("br label %{merge_label}"), false_location);
 
         body.start_block(&merge_label);
-        match (true_value, false_value) {
-            (LlValue::Unit, LlValue::Unit) => LlValue::Unit,
-            (LlValue::Boolean(left), LlValue::Boolean(right)) => {
-                LlValue::Boolean(body.instruction(
-                    &format!(
-                        "phi i1 [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"
-                    ),
-                    span,
-                    &mut self.debug,
-                ))
-            }
-            (LlValue::Int(left), LlValue::Int(right)) => LlValue::Int(body.instruction(
-                &format!("phi ptr [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"),
-                span,
-                &mut self.debug,
-            )),
-            (LlValue::Rational(left), LlValue::Rational(right)) => {
-                LlValue::Rational(body.instruction(
-                    &format!(
-                        "phi ptr [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"
-                    ),
-                    span,
-                    &mut self.debug,
-                ))
-            }
-            (LlValue::Comparison(left), LlValue::Comparison(right)) => {
-                LlValue::Comparison(body.instruction(
-                    &format!(
-                        "phi i32 [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"
-                    ),
-                    span,
-                    &mut self.debug,
-                ))
-            }
-            (
-                LlValue::Range {
-                    value: left,
-                    endpoint,
-                },
-                LlValue::Range {
-                    value: right,
-                    endpoint: right_endpoint,
-                },
-            ) => {
-                debug_assert_eq!(endpoint, right_endpoint);
-                LlValue::Range {
-                    value: body.instruction(
-                        &format!(
-                            "phi ptr [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"
-                        ),
-                        span,
-                        &mut self.debug,
-                    ),
-                    endpoint,
-                }
-            }
-            _ => unreachable!("checked decision branch types agree"),
-        }
+        self.emit_decision_phi(
+            &[
+                (true_value, true_predecessor),
+                (false_value, false_predecessor),
+            ],
+            body,
+            span,
+        )
     }
 
     #[allow(clippy::too_many_arguments)] // Mirrors the checked decision node without hiding evaluation order.
@@ -924,6 +1055,17 @@ impl<'a> Generator<'a> {
                     endpoint,
                 }
             }
+            LlValue::Result { success, .. } => {
+                let success = success.clone();
+                LlValue::Result {
+                    value: body.instruction(
+                        &format!("phi ptr {}", incoming(LlValue::result_pointer)),
+                        span,
+                        &mut self.debug,
+                    ),
+                    success,
+                }
+            }
             LlValue::String(_) | LlValue::Tuple(_) => {
                 unreachable!("checked decision result is machine scalar")
             }
@@ -987,6 +1129,9 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             ),
+            LlValue::Result { value, success } => {
+                self.emit_print_result(value, success, body, span);
+            }
             LlValue::String(value) => {
                 self.emit_write_literal(&display_string_literal(value), body, span);
             }
@@ -1006,10 +1151,58 @@ impl<'a> Generator<'a> {
         }
     }
 
+    fn emit_print_result(
+        &mut self,
+        value: &str,
+        success: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        let is_error = body.instruction(
+            &format!("call i1 @topal.runtime.result.is.error(ptr {value})"),
+            span,
+            &mut self.debug,
+        );
+        let payload = body.instruction(
+            &format!("call ptr @topal.runtime.result.payload(ptr {value})"),
+            span,
+            &mut self.debug,
+        );
+        let error = body.label("print.result.error");
+        let ok = body.label("print.result.ok");
+        let done = body.label("print.result.done");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {is_error}, label %{error}, label %{ok}"),
+            location,
+        );
+        body.start_block(&error);
+        body.effect(
+            &format!("call void @topal.runtime.error.print(ptr {payload})"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{done}"), location);
+        body.start_block(&ok);
+        let success = self.result_success_value(&payload, success, body, span);
+        self.emit_print(&success, body, span);
+        body.terminator(&format!("br label %{done}"), location);
+        body.start_block(&done);
+    }
+
     fn emit_write_literal(&mut self, text: &str, body: &mut FunctionBody, span: Span) {
         if text.is_empty() {
             return;
         }
+        let (name, length) = self.emit_bytes_global(text);
+        body.effect(
+            &format!("call void @topal.platform.write_all(ptr {name}, i64 {length})"),
+            span,
+            &mut self.debug,
+        );
+    }
+
+    fn emit_bytes_global(&mut self, text: &str) -> (String, usize) {
         let name = format!(".topal.bytes.{}", self.next_global);
         self.next_global += 1;
         self.globals.push(format!(
@@ -1017,14 +1210,7 @@ impl<'a> Generator<'a> {
             text.len(),
             llvm_bytes(text.as_bytes())
         ));
-        body.effect(
-            &format!(
-                "call void @topal.platform.write_all(ptr @{name}, i64 {})",
-                text.len()
-            ),
-            span,
-            &mut self.debug,
-        );
+        (format!("@{name}"), text.len())
     }
 
     fn emit_int_literal(&mut self, value: &BigInt) -> LlValue {
@@ -1077,6 +1263,10 @@ enum LlValue {
         value: String,
         endpoint: CompilerType,
     },
+    Result {
+        value: String,
+        success: CompilerType,
+    },
     String(String),
     Tuple(Vec<Self>),
 }
@@ -1121,11 +1311,21 @@ impl LlValue {
         self.range().0
     }
 
+    fn result_pointer(&self) -> &str {
+        let Self::Result { value, .. } = self else {
+            unreachable!("checked value is Result")
+        };
+        value
+    }
+
     fn argument(&self) -> String {
         match self {
             Self::Unit => "i8 0".into(),
             Self::Boolean(value) => format!("i1 {value}"),
-            Self::Int(value) | Self::Rational(value) | Self::Range { value, .. } => {
+            Self::Int(value)
+            | Self::Rational(value)
+            | Self::Range { value, .. }
+            | Self::Result { value, .. } => {
                 format!("ptr {value}")
             }
             Self::Comparison(value) => format!("i32 {value}"),
@@ -1193,7 +1393,10 @@ impl FunctionBody {
         let value = match value {
             LlValue::Unit => "i8 0".into(),
             LlValue::Boolean(value) => format!("i1 {value}"),
-            LlValue::Int(value) | LlValue::Rational(value) | LlValue::Range { value, .. } => {
+            LlValue::Int(value)
+            | LlValue::Rational(value)
+            | LlValue::Range { value, .. }
+            | LlValue::Result { value, .. } => {
                 format!("ptr {value}")
             }
             LlValue::Comparison(value) => format!("i32 {value}"),
@@ -1229,6 +1432,9 @@ struct DebugInfo {
     rational_type: usize,
     int_range_type: usize,
     rational_range_type: usize,
+    result_int_type: usize,
+    result_rational_type: usize,
+    result_int_pair_type: usize,
     comparison_type: usize,
     boolean_type: usize,
     unit_type: usize,
@@ -1256,6 +1462,9 @@ impl DebugInfo {
             rational_type: 0,
             int_range_type: 0,
             rational_range_type: 0,
+            result_int_type: 0,
+            result_rational_type: 0,
+            result_int_pair_type: 0,
             comparison_type: 0,
             boolean_type: 0,
             unit_type: 0,
@@ -1320,6 +1529,7 @@ impl DebugInfo {
         debug.int_range_type = debug.range_type("Range Int", debug.int_type, unsigned64);
         debug.rational_range_type =
             debug.range_type("Range Rational", debug.rational_type, unsigned64);
+        debug.install_result_types(unsigned64);
         let less = debug.node("!DIEnumerator(name: \"Less\", value: -1)".into());
         let equal = debug.node("!DIEnumerator(name: \"Equal\", value: 0)".into());
         let greater = debug.node("!DIEnumerator(name: \"Greater\", value: 1)".into());
@@ -1369,6 +1579,38 @@ impl DebugInfo {
         ))
     }
 
+    fn install_result_types(&mut self, unsigned64: usize) {
+        let result_tag = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"is_error\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 0)",
+            self.file
+        ));
+        let opaque_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{unsigned64}, size: 64, align: 64)"
+        ));
+        let result_payload = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"payload\", file: !{}, baseType: !{opaque_pointer}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let result_members = self.node(format!("!{{!{result_tag}, !{result_payload}}}"));
+        let result_storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalResultHeader\", file: !{}, size: 128, align: 64, elements: !{result_members})",
+            self.file
+        ));
+        let result_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{result_storage}, size: 64, align: 64)"
+        ));
+        self.result_int_type = self.result_type("Int", result_pointer);
+        self.result_rational_type = self.result_type("Rational", result_pointer);
+        self.result_int_pair_type = self.result_type("(Int, Int)", result_pointer);
+    }
+
+    fn result_type(&mut self, success: &str, pointer: usize) -> usize {
+        self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Result ({success}, lang arithmetic ArithmeticErrorCode)\", file: !{}, baseType: !{pointer})",
+            self.file
+        ))
+    }
+
     fn set_source(&mut self, source: topal_source::SourceText) {
         self.source = source;
     }
@@ -1397,6 +1639,21 @@ impl DebugInfo {
                 self.rational_range_type
             }
             CompilerType::Range(_) => unreachable!("unsupported Range endpoint reached codegen"),
+            CompilerType::Result(success) if success.as_ref() == &CompilerType::Int => {
+                self.result_int_type
+            }
+            CompilerType::Result(success) if success.as_ref() == &CompilerType::Rational => {
+                self.result_rational_type
+            }
+            CompilerType::Result(success)
+                if success.as_ref()
+                    == &CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int]) =>
+            {
+                self.result_int_pair_type
+            }
+            CompilerType::Result(_) => {
+                unreachable!("unsupported Result success type reached codegen")
+            }
             CompilerType::String | CompilerType::Tuple(_) => {
                 unreachable!("structural values have no native debug representation yet")
             }
@@ -1504,7 +1761,10 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Unit => "void",
         CompilerType::Boolean => "i1",
-        CompilerType::Int | CompilerType::Rational | CompilerType::Range(_) => "ptr",
+        CompilerType::Int
+        | CompilerType::Rational
+        | CompilerType::Range(_)
+        | CompilerType::Result(_) => "ptr",
         CompilerType::Comparison => "i32",
         _ => unreachable!("shared model restricts function ABI types"),
     }
@@ -1514,7 +1774,10 @@ fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Unit => "i8",
         CompilerType::Boolean => "i1",
-        CompilerType::Int | CompilerType::Rational | CompilerType::Range(_) => "ptr",
+        CompilerType::Int
+        | CompilerType::Rational
+        | CompilerType::Range(_)
+        | CompilerType::Result(_) => "ptr",
         CompilerType::Comparison => "i32",
         _ => unreachable!("shared model restricts function ABI types"),
     }

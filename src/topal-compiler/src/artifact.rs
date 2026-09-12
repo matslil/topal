@@ -9,7 +9,7 @@ use topal_language::CompilerProgram;
 use crate::{DATA_LAYOUT, LLVM_MAJOR, TARGET_TRIPLE};
 
 pub const NATIVE_ARTIFACT_SCHEMA: &str = "topal.native-artifact/1";
-pub const NATIVE_ABI: &str = "topal-native/4";
+pub const NATIVE_ABI: &str = "topal-native/5";
 pub const PLATFORM_ABI: &str = "linux-x86_64-syscall/1";
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

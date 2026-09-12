@@ -10,7 +10,7 @@ mod trace;
 
 pub use compiler_model::{
     CompilerBinary, CompilerBinding, CompilerBlock, CompilerComparisonRule, CompilerExpression,
-    CompilerExpressionKind, CompilerFunction, CompilerParameter, CompilerProgram,
+    CompilerExpressionKind, CompilerFallible, CompilerFunction, CompilerParameter, CompilerProgram,
     CompilerStatement, CompilerType, IntRange, analyze_for_compiler,
 };
 pub use concurrency::{

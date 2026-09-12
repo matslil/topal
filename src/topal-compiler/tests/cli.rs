@@ -91,7 +91,7 @@ fn arbitrary_int_runtime_is_exact_and_self_contained() {
     let metadata =
         NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
     assert_eq!(metadata.native_abi, NATIVE_ABI);
-    assert_eq!(metadata.native_abi, "topal-native/4");
+    assert_eq!(metadata.native_abi, "topal-native/5");
 
     let tools = LlvmTools::discover(None).unwrap();
     let undefined = run(Command::new(tools.directory.join("llvm-nm"))
@@ -246,11 +246,15 @@ fn emits_verifiable_llvm_ir_and_object() {
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
 fn executable_is_static_pie_without_foreign_runtime_or_loader() {
-    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-ABI-001
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-ABI-001, TOPAL-COMPILER-RESULT-001
     let directory = temporary("freestanding");
     let source = directory.join("source.t");
     let executable = directory.join("application");
-    fs::write(&source, "use language (version is v0.1)\n0 ..= (6 / 8)\n").unwrap();
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ndivide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\n1.0 divide 0.0\n",
+    )
+    .unwrap();
     let compiled =
         run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
     assert!(
@@ -469,4 +473,55 @@ fn gdb_renders_exact_range_parameters_and_locals() {
         text.contains("$3 = Rational ( 1, 1 ) <..= Rational ( 2, 1 )"),
         "{text}"
     );
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_renders_structured_arithmetic_result_parameters_and_locals() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-COMP-RESULT-001
+    let directory = temporary("gdb-result");
+    let source = directory.join("result-debug.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ndivide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\nretain is fn (value : Result (Rational, lang arithmetic ArithmeticErrorCode)) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  result is value\n  result\n(1.0 divide 0.0) retain\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break result-debug.t:6",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "print result",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    let expected = "Error ( domain is root./(Rational,Rational), code is division-by-zero )";
+    assert!(text.contains(&format!("$1 = {expected}")), "{text}");
+    assert!(text.contains(&format!("$2 = {expected}")), "{text}");
 }
