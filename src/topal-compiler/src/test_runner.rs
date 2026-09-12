@@ -58,6 +58,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/static-nullary-functions.t",
     "examples/language/static-product-functions.t",
     "examples/language/string-display-delimiters.t",
+    "examples/language/unicode-identifiers.t",
 ];
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> Result<(), String> {
