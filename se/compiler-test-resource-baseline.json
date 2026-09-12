@@ -706,6 +706,16 @@
       "cpu_time_ns": 260724,
       "memory_peak_bytes": 18616320,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/record-reconstruction.t": {
+      "cpu_time_ns": 121137300,
+      "memory_peak_bytes": 40955904,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/record-reconstruction.t": {
+      "cpu_time_ns": 162697,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 500
     }
   }
 }

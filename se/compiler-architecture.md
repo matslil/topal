@@ -267,7 +267,7 @@ work rather than being inferred by the backend. Because this increment has no
 single machine product value, it does not yet publish product bindings as DWARF
 locals; their source lines and lowered field operations remain debuggable, while
 a truthful aggregate DWARF representation is retained with general product
-storage and ABI work in increment 3b2-b5d.
+storage and ABI work in increment 3b2-b5e.
 
 An anonymous labeled Record uses the same decomposed expression-local strategy.
 The checked model evaluates fields in source order, rejects duplicate labels,
@@ -278,7 +278,7 @@ evaluated field and display recursively emits `label is value` through existing
 Topal syscall-backed value printers. This adds no record runtime or ABI. Scalar
 values projected from a record retain ordinary DWARF locals and can be inspected
 in GDB. The record binding itself is deliberately absent from DWARF until
-increment 3b2-b5d supplies a truthful aggregate storage and debug representation
+increment 3b2-b5e supplies a truthful aggregate storage and debug representation
 rather than describing a layout that does not exist.
 
 Structural comparison also remains over decomposed values. The frontend
@@ -290,6 +290,17 @@ ordering evaluates both aggregate operands completely and then uses `br` and
 Int, Rational, String, and scalar equality routines do the leaf work; LLVM
 provides control flow and SSA joining but does not infer Topal evidence or field
 conversions. No aggregate storage, structural runtime, or ABI revision results.
+
+Immutable Record reconstruction reuses that decomposition. The checked model
+evaluates the complete base once, then evaluates replacement expressions once
+in source order and applies their admitted exact classifier conversions before
+LLVM lowering. The backend replaces only the named compiler values while
+retaining base construction order and all unreplaced values. The original
+aggregate remains unchanged because its value vector is cloned, and neither
+path acquires storage. This introduces no allocator, reconstruction runtime,
+foreign dependency, or ABI revision. Scalar projections from both versions use
+the existing DWARF path; aggregate layout and machine-boundary passage remain
+in increment 3b2-b5e.
 
 Nat validation already preserves an unchanged arbitrary-precision Int object
 with distinct checked constraint evidence and DWARF type identity. Comparison

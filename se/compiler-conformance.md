@@ -31,7 +31,8 @@ evidence.
 | 3b2-b5a | same-classifier positional-product equality recursively derived from admitted field equality | complete |
 | 3b2-b5b | anonymous labeled-record construction, static field selection, canonical display, and projected scalar debugging | complete |
 | 3b2-b5c | recursive lexicographic Tuple ordering, label-aligned Record equality, per-field exact numeric conversion, and scalar-result debugging | complete |
-| 3b2-b5d | remaining function forms, return-through-block cleanup, recursion/totality evidence, nested declarations, record reconstruction/storage/ABI, unions, constraints, capabilities, and decisions | planned |
+| 3b2-b5d | immutable Record reconstruction with exact field classification, decomposed lowering, original-value preservation, and projected scalar debugging | complete |
+| 3b2-b5e | remaining function forms, return-through-block cleanup, recursion/totality evidence, nested declarations, record storage/ABI, unions, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -91,8 +92,9 @@ positional-product equality without introducing an aggregate ABI; 3b2-b5b adds
 decomposed anonymous records, exact static selection, and source-ordered display
 without inventing aggregate storage or debug layout; 3b2-b5c adds recursive
 lexicographic Tuple ordering and label-aligned Record equality with per-field
-exact numeric conversion; 3b2-b5d continues with nested declarations, recursive
-and nested-block exit
+exact numeric conversion; 3b2-b5d adds source-ordered immutable Record
+reconstruction without introducing aggregate storage; 3b2-b5e continues with
+nested declarations, recursive and nested-block exit
 control flow, cleanup-bearing scopes, and the remaining user-defined value
 representations. Increment 4a admits the encoding-observation byte count without
 attaching an encoding or importing a foreign String runtime; 4b1 adds exact

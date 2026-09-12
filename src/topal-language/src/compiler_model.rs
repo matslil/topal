@@ -14,8 +14,8 @@ use topal_source::{
     lowercase, normalize_nfc, normalize_nfd, uppercase,
 };
 use topal_syntax::{
-    CallableKind, DecisionMatcher, Expression, FunctionClauses, FunctionParameter, Statement, lex,
-    parse,
+    CallableKind, DecisionMatcher, Expression, FunctionClauses, FunctionParameter, ProductField,
+    Statement, lex, parse,
 };
 
 use crate::source::{parse_integer, parse_rational, parse_string};
@@ -231,6 +231,10 @@ pub enum CompilerExpressionKind {
     Enum(u32),
     Tuple(Vec<CompilerExpression>),
     Record(Vec<(String, CompilerExpression)>),
+    RecordReconstruct {
+        base: Box<CompilerExpression>,
+        replacements: Vec<(String, CompilerExpression)>,
+    },
     RecordField {
         record: Box<CompilerExpression>,
         label: String,
@@ -1256,6 +1260,17 @@ impl Analyzer {
             return self.analyze_static_character_at(text, index, span, environment);
         }
         if let [
+            base,
+            Expression::Identifier(operation),
+            Expression::Product { fields, .. },
+        ] = items
+            && self.source.slice(*operation) == "with"
+            && !fields.is_empty()
+            && fields.iter().all(|field| field.label.is_some())
+        {
+            return self.analyze_record_reconstruction(base, fields, span, environment);
+        }
+        if let [
             text,
             Expression::Identifier(operation),
             Expression::Identifier(form),
@@ -1496,6 +1511,20 @@ impl Analyzer {
                 span,
             });
         }
+        if let [
+            record,
+            Expression::Identifier(field),
+            Expression::Callable { kind, .. },
+            right,
+        ] = items
+            && self.record_selection_candidate(record, environment)
+        {
+            let left = Expression::Application {
+                items: vec![record.clone(), Expression::Identifier(*field)],
+                span: Span::new(record.span().start, field.end),
+            };
+            return self.analyze_symbolic_binary(*kind, &left, right, span, environment);
+        }
         if let [left, Expression::Callable { kind, .. }, right] = items {
             return self.analyze_symbolic_binary(*kind, left, right, span, environment);
         }
@@ -1560,6 +1589,74 @@ impl Analyzer {
             value_type,
             int_range: facts.int_range,
             rational_value: facts.rational_value,
+            span,
+        })
+    }
+
+    fn analyze_record_reconstruction(
+        &mut self,
+        base: &Expression,
+        replacements: &[ProductField],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let base_value = self.analyze_expression(base, environment)?;
+        let CompilerType::Record(fields) = &base_value.value_type else {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-RECONSTRUCT-NON-RECORD",
+                base.span(),
+                "`with` reconstruction requires a labeled product",
+            ));
+        };
+        let record_type = base_value.value_type.clone();
+        let mut replaced = BTreeSet::new();
+        let mut values = Vec::with_capacity(replacements.len());
+        for replacement in replacements {
+            let label_span = replacement.label.expect("preselected labeled replacement");
+            let label = self.source.slice(label_span).to_owned();
+            if !replaced.insert(label.clone()) {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-DUPLICATE-RECONSTRUCTION-FIELD",
+                    label_span,
+                    format!("field `{label}` is replaced more than once"),
+                ));
+            }
+            let expected = fields
+                .iter()
+                .find_map(|(name, value_type)| (name == &label).then_some(value_type))
+                .ok_or_else(|| {
+                    source_diagnostic(
+                        &self.source,
+                        "E-NO-SUCH-RECORD-FIELD",
+                        label_span,
+                        format!("record has no field named `{label}`"),
+                    )
+                })?;
+            let value = self.analyze_expression(&replacement.value, environment)?;
+            let value = adapt_call_argument(expected, &value).ok_or_else(|| {
+                source_diagnostic(
+                    &self.source,
+                    "E-TYPE-MISMATCH",
+                    value.span,
+                    format!(
+                        "record field `{label}` expects {}, found {}",
+                        expected.name(),
+                        value.value_type.name()
+                    ),
+                )
+            })?;
+            values.push((label, value));
+        }
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::RecordReconstruct {
+                base: Box::new(base_value),
+                replacements: values,
+            },
+            value_type: record_type,
+            int_range: None,
+            rational_value: None,
             span,
         })
     }
@@ -1985,6 +2082,13 @@ impl Analyzer {
                 .iter()
                 .map(|(name, value)| (name.clone(), Self::known_value_facts(value, environment)))
                 .collect(),
+            CompilerExpressionKind::RecordReconstruct { base, replacements } => {
+                let mut fields = Self::known_record_fields(base, environment);
+                for (name, value) in replacements {
+                    fields.insert(name.clone(), Self::known_value_facts(value, environment));
+                }
+                fields
+            }
             CompilerExpressionKind::Local(name) => environment
                 .get(name)
                 .map_or_else(BTreeMap::new, |facts| facts.record_fields.clone()),
@@ -4073,6 +4177,7 @@ fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
     compiler_expression_is_closed_with(expression, &BTreeSet::new())
 }
 
+#[allow(clippy::too_many_lines)] // Exhaustive closure classification keeps every checked form visible.
 fn compiler_expression_is_closed_with(
     expression: &CompilerExpression,
     bound: &BTreeSet<String>,
@@ -4094,6 +4199,12 @@ fn compiler_expression_is_closed_with(
         CompilerExpressionKind::Record(fields) => fields
             .iter()
             .all(|(_, value)| compiler_expression_is_closed_with(value, bound)),
+        CompilerExpressionKind::RecordReconstruct { base, replacements } => {
+            compiler_expression_is_closed_with(base, bound)
+                && replacements
+                    .iter()
+                    .all(|(_, value)| compiler_expression_is_closed_with(value, bound))
+        }
         CompilerExpressionKind::Block(block) => compiler_block_is_closed(block, bound),
         CompilerExpressionKind::Local(name) => bound.contains(name),
         CompilerExpressionKind::Call { .. }
@@ -4956,6 +5067,73 @@ mod tests {
             analyze_for_compiler("use language (version is v0.1)\nvalue is (a is 1)\nvalue b\n")
                 .unwrap_err();
         assert_eq!(absent.code, "E-NO-SUCH-RECORD-FIELD");
+    }
+
+    #[test]
+    fn models_immutable_record_reconstruction() {
+        // TOPAL-TYPE-RECONSTRUCT-001, TOPAL-COMPILER-RECONSTRUCT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/record-reconstruction.t"
+        ))
+        .unwrap();
+        let updated = program
+            .main
+            .statements
+            .iter()
+            .find_map(|statement| match statement {
+                CompilerStatement::Binding(binding) if binding.name == "updated" => Some(binding),
+                _ => None,
+            })
+            .expect("the shared regression binds updated");
+        let CompilerExpressionKind::RecordReconstruct { base, replacements } = &updated.value.kind
+        else {
+            panic!("expected checked Record reconstruction")
+        };
+        assert_eq!(updated.value.value_type, base.value_type);
+        assert_eq!(replacements.len(), 1);
+        assert_eq!(replacements[0].0, "age");
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected the observation tuple")
+        };
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(36)));
+        assert_eq!(exact_int(&results[2]), Some(BigInt::from(37)));
+
+        let converted = analyze_for_compiler(
+            "use language (version is v0.1)\nrecord is (score is Rational (1, 2))\nupdated is record with (score is 1)\nupdated score\n",
+        )
+        .unwrap();
+        let CompilerStatement::Binding(converted) = &converted.main.statements[1] else {
+            panic!("expected updated binding")
+        };
+        let CompilerExpressionKind::RecordReconstruct { replacements, .. } = &converted.value.kind
+        else {
+            panic!("expected converted reconstruction")
+        };
+        assert!(matches!(
+            replacements[0].1.kind,
+            CompilerExpressionKind::IntToRational(_)
+        ));
+
+        for (source, code) in [
+            (
+                "use language (version is v0.1)\n1 with (a is 2)\n",
+                "E-RECONSTRUCT-NON-RECORD",
+            ),
+            (
+                "use language (version is v0.1)\nrecord is (a is 1)\nrecord with (a is 2, a is 3)\n",
+                "E-DUPLICATE-RECONSTRUCTION-FIELD",
+            ),
+            (
+                "use language (version is v0.1)\nrecord is (a is 1)\nrecord with (b is 2)\n",
+                "E-NO-SUCH-RECORD-FIELD",
+            ),
+            (
+                "use language (version is v0.1)\nrecord is (a is 1)\nrecord with (a is \"wrong\")\n",
+                "E-TYPE-MISMATCH",
+            ),
+        ] {
+            assert_eq!(analyze_for_compiler(source).unwrap_err().code, code);
+        }
     }
 
     #[test]

@@ -63,6 +63,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
     }
 }
 
+#[allow(clippy::too_many_lines)] // Exhaustive debug classification keeps every checked form visible.
 fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
     if type_uses_extended_debug(&expression.value_type) {
         return true;
@@ -81,6 +82,12 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::Record(fields) => fields
             .iter()
             .any(|(_, value)| expression_uses_extended_debug(value)),
+        CompilerExpressionKind::RecordReconstruct { base, replacements } => {
+            expression_uses_extended_debug(base)
+                || replacements
+                    .iter()
+                    .any(|(_, value)| expression_uses_extended_debug(value))
+        }
         CompilerExpressionKind::Block(block) => block_uses_extended_debug(block),
         CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
@@ -430,6 +437,21 @@ impl<'a> Generator<'a> {
                     })
                     .collect(),
             ),
+            CompilerExpressionKind::RecordReconstruct { base, replacements } => {
+                let LlValue::Record(mut fields) = self.emit_expression(base, body, environment)
+                else {
+                    unreachable!("checked reconstruction base has a Record type")
+                };
+                for (label, replacement) in replacements {
+                    let replacement = self.emit_expression(replacement, body, environment);
+                    let (_, value) = fields
+                        .iter_mut()
+                        .find(|(name, _)| name == label)
+                        .unwrap_or_else(|| panic!("checked Record retains field `{label}`"));
+                    *value = replacement;
+                }
+                LlValue::Record(fields)
+            }
             CompilerExpressionKind::RecordField { record, label } => {
                 let LlValue::Record(fields) = self.emit_expression(record, body, environment)
                 else {
@@ -3556,6 +3578,17 @@ mod tests {
         assert!(llvm.contains(&llvm_bytes(b"active")));
         assert!(llvm.contains(&llvm_bytes(b"Ada")));
         assert!(!llvm.contains("runtime.record"));
+    }
+
+    #[test]
+    fn lowers_record_reconstruction_without_a_runtime_abi() {
+        // TOPAL-COMPILER-RECONSTRUCT-001, TOPAL-TYPE-RECONSTRUCT-001
+        let source = include_str!("../../../examples/language/record-reconstruction.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "record-reconstruction.t").emit();
+        assert!(llvm.contains(&llvm_bytes(b"Ada")));
+        assert!(!llvm.contains("runtime.record"));
+        assert!(!llvm.contains("runtime.reconstruct"));
     }
 
     #[test]

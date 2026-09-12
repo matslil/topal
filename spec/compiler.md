@@ -296,11 +296,10 @@ absent label SHALL be rejected at the label source range.
 
 The admitted expression-local Record MAY remain a decomposed compiler aggregate
 and SHALL require no allocation, native object header, generated runtime, or
-foreign aggregate ABI. Record passage through machine signatures, derived
-equality, reconstruction, and aggregate storage remain unsupported. Until that
-storage exists, the compiler SHALL expose source locations and projected scalar
-bindings through DWARF/GDB but SHALL NOT publish a misleading aggregate-local
-debug representation.
+foreign aggregate ABI. Record passage through machine signatures and aggregate
+storage remain unsupported. Until that storage exists, the compiler SHALL
+expose source locations and projected scalar bindings through DWARF/GDB but
+SHALL NOT publish a misleading aggregate-local debug representation.
 
 ### TOPAL-COMPILER-STRUCTURAL-COMPARISON-001 — Derived structural comparison
 
@@ -324,6 +323,23 @@ LLVM control flow for lexicographic comparison, and introduce no aggregate
 allocation, runtime, or native ABI. A required field conversion hidden inside
 an opaque aggregate SHALL remain unsupported until aggregate projection or
 storage exists.
+
+### TOPAL-COMPILER-RECONSTRUCT-001 — Immutable record reconstruction
+
+For an admitted Record `base`, `base with (field is replacement, ...)` SHALL
+evaluate `base` exactly once before evaluating each replacement exactly once in
+source order. Every replacement label SHALL occur exactly once, name a field of
+`base`, and satisfy that field's exact classifier through an admitted canonical
+conversion when required. The result SHALL retain the base Record's classifier
+and display order, retain every unreplaced field value, and leave `base`
+unchanged.
+
+The checked representation MAY reconstruct an expression-local decomposed
+Record by replacing its named compiler values. This lowering SHALL introduce no
+aggregate allocation, generated reconstruction runtime, public ABI, foreign
+runtime, or standard-library dependency. Projected scalar values SHALL retain
+the existing DWARF/GDB behavior; the decomposed aggregate SHALL remain absent
+from debugger locals until truthful Record storage and layout exist.
 
 ### TOPAL-COMPILER-STRING-UTF8-BYTE-COUNT-001 — Native prospective byte count
 
