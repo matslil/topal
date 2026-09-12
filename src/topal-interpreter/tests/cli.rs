@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 196);
+    assert_eq!(examples.len(), 197);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2614,6 +2614,18 @@ fn every_mode_constructs_and_tests_rational_ranges() {
         trace
             .contains("\"detail\":\"(Range Rational, Range Rational, Boolean, Boolean, Boolean)\"")
     );
+}
+
+#[test]
+fn every_mode_observes_finite_range_bounds_and_emptiness() {
+    let source = include_str!("../../../examples/language/finite-range-observation.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(
+            b"(true, false, -2, 3, false, true, Rational ( 1, 2 ), Rational ( 2, 1 ), true, false, 0 <..= 2, 0 .. 2, 0 ..= 1, false)\n"
+        ));
+    }
 }
 
 #[test]

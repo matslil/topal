@@ -12,7 +12,8 @@ evidence.
 | 2a | arbitrary finite `Int` representation, literals, negation, absolute value, addition, subtraction, multiplication, equality, ordering, decimal output, GDB rendering, and freestanding allocation | complete |
 | 2b | finite `Int` identities/division/modulo/power, finite exact `Rational`, static zero-divisor diagnostics, exact equality/ordering, and direct three-way comparison | complete |
 | 2c | dynamic arithmetic `Result` values, exact narrowing/validation, complete Comparison decisions, and normatively completed infinity construction/arithmetic | planned |
-| 2d | finite and infinite numeric range construction, classification, membership, intersection, and bound observation | planned |
+| 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |
+| 2d-b | unbounded range construction and infinity endpoints after their prerequisite normative and runtime work | planned |
 | 3 | complete function forms, recursion/totality evidence, overloads, records, enums, unions, constraints, capabilities, and decisions | planned |
 | 4 | strings, Unicode operations, fundamental containers, traversal, and representation-safe allocation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
@@ -44,5 +45,7 @@ representation. Increment 2a removes that boundary with a freestanding Topal
 numeric runtime and a private, dynamically sized representation. Increment 2b
 adds finite exact division and Rational values. Increment 2c closes typed
 arithmetic failures and the infinity semantics that require normative
-completion; increment 2d then closes numeric ranges before the roadmap proceeds
-to general control flow and user-defined value representations.
+completion. Increment 2d-a adds the fully normative explicitly bounded finite
+range subset; 2d-b closes unbounded and infinite endpoints after increment 2c.
+Range-based collection selection remains grouped with containers. The roadmap
+then proceeds to general control flow and user-defined value representations.

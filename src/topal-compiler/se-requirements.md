@@ -54,7 +54,7 @@ equality, ordering, function passage, decision joins, decimal output, and GDB
 inspection shall preserve the normative value for operands of any size that
 available address space can hold.
 
-The private `topal-native/3` representation shall be canonical, immutable, and
+The private `topal-native/4` representation shall be canonical, immutable, and
 hidden from foreign calling conventions. Its allocator and output routines
 shall use only the qualified Linux x86-64 system-call boundary, detect mapping
 failure, introduce no C/C++ runtime dependency or undefined helper symbol, and
@@ -103,13 +103,34 @@ exact-number cases of `TOPAL-TYPE-EQUALITY-001` and
 
 It realizes `TOPAL-COMPILER-EXACT-001` for compiler increment 2b.
 
+## TOPAL-COMP-RANGE-001 — Finite exact ranges
+
+The compiler shall represent explicitly bounded finite `Range Int` and
+`Range Rational` values as immutable opaque handles retaining exact lower and
+upper endpoint objects and canonical Boolean inclusivity states. It shall
+implement all four range constructors, canonical mixed endpoint conversion,
+classification, ordinary function passage and decision joins, both membership
+operand orders, same-domain intersection, emptiness, bound and inclusivity
+observation, source-form output, and GDB inspection.
+
+Range lowering shall not enumerate members, normalize open endpoints by
+arithmetic, expose the private header to a foreign calling convention, require
+a C/C++ runtime, or introduce load-time pointer relocations. Unbounded forms,
+infinite endpoints, and collection selection remain outside this increment.
+
+This requirement covers `TOPAL-RANGE-BOUNDS-001`,
+`TOPAL-RANGE-MEMBERSHIP-001`, `TOPAL-RANGE-RATIONAL-001`,
+`TOPAL-RANGE-CLASSIFIER-001`, `TOPAL-RANGE-INTERSECTION-001`,
+`TOPAL-RANGE-EMPTY-001`, and `TOPAL-RANGE-BOUND-001`. It realizes
+`TOPAL-COMPILER-RANGE-001` for compiler increment 2d-a.
+
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
 Debug-enabled O0 output shall map generated source functions, parameters,
 immutable scalar locals, and instructions to Topal files and source locations,
 emit DWARF 5 through LLVM, retain frame pointers, provide GDB renderers for
-private arbitrary-precision Int and Rational objects, and pass automated GDB
-breakpoint, value, and backtrace scenarios.
+private arbitrary-precision Int, Rational, `Range Int`, and `Range Rational`
+objects, and pass automated GDB breakpoint, value, and backtrace scenarios.
 
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 

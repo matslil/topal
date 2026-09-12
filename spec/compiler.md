@@ -66,6 +66,22 @@ Position-independent output without an ELF interpreter SHALL contain no
 load-time pointer relocation. Runtime construction SHALL be used when a private
 aggregate would otherwise require such a relocation.
 
+### TOPAL-COMPILER-RANGE-001 — Finite exact ranges
+
+Every admitted finite explicitly bounded `Range Int` and `Range Rational`
+SHALL retain its exact lower and upper endpoints and both inclusivity states.
+Construction, mixed Int-to-Rational endpoint conversion, classification,
+function passage, control-flow joins, membership by either operand order,
+intersection, emptiness, bound observation, inclusivity observation, textual
+output, and debugging SHALL preserve the corresponding `TOPAL-RANGE-*`
+semantics without enumeration or endpoint adjustment.
+
+The private representation SHALL remain opaque outside its versioned native
+ABI and SHALL contain no load-time pointer relocation in output without an ELF
+interpreter. Unbounded ranges, infinite endpoints, and range-based collection
+selection SHALL remain outside the admitted subset until their prerequisite
+semantics and value representations are implemented.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

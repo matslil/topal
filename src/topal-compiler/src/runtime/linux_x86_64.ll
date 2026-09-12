@@ -1,11 +1,12 @@
 ; topal.platform.linux-x86_64/1
-; Freestanding Linux services and the private topal-native/3 exact-number runtime.
+; Freestanding Linux services and the private topal-native/4 exact-value runtime.
 ; Int values are immutable sign-and-magnitude objects with little-endian
 ; base-2^32 limbs. A zero has sign = 0 and length = 0.
 
 %topal.IntStorage = type { i64, i64, [0 x i32] }
 %topal.IntDivmod = type { ptr, ptr }
 %topal.RationalStorage = type { ptr, ptr }
+%topal.RangeStorage = type { ptr, ptr, i64, i64 }
 
 @topal.runtime.int.zero = private constant { i64, i64, [0 x i32] } { i64 0, i64 0, [0 x i32] zeroinitializer }, align 8
 @topal.runtime.int.one = private constant { i64, i64, [1 x i32] } { i64 0, i64 1, [1 x i32] [i32 1] }, align 8
@@ -14,6 +15,10 @@
 @topal.runtime.rational.prefix = private constant [11 x i8] c"Rational ( ", align 1
 @topal.runtime.rational.separator = private constant [2 x i8] c", ", align 1
 @topal.runtime.rational.suffix = private constant [2 x i8] c" )", align 1
+@topal.runtime.range.closed.open = private constant [4 x i8] c" .. ", align 1
+@topal.runtime.range.open.open = private constant [5 x i8] c" <.. ", align 1
+@topal.runtime.range.closed.closed = private constant [5 x i8] c" ..= ", align 1
+@topal.runtime.range.open.closed = private constant [6 x i8] c" <..= ", align 1
 
 declare i32 @llvm.ctlz.i32(i32, i1 immarg)
 
@@ -922,5 +927,215 @@ entry:
   call void @topal.platform.write_all(ptr @topal.runtime.rational.separator, i64 2)
   call void @topal.runtime.int.print(ptr %denominator)
   call void @topal.platform.write_all(ptr @topal.runtime.rational.suffix, i64 2)
+  ret void
+}
+
+define internal ptr @topal.runtime.range.make(ptr %lower, ptr %upper, i64 %lower.inclusive, i64 %upper.inclusive) nounwind noinline {
+entry:
+  %value = call ptr @topal.platform.allocate(i64 32)
+  %lower.pointer = getelementptr %topal.RangeStorage, ptr %value, i32 0, i32 0
+  %upper.pointer = getelementptr %topal.RangeStorage, ptr %value, i32 0, i32 1
+  %lower.inclusive.pointer = getelementptr %topal.RangeStorage, ptr %value, i32 0, i32 2
+  %upper.inclusive.pointer = getelementptr %topal.RangeStorage, ptr %value, i32 0, i32 3
+  store ptr %lower, ptr %lower.pointer, align 8
+  store ptr %upper, ptr %upper.pointer, align 8
+  store i64 %lower.inclusive, ptr %lower.inclusive.pointer, align 8
+  store i64 %upper.inclusive, ptr %upper.inclusive.pointer, align 8
+  ret ptr %value
+}
+
+define internal ptr @topal.runtime.range.lower(ptr %range) nounwind noinline {
+entry:
+  %pointer = getelementptr %topal.RangeStorage, ptr %range, i32 0, i32 0
+  %value = load ptr, ptr %pointer, align 8
+  ret ptr %value
+}
+
+define internal ptr @topal.runtime.range.upper(ptr %range) nounwind noinline {
+entry:
+  %pointer = getelementptr %topal.RangeStorage, ptr %range, i32 0, i32 1
+  %value = load ptr, ptr %pointer, align 8
+  ret ptr %value
+}
+
+define internal i1 @topal.runtime.range.lower.inclusive(ptr %range) nounwind noinline {
+entry:
+  %pointer = getelementptr %topal.RangeStorage, ptr %range, i32 0, i32 2
+  %raw = load i64, ptr %pointer, align 8
+  %value = icmp ne i64 %raw, 0
+  ret i1 %value
+}
+
+define internal i1 @topal.runtime.range.upper.inclusive(ptr %range) nounwind noinline {
+entry:
+  %pointer = getelementptr %topal.RangeStorage, ptr %range, i32 0, i32 3
+  %raw = load i64, ptr %pointer, align 8
+  %value = icmp ne i64 %raw, 0
+  ret i1 %value
+}
+
+define internal i1 @topal.runtime.range.empty.from.comparison(ptr %range, i32 %ordering) nounwind noinline {
+entry:
+  %reversed = icmp sgt i32 %ordering, 0
+  %equal = icmp eq i32 %ordering, 0
+  %lower.inclusive = call i1 @topal.runtime.range.lower.inclusive(ptr %range)
+  %upper.inclusive = call i1 @topal.runtime.range.upper.inclusive(ptr %range)
+  %both.inclusive = and i1 %lower.inclusive, %upper.inclusive
+  %open.equal = xor i1 %both.inclusive, true
+  %empty.equal = and i1 %equal, %open.equal
+  %empty = or i1 %reversed, %empty.equal
+  ret i1 %empty
+}
+
+define internal i1 @topal.runtime.range.int.empty(ptr %range) nounwind noinline {
+entry:
+  %lower = call ptr @topal.runtime.range.lower(ptr %range)
+  %upper = call ptr @topal.runtime.range.upper(ptr %range)
+  %ordering = call i32 @topal.runtime.int.compare(ptr %lower, ptr %upper)
+  %empty = call i1 @topal.runtime.range.empty.from.comparison(ptr %range, i32 %ordering)
+  ret i1 %empty
+}
+
+define internal i1 @topal.runtime.range.rational.empty(ptr %range) nounwind noinline {
+entry:
+  %lower = call ptr @topal.runtime.range.lower(ptr %range)
+  %upper = call ptr @topal.runtime.range.upper(ptr %range)
+  %ordering = call i32 @topal.runtime.rational.compare(ptr %lower, ptr %upper)
+  %empty = call i1 @topal.runtime.range.empty.from.comparison(ptr %range, i32 %ordering)
+  ret i1 %empty
+}
+
+define internal i1 @topal.runtime.range.int.contains(ptr %range, ptr %value) nounwind noinline {
+entry:
+  %lower = call ptr @topal.runtime.range.lower(ptr %range)
+  %upper = call ptr @topal.runtime.range.upper(ptr %range)
+  %lower.ordering = call i32 @topal.runtime.int.compare(ptr %value, ptr %lower)
+  %upper.ordering = call i32 @topal.runtime.int.compare(ptr %value, ptr %upper)
+  %lower.inclusive = call i1 @topal.runtime.range.lower.inclusive(ptr %range)
+  %upper.inclusive = call i1 @topal.runtime.range.upper.inclusive(ptr %range)
+  %above.lower = icmp sgt i32 %lower.ordering, 0
+  %at.lower = icmp eq i32 %lower.ordering, 0
+  %included.lower = and i1 %at.lower, %lower.inclusive
+  %lower.accepted = or i1 %above.lower, %included.lower
+  %below.upper = icmp slt i32 %upper.ordering, 0
+  %at.upper = icmp eq i32 %upper.ordering, 0
+  %included.upper = and i1 %at.upper, %upper.inclusive
+  %upper.accepted = or i1 %below.upper, %included.upper
+  %accepted = and i1 %lower.accepted, %upper.accepted
+  ret i1 %accepted
+}
+
+define internal i1 @topal.runtime.range.rational.contains(ptr %range, ptr %value) nounwind noinline {
+entry:
+  %lower = call ptr @topal.runtime.range.lower(ptr %range)
+  %upper = call ptr @topal.runtime.range.upper(ptr %range)
+  %lower.ordering = call i32 @topal.runtime.rational.compare(ptr %value, ptr %lower)
+  %upper.ordering = call i32 @topal.runtime.rational.compare(ptr %value, ptr %upper)
+  %lower.inclusive = call i1 @topal.runtime.range.lower.inclusive(ptr %range)
+  %upper.inclusive = call i1 @topal.runtime.range.upper.inclusive(ptr %range)
+  %above.lower = icmp sgt i32 %lower.ordering, 0
+  %at.lower = icmp eq i32 %lower.ordering, 0
+  %included.lower = and i1 %at.lower, %lower.inclusive
+  %lower.accepted = or i1 %above.lower, %included.lower
+  %below.upper = icmp slt i32 %upper.ordering, 0
+  %at.upper = icmp eq i32 %upper.ordering, 0
+  %included.upper = and i1 %at.upper, %upper.inclusive
+  %upper.accepted = or i1 %below.upper, %included.upper
+  %accepted = and i1 %lower.accepted, %upper.accepted
+  ret i1 %accepted
+}
+
+define internal ptr @topal.runtime.range.intersection.from.orderings(ptr %left, ptr %right, i32 %lower.ordering, i32 %upper.ordering) nounwind noinline {
+entry:
+  %left.lower = call ptr @topal.runtime.range.lower(ptr %left)
+  %left.upper = call ptr @topal.runtime.range.upper(ptr %left)
+  %right.lower = call ptr @topal.runtime.range.lower(ptr %right)
+  %right.upper = call ptr @topal.runtime.range.upper(ptr %right)
+  %left.lower.inclusive = call i1 @topal.runtime.range.lower.inclusive(ptr %left)
+  %left.upper.inclusive = call i1 @topal.runtime.range.upper.inclusive(ptr %left)
+  %right.lower.inclusive = call i1 @topal.runtime.range.lower.inclusive(ptr %right)
+  %right.upper.inclusive = call i1 @topal.runtime.range.upper.inclusive(ptr %right)
+  %lower.equal = icmp eq i32 %lower.ordering, 0
+  %left.lower.stricter = icmp sgt i32 %lower.ordering, 0
+  %selected.lower = select i1 %left.lower.stricter, ptr %left.lower, ptr %right.lower
+  %selected.lower.inclusive = select i1 %left.lower.stricter, i1 %left.lower.inclusive, i1 %right.lower.inclusive
+  %equal.lower.inclusive = and i1 %left.lower.inclusive, %right.lower.inclusive
+  %lower.inclusive = select i1 %lower.equal, i1 %equal.lower.inclusive, i1 %selected.lower.inclusive
+  %upper.equal = icmp eq i32 %upper.ordering, 0
+  %left.upper.stricter = icmp slt i32 %upper.ordering, 0
+  %selected.upper = select i1 %left.upper.stricter, ptr %left.upper, ptr %right.upper
+  %selected.upper.inclusive = select i1 %left.upper.stricter, i1 %left.upper.inclusive, i1 %right.upper.inclusive
+  %equal.upper.inclusive = and i1 %left.upper.inclusive, %right.upper.inclusive
+  %upper.inclusive = select i1 %upper.equal, i1 %equal.upper.inclusive, i1 %selected.upper.inclusive
+  %lower.inclusive.raw = zext i1 %lower.inclusive to i64
+  %upper.inclusive.raw = zext i1 %upper.inclusive to i64
+  %result = call ptr @topal.runtime.range.make(ptr %selected.lower, ptr %selected.upper, i64 %lower.inclusive.raw, i64 %upper.inclusive.raw)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.range.int.intersection(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.lower = call ptr @topal.runtime.range.lower(ptr %left)
+  %left.upper = call ptr @topal.runtime.range.upper(ptr %left)
+  %right.lower = call ptr @topal.runtime.range.lower(ptr %right)
+  %right.upper = call ptr @topal.runtime.range.upper(ptr %right)
+  %lower.ordering = call i32 @topal.runtime.int.compare(ptr %left.lower, ptr %right.lower)
+  %upper.ordering = call i32 @topal.runtime.int.compare(ptr %left.upper, ptr %right.upper)
+  %result = call ptr @topal.runtime.range.intersection.from.orderings(ptr %left, ptr %right, i32 %lower.ordering, i32 %upper.ordering)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.range.rational.intersection(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.lower = call ptr @topal.runtime.range.lower(ptr %left)
+  %left.upper = call ptr @topal.runtime.range.upper(ptr %left)
+  %right.lower = call ptr @topal.runtime.range.lower(ptr %right)
+  %right.upper = call ptr @topal.runtime.range.upper(ptr %right)
+  %lower.ordering = call i32 @topal.runtime.rational.compare(ptr %left.lower, ptr %right.lower)
+  %upper.ordering = call i32 @topal.runtime.rational.compare(ptr %left.upper, ptr %right.upper)
+  %result = call ptr @topal.runtime.range.intersection.from.orderings(ptr %left, ptr %right, i32 %lower.ordering, i32 %upper.ordering)
+  ret ptr %result
+}
+
+define internal void @topal.runtime.range.print.symbol(ptr %range) nounwind noinline {
+entry:
+  %lower.inclusive = call i1 @topal.runtime.range.lower.inclusive(ptr %range)
+  %upper.inclusive = call i1 @topal.runtime.range.upper.inclusive(ptr %range)
+  br i1 %lower.inclusive, label %lower.closed, label %lower.open
+lower.closed:
+  br i1 %upper.inclusive, label %closed.closed, label %closed.open
+lower.open:
+  br i1 %upper.inclusive, label %open.closed, label %open.open
+closed.closed:
+  call void @topal.platform.write_all(ptr @topal.runtime.range.closed.closed, i64 5)
+  ret void
+closed.open:
+  call void @topal.platform.write_all(ptr @topal.runtime.range.closed.open, i64 4)
+  ret void
+open.closed:
+  call void @topal.platform.write_all(ptr @topal.runtime.range.open.closed, i64 6)
+  ret void
+open.open:
+  call void @topal.platform.write_all(ptr @topal.runtime.range.open.open, i64 5)
+  ret void
+}
+
+define internal void @topal.runtime.range.int.print(ptr %range) nounwind noinline {
+entry:
+  %lower = call ptr @topal.runtime.range.lower(ptr %range)
+  %upper = call ptr @topal.runtime.range.upper(ptr %range)
+  call void @topal.runtime.int.print(ptr %lower)
+  call void @topal.runtime.range.print.symbol(ptr %range)
+  call void @topal.runtime.int.print(ptr %upper)
+  ret void
+}
+
+define internal void @topal.runtime.range.rational.print(ptr %range) nounwind noinline {
+entry:
+  %lower = call ptr @topal.runtime.range.lower(ptr %range)
+  %upper = call ptr @topal.runtime.range.upper(ptr %range)
+  call void @topal.runtime.rational.print(ptr %lower)
+  call void @topal.runtime.range.print.symbol(ptr %range)
+  call void @topal.runtime.rational.print(ptr %upper)
   ret void
 }
