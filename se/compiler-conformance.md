@@ -20,7 +20,8 @@ evidence.
 | 2d-b | unbounded range construction and infinity endpoints after their prerequisite normative and runtime work | planned |
 | 3a | source-ordered statically decidable scalar overloads and basic static nullary, unary, and binary functions | complete |
 | 3b1 | root-scope payload-free nominal enum declarations, classification, equality, functions, display, exhaustive decisions, and debugging | complete |
-| 3b2 | remaining function forms, recursion/totality evidence, nested declarations, records, unions, constraints, capabilities, and decisions | planned |
+| 3b2-a | direct explicit early return from admitted linear function bodies | complete |
+| 3b2-b | remaining function forms, recursion/totality evidence, nested declarations, records, unions, constraints, capabilities, and decisions | planned |
 | 4 | strings, Unicode operations, fundamental containers, traversal, and representation-safe allocation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6 | module/package/application construction, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
@@ -60,5 +61,6 @@ Range-based collection selection remains grouped with containers. Increment 3a
 admits the statically decidable scalar overload and basic static-function
 foundation. Increment 3b1 adds the first root-scope user-declared nominal value
 representation without conflating payload-free `Enum` with general `Union`;
-3b2 continues with nested declarations, recursive control flow, and the
-remaining user-defined value representations.
+3b2-a makes direct early return a mandatory frontend control-flow boundary;
+3b2-b continues with nested declarations, recursive and nested-block control
+flow, and the remaining user-defined value representations.

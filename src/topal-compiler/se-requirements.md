@@ -189,6 +189,19 @@ and `TOPAL-FUNCTION-FORWARD-DECLARATION-001`. Dynamic structural applicability,
 function values, nested functions, recursion and its overload-identity rule,
 and other function forms remain in later increment-3 dispositions.
 
+## TOPAL-COMP-RETURN-001 — Direct explicit function return
+
+Within an admitted linear function body, `return expression` shall evaluate and
+validate the expression once, preserve every preceding statement in order, and
+complete the current invocation without emitting the unreachable tail. It shall
+use the same private result representation and DWARF source mapping as an
+implicit final result. A return at root shall remain a source diagnostic.
+
+This requirement covers the direct-body case of
+`TOPAL-FUNCTION-RETURN-001` and realizes `TOPAL-COMPILER-RETURN-001` for
+compiler increment 3b2-a. Returns from nested lexical blocks remain with their
+scope and cleanup lowering in increment 3b2-b.
+
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
 The compiler shall represent explicitly bounded finite `Range Int` and

@@ -4094,6 +4094,11 @@
       "cpu_time_ns": 3309200,
       "memory_peak_bytes": 18399232,
       "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_explicit_early_return_and_skips_the_tail": {
+      "cpu_time_ns": 2836140,
+      "memory_peak_bytes": 18403328,
+      "samples_per_test": 50
     }
   }
 }
