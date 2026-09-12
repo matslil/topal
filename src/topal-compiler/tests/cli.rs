@@ -91,7 +91,7 @@ fn arbitrary_int_runtime_is_exact_and_self_contained() {
     let metadata =
         NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
     assert_eq!(metadata.native_abi, NATIVE_ABI);
-    assert_eq!(metadata.native_abi, "topal-native/3");
+    assert_eq!(metadata.native_abi, "topal-native/4");
 
     let tools = LlvmTools::discover(None).unwrap();
     let undefined = run(Command::new(tools.directory.join("llvm-nm"))
@@ -139,6 +139,32 @@ fn finite_exact_runtime_matches_large_gcd_and_division_semantics() {
     let source = directory.join("large-exact.t");
     let executable = directory.join("application");
     let source_text = "use language (version is v0.1)\ncommon is 1234567890123456789012345678901234567890\nleft is Rational (common * 37, common * 41)\nright is Rational (common * 43, common * 47)\n(left, right, left + right, left - right, left * right, left / right, left ^ 5, common % 1000000007, common / 97, left < right, left <=> right)\n";
+    fs::write(&source, source_text).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn finite_range_runtime_matches_exact_interpreter_semantics() {
+    // TOPAL-COMP-RANGE-001; TOPAL-RANGE-BOUNDS/MEMBERSHIP/INTERSECTION/EMPTY/BOUND-001
+    let directory = temporary("finite-ranges");
+    let source = directory.join("ranges.t");
+    let executable = directory.join("application");
+    let source_text = "use language (version is v0.1)\nlarge is 123456789012345678901234567890\nintegers is (negate large) <..= large\nrationals is (Rational (large, 7)) .. (Rational (large * 3, 7))\npreserve is fn (value : Range Rational) -> Range Rational\n  value\nintersection is (preserve rationals) and ((Rational (large * 2, 7)) ..= (Rational (large * 4, 7)))\n(integers, 0 in integers, integers contains large, empty? (large .. large), range-lower intersection, range-upper intersection, range-lower-inclusive? intersection, range-upper-inclusive? intersection, intersection)\n";
     fs::write(&source, source_text).unwrap();
     let expected = Session::new()
         .evaluate_source_file(source_text, &mut std::io::sink())
@@ -224,7 +250,7 @@ fn executable_is_static_pie_without_foreign_runtime_or_loader() {
     let directory = temporary("freestanding");
     let source = directory.join("source.t");
     let executable = directory.join("application");
-    fs::write(&source, "use language (version is v0.1)\n6 / 8\n").unwrap();
+    fs::write(&source, "use language (version is v0.1)\n0 ..= (6 / 8)\n").unwrap();
     let compiled =
         run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
     assert!(
@@ -380,4 +406,67 @@ fn gdb_renders_canonical_rational_parameters_and_locals() {
     let text = String::from_utf8_lossy(&debugged.stdout);
     assert!(text.contains("$1 = Rational ( 5, 4 )"), "{text}");
     assert!(text.contains("$2 = Rational ( 7, 4 )"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_renders_exact_range_parameters_and_locals() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-COMP-RANGE-001
+    let directory = temporary("gdb-range");
+    let source = directory.join("range-debug.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nnarrow is fn (integers : Range Int, rationals : Range Rational) -> Range Rational\n  _ is integers contains 5\n  result is rationals and (1.0 <..= 2.0)\n  return result\n(0 <..= 10) narrow (0.5 ..= 2.5)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break range-debug.t:3",
+            "-ex",
+            "run",
+            "-ex",
+            "print integers",
+            "-ex",
+            "print rationals",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "print result",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 0 <..= 10"), "{text}");
+    assert!(
+        text.contains("$2 = Rational ( 1, 2 ) ..= Rational ( 5, 2 )"),
+        "{text}"
+    );
+    assert!(
+        text.contains("$3 = Rational ( 1, 1 ) <..= Rational ( 2, 1 )"),
+        "{text}"
+    );
 }

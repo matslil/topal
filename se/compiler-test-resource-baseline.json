@@ -166,6 +166,36 @@
       "cpu_time_ns": 270536,
       "memory_peak_bytes": 18534400,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/finite-range-observation.t": {
+      "cpu_time_ns": 116501920,
+      "memory_peak_bytes": 41058304,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/inclusive-int-ranges.t": {
+      "cpu_time_ns": 118753199,
+      "memory_peak_bytes": 41996288,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/rational-ranges.t": {
+      "cpu_time_ns": 115590820,
+      "memory_peak_bytes": 41836544,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/finite-range-observation.t": {
+      "cpu_time_ns": 248815,
+      "memory_peak_bytes": 18681856,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/inclusive-int-ranges.t": {
+      "cpu_time_ns": 235310,
+      "memory_peak_bytes": 18546688,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/rational-ranges.t": {
+      "cpu_time_ns": 276321,
+      "memory_peak_bytes": 18669568,
+      "samples_per_test": 500
     }
   }
 }

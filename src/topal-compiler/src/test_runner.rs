@@ -16,12 +16,15 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/exact-numeric-negate.t",
     "examples/language/exact-numeric-zero.t",
     "examples/language/finite-exact-division-and-comparison.t",
+    "examples/language/finite-range-observation.t",
     "examples/language/function-call-chains.t",
     "examples/language/function-local-shadowing.t",
+    "examples/language/inclusive-int-ranges.t",
     "examples/language/ordinary-functions.t",
     "examples/language/rational-exact-construction.t",
     "examples/language/rational-exponentiation.t",
     "examples/language/rational-negative-exponent.t",
+    "examples/language/rational-ranges.t",
 ];
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> Result<(), String> {

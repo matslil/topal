@@ -22,7 +22,7 @@ def _decimal_from_limbs(raw, length):
 
 
 class _TopalIntPrinter:
-    """Render an immutable topal-native/3 Int object as a decimal integer."""
+    """Render an immutable topal-native/4 Int object as a decimal integer."""
 
     def __init__(self, value):
         self._value = value
@@ -97,11 +97,60 @@ class _TopalRationalPrinter:
         return f"Rational ( {numerator}, {denominator} )"
 
 
+class _TopalRangePrinter:
+    """Render a bounded finite exact topal-native Range object."""
+
+    def __init__(self, value, endpoint):
+        self._value = value
+        self._endpoint = endpoint
+
+    def to_string(self):
+        address = int(self._value)
+        if address == 0:
+            return "<invalid null Range>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 32))
+        except gdb.MemoryError:
+            return "<unreadable Range>"
+        lower_address = int.from_bytes(header[0:8], "little")
+        upper_address = int.from_bytes(header[8:16], "little")
+        lower_inclusive = int.from_bytes(header[16:24], "little")
+        upper_inclusive = int.from_bytes(header[24:32], "little")
+        if not lower_address or not upper_address:
+            return "<invalid null Range endpoint>"
+        if lower_inclusive not in (0, 1) or upper_inclusive not in (0, 1):
+            return "<invalid Range inclusivity>"
+        printer = (
+            _TopalIntPrinter
+            if self._endpoint == "Int"
+            else _TopalRationalPrinter
+        )
+        lower = printer(lower_address).to_string()
+        upper = printer(upper_address).to_string()
+        if lower.startswith("<"):
+            return f"<invalid Range lower endpoint: {lower}>"
+        if upper.startswith("<"):
+            return f"<invalid Range upper endpoint: {upper}>"
+        symbol = {
+            (1, 0): "..",
+            (0, 0): "<..",
+            (1, 1): "..=",
+            (0, 1): "<..=",
+        }[(lower_inclusive, upper_inclusive)]
+        return f"{lower} {symbol} {upper}"
+
+
 def _lookup_topal_value(value):
-    if str(value.type) == "Int":
+    value_type = str(value.type)
+    if value_type == "Int":
         return _TopalIntPrinter(value)
-    if str(value.type) == "Rational":
+    if value_type == "Rational":
         return _TopalRationalPrinter(value)
+    if value_type == "Range Int":
+        return _TopalRangePrinter(value, "Int")
+    if value_type == "Range Rational":
+        return _TopalRangePrinter(value, "Rational")
     return None
 
 

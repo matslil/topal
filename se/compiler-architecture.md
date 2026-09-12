@@ -29,12 +29,12 @@ LLVM lowers an already selected LLVM calling convention to physical registers
 and stack locations, but a source-language frontend still owns semantic value
 representation and any coercion needed to form that LLVM signature. The C
 calling convention is therefore not a portable Topal ABI. Internal functions
-use an exact compiler-private signature keyed by `topal-native/3`, and future
+use an exact compiler-private signature keyed by `topal-native/4`, and future
 foreign adapters may use target `ccc` only with fixed-width scalars or opaque
 handles. Aggregate classification is adapter work and will be checked against
 the target's reference C frontend before a foreign interface is admitted.
 
-`topal-native/3` represents finite `Int` values as immutable pointers to a
+`topal-native/4` represents finite `Int` values as immutable pointers to a
 canonical sign-and-magnitude object with little-endian base-2^32 limbs. The
 private signature passes that pointer directly; it never exposes the object to
 a foreign calling convention. Runtime allocation uses the qualified Linux
@@ -50,6 +50,15 @@ each literal component as relocation-free Int data, then constructs the
 pointer-bearing Rational object at run time. This is required because a static
 PIE with no ELF interpreter has no loader to apply absolute pointer
 relocations. `llvm-readobj --relocations` qualifies that invariant.
+
+Explicitly bounded finite exact ranges use an immutable 32-byte header holding
+opaque lower and upper endpoint pointers plus two canonical inclusivity words.
+The endpoint classifier remains static, so `Range Int` and `Range Rational`
+share a private storage shape without erasing their semantic type. Range
+construction remains a predicate value: the runtime compares exact endpoints
+for membership, emptiness, and intersection and never enumerates or adjusts an
+open endpoint. Pointer-bearing range objects are also constructed at run time
+to preserve relocation-free no-loader PIE output.
 
 The correctness-first exact runtime uses binary long division, Euclidean sign
 correction, Euclid's greatest-common-divisor algorithm, and exponentiation by
@@ -219,7 +228,7 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, with bundled renderers for private Int and Rational objects |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, with bundled renderers for private Int, Rational, and finite exact Range objects |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |
 | `llvm-link`, `llvm-dis`, `llvm-extract`, `llvm-diff`, `llvm-reduce` | qualification and failure reduction only | production linking occurs from verified modules; these tools remain useful for backend diagnosis but do not improve emitted semantics merely by being invoked |

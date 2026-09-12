@@ -3994,6 +3994,26 @@
       "cpu_time_ns": 3096299,
       "memory_peak_bytes": 18014208,
       "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::finite_range_runtime_matches_exact_interpreter_semantics": {
+      "cpu_time_ns": 143370660,
+      "memory_peak_bytes": 41127936,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_exact_range_parameters_and_locals": {
+      "cpu_time_ns": 260462860,
+      "memory_peak_bytes": 57278464,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_observes_finite_range_bounds_and_emptiness": {
+      "cpu_time_ns": 19598460,
+      "memory_peak_bytes": 18391040,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_finite_exact_ranges_and_observations": {
+      "cpu_time_ns": 3643619,
+      "memory_peak_bytes": 18481152,
+      "samples_per_test": 50
     }
   }
 }

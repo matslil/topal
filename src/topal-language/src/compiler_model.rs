@@ -24,6 +24,7 @@ pub enum CompilerType {
     Int,
     Rational,
     Comparison,
+    Range(Box<Self>),
     String,
     Tuple(Vec<Self>),
 }
@@ -33,7 +34,12 @@ impl CompilerType {
     pub const fn machine_scalar(&self) -> bool {
         matches!(
             self,
-            Self::Unit | Self::Boolean | Self::Int | Self::Rational | Self::Comparison
+            Self::Unit
+                | Self::Boolean
+                | Self::Int
+                | Self::Rational
+                | Self::Comparison
+                | Self::Range(_)
         )
     }
 
@@ -45,6 +51,7 @@ impl CompilerType {
             Self::Int => "Int".into(),
             Self::Rational => "Rational".into(),
             Self::Comparison => "Comparison".into(),
+            Self::Range(endpoint) => format!("Range {}", endpoint.name()),
             Self::String => "String".into(),
             Self::Tuple(fields) => format!(
                 "({})",
@@ -86,6 +93,12 @@ pub enum CompilerBinary {
     QuotientModulo,
     Power,
     Compare,
+    Range,
+    RangeOpen,
+    RangeInclusive,
+    RangeOpenInclusive,
+    In,
+    Contains,
     Equal,
     NotEqual,
     Less,
@@ -122,6 +135,11 @@ pub enum CompilerExpressionKind {
         numerator: Box<CompilerExpression>,
         denominator: Box<CompilerExpression>,
     },
+    RangeLower(Box<CompilerExpression>),
+    RangeUpper(Box<CompilerExpression>),
+    RangeLowerInclusive(Box<CompilerExpression>),
+    RangeUpperInclusive(Box<CompilerExpression>),
+    RangeEmpty(Box<CompilerExpression>),
     Not(Box<CompilerExpression>),
     Binary {
         operation: CompilerBinary,
@@ -629,6 +647,19 @@ impl Analyzer {
         {
             return self.analyze_rational_constructor(argument, span, environment);
         }
+        if let [Expression::Identifier(operation), operand] = items
+            && matches!(
+                self.source.slice(*operation),
+                "empty?"
+                    | "range-lower"
+                    | "range-upper"
+                    | "range-lower-inclusive?"
+                    | "range-upper-inclusive?"
+            )
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            return self.analyze_range_observation(&operation, operand, span, environment);
+        }
         if let [
             Expression::Callable {
                 kind: CallableKind::Minus,
@@ -716,23 +747,14 @@ impl Analyzer {
         if let [left, Expression::Callable { kind, .. }, right] = items {
             return self.analyze_symbolic_binary(*kind, left, right, span, environment);
         }
-        if let [left, Expression::Identifier(operation), right] = items {
-            let operation = match self.source.slice(*operation) {
-                "and" => Some(CompilerBinary::And),
-                "or" => Some(CompilerBinary::Or),
-                "xor" => Some(CompilerBinary::Xor),
-                _ => None,
-            };
-            if let Some(operation) = operation {
-                return self.analyze_binary(
-                    operation,
-                    left,
-                    right,
-                    span,
-                    environment,
-                    &CompilerType::Boolean,
-                );
-            }
+        if let [left, Expression::Identifier(operation), right] = items
+            && matches!(
+                self.source.slice(*operation),
+                "and" | "or" | "xor" | "in" | "contains"
+            )
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            return self.analyze_identifier_binary(&operation, left, right, span, environment);
         }
         self.analyze_call(items, span, environment)
     }
@@ -793,6 +815,134 @@ impl Analyzer {
         })
     }
 
+    fn analyze_range_observation(
+        &mut self,
+        operation: &str,
+        operand: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let operand = self.analyze_expression(operand, environment)?;
+        let CompilerType::Range(endpoint) = &operand.value_type else {
+            if operation == "empty?" {
+                return Err(unsupported(
+                    &self.source,
+                    operand.span,
+                    "empty? for a non-Range value",
+                ));
+            }
+            return Err(source_diagnostic(
+                &self.source,
+                "E-TYPE-MISMATCH",
+                operand.span,
+                format!("{operation} requires a finite exact Range operand"),
+            ));
+        };
+        let endpoint = endpoint.as_ref().clone();
+        let (kind, value_type) = match operation {
+            "range-lower" => (
+                CompilerExpressionKind::RangeLower(Box::new(operand)),
+                endpoint,
+            ),
+            "range-upper" => (
+                CompilerExpressionKind::RangeUpper(Box::new(operand)),
+                endpoint,
+            ),
+            "range-lower-inclusive?" => (
+                CompilerExpressionKind::RangeLowerInclusive(Box::new(operand)),
+                CompilerType::Boolean,
+            ),
+            "range-upper-inclusive?" => (
+                CompilerExpressionKind::RangeUpperInclusive(Box::new(operand)),
+                CompilerType::Boolean,
+            ),
+            "empty?" => (
+                CompilerExpressionKind::RangeEmpty(Box::new(operand)),
+                CompilerType::Boolean,
+            ),
+            _ => unreachable!("range observation spelling selected above"),
+        };
+        Ok(CompilerExpression {
+            kind,
+            value_type,
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn analyze_identifier_binary(
+        &mut self,
+        operation: &str,
+        left: &Expression,
+        right: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let mut left = self.analyze_expression(left, environment)?;
+        let mut right = self.analyze_expression(right, environment)?;
+        let binary = match operation {
+            "and" => CompilerBinary::And,
+            "or" => CompilerBinary::Or,
+            "xor" => CompilerBinary::Xor,
+            "in" => CompilerBinary::In,
+            "contains" => CompilerBinary::Contains,
+            _ => unreachable!("identifier binary spelling selected above"),
+        };
+        if matches!(binary, CompilerBinary::In | CompilerBinary::Contains) {
+            let (range, value) = if binary == CompilerBinary::In {
+                (&right.value_type, &mut left)
+            } else {
+                (&left.value_type, &mut right)
+            };
+            let CompilerType::Range(endpoint) = range else {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-RANGE-MEMBERSHIP-OPERANDS",
+                    span,
+                    "range membership requires a finite exact Range operand",
+                ));
+            };
+            require_exact_numeric(&self.source, value.span, &value.value_type)?;
+            if endpoint.as_ref() == &CompilerType::Rational && value.value_type == CompilerType::Int
+            {
+                *value = into_rational(value.clone());
+            }
+            require_same_type(&self.source, value.span, endpoint, &value.value_type)?;
+            return Ok(Self::finish_binary(
+                binary,
+                left,
+                right,
+                CompilerType::Boolean,
+                span,
+            ));
+        }
+        if binary == CompilerBinary::And && matches!(&left.value_type, CompilerType::Range(_)) {
+            require_same_type(&self.source, span, &left.value_type, &right.value_type)?;
+            let value_type = left.value_type.clone();
+            return Ok(Self::finish_binary(binary, left, right, value_type, span));
+        }
+        require_type(
+            &self.source,
+            left.span,
+            &CompilerType::Boolean,
+            &left.value_type,
+        )?;
+        require_type(
+            &self.source,
+            right.span,
+            &CompilerType::Boolean,
+            &right.value_type,
+        )?;
+        Ok(Self::finish_binary(
+            binary,
+            left,
+            right,
+            CompilerType::Boolean,
+            span,
+        ))
+    }
+
     #[allow(clippy::too_many_lines)] // Numeric coercion and fail-closed obligations stay in one selection path.
     fn analyze_symbolic_binary(
         &mut self,
@@ -811,16 +961,40 @@ impl Analyzer {
             CallableKind::QuotientModulo => CompilerBinary::QuotientModulo,
             CallableKind::Power => CompilerBinary::Power,
             CallableKind::Compare => CompilerBinary::Compare,
+            CallableKind::Range => CompilerBinary::Range,
+            CallableKind::RangeOpen => CompilerBinary::RangeOpen,
+            CallableKind::RangeInclusive => CompilerBinary::RangeInclusive,
+            CallableKind::RangeOpenInclusive => CompilerBinary::RangeOpenInclusive,
             CallableKind::Equal => CompilerBinary::Equal,
             CallableKind::NotEqual => CompilerBinary::NotEqual,
             CallableKind::Less => CompilerBinary::Less,
             CallableKind::Greater => CompilerBinary::Greater,
             CallableKind::LessEqual => CompilerBinary::LessEqual,
             CallableKind::GreaterEqual => CompilerBinary::GreaterEqual,
-            _ => return Err(unsupported(&self.source, span, "numeric callable")),
         };
         let mut left_value = self.analyze_expression(left, environment)?;
         let mut right_value = self.analyze_expression(right, environment)?;
+
+        if is_range_construction(operation) {
+            require_exact_numeric(&self.source, left_value.span, &left_value.value_type)?;
+            require_exact_numeric(&self.source, right_value.span, &right_value.value_type)?;
+            let endpoint = if left_value.value_type == CompilerType::Rational
+                || right_value.value_type == CompilerType::Rational
+            {
+                left_value = into_rational(left_value);
+                right_value = into_rational(right_value);
+                CompilerType::Rational
+            } else {
+                CompilerType::Int
+            };
+            return Ok(Self::finish_binary(
+                operation,
+                left_value,
+                right_value,
+                CompilerType::Range(Box::new(endpoint)),
+                span,
+            ));
+        }
 
         if matches!(
             operation,
@@ -923,28 +1097,6 @@ impl Analyzer {
             left_value,
             right_value,
             result_type,
-            span,
-        ))
-    }
-
-    fn analyze_binary(
-        &mut self,
-        operation: CompilerBinary,
-        left: &Expression,
-        right: &Expression,
-        span: Span,
-        environment: &BTreeMap<String, BindingFacts>,
-        expected: &CompilerType,
-    ) -> Result<CompilerExpression, Diagnostic> {
-        let left = self.analyze_expression(left, environment)?;
-        let right = self.analyze_expression(right, environment)?;
-        require_type(&self.source, left.span, expected, &left.value_type)?;
-        require_type(&self.source, right.span, expected, &right.value_type)?;
-        Ok(Self::finish_binary(
-            operation,
-            left,
-            right,
-            CompilerType::Boolean,
             span,
         ))
     }
@@ -1272,7 +1424,15 @@ fn is_declaration(statement: &Statement) -> bool {
 }
 
 fn parse_classifier(source: &SourceText, span: Span) -> Result<CompilerType, Diagnostic> {
-    match source.slice(span).trim() {
+    let classifier = source.slice(span).trim();
+    if let Some(endpoint) = classifier.strip_prefix("Range ") {
+        return match endpoint {
+            "Int" => Ok(CompilerType::Range(Box::new(CompilerType::Int))),
+            "Rational" => Ok(CompilerType::Range(Box::new(CompilerType::Rational))),
+            _ => Err(unsupported(source, span, "Range endpoint classifier")),
+        };
+    }
+    match classifier {
         "Unit" => Ok(CompilerType::Unit),
         "Boolean" => Ok(CompilerType::Boolean),
         "Int" => Ok(CompilerType::Int),
@@ -1281,6 +1441,16 @@ fn parse_classifier(source: &SourceText, span: Span) -> Result<CompilerType, Dia
         "String" => Ok(CompilerType::String),
         _ => Err(unsupported(source, span, "classifier")),
     }
+}
+
+fn is_range_construction(operation: CompilerBinary) -> bool {
+    matches!(
+        operation,
+        CompilerBinary::Range
+            | CompilerBinary::RangeOpen
+            | CompilerBinary::RangeInclusive
+            | CompilerBinary::RangeOpenInclusive
+    )
 }
 
 fn is_exact_numeric(value_type: &CompilerType) -> bool {
@@ -1632,6 +1802,22 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(source).unwrap_err().code,
             "E-DIVISION-BY-ZERO"
+        );
+    }
+
+    #[test]
+    fn models_finite_exact_ranges_and_observations() {
+        let source = "use language (version is v0.1)\ninterval is 0 ..= 2.5\npreserve is fn (value : Range Rational) -> Range Rational\n  value\nkept is preserve interval\n(1 in kept, kept contains 3, empty? (2 .. 2), range-lower kept, range-upper-inclusive? kept, kept and (1.0 <.. 4.0))\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Boolean, Boolean, Boolean, Rational, Boolean, Range Rational)"
+        );
+        assert!(
+            program
+                .functions
+                .iter()
+                .any(|function| function.result_type.name() == "Range Rational")
         );
     }
 
