@@ -416,6 +416,36 @@
       "cpu_time_ns": 145748,
       "memory_peak_bytes": 18546688,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/enum-decisions.t": {
+      "cpu_time_ns": 125065759,
+      "memory_peak_bytes": 41943040,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/enum-functions.t": {
+      "cpu_time_ns": 124102120,
+      "memory_peak_bytes": 41103360,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/enum-values.t": {
+      "cpu_time_ns": 122900580,
+      "memory_peak_bytes": 40931328,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/enum-decisions.t": {
+      "cpu_time_ns": 153144,
+      "memory_peak_bytes": 18419712,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/enum-functions.t": {
+      "cpu_time_ns": 140904,
+      "memory_peak_bytes": 18681856,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/enum-values.t": {
+      "cpu_time_ns": 144571,
+      "memory_peak_bytes": 18415616,
+      "samples_per_test": 500
     }
   }
 }

@@ -152,6 +152,21 @@ SHALL NOT select an ordinary callee. LLVM lowering and DWARF SHALL retain each
 selected overload's source function, typed parameters, invocation-local
 bindings, and frame without exposing staticness as an unqualified foreign ABI.
 
+### TOPAL-COMPILER-ENUM-001 — Sealed nominal enum lowering
+
+Each admitted payload-free source enum SHALL retain a distinct nominal identity
+through checking and use declaration-ordered `i32` tags only within the sealed
+Topal native ABI. Classification, equality, function passage, control-flow
+joins, and display SHALL preserve `TOPAL-TYPE-ENUM-001`; no tag SHALL be
+implicitly exchanged with another enum or treated as a portable foreign enum.
+
+An admitted enum decision SHALL evaluate its subject once, execute only the
+selected alternative or final `otherwise` action, and enforce the completeness
+and matcher-validity rules of `TOPAL-DECISION-ENUM-001`. LLVM `switch` and
+`phi` lowering SHALL retain those evaluation semantics. An invalid internal tag
+SHALL fail closed rather than select a source alternative. DWARF SHALL describe
+the nominal enum and its source labels truthfully for GDB inspection.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

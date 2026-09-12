@@ -4074,6 +4074,26 @@
       "cpu_time_ns": 3500600,
       "memory_peak_bytes": 18399232,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_nominal_enums_as_checked_i32_tags_with_dwarf_enumerators": {
+      "cpu_time_ns": 4995739,
+      "memory_peak_bytes": 18403328,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_nominal_enum_parameters_and_locals": {
+      "cpu_time_ns": 327903240,
+      "memory_peak_bytes": 56918016,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_nominal_enum_values_functions_and_exhaustive_decisions": {
+      "cpu_time_ns": 2972000,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_invalid_nominal_enum_declarations_and_decisions": {
+      "cpu_time_ns": 3309200,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
     }
   }
 }

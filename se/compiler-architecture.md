@@ -116,6 +116,17 @@ three nominal alternatives. The subject is emitted once before either control
 flow graph, so LLVM optimization may simplify the graph later without changing
 Topal evaluation order at O0.
 
+Each admitted root-scope payload-free source `Enum` has its own checked nominal
+identity and a declaration-ordered `i32` tag space. Tags pass directly only
+through sealed Topal-private signatures; they are not a public C enum ABI. The
+frontend rejects cross-enum equality and classification, and exhaustive
+decisions lower to LLVM `switch` plus typed `phi` joins. An impossible invalid
+tag takes the compiler-runtime corruption exit rather than selecting an
+arbitrary source alternative. Display switches to the declared label bytes
+through the Topal syscall boundary, while DWARF describes a genuine enumeration
+so stock GDB shows source labels. General `Union` layout and nested enum
+declarations remain separate representation and scope increments.
+
 The correctness-first exact runtime uses binary long division, Euclidean sign
 correction, Euclid's greatest-common-divisor algorithm, and exponentiation by
 squaring. LLVM's documented `llvm.ctlz.i32` intrinsic determines the last
@@ -284,8 +295,8 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
-| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, and fallible arithmetic control flow with typed result joins |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, with bundled renderers for private Int, Rational, and finite exact Range objects |
+| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum, and fallible arithmetic control flow with typed result joins |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including native enum labels and bundled renderers for private Int, Rational, and finite exact Range objects |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |
 | `llvm-link`, `llvm-dis`, `llvm-extract`, `llvm-diff`, `llvm-reduce` | qualification and failure reduction only | production linking occurs from verified modules; these tools remain useful for backend diagnosis but do not improve emitted semantics merely by being invoked |
