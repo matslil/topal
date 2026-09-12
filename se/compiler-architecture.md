@@ -82,7 +82,16 @@ Result payloads, DWARF, and GDB all use the same private pointer representation.
 The syscall runtime writes canonical ordinary or tagged Topal literals without
 relying on a C locale or string library. This increment admits literal transport
 and display, not the remaining Unicode String operations in roadmap increment
-4.
+4b.
+
+The prospective UTF-8 byte-count operation reads the preserved-byte length
+already stored in that descriptor; it does not scan display spelling, attach an
+encoding, normalize text, or consult a locale. A private unsigned-64-to-Int
+runtime helper expands the target length into at most two base-2^32 limbs and
+constructs the unique one- or two-limb canonical form, with the shared zero
+object for an empty String. The resulting value therefore uses the same
+unbounded Int representation and debugger behavior as all other counts,
+without a foreign conversion helper or fixed source-level integer limit.
 
 Fallible exact operations return immutable Result headers containing a
 canonical success-or-error tag and one opaque payload pointer. Successful

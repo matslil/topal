@@ -237,6 +237,20 @@ without load-time pointer relocations, passed only through sealed Topal
 signatures, and rendered without a foreign allocator, runtime, or standard
 library.
 
+### TOPAL-COMPILER-STRING-UTF8-BYTE-COUNT-001 — Native prospective byte count
+
+For an admitted plain String, `text byte-count Utf8` SHALL read the exact
+preserved UTF-8 byte length from the immutable native String descriptor and
+produce the equal nonnegative value in the canonical arbitrary-precision Int
+representation. It SHALL evaluate `text` once and SHALL NOT inspect the cached
+display spelling, mutate or normalize the String, attach an encoding, count
+characters or display columns, or narrow the result to a source-level machine
+integer.
+
+Converting the target descriptor length into Int SHALL use only the sealed
+Topal runtime representation and platform allocator. It SHALL NOT call a
+foreign String, encoding, conversion, allocator, or standard-library routine.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate
