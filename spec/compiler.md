@@ -212,6 +212,18 @@ Same-type equality, scalar function passage, control-flow joins, canonical
 display, DWARF, and GDB SHALL preserve the singleton source identity. Its
 machine carrier SHALL NOT be exposed as a public integer or foreign ABI.
 
+### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
+
+An admitted positional-product prefix application SHALL evaluate and validate
+its fields once in source order before passing them in declared parameter
+order. A typed discard parameter SHALL participate in overload matching and
+occupy its target-qualified private machine-signature position, but SHALL
+introduce no source binding, generated-value binding, or DWARF variable.
+
+Retained parameters after a discard SHALL keep their original source argument
+ordinals. Lowering SHALL NOT expose the discarded value under a synthetic or
+otherwise addressable Topal name.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

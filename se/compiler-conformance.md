@@ -24,7 +24,8 @@ evidence.
 | 3b2-a | direct explicit early return from admitted linear function bodies | complete |
 | 3b2-b1 | value-producing lexical blocks with fresh binding scope, shadowing, non-escape, and lexical DWARF | complete |
 | 3b2-b2 | distinct zero-data Completed evidence, equality, scalar function passage, retained call dependency, display, and debugging | complete |
-| 3b2-b3 | remaining function forms, return-through-block cleanup, recursion/totality evidence, nested declarations, records, unions, constraints, capabilities, and decisions | planned |
+| 3b2-b3 | ordinary positional-product prefix calls and typed discard input patterns without source/debug bindings | complete |
+| 3b2-b4 | remaining function forms, return-through-block cleanup, recursion/totality evidence, nested declarations, records, unions, constraints, capabilities, and decisions | planned |
 | 4 | strings, Unicode operations, fundamental containers, traversal, and representation-safe allocation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6 | module/package/application construction, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
@@ -68,6 +69,8 @@ representation without conflating payload-free `Enum` with general `Union`;
 3b2-a makes direct early return a mandatory frontend control-flow boundary;
 3b2-b1 adds ordinary lexical block values and truthful nested debug scope;
 3b2-b2 adds the distinct zero-data Completed value without erasing its call
-dependency into Unit; 3b2-b3 continues with nested declarations, recursive and nested-block exit
+dependency into Unit; 3b2-b3 completes positional-product prefix application
+and typed discard inputs without inventing bindings; 3b2-b4 continues with
+nested declarations, recursive and nested-block exit
 control flow, cleanup-bearing scopes, and the remaining user-defined value
 representations.

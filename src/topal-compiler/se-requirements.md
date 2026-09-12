@@ -250,6 +250,23 @@ integer or Unit value.
 This requirement covers `TOPAL-EXEC-COMPLETED-001` and realizes
 `TOPAL-COMPILER-COMPLETED-001` for compiler increment 3b2-b2.
 
+## TOPAL-COMP-PATTERN-001 — Positional product and discard inputs
+
+For an admitted ordinary function with multiple scalar parameters, a prefix
+application containing one positional product shall validate and pass its
+fields as the declared parameter sequence in left-to-right order. Overload
+selection shall use the complete flattened sequence without re-evaluating any
+field.
+
+A typed `_` parameter shall validate its argument classifier and occupy its
+private machine-signature position but introduce no checked source binding,
+generated-value binding, or DWARF variable. Other parameters retain their
+source argument ordinals in debug information.
+
+This requirement covers the admitted function-input case of
+`TOPAL-TYPE-MATCH-001` and realizes `TOPAL-COMPILER-PATTERN-001` for compiler
+increment 3b2-b3.
+
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
 The compiler shall represent explicitly bounded finite `Range Int` and

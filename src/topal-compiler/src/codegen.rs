@@ -255,6 +255,9 @@ impl<'a> Generator<'a> {
                     unreachable!("shared model restricts machine parameters")
                 }
             };
+            if parameter.discarded {
+                continue;
+            }
             let variable = self.debug.parameter(
                 &parameter.name,
                 index + 1,
@@ -2843,6 +2846,19 @@ mod tests {
         assert!(llvm.contains("icmp eq i8 0, 0"));
         assert!(llvm.contains("ret i8 0"));
         assert!(llvm.contains("DW_TAG_enumeration_type, name: \"Completed\""));
+    }
+
+    #[test]
+    fn emits_discarded_parameter_without_debug_binding() {
+        // TOPAL-TYPE-MATCH-001, TOPAL-COMPILER-PATTERN-001
+        let source = "use language (version is v0.1)\nsecond is fn (_ : Int, value : Int) -> Int\n  value\nsecond (0, 42)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/discard.t").emit();
+        assert!(
+            llvm.contains("define internal fastcc ptr @topal.fn.second.0(ptr %arg0, ptr %arg1)")
+        );
+        assert!(!llvm.contains("DILocalVariable(name: \"_\""));
+        assert!(llvm.contains("DILocalVariable(name: \"value\", arg: 2"));
     }
 
     #[test]

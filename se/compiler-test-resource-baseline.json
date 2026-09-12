@@ -516,6 +516,16 @@
       "cpu_time_ns": 131466,
       "memory_peak_bytes": 18497536,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/discard-function-pattern.t": {
+      "cpu_time_ns": 117761940,
+      "memory_peak_bytes": 41172992,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/discard-function-pattern.t": {
+      "cpu_time_ns": 172832,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 500
     }
   }
 }

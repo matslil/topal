@@ -156,6 +156,14 @@ allocation, equality compares the sealed singleton carrier, display writes the
 source name through the Topal syscall layer, and DWARF describes a singleton
 enumeration so GDB does not mislabel the value as an integer or Unit.
 
+An ordinary prefix call with one positional product operand is flattened by the
+checked frontend into the declared scalar parameter sequence before overload
+selection. Evaluation and ABI argument order remain left-to-right. A typed `_`
+parameter participates in the same classifier check and private machine
+signature but is omitted from the function binding environment and DWARF
+variables; the backend therefore neither makes the discarded input addressable
+nor fabricates a debugger name for it.
+
 The correctness-first exact runtime uses binary long division, Euclidean sign
 correction, Euclid's greatest-common-divisor algorithm, and exponentiation by
 squaring. LLVM's documented `llvm.ctlz.i32` intrinsic determines the last
