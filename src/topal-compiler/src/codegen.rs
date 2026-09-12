@@ -3815,6 +3815,36 @@ mod tests {
     }
 
     #[test]
+    fn emits_explicit_measure_recursion_with_one_complete_signature() {
+        // TOPAL-FUNCTION-DECREASES-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/explicit-multi-parameter-decreases.t"
+        ))
+        .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "explicit-multi-parameter-decreases.t").emit();
+        assert_eq!(
+            llvm.matches(&format!(
+                "define internal fastcc ptr @{symbol}(ptr %arg0, ptr %arg1)"
+            ))
+            .count(),
+            1
+        );
+        assert_eq!(
+            llvm.matches(&format!("call fastcc ptr @{symbol}(ptr %"))
+                .count(),
+            1
+        );
+        assert_eq!(
+            llvm.matches("call ptr @topal.runtime.int.try.to.nat")
+                .count(),
+            0
+        );
+        assert!(llvm.contains("nounwind noinline"));
+        assert!(!llvm.contains("norecurse"));
+    }
+
+    #[test]
     fn emits_nominal_enums_as_checked_i32_tags_with_dwarf_enumerators() {
         // TOPAL-COMPILER-ENUM-001
         let source = "use language (version is v0.1)\nColor is Enum (Red, Green, Blue)\nnext is fn (value : Color) -> Color\n  value\n    Red then Green\n    Green then Blue\n    Blue then Red\n(next Red, next Green)\n";
