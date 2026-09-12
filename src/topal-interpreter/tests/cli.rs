@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 202);
+    assert_eq!(examples.len(), 203);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2537,6 +2537,21 @@ fn every_mode_executes_checked_nat_construction() {
     let diagnostic = String::from_utf8(diagnostic.stderr).unwrap();
     assert!(diagnostic.contains("error[E-NAT-OUT-OF-RANGE]"));
     assert!(diagnostic.contains("help: use a provably nonnegative Int"));
+}
+
+#[test]
+fn every_mode_compares_nat_constraint_values() {
+    let source = include_str!("../../../examples/language/nat-equality-and-ordering.t");
+    let expected = b"(true, true, true, true, true, true, true, Less, true, true)\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(expected));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-EQUALITY-001"));
+    assert!(trace.contains("TOPAL-NUM-COMPARE-001"));
+    assert!(trace.contains("TOPAL-NUM-THREE-WAY-COMPARE-001"));
 }
 
 #[test]

@@ -65,6 +65,21 @@ Position-independent output without an ELF interpreter SHALL contain no
 load-time pointer relocation. Runtime construction SHALL be used when a private
 aggregate would otherwise require such a relocation.
 
+### TOPAL-COMPILER-NAT-COMPARISON-001 — Nat comparison evidence
+
+For equality, inequality, ordered predicates, and three-way comparison, an
+admitted Nat operand SHALL forget its validated constraint evidence to its
+unchanged exact Int base value. Nat/Int comparison SHALL use canonical Int
+comparison. Nat/Rational comparison SHALL apply the same canonical
+Int-to-Rational conversion as the underlying Int value. Each source operand
+SHALL be evaluated exactly once before evidence forgetting or conversion.
+
+Evidence forgetting SHALL NOT narrow, copy, reinterpret as an unsigned machine
+integer, allocate another Int object, call a Nat-specific runtime operation, or
+change the Nat identity of a source binding in debug information. An admitted
+same-classifier positional product MAY recursively use this Nat equality as
+field evidence under `TOPAL-COMPILER-TUPLE-EQUALITY-001`.
+
 ### TOPAL-COMPILER-RANGE-001 — Finite exact ranges
 
 Every admitted finite explicitly bounded `Range Int` and `Range Rational`

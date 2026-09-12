@@ -1908,6 +1908,23 @@ impl Analyzer {
             return self.finish_power(left_value, right_value, span);
         }
 
+        let comparison = matches!(
+            operation,
+            CompilerBinary::Equal
+                | CompilerBinary::NotEqual
+                | CompilerBinary::Less
+                | CompilerBinary::Greater
+                | CompilerBinary::LessEqual
+                | CompilerBinary::GreaterEqual
+                | CompilerBinary::Compare
+        );
+        if comparison
+            && is_exact_comparable(&left_value.value_type)
+            && is_exact_comparable(&right_value.value_type)
+        {
+            left_value = forget_nat_evidence(left_value);
+            right_value = forget_nat_evidence(right_value);
+        }
         let numeric =
             is_exact_numeric(&left_value.value_type) && is_exact_numeric(&right_value.value_type);
         if matches!(operation, CompilerBinary::Equal | CompilerBinary::NotEqual) && !numeric {
@@ -3172,12 +3189,27 @@ fn is_exact_numeric(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Int | CompilerType::Rational)
 }
 
+fn is_exact_comparable(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Int | CompilerType::Nat | CompilerType::Rational
+    )
+}
+
+fn forget_nat_evidence(mut expression: CompilerExpression) -> CompilerExpression {
+    if expression.value_type == CompilerType::Nat {
+        expression.value_type = CompilerType::Int;
+    }
+    expression
+}
+
 fn compiler_equality_supported(value_type: &CompilerType) -> bool {
     match value_type {
         CompilerType::Unit
         | CompilerType::Completed
         | CompilerType::Boolean
         | CompilerType::Int
+        | CompilerType::Nat
         | CompilerType::Rational
         | CompilerType::Comparison
         | CompilerType::ErrorCode
@@ -3189,7 +3221,6 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
         CompilerType::Error
         | CompilerType::ErrorDomain
-        | CompilerType::Nat
         | CompilerType::Range(_)
         | CompilerType::Result(_) => false,
     }
@@ -3704,6 +3735,58 @@ mod tests {
         assert_eq!(
             values[3].int_range,
             Some(IntRange::exact(BigInt::from(65_536)))
+        );
+    }
+
+    #[test]
+    fn models_nat_comparison_by_forgetting_constraint_evidence() {
+        // TOPAL-NUM-NAT-001, TOPAL-TYPE-EQUALITY-001,
+        // TOPAL-TYPE-ORDERING-001, TOPAL-NUM-THREE-WAY-COMPARE-001
+        let source = include_str!("../../../examples/language/nat-equality-and-ordering.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Comparison, Boolean, Boolean)"
+        );
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("expected a comparison result tuple")
+        };
+        let CompilerExpressionKind::Binary { left, right, .. } = &values[0].kind else {
+            panic!("expected mixed Nat/Int equality")
+        };
+        assert_eq!(left.value_type, CompilerType::Int);
+        assert_eq!(right.value_type, CompilerType::Int);
+        let CompilerExpressionKind::Binary { left, right, .. } = &values[1].kind else {
+            panic!("expected mixed Nat/Rational equality")
+        };
+        assert_eq!(left.value_type, CompilerType::Rational);
+        assert_eq!(right.value_type, CompilerType::Rational);
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "compare-nat")
+            .unwrap();
+        let CompilerExpressionKind::Binary {
+            operation,
+            left,
+            right,
+        } = &function.body.result.kind
+        else {
+            panic!("expected Nat three-way comparison")
+        };
+        assert_eq!(*operation, CompilerBinary::Compare);
+        assert_eq!(left.value_type, CompilerType::Int);
+        assert_eq!(right.value_type, CompilerType::Int);
+        let CompilerExpressionKind::Binary { left, right, .. } = &values[8].kind else {
+            panic!("expected derived product equality")
+        };
+        assert_eq!(left.value_type.name(), "(Nat, Nat)");
+        assert_eq!(right.value_type.name(), "(Nat, Nat)");
+
+        let arithmetic = "use language (version is v0.1)\none : Nat is 1\none + one\n";
+        assert_eq!(
+            analyze_for_compiler(arithmetic).unwrap_err().code,
+            "E-TYPE-MISMATCH"
         );
     }
 
