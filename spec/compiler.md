@@ -136,6 +136,22 @@ one immutable native String descriptor. A relocation-free executable SHALL
 construct pointer-bearing descriptors at run time and print canonical ordinary
 or conflict-free tagged Topal literal syntax without a foreign runtime.
 
+### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
+
+Within the admitted scalar-function subset, the compiler SHALL preserve
+source-ordered overload sets and reject a repeated input-classifier sequence
+with the same staticness independently of parameter names and result type. A
+call SHALL evaluate its argument expressions once, select the first statically
+applicable complete input header without consulting result context, and emit a
+distinct checked call-graph identity and private native function for the
+selected overload.
+
+Static nullary, unary, and positional-product functions SHALL use the same
+private scalar representations as ordinary functions. A static function body
+SHALL NOT select an ordinary callee. LLVM lowering and DWARF SHALL retain each
+selected overload's source function, typed parameters, invocation-local
+bindings, and frame without exposing staticness as an unqualified foreign ABI.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

@@ -286,6 +286,7 @@ pub struct CompilerFunction {
     pub result_type: CompilerType,
     pub body: CompilerBlock,
     pub span: Span,
+    pub is_static: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -304,6 +305,7 @@ struct FunctionSource {
     result: Span,
     body: Vec<Statement>,
     span: Span,
+    is_static: bool,
 }
 
 #[derive(Clone)]
@@ -315,9 +317,10 @@ struct BindingFacts {
 
 struct Analyzer {
     source: SourceText,
-    functions: BTreeMap<String, FunctionSource>,
+    functions: BTreeMap<String, Vec<FunctionSource>>,
     instances: Vec<CompilerFunction>,
     active_calls: BTreeSet<String>,
+    static_context: bool,
     next_instance: usize,
 }
 
@@ -370,6 +373,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         functions,
         instances: Vec::new(),
         active_calls: BTreeSet::new(),
+        static_context: false,
         next_instance: 0,
     };
     let mut environment = BTreeMap::new();
@@ -390,7 +394,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
 fn collect_functions(
     source: &SourceText,
     statements: &[Statement],
-    functions: &mut BTreeMap<String, FunctionSource>,
+    functions: &mut BTreeMap<String, Vec<FunctionSource>>,
 ) -> Result<(), Diagnostic> {
     for statement in statements {
         let declaration = match statement {
@@ -400,7 +404,7 @@ fn collect_functions(
                 result,
                 body,
                 span,
-                is_static: false,
+                is_static,
                 effect_bound: None,
                 clauses,
             } if **clauses == FunctionClauses::default() => Some(FunctionSource {
@@ -409,6 +413,7 @@ fn collect_functions(
                 result: *result,
                 body: body.clone(),
                 span: *span,
+                is_static: *is_static,
             }),
             Statement::Published { declaration, .. } => {
                 if let Statement::Function {
@@ -417,7 +422,7 @@ fn collect_functions(
                     result,
                     body,
                     span,
-                    is_static: false,
+                    is_static,
                     effect_bound: None,
                     clauses,
                 } = declaration.as_ref()
@@ -429,6 +434,7 @@ fn collect_functions(
                         result: *result,
                         body: body.clone(),
                         span: *span,
+                        is_static: *is_static,
                     })
                 } else {
                     return Err(unsupported(
@@ -442,24 +448,46 @@ fn collect_functions(
                 return Err(unsupported(
                     source,
                     statement_span(statement),
-                    "static, constrained, or effectful function",
+                    "constrained or effectful function",
                 ));
             }
             _ => None,
         };
         if let Some(function) = declaration {
             let name = source.slice(function.name).to_owned();
-            if functions.insert(name.clone(), function).is_some() {
+            let overloads = functions.entry(name.clone()).or_default();
+            if overloads
+                .iter()
+                .any(|candidate| same_function_input_header(source, candidate, &function))
+            {
                 return Err(source_diagnostic(
                     source,
-                    "E-DUPLICATE-FUNCTION",
+                    "E-DUPLICATE-FUNCTION-OVERLOAD",
                     statement_span(statement),
-                    format!("function `{name}` is already declared"),
+                    format!("function `{name}` repeats an input signature and staticness"),
                 ));
             }
+            overloads.push(function);
         }
     }
     Ok(())
+}
+
+fn same_function_input_header(
+    source: &SourceText,
+    left: &FunctionSource,
+    right: &FunctionSource,
+) -> bool {
+    left.is_static == right.is_static
+        && left.parameters.len() == right.parameters.len()
+        && left
+            .parameters
+            .iter()
+            .zip(&right.parameters)
+            .all(|(left, right)| {
+                compact_classifier(source.slice(left.classifier))
+                    == compact_classifier(source.slice(right.classifier))
+            })
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -1667,44 +1695,79 @@ impl Analyzer {
         let Some((function_index, function_name)) = function else {
             return Err(unsupported(&self.source, span, "application"));
         };
-        let declaration = self
+        let declarations = self
             .functions
             .get(&function_name)
-            .expect("selected function exists")
+            .expect("selected overload set exists")
             .clone();
         let argument_sources = items
             .iter()
             .enumerate()
             .filter_map(|(index, item)| (index != function_index).then_some(item))
             .collect::<Vec<_>>();
-        let argument_sources = if declaration.parameters.is_empty()
-            && matches!(argument_sources.as_slice(), [Expression::Unit(_)])
-        {
-            Vec::new()
-        } else {
-            argument_sources
-        };
-        if argument_sources.len() != declaration.parameters.len() {
-            return Err(source_diagnostic(
-                &self.source,
-                "E-FUNCTION-ARITY",
-                span,
-                format!(
-                    "function `{function_name}` requires {} operands, found {}",
-                    declaration.parameters.len(),
-                    argument_sources.len()
-                ),
-            ));
-        }
         let arguments = argument_sources
             .iter()
             .map(|argument| self.analyze_expression(argument, environment))
             .collect::<Result<Vec<_>, _>>()?;
-        if !self.active_calls.insert(function_name.clone()) {
+
+        let mut selected = None;
+        for declaration in declarations
+            .iter()
+            .filter(|declaration| !self.static_context || declaration.is_static)
+        {
+            let candidate_arguments = if declaration.parameters.is_empty()
+                && matches!(argument_sources.as_slice(), [Expression::Unit(_)])
+            {
+                &[][..]
+            } else {
+                arguments.as_slice()
+            };
+            if candidate_arguments.len() != declaration.parameters.len() {
+                continue;
+            }
+            let mut adapted = Vec::with_capacity(candidate_arguments.len());
+            for (parameter, argument) in declaration.parameters.iter().zip(candidate_arguments) {
+                if !parameter.fields.is_empty()
+                    || parameter.default.is_some()
+                    || parameter.qualifier.is_some()
+                {
+                    return Err(unsupported(
+                        &self.source,
+                        parameter.name,
+                        "packaged, defaulted, or qualified parameter",
+                    ));
+                }
+                let expected = parse_classifier(&self.source, parameter.classifier)?;
+                let Some(argument) = adapt_call_argument(&expected, argument) else {
+                    adapted.clear();
+                    break;
+                };
+                adapted.push(argument);
+            }
+            if adapted.len() == declaration.parameters.len() {
+                selected = Some((declaration.clone(), adapted));
+                break;
+            }
+        }
+        let Some((declaration, arguments)) = selected else {
+            let actual = arguments
+                .iter()
+                .map(|argument| argument.value_type.name())
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(source_diagnostic(
+                &self.source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                format!("no overload of `{function_name}` accepts ({actual}) in this context"),
+            ));
+        };
+        let identity = function_overload_identity(&self.source, &function_name, &declaration);
+        if !self.active_calls.insert(identity.clone()) {
             return Err(unsupported(&self.source, span, "recursive function call"));
         }
         let result = self.instantiate_function(&function_name, &declaration, &arguments);
-        self.active_calls.remove(&function_name);
+        self.active_calls.remove(&identity);
         let (symbol, result_type, int_range, rational_value) = result?;
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::Call { symbol, arguments },
@@ -1772,12 +1835,16 @@ impl Analyzer {
                 "non-scalar function result",
             ));
         }
-        let mut body = self.analyze_block(
+        let previous_static_context = self.static_context;
+        self.static_context = declaration.is_static;
+        let body = self.analyze_block(
             &declaration.body,
             &mut environment,
             BlockKind::Function,
             Some(&result_type),
-        )?;
+        );
+        self.static_context = previous_static_context;
+        let mut body = body?;
         if let CompilerType::Result(success_type) = &result_type
             && body.result.value_type == **success_type
         {
@@ -1809,6 +1876,7 @@ impl Analyzer {
             result_type: result_type.clone(),
             body,
             span: declaration.span,
+            is_static: declaration.is_static,
         });
         Ok((symbol, result_type, int_range, rational_value))
     }
@@ -2246,12 +2314,34 @@ fn is_declaration(statement: &Statement) -> bool {
 }
 
 fn parse_classifier(source: &SourceText, span: Span) -> Result<CompilerType, Diagnostic> {
-    let classifier = source
-        .slice(span)
+    let classifier = compact_classifier(source.slice(span));
+    parse_compact_classifier(&classifier).ok_or_else(|| unsupported(source, span, "classifier"))
+}
+
+fn compact_classifier(classifier: &str) -> String {
+    classifier
         .chars()
         .filter(|character| !character.is_whitespace())
-        .collect::<String>();
-    parse_compact_classifier(&classifier).ok_or_else(|| unsupported(source, span, "classifier"))
+        .collect()
+}
+
+fn function_overload_identity(
+    source: &SourceText,
+    name: &str,
+    declaration: &FunctionSource,
+) -> String {
+    let inputs = declaration
+        .parameters
+        .iter()
+        .map(|parameter| compact_classifier(source.slice(parameter.classifier)))
+        .collect::<Vec<_>>()
+        .join(",");
+    let staticness = if declaration.is_static {
+        "static"
+    } else {
+        "ordinary"
+    };
+    format!("{name}:{staticness}({inputs})")
 }
 
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
@@ -2503,6 +2593,68 @@ fn into_rational(expression: CompilerExpression) -> CompilerExpression {
         int_range: None,
         rational_value,
         span,
+    }
+}
+
+fn adapt_call_argument(
+    expected: &CompilerType,
+    argument: &CompilerExpression,
+) -> Option<CompilerExpression> {
+    if expected == &argument.value_type {
+        return Some(argument.clone());
+    }
+    match (expected, &argument.value_type) {
+        (CompilerType::Int, CompilerType::Nat) => {
+            let mut value = argument.clone();
+            value.value_type = CompilerType::Int;
+            Some(value)
+        }
+        (CompilerType::Rational, CompilerType::Int | CompilerType::Nat) => {
+            Some(into_rational(argument.clone()))
+        }
+        (CompilerType::Int, CompilerType::Rational) => {
+            let rational = argument.rational_value.as_ref()?;
+            (rational.denom() == &BigInt::from(1)).then(|| CompilerExpression {
+                kind: CompilerExpressionKind::RationalToInt(Box::new(argument.clone())),
+                value_type: CompilerType::Int,
+                int_range: Some(IntRange::exact(rational.numer().clone())),
+                rational_value: None,
+                span: argument.span,
+            })
+        }
+        (CompilerType::Nat, CompilerType::Int) => argument
+            .int_range
+            .as_ref()
+            .is_some_and(|range| range.lower >= BigInt::from(0))
+            .then(|| CompilerExpression {
+                kind: CompilerExpressionKind::IntToNat(Box::new(argument.clone())),
+                value_type: CompilerType::Nat,
+                int_range: argument.int_range.clone(),
+                rational_value: None,
+                span: argument.span,
+            }),
+        (CompilerType::Nat, CompilerType::Rational) => {
+            let rational = argument.rational_value.as_ref()?;
+            (rational.denom() == &BigInt::from(1) && rational.numer() >= &BigInt::from(0)).then(
+                || {
+                    let integer = CompilerExpression {
+                        kind: CompilerExpressionKind::RationalToInt(Box::new(argument.clone())),
+                        value_type: CompilerType::Int,
+                        int_range: Some(IntRange::exact(rational.numer().clone())),
+                        rational_value: None,
+                        span: argument.span,
+                    };
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::IntToNat(Box::new(integer)),
+                        value_type: CompilerType::Nat,
+                        int_range: Some(IntRange::exact(rational.numer().clone())),
+                        rational_value: None,
+                        span: argument.span,
+                    }
+                },
+            )
+        }
+        _ => None,
     }
 }
 
@@ -2907,6 +3059,42 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn models_ordered_overloads_and_static_call_boundaries() {
+        // TOPAL-FUNCTION-OVERLOAD-001, TOPAL-FUNCTION-STATIC-NULLARY-001,
+        // TOPAL-FUNCTION-STATIC-UNARY-001, TOPAL-FUNCTION-STATIC-BINARY-001
+        let source = "use language (version is v0.1)\ndescribe is fn (value : Int) -> String\n  \"integer\"\ndescribe is fn (value : String) -> String\n  describe 42\nanswer is fn static () -> Int\n  42\nadd is fn static (left : Int, right : Int) -> Int\n  left + right\n(describe \"Topal\", answer (), 20 add 22)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program
+                .functions
+                .iter()
+                .filter(|function| function.source_name == "describe")
+                .count(),
+            2
+        );
+        assert_eq!(
+            program
+                .functions
+                .iter()
+                .filter(|function| function.is_static)
+                .count(),
+            2
+        );
+
+        let duplicate = "use language (version is v0.1)\nsame is fn (first : Int) -> Int\n  first\nsame is fn (second : Int) -> String\n  \"duplicate\"\nsame 1\n";
+        assert_eq!(
+            analyze_for_compiler(duplicate).unwrap_err().code,
+            "E-DUPLICATE-FUNCTION-OVERLOAD"
+        );
+
+        let invalid_static_call = "use language (version is v0.1)\nruntime is fn () -> Int\n  42\nanswer is fn static () -> Int\n  runtime ()\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(invalid_static_call).unwrap_err().code,
+            "E-NO-APPLICABLE-OVERLOAD"
+        );
     }
 
     #[test]

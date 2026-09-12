@@ -2551,4 +2551,19 @@ mod tests {
         assert!(llvm.contains("name: \"ErrorDomain\""));
         assert!(llvm.contains("name: \"lang arithmetic ArithmeticErrorCode\""));
     }
+
+    #[test]
+    fn emits_distinct_overload_and_static_function_instances() {
+        let source = "use language (version is v0.1)\ndescribe is fn (value : Int) -> String\n  \"integer\"\ndescribe is fn (value : String) -> String\n  describe 42\nanswer is fn static () -> Int\n  42\nadd is fn static (left : Int, right : Int) -> Int\n  left + right\n(describe \"Topal\", answer (), 20 add 22)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/function-overloads.t").emit();
+        assert_eq!(llvm.matches("!DISubprogram(name: \"describe\"").count(), 2);
+        assert!(llvm.contains("!DISubprogram(name: \"answer\""));
+        assert!(llvm.contains("!DISubprogram(name: \"add\""));
+        assert_eq!(
+            llvm.matches("define internal fastcc ptr @topal.fn.describe")
+                .count(),
+            2
+        );
+    }
 }

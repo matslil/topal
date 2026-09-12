@@ -18,7 +18,8 @@ evidence.
 | 2c-c | normatively completed infinity construction and arithmetic | planned |
 | 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |
 | 2d-b | unbounded range construction and infinity endpoints after their prerequisite normative and runtime work | planned |
-| 3 | complete function forms, recursion/totality evidence, overloads, records, enums, unions, constraints, capabilities, and decisions | planned |
+| 3a | source-ordered statically decidable scalar overloads and basic static nullary, unary, and binary functions | complete |
+| 3b | remaining function forms, recursion/totality evidence, records, enums, unions, constraints, capabilities, and decisions | planned |
 | 4 | strings, Unicode operations, fundamental containers, traversal, and representation-safe allocation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6 | module/package/application construction, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
@@ -54,5 +55,7 @@ projection, observation, and Result decisions. Increment 2c-c retains the
 infinity work that requires normative completion. Increment
 2d-a adds the fully normative explicitly bounded finite range subset; 2d-b
 closes unbounded and infinite endpoints after increment 2c-c.
-Range-based collection selection remains grouped with containers. The roadmap
-then proceeds to general control flow and user-defined value representations.
+Range-based collection selection remains grouped with containers. Increment 3a
+admits the statically decidable scalar overload and basic static-function
+foundation; 3b continues with recursive control flow and user-defined value
+representations.

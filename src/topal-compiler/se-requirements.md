@@ -150,17 +150,44 @@ immutable native descriptor and merge without eager evaluation.
 Selecting `code` or `domain` from an arithmetic Error shall return the stored
 typed value without reconstructing or altering the Error. The compiler shall
 represent literal String bytes, immutable descriptors with cached canonical
-display spellings, Error fields, functions, decision joins, textual output, DWARF, and GDB consistently under
-`topal-native/6`. Pointer-bearing descriptors shall be constructed at run time
-so static no-loader PIEs retain no load-time relocations. String display shall
-produce the canonical ordinary or conflict-free tagged literal form using only
-the Topal Linux syscall runtime.
+display spellings, Error fields, functions, decision joins, textual output,
+DWARF, and GDB consistently under `topal-native/6`. Pointer-bearing descriptors
+shall be constructed at run time so static no-loader PIEs retain no load-time
+relocations. String display shall produce the canonical ordinary or
+conflict-free tagged literal form using only the Topal Linux syscall runtime.
 
 These additions cover `TOPAL-DECISION-RESULT-001`,
 `TOPAL-DECISION-ERROR-CODE-001`, `TOPAL-ERROR-FIELD-001`, and the admitted
 literal transport and display cases of `TOPAL-SYN-STRING-001`. They complete
 compiler increment 2c-b3; Optional Result composition and the remaining String
 operations retain their later roadmap dispositions.
+
+## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
+
+The compiler shall preserve source-ordered overload sets whose admitted
+ordinary or static declarations have nullary, unary, or positional-product
+scalar inputs. Declarations with identical input classifiers and staticness
+shall be rejected regardless of parameter names or result classifiers. An
+application shall analyze its arguments once and select the first header whose
+input classifiers are statically proven applicable, including the admitted
+lossless exact-number classifications and conversions; result context shall not
+alter selection.
+
+Every selected overload shall have a distinct checked call-graph identity,
+private LLVM function, DWARF subprogram, parameters, and invocation-local
+bindings. A static function body shall select only static callees, while root
+and ordinary bodies may call ordinary or static declarations. Staticness shall
+not create a public ABI distinction or permit compile-time execution to alter
+observable behavior at O0.
+
+These additions cover the admitted scalar cases of
+`TOPAL-FUNCTION-STATIC-NULLARY-001`, `TOPAL-FUNCTION-STATIC-UNARY-001`,
+`TOPAL-FUNCTION-STATIC-BINARY-001`, `TOPAL-FUNCTION-BLOCK-001`,
+`TOPAL-FUNCTION-ORDINARY-001`, `TOPAL-FUNCTION-CALL-CHAIN-001`,
+`TOPAL-FUNCTION-LOCAL-SCOPE-001`, `TOPAL-FUNCTION-OVERLOAD-001`,
+and `TOPAL-FUNCTION-FORWARD-DECLARATION-001`. Dynamic structural applicability,
+function values, nested functions, recursion and its overload-identity rule,
+and other function forms remain in later increment-3 dispositions.
 
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
@@ -208,7 +235,8 @@ Debug-enabled O0 output shall map generated source functions, parameters,
 immutable scalar locals, and instructions to Topal files and source locations,
 emit DWARF 5 through LLVM, retain frame pointers, provide GDB renderers for
 private arbitrary-precision Int, Rational, `Range Int`, and `Range Rational`
-objects, and pass automated GDB breakpoint, value, and backtrace scenarios.
+objects, distinguish selected overload and static-function frames, and pass
+automated GDB breakpoint, value, and backtrace scenarios.
 
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 
