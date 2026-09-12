@@ -362,6 +362,65 @@ fn gdb_observes_source_breakpoint_stack_and_local_value() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn gdb_observes_innermost_lexical_block_binding() {
+    // TOPAL-EXEC-BLOCK-001, TOPAL-COMP-BLOCK-001, TOPAL-COMPILER-BLOCK-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-lexical-block");
+    let source = directory.join("lexical-block-debug.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nvalue is 39 + 1\nshadow is {\n  value is value + 1\n  value + 1\n}\n(shadow, value)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let tools = LlvmTools::discover(None).unwrap();
+    let dwarf_tool = tools.directory.join("llvm-dwarfdump");
+    if dwarf_tool.is_file() {
+        let dwarf = run(Command::new(dwarf_tool).arg("--verify").arg(&executable));
+        assert!(
+            dwarf.status.success(),
+            "{}",
+            String::from_utf8_lossy(&dwarf.stderr)
+        );
+    }
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break lexical-block-debug.t:5",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("Breakpoint 1, topal.main"), "{text}");
+    assert!(text.contains("$1 = 41"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_renders_canonical_rational_parameters_and_locals() {
     // TOPAL-COMP-DEBUG-001, TOPAL-COMP-EXACT-001
     let directory = temporary("gdb-rational");

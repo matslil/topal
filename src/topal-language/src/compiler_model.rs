@@ -201,6 +201,7 @@ pub enum CompilerExpressionKind {
     ErrorCode(u32),
     Enum(u32),
     Tuple(Vec<CompilerExpression>),
+    Block(Box<CompilerBlock>),
     Local(String),
     Negate(Box<CompilerExpression>),
     Absolute(Box<CompilerExpression>),
@@ -653,6 +654,7 @@ fn same_function_input_header(
 enum BlockKind {
     TopLevel,
     Function,
+    Lexical,
 }
 
 impl Analyzer {
@@ -694,6 +696,22 @@ impl Analyzer {
     ) -> Result<CompilerBlock, Diagnostic> {
         let mut lowered = Vec::new();
         let mut result = None;
+        let mut declared = if kind == BlockKind::Lexical {
+            BTreeSet::new()
+        } else {
+            environment.keys().cloned().collect()
+        };
+        if kind == BlockKind::Lexical
+            && let Some(declaration) = statements
+                .iter()
+                .find(|statement| self.is_declaration(statement))
+        {
+            return Err(unsupported(
+                &self.source,
+                statement_span(declaration),
+                "nested declaration",
+            ));
+        }
         let executable = statements
             .iter()
             .filter(|statement| !self.is_declaration(statement))
@@ -708,10 +726,11 @@ impl Analyzer {
                     value,
                 } => {
                     let name_text = self.source.slice(*name).to_owned();
-                    if environment.contains_key(&name_text)
-                        || self.functions.contains_key(&name_text)
-                        || self.enums.contains_key(&name_text)
-                        || self.enum_alternatives.contains_key(&name_text)
+                    if declared.contains(&name_text)
+                        || (kind == BlockKind::TopLevel
+                            && (self.functions.contains_key(&name_text)
+                                || self.enums.contains_key(&name_text)
+                                || self.enum_alternatives.contains_key(&name_text)))
                     {
                         return Err(source_diagnostic(
                             &self.source,
@@ -764,6 +783,7 @@ impl Analyzer {
                             rational_value: value.rational_value.clone(),
                         },
                     );
+                    declared.insert(name_text.clone());
                     lowered.push(CompilerStatement::Binding(CompilerBinding {
                         name: name_text,
                         span: *name,
@@ -804,6 +824,13 @@ impl Analyzer {
                         "`return` is available only inside a function",
                     ));
                 }
+                Statement::Return { .. } if kind == BlockKind::Lexical => {
+                    return Err(unsupported(
+                        &self.source,
+                        statement_span(statement),
+                        "return through a nested lexical block",
+                    ));
+                }
                 Statement::LibrarySelection { .. } => {
                     return Err(unsupported(
                         &self.source,
@@ -834,6 +861,21 @@ impl Analyzer {
     ) -> Result<CompilerExpression, Diagnostic> {
         let span = expression.span();
         match expression {
+            Expression::Block { statements, .. } => {
+                let mut nested = environment.clone();
+                let mut block =
+                    self.analyze_block(statements, &mut nested, BlockKind::Lexical, None)?;
+                if statements.is_empty() {
+                    block.result = unit_expression(span);
+                }
+                Ok(CompilerExpression {
+                    value_type: block.result.value_type.clone(),
+                    int_range: block.result.int_range.clone(),
+                    rational_value: block.result.rational_value.clone(),
+                    kind: CompilerExpressionKind::Block(Box::new(block)),
+                    span,
+                })
+            }
             Expression::Unit(_) => Ok(unit_expression(span)),
             Expression::Boolean(value) => Ok(CompilerExpression {
                 kind: CompilerExpressionKind::Boolean(self.source.slice(*value) == "true"),
@@ -894,10 +936,11 @@ impl Analyzer {
                 })
             }
             Expression::Identifier(name)
-                if self
-                    .enum_alternatives
-                    .get(self.source.slice(*name))
-                    .is_some_and(|(_, _, declaration)| declaration.end <= name.start) =>
+                if !environment.contains_key(self.source.slice(*name))
+                    && self
+                        .enum_alternatives
+                        .get(self.source.slice(*name))
+                        .is_some_and(|(_, _, declaration)| declaration.end <= name.start) =>
             {
                 let (enumeration, value, _) = self
                     .enum_alternatives
@@ -1913,9 +1956,9 @@ impl Analyzer {
             let Expression::Identifier(name) = item else {
                 return None;
             };
-            self.functions
-                .contains_key(self.source.slice(*name))
-                .then_some((index, self.source.slice(*name).to_owned()))
+            let name = self.source.slice(*name);
+            (!environment.contains_key(name) && self.functions.contains_key(name))
+                .then_some((index, name.to_owned()))
         });
         let Some((function_index, function_name)) = function else {
             return Err(unsupported(&self.source, span, "application"));
@@ -2821,6 +2864,13 @@ fn exact_int(expression: &CompilerExpression) -> Option<BigInt> {
 }
 
 fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
+    compiler_expression_is_closed_with(expression, &BTreeSet::new())
+}
+
+fn compiler_expression_is_closed_with(
+    expression: &CompilerExpression,
+    bound: &BTreeSet<String>,
+) -> bool {
     match &expression.kind {
         CompilerExpressionKind::Unit
         | CompilerExpressionKind::Boolean(_)
@@ -2829,9 +2879,12 @@ fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::String(_)
         | CompilerExpressionKind::ErrorCode(_)
         | CompilerExpressionKind::Enum(_) => true,
-        CompilerExpressionKind::Tuple(values) => values.iter().all(compiler_expression_is_closed),
-        CompilerExpressionKind::Local(_)
-        | CompilerExpressionKind::Call { .. }
+        CompilerExpressionKind::Tuple(values) => values
+            .iter()
+            .all(|value| compiler_expression_is_closed_with(value, bound)),
+        CompilerExpressionKind::Block(block) => compiler_block_is_closed(block, bound),
+        CompilerExpressionKind::Local(name) => bound.contains(name),
+        CompilerExpressionKind::Call { .. }
         | CompilerExpressionKind::Fallible { .. }
         | CompilerExpressionKind::Validate { .. }
         | CompilerExpressionKind::ResultDecision { .. } => false,
@@ -2848,34 +2901,38 @@ fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::RangeLowerInclusive(value)
         | CompilerExpressionKind::RangeUpperInclusive(value)
         | CompilerExpressionKind::RangeEmpty(value)
-        | CompilerExpressionKind::Not(value) => compiler_expression_is_closed(value),
+        | CompilerExpressionKind::Not(value) => compiler_expression_is_closed_with(value, bound),
         CompilerExpressionKind::RationalConstruct {
             numerator,
             denominator,
-        } => compiler_expression_is_closed(numerator) && compiler_expression_is_closed(denominator),
+        } => {
+            compiler_expression_is_closed_with(numerator, bound)
+                && compiler_expression_is_closed_with(denominator, bound)
+        }
         CompilerExpressionKind::Binary { left, right, .. } => {
-            compiler_expression_is_closed(left) && compiler_expression_is_closed(right)
+            compiler_expression_is_closed_with(left, bound)
+                && compiler_expression_is_closed_with(right, bound)
         }
         CompilerExpressionKind::BooleanDecision {
             subject,
             when_true,
             when_false,
         } => {
-            compiler_expression_is_closed(subject)
-                && compiler_expression_is_closed(when_true)
-                && compiler_expression_is_closed(when_false)
+            compiler_expression_is_closed_with(subject, bound)
+                && compiler_expression_is_closed_with(when_true, bound)
+                && compiler_expression_is_closed_with(when_false, bound)
         }
         CompilerExpressionKind::OrderedComparisonDecision {
             subject,
             rules,
             otherwise,
         } => {
-            compiler_expression_is_closed(subject)
+            compiler_expression_is_closed_with(subject, bound)
                 && rules.iter().all(|rule| {
-                    compiler_expression_is_closed(&rule.operand)
-                        && compiler_expression_is_closed(&rule.action)
+                    compiler_expression_is_closed_with(&rule.operand, bound)
+                        && compiler_expression_is_closed_with(&rule.action, bound)
                 })
-                && compiler_expression_is_closed(otherwise)
+                && compiler_expression_is_closed_with(otherwise, bound)
         }
         CompilerExpressionKind::ComparisonValueDecision {
             subject,
@@ -2883,25 +2940,45 @@ fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
             when_equal,
             when_greater,
         } => {
-            compiler_expression_is_closed(subject)
-                && compiler_expression_is_closed(when_less)
-                && compiler_expression_is_closed(when_equal)
-                && compiler_expression_is_closed(when_greater)
+            compiler_expression_is_closed_with(subject, bound)
+                && compiler_expression_is_closed_with(when_less, bound)
+                && compiler_expression_is_closed_with(when_equal, bound)
+                && compiler_expression_is_closed_with(when_greater, bound)
         }
         CompilerExpressionKind::EnumDecision {
             subject,
             rules,
             otherwise,
         } => {
-            compiler_expression_is_closed(subject)
+            compiler_expression_is_closed_with(subject, bound)
                 && rules
                     .iter()
-                    .all(|rule| compiler_expression_is_closed(&rule.action))
+                    .all(|rule| compiler_expression_is_closed_with(&rule.action, bound))
                 && otherwise
                     .as_deref()
-                    .is_none_or(compiler_expression_is_closed)
+                    .is_none_or(|value| compiler_expression_is_closed_with(value, bound))
         }
     }
+}
+
+fn compiler_block_is_closed(block: &CompilerBlock, outer: &BTreeSet<String>) -> bool {
+    let mut bound = outer.clone();
+    for statement in &block.statements {
+        match statement {
+            CompilerStatement::Binding(binding) => {
+                if !compiler_expression_is_closed_with(&binding.value, &bound) {
+                    return false;
+                }
+                bound.insert(binding.name.clone());
+            }
+            CompilerStatement::Discard(expression) => {
+                if !compiler_expression_is_closed_with(expression, &bound) {
+                    return false;
+                }
+            }
+        }
+    }
+    compiler_expression_is_closed_with(&block.result, &bound)
 }
 
 fn into_rational(expression: CompilerExpression) -> CompilerExpression {
@@ -3407,6 +3484,43 @@ mod tests {
             values[1].kind,
             CompilerExpressionKind::ErrorCode(3)
         ));
+    }
+
+    #[test]
+    fn models_lexical_blocks_with_fresh_shadowing_scope() {
+        // TOPAL-SYN-GRAMMAR-001, TOPAL-EXEC-BLOCK-001
+        let source = "use language (version is v0.1)\nColor is Enum (Red, Green)\nidentity is fn (number : Int) -> Int\n  number\nempty is {}\nvalue is 40\nshadow is {\n  Red is value + 1\n  identity is Red + 1\n  (Red, identity)\n}\n(empty, shadow, Red, identity 43, value)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Unit, (Int, Int), Color, Int, Int)"
+        );
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("expected a tuple")
+        };
+        assert!(program.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::Block(_),
+                    ..
+                },
+                ..
+            }) if name == "shadow"
+        )));
+        assert!(matches!(values[2].kind, CompilerExpressionKind::Enum(0)));
+        assert!(matches!(
+            values[3].kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+        assert_eq!(exact_int(&values[4]), Some(BigInt::from(40)));
+
+        let closed_zero = "use language (version is v0.1)\n1 / {\n  zero is 0\n  zero\n}\n";
+        assert_eq!(
+            analyze_for_compiler(closed_zero).unwrap_err().code,
+            "E-DIVISION-BY-ZERO"
+        );
     }
 
     #[test]

@@ -214,7 +214,25 @@ implicit final result. A return at root shall remain a source diagnostic.
 This requirement covers the direct-body case of
 `TOPAL-FUNCTION-RETURN-001` and realizes `TOPAL-COMPILER-RETURN-001` for
 compiler increment 3b2-a. Returns from nested lexical blocks remain with their
-scope and cleanup lowering in increment 3b2-b.
+scope and cleanup lowering in increment 3b2-b2.
+
+## TOPAL-COMP-BLOCK-001 — Lexical block values
+
+The compiler shall evaluate an admitted lexical block in a fresh checked and
+generated-value environment nested inside its enclosing environment. An empty
+block shall produce Unit without allocation. A nonempty block shall execute
+statements in source order and deliver its final value; its bindings may shadow
+outer names and shall not escape. An inner initializer shall resolve names
+before introducing its own binding.
+
+Generated instructions and machine-represented immutable locals shall use a
+nested DWARF lexical scope so GDB resolves the innermost visible binding. The
+compiler shall reject nested declarations and return-through-block until their
+declaration, cleanup, and exit-edge lowerings are admitted.
+
+This requirement covers the cleanup-free block subset of
+`TOPAL-EXEC-BLOCK-001` and the block case of `TOPAL-SYN-GRAMMAR-001`. It
+realizes `TOPAL-COMPILER-BLOCK-001` for compiler increment 3b2-b1.
 
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
@@ -259,8 +277,9 @@ case of `TOPAL-DECISION-ENUM-001`. It realizes
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
 Debug-enabled O0 output shall map generated source functions, parameters,
-immutable scalar locals, and instructions to Topal files and source locations,
-emit DWARF 5 through LLVM, retain frame pointers, provide GDB renderers for
+immutable scalar locals, lexical scopes, and instructions to Topal files and
+source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
+renderers for
 private arbitrary-precision Int, Rational, `Range Int`, and `Range Rational`
 objects, describe source-declared nominal enums with their alternative labels,
 distinguish selected overload and static-function frames, and pass automated

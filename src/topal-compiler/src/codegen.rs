@@ -70,6 +70,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Call {
             arguments: fields, ..
         } => fields.iter().any(expression_uses_extended_debug),
+        CompilerExpressionKind::Block(block) => block_uses_extended_debug(block),
         CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
         | CompilerExpressionKind::IntToRational(value)
@@ -377,6 +378,14 @@ impl<'a> Generator<'a> {
                     .map(|value| self.emit_expression(value, body, environment))
                     .collect(),
             ),
+            CompilerExpressionKind::Block(block) => {
+                let parent_scope = body.subprogram;
+                body.subprogram = self.debug.lexical_block(expression.span, parent_scope);
+                let mut nested = environment.clone();
+                let value = self.emit_block(block, body, &mut nested);
+                body.subprogram = parent_scope;
+                value
+            }
             CompilerExpressionKind::Local(name) => environment
                 .get(name)
                 .unwrap_or_else(|| panic!("checked local `{name}` remains available"))
@@ -2611,6 +2620,16 @@ impl DebugInfo {
         ))
     }
 
+    fn lexical_block(&mut self, span: Span, scope: usize) -> usize {
+        let position = self
+            .source
+            .position(span.start.min(self.source.as_str().len()));
+        self.node(format!(
+            "distinct !DILexicalBlock(scope: !{scope}, file: !{}, line: {}, column: {})",
+            self.file, position.line, position.column
+        ))
+    }
+
     fn parameter(
         &mut self,
         name: &str,
@@ -2758,6 +2777,17 @@ mod tests {
         assert!(llvm.contains("\\54\\6F\\70\\61\\6C"));
         assert!(llvm.contains("#dbg_value"));
         assert!(llvm.contains("Dwarf Version"));
+    }
+
+    #[test]
+    fn emits_lexical_block_scope_metadata() {
+        // TOPAL-EXEC-BLOCK-001, TOPAL-COMPILER-BLOCK-001
+        let source =
+            "use language (version is v0.1)\nvalue is 40\n{\n  value is 41\n  value + 1\n}\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/block.t").emit();
+        assert!(llvm.contains("distinct !DILexicalBlock"));
+        assert!(llvm.contains("DILocalVariable(name: \"value\""));
     }
 
     #[test]
