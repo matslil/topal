@@ -16,6 +16,9 @@
 @topal.runtime.int.one = private constant { i64, i64, [1 x i32] } { i64 0, i64 1, [1 x i32] [i32 1] }, align 8
 @topal.runtime.byte.zero = private constant [1 x i8] c"0", align 1
 @topal.runtime.byte.minus = private constant [1 x i8] c"-", align 1
+@topal.runtime.byte.quote = private constant [1 x i8] c"\22", align 1
+@topal.runtime.byte.underscore = private constant [1 x i8] c"_", align 1
+@topal.runtime.string.tag.text = private constant [4 x i8] c"text", align 1
 @topal.runtime.rational.prefix = private constant [11 x i8] c"Rational ( ", align 1
 @topal.runtime.rational.separator = private constant [2 x i8] c", ", align 1
 @topal.runtime.rational.suffix = private constant [2 x i8] c" )", align 1
@@ -32,6 +35,7 @@
 @topal.runtime.error.code.indeterminate = private constant [13 x i8] c"indeterminate", align 1
 
 declare i32 @llvm.ctlz.i32(i32, i1 immarg)
+declare void @llvm.memcpy.inline.p0.p0.i64(ptr, ptr, i64, i1 immarg)
 
 define internal i64 @topal.platform.write(i64 %fd, ptr %buffer, i64 %length) nounwind noinline {
 entry:
@@ -118,8 +122,172 @@ entry:
   %display.length.pointer = getelementptr %topal.StringStorage, ptr %string, i32 0, i32 3
   %display = load ptr, ptr %display.pointer, align 8
   %display.length = load i64, ptr %display.length.pointer, align 8
+  %cached = icmp ne ptr %display, null
+  br i1 %cached, label %write.cached, label %write.dynamic
+write.cached:
   call void @topal.platform.write_all(ptr %display, i64 %display.length)
   ret void
+write.dynamic:
+  call void @topal.runtime.string.dynamic.print(ptr %string)
+  ret void
+}
+
+define internal i1 @topal.runtime.string.contains.quote(ptr %data, i64 %length) nounwind noinline {
+entry:
+  %empty = icmp eq i64 %length, 0
+  br i1 %empty, label %not.found, label %loop
+loop:
+  %index = phi i64 [ 0, %entry ], [ %next, %advance ]
+  %pointer = getelementptr i8, ptr %data, i64 %index
+  %byte = load i8, ptr %pointer, align 1
+  %quote = icmp eq i8 %byte, 34
+  br i1 %quote, label %found, label %advance
+advance:
+  %next = add i64 %index, 1
+  %complete = icmp eq i64 %next, %length
+  br i1 %complete, label %not.found, label %loop
+found:
+  ret i1 true
+not.found:
+  ret i1 false
+}
+
+define internal i1 @topal.runtime.string.has.delimiter(ptr %data, i64 %length, i64 %underscores) nounwind noinline {
+entry:
+  %minimum = add i64 %underscores, 5
+  %possible = icmp ule i64 %minimum, %length
+  br i1 %possible, label %search, label %not.found
+search:
+  %position = phi i64 [ 0, %entry ], [ %next.position, %advance ]
+  %remaining = sub i64 %length, %position
+  %enough = icmp uge i64 %remaining, %minimum
+  br i1 %enough, label %check.base, label %not.found
+check.base:
+  %quote.pointer = getelementptr i8, ptr %data, i64 %position
+  %quote = load i8, ptr %quote.pointer, align 1
+  %offset.t0 = add i64 %position, 1
+  %offset.e = add i64 %position, 2
+  %offset.x = add i64 %position, 3
+  %offset.t1 = add i64 %position, 4
+  %pointer.t0 = getelementptr i8, ptr %data, i64 %offset.t0
+  %pointer.e = getelementptr i8, ptr %data, i64 %offset.e
+  %pointer.x = getelementptr i8, ptr %data, i64 %offset.x
+  %pointer.t1 = getelementptr i8, ptr %data, i64 %offset.t1
+  %byte.t0 = load i8, ptr %pointer.t0, align 1
+  %byte.e = load i8, ptr %pointer.e, align 1
+  %byte.x = load i8, ptr %pointer.x, align 1
+  %byte.t1 = load i8, ptr %pointer.t1, align 1
+  %match.quote = icmp eq i8 %quote, 34
+  %match.t0 = icmp eq i8 %byte.t0, 116
+  %match.e = icmp eq i8 %byte.e, 101
+  %match.x = icmp eq i8 %byte.x, 120
+  %match.t1 = icmp eq i8 %byte.t1, 116
+  %match.0 = and i1 %match.quote, %match.t0
+  %match.1 = and i1 %match.0, %match.e
+  %match.2 = and i1 %match.1, %match.x
+  %match.base = and i1 %match.2, %match.t1
+  br i1 %match.base, label %check.underscores, label %advance
+check.underscores:
+  %underscore.index = phi i64 [ 0, %check.base ], [ %next.underscore, %underscore.advance ]
+  %underscores.complete = icmp eq i64 %underscore.index, %underscores
+  br i1 %underscores.complete, label %found, label %check.underscore
+check.underscore:
+  %underscore.offset.base = add i64 %position, 5
+  %underscore.offset = add i64 %underscore.offset.base, %underscore.index
+  %underscore.pointer = getelementptr i8, ptr %data, i64 %underscore.offset
+  %underscore.byte = load i8, ptr %underscore.pointer, align 1
+  %match.underscore = icmp eq i8 %underscore.byte, 95
+  br i1 %match.underscore, label %underscore.advance, label %advance
+underscore.advance:
+  %next.underscore = add i64 %underscore.index, 1
+  br label %check.underscores
+advance:
+  %next.position = add i64 %position, 1
+  br label %search
+found:
+  ret i1 true
+not.found:
+  ret i1 false
+}
+
+define internal void @topal.runtime.string.write.underscores(i64 %count) nounwind noinline {
+entry:
+  %empty = icmp eq i64 %count, 0
+  br i1 %empty, label %done, label %loop
+loop:
+  %index = phi i64 [ 0, %entry ], [ %next, %loop ]
+  call void @topal.platform.write_all(ptr @topal.runtime.byte.underscore, i64 1)
+  %next = add i64 %index, 1
+  %complete = icmp eq i64 %next, %count
+  br i1 %complete, label %done, label %loop
+done:
+  ret void
+}
+
+define internal void @topal.runtime.string.dynamic.print(ptr %string) nounwind noinline {
+entry:
+  %data.pointer = getelementptr %topal.StringStorage, ptr %string, i32 0, i32 0
+  %length.pointer = getelementptr %topal.StringStorage, ptr %string, i32 0, i32 1
+  %data = load ptr, ptr %data.pointer, align 8
+  %length = load i64, ptr %length.pointer, align 8
+  %contains.quote = call i1 @topal.runtime.string.contains.quote(ptr %data, i64 %length)
+  br i1 %contains.quote, label %select.tag, label %plain
+plain:
+  call void @topal.platform.write_all(ptr @topal.runtime.byte.quote, i64 1)
+  call void @topal.platform.write_all(ptr %data, i64 %length)
+  call void @topal.platform.write_all(ptr @topal.runtime.byte.quote, i64 1)
+  ret void
+select.tag:
+  %underscores = phi i64 [ 0, %entry ], [ %next.underscores, %collision ]
+  %collides = call i1 @topal.runtime.string.has.delimiter(ptr %data, i64 %length, i64 %underscores)
+  br i1 %collides, label %collision, label %tagged
+collision:
+  %next.underscores = add i64 %underscores, 1
+  br label %select.tag
+tagged:
+  call void @topal.platform.write_all(ptr @topal.runtime.string.tag.text, i64 4)
+  call void @topal.runtime.string.write.underscores(i64 %underscores)
+  call void @topal.platform.write_all(ptr @topal.runtime.byte.quote, i64 1)
+  call void @topal.platform.write_all(ptr %data, i64 %length)
+  call void @topal.platform.write_all(ptr @topal.runtime.byte.quote, i64 1)
+  call void @topal.platform.write_all(ptr @topal.runtime.string.tag.text, i64 4)
+  call void @topal.runtime.string.write.underscores(i64 %underscores)
+  ret void
+}
+
+define internal ptr @topal.runtime.string.concat(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.data.pointer = getelementptr %topal.StringStorage, ptr %left, i32 0, i32 0
+  %left.length.pointer = getelementptr %topal.StringStorage, ptr %left, i32 0, i32 1
+  %right.data.pointer = getelementptr %topal.StringStorage, ptr %right, i32 0, i32 0
+  %right.length.pointer = getelementptr %topal.StringStorage, ptr %right, i32 0, i32 1
+  %left.data = load ptr, ptr %left.data.pointer, align 8
+  %left.length = load i64, ptr %left.length.pointer, align 8
+  %right.data = load ptr, ptr %right.data.pointer, align 8
+  %right.length = load i64, ptr %right.length.pointer, align 8
+  %length = add i64 %left.length, %right.length
+  %valid = icmp uge i64 %length, %left.length
+  br i1 %valid, label %allocate, label %failure
+failure:
+  call void @topal.platform.exit(i64 71)
+  unreachable
+allocate:
+  %empty = icmp eq i64 %length, 0
+  %allocation.length = select i1 %empty, i64 1, i64 %length
+  %data = call ptr @topal.platform.allocate(i64 %allocation.length)
+  call void @llvm.memcpy.inline.p0.p0.i64(ptr %data, ptr %left.data, i64 %left.length, i1 false)
+  %right.destination = getelementptr i8, ptr %data, i64 %left.length
+  call void @llvm.memcpy.inline.p0.p0.i64(ptr %right.destination, ptr %right.data, i64 %right.length, i1 false)
+  %result = call ptr @topal.runtime.string.make(ptr %data, i64 %length, ptr null, i64 0)
+  ret ptr %result
+}
+
+define internal i1 @topal.runtime.string.is.empty(ptr %string) nounwind noinline {
+entry:
+  %length.pointer = getelementptr %topal.StringStorage, ptr %string, i32 0, i32 1
+  %length = load i64, ptr %length.pointer, align 8
+  %empty = icmp eq i64 %length, 0
+  ret i1 %empty
 }
 
 define internal ptr @topal.runtime.string.utf8.byte.count(ptr %string) nounwind noinline {

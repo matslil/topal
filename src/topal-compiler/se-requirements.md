@@ -326,6 +326,31 @@ requirement covers the String case of `TOPAL-TYPE-EQUALITY-001` and the admitted
 String-payload case of `TOPAL-TYPE-OPTIONAL-EQUALITY-001`; it realizes
 `TOPAL-COMPILER-STRING-EQUALITY-001` for compiler increment 4b1.
 
+## TOPAL-COMP-STRING-CONSTRUCTION-001 — String construction and emptiness
+
+The compiler shall construct the unique empty plain String value and compose
+adjacent source literal primaries into one preserved sequence as required by
+the frontend semantics. Dynamic plain concatenation shall evaluate operands
+once from left to right, send target-length overflow through the explicit
+platform storage-failure path, allocate exact byte storage through the Linux
+syscall platform, and copy both valid UTF-8 sequences in order without
+normalization or content changes. The copy intrinsic shall guarantee no
+external-function lowering. A zero-length result shall not depend on a
+zero-length mapping.
+
+String emptiness shall read the preserved-byte length and return true exactly
+for the empty sequence. A dynamic descriptor may omit the literal display cache;
+the runtime shall then emit the canonical ordinary or shortest collision-free
+tagged spelling directly from preserved bytes. Compiled output and the GDB
+renderer shall agree, including values containing quote-and-tag collisions.
+These operations shall not use a C/C++ runtime, standard library, foreign
+allocator, locale, or Unicode transformation routine.
+
+This requirement covers `TOPAL-TYPE-CALL-001`, `TOPAL-STRING-EMPTY-001`,
+`TOPAL-STRING-LITERAL-COMPOSE-001`, `TOPAL-STRING-CONCAT-001`, and
+`TOPAL-STRING-EMPTY-PREDICATE-001`; it realizes
+`TOPAL-COMPILER-STRING-CONSTRUCTION-001` for compiler increment 4b2.
+
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
 The compiler shall represent explicitly bounded finite `Range Int` and
