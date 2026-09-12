@@ -4444,6 +4444,21 @@
       "cpu_time_ns": 3838220,
       "memory_peak_bytes": 18231296,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_same_named_cross_overload_edge_without_a_cycle": {
+      "cpu_time_ns": 4256080,
+      "memory_peak_bytes": 18231296,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_distinguishes_same_named_cross_overload_frames": {
+      "cpu_time_ns": 249411360,
+      "memory_peak_bytes": 57966592,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_same_named_cross_overload_call_as_acyclic": {
+      "cpu_time_ns": 2869380,
+      "memory_peak_bytes": 18423808,
+      "samples_per_test": 50
     }
   }
 }

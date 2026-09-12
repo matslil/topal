@@ -796,6 +796,16 @@
       "cpu_time_ns": 180568,
       "memory_peak_bytes": 18620416,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/overload-recursion-identity.t": {
+      "cpu_time_ns": 121583420,
+      "memory_peak_bytes": 41488384,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/overload-recursion-identity.t": {
+      "cpu_time_ns": 165318,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 500
     }
   }
 }

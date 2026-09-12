@@ -5812,6 +5812,38 @@ mod tests {
     }
 
     #[test]
+    fn models_same_named_cross_overload_call_as_acyclic() {
+        // TOPAL-FUNCTION-RECURSION-OVERLOAD-IDENTITY-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/overload-recursion-identity.t"
+        ))
+        .unwrap();
+        let integer = program
+            .functions
+            .iter()
+            .find(|function| function.parameters[0].value_type == CompilerType::Int)
+            .unwrap();
+        let string = program
+            .functions
+            .iter()
+            .find(|function| function.parameters[0].value_type == CompilerType::String)
+            .unwrap();
+        assert_ne!(integer.symbol, string.symbol);
+        let CompilerExpressionKind::StringConcat { left, .. } = &string.body.result.kind else {
+            panic!("expected outer String concatenation")
+        };
+        let CompilerExpressionKind::StringConcat { left, .. } = &left.kind else {
+            panic!("expected inner String concatenation")
+        };
+        let CompilerExpressionKind::Call { symbol, arguments } = &left.kind else {
+            panic!("expected the cross-overload call")
+        };
+        assert_eq!(symbol, &integer.symbol);
+        assert_ne!(symbol, &string.symbol);
+        assert_eq!(arguments[0].value_type, CompilerType::Int);
+    }
+
+    #[test]
     fn models_complete_header_forward_function_calls() {
         // TOPAL-FUNCTION-FORWARD-DECLARATION-001, TOPAL-COMPILER-FUNCTION-001
         let program = analyze_for_compiler(include_str!(

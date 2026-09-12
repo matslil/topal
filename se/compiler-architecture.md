@@ -50,6 +50,14 @@ statically decidable scalar headers. Dynamic structural classifier dispatch,
 function values, closures, and remaining recursive call graphs remain later
 frontend work and do not leak into the private ABI prematurely.
 
+Recursion identity uses that complete selected input header, not source-name
+spelling alone. A call from an active `String` overload to a same-named `Int`
+overload is therefore an ordinary acyclic edge: it receives a distinct private
+symbol, is emitted before its caller, and requires no recursion proof or symbol
+reservation. The two overloads retain separate source parameter types and
+DWARF subprograms even when their current private machine carriers are both
+`ptr`. No source classifier is inferred from that coincident machine shape.
+
 The initial recursive closures reuse the interpreter's structural termination
 proof rather than defining a compiler-only proof language. For a proven unary
 `Int` overload that decreases toward a lower bound or increases toward an upper
@@ -308,7 +316,7 @@ work rather than being inferred by the backend. Because this increment has no
 single machine product value, it does not yet publish product bindings as DWARF
 locals; their source lines and lowered field operations remain debuggable, while
 a truthful aggregate DWARF representation is retained with general product
-storage and ABI work in increment 3b2-b5e5.
+storage and ABI work in increment 3b2-b5e6.
 
 An anonymous labeled Record uses the same decomposed expression-local strategy.
 The checked model evaluates fields in source order, rejects duplicate labels,
@@ -319,7 +327,7 @@ evaluated field and display recursively emits `label is value` through existing
 Topal syscall-backed value printers. This adds no record runtime or ABI. Scalar
 values projected from a record retain ordinary DWARF locals and can be inspected
 in GDB. The record binding itself is deliberately absent from DWARF until
-increment 3b2-b5e5 supplies a truthful aggregate storage and debug representation
+increment 3b2-b5e6 supplies a truthful aggregate storage and debug representation
 rather than describing a layout that does not exist.
 
 Structural comparison also remains over decomposed values. The frontend
@@ -341,7 +349,7 @@ aggregate remains unchanged because its value vector is cloned, and neither
 path acquires storage. This introduces no allocator, reconstruction runtime,
 foreign dependency, or ABI revision. Scalar projections from both versions use
 the existing DWARF path; aggregate layout and machine-boundary passage remain
-in increment 3b2-b5e5.
+in increment 3b2-b5e6.
 
 Nat validation already preserves an unchanged arbitrary-precision Int object
 with distinct checked constraint evidence and DWARF type identity. Comparison

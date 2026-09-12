@@ -3708,6 +3708,36 @@ mod tests {
     }
 
     #[test]
+    fn emits_same_named_cross_overload_edge_without_a_cycle() {
+        // TOPAL-FUNCTION-RECURSION-OVERLOAD-IDENTITY-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/overload-recursion-identity.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "overload-recursion-identity.t").emit();
+        let integer = "topal.fn.describe.0";
+        let string = "topal.fn.describe.1";
+        let integer_definition = llvm
+            .find(&format!("define internal fastcc ptr @{integer}"))
+            .unwrap();
+        let string_definition = llvm
+            .find(&format!("define internal fastcc ptr @{string}"))
+            .unwrap();
+        assert!(integer_definition < string_definition);
+        assert_eq!(
+            llvm.matches(&format!("call fastcc ptr @{integer}(ptr "))
+                .count(),
+            1
+        );
+        assert_eq!(
+            llvm.matches(&format!("call fastcc ptr @{string}(ptr "))
+                .count(),
+            1
+        );
+        assert_eq!(llvm.matches("!DISubprogram(name: \"describe\"").count(), 2);
+    }
+
+    #[test]
     fn emits_forward_callee_before_its_caller() {
         // TOPAL-FUNCTION-FORWARD-DECLARATION-001, TOPAL-COMPILER-FUNCTION-001
         let source = include_str!("../../../examples/language/forward-function-declarations.t");

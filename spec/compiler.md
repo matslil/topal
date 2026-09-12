@@ -256,6 +256,22 @@ allocation, validation call, foreign dependency, standard library, or native
 ABI revision. One recursive overload SHALL retain one exact private prototype,
 and DWARF/GDB SHALL expose all source parameters in each non-inlined frame.
 
+### TOPAL-COMPILER-RECURSION-OVERLOAD-IDENTITY-001 — Overload-specific call graph identity
+
+The compiler SHALL key recursion and active-call detection by the complete
+selected source input header and staticness, not by the function name or LLVM
+machine prototype alone. A call from one active overload to a same-named
+overload with a different input header SHALL be an ordinary call edge and SHALL
+NOT require recursion evidence unless its own call graph returns to an active
+identity.
+
+Each selected overload SHALL retain a distinct private symbol, checked source
+signature, and DWARF subprogram even when two source classifiers use the same
+private machine carrier. Callee-before-caller emission SHALL remain valid for
+an acyclic cross-overload edge. This identity distinction SHALL add no runtime
+dispatch, type tag, foreign dependency, standard library, or native ABI
+revision.
+
 ### TOPAL-COMPILER-ENUM-001 — Sealed nominal enum lowering
 
 Each admitted payload-free source enum SHALL retain a distinct nominal identity
