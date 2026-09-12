@@ -3159,7 +3159,7 @@ impl Analyzer {
         span: Span,
     ) -> Result<CompilerExpression, Diagnostic> {
         let identity = function_overload_identity(&self.source, function_name, declaration);
-        let recursion_rule = self.direct_decreasing_int_recursion_rule(function_name, declaration);
+        let recursion_rule = self.direct_int_recursion_rule(function_name, declaration);
         if self.active_calls.contains(&identity) {
             if self.active_calls.last() == Some(&identity)
                 && let Some((symbol, result_type)) =
@@ -3333,7 +3333,7 @@ impl Analyzer {
         symbol
     }
 
-    fn direct_decreasing_int_recursion_rule(
+    fn direct_int_recursion_rule(
         &self,
         function_name: &str,
         declaration: &FunctionSource,
@@ -3349,7 +3349,10 @@ impl Analyzer {
             "Int".to_owned(),
         )];
         match prove_int_recursion(&self.source, function_name, &parameters, &declaration.body) {
-            Some(rule @ "TOPAL-FUNCTION-RECURSION-INT-001") => Some(rule),
+            Some(
+                rule @ ("TOPAL-FUNCTION-RECURSION-INT-001"
+                | "TOPAL-FUNCTION-RECURSION-INT-INCREASING-001"),
+            ) => Some(rule),
             _ => None,
         }
     }
@@ -5714,6 +5717,54 @@ mod tests {
             "use language (version is v0.1)\nloop is fn (value : Int) -> Int\n  value\n    <= 0 then 0\n    otherwise loop (value - 0)\nloop 1\n",
             "use language (version is v0.1)\nloop is fn (value : Int) -> Int\n  value\n    <= 0 then loop (value - 1)\n    otherwise loop (value - 1)\nloop 1\n",
             "use language (version is v0.1)\nfirst is fn (value : Int) -> Int\n  second value\nsecond is fn (value : Int) -> Int\n  first value\nfirst 1\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    fn models_only_structurally_proven_increasing_int_recursion() {
+        // TOPAL-FUNCTION-RECURSION-INT-INCREASING-001,
+        // TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/increasing-int-recursion.t"
+        ))
+        .unwrap();
+        assert_eq!(program.functions.len(), 1);
+        let function = &program.functions[0];
+        assert_eq!(function.source_name, "distance-up");
+        assert!(function.parameters[0].int_range.is_none());
+        let CompilerExpressionKind::OrderedComparisonDecision { otherwise, .. } =
+            &function.body.result.kind
+        else {
+            panic!("expected the structurally proven recursion decision")
+        };
+        let CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Add,
+            right,
+            ..
+        } = &otherwise.kind
+        else {
+            panic!("expected the recursive action")
+        };
+        let CompilerExpressionKind::Call { symbol, .. } = &right.kind else {
+            panic!("expected the direct recursive edge")
+        };
+        assert_eq!(symbol, &function.symbol);
+
+        assert!(
+            analyze_for_compiler(include_str!(
+                "../../../examples/language/positive-recursion-steps.t"
+            ))
+            .is_ok()
+        );
+
+        for source in [
+            "use language (version is v0.1)\nloop is fn (value : Int) -> Int\n  value\n    >= 0 then 0\n    otherwise loop (value + 0)\nloop (-1)\n",
+            "use language (version is v0.1)\nloop is fn (value : Int) -> Int\n  value\n    >= 0 then 0\n    otherwise loop (value - 1)\nloop (-1)\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,

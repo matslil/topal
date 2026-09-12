@@ -250,6 +250,25 @@ with no runtime dispatch, C/C++ runtime, other-language standard library, or
 the current Int parameter. This requirement realizes
 `TOPAL-COMPILER-RECURSION-INT-001` for increment 3b2-b5e1.
 
+## TOPAL-COMP-RECURSION-INT-INCREASING-001 — Proven direct increasing Int recursion
+
+The checked compiler model shall also admit the shared
+`TOPAL-FUNCTION-RECURSION-INT-INCREASING-001` proof for a unary `Int` overload
+with an inclusive upper-bound base and strict positive literal additions. It
+shall accept multiple-unit progress in either proven direction, including safe
+overshoot of the inclusive bound, while zero, negative, runtime-selected,
+subtracting, base-action, and otherwise unproven increasing edges remain
+`E-COMPILER-UNSUPPORTED`.
+
+Increasing recursion shall use the same generalized parameter facts, reserved
+overload symbol, exact private `fastcc` prototype, `noinline` and non-`norecurse`
+attributes, immutable exact Int representation, and Topal-owned Linux
+allocation/syscall layer as decreasing recursion. GDB shall retain consecutive
+frames and their increasing parameter values. This adds no runtime dispatch,
+C/C++ runtime, other-language standard library, or `topal-native/6` revision
+and realizes `TOPAL-COMPILER-RECURSION-INT-INCREASING-001` for increment
+3b2-b5e2.
+
 ## TOPAL-COMP-RETURN-001 — Direct explicit function return
 
 Within an admitted linear function body, `return expression` shall evaluate and

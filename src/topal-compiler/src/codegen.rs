@@ -3757,6 +3757,33 @@ mod tests {
     }
 
     #[test]
+    fn emits_proven_increasing_recursion_with_exact_private_signatures() {
+        // TOPAL-FUNCTION-RECURSION-INT-INCREASING-001
+        for source in [
+            include_str!("../../../examples/language/increasing-int-recursion.t"),
+            include_str!("../../../examples/language/positive-recursion-steps.t"),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            let llvm = Generator::new(&program, "increasing-int-recursion.t").emit();
+            for function in &program.functions {
+                let symbol = &function.symbol;
+                assert_eq!(
+                    llvm.matches(&format!("define internal fastcc ptr @{symbol}"))
+                        .count(),
+                    1
+                );
+                assert_eq!(
+                    llvm.matches(&format!("call fastcc ptr @{symbol}(ptr %"))
+                        .count(),
+                    1
+                );
+            }
+            assert!(llvm.contains("nounwind noinline"));
+            assert!(!llvm.contains("norecurse"));
+        }
+    }
+
+    #[test]
     fn emits_nominal_enums_as_checked_i32_tags_with_dwarf_enumerators() {
         // TOPAL-COMPILER-ENUM-001
         let source = "use language (version is v0.1)\nColor is Enum (Red, Green, Blue)\nnext is fn (value : Color) -> Color\n  value\n    Red then Green\n    Green then Blue\n    Blue then Red\n(next Red, next Green)\n";
