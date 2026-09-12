@@ -121,6 +121,21 @@ function before evaluating later statements; only the success continuation may
 load and reclassify the payload. Validation SHALL neither round, truncate,
 clamp, nor reconstruct a propagated Error.
 
+Every admitted Result decision SHALL evaluate its subject once, make `Ok` and
+whole-`Error` bindings available only to their selected actions, and evaluate
+only the selected action. A qualified arithmetic Error-code matcher SHALL test
+the stored nominal code independently of `Error.domain`. One `Ok` case plus a
+whole-Error fallback or every member of the closed arithmetic code vocabulary
+SHALL be exhaustive; unknown, duplicate, and unreachable code cases SHALL be
+diagnosed.
+
+Selecting the admitted `code` and `domain` fields SHALL return their stored
+typed values without rebuilding the Error. String-valued decision actions,
+function boundaries, display, debug information, and Result payloads SHALL use
+one immutable native String descriptor. A relocation-free executable SHALL
+construct pointer-bearing descriptors at run time and print canonical ordinary
+or conflict-free tagged Topal literal syntax without a foreign runtime.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

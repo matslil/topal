@@ -22,7 +22,7 @@ def _decimal_from_limbs(raw, length):
 
 
 class _TopalIntPrinter:
-    """Render an immutable topal-native/5 Int object as a decimal integer."""
+    """Render an immutable topal-native/6 Int object as a decimal integer."""
 
     def __init__(self, value):
         self._value = value
@@ -57,6 +57,61 @@ class _TopalIntPrinter:
         if negative and magnitude != "0":
             return "-" + magnitude
         return magnitude
+
+
+def _display_string(value):
+    if '"' not in value:
+        return f'"{value}"'
+    tag = "text"
+    while '"' + tag in value:
+        tag += "_"
+    return f'{tag}"{value}"{tag}'
+
+
+class _TopalStringPrinter:
+    """Render an immutable UTF-8 topal-native String descriptor."""
+
+    def __init__(self, value, quoted=True):
+        self._value = value
+        self._quoted = quoted
+
+    def to_string(self):
+        address = int(self._value)
+        if address == 0:
+            return "<invalid null String>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 16))
+        except gdb.MemoryError:
+            return "<unreadable String>"
+        data_address = int.from_bytes(header[0:8], "little")
+        length = int.from_bytes(header[8:16], "little")
+        if length > 1_000_000 or (length and not data_address):
+            return "<invalid String storage>"
+        value = ""
+        if length:
+            try:
+                value = bytes(inferior.read_memory(data_address, length)).decode("utf-8")
+            except (gdb.MemoryError, UnicodeDecodeError):
+                return "<unreadable String data>"
+        return _display_string(value) if self._quoted else value
+
+
+class _TopalErrorCodePrinter:
+    """Render the closed arithmetic ErrorCode vocabulary."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def to_string(self):
+        codes = {
+            0: "out-of-range",
+            1: "not-representable",
+            2: "division-by-zero",
+            3: "indeterminate",
+        }
+        code = int(self._value)
+        return codes.get(code, f"<invalid arithmetic Error code {code}>")
 
 
 class _TopalRationalPrinter:
@@ -153,29 +208,20 @@ class _TopalErrorPrinter:
             return "<invalid null Error>"
         inferior = gdb.selected_inferior()
         try:
-            header = bytes(inferior.read_memory(address, 80))
+            header = bytes(inferior.read_memory(address, 56))
         except gdb.MemoryError:
             return "<unreadable Error>"
         domain_address = int.from_bytes(header[0:8], "little")
-        domain_length = int.from_bytes(header[8:16], "little")
-        code = int.from_bytes(header[16:20], "little")
-        if not domain_address or domain_length > 1_000_000:
+        code = int.from_bytes(header[8:12], "little")
+        if not domain_address:
             return "<invalid Error domain>"
-        try:
-            domain = bytes(
-                inferior.read_memory(domain_address, domain_length)
-            ).decode("utf-8")
-        except (gdb.MemoryError, UnicodeDecodeError):
-            return "<unreadable Error domain>"
-        codes = {
-            0: "out-of-range",
-            1: "not-representable",
-            2: "division-by-zero",
-            3: "indeterminate",
-        }
-        if code not in codes:
-            return f"<invalid arithmetic Error code {code}>"
-        return f"Error ( domain is {domain}, code is {codes[code]} )"
+        domain = _TopalStringPrinter(domain_address, quoted=False).to_string()
+        code = _TopalErrorCodePrinter(code).to_string()
+        if domain.startswith("<"):
+            return f"<invalid Error domain: {domain}>"
+        if code.startswith("<"):
+            return code
+        return f"Error ( domain is {domain}, code is {code} )"
 
 
 class _TopalResultPrinter:
@@ -204,6 +250,8 @@ class _TopalResultPrinter:
             return _TopalIntPrinter(payload).to_string()
         if self._success == "Rational":
             return _TopalRationalPrinter(payload).to_string()
+        if self._success == "String":
+            return _TopalStringPrinter(payload).to_string()
         if self._success == "(Int, Int)":
             try:
                 pair = bytes(inferior.read_memory(payload, 16))
@@ -226,6 +274,14 @@ def _lookup_topal_value(value):
         return _TopalIntPrinter(value)
     if value_type == "Rational":
         return _TopalRationalPrinter(value)
+    if value_type == "String":
+        return _TopalStringPrinter(value)
+    if value_type == "Error":
+        return _TopalErrorPrinter(value)
+    if value_type == "lang arithmetic ArithmeticErrorCode":
+        return _TopalErrorCodePrinter(value)
+    if value_type == "ErrorDomain":
+        return _TopalStringPrinter(value, quoted=False)
     if value_type == "Range Int":
         return _TopalRangePrinter(value, "Int")
     if value_type == "Range Rational":

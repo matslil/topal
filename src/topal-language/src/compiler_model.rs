@@ -25,6 +25,9 @@ pub enum CompilerType {
     Nat,
     Rational,
     Comparison,
+    Error,
+    ErrorCode,
+    ErrorDomain,
     Range(Box<Self>),
     Result(Box<Self>),
     String,
@@ -42,8 +45,12 @@ impl CompilerType {
                 | Self::Nat
                 | Self::Rational
                 | Self::Comparison
+                | Self::Error
+                | Self::ErrorCode
+                | Self::ErrorDomain
                 | Self::Range(_)
                 | Self::Result(_)
+                | Self::String
         )
     }
 
@@ -56,6 +63,9 @@ impl CompilerType {
             Self::Nat => "Nat".into(),
             Self::Rational => "Rational".into(),
             Self::Comparison => "Comparison".into(),
+            Self::Error => "Error".into(),
+            Self::ErrorCode => "lang arithmetic ArithmeticErrorCode".into(),
+            Self::ErrorDomain => "ErrorDomain".into(),
             Self::Range(endpoint) => format!("Range {}", endpoint.name()),
             Self::Result(success) => format!(
                 "Result ({}, lang arithmetic ArithmeticErrorCode)",
@@ -152,6 +162,19 @@ pub enum CompilerValidation {
     IntToNat,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerErrorField {
+    Code,
+    Domain,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerErrorCodeRule {
+    pub code: u32,
+    pub action: CompilerExpression,
+    pub span: Span,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerExpressionKind {
     Unit,
@@ -172,6 +195,10 @@ pub enum CompilerExpressionKind {
     IntToNat(Box<CompilerExpression>),
     ResultSuccess(Box<CompilerExpression>),
     ResultProject(Box<CompilerExpression>),
+    ErrorField {
+        error: Box<CompilerExpression>,
+        field: CompilerErrorField,
+    },
     Validate {
         operation: CompilerValidation,
         value: Box<CompilerExpression>,
@@ -213,6 +240,14 @@ pub enum CompilerExpressionKind {
         when_less: Box<CompilerExpression>,
         when_equal: Box<CompilerExpression>,
         when_greater: Box<CompilerExpression>,
+    },
+    ResultDecision {
+        subject: Box<CompilerExpression>,
+        ok_binding: String,
+        ok_binding_span: Span,
+        ok_action: Box<CompilerExpression>,
+        error_codes: Vec<CompilerErrorCodeRule>,
+        error_fallback: Option<(String, Span, Box<CompilerExpression>)>,
     },
 }
 
@@ -768,6 +803,11 @@ impl Analyzer {
             let operation = self.source.slice(*operation).to_owned();
             return self.analyze_range_observation(&operation, operand, span, environment);
         }
+        if let [error, Expression::Identifier(field)] = items
+            && matches!(self.source.slice(*field), "code" | "domain")
+        {
+            return self.analyze_error_field(error, *field, span, environment);
+        }
         if let [
             Expression::Callable {
                 kind: CallableKind::Minus,
@@ -865,6 +905,45 @@ impl Analyzer {
             return self.analyze_identifier_binary(&operation, left, right, span, environment);
         }
         self.analyze_call(items, span, environment)
+    }
+
+    fn analyze_error_field(
+        &mut self,
+        error: &Expression,
+        field: Span,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let error = self.analyze_expression(error, environment)?;
+        if !matches!(
+            &error.value_type,
+            CompilerType::Error | CompilerType::Result(_)
+        ) {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-TYPE-MISMATCH",
+                error.span,
+                format!(
+                    "expected Error or Result, found {}",
+                    error.value_type.name()
+                ),
+            ));
+        }
+        let (field, value_type) = match self.source.slice(field) {
+            "code" => (CompilerErrorField::Code, CompilerType::ErrorCode),
+            "domain" => (CompilerErrorField::Domain, CompilerType::ErrorDomain),
+            _ => unreachable!("implemented Error field spelling selected above"),
+        };
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::ErrorField {
+                error: Box::new(error),
+                field,
+            },
+            value_type,
+            int_range: None,
+            rational_value: None,
+            span,
+        })
     }
 
     fn analyze_int_constructor(
@@ -1749,6 +1828,10 @@ impl Analyzer {
             CompilerType::Comparison => {
                 self.analyze_comparison_value_decision(subject, rules, span, environment)
             }
+            CompilerType::Result(success) => {
+                let success = success.as_ref().clone();
+                self.analyze_result_decision(subject, &success, rules, span, environment)
+            }
             CompilerType::Int | CompilerType::Rational => {
                 self.analyze_ordered_comparison_decision(subject, rules, span, environment)
             }
@@ -1758,6 +1841,137 @@ impl Analyzer {
                 "decision subject type",
             )),
         }
+    }
+
+    #[allow(clippy::too_many_lines)] // Result binding, reachability, and completeness checks stay adjacent.
+    fn analyze_result_decision(
+        &mut self,
+        subject: CompilerExpression,
+        success_type: &CompilerType,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let mut ok = None;
+        let mut error_codes = Vec::new();
+        let mut seen_codes = BTreeSet::new();
+        let mut error_fallback = None;
+        for rule in rules {
+            match rule.matcher {
+                DecisionMatcher::Result {
+                    error: false,
+                    binding,
+                    ..
+                } if ok.is_none() => {
+                    let name = self.source.slice(binding).to_owned();
+                    let branch =
+                        decision_binding_environment(environment, &name, success_type.clone());
+                    ok = Some((
+                        name,
+                        binding,
+                        self.analyze_expression(&rule.action, &branch)?,
+                    ));
+                }
+                DecisionMatcher::Result {
+                    error: true,
+                    binding,
+                    ..
+                } if error_fallback.is_none() => {
+                    let name = self.source.slice(binding).to_owned();
+                    let branch =
+                        decision_binding_environment(environment, &name, CompilerType::Error);
+                    error_fallback = Some((
+                        name,
+                        binding,
+                        Box::new(self.analyze_expression(&rule.action, &branch)?),
+                    ));
+                }
+                DecisionMatcher::ErrorCode {
+                    namespace,
+                    vocabulary,
+                    code,
+                    ..
+                } => {
+                    if error_fallback.is_some() {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-UNREACHABLE-ERROR-CODE-PATTERN",
+                            rule.span,
+                            "qualified Error-code pattern is unreachable after Error fallback",
+                        ));
+                    }
+                    let code_value = arithmetic_error_code(
+                        self.source.slice(namespace),
+                        self.source.slice(vocabulary),
+                        self.source.slice(code),
+                    )
+                    .ok_or_else(|| {
+                        source_diagnostic(
+                            &self.source,
+                            "E-UNKNOWN-ERROR-CODE",
+                            code,
+                            "the compiler subset requires a qualified arithmetic Error code",
+                        )
+                    })?;
+                    if !seen_codes.insert(code_value) {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-DUPLICATE-ERROR-CODE-PATTERN",
+                            rule.span,
+                            "an arithmetic Error code is matched more than once",
+                        ));
+                    }
+                    error_codes.push(CompilerErrorCodeRule {
+                        code: code_value,
+                        action: self.analyze_expression(&rule.action, environment)?,
+                        span: rule.span,
+                    });
+                }
+                _ => {
+                    return Err(unsupported(
+                        &self.source,
+                        rule.span,
+                        "Result decision matcher",
+                    ));
+                }
+            }
+        }
+        let (ok_binding, ok_binding_span, ok_action) = ok.ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "Result decision does not cover Ok",
+            )
+        })?;
+        if error_fallback.is_none() && seen_codes != BTreeSet::from([0, 1, 2, 3]) {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-ERROR-CODE-DECISION",
+                span,
+                "Result decision requires Error fallback or every arithmetic Error code",
+            ));
+        }
+        let mut actions = vec![&ok_action];
+        actions.extend(error_codes.iter().map(|rule| &rule.action));
+        if let Some((_, _, action)) = &error_fallback {
+            actions.push(action);
+        }
+        let (value_type, int_range, rational_value) = self.decision_facts(&actions, span)?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::ResultDecision {
+                subject: Box::new(subject),
+                ok_binding,
+                ok_binding_span,
+                ok_action: Box::new(ok_action),
+                error_codes,
+                error_fallback,
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        })
     }
 
     fn analyze_boolean_decision(
@@ -2076,6 +2290,9 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         "Nat" => Some(CompilerType::Nat),
         "Rational" => Some(CompilerType::Rational),
         "Comparison" => Some(CompilerType::Comparison),
+        "Error" => Some(CompilerType::Error),
+        "ErrorCode" | "langarithmeticArithmeticErrorCode" => Some(CompilerType::ErrorCode),
+        "ErrorDomain" => Some(CompilerType::ErrorDomain),
         "String" => Some(CompilerType::String),
         _ => None,
     }
@@ -2123,7 +2340,10 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
         CompilerType::Result(success) => {
             matches!(
                 success.as_ref(),
-                CompilerType::Int | CompilerType::Nat | CompilerType::Rational
+                CompilerType::Int
+                    | CompilerType::Nat
+                    | CompilerType::Rational
+                    | CompilerType::String
             ) || matches!(
                 success.as_ref(),
                 CompilerType::Tuple(fields)
@@ -2131,6 +2351,36 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
             )
         }
         _ => true,
+    }
+}
+
+fn decision_binding_environment(
+    environment: &BTreeMap<String, BindingFacts>,
+    name: &str,
+    value_type: CompilerType,
+) -> BTreeMap<String, BindingFacts> {
+    let mut branch = environment.clone();
+    branch.insert(
+        name.to_owned(),
+        BindingFacts {
+            value_type,
+            int_range: None,
+            rational_value: None,
+        },
+    );
+    branch
+}
+
+fn arithmetic_error_code(namespace: &str, vocabulary: &str, code: &str) -> Option<u32> {
+    if namespace != "lang" || vocabulary != "arithmetic" {
+        return None;
+    }
+    match code {
+        "out-of-range" => Some(0),
+        "not-representable" => Some(1),
+        "division-by-zero" => Some(2),
+        "indeterminate" => Some(3),
+        _ => None,
     }
 }
 
@@ -2183,7 +2433,8 @@ fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::Local(_)
         | CompilerExpressionKind::Call { .. }
         | CompilerExpressionKind::Fallible { .. }
-        | CompilerExpressionKind::Validate { .. } => false,
+        | CompilerExpressionKind::Validate { .. }
+        | CompilerExpressionKind::ResultDecision { .. } => false,
         CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
         | CompilerExpressionKind::IntToRational(value)
@@ -2191,6 +2442,7 @@ fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::IntToNat(value)
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
+        | CompilerExpressionKind::ErrorField { error: value, .. }
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
         | CompilerExpressionKind::RangeLowerInclusive(value)
@@ -2610,6 +2862,51 @@ mod tests {
             function.body.result.kind,
             CompilerExpressionKind::Validate { .. }
         )));
+    }
+
+    #[test]
+    fn models_result_decisions_and_structured_error_observation() {
+        // TOPAL-DECISION-RESULT-001, TOPAL-DECISION-ERROR-CODE-001,
+        // TOPAL-ERROR-FIELD-001
+        let source = "use language (version is v0.1)\ndivide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\ndescribe is fn (denominator : Rational) -> String\n  1.0 divide denominator\n    Ok value then \"ok\"\n    Error (code is lang arithmetic division-by-zero) then \"zero\"\n    Error problem then \"other\"\nexhaustive is fn (denominator : Rational) -> String\n  1.0 divide denominator\n    Ok value then \"ok\"\n    Error (code is lang arithmetic out-of-range) then \"range\"\n    Error (code is lang arithmetic not-representable) then \"representation\"\n    Error (code is lang arithmetic division-by-zero) then \"zero\"\n    Error (code is lang arithmetic indeterminate) then \"indeterminate\"\nproblem is 1.0 divide 0.0\n(describe 0.0, exhaustive 0.0, problem code, problem domain)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(String, String, lang arithmetic ArithmeticErrorCode, ErrorDomain)"
+        );
+        assert!(program.functions.iter().any(|function| matches!(
+            &function.body.result.kind,
+            CompilerExpressionKind::ResultDecision {
+                error_codes,
+                error_fallback: Some(_),
+                ..
+            } if error_codes.len() == 1
+        )));
+        assert!(program.functions.iter().any(|function| matches!(
+            &function.body.result.kind,
+            CompilerExpressionKind::ResultDecision {
+                error_codes,
+                error_fallback: None,
+                ..
+            } if error_codes.len() == 4
+        )));
+        let CompilerExpressionKind::Tuple(fields) = &program.main.result.kind else {
+            panic!("expected top-level tuple")
+        };
+        assert!(matches!(
+            fields[2].kind,
+            CompilerExpressionKind::ErrorField {
+                field: CompilerErrorField::Code,
+                ..
+            }
+        ));
+        assert!(matches!(
+            fields[3].kind,
+            CompilerExpressionKind::ErrorField {
+                field: CompilerErrorField::Domain,
+                ..
+            }
+        ));
     }
 
     #[test]

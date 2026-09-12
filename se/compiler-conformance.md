@@ -14,7 +14,7 @@ evidence.
 | 2c-a | ordered comparison matchers and exhaustive decisions over `Comparison` values | complete |
 | 2c-b1 | dynamic arithmetic `Result`/Error representation, construction, division, power, modulo, quotient/modulo, propagation, output, and debugging | complete |
 | 2c-b2 | exact Rational-to-Int and Nat narrowing/validation plus contextual success projection | complete |
-| 2c-b3 | structured Error observation and exhaustive Result/error-code decisions | planned |
+| 2c-b3 | structured Error observation and exhaustive Result/error-code decisions | complete |
 | 2c-c | normatively completed infinity construction and arithmetic | planned |
 | 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |
 | 2d-b | unbounded range construction and infinity endpoints after their prerequisite normative and runtime work | planned |

@@ -54,7 +54,7 @@ equality, ordering, function passage, decision joins, decimal output, and GDB
 inspection shall preserve the normative value for operands of any size that
 available address space can hold.
 
-The private `topal-native/5` representation shall be canonical, immutable, and
+The private `topal-native/6` representation shall be canonical, immutable, and
 hidden from foreign calling conventions. Its allocator and output routines
 shall use only the qualified Linux x86-64 system-call boundary, detect mapping
 failure, introduce no C/C++ runtime dependency or undefined helper symbol, and
@@ -109,7 +109,7 @@ The compiler shall represent an admitted arithmetic `Result` with an immutable
 success-or-error tag and one statically classified payload. It shall represent
 every intrinsic Error with its reporting domain, nominal arithmetic code,
 absent detail and cause, and source file, line, and column provenance. The
-private representation shall be versioned as `topal-native/5`, remain opaque to
+private representation shall be versioned as `topal-native/6`, remain opaque to
 foreign calling conventions, and be inspectable through the bundled GDB
 renderer.
 
@@ -138,6 +138,29 @@ These additions cover `TOPAL-NUM-RATIONAL-INT-EXACT-001`,
 `TOPAL-NUM-RATIONAL-INT-VALIDATE-001`, `TOPAL-NUM-INT-CONSTRUCT-001`,
 `TOPAL-NUM-NAT-CONSTRUCT-001`, and `TOPAL-TYPE-RESULT-PROJECT-001`. They realize
 the remaining `TOPAL-COMPILER-RESULT-001` scope for compiler increment 2c-b2.
+
+Result decisions shall evaluate their subject once, bind success or whole-Error
+payloads only in the selected action, and execute only that action. Qualified
+arithmetic Error-code matchers shall compare the stored nominal code rather
+than the independent reporting domain, preserve source ordering, diagnose
+unknown or duplicate codes, and require either a generic Error fallback or the
+complete four-code vocabulary. Compatible String-valued actions shall use an
+immutable native descriptor and merge without eager evaluation.
+
+Selecting `code` or `domain` from an arithmetic Error shall return the stored
+typed value without reconstructing or altering the Error. The compiler shall
+represent literal String bytes, immutable descriptors with cached canonical
+display spellings, Error fields, functions, decision joins, textual output, DWARF, and GDB consistently under
+`topal-native/6`. Pointer-bearing descriptors shall be constructed at run time
+so static no-loader PIEs retain no load-time relocations. String display shall
+produce the canonical ordinary or conflict-free tagged literal form using only
+the Topal Linux syscall runtime.
+
+These additions cover `TOPAL-DECISION-RESULT-001`,
+`TOPAL-DECISION-ERROR-CODE-001`, `TOPAL-ERROR-FIELD-001`, and the admitted
+literal transport and display cases of `TOPAL-SYN-STRING-001`. They complete
+compiler increment 2c-b3; Optional Result composition and the remaining String
+operations retain their later roadmap dispositions.
 
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
