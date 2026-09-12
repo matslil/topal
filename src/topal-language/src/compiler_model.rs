@@ -45,6 +45,7 @@ pub enum CompilerType {
     Character,
     String,
     Tuple(Vec<Self>),
+    Record(Vec<(String, Self)>),
 }
 
 impl CompilerType {
@@ -96,6 +97,14 @@ impl CompilerType {
             Self::Tuple(fields) => format!(
                 "({})",
                 fields.iter().map(Self::name).collect::<Vec<_>>().join(", ")
+            ),
+            Self::Record(fields) => format!(
+                "({})",
+                fields
+                    .iter()
+                    .map(|(name, value_type)| format!("{name} : {}", value_type.name()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             ),
         }
     }
@@ -221,6 +230,11 @@ pub enum CompilerExpressionKind {
     ErrorCode(u32),
     Enum(u32),
     Tuple(Vec<CompilerExpression>),
+    Record(Vec<(String, CompilerExpression)>),
+    RecordField {
+        record: Box<CompilerExpression>,
+        label: String,
+    },
     Block(Box<CompilerBlock>),
     Local(String),
     Negate(Box<CompilerExpression>),
@@ -376,6 +390,15 @@ struct BindingFacts {
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
     string_value: Option<String>,
+    record_fields: BTreeMap<String, StaticValueFacts>,
+}
+
+#[derive(Clone, Default)]
+struct StaticValueFacts {
+    int_range: Option<IntRange>,
+    rational_value: Option<BigRational>,
+    string_value: Option<String>,
+    record_fields: BTreeMap<String, Self>,
 }
 
 struct Analyzer {
@@ -835,7 +858,8 @@ impl Analyzer {
                         }
                         require_same_type(&self.source, *classifier, &expected, &value.value_type)?;
                     }
-                    let string_value = self.known_string_value(initializer, &value, environment);
+                    let string_value = Self::known_string_value(&value, environment);
+                    let record_fields = Self::known_record_fields(&value, environment);
                     environment.insert(
                         name_text.clone(),
                         BindingFacts {
@@ -843,6 +867,7 @@ impl Analyzer {
                             int_range: value.int_range.clone(),
                             rational_value: value.rational_value.clone(),
                             string_value,
+                            record_fields,
                         },
                     );
                     declared.insert(name_text.clone());
@@ -1035,8 +1060,35 @@ impl Analyzer {
                 })
             }
             Expression::Product { fields, .. } => {
-                if fields.iter().any(|field| field.label.is_some()) {
-                    return Err(unsupported(&self.source, span, "labeled product"));
+                if !fields.is_empty() && fields.iter().all(|field| field.label.is_some()) {
+                    let mut values = Vec::with_capacity(fields.len());
+                    let mut value_types = Vec::with_capacity(fields.len());
+                    for field in fields {
+                        let label_span = field.label.expect("record fields are labeled");
+                        let label = self.source.slice(label_span).to_owned();
+                        if values
+                            .iter()
+                            .any(|(existing, _): &(String, CompilerExpression)| existing == &label)
+                        {
+                            return Err(source_diagnostic(
+                                &self.source,
+                                "E-DUPLICATE-RECORD-FIELD",
+                                label_span,
+                                "record field label occurs more than once",
+                            ));
+                        }
+                        let value = self.analyze_expression(&field.value, environment)?;
+                        value_types.push((label.clone(), value.value_type.clone()));
+                        values.push((label, value));
+                    }
+                    value_types.sort_by(|left, right| left.0.cmp(&right.0));
+                    return Ok(CompilerExpression {
+                        value_type: CompilerType::Record(value_types),
+                        kind: CompilerExpressionKind::Record(values),
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    });
                 }
                 let values = fields
                     .iter()
@@ -1350,6 +1402,11 @@ impl Analyzer {
             let operation = self.source.slice(*operation).to_owned();
             return self.analyze_range_observation(&operation, operand, span, environment);
         }
+        if let [record, Expression::Identifier(field)] = items
+            && self.record_selection_candidate(record, environment)
+        {
+            return self.analyze_record_field(record, *field, span, environment);
+        }
         if let [error, Expression::Identifier(field)] = items
             && matches!(self.source.slice(*field), "code" | "domain")
         {
@@ -1452,6 +1509,59 @@ impl Analyzer {
             return self.analyze_identifier_binary(&operation, left, right, span, environment);
         }
         self.analyze_call(items, span, environment)
+    }
+
+    fn record_selection_candidate(
+        &self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> bool {
+        match expression {
+            Expression::Product { fields, .. } => {
+                !fields.is_empty() && fields.iter().all(|field| field.label.is_some())
+            }
+            Expression::Identifier(name) => environment
+                .get(self.source.slice(*name))
+                .is_some_and(|facts| matches!(facts.value_type, CompilerType::Record(_))),
+            _ => false,
+        }
+    }
+
+    fn analyze_record_field(
+        &mut self,
+        record: &Expression,
+        field: Span,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let record = self.analyze_expression(record, environment)?;
+        let CompilerType::Record(fields) = &record.value_type else {
+            unreachable!("record selection candidate retains a Record type")
+        };
+        let label = self.source.slice(field).to_owned();
+        let value_type = fields
+            .iter()
+            .find_map(|(name, value_type)| (name == &label).then(|| value_type.clone()))
+            .ok_or_else(|| {
+                source_diagnostic(
+                    &self.source,
+                    "E-NO-SUCH-RECORD-FIELD",
+                    field,
+                    format!("record has no field named `{label}`"),
+                )
+            })?;
+        let facts =
+            Self::known_record_field_facts(&record, &label, environment).unwrap_or_default();
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::RecordField {
+                record: Box::new(record),
+                label,
+            },
+            value_type,
+            int_range: facts.int_range,
+            rational_value: facts.rational_value,
+            span,
+        })
     }
 
     fn finish_optional_none(
@@ -1624,11 +1734,9 @@ impl Analyzer {
             &CompilerType::String,
             &operand_value.value_type,
         )?;
-        let text = self
-            .known_string_value(operand, &operand_value, environment)
-            .ok_or_else(|| {
-                unsupported(&self.source, operand.span(), "dynamic Character counting")
-            })?;
+        let text = Self::known_string_value(&operand_value, environment).ok_or_else(|| {
+            unsupported(&self.source, operand.span(), "dynamic Character counting")
+        })?;
         let count = BigInt::from(character_count(&text));
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::Int(count.clone()),
@@ -1660,8 +1768,7 @@ impl Analyzer {
             &CompilerType::Int,
             &index_value.value_type,
         )?;
-        let text = self
-            .known_string_value(text, &text_value, environment)
+        let text = Self::known_string_value(&text_value, environment)
             .ok_or_else(|| unsupported(&self.source, text.span(), "dynamic Character indexing"))?;
         let exact_index = exact_int(&index_value)
             .ok_or_else(|| unsupported(&self.source, index.span(), "dynamic Character index"))?;
@@ -1700,15 +1807,13 @@ impl Analyzer {
             &CompilerType::String,
             &operand_value.value_type,
         )?;
-        let text = self
-            .known_string_value(operand, &operand_value, environment)
-            .ok_or_else(|| {
-                unsupported(
-                    &self.source,
-                    operand.span(),
-                    "dynamic Unicode transformation",
-                )
-            })?;
+        let text = Self::known_string_value(&operand_value, environment).ok_or_else(|| {
+            unsupported(
+                &self.source,
+                operand.span(),
+                "dynamic Unicode transformation",
+            )
+        })?;
         let transformed = match operation {
             "upper" => uppercase(&text),
             "lower" => lowercase(&text),
@@ -1738,15 +1843,13 @@ impl Analyzer {
             &CompilerType::String,
             &operand_value.value_type,
         )?;
-        let text = self
-            .known_string_value(operand, &operand_value, environment)
-            .ok_or_else(|| {
-                unsupported(
-                    &self.source,
-                    operand.span(),
-                    "dynamic Unicode normalization",
-                )
-            })?;
+        let text = Self::known_string_value(&operand_value, environment).ok_or_else(|| {
+            unsupported(
+                &self.source,
+                operand.span(),
+                "dynamic Unicode normalization",
+            )
+        })?;
         let normalized = match form {
             "NFC" => normalize_nfc(&text),
             "NFD" => normalize_nfd(&text),
@@ -1789,24 +1892,20 @@ impl Analyzer {
             &CompilerType::String,
             &right_value.value_type,
         )?;
-        let left_text = self
-            .known_string_value(left, &left_value, environment)
-            .ok_or_else(|| {
-                unsupported(
-                    &self.source,
-                    left.span(),
-                    "dynamic canonical String equality",
-                )
-            })?;
-        let right_text = self
-            .known_string_value(right, &right_value, environment)
-            .ok_or_else(|| {
-                unsupported(
-                    &self.source,
-                    right.span(),
-                    "dynamic canonical String equality",
-                )
-            })?;
+        let left_text = Self::known_string_value(&left_value, environment).ok_or_else(|| {
+            unsupported(
+                &self.source,
+                left.span(),
+                "dynamic canonical String equality",
+            )
+        })?;
+        let right_text = Self::known_string_value(&right_value, environment).ok_or_else(|| {
+            unsupported(
+                &self.source,
+                right.span(),
+                "dynamic canonical String equality",
+            )
+        })?;
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::Boolean(canonically_equal(&left_text, &right_text)),
             value_type: CompilerType::Boolean,
@@ -1817,19 +1916,96 @@ impl Analyzer {
     }
 
     fn known_string_value(
-        &self,
-        source: &Expression,
         value: &CompilerExpression,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Option<String> {
-        exact_string(value).or_else(|| {
-            let Expression::Identifier(name) = source else {
-                return None;
-            };
-            environment
-                .get(self.source.slice(*name))
-                .and_then(|facts| facts.string_value.clone())
-        })
+        Self::known_string_expression(value, environment)
+    }
+
+    fn known_string_expression(
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Option<String> {
+        match &value.kind {
+            CompilerExpressionKind::String(value) => Some(value.clone()),
+            CompilerExpressionKind::StringEmpty => Some(String::new()),
+            CompilerExpressionKind::StringConcat { left, right } => {
+                let mut value = Self::known_string_expression(left, environment)?;
+                value.push_str(&Self::known_string_expression(right, environment)?);
+                Some(value)
+            }
+            CompilerExpressionKind::Local(name) => environment
+                .get(name)
+                .and_then(|facts| facts.string_value.clone()),
+            CompilerExpressionKind::RecordField { record, label } => {
+                Self::known_record_string(record, label, environment)
+            }
+            _ => None,
+        }
+    }
+
+    fn known_record_string(
+        value: &CompilerExpression,
+        label: &str,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Option<String> {
+        Self::known_record_field_facts(value, label, environment)?.string_value
+    }
+
+    fn known_record_field_facts(
+        value: &CompilerExpression,
+        label: &str,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Option<StaticValueFacts> {
+        match &value.kind {
+            CompilerExpressionKind::Record(fields) => fields
+                .iter()
+                .find_map(|(name, value)| (name == label).then_some(value))
+                .map(|value| Self::known_value_facts(value, environment)),
+            CompilerExpressionKind::Local(name) => environment
+                .get(name)
+                .and_then(|facts| facts.record_fields.get(label).cloned()),
+            CompilerExpressionKind::RecordField {
+                record,
+                label: outer_label,
+            } => Self::known_record_field_facts(record, outer_label, environment)?
+                .record_fields
+                .get(label)
+                .cloned(),
+            _ => None,
+        }
+    }
+
+    fn known_record_fields(
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> BTreeMap<String, StaticValueFacts> {
+        match &value.kind {
+            CompilerExpressionKind::Record(fields) => fields
+                .iter()
+                .map(|(name, value)| (name.clone(), Self::known_value_facts(value, environment)))
+                .collect(),
+            CompilerExpressionKind::Local(name) => environment
+                .get(name)
+                .map_or_else(BTreeMap::new, |facts| facts.record_fields.clone()),
+            CompilerExpressionKind::RecordField { record, label } => {
+                Self::known_record_field_facts(record, label, environment)
+                    .map_or_else(BTreeMap::new, |facts| facts.record_fields)
+            }
+            _ => BTreeMap::new(),
+        }
+    }
+
+    fn known_value_facts(
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> StaticValueFacts {
+        StaticValueFacts {
+            int_range: value.int_range.clone(),
+            rational_value: value.rational_value.clone(),
+            string_value: Self::known_string_expression(value, environment),
+            record_fields: Self::known_record_fields(value, environment),
+        }
     }
 
     fn finish_nat_conversion(
@@ -2611,6 +2787,7 @@ impl Analyzer {
         })
     }
 
+    #[allow(clippy::too_many_lines)] // Specialization keeps ABI and checked evidence decisions together.
     fn instantiate_function(
         &mut self,
         function_name: &str,
@@ -2654,6 +2831,7 @@ impl Analyzer {
                         int_range: argument.int_range.clone(),
                         rational_value: argument.rational_value.clone(),
                         string_value: exact_string(argument),
+                        record_fields: BTreeMap::new(),
                     },
                 );
             }
@@ -3496,6 +3674,7 @@ fn decision_binding_environment(
             int_range: None,
             rational_value: None,
             string_value: None,
+            record_fields: BTreeMap::new(),
         },
     );
     branch
@@ -3564,7 +3743,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
             )
         }
         CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
-        CompilerType::Error
+        CompilerType::Record(_)
+        | CompilerType::Error
         | CompilerType::ErrorDomain
         | CompilerType::Range(_)
         | CompilerType::Result(_) => false,
@@ -3630,6 +3810,9 @@ fn compiler_expression_is_closed_with(
         CompilerExpressionKind::Tuple(values) => values
             .iter()
             .all(|value| compiler_expression_is_closed_with(value, bound)),
+        CompilerExpressionKind::Record(fields) => fields
+            .iter()
+            .all(|(_, value)| compiler_expression_is_closed_with(value, bound)),
         CompilerExpressionKind::Block(block) => compiler_block_is_closed(block, bound),
         CompilerExpressionKind::Local(name) => bound.contains(name),
         CompilerExpressionKind::Call { .. }
@@ -3647,6 +3830,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::OptionalSome(value)
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
+        | CompilerExpressionKind::RecordField { record: value, .. }
         | CompilerExpressionKind::ErrorField { error: value, .. }
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
@@ -4416,6 +4600,81 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+    }
+
+    #[test]
+    fn models_anonymous_record_construction_and_selection() {
+        // TOPAL-TYPE-PRODUCT-001, TOPAL-COMPILER-RECORD-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/strings-and-products.t"
+        ))
+        .unwrap();
+        let person = program
+            .main
+            .statements
+            .iter()
+            .find_map(|statement| match statement {
+                CompilerStatement::Binding(binding) if binding.name == "person" => Some(binding),
+                _ => None,
+            })
+            .expect("the shared regression binds person");
+        let CompilerExpressionKind::Record(fields) = &person.value.kind else {
+            panic!("expected a checked anonymous Record")
+        };
+        assert_eq!(
+            fields
+                .iter()
+                .map(|(name, _)| name.as_str())
+                .collect::<Vec<_>>(),
+            ["name", "active"]
+        );
+        let CompilerType::Record(field_types) = &person.value.value_type else {
+            panic!("expected an inferred Record type")
+        };
+        assert_eq!(
+            field_types
+                .iter()
+                .map(|(name, _)| name.as_str())
+                .collect::<Vec<_>>(),
+            ["active", "name"]
+        );
+        assert!(program.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::RecordField { label, .. },
+                    value_type: CompilerType::String,
+                    ..
+                },
+                ..
+            }) if name == "person-name" && label == "name"
+        )));
+
+        let shadowed = analyze_for_compiler(
+            "use language (version is v0.1)\ntext is \"outer\"\nrecord is (name is text)\n{\n  text is \"inner\"\n  upper (record name)\n}\n",
+        )
+        .unwrap();
+        let CompilerExpressionKind::Block(block) = &shadowed.main.result.kind else {
+            panic!("expected a lexical block")
+        };
+        assert_eq!(exact_string(&block.result).as_deref(), Some("OUTER"));
+
+        let code_field = analyze_for_compiler(
+            "use language (version is v0.1)\nrecord is (code is 7)\nrecord code\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&code_field.main.result), Some(BigInt::from(7)));
+
+        let duplicate = analyze_for_compiler(
+            "use language (version is v0.1)\nvalue is (a is 1, a is 2)\nvalue\n",
+        )
+        .unwrap_err();
+        assert_eq!(duplicate.code, "E-DUPLICATE-RECORD-FIELD");
+        let absent =
+            analyze_for_compiler("use language (version is v0.1)\nvalue is (a is 1)\nvalue b\n")
+                .unwrap_err();
+        assert_eq!(absent.code, "E-NO-SUCH-RECORD-FIELD");
     }
 
     #[test]

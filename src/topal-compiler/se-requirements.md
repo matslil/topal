@@ -351,6 +351,25 @@ covers the admitted same-classifier positional-product case of
 `TOPAL-TYPE-EQUALITY-001` and realizes
 `TOPAL-COMPILER-TUPLE-EQUALITY-001` for compiler increment 3b2-b5a.
 
+## TOPAL-COMP-RECORD-001 — Anonymous record construction and selection
+
+The checked compiler model shall admit anonymous products whose fields are all
+labeled as structural Records under `TOPAL-TYPE-PRODUCT-001`. It shall reject a
+duplicate label with `E-DUPLICATE-RECORD-FIELD`, evaluate field expressions once
+from left to right, retain source order for canonical display, and retain a
+canonical label-to-classifier map for static identity. Static field selection
+shall return the selected already-evaluated field with its exact classifier and
+shall diagnose an absent label with `E-NO-SUCH-RECORD-FIELD` at that label.
+
+Expression-local Records shall lower as decomposed LLVM values without an
+allocation, native header, generated record runtime, C/C++ runtime, standard
+library, or ABI revision. Record equality, reconstruction, aggregate function
+passage, and storage remain rejected. Projected scalar bindings and field source
+locations shall use the existing DWARF/GDB paths; the compiler shall defer the
+record binding itself rather than claim a false aggregate debug layout. This
+requirement realizes `TOPAL-COMPILER-RECORD-001` for compiler increment
+3b2-b5b.
+
 ## TOPAL-COMP-STRING-UTF8-BYTE-COUNT-001 — Prospective UTF-8 byte count
 
 For an admitted plain String, the compiler shall evaluate
