@@ -268,6 +268,24 @@ loading an absent payload. Equality and inequality SHALL evaluate each source
 operand once and preserve the result required by `TOPAL-TYPE-EQUALITY-001` and
 `TOPAL-TYPE-OPTIONAL-EQUALITY-001` at `-O0`.
 
+### TOPAL-COMPILER-STRING-CONSTRUCTION-001 — Native String construction
+
+`empty String` SHALL construct the zero-length plain String value, and adjacent
+String literal primaries SHALL compose their preserved sequences in source
+order as mandatory construction semantics. An admitted plain `concat` SHALL
+evaluate both operands exactly once from left to right, fail through the
+explicit platform storage path when their combined target length is not
+representable, allocate through the Topal platform boundary, and copy the
+complete preserved UTF-8 byte sequences in order. None of these paths SHALL
+normalize, reinterpret, or add content.
+
+`empty?` SHALL evaluate its String operand once and return true exactly when its
+preserved sequence is empty. A dynamically constructed String whose descriptor
+does not cache display spelling SHALL still render the canonical ordinary or
+shortest collision-free tagged Topal literal directly from its preserved bytes.
+Generated execution and GDB SHALL expose the same valid String value without a
+foreign allocator, runtime, standard library, locale, or text transformation.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate

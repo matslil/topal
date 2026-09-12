@@ -65,6 +65,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
     }
     match &expression.kind {
         CompilerExpressionKind::String(_)
+        | CompilerExpressionKind::StringEmpty
         | CompilerExpressionKind::ErrorField { .. }
         | CompilerExpressionKind::ResultDecision { .. }
         | CompilerExpressionKind::OptionalDecision { .. }
@@ -82,6 +83,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::OptionalSome(value)
+        | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
@@ -90,7 +92,8 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::RangeEmpty(value)
         | CompilerExpressionKind::Not(value)
         | CompilerExpressionKind::Validate { value, .. } => expression_uses_extended_debug(value),
-        CompilerExpressionKind::RationalConstruct {
+        CompilerExpressionKind::StringConcat { left, right }
+        | CompilerExpressionKind::RationalConstruct {
             numerator: left,
             denominator: right,
         }
@@ -381,6 +384,33 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::String(value) => {
                 self.emit_string_literal(value, body, expression.span)
+            }
+            CompilerExpressionKind::StringEmpty => {
+                LlValue::String(self.emit_string_value("", body, expression.span))
+            }
+            CompilerExpressionKind::StringConcat { left, right } => {
+                let left = self.emit_expression(left, body, environment);
+                let right = self.emit_expression(right, body, environment);
+                LlValue::String(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.string.concat(ptr {}, ptr {})",
+                        left.string(),
+                        right.string()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::StringEmptyPredicate(value) => {
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Boolean(body.instruction(
+                    &format!(
+                        "call i1 @topal.runtime.string.is.empty(ptr {})",
+                        value.string()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
             }
             CompilerExpressionKind::StringUtf8ByteCount(value) => {
                 let value = self.emit_expression(value, body, environment);
@@ -3228,6 +3258,31 @@ mod tests {
         );
         assert!(llvm.contains("%same.length = icmp eq i64 %left.length, %right.length"));
         assert!(llvm.contains("%same.byte = icmp eq i8 %left.byte, %right.byte"));
+    }
+
+    #[test]
+    fn emits_freestanding_string_construction_concatenation_and_emptiness() {
+        // TOPAL-COMPILER-STRING-CONSTRUCTION-001
+        let source = include_str!("../../../examples/language/string-construction.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/string-construction.t").emit();
+        assert_eq!(
+            llvm.matches("call ptr @topal.runtime.string.concat")
+                .count(),
+            5
+        );
+        assert_eq!(
+            llvm.matches("call i1 @topal.runtime.string.is.empty")
+                .count(),
+            2
+        );
+        assert!(llvm.contains("call void @topal.runtime.string.dynamic.print"));
+        assert!(llvm.contains("call i1 @topal.runtime.string.has.delimiter"));
+        assert!(llvm.contains("call ptr @topal.platform.allocate(i64 %allocation.length)"));
+        assert_eq!(llvm.matches("call void @llvm.memcpy.inline").count(), 2);
+        assert!(llvm.contains(
+            "call ptr @topal.runtime.string.make(ptr %data, i64 %length, ptr null, i64 0)"
+        ));
     }
 
     #[test]

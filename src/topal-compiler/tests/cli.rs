@@ -886,6 +886,66 @@ fn gdb_renders_string_and_error_fields() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn gdb_renders_dynamically_concatenated_strings() {
+    // TOPAL-COMP-STRING-CONSTRUCTION-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-string-concat");
+    let source = directory.join("string-concat-debug.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ncombine is fn (left : String, right : String) -> String\n  combined is left concat right\n  combined\ncombine (text__\"value \"text and \"text_ marker\"text__, \"!\")\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let tools = LlvmTools::discover(None).unwrap();
+    let dwarf_tool = tools.directory.join("llvm-dwarfdump");
+    if dwarf_tool.is_file() {
+        let dwarf = run(Command::new(dwarf_tool).arg("--verify").arg(&executable));
+        assert!(
+            dwarf.status.success(),
+            "{}",
+            String::from_utf8_lossy(&dwarf.stderr)
+        );
+    }
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break string-concat-debug.t:4",
+            "-ex",
+            "run",
+            "-ex",
+            "print combined",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(
+        text.contains("$1 = text__\"value \"text and \"text_ marker!\"text__"),
+        "{text}"
+    );
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_distinguishes_overloads_and_static_functions() {
     // TOPAL-COMP-DEBUG-001, TOPAL-FUNCTION-OVERLOAD-001,
     // TOPAL-FUNCTION-STATIC-NULLARY-001, TOPAL-FUNCTION-STATIC-BINARY-001

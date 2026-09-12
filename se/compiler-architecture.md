@@ -72,18 +72,19 @@ open endpoint. Pointer-bearing range objects are also constructed at run time
 to preserve relocation-free no-loader PIE output.
 
 String values use immutable `{data, length, display, display-length}`
-descriptors containing UTF-8 bytes and a cached canonical source spelling.
+descriptors containing UTF-8 bytes and an optional cached canonical display.
 Only relocation-free byte arrays reside in the static image; descriptors are
 constructed through the Topal allocator at run time because their pointers
 otherwise require loader-applied absolute relocations. The compiler computes
-the display spelling for the literal-only admitted slice; future dynamic String
-constructors must populate the same invariant. Functions, decision joins,
-Result payloads, DWARF, and GDB all use the same private pointer representation.
+and caches literal display spelling. A null display pointer marks a dynamic
+descriptor whose canonical spelling is emitted from preserved bytes. Functions,
+decision joins, Result payloads, DWARF, and GDB all use the same private pointer
+representation.
 The syscall runtime writes canonical ordinary or tagged Topal literals without
 relying on a C locale or string library. This descriptor foundation admits
-literal transport and display; subsequent increments reuse it for byte count
-and exact equality, while the remaining Unicode String operations stay in
-roadmap increment 4b2.
+literal transport and display; subsequent increments reuse it for byte count,
+exact equality, and concatenation, while the remaining Unicode String
+operations stay in roadmap increment 4b3.
 
 The prospective UTF-8 byte-count operation reads the preserved-byte length
 already stored in that descriptor; it does not scan display spelling, attach an
@@ -103,6 +104,28 @@ call a foreign string routine. Derived `Optional String` equality validates both
 Optional tags and invokes the same comparator only when both alternatives are
 `Some`; two `None` values compare equal and different alternatives do not load
 payloads.
+
+Empty construction creates the zero-length String value through the same
+descriptor path, while adjacent source literals are composed into one preserved
+sequence during mandatory frontend construction. Dynamic concatenation
+evaluates operands left to right, checks target-length addition, obtains exact
+storage from the Linux mapping boundary, and copies both preserved UTF-8 byte
+sequences without normalization. The standard
+[`llvm.memcpy.inline`](https://llvm.org/docs/LangRef.html#llvm-memcpy-inline-intrinsic)
+intrinsic expresses each nonoverlapping dynamic copy and guarantees that target
+lowering does not introduce an external function. A zero-byte result still
+receives a valid private allocation so it never relies on zero-length `mmap`
+behavior.
+
+Concatenated descriptors omit the display cache. Their print path scans for a
+quote and emits either the ordinary quoted spelling or the shortest
+collision-free `text` tag, extending it with underscores as required. It emits
+preserved data unchanged and uses only complete syscall writes; no locale,
+Unicode transformation, foreign allocator, or C/C++ string routine participates.
+The GDB renderer continues to decode the preserved data and therefore observes
+literal and concatenated Strings identically. String emptiness reads only the
+preserved-byte length, which is zero exactly when the valid UTF-8 scalar
+sequence is empty.
 
 Fallible exact operations return immutable Result headers containing a
 canonical success-or-error tag and one opaque payload pointer. Successful
@@ -368,6 +391,7 @@ validated semantic interface.
 | `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum, and fallible arithmetic control flow with typed result joins |
 | DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including native enum labels and bundled renderers for private Int, Rational, and finite exact Range objects |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
+| `llvm.memcpy.inline` | used | target-qualified dynamic String copies while retaining LLVM's guarantee that lowering calls no external function |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |
 | `llvm-link`, `llvm-dis`, `llvm-extract`, `llvm-diff`, `llvm-reduce` | qualification and failure reduction only | production linking occurs from verified modules; these tools remain useful for backend diagnosis but do not improve emitted semantics merely by being invoked |
 | `llvm-ar`, `llvm-ranlib`, `llvm-size` | archive packaging deferred; inspection as needed | compiled-library container and installation rules must precede a public native archive format |

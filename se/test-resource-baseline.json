@@ -4194,6 +4194,26 @@
       "cpu_time_ns": 2994940,
       "memory_peak_bytes": 18464768,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_freestanding_string_construction_concatenation_and_emptiness": {
+      "cpu_time_ns": 4517420,
+      "memory_peak_bytes": 18403328,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_dynamically_concatenated_strings": {
+      "cpu_time_ns": 303685560,
+      "memory_peak_bytes": 57483264,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_constructs_concatenates_and_tests_strings": {
+      "cpu_time_ns": 28738060,
+      "memory_peak_bytes": 18395136,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_string_construction_concatenation_and_emptiness": {
+      "cpu_time_ns": 3343500,
+      "memory_peak_bytes": 18472960,
+      "samples_per_test": 50
     }
   }
 }

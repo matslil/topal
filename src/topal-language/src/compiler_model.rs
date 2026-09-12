@@ -205,6 +205,12 @@ pub enum CompilerExpressionKind {
     Int(BigInt),
     Rational(BigRational),
     String(String),
+    StringEmpty,
+    StringConcat {
+        left: Box<CompilerExpression>,
+        right: Box<CompilerExpression>,
+    },
+    StringEmptyPredicate(Box<CompilerExpression>),
     StringUtf8ByteCount(Box<CompilerExpression>),
     ErrorCode(u32),
     Enum(u32),
@@ -1066,6 +1072,84 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if items.len() > 1
+            && items
+                .iter()
+                .all(|item| matches!(item, Expression::String(_)))
+        {
+            let mut value = String::new();
+            for item in items {
+                let Expression::String(literal) = item else {
+                    unreachable!("checked adjacent String literals")
+                };
+                value.push_str(parse_string(self.source.slice(*literal)).ok_or_else(|| {
+                    source_diagnostic(
+                        &self.source,
+                        "E-STRING-LITERAL",
+                        *literal,
+                        "invalid string literal delimiter",
+                    )
+                })?);
+            }
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::String(value),
+                value_type: CompilerType::String,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [
+            Expression::Identifier(operation),
+            Expression::Identifier(domain),
+        ] = items
+            && self.source.slice(*operation) == "empty"
+            && self.source.slice(*domain) == "String"
+        {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::StringEmpty,
+                value_type: CompilerType::String,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if items.len() >= 3
+            && items.len() % 2 == 1
+            && items.iter().skip(1).step_by(2).all(
+                |item| matches!(item, Expression::Identifier(operation) if self.source.slice(*operation) == "concat"),
+            )
+        {
+            let mut result = self.analyze_expression(&items[0], environment)?;
+            require_type(
+                &self.source,
+                result.span,
+                &CompilerType::String,
+                &result.value_type,
+            )?;
+            for operand in items.iter().skip(2).step_by(2) {
+                let right = self.analyze_expression(operand, environment)?;
+                require_type(
+                    &self.source,
+                    right.span,
+                    &CompilerType::String,
+                    &right.value_type,
+                )?;
+                let expression_span = Span::new(result.span.start, right.span.end);
+                result = CompilerExpression {
+                    kind: CompilerExpressionKind::StringConcat {
+                        left: Box::new(result),
+                        right: Box::new(right),
+                    },
+                    value_type: CompilerType::String,
+                    int_range: None,
+                    rational_value: None,
+                    span: expression_span,
+                };
+            }
+            result.span = span;
+            return Ok(result);
+        }
         if let [Expression::Identifier(constructor), value] = items
             && self.source.slice(*constructor) == "Some"
         {
@@ -1577,12 +1661,21 @@ impl Analyzer {
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
         let operand = self.analyze_expression(operand, environment)?;
+        if operation == "empty?" && operand.value_type == CompilerType::String {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::StringEmptyPredicate(Box::new(operand)),
+                value_type: CompilerType::Boolean,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         let CompilerType::Range(endpoint) = &operand.value_type else {
             if operation == "empty?" {
                 return Err(unsupported(
                     &self.source,
                     operand.span,
-                    "empty? for a non-Range value",
+                    "empty? for this value type",
                 ));
             }
             return Err(source_diagnostic(
@@ -3142,6 +3235,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
         | CompilerExpressionKind::String(_)
+        | CompilerExpressionKind::StringEmpty
         | CompilerExpressionKind::ErrorCode(_)
         | CompilerExpressionKind::Enum(_)
         | CompilerExpressionKind::OptionalNone => true,
@@ -3163,6 +3257,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::OptionalSome(value)
+        | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::ErrorField { error: value, .. }
         | CompilerExpressionKind::RangeLower(value)
@@ -3178,7 +3273,8 @@ fn compiler_expression_is_closed_with(
             compiler_expression_is_closed_with(numerator, bound)
                 && compiler_expression_is_closed_with(denominator, bound)
         }
-        CompilerExpressionKind::Binary { left, right, .. } => {
+        CompilerExpressionKind::StringConcat { left, right }
+        | CompilerExpressionKind::Binary { left, right, .. } => {
             compiler_expression_is_closed_with(left, bound)
                 && compiler_expression_is_closed_with(right, bound)
         }
@@ -3728,6 +3824,56 @@ mod tests {
                 ..
             }
         )));
+    }
+
+    #[test]
+    fn models_string_construction_concatenation_and_emptiness() {
+        // TOPAL-STRING-EMPTY-001, TOPAL-STRING-LITERAL-COMPOSE-001,
+        // TOPAL-STRING-CONCAT-001, TOPAL-STRING-EMPTY-PREDICATE-001
+        let source = include_str!("../../../examples/language/string-construction.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert!(program.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::StringEmpty,
+                    ..
+                },
+                ..
+            })
+        )));
+        assert_eq!(
+            program
+                .main
+                .statements
+                .iter()
+                .filter(|statement| matches!(
+                    statement,
+                    CompilerStatement::Binding(CompilerBinding {
+                        value: CompilerExpression {
+                            kind: CompilerExpressionKind::StringConcat { .. },
+                            ..
+                        },
+                        ..
+                    })
+                ))
+                .count(),
+            4
+        );
+        assert!(program.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::String(value),
+                    ..
+                },
+                ..
+            }) if value == "adjacent literals"
+        )));
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(String, Boolean, Boolean, Boolean, String, String, String, String, String)"
+        );
     }
 
     #[test]
