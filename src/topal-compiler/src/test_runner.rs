@@ -37,6 +37,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/exhaustive-error-code-decisions.t",
     "examples/language/finite-exact-division-and-comparison.t",
     "examples/language/finite-range-observation.t",
+    "examples/language/forward-function-declarations.t",
     "examples/language/function-call-chains.t",
     "examples/language/function-local-shadowing.t",
     "examples/language/function-overloads.t",

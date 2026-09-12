@@ -41,9 +41,14 @@ filtering; only the selected candidate's canonical scalar conversions reach
 code generation. Staticness is retained as semantic availability rather than a
 different machine convention: a static body may select only another static
 declaration, while root and ordinary runtime contexts may select either form.
-This increment covers statically decidable scalar headers. Dynamic structural
-classifier dispatch, function values, closures, and recursive call graphs remain
-later frontend work and do not leak into the private ABI prematurely.
+Complete explicitly classified headers are collected for a declaration scope
+before selected bodies are checked, so an acyclic scalar call may target a
+later source declaration. Depth-first instantiation emits the selected callee
+before its caller while retaining source locations for both DWARF frames;
+ordinary initializer bindings remain source-ordered. This increment covers
+statically decidable scalar headers. Dynamic structural classifier dispatch,
+function values, closures, and recursive call graphs remain later frontend work
+and do not leak into the private ABI prematurely.
 
 `topal-native/6` represents finite `Int` values as immutable pointers to a
 canonical sign-and-magnitude object with little-endian base-2^32 limbs. The

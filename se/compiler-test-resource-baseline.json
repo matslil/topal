@@ -716,6 +716,16 @@
       "cpu_time_ns": 162697,
       "memory_peak_bytes": 18227200,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/forward-function-declarations.t": {
+      "cpu_time_ns": 120572740,
+      "memory_peak_bytes": 41656320,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/forward-function-declarations.t": {
+      "cpu_time_ns": 165240,
+      "memory_peak_bytes": 18358272,
+      "samples_per_test": 500
     }
   }
 }

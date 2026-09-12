@@ -212,6 +212,13 @@ and ordinary bodies may call ordinary or static declarations. Staticness shall
 not create a public ABI distinction or permit compile-time execution to alter
 observable behavior at O0.
 
+Complete explicitly classified headers in one declaration scope shall be
+collected before selected bodies are checked, permitting an admitted acyclic
+body to call a later function declaration. Depth-first instantiation shall place
+that callee before its caller in the checked program and emitted module while
+ordinary value initializers remain source-ordered. DWARF and GDB shall retain
+both source functions and their nested runtime frames.
+
 These additions cover the admitted scalar cases of
 `TOPAL-FUNCTION-STATIC-NULLARY-001`, `TOPAL-FUNCTION-STATIC-UNARY-001`,
 `TOPAL-FUNCTION-STATIC-BINARY-001`, `TOPAL-FUNCTION-BLOCK-001`,

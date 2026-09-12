@@ -170,6 +170,12 @@ applicable complete input header without consulting result context, and emit a
 distinct checked call-graph identity and private native function for the
 selected overload.
 
+Complete explicitly classified function headers in one declaration scope SHALL
+be collected before any selected body is checked. An admitted acyclic body MAY
+therefore call a function declared later in that scope. The callee SHALL still
+be checked and emitted before its caller, and ordinary value initializers SHALL
+remain source-ordered rather than acquire forward visibility.
+
 Static nullary, unary, and positional-product functions SHALL use the same
 private scalar representations as ordinary functions. A static function body
 SHALL NOT select an ordinary callee. LLVM lowering and DWARF SHALL retain each

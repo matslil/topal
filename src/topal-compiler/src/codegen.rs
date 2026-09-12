@@ -3708,6 +3708,22 @@ mod tests {
     }
 
     #[test]
+    fn emits_forward_callee_before_its_caller() {
+        // TOPAL-FUNCTION-FORWARD-DECLARATION-001, TOPAL-COMPILER-FUNCTION-001
+        let source = include_str!("../../../examples/language/forward-function-declarations.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "forward-function-declarations.t").emit();
+        let decorate_definition = llvm
+            .find("define internal fastcc ptr @topal.fn.decorate.0")
+            .unwrap();
+        let render_definition = llvm
+            .find("define internal fastcc ptr @topal.fn.render.1")
+            .unwrap();
+        assert!(decorate_definition < render_definition);
+        assert!(llvm.contains("call fastcc ptr @topal.fn.decorate.0(ptr %arg0)"));
+    }
+
+    #[test]
     fn emits_nominal_enums_as_checked_i32_tags_with_dwarf_enumerators() {
         // TOPAL-COMPILER-ENUM-001
         let source = "use language (version is v0.1)\nColor is Enum (Red, Green, Blue)\nnext is fn (value : Color) -> Color\n  value\n    Red then Green\n    Green then Blue\n    Blue then Red\n(next Red, next Green)\n";

@@ -5570,6 +5570,28 @@ mod tests {
     }
 
     #[test]
+    fn models_complete_header_forward_function_calls() {
+        // TOPAL-FUNCTION-FORWARD-DECLARATION-001, TOPAL-COMPILER-FUNCTION-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/forward-function-declarations.t"
+        ))
+        .unwrap();
+        assert_eq!(
+            program
+                .functions
+                .iter()
+                .map(|function| function.source_name.as_str())
+                .collect::<Vec<_>>(),
+            ["decorate", "render"]
+        );
+        let CompilerExpressionKind::Call { symbol, .. } = &program.functions[1].body.result.kind
+        else {
+            panic!("expected the earlier function to call the later declaration")
+        };
+        assert_eq!(symbol, &program.functions[0].symbol);
+    }
+
+    #[test]
     fn models_explicit_early_return_and_skips_the_tail() {
         // TOPAL-FUNCTION-RETURN-001
         let source = "use language (version is v0.1)\nanswer is fn static () -> Int\n  return 40 + 2\n  0\nanswer ()\n";
