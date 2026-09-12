@@ -4519,6 +4519,21 @@
       "cpu_time_ns": 2877020,
       "memory_peak_bytes": 18227200,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_recursive_private_tuple_function_results_and_debug_types": {
+      "cpu_time_ns": 8371160,
+      "memory_peak_bytes": 18157568,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::tuple_result_is_freestanding_and_gdb_exposes_its_source_shape": {
+      "cpu_time_ns": 311092480,
+      "memory_peak_bytes": 56676352,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_private_tuple_function_results_recursively": {
+      "cpu_time_ns": 2914060,
+      "memory_peak_bytes": 18423808,
+      "samples_per_test": 50
     }
   }
 }

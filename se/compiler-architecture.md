@@ -34,6 +34,28 @@ foreign adapters may use target `ccc` only with fixed-width scalars or opaque
 handles. Aggregate classification is adapter work and will be checked against
 the target's reference C frontend before a foreign interface is admitted.
 
+An admitted positional-product result whose fields already have exact private
+machine values uses a recursively nested, non-packed LLVM literal struct. Unit
+occupies a sealed `i8` field inside such a value even though a standalone Unit
+function returns `void`; every other field retains its existing private scalar
+carrier. Construction and observation use LLVM `insertvalue` and
+`extractvalue`, and both the internal definition and every call use one exact
+`fastcc` prototype. LLVM therefore owns the physical x86-64 register/stack
+lowering, while the Topal frontend continues to own field order, source type
+identity, and conversion. This convention is module-private and qualified by
+the recorded target, LLVM version, and `topal-native/6`; it is neither a stable
+library boundary nor a foreign aggregate ABI.
+
+Tuple DWARF uses the same field order and the size, alignment, and padding
+derived by the qualified x86-64 target implementation from the module data
+layout. LLVM 22 does not preserve a direct SSA aggregate `#dbg_value` as an
+inspectable x86-64 local in this O0 path, so a named Tuple binding also receives
+a debug-only stack shadow and `#dbg_declare`. This shadow changes neither the
+semantic value representation nor call transport, requires no allocator or
+runtime, and is retained deliberately for deterministic GDB inspection.
+Records, aggregate parameters, persistent aggregate storage, and public
+interoperation remain separate representation decisions.
+
 The checked frontend resolves each admitted source-ordered overload before IR
 generation and gives every selected input signature a distinct call-graph node
 and private LLVM symbol. Argument expressions are modeled once before candidate

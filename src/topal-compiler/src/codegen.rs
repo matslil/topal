@@ -293,8 +293,23 @@ impl<'a> Generator<'a> {
             | LlValue::Enum { value, .. } => {
                 body.terminator(&format!("ret i32 {value}"), location);
             }
-            LlValue::Tuple(_) | LlValue::Record(_) => {
-                unreachable!("shared model restricts machine results")
+            LlValue::Tuple(fields) => {
+                let CompilerType::Tuple(field_types) = &function.result_type else {
+                    unreachable!("checked Tuple result retains its Tuple type")
+                };
+                let aggregate = self.emit_tuple_aggregate(
+                    &fields,
+                    field_types,
+                    &mut body,
+                    function.body.result.span,
+                );
+                body.terminator(
+                    &format!("ret {} {aggregate}", llvm_value_type(&function.result_type)),
+                    location,
+                );
+            }
+            LlValue::Record(_) => {
+                unreachable!("shared model restricts Record machine results")
             }
         }
         self.functions.push(format!(
@@ -302,6 +317,74 @@ impl<'a> Generator<'a> {
             function.symbol,
             body.render()
         ));
+    }
+
+    fn emit_tuple_aggregate(
+        &mut self,
+        fields: &[LlValue],
+        field_types: &[CompilerType],
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        debug_assert_eq!(fields.len(), field_types.len());
+        let aggregate_type = llvm_value_type(&CompilerType::Tuple(field_types.to_vec()));
+        let mut aggregate = "poison".to_owned();
+        for (index, (field, field_type)) in fields.iter().zip(field_types).enumerate() {
+            let field = self.emit_machine_operand(field, field_type, body, span);
+            aggregate = body.instruction(
+                &format!("insertvalue {aggregate_type} {aggregate}, {field}, {index}"),
+                span,
+                &mut self.debug,
+            );
+        }
+        aggregate
+    }
+
+    fn emit_machine_operand(
+        &mut self,
+        value: &LlValue,
+        value_type: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        match (value, value_type) {
+            (LlValue::Tuple(fields), CompilerType::Tuple(field_types)) => {
+                let aggregate = self.emit_tuple_aggregate(fields, field_types, body, span);
+                format!("{} {aggregate}", llvm_value_type(value_type))
+            }
+            (LlValue::Record(_), CompilerType::Record(_)) => {
+                unreachable!("shared model restricts Record machine values")
+            }
+            _ => value.argument(),
+        }
+    }
+
+    fn emit_tuple_extract(
+        &mut self,
+        aggregate: &str,
+        field_types: &[CompilerType],
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        let aggregate_type = llvm_value_type(&CompilerType::Tuple(field_types.to_vec()));
+        LlValue::Tuple(
+            field_types
+                .iter()
+                .enumerate()
+                .map(|(index, field_type)| {
+                    let field = body.instruction(
+                        &format!("extractvalue {aggregate_type} {aggregate}, {index}"),
+                        span,
+                        &mut self.debug,
+                    );
+                    if let CompilerType::Tuple(nested_types) = field_type {
+                        self.emit_tuple_extract(&field, nested_types, body, span)
+                    } else {
+                        machine_value(field_type, field)
+                    }
+                })
+                .collect(),
+        )
     }
 
     fn emit_main(&mut self) {
@@ -347,6 +430,35 @@ impl<'a> Generator<'a> {
                         );
                         let location = self.debug.location(binding.span, body.subprogram);
                         body.debug_value(&value, variable, location);
+                    } else if let (LlValue::Tuple(fields), CompilerType::Tuple(field_types)) =
+                        (&value, &binding.value.value_type)
+                        && private_tuple_value_supported(&binding.value.value_type)
+                    {
+                        let aggregate =
+                            self.emit_tuple_aggregate(fields, field_types, body, binding.span);
+                        let value_type = llvm_value_type(&binding.value.value_type);
+                        let alignment =
+                            target_value_layout(&binding.value.value_type).alignment / 8;
+                        let address = body.instruction(
+                            &format!("alloca {value_type}, align {alignment}"),
+                            binding.span,
+                            &mut self.debug,
+                        );
+                        body.effect(
+                            &format!(
+                                "store {value_type} {aggregate}, ptr {address}, align {alignment}"
+                            ),
+                            binding.span,
+                            &mut self.debug,
+                        );
+                        let variable = self.debug.local(
+                            &binding.name,
+                            binding.span,
+                            &binding.value.value_type,
+                            body.subprogram,
+                        );
+                        let location = self.debug.location(binding.span, body.subprogram);
+                        body.debug_declare(&address, variable, location);
                     }
                     environment.insert(binding.name.clone(), value);
                 }
@@ -854,8 +966,17 @@ impl<'a> Generator<'a> {
                         ),
                         payload: payload.as_ref().clone(),
                     },
-                    CompilerType::Tuple(_) | CompilerType::Record(_) => {
-                        unreachable!("shared model restricts call result types")
+                    CompilerType::Tuple(ref field_types) => {
+                        let aggregate_type = llvm_value_type(&expression.value_type);
+                        let aggregate = body.instruction(
+                            &format!("call fastcc {aggregate_type} @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        self.emit_tuple_extract(&aggregate, field_types, body, expression.span)
+                    }
+                    CompilerType::Record(_) => {
+                        unreachable!("shared model restricts Record call result types")
                     }
                 }
             }
@@ -2687,8 +2808,18 @@ impl FunctionBody {
             | LlValue::Enum { value, .. } => format!("i32 {value}"),
             LlValue::Tuple(_) | LlValue::Record(_) => return,
         };
+        self.debug_value_operand(&value, variable, location);
+    }
+
+    fn debug_value_operand(&mut self, value: &str, variable: usize, location: usize) {
         self.lines.push(format!(
             "    #dbg_value({value}, !{variable}, !DIExpression(), !{location})"
+        ));
+    }
+
+    fn debug_declare(&mut self, address: &str, variable: usize, location: usize) {
+        self.lines.push(format!(
+            "    #dbg_declare(ptr {address}, !{variable}, !DIExpression(), !{location})"
         ));
     }
 
@@ -2738,6 +2869,7 @@ struct DebugInfo {
     completed_type: usize,
     effect_type: usize,
     enum_types: BTreeMap<String, usize>,
+    tuple_types: Vec<(CompilerType, usize)>,
     source: topal_source::SourceText,
     filename: String,
 }
@@ -2783,6 +2915,7 @@ impl DebugInfo {
             completed_type: 0,
             effect_type: 0,
             enum_types: BTreeMap::new(),
+            tuple_types: Vec::new(),
             source,
             filename,
         };
@@ -3157,10 +3290,53 @@ impl DebugInfo {
             CompilerType::Optional(_) => {
                 unreachable!("unsupported Optional payload type reached codegen")
             }
-            CompilerType::Tuple(_) | CompilerType::Record(_) => {
-                unreachable!("structural values have no native debug representation yet")
+            CompilerType::Tuple(fields) => self.tuple_type(fields),
+            CompilerType::Record(_) => {
+                unreachable!("Record values have no native debug representation yet")
             }
         }
+    }
+
+    fn tuple_type(&mut self, fields: &[CompilerType]) -> usize {
+        let value_type = CompilerType::Tuple(fields.to_vec());
+        if let Some((_, type_id)) = self
+            .tuple_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+
+        let mut offset = 0;
+        let mut aggregate_alignment = 8;
+        let mut members = Vec::with_capacity(fields.len());
+        for (index, field) in fields.iter().enumerate() {
+            let layout = target_value_layout(field);
+            offset = align_bits(offset, layout.alignment);
+            aggregate_alignment = aggregate_alignment.max(layout.alignment);
+            let field_type = self.type_id(field);
+            members.push(self.node(format!(
+                "!DIDerivedType(tag: DW_TAG_member, name: \"_{index}\", file: !{}, baseType: !{field_type}, size: {}, align: {}, offset: {offset})",
+                self.file, layout.size, layout.alignment
+            )));
+            offset += layout.size;
+        }
+        let size = align_bits(offset, aggregate_alignment);
+        let elements = self.node(format!(
+            "!{{{}}}",
+            members
+                .iter()
+                .map(|member| format!("!{member}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let type_id = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"{}\", file: !{}, size: {size}, align: {aggregate_alignment}, elements: !{elements})",
+            llvm_string(&value_type.name()),
+            self.file
+        ));
+        self.tuple_types.push((value_type, type_id));
+        type_id
     }
 
     fn enum_type(&mut self, enumeration: &CompilerEnumType) -> usize {
@@ -3303,11 +3479,86 @@ impl DebugInfo {
     }
 }
 
-fn llvm_type(value_type: &CompilerType) -> &'static str {
+fn llvm_type(value_type: &CompilerType) -> String {
     match value_type {
-        CompilerType::Unit => "void",
-        CompilerType::Completed | CompilerType::Effect => "i8",
-        CompilerType::Boolean => "i1",
+        CompilerType::Unit => "void".into(),
+        CompilerType::Record(_) => {
+            unreachable!("shared model restricts Record function ABI types")
+        }
+        _ => llvm_value_type(value_type),
+    }
+}
+
+#[derive(Clone, Copy)]
+struct TargetValueLayout {
+    size: u64,
+    alignment: u64,
+}
+
+fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
+    match value_type {
+        CompilerType::Unit
+        | CompilerType::Completed
+        | CompilerType::Effect
+        | CompilerType::Boolean => TargetValueLayout {
+            size: 8,
+            alignment: 8,
+        },
+        CompilerType::Type
+        | CompilerType::Comparison
+        | CompilerType::ErrorCode
+        | CompilerType::Enum(_) => TargetValueLayout {
+            size: 32,
+            alignment: 32,
+        },
+        CompilerType::Int
+        | CompilerType::Nat
+        | CompilerType::Rational
+        | CompilerType::Error
+        | CompilerType::ErrorDomain
+        | CompilerType::Range(_)
+        | CompilerType::Result(_)
+        | CompilerType::Optional(_)
+        | CompilerType::Character
+        | CompilerType::String => TargetValueLayout {
+            size: 64,
+            alignment: 64,
+        },
+        CompilerType::Tuple(fields) => {
+            let mut size = 0;
+            let mut alignment = 8;
+            for field in fields {
+                let field = target_value_layout(field);
+                size = align_bits(size, field.alignment) + field.size;
+                alignment = alignment.max(field.alignment);
+            }
+            TargetValueLayout {
+                size: align_bits(size, alignment),
+                alignment,
+            }
+        }
+        CompilerType::Record(_) => {
+            unreachable!("shared model restricts Record machine layouts")
+        }
+    }
+}
+
+fn align_bits(value: u64, alignment: u64) -> u64 {
+    value.div_ceil(alignment) * alignment
+}
+
+fn private_tuple_value_supported(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Tuple(fields) => fields.iter().all(private_tuple_value_supported),
+        CompilerType::Record(_) => false,
+        _ => true,
+    }
+}
+
+fn llvm_value_type(value_type: &CompilerType) -> String {
+    match value_type {
+        CompilerType::Unit | CompilerType::Completed | CompilerType::Effect => "i8".into(),
+        CompilerType::Boolean => "i1".into(),
         CompilerType::Int
         | CompilerType::Nat
         | CompilerType::Rational
@@ -3317,19 +3568,30 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
         | CompilerType::String
         | CompilerType::Range(_)
         | CompilerType::Result(_)
-        | CompilerType::Optional(_) => "ptr",
+        | CompilerType::Optional(_) => "ptr".into(),
         CompilerType::Type
         | CompilerType::Comparison
         | CompilerType::ErrorCode
-        | CompilerType::Enum(_) => "i32",
-        CompilerType::Tuple(_) | CompilerType::Record(_) => {
-            unreachable!("shared model restricts function ABI types")
+        | CompilerType::Enum(_) => "i32".into(),
+        CompilerType::Tuple(fields) => format!(
+            "{{ {} }}",
+            fields
+                .iter()
+                .map(llvm_value_type)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        CompilerType::Record(_) => {
+            unreachable!("shared model restricts Record machine value types")
         }
     }
 }
 
 fn function_parameter_value(value_type: &CompilerType, index: usize) -> LlValue {
-    let value = format!("%arg{index}");
+    machine_value(value_type, format!("%arg{index}"))
+}
+
+fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
     match value_type {
         CompilerType::Unit => LlValue::Unit,
         CompilerType::Completed => LlValue::Completed(value),
@@ -3363,7 +3625,7 @@ fn function_parameter_value(value_type: &CompilerType, index: usize) -> LlValue 
             payload: payload.as_ref().clone(),
         },
         CompilerType::Tuple(_) | CompilerType::Record(_) => {
-            unreachable!("shared model restricts machine parameters")
+            unreachable!("aggregate machine values require structural lowering")
         }
     }
 }
@@ -3520,6 +3782,37 @@ mod tests {
                 .unwrap();
         let llvm = Generator::new(&equality, "effect-identity.t").emit();
         assert!(llvm.contains("icmp eq i8 0, 0"));
+    }
+
+    #[test]
+    fn emits_recursive_private_tuple_function_results_and_debug_types() {
+        // TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001,
+        // TOPAL-COMPILER-TUPLE-RESULT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/completion-effect-value.t"
+        ))
+        .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "completion-effect-value.t").emit();
+        assert!(llvm.contains(&format!("define internal fastcc {{ i8, i8 }} @{symbol}()")));
+        assert!(llvm.contains("insertvalue { i8, i8 } poison, i8 0, 0"));
+        assert!(llvm.contains("insertvalue { i8, i8 } %v0, i8 0, 1"));
+        assert!(llvm.contains(&format!("call fastcc {{ i8, i8 }} @{symbol}()")));
+        assert!(llvm.contains("extractvalue { i8, i8 }"));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"(Completed, Effect)\""));
+        assert!(llvm.contains("name: \"_0\""));
+        assert!(llvm.contains("name: \"_1\""));
+
+        let nested = analyze_for_compiler(
+            "use language (version is v0.1)\nmake is fn static () -> ((Int, Boolean), String)\n  ((42, true), \"Topal\")\nmake ()\n",
+        )
+        .unwrap();
+        let llvm = Generator::new(&nested, "nested-tuple-result.t").emit();
+        assert!(llvm.contains("fastcc { { ptr, i1 }, ptr }"));
+        assert!(llvm.contains("insertvalue { ptr, i1 }"));
+        assert!(llvm.contains("extractvalue { { ptr, i1 }, ptr }"));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"((Int, Boolean), String)\", file:"));
+        assert!(llvm.contains("size: 192, align: 64"));
     }
 
     #[test]

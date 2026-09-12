@@ -2017,6 +2017,88 @@ fn gdb_retains_effect_identity_across_a_function_boundary() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn tuple_result_is_freestanding_and_gdb_exposes_its_source_shape() {
+    // TOPAL-COMPILER-TUPLE-RESULT-001,
+    // TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001,
+    // TOPAL-COMPILER-ABI-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-tuple-result");
+    let source = directory.join("completion-effect-value.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/completion-effect-value.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(Completed, Effects ())\n");
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            "break completion-effect-value.t:9",
+            "-ex",
+            "run",
+            "-ex",
+            "next",
+            "-ex",
+            "ptype 'topal.fn.finish.0'",
+            "-ex",
+            "whatis result",
+            "-ex",
+            "print result",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = struct (Completed, Effect)"), "{text}");
+    assert!(
+        text.contains("enum Completed _0;") && text.contains("enum Effect _1;"),
+        "{text}"
+    );
+    assert!(text.contains("$1 = {_0 = Completed, _1 = empty}"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_retains_fundamental_type_identity_across_a_function_boundary() {
     // TOPAL-COMP-DEBUG-001, TOPAL-ABSTRACTION-TYPE-BOUNDARY-001
     let directory = temporary("gdb-type-boundary");

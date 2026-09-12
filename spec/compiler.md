@@ -369,8 +369,10 @@ machine carrier SHALL NOT be exposed as a public integer or foreign ABI.
 without performing a runtime interaction. The compiler SHALL keep that checked
 identity distinct from Unit and `Completed` through bindings, same-type
 equality, decomposed positional products, scalar function parameters and
-results, canonical display, DWARF, and GDB. The current scalar subset SHALL NOT
-claim aggregate function-result or Effect-list support.
+results, canonical display, DWARF, and GDB. The Effect-only scalar subset SHALL
+NOT by itself claim aggregate function-result or Effect-list support;
+`TOPAL-COMPILER-TUPLE-RESULT-001` separately admits a qualified Tuple result
+containing this value.
 
 The empty row MAY use a sealed singleton machine carrier, but that carrier SHALL
 NOT become a public integer ABI or make distinct Topal types interchangeable.
@@ -378,6 +380,32 @@ Construction and passage SHALL require no allocation or effect-specific runtime
 call. Display SHALL use only the Topal-owned platform write boundary. This
 increment SHALL add no foreign dependency, other-language standard library, or
 native ABI revision.
+
+### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
+
+In the admitted decision-free subset, an ordinary or static function result
+classified by a recursively composed Tuple SHALL preserve every field in source
+order when every leaf type has an admitted exact private scalar representation.
+The function body SHALL evaluate once according to the existing block and
+return rules, and its caller SHALL receive the same complete Tuple without
+field erasure, integer substitution, semantic heap storage, runtime allocation,
+or dependence on optimization.
+
+For Linux x86-64, the backend SHALL express this result as a non-packed LLVM
+struct whose fields recursively use those private value types. The definition
+and every call SHALL have one exactly matching private calling convention and
+prototype; LLVM SHALL select the physical register or stack transport under the
+qualified target and data layout. This representation SHALL NOT be exposed as
+a stable compiled-library or foreign ABI. Aggregate parameters, Record results,
+Tuple-valued control-flow joins, and any Tuple containing an unsupported leaf
+SHALL remain rejected.
+
+DWARF SHALL describe the source Tuple, its ordered fields, and its target-exact
+layout. Named Tuple bindings SHALL remain inspectable in GDB at O0; a
+debug-only stack shadow MAY be used when LLVM cannot preserve a direct SSA
+aggregate location. Such a shadow SHALL NOT become the semantic representation
+or require a runtime, foreign allocator, C/C++ library, other-language standard
+library, or native ABI revision.
 
 ### TOPAL-COMPILER-TYPE-VALUE-001 — Closed fundamental Type values
 

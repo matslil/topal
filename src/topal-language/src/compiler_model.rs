@@ -3356,7 +3356,7 @@ impl Analyzer {
             });
         }
         let result_type = self.parse_classifier(declaration.result)?;
-        if !result_type.machine_scalar() || !compiler_abi_type_supported(&result_type) {
+        if !compiler_function_result_supported(&result_type) {
             return Err(unsupported(
                 &self.source,
                 declaration.result,
@@ -4427,6 +4427,17 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
         }
         _ => true,
     }
+}
+
+fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
+    if value_type.machine_scalar() {
+        return compiler_abi_type_supported(value_type);
+    }
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.iter().all(compiler_function_result_supported)
+    )
 }
 
 fn decision_binding_environment(
@@ -5949,6 +5960,42 @@ mod tests {
         ] {
             assert!(analyze_for_compiler(source).is_ok());
         }
+    }
+
+    #[test]
+    fn models_private_tuple_function_results_recursively() {
+        // TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001,
+        // TOPAL-COMPILER-TUPLE-RESULT-001
+        let completion = analyze_for_compiler(include_str!(
+            "../../../examples/language/completion-effect-value.t"
+        ))
+        .unwrap();
+        assert_eq!(completion.functions.len(), 1);
+        assert_eq!(
+            completion.functions[0].result_type,
+            CompilerType::Tuple(vec![CompilerType::Completed, CompilerType::Effect])
+        );
+        assert!(matches!(
+            completion.main.statements.as_slice(),
+            [CompilerStatement::Binding(binding)]
+                if matches!(binding.value.kind, CompilerExpressionKind::Call { .. })
+        ));
+        assert!(matches!(
+            completion.main.result.kind,
+            CompilerExpressionKind::Local(ref name) if name == "result"
+        ));
+
+        let nested = analyze_for_compiler(
+            "use language (version is v0.1)\nmake is fn static () -> ((Int, Boolean), String)\n  ((42, true), \"Topal\")\nmake ()\n",
+        )
+        .unwrap();
+        assert_eq!(
+            nested.functions[0].result_type,
+            CompilerType::Tuple(vec![
+                CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Boolean]),
+                CompilerType::String,
+            ])
+        );
     }
 
     #[test]
