@@ -293,6 +293,26 @@ lookup. This requirement covers `TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`,
 `TOPAL-TYPE-OPTIONAL-EQUALITY-001`. It realizes
 `TOPAL-COMPILER-OPTIONAL-001` for compiler increment 3b2-b4.
 
+## TOPAL-COMP-TUPLE-EQUALITY-001 — Derived positional-product equality
+
+The compiler shall admit equality and inequality between same-classifier
+positional products exactly when every field has an admitted canonical equality
+lowering. The admitted recursive field set is Unit, Completed, Boolean, Int,
+Rational, Comparison, ErrorCode, String, payload-free source Enum,
+`Optional Int`, `Optional String`, and another admitted positional product.
+Both complete operands shall be evaluated once from left to right before their
+corresponding fields are recursively compared, and inequality shall negate the
+same all-fields-equal result.
+
+An expression-local product shall remain a compiler aggregate of field values;
+comparison shall require no allocation, runtime product header, or foreign
+aggregate ABI. Canonical field conversion, general product passage across
+machine signatures, and equality for further field classifiers remain outside
+this increment and shall be rejected at the checked boundary. This requirement
+covers the admitted same-classifier positional-product case of
+`TOPAL-TYPE-EQUALITY-001` and realizes
+`TOPAL-COMPILER-TUPLE-EQUALITY-001` for compiler increment 3b2-b5a.
+
 ## TOPAL-COMP-STRING-UTF8-BYTE-COUNT-001 — Prospective UTF-8 byte count
 
 For an admitted plain String, the compiler shall evaluate

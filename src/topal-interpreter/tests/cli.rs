@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 201);
+    assert_eq!(examples.len(), 202);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2800,6 +2800,22 @@ fn every_mode_constructs_concatenates_and_tests_strings() {
     assert!(trace.contains("TOPAL-STRING-LITERAL-COMPOSE-001"));
     assert_eq!(trace.matches("TOPAL-STRING-CONCAT-001").count(), 5);
     assert_eq!(trace.matches("TOPAL-STRING-EMPTY-PREDICATE-001").count(), 2);
+}
+
+#[test]
+fn every_mode_compares_recursive_positional_products() {
+    let source = include_str!("../../../examples/language/tuple-equality.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(true, false, false, true, true)\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-EQUALITY-001"));
 }
 
 #[test]

@@ -237,6 +237,23 @@ without load-time pointer relocations, passed only through sealed Topal
 signatures, and rendered without a foreign allocator, runtime, or standard
 library.
 
+### TOPAL-COMPILER-TUPLE-EQUALITY-001 — Derived positional-product equality
+
+An admitted equality or inequality between positional products with the same
+field classifiers SHALL evaluate the complete left operand and then the
+complete right operand exactly once. It SHALL recursively apply each field's
+admitted canonical equality and make the products equal exactly when every
+corresponding field is equal. Inequality SHALL be the Boolean negation of that
+same result.
+
+Lowering MAY retain a product as an internal aggregate of field values when it
+does not cross a machine boundary. It SHALL NOT allocate storage or expose a
+public aggregate ABI solely to compare the product. Product equality requiring
+a canonical conversion between differently classified corresponding fields
+SHALL remain unsupported until that conversion has an admitted product
+lowering; the compiler SHALL reject it at the checked boundary rather than
+silently compare incompatible representations.
+
 ### TOPAL-COMPILER-STRING-UTF8-BYTE-COUNT-001 — Native prospective byte count
 
 For an admitted plain String, `text byte-count Utf8` SHALL read the exact

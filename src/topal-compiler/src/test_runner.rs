@@ -62,6 +62,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/string-display-delimiters.t",
     "examples/language/string-exact-equality.t",
     "examples/language/string-utf8-byte-count.t",
+    "examples/language/tuple-equality.t",
     "examples/language/unicode-identifiers.t",
 ];
 

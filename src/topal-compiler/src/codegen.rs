@@ -1514,72 +1514,12 @@ impl<'a> Generator<'a> {
                 } else {
                     "ne"
                 };
-                let instruction = match (left, right) {
-                    (LlValue::Unit, LlValue::Unit) => format!("icmp {predicate} i8 0, 0"),
-                    (LlValue::Completed(left), LlValue::Completed(right)) => {
-                        format!("icmp {predicate} i8 {left}, {right}")
-                    }
-                    (LlValue::Boolean(left), LlValue::Boolean(right)) => {
-                        format!("icmp {predicate} i1 {left}, {right}")
-                    }
-                    (LlValue::Comparison(left), LlValue::Comparison(right))
-                    | (LlValue::ErrorCode(left), LlValue::ErrorCode(right)) => {
-                        format!("icmp {predicate} i32 {left}, {right}")
-                    }
-                    (
-                        LlValue::Enum {
-                            value: left,
-                            enumeration,
-                        },
-                        LlValue::Enum {
-                            value: right,
-                            enumeration: right_enumeration,
-                        },
-                    ) => {
-                        debug_assert_eq!(enumeration, right_enumeration);
-                        format!("icmp {predicate} i32 {left}, {right}")
-                    }
-                    (LlValue::String(left), LlValue::String(right)) => {
-                        let equal = body.instruction(
-                            &format!(
-                                "call i1 @topal.runtime.string.equal(ptr {left}, ptr {right})"
-                            ),
-                            span,
-                            &mut self.debug,
-                        );
-                        format!("icmp {predicate} i1 {equal}, true")
-                    }
-                    (
-                        LlValue::Optional {
-                            value: left,
-                            payload,
-                        },
-                        LlValue::Optional {
-                            value: right,
-                            payload: right_payload,
-                        },
-                    ) => {
-                        debug_assert_eq!(payload, right_payload);
-                        let runtime = match payload {
-                            CompilerType::Int => "optional.int.equal",
-                            CompilerType::String => "optional.string.equal",
-                            _ => unreachable!("checked Optional equality has canonical evidence"),
-                        };
-                        let equal = body.instruction(
-                            &format!("call i1 @topal.runtime.{runtime}(ptr {left}, ptr {right})"),
-                            span,
-                            &mut self.debug,
-                        );
-                        format!("icmp {predicate} i1 {equal}, true")
-                    }
-                    (LlValue::Int(_), LlValue::Int(_))
-                    | (LlValue::Rational(_), LlValue::Rational(_)) => format!(
-                        "icmp {predicate} i32 {}, 0",
-                        self.emit_numeric_compare(left, right, body, span)
-                    ),
-                    _ => unreachable!("checked equality types agree"),
-                };
-                LlValue::Boolean(body.instruction(&instruction, span, &mut self.debug))
+                let equal = self.emit_equal(left, right, body, span);
+                LlValue::Boolean(body.instruction(
+                    &format!("icmp {predicate} i1 {equal}, true"),
+                    span,
+                    &mut self.debug,
+                ))
             }
             CompilerBinary::Less
             | CompilerBinary::Greater
@@ -1599,6 +1539,106 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ))
             }
+        }
+    }
+
+    fn emit_equal(
+        &mut self,
+        left: &LlValue,
+        right: &LlValue,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        match (left, right) {
+            (LlValue::Unit, LlValue::Unit) => {
+                body.instruction("icmp eq i8 0, 0", span, &mut self.debug)
+            }
+            (LlValue::Completed(left), LlValue::Completed(right)) => body.instruction(
+                &format!("icmp eq i8 {left}, {right}"),
+                span,
+                &mut self.debug,
+            ),
+            (LlValue::Boolean(left), LlValue::Boolean(right)) => body.instruction(
+                &format!("icmp eq i1 {left}, {right}"),
+                span,
+                &mut self.debug,
+            ),
+            (LlValue::Comparison(left), LlValue::Comparison(right))
+            | (LlValue::ErrorCode(left), LlValue::ErrorCode(right)) => body.instruction(
+                &format!("icmp eq i32 {left}, {right}"),
+                span,
+                &mut self.debug,
+            ),
+            (
+                LlValue::Enum {
+                    value: left,
+                    enumeration,
+                },
+                LlValue::Enum {
+                    value: right,
+                    enumeration: right_enumeration,
+                },
+            ) => {
+                debug_assert_eq!(enumeration, right_enumeration);
+                body.instruction(
+                    &format!("icmp eq i32 {left}, {right}"),
+                    span,
+                    &mut self.debug,
+                )
+            }
+            (LlValue::String(left), LlValue::String(right)) => body.instruction(
+                &format!("call i1 @topal.runtime.string.equal(ptr {left}, ptr {right})"),
+                span,
+                &mut self.debug,
+            ),
+            (
+                LlValue::Optional {
+                    value: left,
+                    payload,
+                },
+                LlValue::Optional {
+                    value: right,
+                    payload: right_payload,
+                },
+            ) => {
+                debug_assert_eq!(payload, right_payload);
+                let runtime = match payload {
+                    CompilerType::Int => "optional.int.equal",
+                    CompilerType::String => "optional.string.equal",
+                    _ => unreachable!("checked Optional equality has canonical evidence"),
+                };
+                body.instruction(
+                    &format!("call i1 @topal.runtime.{runtime}(ptr {left}, ptr {right})"),
+                    span,
+                    &mut self.debug,
+                )
+            }
+            (LlValue::Int(_), LlValue::Int(_)) | (LlValue::Rational(_), LlValue::Rational(_)) => {
+                let comparison = self.emit_numeric_compare(left, right, body, span);
+                body.instruction(
+                    &format!("icmp eq i32 {comparison}, 0"),
+                    span,
+                    &mut self.debug,
+                )
+            }
+            (LlValue::Tuple(left), LlValue::Tuple(right)) => {
+                debug_assert_eq!(left.len(), right.len());
+                let mut fields = left.iter().zip(right);
+                let Some((left, right)) = fields.next() else {
+                    return "true".into();
+                };
+                let mut equal = self.emit_equal(left, right, body, span);
+                for (left, right) in fields {
+                    let field_equal = self.emit_equal(left, right, body, span);
+                    equal = body.instruction(
+                        &format!("and i1 {equal}, {field_equal}"),
+                        span,
+                        &mut self.debug,
+                    );
+                }
+                equal
+            }
+            _ => unreachable!("checked equality values agree"),
         }
     }
 
@@ -3283,6 +3323,32 @@ mod tests {
         assert!(llvm.contains(
             "call ptr @topal.runtime.string.make(ptr %data, i64 %length, ptr null, i64 0)"
         ));
+    }
+
+    #[test]
+    fn emits_recursive_positional_product_equality_from_field_evidence() {
+        // TOPAL-COMPILER-TUPLE-EQUALITY-001
+        let source = include_str!("../../../examples/language/tuple-equality.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/tuple-equality.t").emit();
+        assert!(llvm.matches("call i32 @topal.runtime.int.compare").count() >= 5);
+        assert!(
+            llvm.matches("call i32 @topal.runtime.rational.compare")
+                .count()
+                >= 3
+        );
+        assert!(llvm.matches("call i1 @topal.runtime.string.equal").count() >= 5);
+        assert!(
+            llvm.matches("call i1 @topal.runtime.optional.int.equal")
+                .count()
+                >= 2
+        );
+        assert!(
+            llvm.matches("call i1 @topal.runtime.optional.string.equal")
+                .count()
+                >= 3
+        );
+        assert!(llvm.matches("and i1").count() >= 20);
     }
 
     #[test]

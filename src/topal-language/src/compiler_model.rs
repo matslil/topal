@@ -1917,21 +1917,7 @@ impl Analyzer {
                 &left_value.value_type,
                 &right_value.value_type,
             )?;
-            let equatable = matches!(
-                &left_value.value_type,
-                CompilerType::Boolean
-                    | CompilerType::Unit
-                    | CompilerType::Completed
-                    | CompilerType::Comparison
-                    | CompilerType::ErrorCode
-                    | CompilerType::String
-                    | CompilerType::Enum(_)
-            ) || matches!(
-                &left_value.value_type,
-                CompilerType::Optional(payload)
-                    if matches!(payload.as_ref(), CompilerType::Int | CompilerType::String)
-            );
-            if !equatable {
+            if !compiler_equality_supported(&left_value.value_type) {
                 return Err(unsupported(
                     &self.source,
                     span,
@@ -3186,6 +3172,29 @@ fn is_exact_numeric(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Int | CompilerType::Rational)
 }
 
+fn compiler_equality_supported(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Unit
+        | CompilerType::Completed
+        | CompilerType::Boolean
+        | CompilerType::Int
+        | CompilerType::Rational
+        | CompilerType::Comparison
+        | CompilerType::ErrorCode
+        | CompilerType::String
+        | CompilerType::Enum(_) => true,
+        CompilerType::Optional(payload) => {
+            matches!(payload.as_ref(), CompilerType::Int | CompilerType::String)
+        }
+        CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
+        CompilerType::Error
+        | CompilerType::ErrorDomain
+        | CompilerType::Nat
+        | CompilerType::Range(_)
+        | CompilerType::Result(_) => false,
+    }
+}
+
 fn require_optional_payload(
     source: &SourceText,
     span: Span,
@@ -3824,6 +3833,18 @@ mod tests {
                 ..
             }
         )));
+
+        let unsupported_field = "use language (version is v0.1)\nleft is (1 .. 2, true)\nright is (1 .. 2, true)\nleft = right\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported_field).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+
+        let field_conversion = "use language (version is v0.1)\n(1, true) = (1.0, true)\n";
+        assert_eq!(
+            analyze_for_compiler(field_conversion).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
     }
 
     #[test]
@@ -3874,6 +3895,27 @@ mod tests {
             program.main.result.value_type.name(),
             "(String, Boolean, Boolean, Boolean, String, String, String, String, String)"
         );
+    }
+
+    #[test]
+    fn models_recursive_positional_product_equality() {
+        // TOPAL-TYPE-PRODUCT-001, TOPAL-TYPE-EQUALITY-001
+        let source = include_str!("../../../examples/language/tuple-equality.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Boolean, Boolean, Boolean, Boolean, Boolean)"
+        );
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("expected equality result tuple")
+        };
+        assert!(values.iter().all(|value| matches!(
+            value.kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal | CompilerBinary::NotEqual,
+                ..
+            }
+        )));
     }
 
     #[test]
