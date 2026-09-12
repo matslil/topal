@@ -9,7 +9,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_semantics::LanguageVersion;
-use topal_source::{Diagnostic, SourceText, Span, character_at, character_count};
+use topal_source::{
+    Diagnostic, SourceText, Span, canonically_equal, case_fold, character_at, character_count,
+    lowercase, normalize_nfc, normalize_nfd, uppercase,
+};
 use topal_syntax::{
     CallableKind, DecisionMatcher, Expression, FunctionClauses, FunctionParameter, Statement, lex,
     parse,
@@ -1186,10 +1189,34 @@ impl Analyzer {
         {
             return self.analyze_static_character_count(operand, span, environment);
         }
+        if let [Expression::Identifier(operation), operand] = items
+            && matches!(
+                self.source.slice(*operation),
+                "upper" | "lower" | "case-fold"
+            )
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            return self.analyze_static_unicode_transform(&operation, operand, span, environment);
+        }
         if let [text, Expression::Identifier(operation), index] = items
             && self.source.slice(*operation) == "character-at"
         {
             return self.analyze_static_character_at(text, index, span, environment);
+        }
+        if let [
+            text,
+            Expression::Identifier(operation),
+            Expression::Identifier(form),
+        ] = items
+            && self.source.slice(*operation) == "normalize"
+        {
+            let form = self.source.slice(*form).to_owned();
+            return self.analyze_static_normalization(text, &form, span, environment);
+        }
+        if let [left, Expression::Identifier(operation), right] = items
+            && self.source.slice(*operation) == "canonically-equals"
+        {
+            return self.analyze_static_canonical_equality(left, right, span, environment);
         }
         if let [
             Expression::Identifier(constructor),
@@ -1653,6 +1680,136 @@ impl Analyzer {
                 CompilerExpressionKind::OptionalSome(Box::new(character))
             }),
             value_type: CompilerType::Optional(Box::new(CompilerType::Character)),
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn analyze_static_unicode_transform(
+        &mut self,
+        operation: &str,
+        operand: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let operand_value = self.analyze_expression(operand, environment)?;
+        require_type(
+            &self.source,
+            operand_value.span,
+            &CompilerType::String,
+            &operand_value.value_type,
+        )?;
+        let text = self
+            .known_string_value(operand, &operand_value, environment)
+            .ok_or_else(|| {
+                unsupported(
+                    &self.source,
+                    operand.span(),
+                    "dynamic Unicode transformation",
+                )
+            })?;
+        let transformed = match operation {
+            "upper" => uppercase(&text),
+            "lower" => lowercase(&text),
+            "case-fold" => case_fold(&text),
+            _ => unreachable!("Unicode transform spelling selected above"),
+        };
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::String(transformed),
+            value_type: CompilerType::String,
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn analyze_static_normalization(
+        &mut self,
+        operand: &Expression,
+        form: &str,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let operand_value = self.analyze_expression(operand, environment)?;
+        require_type(
+            &self.source,
+            operand_value.span,
+            &CompilerType::String,
+            &operand_value.value_type,
+        )?;
+        let text = self
+            .known_string_value(operand, &operand_value, environment)
+            .ok_or_else(|| {
+                unsupported(
+                    &self.source,
+                    operand.span(),
+                    "dynamic Unicode normalization",
+                )
+            })?;
+        let normalized = match form {
+            "NFC" => normalize_nfc(&text),
+            "NFD" => normalize_nfd(&text),
+            _ => {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-NO-APPLICABLE-OVERLOAD",
+                    span,
+                    "the compiler normalization subset requires NFC or NFD",
+                ));
+            }
+        };
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::String(normalized),
+            value_type: CompilerType::String,
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn analyze_static_canonical_equality(
+        &mut self,
+        left: &Expression,
+        right: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let left_value = self.analyze_expression(left, environment)?;
+        let right_value = self.analyze_expression(right, environment)?;
+        require_type(
+            &self.source,
+            left_value.span,
+            &CompilerType::String,
+            &left_value.value_type,
+        )?;
+        require_type(
+            &self.source,
+            right_value.span,
+            &CompilerType::String,
+            &right_value.value_type,
+        )?;
+        let left_text = self
+            .known_string_value(left, &left_value, environment)
+            .ok_or_else(|| {
+                unsupported(
+                    &self.source,
+                    left.span(),
+                    "dynamic canonical String equality",
+                )
+            })?;
+        let right_text = self
+            .known_string_value(right, &right_value, environment)
+            .ok_or_else(|| {
+                unsupported(
+                    &self.source,
+                    right.span(),
+                    "dynamic canonical String equality",
+                )
+            })?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::Boolean(canonically_equal(&left_text, &right_text)),
+            value_type: CompilerType::Boolean,
             int_range: None,
             rational_value: None,
             span,
@@ -4188,6 +4345,77 @@ mod tests {
             values[5].kind,
             CompilerExpressionKind::OptionalNone
         ));
+    }
+
+    #[test]
+    fn models_closed_pinned_unicode_transformations() {
+        // TOPAL-STRING-UPPER-001, TOPAL-STRING-LOWER-001,
+        // TOPAL-STRING-CASE-FOLD-001, TOPAL-STRING-NORMALIZE-NFC-001,
+        // TOPAL-STRING-NORMALIZE-NFD-001,
+        // TOPAL-STRING-CANONICAL-EQUALITY-001
+        for (source, expected) in [
+            (
+                include_str!("../../../examples/language/string-uppercase.t"),
+                "STRASSE ΣΣ",
+            ),
+            (
+                include_str!("../../../examples/language/string-lowercase.t"),
+                "i\u{307}ς",
+            ),
+            (
+                include_str!("../../../examples/language/string-case-fold.t"),
+                "strasse σσ",
+            ),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            assert_eq!(
+                exact_string(&program.main.result).as_deref(),
+                Some(expected)
+            );
+        }
+
+        for source in [
+            include_str!("../../../examples/language/string-normalization.t"),
+            include_str!("../../../examples/language/string-normalization-nfd.t"),
+            include_str!("../../../examples/language/string-canonical-equality.t"),
+        ] {
+            assert!(analyze_for_compiler(source).is_ok());
+        }
+        let canonical = analyze_for_compiler(include_str!(
+            "../../../examples/language/string-canonical-equality.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(values) = &canonical.main.result.kind else {
+            panic!("expected the canonical-equality tuple")
+        };
+        assert!(matches!(
+            values[1].kind,
+            CompilerExpressionKind::Boolean(true)
+        ));
+        assert!(matches!(
+            values[2].kind,
+            CompilerExpressionKind::Boolean(false)
+        ));
+
+        let specialized = analyze_for_compiler(
+            "use language (version is v0.1)\ntransform is fn (value : String) -> String\n  upper value\ntransform \"a\"\n",
+        )
+        .unwrap();
+        assert_eq!(
+            exact_string(&specialized.functions[0].body.result).as_deref(),
+            Some("A")
+        );
+
+        for source in [
+            "use language (version is v0.1)\nidentity is fn (value : String) -> String\n  value\nupper (identity \"a\")\n",
+            "use language (version is v0.1)\nidentity is fn (value : String) -> String\n  value\n(identity \"a\") normalize NFC\n",
+            "use language (version is v0.1)\nidentity is fn (value : String) -> String\n  value\n(identity \"a\") canonically-equals \"a\"\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]

@@ -626,6 +626,66 @@
       "cpu_time_ns": 202396,
       "memory_peak_bytes": 18403328,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/string-canonical-equality.t": {
+      "cpu_time_ns": 122348299,
+      "memory_peak_bytes": 41504768,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/string-case-fold.t": {
+      "cpu_time_ns": 121176580,
+      "memory_peak_bytes": 40943616,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/string-lowercase.t": {
+      "cpu_time_ns": 120959700,
+      "memory_peak_bytes": 40988672,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/string-normalization-nfd.t": {
+      "cpu_time_ns": 121979700,
+      "memory_peak_bytes": 41521152,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/string-normalization.t": {
+      "cpu_time_ns": 122850880,
+      "memory_peak_bytes": 41615360,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/string-uppercase.t": {
+      "cpu_time_ns": 120882220,
+      "memory_peak_bytes": 40935424,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/string-canonical-equality.t": {
+      "cpu_time_ns": 147976,
+      "memory_peak_bytes": 18550784,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/string-case-fold.t": {
+      "cpu_time_ns": 135352,
+      "memory_peak_bytes": 18546688,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/string-lowercase.t": {
+      "cpu_time_ns": 142189,
+      "memory_peak_bytes": 18554880,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/string-normalization-nfd.t": {
+      "cpu_time_ns": 143636,
+      "memory_peak_bytes": 18538496,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/string-normalization.t": {
+      "cpu_time_ns": 156906,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/string-uppercase.t": {
+      "cpu_time_ns": 139184,
+      "memory_peak_bytes": 18550784,
+      "samples_per_test": 500
     }
   }
 }
