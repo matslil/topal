@@ -101,7 +101,7 @@ replace Topal's versioned library interface and generic metadata.
 Unoptimized native output carries DWARF 5 source, function, parameter, and
 local-variable information. Load the bundled GDB value printers before a
 debugging session so private runtime values such as arbitrary-precision `Int`
-are displayed in source form:
+and exact `Rational` are displayed in source form:
 
 ```console
 gdb -ex 'source src/topal-compiler/gdb/topal.py' ./hello

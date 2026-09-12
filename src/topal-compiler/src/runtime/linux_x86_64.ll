@@ -1,13 +1,21 @@
 ; topal.platform.linux-x86_64/1
-; Freestanding Linux services and the private topal-native/2 Int runtime.
+; Freestanding Linux services and the private topal-native/3 exact-number runtime.
 ; Int values are immutable sign-and-magnitude objects with little-endian
 ; base-2^32 limbs. A zero has sign = 0 and length = 0.
 
 %topal.IntStorage = type { i64, i64, [0 x i32] }
+%topal.IntDivmod = type { ptr, ptr }
+%topal.RationalStorage = type { ptr, ptr }
 
 @topal.runtime.int.zero = private constant { i64, i64, [0 x i32] } { i64 0, i64 0, [0 x i32] zeroinitializer }, align 8
+@topal.runtime.int.one = private constant { i64, i64, [1 x i32] } { i64 0, i64 1, [1 x i32] [i32 1] }, align 8
 @topal.runtime.byte.zero = private constant [1 x i8] c"0", align 1
 @topal.runtime.byte.minus = private constant [1 x i8] c"-", align 1
+@topal.runtime.rational.prefix = private constant [11 x i8] c"Rational ( ", align 1
+@topal.runtime.rational.separator = private constant [2 x i8] c", ", align 1
+@topal.runtime.rational.suffix = private constant [2 x i8] c" )", align 1
+
+declare i32 @llvm.ctlz.i32(i32, i1 immarg)
 
 define internal i64 @topal.platform.write(i64 %fd, ptr %buffer, i64 %length) nounwind noinline {
 entry:
@@ -306,6 +314,16 @@ done:
 
 define internal ptr @topal.runtime.int.add(ptr %left, ptr %right) nounwind noinline {
 entry:
+  %left.zero = call i1 @topal.runtime.int.is.zero(ptr %left)
+  br i1 %left.zero, label %return.right, label %check.right
+return.right:
+  ret ptr %right
+check.right:
+  %right.zero = call i1 @topal.runtime.int.is.zero(ptr %right)
+  br i1 %right.zero, label %return.left, label %nonzero
+return.left:
+  ret ptr %left
+nonzero:
   %left.negative.pointer = getelementptr %topal.IntStorage, ptr %left, i32 0, i32 0
   %right.negative.pointer = getelementptr %topal.IntStorage, ptr %right, i32 0, i32 0
   %left.negative = load i64, ptr %left.negative.pointer, align 8
@@ -503,5 +521,406 @@ emit:
   %count = sub i64 %capacity, %next.position
   %first = getelementptr i8, ptr %buffer, i64 %next.position
   call void @topal.platform.write_all(ptr %first, i64 %count)
+  ret void
+}
+
+define internal i1 @topal.runtime.int.is.zero(ptr %value) nounwind noinline {
+entry:
+  %length.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 1
+  %length = load i64, ptr %length.pointer, align 8
+  %zero = icmp eq i64 %length, 0
+  ret i1 %zero
+}
+
+define internal ptr @topal.runtime.int.divmod.pair(ptr %quotient, ptr %remainder) nounwind noinline {
+entry:
+  %pair = call ptr @topal.platform.allocate(i64 16)
+  %quotient.pointer = getelementptr %topal.IntDivmod, ptr %pair, i32 0, i32 0
+  %remainder.pointer = getelementptr %topal.IntDivmod, ptr %pair, i32 0, i32 1
+  store ptr %quotient, ptr %quotient.pointer, align 8
+  store ptr %remainder, ptr %remainder.pointer, align 8
+  ret ptr %pair
+}
+
+define internal ptr @topal.runtime.int.divmod.quotient(ptr %pair) nounwind noinline {
+entry:
+  %pointer = getelementptr %topal.IntDivmod, ptr %pair, i32 0, i32 0
+  %value = load ptr, ptr %pointer, align 8
+  ret ptr %value
+}
+
+define internal ptr @topal.runtime.int.divmod.remainder(ptr %pair) nounwind noinline {
+entry:
+  %pointer = getelementptr %topal.IntDivmod, ptr %pair, i32 0, i32 1
+  %value = load ptr, ptr %pointer, align 8
+  ret ptr %value
+}
+
+define internal i64 @topal.runtime.int.bit.length(ptr %value) nounwind noinline {
+entry:
+  %length.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 1
+  %length = load i64, ptr %length.pointer, align 8
+  %empty = icmp eq i64 %length, 0
+  br i1 %empty, label %zero, label %check
+zero:
+  ret i64 0
+check:
+  %valid = icmp ule i64 %length, 576460752303423487
+  br i1 %valid, label %calculate, label %failure
+failure:
+  call void @topal.platform.exit(i64 71)
+  unreachable
+calculate:
+  %last = sub i64 %length, 1
+  %pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 2, i64 %last
+  %limb = load i32, ptr %pointer, align 4
+  %leading = call i32 @llvm.ctlz.i32(i32 %limb, i1 false)
+  %top.bits.raw = sub i32 32, %leading
+  %top.bits = zext i32 %top.bits.raw to i64
+  %lower.bits = mul i64 %last, 32
+  %bits = add i64 %lower.bits, %top.bits
+  ret i64 %bits
+}
+
+define internal i1 @topal.runtime.int.bit.at(ptr %value, i64 %index) nounwind noinline {
+entry:
+  %limb.index = lshr i64 %index, 5
+  %offset.raw = and i64 %index, 31
+  %offset = trunc i64 %offset.raw to i32
+  %pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 2, i64 %limb.index
+  %limb = load i32, ptr %pointer, align 4
+  %shifted = lshr i32 %limb, %offset
+  %bit.raw = and i32 %shifted, 1
+  %bit = icmp ne i32 %bit.raw, 0
+  ret i1 %bit
+}
+
+define internal ptr @topal.runtime.int.divmod.absolute(ptr %dividend, ptr %divisor) nounwind noinline {
+entry:
+  %divisor.zero = call i1 @topal.runtime.int.is.zero(ptr %divisor)
+  br i1 %divisor.zero, label %failure, label %check.dividend
+failure:
+  call void @topal.platform.exit(i64 65)
+  unreachable
+check.dividend:
+  %dividend.zero = call i1 @topal.runtime.int.is.zero(ptr %dividend)
+  br i1 %dividend.zero, label %zero, label %prepare
+zero:
+  %zero.pair = call ptr @topal.runtime.int.divmod.pair(ptr @topal.runtime.int.zero, ptr @topal.runtime.int.zero)
+  ret ptr %zero.pair
+prepare:
+  %bits = call i64 @topal.runtime.int.bit.length(ptr %dividend)
+  br label %loop
+loop:
+  %position = phi i64 [%bits, %prepare], [%next.position, %merge]
+  %quotient = phi ptr [@topal.runtime.int.zero, %prepare], [%next.quotient, %merge]
+  %remainder = phi ptr [@topal.runtime.int.zero, %prepare], [%next.remainder, %merge]
+  %bit.index = sub i64 %position, 1
+  %bit = call i1 @topal.runtime.int.bit.at(ptr %dividend, i64 %bit.index)
+  %quotient.twice = call ptr @topal.runtime.int.add(ptr %quotient, ptr %quotient)
+  %remainder.twice = call ptr @topal.runtime.int.add(ptr %remainder, ptr %remainder)
+  br i1 %bit, label %append.bit, label %compare
+append.bit:
+  %remainder.with.bit = call ptr @topal.runtime.int.add(ptr %remainder.twice, ptr @topal.runtime.int.one)
+  br label %compare
+compare:
+  %candidate = phi ptr [%remainder.twice, %loop], [%remainder.with.bit, %append.bit]
+  %ordering = call i32 @topal.runtime.int.compare.absolute(ptr %candidate, ptr %divisor)
+  %subtract = icmp sge i32 %ordering, 0
+  br i1 %subtract, label %subtract.divisor, label %retain
+subtract.divisor:
+  %reduced = call ptr @topal.runtime.int.subtract.absolute(ptr %candidate, ptr %divisor, i64 0)
+  %incremented = call ptr @topal.runtime.int.add(ptr %quotient.twice, ptr @topal.runtime.int.one)
+  br label %merge
+retain:
+  br label %merge
+merge:
+  %next.quotient = phi ptr [%incremented, %subtract.divisor], [%quotient.twice, %retain]
+  %next.remainder = phi ptr [%reduced, %subtract.divisor], [%candidate, %retain]
+  %next.position = sub i64 %position, 1
+  %more = icmp ne i64 %next.position, 0
+  br i1 %more, label %loop, label %done
+done:
+  %pair = call ptr @topal.runtime.int.divmod.pair(ptr %next.quotient, ptr %next.remainder)
+  ret ptr %pair
+}
+
+define internal ptr @topal.runtime.int.quotient.modulo(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %right.zero = call i1 @topal.runtime.int.is.zero(ptr %right)
+  br i1 %right.zero, label %failure, label %divide
+failure:
+  call void @topal.platform.exit(i64 65)
+  unreachable
+divide:
+  %left.absolute = call ptr @topal.runtime.int.absolute(ptr %left)
+  %right.absolute = call ptr @topal.runtime.int.absolute(ptr %right)
+  %unsigned = call ptr @topal.runtime.int.divmod.absolute(ptr %left.absolute, ptr %right.absolute)
+  %quotient.absolute = call ptr @topal.runtime.int.divmod.quotient(ptr %unsigned)
+  %remainder.absolute = call ptr @topal.runtime.int.divmod.remainder(ptr %unsigned)
+  %left.sign.pointer = getelementptr %topal.IntStorage, ptr %left, i32 0, i32 0
+  %right.sign.pointer = getelementptr %topal.IntStorage, ptr %right, i32 0, i32 0
+  %left.sign = load i64, ptr %left.sign.pointer, align 8
+  %right.sign = load i64, ptr %right.sign.pointer, align 8
+  %left.negative = icmp ne i64 %left.sign, 0
+  %remainder.zero = call i1 @topal.runtime.int.is.zero(ptr %remainder.absolute)
+  %remainder.present = xor i1 %remainder.zero, true
+  %needs.adjustment = and i1 %left.negative, %remainder.present
+  %quotient.sign = xor i64 %left.sign, %right.sign
+  br i1 %needs.adjustment, label %adjust, label %direct
+direct:
+  %direct.quotient = call ptr @topal.runtime.int.copy.with.sign(ptr %quotient.absolute, i64 %quotient.sign)
+  %direct.pair = call ptr @topal.runtime.int.divmod.pair(ptr %direct.quotient, ptr %remainder.absolute)
+  ret ptr %direct.pair
+adjust:
+  %larger.quotient = call ptr @topal.runtime.int.add(ptr %quotient.absolute, ptr @topal.runtime.int.one)
+  %adjusted.quotient = call ptr @topal.runtime.int.copy.with.sign(ptr %larger.quotient, i64 %quotient.sign)
+  %adjusted.remainder = call ptr @topal.runtime.int.subtract.absolute(ptr %right.absolute, ptr %remainder.absolute, i64 0)
+  %adjusted.pair = call ptr @topal.runtime.int.divmod.pair(ptr %adjusted.quotient, ptr %adjusted.remainder)
+  ret ptr %adjusted.pair
+}
+
+define internal ptr @topal.runtime.int.modulo(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %pair = call ptr @topal.runtime.int.quotient.modulo(ptr %left, ptr %right)
+  %remainder = call ptr @topal.runtime.int.divmod.remainder(ptr %pair)
+  ret ptr %remainder
+}
+
+define internal ptr @topal.runtime.int.power(ptr %base, ptr %exponent) nounwind noinline {
+entry:
+  %sign.pointer = getelementptr %topal.IntStorage, ptr %exponent, i32 0, i32 0
+  %sign = load i64, ptr %sign.pointer, align 8
+  %negative = icmp ne i64 %sign, 0
+  br i1 %negative, label %failure, label %prepare
+failure:
+  call void @topal.platform.exit(i64 65)
+  unreachable
+prepare:
+  %bits = call i64 @topal.runtime.int.bit.length(ptr %exponent)
+  %empty = icmp eq i64 %bits, 0
+  br i1 %empty, label %one, label %loop
+one:
+  ret ptr @topal.runtime.int.one
+loop:
+  %position = phi i64 [0, %prepare], [%next.position, %square]
+  %result = phi ptr [@topal.runtime.int.one, %prepare], [%next.result, %square]
+  %factor = phi ptr [%base, %prepare], [%next.factor, %square]
+  %bit = call i1 @topal.runtime.int.bit.at(ptr %exponent, i64 %position)
+  br i1 %bit, label %multiply, label %retain
+multiply:
+  %product = call ptr @topal.runtime.int.multiply(ptr %result, ptr %factor)
+  br label %advance
+retain:
+  br label %advance
+advance:
+  %next.result = phi ptr [%product, %multiply], [%result, %retain]
+  %next.position = add i64 %position, 1
+  %complete = icmp eq i64 %next.position, %bits
+  br i1 %complete, label %done, label %square
+square:
+  %next.factor = call ptr @topal.runtime.int.multiply(ptr %factor, ptr %factor)
+  br label %loop
+done:
+  ret ptr %next.result
+}
+
+define internal ptr @topal.runtime.int.greatest.common.divisor(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.absolute = call ptr @topal.runtime.int.absolute(ptr %left)
+  %right.absolute = call ptr @topal.runtime.int.absolute(ptr %right)
+  %right.zero = call i1 @topal.runtime.int.is.zero(ptr %right.absolute)
+  br i1 %right.zero, label %initial.done, label %loop
+initial.done:
+  ret ptr %left.absolute
+loop:
+  %current.left = phi ptr [%left.absolute, %entry], [%current.right, %again]
+  %current.right = phi ptr [%right.absolute, %entry], [%remainder, %again]
+  %division = call ptr @topal.runtime.int.divmod.absolute(ptr %current.left, ptr %current.right)
+  %remainder = call ptr @topal.runtime.int.divmod.remainder(ptr %division)
+  %done = call i1 @topal.runtime.int.is.zero(ptr %remainder)
+  br i1 %done, label %result, label %again
+again:
+  br label %loop
+result:
+  ret ptr %current.right
+}
+
+define internal ptr @topal.runtime.rational.raw(ptr %numerator, ptr %denominator) nounwind noinline {
+entry:
+  %value = call ptr @topal.platform.allocate(i64 16)
+  %numerator.pointer = getelementptr %topal.RationalStorage, ptr %value, i32 0, i32 0
+  %denominator.pointer = getelementptr %topal.RationalStorage, ptr %value, i32 0, i32 1
+  store ptr %numerator, ptr %numerator.pointer, align 8
+  store ptr %denominator, ptr %denominator.pointer, align 8
+  ret ptr %value
+}
+
+define internal ptr @topal.runtime.rational.numerator(ptr %value) nounwind noinline {
+entry:
+  %pointer = getelementptr %topal.RationalStorage, ptr %value, i32 0, i32 0
+  %numerator = load ptr, ptr %pointer, align 8
+  ret ptr %numerator
+}
+
+define internal ptr @topal.runtime.rational.denominator(ptr %value) nounwind noinline {
+entry:
+  %pointer = getelementptr %topal.RationalStorage, ptr %value, i32 0, i32 1
+  %denominator = load ptr, ptr %pointer, align 8
+  ret ptr %denominator
+}
+
+define internal ptr @topal.runtime.rational.make(ptr %numerator, ptr %denominator) nounwind noinline {
+entry:
+  %denominator.zero = call i1 @topal.runtime.int.is.zero(ptr %denominator)
+  br i1 %denominator.zero, label %failure, label %check.numerator
+failure:
+  call void @topal.platform.exit(i64 65)
+  unreachable
+check.numerator:
+  %numerator.zero = call i1 @topal.runtime.int.is.zero(ptr %numerator)
+  br i1 %numerator.zero, label %zero, label %normalize
+zero:
+  %zero.value = call ptr @topal.runtime.rational.raw(ptr @topal.runtime.int.zero, ptr @topal.runtime.int.one)
+  ret ptr %zero.value
+normalize:
+  %numerator.absolute = call ptr @topal.runtime.int.absolute(ptr %numerator)
+  %denominator.absolute = call ptr @topal.runtime.int.absolute(ptr %denominator)
+  %divisor = call ptr @topal.runtime.int.greatest.common.divisor(ptr %numerator.absolute, ptr %denominator.absolute)
+  %numerator.division = call ptr @topal.runtime.int.divmod.absolute(ptr %numerator.absolute, ptr %divisor)
+  %denominator.division = call ptr @topal.runtime.int.divmod.absolute(ptr %denominator.absolute, ptr %divisor)
+  %reduced.numerator.absolute = call ptr @topal.runtime.int.divmod.quotient(ptr %numerator.division)
+  %reduced.denominator = call ptr @topal.runtime.int.divmod.quotient(ptr %denominator.division)
+  %numerator.sign.pointer = getelementptr %topal.IntStorage, ptr %numerator, i32 0, i32 0
+  %denominator.sign.pointer = getelementptr %topal.IntStorage, ptr %denominator, i32 0, i32 0
+  %numerator.sign = load i64, ptr %numerator.sign.pointer, align 8
+  %denominator.sign = load i64, ptr %denominator.sign.pointer, align 8
+  %sign = xor i64 %numerator.sign, %denominator.sign
+  %reduced.numerator = call ptr @topal.runtime.int.copy.with.sign(ptr %reduced.numerator.absolute, i64 %sign)
+  %result = call ptr @topal.runtime.rational.raw(ptr %reduced.numerator, ptr %reduced.denominator)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.rational.from.int(ptr %value) nounwind noinline {
+entry:
+  %result = call ptr @topal.runtime.rational.raw(ptr %value, ptr @topal.runtime.int.one)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.rational.negate(ptr %value) nounwind noinline {
+entry:
+  %numerator = call ptr @topal.runtime.rational.numerator(ptr %value)
+  %denominator = call ptr @topal.runtime.rational.denominator(ptr %value)
+  %negative = call ptr @topal.runtime.int.negate(ptr %numerator)
+  %result = call ptr @topal.runtime.rational.raw(ptr %negative, ptr %denominator)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.rational.absolute(ptr %value) nounwind noinline {
+entry:
+  %numerator = call ptr @topal.runtime.rational.numerator(ptr %value)
+  %denominator = call ptr @topal.runtime.rational.denominator(ptr %value)
+  %absolute = call ptr @topal.runtime.int.absolute(ptr %numerator)
+  %result = call ptr @topal.runtime.rational.raw(ptr %absolute, ptr %denominator)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.rational.add(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.numerator = call ptr @topal.runtime.rational.numerator(ptr %left)
+  %left.denominator = call ptr @topal.runtime.rational.denominator(ptr %left)
+  %right.numerator = call ptr @topal.runtime.rational.numerator(ptr %right)
+  %right.denominator = call ptr @topal.runtime.rational.denominator(ptr %right)
+  %left.scaled = call ptr @topal.runtime.int.multiply(ptr %left.numerator, ptr %right.denominator)
+  %right.scaled = call ptr @topal.runtime.int.multiply(ptr %right.numerator, ptr %left.denominator)
+  %numerator = call ptr @topal.runtime.int.add(ptr %left.scaled, ptr %right.scaled)
+  %denominator = call ptr @topal.runtime.int.multiply(ptr %left.denominator, ptr %right.denominator)
+  %result = call ptr @topal.runtime.rational.make(ptr %numerator, ptr %denominator)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.rational.subtract(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %negative = call ptr @topal.runtime.rational.negate(ptr %right)
+  %result = call ptr @topal.runtime.rational.add(ptr %left, ptr %negative)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.rational.multiply(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.numerator = call ptr @topal.runtime.rational.numerator(ptr %left)
+  %left.denominator = call ptr @topal.runtime.rational.denominator(ptr %left)
+  %right.numerator = call ptr @topal.runtime.rational.numerator(ptr %right)
+  %right.denominator = call ptr @topal.runtime.rational.denominator(ptr %right)
+  %numerator = call ptr @topal.runtime.int.multiply(ptr %left.numerator, ptr %right.numerator)
+  %denominator = call ptr @topal.runtime.int.multiply(ptr %left.denominator, ptr %right.denominator)
+  %result = call ptr @topal.runtime.rational.make(ptr %numerator, ptr %denominator)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.rational.divide(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.numerator = call ptr @topal.runtime.rational.numerator(ptr %left)
+  %left.denominator = call ptr @topal.runtime.rational.denominator(ptr %left)
+  %right.numerator = call ptr @topal.runtime.rational.numerator(ptr %right)
+  %right.denominator = call ptr @topal.runtime.rational.denominator(ptr %right)
+  %zero = call i1 @topal.runtime.int.is.zero(ptr %right.numerator)
+  br i1 %zero, label %failure, label %calculate
+failure:
+  call void @topal.platform.exit(i64 65)
+  unreachable
+calculate:
+  %numerator = call ptr @topal.runtime.int.multiply(ptr %left.numerator, ptr %right.denominator)
+  %denominator = call ptr @topal.runtime.int.multiply(ptr %left.denominator, ptr %right.numerator)
+  %result = call ptr @topal.runtime.rational.make(ptr %numerator, ptr %denominator)
+  ret ptr %result
+}
+
+define internal i32 @topal.runtime.rational.compare(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.numerator = call ptr @topal.runtime.rational.numerator(ptr %left)
+  %left.denominator = call ptr @topal.runtime.rational.denominator(ptr %left)
+  %right.numerator = call ptr @topal.runtime.rational.numerator(ptr %right)
+  %right.denominator = call ptr @topal.runtime.rational.denominator(ptr %right)
+  %left.scaled = call ptr @topal.runtime.int.multiply(ptr %left.numerator, ptr %right.denominator)
+  %right.scaled = call ptr @topal.runtime.int.multiply(ptr %right.numerator, ptr %left.denominator)
+  %result = call i32 @topal.runtime.int.compare(ptr %left.scaled, ptr %right.scaled)
+  ret i32 %result
+}
+
+define internal ptr @topal.runtime.rational.power(ptr %base, ptr %exponent) nounwind noinline {
+entry:
+  %numerator = call ptr @topal.runtime.rational.numerator(ptr %base)
+  %denominator = call ptr @topal.runtime.rational.denominator(ptr %base)
+  %exponent.sign.pointer = getelementptr %topal.IntStorage, ptr %exponent, i32 0, i32 0
+  %exponent.sign = load i64, ptr %exponent.sign.pointer, align 8
+  %negative = icmp ne i64 %exponent.sign, 0
+  %absolute.exponent = call ptr @topal.runtime.int.absolute(ptr %exponent)
+  %powered.numerator = call ptr @topal.runtime.int.power(ptr %numerator, ptr %absolute.exponent)
+  %powered.denominator = call ptr @topal.runtime.int.power(ptr %denominator, ptr %absolute.exponent)
+  br i1 %negative, label %reciprocal, label %direct
+direct:
+  %direct.result = call ptr @topal.runtime.rational.raw(ptr %powered.numerator, ptr %powered.denominator)
+  ret ptr %direct.result
+reciprocal:
+  %zero = call i1 @topal.runtime.int.is.zero(ptr %powered.numerator)
+  br i1 %zero, label %failure, label %invert
+failure:
+  call void @topal.platform.exit(i64 65)
+  unreachable
+invert:
+  %result = call ptr @topal.runtime.rational.make(ptr %powered.denominator, ptr %powered.numerator)
+  ret ptr %result
+}
+
+define internal void @topal.runtime.rational.print(ptr %value) nounwind noinline {
+entry:
+  %numerator = call ptr @topal.runtime.rational.numerator(ptr %value)
+  %denominator = call ptr @topal.runtime.rational.denominator(ptr %value)
+  call void @topal.platform.write_all(ptr @topal.runtime.rational.prefix, i64 11)
+  call void @topal.runtime.int.print(ptr %numerator)
+  call void @topal.platform.write_all(ptr @topal.runtime.rational.separator, i64 2)
+  call void @topal.runtime.int.print(ptr %denominator)
+  call void @topal.platform.write_all(ptr @topal.runtime.rational.suffix, i64 2)
   ret void
 }

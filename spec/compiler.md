@@ -45,6 +45,27 @@ Runtime operations SHALL NOT call an undeclared foreign allocator, arithmetic
 helper, unwinder, or standard library. Storage failure SHALL follow an explicit
 platform-failure path rather than producing a truncated or invalid `Int`.
 
+### TOPAL-COMPILER-EXACT-001 — Finite exact-number runtime
+
+Every admitted finite `Rational` SHALL retain canonical coprime arbitrary-
+precision `Int` numerator and positive denominator values, including canonical
+zero. Closed construction, exact decimal literals, Int embedding and division,
+Rational negation, absolute value, addition, subtraction, multiplication,
+division, natural and negative powers, equality, ordering, three-way
+comparison, decimal observation, function passage, and control-flow joins
+SHALL preserve the corresponding `TOPAL-NUM-*` value without approximation.
+
+Finite Int power, Euclidean modulo, and quotient/modulo SHALL use the same
+unbounded representation and normative sign rules. A path requiring a dynamic
+arithmetic `Result` SHALL remain outside the admitted subset until its complete
+value and error representation is implemented; the compiler SHALL NOT replace
+that Result with process termination. A statically evident zero divisor SHALL
+remain a source diagnostic.
+
+Position-independent output without an ELF interpreter SHALL contain no
+load-time pointer relocation. Runtime construction SHALL be used when a private
+aggregate would otherwise require such a relocation.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

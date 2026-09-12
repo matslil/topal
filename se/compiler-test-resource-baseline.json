@@ -86,6 +86,86 @@
       "cpu_time_ns": 132074,
       "memory_peak_bytes": 18530304,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/exact-arithmetic.t": {
+      "cpu_time_ns": 109713820,
+      "memory_peak_bytes": 40697856,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/exact-numeric-absolute.t": {
+      "cpu_time_ns": 109139860,
+      "memory_peak_bytes": 40325120,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/exact-numeric-negate.t": {
+      "cpu_time_ns": 108973760,
+      "memory_peak_bytes": 40267776,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/exact-numeric-zero.t": {
+      "cpu_time_ns": 108863300,
+      "memory_peak_bytes": 40255488,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/finite-exact-division-and-comparison.t": {
+      "cpu_time_ns": 113256400,
+      "memory_peak_bytes": 41566208,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/rational-exact-construction.t": {
+      "cpu_time_ns": 109478200,
+      "memory_peak_bytes": 40267776,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/rational-exponentiation.t": {
+      "cpu_time_ns": 109035200,
+      "memory_peak_bytes": 40255488,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/rational-negative-exponent.t": {
+      "cpu_time_ns": 108893700,
+      "memory_peak_bytes": 40255488,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/exact-arithmetic.t": {
+      "cpu_time_ns": 2585965,
+      "memory_peak_bytes": 18653184,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/exact-numeric-absolute.t": {
+      "cpu_time_ns": 205696,
+      "memory_peak_bytes": 18481152,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/exact-numeric-negate.t": {
+      "cpu_time_ns": 215451,
+      "memory_peak_bytes": 18485248,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/exact-numeric-zero.t": {
+      "cpu_time_ns": 188050,
+      "memory_peak_bytes": 18485248,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/finite-exact-division-and-comparison.t": {
+      "cpu_time_ns": 4637700,
+      "memory_peak_bytes": 18673664,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/rational-exact-construction.t": {
+      "cpu_time_ns": 315347,
+      "memory_peak_bytes": 18485248,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/rational-exponentiation.t": {
+      "cpu_time_ns": 207103,
+      "memory_peak_bytes": 18677760,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/rational-negative-exponent.t": {
+      "cpu_time_ns": 270536,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
     }
   }
 }
