@@ -160,13 +160,16 @@ Optional values use their own immutable 16-byte header containing a validated
 semantic representation from Result even though the current private headers
 have the same physical shape: Optional constructors, observers, type identity,
 DWARF names, and GDB rendering never reuse Result semantics or its tag names.
-The admitted `Optional Int` and `Optional String` subset crosses Topal-private
-function boundaries as an opaque pointer, while a selected `Some` action
-reclassifies its payload from the statically retained classifier. `Optional
-Int` equality calls canonical Int comparison only when both values are present;
-the String equality case remains deferred with dynamic String operations.
-Headers are allocated through the same Linux `mmap` platform boundary, and no
-foreign aggregate convention, allocator, or standard library participates.
+The admitted `Optional Int`, `Optional Rational`, and `Optional String` subset
+crosses Topal-private function boundaries as an opaque pointer, while a
+selected `Some` action reclassifies its payload from the statically retained
+classifier. Optional equality validates both tags and calls the canonical Int,
+exact Rational, or exact preserved-sequence String comparator only when both
+values are present; an absent payload is never loaded. Rational admission
+reuses the existing pointer payload and therefore does not revise
+`topal-native/6`. Headers are allocated through the same Linux `mmap` platform
+boundary, and no foreign aggregate convention, allocator, or standard library
+participates.
 
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each

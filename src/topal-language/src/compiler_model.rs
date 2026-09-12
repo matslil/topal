@@ -3124,7 +3124,10 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
         CompilerType::Optional(payload) => {
-            matches!(payload.as_ref(), CompilerType::Int | CompilerType::String)
+            matches!(
+                payload.as_ref(),
+                CompilerType::Int | CompilerType::Rational | CompilerType::String
+            )
         }
         CompilerType::Result(success) => {
             matches!(
@@ -3216,7 +3219,10 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::String
         | CompilerType::Enum(_) => true,
         CompilerType::Optional(payload) => {
-            matches!(payload.as_ref(), CompilerType::Int | CompilerType::String)
+            matches!(
+                payload.as_ref(),
+                CompilerType::Int | CompilerType::Rational | CompilerType::String
+            )
         }
         CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
         CompilerType::Error
@@ -3231,7 +3237,10 @@ fn require_optional_payload(
     span: Span,
     value_type: &CompilerType,
 ) -> Result<(), Diagnostic> {
-    if matches!(value_type, CompilerType::Int | CompilerType::String) {
+    if matches!(
+        value_type,
+        CompilerType::Int | CompilerType::Rational | CompilerType::String
+    ) {
         Ok(())
     } else {
         Err(unsupported(source, span, "Optional payload type"))
@@ -3869,6 +3878,29 @@ mod tests {
             program.main.result.kind,
             CompilerExpressionKind::Tuple(_)
         ));
+    }
+
+    #[test]
+    fn models_optional_rational_values_and_equality() {
+        // TOPAL-TYPE-OPTIONAL-CONSTRUCT-001, TOPAL-TYPE-OPTIONAL-CONTEXT-001,
+        // TOPAL-TYPE-OPTIONAL-BOUNDARY-001, TOPAL-DECISION-OPTIONAL-001,
+        // TOPAL-TYPE-OPTIONAL-EQUALITY-001
+        let source = include_str!("../../../examples/language/optional-rational-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let optional_rational = CompilerType::Optional(Box::new(CompilerType::Rational));
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "preserve"
+                && function.parameters[0].value_type == optional_rational
+                && function.result_type == optional_rational
+        }));
+        assert!(program.functions.iter().any(|function| matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::OptionalDecision { .. }
+        )));
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Optional Rational, Optional Rational, Boolean, Boolean, Boolean, Boolean, Boolean, String, String)"
+        );
     }
 
     #[test]

@@ -1604,6 +1604,7 @@ impl<'a> Generator<'a> {
                 debug_assert_eq!(payload, right_payload);
                 let runtime = match payload {
                     CompilerType::Int => "optional.int.equal",
+                    CompilerType::Rational => "optional.rational.equal",
                     CompilerType::String => "optional.string.equal",
                     _ => unreachable!("checked Optional equality has canonical evidence"),
                 };
@@ -2431,7 +2432,7 @@ impl LlValue {
 
 fn optional_payload_pointer(value: &LlValue) -> &str {
     match value {
-        LlValue::Int(value) | LlValue::String(value) => value,
+        LlValue::Int(value) | LlValue::Rational(value) | LlValue::String(value) => value,
         _ => unreachable!("checked Optional payload has a pointer representation"),
     }
 }
@@ -2439,6 +2440,7 @@ fn optional_payload_pointer(value: &LlValue) -> &str {
 fn optional_payload_value(value: String, value_type: &CompilerType) -> LlValue {
     match value_type {
         CompilerType::Int => LlValue::Int(value),
+        CompilerType::Rational => LlValue::Rational(value),
         CompilerType::String => LlValue::String(value),
         _ => unreachable!("checked Optional payload type is supported"),
     }
@@ -2560,6 +2562,7 @@ struct DebugInfo {
     result_string_type: usize,
     result_int_pair_type: usize,
     optional_int_type: usize,
+    optional_rational_type: usize,
     optional_string_type: usize,
     comparison_type: usize,
     boolean_type: usize,
@@ -2601,6 +2604,7 @@ impl DebugInfo {
             result_string_type: 0,
             result_int_pair_type: 0,
             optional_int_type: 0,
+            optional_rational_type: 0,
             optional_string_type: 0,
             comparison_type: 0,
             boolean_type: 0,
@@ -2881,6 +2885,7 @@ impl DebugInfo {
             "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
         ));
         self.optional_int_type = self.optional_type("Int", pointer);
+        self.optional_rational_type = self.optional_type("Rational", pointer);
         self.optional_string_type = self.optional_type("String", pointer);
     }
 
@@ -2949,6 +2954,9 @@ impl DebugInfo {
             }
             CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Int => {
                 self.optional_int_type
+            }
+            CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Rational => {
+                self.optional_rational_type
             }
             CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::String => {
                 self.optional_string_type
@@ -3281,6 +3289,24 @@ mod tests {
         assert!(llvm.contains("call i1 @topal.runtime.optional.int.equal"));
         assert!(llvm.contains("name: \"Optional Int\""));
         assert!(llvm.contains("name: \"Optional String\""));
+    }
+
+    #[test]
+    fn emits_optional_rational_values_with_exact_equality() {
+        // TOPAL-COMPILER-OPTIONAL-RATIONAL-001
+        let source = include_str!("../../../examples/language/optional-rational-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/optional-rational-values.t").emit();
+        assert_eq!(
+            llvm.matches("call i1 @topal.runtime.optional.rational.equal")
+                .count(),
+            6
+        );
+        assert!(llvm.contains("call i32 @topal.runtime.rational.compare"));
+        assert!(llvm.contains("name: \"Optional Rational\""));
+        assert!(llvm.contains("define internal fastcc ptr @topal.fn.preserve.0(ptr %arg0)"));
+        assert!(llvm.contains("optional.decision.some"));
+        assert!(llvm.contains("optional.decision.none"));
     }
 
     #[test]

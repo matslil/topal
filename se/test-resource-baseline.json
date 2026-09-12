@@ -4249,6 +4249,26 @@
       "cpu_time_ns": 3423839,
       "memory_peak_bytes": 18407424,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_optional_rational_values_with_exact_equality": {
+      "cpu_time_ns": 6853260,
+      "memory_peak_bytes": 18407424,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_optional_rational_parameters": {
+      "cpu_time_ns": 251056680,
+      "memory_peak_bytes": 57344000,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_uses_optional_rational_values": {
+      "cpu_time_ns": 31661659,
+      "memory_peak_bytes": 18395136,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_optional_rational_values_and_equality": {
+      "cpu_time_ns": 3596600,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
     }
   }
 }

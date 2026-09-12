@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 203);
+    assert_eq!(examples.len(), 204);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2706,6 +2706,22 @@ fn every_mode_constructs_explicit_optional_values() {
     assert_eq!(trace.matches("TOPAL-DECISION-OPTIONAL-001").count(), 6);
     assert!(trace.contains("optional.payload.bound"));
     assert_eq!(trace.matches("TOPAL-TYPE-OPTIONAL-EQUALITY-001").count(), 4);
+}
+
+#[test]
+fn every_mode_uses_optional_rational_values() {
+    let source = include_str!("../../../examples/language/optional-rational-values.t");
+    let expected = b"(Some Rational ( 7, 2 ), None, true, true, true, true, true, \"some Rational\", \"no Rational\")\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(expected));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-OPTIONAL-CONSTRUCT-001"));
+    assert!(trace.contains("TOPAL-TYPE-OPTIONAL-CONTEXT-001"));
+    assert!(trace.contains("TOPAL-DECISION-OPTIONAL-001"));
+    assert_eq!(trace.matches("TOPAL-TYPE-OPTIONAL-EQUALITY-001").count(), 6);
 }
 
 #[test]
