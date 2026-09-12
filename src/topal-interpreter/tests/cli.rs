@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 199);
+    assert_eq!(examples.len(), 200);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2767,6 +2767,23 @@ fn every_mode_compares_canonical_string_equivalence() {
         trace.matches("TOPAL-STRING-CANONICAL-EQUALITY-001").count(),
         2
     );
+}
+
+#[test]
+fn every_mode_compares_exact_strings_and_optional_strings() {
+    let source = include_str!("../../../examples/language/string-exact-equality.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            output
+                .stdout
+                .ends_with(b"(false, true, true, true, true, true, true, false)\n")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("TOPAL-TYPE-EQUALITY-001").count(), 8);
+    assert_eq!(trace.matches("TOPAL-TYPE-OPTIONAL-EQUALITY-001").count(), 4);
 }
 
 #[test]

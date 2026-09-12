@@ -4179,6 +4179,21 @@
       "cpu_time_ns": 2951420,
       "memory_peak_bytes": 18358272,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_exact_string_and_derived_optional_string_equality": {
+      "cpu_time_ns": 3859599,
+      "memory_peak_bytes": 18391040,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_compares_exact_strings_and_optional_strings": {
+      "cpu_time_ns": 23241400,
+      "memory_peak_bytes": 18395136,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_exact_string_and_derived_optional_string_equality": {
+      "cpu_time_ns": 2994940,
+      "memory_peak_bytes": 18464768,
+      "samples_per_test": 50
     }
   }
 }

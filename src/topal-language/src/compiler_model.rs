@@ -1831,10 +1831,12 @@ impl Analyzer {
                     | CompilerType::Completed
                     | CompilerType::Comparison
                     | CompilerType::ErrorCode
+                    | CompilerType::String
                     | CompilerType::Enum(_)
             ) || matches!(
                 &left_value.value_type,
-                CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Int
+                CompilerType::Optional(payload)
+                    if matches!(payload.as_ref(), CompilerType::Int | CompilerType::String)
             );
             if !equatable {
                 return Err(unsupported(
@@ -3705,6 +3707,27 @@ mod tests {
             3
         );
         assert_eq!(program.main.result.value_type.name(), "(Int, Int, Int)");
+    }
+
+    #[test]
+    fn models_exact_string_and_derived_optional_string_equality() {
+        // TOPAL-TYPE-EQUALITY-001, TOPAL-TYPE-OPTIONAL-EQUALITY-001
+        let source = include_str!("../../../examples/language/string-exact-equality.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean)"
+        );
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("expected equality result tuple")
+        };
+        assert!(values.iter().all(|value| matches!(
+            value.kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal | CompilerBinary::NotEqual,
+                ..
+            }
+        )));
     }
 
     #[test]

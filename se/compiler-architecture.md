@@ -80,9 +80,10 @@ the display spelling for the literal-only admitted slice; future dynamic String
 constructors must populate the same invariant. Functions, decision joins,
 Result payloads, DWARF, and GDB all use the same private pointer representation.
 The syscall runtime writes canonical ordinary or tagged Topal literals without
-relying on a C locale or string library. This increment admits literal transport
-and display, not the remaining Unicode String operations in roadmap increment
-4b.
+relying on a C locale or string library. This descriptor foundation admits
+literal transport and display; subsequent increments reuse it for byte count
+and exact equality, while the remaining Unicode String operations stay in
+roadmap increment 4b2.
 
 The prospective UTF-8 byte-count operation reads the preserved-byte length
 already stored in that descriptor; it does not scan display spelling, attach an
@@ -92,6 +93,16 @@ constructs the unique one- or two-limb canonical form, with the shared zero
 object for an empty String. The resulting value therefore uses the same
 unbounded Int representation and debugger behavior as all other counts,
 without a foreign conversion helper or fixed source-level integer limit.
+
+Exact String equality first compares the descriptor's preserved-byte lengths
+and then compares each preserved UTF-8 byte in order. Because admitted Strings
+contain valid UTF-8 and preserve their Unicode scalar sequence, equal byte
+sequences are exactly equal preserved sequences. The runtime does not inspect
+the cached display spelling, normalize either operand, consult locale state, or
+call a foreign string routine. Derived `Optional String` equality validates both
+Optional tags and invokes the same comparator only when both alternatives are
+`Some`; two `None` values compare equal and different alternatives do not load
+payloads.
 
 Fallible exact operations return immutable Result headers containing a
 canonical success-or-error tag and one opaque payload pointer. Successful
