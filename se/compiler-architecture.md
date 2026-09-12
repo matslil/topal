@@ -29,12 +29,12 @@ LLVM lowers an already selected LLVM calling convention to physical registers
 and stack locations, but a source-language frontend still owns semantic value
 representation and any coercion needed to form that LLVM signature. The C
 calling convention is therefore not a portable Topal ABI. Internal functions
-use an exact compiler-private signature keyed by `topal-native/2`, and future
+use an exact compiler-private signature keyed by `topal-native/3`, and future
 foreign adapters may use target `ccc` only with fixed-width scalars or opaque
 handles. Aggregate classification is adapter work and will be checked against
 the target's reference C frontend before a foreign interface is admitted.
 
-`topal-native/2` represents finite `Int` values as immutable pointers to a
+`topal-native/3` represents finite `Int` values as immutable pointers to a
 canonical sign-and-magnitude object with little-endian base-2^32 limbs. The
 private signature passes that pointer directly; it never exposes the object to
 a foreign calling convention. Runtime allocation uses the qualified Linux
@@ -43,6 +43,21 @@ increment. This process-lifetime allocation policy is safe for immutable
 values but is not the final reclamation policy; ownership-aware reclamation is
 admitted with the container and closure representations that make reachability
 nontrivial.
+
+Finite `Rational` values are immutable objects containing two private Int
+pointers: a coprime numerator and a positive denominator. The compiler emits
+each literal component as relocation-free Int data, then constructs the
+pointer-bearing Rational object at run time. This is required because a static
+PIE with no ELF interpreter has no loader to apply absolute pointer
+relocations. `llvm-readobj --relocations` qualifies that invariant.
+
+The correctness-first exact runtime uses binary long division, Euclidean sign
+correction, Euclid's greatest-common-divisor algorithm, and exponentiation by
+squaring. LLVM's documented `llvm.ctlz.i32` intrinsic determines the last
+significant exponent bit with defined zero behavior; LLVM then lowers that
+target-independent operation. The algorithms intentionally remain visible at
+O0 rather than relying on target helper symbols or a foreign big-number
+library.
 
 LLVM's [`iN` integer type](https://llvm.org/docs/LangRef.html#integer-type)
 has an arbitrary but compile-time-fixed width, capped by the IR format, while
@@ -204,7 +219,8 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, with a bundled renderer for the private Int object |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, with bundled renderers for private Int and Rational objects |
+| `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |
 | `llvm-link`, `llvm-dis`, `llvm-extract`, `llvm-diff`, `llvm-reduce` | qualification and failure reduction only | production linking occurs from verified modules; these tools remain useful for backend diagnosis but do not improve emitted semantics merely by being invoked |
 | `llvm-ar`, `llvm-ranlib`, `llvm-size` | archive packaging deferred; inspection as needed | compiled-library container and installation rules must precede a public native archive format |

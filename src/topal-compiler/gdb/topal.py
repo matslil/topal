@@ -22,7 +22,7 @@ def _decimal_from_limbs(raw, length):
 
 
 class _TopalIntPrinter:
-    """Render an immutable topal-native/2 Int object as a decimal integer."""
+    """Render an immutable topal-native/3 Int object as a decimal integer."""
 
     def __init__(self, value):
         self._value = value
@@ -59,9 +59,49 @@ class _TopalIntPrinter:
         return magnitude
 
 
+class _TopalRationalPrinter:
+    """Render a canonical topal-native Rational object."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def to_string(self):
+        address = int(self._value)
+        if address == 0:
+            return "<invalid null Rational>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 16))
+        except gdb.MemoryError:
+            return "<unreadable Rational>"
+        numerator_address = int.from_bytes(header[0:8], "little")
+        denominator_address = int.from_bytes(header[8:16], "little")
+        if not numerator_address or not denominator_address:
+            return "<invalid null Rational component>"
+        numerator = _TopalIntPrinter(numerator_address).to_string()
+        denominator = _TopalIntPrinter(denominator_address).to_string()
+        if numerator.startswith("<"):
+            return f"<invalid Rational numerator: {numerator}>"
+        if denominator.startswith("<"):
+            return f"<invalid Rational denominator: {denominator}>"
+        try:
+            denominator_header = bytes(
+                inferior.read_memory(denominator_address, 16)
+            )
+        except gdb.MemoryError:
+            return "<unreadable Rational denominator>"
+        denominator_negative = int.from_bytes(denominator_header[0:8], "little")
+        denominator_length = int.from_bytes(denominator_header[8:16], "little")
+        if denominator_negative or not denominator_length:
+            return "<noncanonical Rational denominator>"
+        return f"Rational ( {numerator}, {denominator} )"
+
+
 def _lookup_topal_value(value):
     if str(value.type) == "Int":
         return _TopalIntPrinter(value)
+    if str(value.type) == "Rational":
+        return _TopalRationalPrinter(value)
     return None
 
 

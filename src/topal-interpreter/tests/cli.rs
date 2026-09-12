@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 195);
+    assert_eq!(examples.len(), 196);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2361,6 +2361,18 @@ fn every_mode_executes_euclidean_int_modulo() {
     assert!(trace.contains("root.%(Int,Int);division-by-zero"));
     assert!(trace.contains("TOPAL-NUM-INT-QUOTIENT-MODULO-001"));
     assert!(trace.contains("root./%(Int,Int);division-by-zero"));
+}
+
+#[test]
+fn every_mode_executes_finite_exact_division_and_comparison() {
+    let source = include_str!("../../../examples/language/finite-exact-division-and-comparison.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(
+            b"(2, 3, 2, (-4, 3), (-3, 2), Rational ( 12345678901234567890123456789, 1 ), 52, Less, Greater, true, Rational ( 5, 2 ), Rational ( -5, 2 ))\n"
+        ));
+    }
 }
 
 #[test]

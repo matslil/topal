@@ -16156,7 +16156,7 @@ pub(crate) fn parse_integer(token: &str) -> Option<BigInt> {
     parse_unsigned_integer(token)
 }
 
-fn parse_rational(token: &str) -> Option<BigRational> {
+pub(crate) fn parse_rational(token: &str) -> Option<BigRational> {
     if let Some(unsigned) = token.strip_prefix('-') {
         return parse_unsigned_rational(unsigned).map(std::ops::Neg::neg);
     }

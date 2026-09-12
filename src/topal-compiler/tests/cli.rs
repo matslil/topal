@@ -91,7 +91,7 @@ fn arbitrary_int_runtime_is_exact_and_self_contained() {
     let metadata =
         NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
     assert_eq!(metadata.native_abi, NATIVE_ABI);
-    assert_eq!(metadata.native_abi, "topal-native/2");
+    assert_eq!(metadata.native_abi, "topal-native/3");
 
     let tools = LlvmTools::discover(None).unwrap();
     let undefined = run(Command::new(tools.directory.join("llvm-nm"))
@@ -131,6 +131,32 @@ fn arbitrary_int_runtime_matches_limb_boundary_semantics() {
     assert_eq!(executed.stdout, expected.as_bytes());
 }
 
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn finite_exact_runtime_matches_large_gcd_and_division_semantics() {
+    // TOPAL-COMP-EXACT-001; TOPAL-NUM-RATIONAL/DIV/MOD/POW/COMPARE-001
+    let directory = temporary("finite-exact-large");
+    let source = directory.join("large-exact.t");
+    let executable = directory.join("application");
+    let source_text = "use language (version is v0.1)\ncommon is 1234567890123456789012345678901234567890\nleft is Rational (common * 37, common * 41)\nright is Rational (common * 43, common * 47)\n(left, right, left + right, left - right, left * right, left / right, left ^ 5, common % 1000000007, common / 97, left < right, left <=> right)\n";
+    fs::write(&source, source_text).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+}
+
 #[test]
 fn unsupported_source_and_missing_llvm_do_not_publish_outputs() {
     // TOPAL-COMPILER-SUBSET-001, TOPAL-COMPILER-LLVM-001
@@ -144,7 +170,7 @@ fn unsupported_source_and_missing_llvm_do_not_publish_outputs() {
         unsupported.to_str().unwrap(),
     ]));
     assert!(!result.status.success());
-    assert!(String::from_utf8_lossy(&result.stderr).contains("E-COMPILER-UNSUPPORTED"));
+    assert!(String::from_utf8_lossy(&result.stderr).contains("E-DIVISION-BY-ZERO"));
     assert!(!first_output.exists());
     assert!(!metadata_path(&first_output).exists());
 
@@ -198,7 +224,7 @@ fn executable_is_static_pie_without_foreign_runtime_or_loader() {
     let directory = temporary("freestanding");
     let source = directory.join("source.t");
     let executable = directory.join("application");
-    fs::write(&source, "use language (version is v0.1)\ntrue\n").unwrap();
+    fs::write(&source, "use language (version is v0.1)\n6 / 8\n").unwrap();
     let compiled =
         run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
     assert!(
@@ -213,6 +239,7 @@ fn executable_is_static_pie_without_foreign_runtime_or_loader() {
             "--program-headers",
             "--dynamic-table",
             "--needed-libs",
+            "--relocations",
         ])
         .arg(&executable));
     assert!(inspected.status.success());
@@ -221,6 +248,7 @@ fn executable_is_static_pie_without_foreign_runtime_or_loader() {
     assert!(text.contains("Type: SharedObject"));
     assert!(!text.contains("PT_INTERP"));
     assert!(text.contains("NeededLibraries [\n]"));
+    assert!(text.contains("Relocations [\n]"));
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
@@ -300,4 +328,56 @@ fn gdb_observes_source_breakpoint_stack_and_local_value() {
         "{text}"
     );
     assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_renders_canonical_rational_parameters_and_locals() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-COMP-EXACT-001
+    let directory = temporary("gdb-rational");
+    let source = directory.join("rational-debug.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nadjust is fn (value : Rational) -> Rational\n  result is value + 0.5\n  return result\n1.25 adjust\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break rational-debug.t:3",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "next",
+            "-ex",
+            "print result",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = Rational ( 5, 4 )"), "{text}");
+    assert!(text.contains("$2 = Rational ( 7, 4 )"), "{text}");
 }

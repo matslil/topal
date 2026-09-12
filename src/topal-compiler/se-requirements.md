@@ -54,7 +54,7 @@ equality, ordering, function passage, decision joins, decimal output, and GDB
 inspection shall preserve the normative value for operands of any size that
 available address space can hold.
 
-The private `topal-native/2` representation shall be canonical, immutable, and
+The private `topal-native/3` representation shall be canonical, immutable, and
 hidden from foreign calling conventions. Its allocator and output routines
 shall use only the qualified Linux x86-64 system-call boundary, detect mapping
 failure, introduce no C/C++ runtime dependency or undefined helper symbol, and
@@ -69,13 +69,47 @@ This requirement covers `TOPAL-NUM-INT-001`, `TOPAL-NUM-NEG-001`,
 
 It realizes `TOPAL-COMPILER-INT-001` for compiler increment 2a.
 
+## TOPAL-COMP-EXACT-001 — Finite exact-number runtime
+
+The compiler shall represent finite Rational values as immutable pairs of
+canonical arbitrary-precision Int numerator and positive denominator objects.
+It shall implement relocation-free literals and identities, closed and
+specialization-proven construction, canonical Int embedding, exact Int and
+Rational division, Rational negation, absolute value, addition, subtraction,
+multiplication and powers, Int power, Euclidean modulo and quotient/modulo,
+same-domain and mixed exact equality/ordering, direct three-way Comparison
+values, textual output, function passage, and GDB inspection.
+
+Normalization shall use exact greatest-common-divisor and division algorithms.
+The implementation shall use no fixed source-value width, C/C++ runtime,
+foreign allocator, arithmetic helper, load-time pointer relocation, or dynamic
+loader. The compiler shall diagnose statically evident zero divisors and fail
+closed on dynamic arithmetic-error paths until typed Result lowering is
+implemented; generated code shall not terminate in place of an admitted Result.
+
+This requirement covers `TOPAL-NUM-RATIONAL-001`,
+`TOPAL-NUM-RATIONAL-CONSTRUCT-001`, `TOPAL-NUM-RATIONAL-LITERAL-001`,
+`TOPAL-NUM-RAT-NEG-001`, the finite Rational case of `TOPAL-NUM-ABS-001`,
+the admitted Int and Rational cases of `TOPAL-NUM-ZERO-001` and
+`TOPAL-NUM-ONE-001`, `TOPAL-NUM-RAT-ADD-001`, `TOPAL-NUM-RAT-SUB-001`,
+`TOPAL-NUM-RAT-MUL-001`, `TOPAL-NUM-RAT-DIV-001`,
+`TOPAL-NUM-INT-RATIONAL-CONVERT-001`, `TOPAL-NUM-DIV-001`,
+`TOPAL-NUM-DIVZERO-001`, `TOPAL-NUM-INT-MODULO-001`,
+`TOPAL-NUM-INT-QUOTIENT-MODULO-001`, `TOPAL-NUM-POW-001`,
+`TOPAL-NUM-RAT-POW-001`, `TOPAL-NUM-RAT-NEG-POW-001`,
+`TOPAL-NUM-COMPARE-001`, `TOPAL-NUM-THREE-WAY-COMPARE-001`, and applicable
+exact-number cases of `TOPAL-TYPE-EQUALITY-001` and
+`TOPAL-TYPE-ORDERING-001`.
+
+It realizes `TOPAL-COMPILER-EXACT-001` for compiler increment 2b.
+
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
 Debug-enabled O0 output shall map generated source functions, parameters,
 immutable scalar locals, and instructions to Topal files and source locations,
-emit DWARF 5 through LLVM, retain frame pointers, provide a GDB renderer for
-private arbitrary-precision Int objects, and pass automated GDB breakpoint,
-value, and backtrace scenarios.
+emit DWARF 5 through LLVM, retain frame pointers, provide GDB renderers for
+private arbitrary-precision Int and Rational objects, and pass automated GDB
+breakpoint, value, and backtrace scenarios.
 
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 
