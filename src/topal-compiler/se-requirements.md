@@ -457,6 +457,29 @@ realizes `TOPAL-COMPILER-CHARACTER-OBSERVATION-001` for compiler increment
 4b3b without a C/C++ runtime, standard library, host locale or Unicode table,
 or `topal-native/6` revision.
 
+## TOPAL-COMP-UNICODE-FOLD-001 — Closed pinned-Unicode operations
+
+When the checked model knows a String's complete preserved sequence, the
+compiler shall evaluate universal `upper`, `lower`, full `case-fold`, NFC
+normalization, and NFD normalization through the selected language context's
+pinned Unicode implementation. It shall materialize the exact plain String
+result without changing the source value. It shall also evaluate closed
+`canonically-equals` operands through the same pinned data and materialize the
+normative Boolean without normalizing either operand in place.
+
+This frontend evaluation shall be mandatory at `-O0` and independent of LLVM
+optimization. Result Strings shall use the existing immutable descriptor and
+debug/display paths. Dynamic operands shall remain rejected until a Topal-owned
+freestanding Unicode runtime is implemented; the binary shall gain no host
+Unicode table, locale service, C/C++ runtime, standard library, or native ABI
+revision.
+
+This requirement covers `TOPAL-STRING-UPPER-001`, `TOPAL-STRING-LOWER-001`,
+`TOPAL-STRING-CASE-FOLD-001`, `TOPAL-STRING-NORMALIZE-NFC-001`,
+`TOPAL-STRING-NORMALIZE-NFD-001`, and
+`TOPAL-STRING-CANONICAL-EQUALITY-001`; it realizes
+`TOPAL-COMPILER-UNICODE-FOLD-001` for compiler increment 4b3c.
+
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
 The compiler shall represent explicitly bounded finite `Range Int` and

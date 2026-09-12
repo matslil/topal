@@ -367,6 +367,23 @@ rejected until a Topal-owned freestanding Unicode runtime path is admitted;
 the compiler SHALL NOT substitute bytes, scalar values, host Unicode tables,
 locale services, or another language's runtime.
 
+### TOPAL-COMPILER-UNICODE-FOLD-001 — Closed pinned-Unicode operations
+
+For a closed String expression whose complete preserved sequence is known
+during checking, `upper`, `lower`, full `case-fold`, NFC normalization, and NFD
+normalization SHALL be evaluated with the selected language context's pinned
+Unicode data. Each result SHALL be a plain immutable String containing exactly
+the normative transformed scalar sequence; the input value SHALL remain
+unchanged. Closed `canonically-equals` SHALL evaluate canonical equivalence
+without changing either operand and SHALL return the required Boolean.
+
+These evaluations SHALL be mandatory at `-O0`, not delegated to an LLVM
+optimization. Their generated values SHALL use the existing String descriptor,
+display, DWARF, and GDB paths. Unknown operands SHALL be rejected until a
+Topal-owned freestanding Unicode runtime is admitted; generated code SHALL NOT
+consult host Unicode tables, locale services, C/C++ runtimes, or standard
+libraries, and the native ABI SHALL NOT change for these operations.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate

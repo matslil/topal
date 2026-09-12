@@ -3370,6 +3370,51 @@ mod tests {
     }
 
     #[test]
+    fn folds_closed_pinned_unicode_transformations() {
+        // TOPAL-COMPILER-UNICODE-FOLD-001
+        for (source, name, expected) in [
+            (
+                include_str!("../../../examples/language/string-uppercase.t"),
+                "string-uppercase.t",
+                "STRASSE ΣΣ",
+            ),
+            (
+                include_str!("../../../examples/language/string-lowercase.t"),
+                "string-lowercase.t",
+                "i\u{307}ς",
+            ),
+            (
+                include_str!("../../../examples/language/string-case-fold.t"),
+                "string-case-fold.t",
+                "strasse σσ",
+            ),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            let llvm = Generator::new(&program, name).emit();
+            assert!(llvm.contains(&llvm_bytes(expected.as_bytes())));
+            assert!(!llvm.contains("runtime.unicode"));
+        }
+        for (source, name) in [
+            (
+                include_str!("../../../examples/language/string-normalization.t"),
+                "string-normalization.t",
+            ),
+            (
+                include_str!("../../../examples/language/string-normalization-nfd.t"),
+                "string-normalization-nfd.t",
+            ),
+            (
+                include_str!("../../../examples/language/string-canonical-equality.t"),
+                "string-canonical-equality.t",
+            ),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            let llvm = Generator::new(&program, name).emit();
+            assert!(!llvm.contains("runtime.unicode"));
+        }
+    }
+
+    #[test]
     fn emits_utf8_byte_counts_through_the_native_string_descriptor() {
         // TOPAL-COMPILER-STRING-UTF8-BYTE-COUNT-001
         let source = include_str!("../../../examples/language/string-utf8-byte-count.t");

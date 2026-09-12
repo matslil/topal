@@ -84,7 +84,7 @@ The syscall runtime writes canonical ordinary or tagged Topal literals without
 relying on a C locale or string library. This descriptor foundation admits
 literal transport and display; subsequent increments reuse it for byte count,
 exact equality, and concatenation, while the remaining Unicode String
-operations stay in roadmap increment 4b3c.
+operations stay in roadmap increment 4b3d.
 
 The prospective UTF-8 byte-count operation reads the preserved-byte length
 already stored in that descriptor; it does not scan display spelling, attach an
@@ -148,6 +148,16 @@ the existing `None` header. `Optional Character` function passage, decision
 payload extraction, display, DWARF, and GDB therefore reuse existing carriers
 without a new ABI. Unknown text or index values fail at the checked boundary
 until generated Topal Unicode tables and segmentation code exist.
+
+Closed universal casing, full case folding, NFC/NFD normalization, and
+canonical equivalence follow the same frontend/runtime boundary. The checked
+frontend evaluates them through `topal-source`, whose Unicode data is pinned by
+the selected language context, and emits only exact String descriptors or
+Boolean constants. This is required semantic evaluation at O0 rather than an
+LLVM optimization: LLVM has neither Topal's Unicode-version authority nor a
+Unicode operation to select. Unknown values remain unsupported until the same
+pinned data can be generated into a Topal-owned freestanding runtime, avoiding
+ambient host tables and locale behavior.
 
 Fallible exact operations return immutable Result headers containing a
 canonical success-or-error tag and one opaque payload pointer. Successful

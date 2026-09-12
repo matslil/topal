@@ -4299,6 +4299,21 @@
       "cpu_time_ns": 3354660,
       "memory_peak_bytes": 18415616,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::folds_closed_pinned_unicode_transformations": {
+      "cpu_time_ns": 9172279,
+      "memory_peak_bytes": 18407424,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_closed_normalized_strings": {
+      "cpu_time_ns": 253907019,
+      "memory_peak_bytes": 56508416,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_closed_pinned_unicode_transformations": {
+      "cpu_time_ns": 3965419,
+      "memory_peak_bytes": 18407424,
+      "samples_per_test": 50
     }
   }
 }
