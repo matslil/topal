@@ -251,6 +251,23 @@ Converting the target descriptor length into Int SHALL use only the sealed
 Topal runtime representation and platform allocator. It SHALL NOT call a
 foreign String, encoding, conversion, allocator, or standard-library routine.
 
+### TOPAL-COMPILER-STRING-EQUALITY-001 — Exact native String equality
+
+An admitted same-type String equality or inequality SHALL compare the complete
+preserved Unicode sequence exactly, including distinctions between canonically
+equivalent but differently represented sequences. With the qualified valid
+UTF-8 descriptor representation, lowering SHALL compare preserved-byte lengths
+and then corresponding bytes in order. It SHALL NOT compare cached display
+spellings, normalize either value, consult locale state, or call a foreign
+string routine.
+
+Derived `Optional String` equality SHALL validate each Optional alternative,
+compare payload Strings only when both alternatives are present, make two
+absent alternatives equal, and make different alternatives unequal without
+loading an absent payload. Equality and inequality SHALL evaluate each source
+operand once and preserve the result required by `TOPAL-TYPE-EQUALITY-001` and
+`TOPAL-TYPE-OPTIONAL-EQUALITY-001` at `-O0`.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate

@@ -1509,6 +1509,16 @@ impl<'a> Generator<'a> {
                         debug_assert_eq!(enumeration, right_enumeration);
                         format!("icmp {predicate} i32 {left}, {right}")
                     }
+                    (LlValue::String(left), LlValue::String(right)) => {
+                        let equal = body.instruction(
+                            &format!(
+                                "call i1 @topal.runtime.string.equal(ptr {left}, ptr {right})"
+                            ),
+                            span,
+                            &mut self.debug,
+                        );
+                        format!("icmp {predicate} i1 {equal}, true")
+                    }
                     (
                         LlValue::Optional {
                             value: left,
@@ -1520,11 +1530,13 @@ impl<'a> Generator<'a> {
                         },
                     ) => {
                         debug_assert_eq!(payload, right_payload);
-                        debug_assert_eq!(payload, &CompilerType::Int);
+                        let runtime = match payload {
+                            CompilerType::Int => "optional.int.equal",
+                            CompilerType::String => "optional.string.equal",
+                            _ => unreachable!("checked Optional equality has canonical evidence"),
+                        };
                         let equal = body.instruction(
-                            &format!(
-                                "call i1 @topal.runtime.optional.int.equal(ptr {left}, ptr {right})"
-                            ),
+                            &format!("call i1 @topal.runtime.{runtime}(ptr {left}, ptr {right})"),
                             span,
                             &mut self.debug,
                         );
@@ -3197,6 +3209,25 @@ mod tests {
         assert!(llvm.contains("lshr i64 %source, 32"));
         assert!(llvm.contains("select i1 %has.high, i64 2, i64 1"));
         assert!(llvm.contains("ret ptr @topal.runtime.int.zero"));
+    }
+
+    #[test]
+    fn emits_exact_string_and_derived_optional_string_equality() {
+        // TOPAL-COMPILER-STRING-EQUALITY-001
+        let source = include_str!("../../../examples/language/string-exact-equality.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/string-exact-equality.t").emit();
+        assert_eq!(
+            llvm.matches("call i1 @topal.runtime.string.equal").count(),
+            5
+        );
+        assert_eq!(
+            llvm.matches("call i1 @topal.runtime.optional.string.equal")
+                .count(),
+            4
+        );
+        assert!(llvm.contains("%same.length = icmp eq i64 %left.length, %right.length"));
+        assert!(llvm.contains("%same.byte = icmp eq i8 %left.byte, %right.byte"));
     }
 
     #[test]

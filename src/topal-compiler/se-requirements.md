@@ -281,15 +281,15 @@ An Optional decision shall evaluate its subject once, load and bind a present
 payload only in the selected `Some` action, execute only the selected action,
 and require `Some` plus `None` coverage or a final `otherwise`. `Optional Int`
 shall implement derived equality using canonical arbitrary-precision Int
-equality. `Optional String` equality remains rejected until canonical dynamic
-String equality is admitted.
+equality. `Optional String` shall implement derived equality using exact
+preserved-sequence String equality.
 
 Construction, display, function passage, decisions, equality, DWARF, and GDB
 shall use the same private header and Linux syscall-backed allocator without a
 C/C++ runtime, standard library, load-time pointer relocation, or runtime type
 lookup. This requirement covers `TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`,
 `TOPAL-TYPE-OPTIONAL-CONTEXT-001`, `TOPAL-TYPE-OPTIONAL-BOUNDARY-001`,
-`TOPAL-DECISION-OPTIONAL-001`, and the admitted Int-payload case of
+`TOPAL-DECISION-OPTIONAL-001`, and the admitted Int- and String-payload cases of
 `TOPAL-TYPE-OPTIONAL-EQUALITY-001`. It realizes
 `TOPAL-COMPILER-OPTIONAL-001` for compiler increment 3b2-b4.
 
@@ -308,6 +308,23 @@ platform boundary and introduce no C/C++ runtime or standard-library
 dependency. This requirement covers `TOPAL-TYPE-CALL-001` and
 `TOPAL-STRING-UTF8-BYTE-COUNT-001`; it realizes
 `TOPAL-COMPILER-STRING-UTF8-BYTE-COUNT-001` for compiler increment 4a.
+
+## TOPAL-COMP-STRING-EQUALITY-001 — Exact String equality
+
+The compiler shall evaluate each admitted String equality operand once and
+compare the complete preserved Unicode sequence. Its valid UTF-8 native
+representation shall implement this by comparing the stored preserved-byte
+lengths and then corresponding bytes in order, without inspecting display
+spelling, normalizing either operand, consulting locale state, or calling a
+foreign String routine.
+
+Derived `Optional String` equality shall validate both Optional alternatives,
+compare payloads only when both are `Some`, make two `None` alternatives equal,
+and make different alternatives unequal without loading an absent payload.
+Inequality shall be the Boolean negation of the same equality result. This
+requirement covers the String case of `TOPAL-TYPE-EQUALITY-001` and the admitted
+String-payload case of `TOPAL-TYPE-OPTIONAL-EQUALITY-001`; it realizes
+`TOPAL-COMPILER-STRING-EQUALITY-001` for compiler increment 4b1.
 
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 

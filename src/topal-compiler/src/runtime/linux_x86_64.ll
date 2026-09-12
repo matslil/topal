@@ -130,6 +130,38 @@ entry:
   ret ptr %count
 }
 
+define internal i1 @topal.runtime.string.equal(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.data.pointer = getelementptr %topal.StringStorage, ptr %left, i32 0, i32 0
+  %left.length.pointer = getelementptr %topal.StringStorage, ptr %left, i32 0, i32 1
+  %right.data.pointer = getelementptr %topal.StringStorage, ptr %right, i32 0, i32 0
+  %right.length.pointer = getelementptr %topal.StringStorage, ptr %right, i32 0, i32 1
+  %left.data = load ptr, ptr %left.data.pointer, align 8
+  %left.length = load i64, ptr %left.length.pointer, align 8
+  %right.data = load ptr, ptr %right.data.pointer, align 8
+  %right.length = load i64, ptr %right.length.pointer, align 8
+  %same.length = icmp eq i64 %left.length, %right.length
+  br i1 %same.length, label %loop, label %not.equal
+loop:
+  %index = phi i64 [ 0, %entry ], [ %next, %advance ]
+  %complete = icmp eq i64 %index, %left.length
+  br i1 %complete, label %equal, label %compare
+compare:
+  %left.pointer = getelementptr i8, ptr %left.data, i64 %index
+  %right.pointer = getelementptr i8, ptr %right.data, i64 %index
+  %left.byte = load i8, ptr %left.pointer, align 1
+  %right.byte = load i8, ptr %right.pointer, align 1
+  %same.byte = icmp eq i8 %left.byte, %right.byte
+  br i1 %same.byte, label %advance, label %not.equal
+advance:
+  %next = add i64 %index, 1
+  br label %loop
+equal:
+  ret i1 true
+not.equal:
+  ret i1 false
+}
+
 define internal ptr @topal.runtime.result.success(ptr %payload) nounwind noinline {
 entry:
   %result = call ptr @topal.platform.allocate(i64 16)
@@ -223,6 +255,28 @@ payloads:
   %right.payload = call ptr @topal.runtime.optional.payload(ptr %right)
   %ordering = call i32 @topal.runtime.int.compare(ptr %left.payload, ptr %right.payload)
   %payloads.equal = icmp eq i32 %ordering, 0
+  br label %done
+done:
+  %equal = phi i1 [ false, %different ], [ true, %both.none ], [ %payloads.equal, %payloads ]
+  ret i1 %equal
+}
+
+define internal i1 @topal.runtime.optional.string.equal(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.some = call i1 @topal.runtime.optional.is.some(ptr %left)
+  %right.some = call i1 @topal.runtime.optional.is.some(ptr %right)
+  %same.alternative = icmp eq i1 %left.some, %right.some
+  br i1 %same.alternative, label %same, label %different
+different:
+  br label %done
+same:
+  br i1 %left.some, label %payloads, label %both.none
+both.none:
+  br label %done
+payloads:
+  %left.payload = call ptr @topal.runtime.optional.payload(ptr %left)
+  %right.payload = call ptr @topal.runtime.optional.payload(ptr %right)
+  %payloads.equal = call i1 @topal.runtime.string.equal(ptr %left.payload, ptr %right.payload)
   br label %done
 done:
   %equal = phi i1 [ false, %different ], [ true, %both.none ], [ %payloads.equal, %payloads ]
