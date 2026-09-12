@@ -4134,6 +4134,16 @@
       "cpu_time_ns": 2687140,
       "memory_peak_bytes": 18382848,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_discarded_parameter_without_debug_binding": {
+      "cpu_time_ns": 3120280,
+      "memory_peak_bytes": 18235392,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_discarded_function_parameters_without_binding_them": {
+      "cpu_time_ns": 2717660,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
     }
   }
 }

@@ -301,6 +301,7 @@ pub enum CompilerStatement {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerParameter {
     pub name: String,
+    pub discarded: bool,
     pub value_type: CompilerType,
     pub int_range: Option<IntRange>,
     pub span: Span,
@@ -1987,6 +1988,14 @@ impl Analyzer {
             .enumerate()
             .filter_map(|(index, item)| (index != function_index).then_some(item))
             .collect::<Vec<_>>();
+        let argument_sources = if let [Expression::Product { fields, .. }] =
+            argument_sources.as_slice()
+            && fields.iter().all(|field| field.label.is_none())
+        {
+            fields.iter().map(|field| &field.value).collect::<Vec<_>>()
+        } else {
+            argument_sources
+        };
         let arguments = argument_sources
             .iter()
             .map(|argument| self.analyze_expression(argument, environment))
@@ -2094,16 +2103,20 @@ impl Analyzer {
                 ));
             }
             let name = self.source.slice(parameter.name).to_owned();
-            environment.insert(
-                name.clone(),
-                BindingFacts {
-                    value_type: expected.clone(),
-                    int_range: argument.int_range.clone(),
-                    rational_value: argument.rational_value.clone(),
-                },
-            );
+            let discarded = name == "_";
+            if !discarded {
+                environment.insert(
+                    name.clone(),
+                    BindingFacts {
+                        value_type: expected.clone(),
+                        int_range: argument.int_range.clone(),
+                        rational_value: argument.rational_value.clone(),
+                    },
+                );
+            }
             parameters.push(CompilerParameter {
                 name,
+                discarded,
                 value_type: expected,
                 int_range: argument.int_range.clone(),
                 span: parameter.name,
@@ -3553,6 +3566,30 @@ mod tests {
                 && function.body.result.value_type == CompilerType::Completed
         }));
         assert_ne!(CompilerType::Completed, CompilerType::Unit);
+    }
+
+    #[test]
+    fn models_discarded_function_parameters_without_binding_them() {
+        // TOPAL-TYPE-MATCH-001, TOPAL-COMPILER-PATTERN-001
+        let source = "use language (version is v0.1)\nsecond is fn (_ : Int, value : Int) -> Int\n  value\nsecond (0, 42)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "second")
+            .unwrap();
+        assert!(function.parameters[0].discarded);
+        assert!(!function.parameters[1].discarded);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Local(ref name) if name == "value"
+        ));
+
+        let mismatch = "use language (version is v0.1)\nsecond is fn (_ : Int, value : Int) -> Int\n  value\nsecond (\"ignored\", 42)\n";
+        assert_eq!(
+            analyze_for_compiler(mismatch).unwrap_err().code,
+            "E-NO-APPLICABLE-OVERLOAD"
+        );
     }
 
     #[test]
