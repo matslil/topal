@@ -56,6 +56,15 @@ runtime, and is retained deliberately for deterministic GDB inspection.
 Records, aggregate parameters, persistent aggregate storage, and public
 interoperation remain separate representation decisions.
 
+When an admitted decision produces one of these Tuples, lowering keeps the
+existing decomposed representation through the merge: it recursively creates
+one LLVM `phi` for each machine-represented leaf and no node for Unit leaves.
+This gives every predecessor an exact scalar edge value, preserves nesting, and
+avoids both an aggregate `phi` and a temporary materialization. The frontend
+still proves a single complete action type and retains the decision family's
+once-only subject, ordered matching, and single delayed action semantics; LLVM
+only lowers the already explicit control flow and typed leaf joins.
+
 The checked frontend resolves each admitted source-ordered overload before IR
 generation and gives every selected input signature a distinct call-graph node
 and private LLVM symbol. Argument expressions are modeled once before candidate

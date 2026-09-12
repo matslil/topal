@@ -434,13 +434,13 @@ This realizes `TOPAL-COMPILER-EFFECT-EMPTY-001` for compiler increment 7a.
 
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
-In the admitted decision-free subset, the checked compiler model shall admit an
-ordinary or static Tuple result when every recursively nested leaf has an exact
-supported private scalar representation. It shall retain the source field order
-and identities and reject Record results, aggregate parameters, Tuple-valued
-control-flow joins, and unsupported leaves rather than inventing a layout or
-conversion. Function execution and all field evaluation shall remain correct at
-O0 without semantic heap storage, runtime allocation, or optimization.
+The checked compiler model shall admit an ordinary or static Tuple result when
+every recursively nested leaf has an exact supported private scalar
+representation. It shall retain the source field order and identities and
+reject Record results, aggregate parameters, and unsupported leaves rather than
+inventing a layout or conversion. Function execution and all field evaluation
+shall remain correct at O0 without semantic heap storage, runtime allocation,
+or optimization.
 
 The Linux x86-64 backend shall lower each admitted result to a recursively
 nested, non-packed LLVM literal struct. Definition and calls shall use the same
@@ -457,6 +457,24 @@ named Tuple bindings shall use a target-aligned debug-only stack shadow and
 allocator, foreign dependency, C/C++ runtime, other-language standard library,
 or `topal-native/6` revision. This realizes
 `TOPAL-COMPILER-TUPLE-RESULT-001` for compiler increment 3b2-b5f.
+
+## TOPAL-COMP-TUPLE-DECISION-001 — Field-wise Tuple control-flow joins
+
+The checked compiler model shall admit a common recursively composed Tuple
+result across Boolean, ordered-comparison, `Comparison`, Enum, Optional, and
+Result decisions when every leaf has the private representation admitted by
+`TOPAL-COMP-TUPLE-RESULT-001`. It shall require identical complete action types
+after existing conversions and shall preserve subject-once evaluation, rule
+order, and exactly one selected delayed action at O0.
+
+The backend shall recursively join every decomposed machine leaf with a
+correctly typed LLVM `phi`, omitting a machine join only for Unit leaves. It
+shall not construct an aggregate `phi`, evaluate an unselected action, or add
+semantic aggregate storage, heap allocation, a runtime helper, a foreign
+dependency, a C/C++ runtime, another-language standard library, or a
+`topal-native/6` revision. Record decisions and unsupported Tuple leaves shall
+remain rejected. This realizes `TOPAL-COMPILER-TUPLE-DECISION-001` for compiler
+increment 3b2-b5g.
 
 ## TOPAL-COMP-TYPE-VALUE-001 — Closed fundamental Type values
 

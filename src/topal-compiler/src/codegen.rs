@@ -2116,7 +2116,7 @@ impl<'a> Generator<'a> {
         self.emit_decision_phi(&branches, body, span)
     }
 
-    #[allow(clippy::too_many_lines)] // Exhaustive scalar joins preserve checked representation identity.
+    #[allow(clippy::too_many_lines)] // Exhaustive joins preserve checked representation identity.
     fn emit_decision_phi(
         &mut self,
         branches: &[(LlValue, String)],
@@ -2226,8 +2226,24 @@ impl<'a> Generator<'a> {
                     payload,
                 }
             }
-            LlValue::Tuple(_) | LlValue::Record(_) => {
-                unreachable!("checked decision result is machine scalar")
+            LlValue::Tuple(fields) => LlValue::Tuple(
+                (0..fields.len())
+                    .map(|index| {
+                        let field_branches = branches
+                            .iter()
+                            .map(|(branch, predecessor)| {
+                                let LlValue::Tuple(fields) = branch else {
+                                    unreachable!("checked decision branches share a Tuple type")
+                                };
+                                (fields[index].clone(), predecessor.clone())
+                            })
+                            .collect::<Vec<_>>();
+                        self.emit_decision_phi(&field_branches, body, span)
+                    })
+                    .collect(),
+            ),
+            LlValue::Record(_) => {
+                unreachable!("checked decision result has no Record representation")
             }
         }
     }
@@ -3813,6 +3829,48 @@ mod tests {
         assert!(llvm.contains("extractvalue { { ptr, i1 }, ptr }"));
         assert!(llvm.contains("DW_TAG_structure_type, name: \"((Int, Boolean), String)\", file:"));
         assert!(llvm.contains("size: 192, align: 64"));
+    }
+
+    #[test]
+    fn emits_fieldwise_phi_nodes_for_tuple_decision_results() {
+        // TOPAL-COMPILER-TUPLE-DECISION-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/tuple-decision-results.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "tuple-decision-results.t").emit();
+        for function in program
+            .functions
+            .iter()
+            .filter(|function| function.source_name.starts_with("choose-"))
+        {
+            let definition = llvm
+                .split_once(&format!("@{}(", function.symbol))
+                .unwrap()
+                .1
+                .split_once("\n}\n")
+                .unwrap()
+                .0;
+            assert_eq!(definition.matches("phi ptr").count(), 2, "{definition}");
+            assert!(!definition.contains("phi {"), "{definition}");
+        }
+
+        let nested = analyze_for_compiler(
+            "use language (version is v0.1)\nselect is fn (condition : Boolean) -> ((Int, Boolean), String)\n  condition\n    true then ((1, true), \"yes\")\n    false then ((0, false), \"no\")\nselect true\n",
+        )
+        .unwrap();
+        let symbol = &nested.functions[0].symbol;
+        let llvm = Generator::new(&nested, "nested-tuple-decision.t").emit();
+        let definition = llvm
+            .split_once(&format!("@{symbol}("))
+            .unwrap()
+            .1
+            .split_once("\n}\n")
+            .unwrap()
+            .0;
+        assert_eq!(definition.matches("phi ptr").count(), 2, "{definition}");
+        assert_eq!(definition.matches("phi i1").count(), 1, "{definition}");
+        assert!(!definition.contains("phi {"), "{definition}");
     }
 
     #[test]
