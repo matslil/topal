@@ -791,8 +791,9 @@ impl Analyzer {
                         "a non-final value expression must be explicitly discarded or bound",
                     ));
                 }
-                Statement::Return { value, .. } if kind == BlockKind::Function && last => {
+                Statement::Return { value, .. } if kind == BlockKind::Function => {
                     result = Some(self.analyze_expression(value, environment)?);
+                    break;
                 }
                 Statement::Return { .. } if kind == BlockKind::TopLevel => {
                     return Err(source_diagnostic(
@@ -800,13 +801,6 @@ impl Analyzer {
                         "E-RETURN-OUTSIDE-FUNCTION",
                         statement_span(statement),
                         "`return` is available only inside a function",
-                    ));
-                }
-                Statement::Return { .. } => {
-                    return Err(unsupported(
-                        &self.source,
-                        statement_span(statement),
-                        "non-final return",
                     ));
                 }
                 Statement::LibrarySelection { .. } => {
@@ -3408,6 +3402,30 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(invalid_static_call).unwrap_err().code,
             "E-NO-APPLICABLE-OVERLOAD"
+        );
+    }
+
+    #[test]
+    fn models_explicit_early_return_and_skips_the_tail() {
+        // TOPAL-FUNCTION-RETURN-001
+        let source = "use language (version is v0.1)\nanswer is fn static () -> Int\n  return 40 + 2\n  0\nanswer ()\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(program.main.result.value_type, CompilerType::Int);
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "answer"
+                && matches!(
+                    function.body.result.kind,
+                    CompilerExpressionKind::Binary {
+                        operation: CompilerBinary::Add,
+                        ..
+                    }
+                )
+        }));
+
+        let outside = "use language (version is v0.1)\nreturn 42\n";
+        assert_eq!(
+            analyze_for_compiler(outside).unwrap_err().code,
+            "E-RETURN-OUTSIDE-FUNCTION"
         );
     }
 

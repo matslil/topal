@@ -167,6 +167,16 @@ and matcher-validity rules of `TOPAL-DECISION-ENUM-001`. LLVM `switch` and
 SHALL fail closed rather than select a source alternative. DWARF SHALL describe
 the nominal enum and its source labels truthfully for GDB inspection.
 
+### TOPAL-COMPILER-RETURN-001 — Mandatory direct-return lowering
+
+For every admitted direct `return` in a linear function body, the checked
+compiler model SHALL evaluate and validate the return expression once, retain
+all preceding statement effects in source order, and exclude every later
+statement in that invocation from LLVM IR. This exclusion is mandatory
+semantic lowering at `-O0`, not dead-code optimization. The backend SHALL use
+the function's ordinary private result representation and truthful return-line
+debug location. A root-level return SHALL be rejected.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

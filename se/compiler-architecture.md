@@ -127,6 +127,14 @@ through the Topal syscall boundary, while DWARF describes a genuine enumeration
 so stock GDB shows source labels. General `Union` layout and nested enum
 declarations remain separate representation and scope increments.
 
+A direct explicit `return` in an admitted linear function body is resolved by
+the checked frontend as a control-flow boundary, not an optional optimization.
+The return expression is checked once against the declared output, preceding
+statements remain ordered, and the unreachable source tail never enters LLVM
+IR. The backend then uses the same private signature, return instruction, and
+DWARF source mapping as an implicit final result. Nested lexical blocks acquire
+explicit exit edges when their representation and cleanup model are admitted.
+
 The correctness-first exact runtime uses binary long division, Euclidean sign
 correction, Euclid's greatest-common-divisor algorithm, and exponentiation by
 squaring. LLVM's documented `llvm.ctlz.i32` intrinsic determines the last
