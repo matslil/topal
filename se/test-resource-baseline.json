@@ -4214,6 +4214,21 @@
       "cpu_time_ns": 3343500,
       "memory_peak_bytes": 18472960,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_recursive_positional_product_equality_from_field_evidence": {
+      "cpu_time_ns": 5599280,
+      "memory_peak_bytes": 18403328,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_compares_recursive_positional_products": {
+      "cpu_time_ns": 27248140,
+      "memory_peak_bytes": 18395136,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_recursive_positional_product_equality": {
+      "cpu_time_ns": 3522079,
+      "memory_peak_bytes": 18403328,
+      "samples_per_test": 50
     }
   }
 }

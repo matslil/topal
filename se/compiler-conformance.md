@@ -26,7 +26,8 @@ evidence.
 | 3b2-b2 | distinct zero-data Completed evidence, equality, scalar function passage, retained call dependency, display, and debugging | complete |
 | 3b2-b3 | ordinary positional-product prefix calls and typed discard input patterns without source/debug bindings | complete |
 | 3b2-b4 | `Optional Int`/`Optional String` construction, contextual absence, scalar function passage, exhaustive decisions, display, `Optional Int` equality, and debugging | complete |
-| 3b2-b5 | remaining function forms, return-through-block cleanup, recursion/totality evidence, nested declarations, records, unions, constraints, capabilities, and decisions | planned |
+| 3b2-b5a | same-classifier positional-product equality recursively derived from admitted field equality | complete |
+| 3b2-b5b | remaining function forms, return-through-block cleanup, recursion/totality evidence, nested declarations, records, unions, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -75,8 +76,9 @@ representation without conflating payload-free `Enum` with general `Union`;
 3b2-b2 adds the distinct zero-data Completed value without erasing its call
 dependency into Unit; 3b2-b3 completes positional-product prefix application
 and typed discard inputs without inventing bindings; 3b2-b4 adds a distinct
-freestanding Optional representation; 3b2-b5 continues with
-nested declarations, recursive and nested-block exit
+freestanding Optional representation; 3b2-b5a derives same-classifier
+positional-product equality without introducing an aggregate ABI; 3b2-b5b
+continues with nested declarations, recursive and nested-block exit
 control flow, cleanup-bearing scopes, and the remaining user-defined value
 representations. Increment 4a admits the encoding-observation byte count without
 attaching an encoding or importing a foreign String runtime; 4b1 adds exact

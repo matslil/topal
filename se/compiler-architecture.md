@@ -220,6 +220,20 @@ signature but is omitted from the function binding environment and DWARF
 variables; the backend therefore neither makes the discarded input addressable
 nor fabricates a debugger name for it.
 
+Within an expression or binding, an admitted positional product remains a
+compiler aggregate of its already-evaluated field values. Same-classifier
+product equality evaluates the complete left operand and then the complete
+right operand once, recursively applies each field's admitted canonical
+equality, and joins the Boolean results with LLVM `and i1`. Comparing a product
+therefore adds no allocation, native object header, or foreign aggregate ABI.
+Canonical conversions between differently classified corresponding fields and
+product passage through machine signatures remain separate frontend and ABI
+work rather than being inferred by the backend. Because this increment has no
+single machine product value, it does not yet publish product bindings as DWARF
+locals; their source lines and lowered field operations remain debuggable, while
+a truthful aggregate DWARF representation is retained with general product
+storage and ABI work in increment 3b2-b5b.
+
 The correctness-first exact runtime uses binary long division, Euclidean sign
 correction, Euclid's greatest-common-divisor algorithm, and exponentiation by
 squaring. LLVM's documented `llvm.ctlz.i32` intrinsic determines the last
