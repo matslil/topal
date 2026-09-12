@@ -269,6 +269,27 @@ C/C++ runtime, other-language standard library, or `topal-native/6` revision
 and realizes `TOPAL-COMPILER-RECURSION-INT-INCREASING-001` for increment
 3b2-b5e2.
 
+## TOPAL-COMP-RECURSION-NAT-001 — Proven direct Nat recursion
+
+The checked compiler model shall admit the shared
+`TOPAL-FUNCTION-RECURSION-NAT-001` and
+`TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001` proofs. Decreasing recursion shall
+preserve nonnegativity by enforcing the proof's nonnegative inclusive bound and
+maximum literal step; increasing recursion shall add a strict positive literal.
+Unsafe overshoot and every otherwise unproven direct edge shall remain rejected.
+
+Within a recursive step the model shall forget `Nat` evidence to the unchanged
+exact Int carrier for addition or subtraction, then attach `Nat` evidence to
+the recursive argument only under the shared range-preservation proof. That
+proof-backed `IntToNat` node shall lower as an identity: it shall not call the
+dynamic Nat validator, allocate, reinterpret the value as unsigned, or change
+its representation. The recursive function shall retain an exact private
+`fastcc` prototype, `noinline` without `norecurse`, O0 correctness, distinct
+frames, and `Nat` parameter identity in DWARF/GDB. It shall use only the
+existing Topal-owned Linux syscall runtime and `topal-native/6` ABI, with no
+C/C++ runtime or other-language standard library. This realizes
+`TOPAL-COMPILER-RECURSION-NAT-001` for increment 3b2-b5e3.
+
 ## TOPAL-COMP-RETURN-001 — Direct explicit function return
 
 Within an admitted linear function body, `return expression` shall evaluate and

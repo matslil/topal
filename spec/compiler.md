@@ -218,6 +218,26 @@ ABI obligations of `TOPAL-COMPILER-RECURSION-INT-001` SHALL apply. Positive
 multi-unit steps MAY overshoot the inclusive bound as specified by the shared
 proof and SHALL NOT require a distinct runtime operation or representation.
 
+### TOPAL-COMPILER-RECURSION-NAT-001 — Proven direct Nat recursion
+
+The compiler SHALL admit direct unary `Nat` recursion only when the shared
+language proof establishes `TOPAL-FUNCTION-RECURSION-NAT-001` or
+`TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001`. A decreasing edge SHALL satisfy
+the proof's nonnegative inclusive-bound and maximum-step obligations; an
+increasing edge SHALL add a strict positive literal. Unsafe overshoot, a
+negative bound for decreasing recursion, a zero or wrong-direction step, a
+self-call in the base, and otherwise unproven edges SHALL remain rejected.
+
+Checking a recursive step SHALL first forget `Nat` constraint evidence to the
+unchanged exact `Int` value for addition or subtraction. The compiler MAY
+reattach `Nat` evidence to the recursive argument without dynamic validation
+only after the applicable shared proof establishes that every such argument is
+nonnegative. This evidence operation SHALL emit no machine instruction,
+validation call, unsigned conversion, allocation, or representation change.
+The function SHALL otherwise meet the exact private prototype, O0, attribute,
+DWARF, freestanding-runtime, and native ABI obligations of
+`TOPAL-COMPILER-RECURSION-INT-001`.
+
 ### TOPAL-COMPILER-ENUM-001 — Sealed nominal enum lowering
 
 Each admitted payload-free source enum SHALL retain a distinct nominal identity

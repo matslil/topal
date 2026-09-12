@@ -4414,6 +4414,21 @@
       "cpu_time_ns": 4102960,
       "memory_peak_bytes": 18231296,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_proven_nat_recursion_without_runtime_revalidation": {
+      "cpu_time_ns": 5888859,
+      "memory_peak_bytes": 18219008,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_retains_recursive_nat_frames_and_constraint_identity": {
+      "cpu_time_ns": 249220740,
+      "memory_peak_bytes": 57442304,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_only_range_preserving_nat_recursion": {
+      "cpu_time_ns": 3421980,
+      "memory_peak_bytes": 18231296,
+      "samples_per_test": 50
     }
   }
 }

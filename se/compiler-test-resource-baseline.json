@@ -766,6 +766,26 @@
       "cpu_time_ns": 200408,
       "memory_peak_bytes": 18558976,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/nat-increasing-recursion.t": {
+      "cpu_time_ns": 121317540,
+      "memory_peak_bytes": 41512960,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/nat-recursion.t": {
+      "cpu_time_ns": 120623360,
+      "memory_peak_bytes": 41525248,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/nat-increasing-recursion.t": {
+      "cpu_time_ns": 154219,
+      "memory_peak_bytes": 18436096,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/nat-recursion.t": {
+      "cpu_time_ns": 155121,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 500
     }
   }
 }
