@@ -201,6 +201,17 @@ to the block SHALL carry a nested DWARF lexical scope. A source block form whose
 exit or lifetime semantics have no admitted lowering SHALL be rejected rather
 than flattened into the enclosing scope.
 
+### TOPAL-COMPILER-COMPLETED-001 — Retained completion evidence
+
+Completed SHALL remain a distinct checked and generated value type from Unit.
+An admitted function returning Completed SHALL use a typed zero-data private
+result and its call SHALL remain an ordering dependency at O0; it SHALL NOT be
+lowered as a `void` Unit call. Construction SHALL require no allocation.
+
+Same-type equality, scalar function passage, control-flow joins, canonical
+display, DWARF, and GDB SHALL preserve the singleton source identity. Its
+machine carrier SHALL NOT be exposed as a public integer or foreign ABI.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

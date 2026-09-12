@@ -234,6 +234,22 @@ This requirement covers the cleanup-free block subset of
 `TOPAL-EXEC-BLOCK-001` and the block case of `TOPAL-SYN-GRAMMAR-001`. It
 realizes `TOPAL-COMPILER-BLOCK-001` for compiler increment 3b2-b1.
 
+## TOPAL-COMP-COMPLETED-001 — Completion evidence
+
+The compiler shall keep Completed distinct from Unit in the checked model,
+generated signatures, values, equality, display, and debug information. An
+admitted function returning Completed shall have a retained typed result and
+call boundary at O0 so a dependent continuation remains ordered after the
+call's completion; it shall not be lowered as a Unit-returning `void` call.
+
+The zero-data value shall require no allocation or foreign runtime. Its private
+machine carrier shall remain sealed inside the target-qualified Topal ABI, and
+DWARF/GDB shall render the source identity `Completed` rather than an unrelated
+integer or Unit value.
+
+This requirement covers `TOPAL-EXEC-COMPLETED-001` and realizes
+`TOPAL-COMPILER-COMPLETED-001` for compiler increment 3b2-b2.
+
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
 The compiler shall represent explicitly bounded finite `Range Int` and

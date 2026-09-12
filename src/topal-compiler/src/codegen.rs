@@ -48,6 +48,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         }
         CompilerType::Tuple(fields) => fields.iter().any(type_uses_extended_debug),
         CompilerType::Unit
+        | CompilerType::Completed
         | CompilerType::Boolean
         | CompilerType::Int
         | CompilerType::Nat
@@ -139,6 +140,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
                     .is_some_and(expression_uses_extended_debug)
         }
         CompilerExpressionKind::Unit
+        | CompilerExpressionKind::Completed
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -228,6 +230,7 @@ impl<'a> Generator<'a> {
         for (index, parameter) in function.parameters.iter().enumerate() {
             let value = match &parameter.value_type {
                 CompilerType::Unit => LlValue::Unit,
+                CompilerType::Completed => LlValue::Completed(format!("%arg{index}")),
                 CompilerType::Boolean => LlValue::Boolean(format!("%arg{index}")),
                 CompilerType::Int | CompilerType::Nat => LlValue::Int(format!("%arg{index}")),
                 CompilerType::Rational => LlValue::Rational(format!("%arg{index}")),
@@ -267,6 +270,9 @@ impl<'a> Generator<'a> {
         let location = self.debug.location(function.body.result.span, subprogram);
         match result {
             LlValue::Unit => body.terminator("ret void", location),
+            LlValue::Completed(value) => {
+                body.terminator(&format!("ret i8 {value}"), location);
+            }
             LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
             LlValue::Int(value)
             | LlValue::Rational(value)
@@ -354,6 +360,7 @@ impl<'a> Generator<'a> {
     ) -> LlValue {
         match &expression.kind {
             CompilerExpressionKind::Unit => LlValue::Unit,
+            CompilerExpressionKind::Completed => LlValue::Completed("0".into()),
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
             CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
             CompilerExpressionKind::Rational(value) => {
@@ -644,6 +651,11 @@ impl<'a> Generator<'a> {
                         );
                         LlValue::Unit
                     }
+                    CompilerType::Completed => LlValue::Completed(body.instruction(
+                        &format!("call fastcc i8 @{symbol}({arguments})"),
+                        expression.span,
+                        &mut self.debug,
+                    )),
                     CompilerType::Boolean => LlValue::Boolean(body.instruction(
                         &format!("call fastcc i1 @{symbol}({arguments})"),
                         expression.span,
@@ -1336,6 +1348,9 @@ impl<'a> Generator<'a> {
                 };
                 let instruction = match (left, right) {
                     (LlValue::Unit, LlValue::Unit) => format!("icmp {predicate} i8 0, 0"),
+                    (LlValue::Completed(left), LlValue::Completed(right)) => {
+                        format!("icmp {predicate} i8 {left}, {right}")
+                    }
                     (LlValue::Boolean(left), LlValue::Boolean(right)) => {
                         format!("icmp {predicate} i1 {left}, {right}")
                     }
@@ -1625,6 +1640,11 @@ impl<'a> Generator<'a> {
         };
         match first {
             LlValue::Unit => LlValue::Unit,
+            LlValue::Completed(_) => LlValue::Completed(body.instruction(
+                &format!("phi i8 {}", incoming(LlValue::completed)),
+                span,
+                &mut self.debug,
+            )),
             LlValue::Boolean(_) => LlValue::Boolean(body.instruction(
                 &format!("phi i1 {}", incoming(LlValue::boolean)),
                 span,
@@ -1705,6 +1725,7 @@ impl<'a> Generator<'a> {
     fn emit_print(&mut self, value: &LlValue, body: &mut FunctionBody, span: Span) {
         match value {
             LlValue::Unit => self.emit_write_literal("()", body, span),
+            LlValue::Completed(_) => self.emit_write_literal("Completed", body, span),
             LlValue::Boolean(value) => {
                 let true_label = body.label("print.true");
                 let false_label = body.label("print.false");
@@ -1970,6 +1991,7 @@ impl<'a> Generator<'a> {
 #[derive(Clone)]
 enum LlValue {
     Unit,
+    Completed(String),
     Boolean(String),
     Int(String),
     Rational(String),
@@ -1994,6 +2016,13 @@ enum LlValue {
 }
 
 impl LlValue {
+    fn completed(&self) -> &str {
+        let Self::Completed(value) = self else {
+            unreachable!("checked value is Completed")
+        };
+        value
+    }
+
     fn integer(&self) -> &str {
         let Self::Int(value) = self else {
             unreachable!("checked value is Int")
@@ -2078,6 +2107,7 @@ impl LlValue {
     fn argument(&self) -> String {
         match self {
             Self::Unit => "i8 0".into(),
+            Self::Completed(value) => format!("i8 {value}"),
             Self::Boolean(value) => format!("i1 {value}"),
             Self::Int(value)
             | Self::Rational(value)
@@ -2154,6 +2184,7 @@ impl FunctionBody {
     fn debug_value(&mut self, value: &LlValue, variable: usize, location: usize) {
         let value = match value {
             LlValue::Unit => "i8 0".into(),
+            LlValue::Completed(value) => format!("i8 {value}"),
             LlValue::Boolean(value) => format!("i1 {value}"),
             LlValue::Int(value)
             | LlValue::Rational(value)
@@ -2212,6 +2243,7 @@ struct DebugInfo {
     comparison_type: usize,
     boolean_type: usize,
     unit_type: usize,
+    completed_type: usize,
     enum_types: BTreeMap<String, usize>,
     source: topal_source::SourceText,
     filename: String,
@@ -2250,6 +2282,7 @@ impl DebugInfo {
             comparison_type: 0,
             boolean_type: 0,
             unit_type: 0,
+            completed_type: 0,
             enum_types: BTreeMap::new(),
             source,
             filename,
@@ -2309,6 +2342,12 @@ impl DebugInfo {
             debug.node("!DIBasicType(name: \"Boolean\", size: 8, encoding: DW_ATE_boolean)".into());
         debug.unit_type =
             debug.node("!DIBasicType(name: \"Unit\", size: 8, encoding: DW_ATE_unsigned)".into());
+        let completed = debug.node("!DIEnumerator(name: \"Completed\", value: 0)".into());
+        let completed_values = debug.node(format!("!{{!{completed}}}"));
+        debug.completed_type = debug.node(format!(
+            "!DICompositeType(tag: DW_TAG_enumeration_type, name: \"Completed\", file: !{}, size: 8, align: 8, elements: !{completed_values})",
+            debug.file
+        ));
         debug
     }
 
@@ -2508,6 +2547,7 @@ impl DebugInfo {
     fn type_id(&mut self, value_type: &CompilerType) -> usize {
         match value_type {
             CompilerType::Unit => self.unit_type,
+            CompilerType::Completed => self.completed_type,
             CompilerType::Boolean => self.boolean_type,
             CompilerType::Int => self.int_type,
             CompilerType::Nat => self.nat_type,
@@ -2695,6 +2735,7 @@ impl DebugInfo {
 fn llvm_type(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Unit => "void",
+        CompilerType::Completed => "i8",
         CompilerType::Boolean => "i1",
         CompilerType::Int
         | CompilerType::Nat
@@ -2711,7 +2752,7 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
 
 fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
     match value_type {
-        CompilerType::Unit => "i8",
+        CompilerType::Unit | CompilerType::Completed => "i8",
         CompilerType::Boolean => "i1",
         CompilerType::Int
         | CompilerType::Nat
@@ -2788,6 +2829,20 @@ mod tests {
         let llvm = Generator::new(&program, "/source/block.t").emit();
         assert!(llvm.contains("distinct !DILexicalBlock"));
         assert!(llvm.contains("DILocalVariable(name: \"value\""));
+    }
+
+    #[test]
+    fn emits_completed_as_a_retained_zero_data_result() {
+        // TOPAL-EXEC-COMPLETED-001
+        let source = "use language (version is v0.1)\nfinish is fn () -> Completed\n  result is Completed\n  result\nretain is fn (value : Completed) -> Completed\n  value\n(finish (), retain Completed, Completed = Completed)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/completed.t").emit();
+        assert!(llvm.contains("define internal fastcc i8 @topal.fn.finish.0"));
+        assert!(llvm.contains("call fastcc i8 @topal.fn.finish.0"));
+        assert!(llvm.contains("call fastcc i8 @topal.fn.retain.1(i8 0)"));
+        assert!(llvm.contains("icmp eq i8 0, 0"));
+        assert!(llvm.contains("ret i8 0"));
+        assert!(llvm.contains("DW_TAG_enumeration_type, name: \"Completed\""));
     }
 
     #[test]

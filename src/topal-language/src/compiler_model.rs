@@ -26,6 +26,7 @@ pub struct CompilerEnumType {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerType {
     Unit,
+    Completed,
     Boolean,
     Int,
     Nat,
@@ -47,6 +48,7 @@ impl CompilerType {
         matches!(
             self,
             Self::Unit
+                | Self::Completed
                 | Self::Boolean
                 | Self::Int
                 | Self::Nat
@@ -66,6 +68,7 @@ impl CompilerType {
     pub fn name(&self) -> String {
         match self {
             Self::Unit => "Unit".into(),
+            Self::Completed => "Completed".into(),
             Self::Boolean => "Boolean".into(),
             Self::Int => "Int".into(),
             Self::Nat => "Nat".into(),
@@ -194,6 +197,7 @@ pub struct CompilerEnumRule {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerExpressionKind {
     Unit,
+    Completed,
     Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
@@ -877,6 +881,15 @@ impl Analyzer {
                 })
             }
             Expression::Unit(_) => Ok(unit_expression(span)),
+            Expression::Identifier(name) if self.source.slice(*name) == "Completed" => {
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Completed,
+                    value_type: CompilerType::Completed,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
             Expression::Boolean(value) => Ok(CompilerExpression {
                 kind: CompilerExpressionKind::Boolean(self.source.slice(*value) == "true"),
                 value_type: CompilerType::Boolean,
@@ -1706,6 +1719,7 @@ impl Analyzer {
                 left_value.value_type,
                 CompilerType::Boolean
                     | CompilerType::Unit
+                    | CompilerType::Completed
                     | CompilerType::Comparison
                     | CompilerType::ErrorCode
                     | CompilerType::Enum(_)
@@ -2726,6 +2740,7 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         "RangeInt" => Some(CompilerType::Range(Box::new(CompilerType::Int))),
         "RangeRational" => Some(CompilerType::Range(Box::new(CompilerType::Rational))),
         "Unit" => Some(CompilerType::Unit),
+        "Completed" => Some(CompilerType::Completed),
         "Boolean" => Some(CompilerType::Boolean),
         "Int" => Some(CompilerType::Int),
         "Nat" => Some(CompilerType::Nat),
@@ -2873,6 +2888,7 @@ fn compiler_expression_is_closed_with(
 ) -> bool {
     match &expression.kind {
         CompilerExpressionKind::Unit
+        | CompilerExpressionKind::Completed
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -3521,6 +3537,22 @@ mod tests {
             analyze_for_compiler(closed_zero).unwrap_err().code,
             "E-DIVISION-BY-ZERO"
         );
+    }
+
+    #[test]
+    fn models_completed_as_distinct_zero_data_evidence() {
+        // TOPAL-EXEC-COMPLETED-001
+        let source = "use language (version is v0.1)\nfinish is fn () -> Completed\n  Completed\nretain is fn (value : Completed) -> Completed\n  value\n(finish (), retain Completed, Completed = Completed)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Completed, Completed, Boolean)"
+        );
+        assert!(program.functions.iter().all(|function| {
+            function.result_type == CompilerType::Completed
+                && function.body.result.value_type == CompilerType::Completed
+        }));
+        assert_ne!(CompilerType::Completed, CompilerType::Unit);
     }
 
     #[test]
