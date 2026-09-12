@@ -4099,6 +4099,11 @@
       "cpu_time_ns": 2836140,
       "memory_peak_bytes": 18403328,
       "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_qualified_arithmetic_error_code_values": {
+      "cpu_time_ns": 3655680,
+      "memory_peak_bytes": 18477056,
+      "samples_per_test": 50
     }
   }
 }

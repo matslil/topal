@@ -456,6 +456,16 @@
       "cpu_time_ns": 144948,
       "memory_peak_bytes": 18665472,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/arithmetic-error-codes.t": {
+      "cpu_time_ns": 124135540,
+      "memory_peak_bytes": 40882176,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/arithmetic-error-codes.t": {
+      "cpu_time_ns": 152314,
+      "memory_peak_bytes": 18608128,
+      "samples_per_test": 500
     }
   }
 }

@@ -198,6 +198,7 @@ pub enum CompilerExpressionKind {
     Int(BigInt),
     Rational(BigRational),
     String(String),
+    ErrorCode(u32),
     Enum(u32),
     Tuple(Vec<CompilerExpression>),
     Local(String),
@@ -968,6 +969,25 @@ impl Analyzer {
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
         if let [
+            Expression::Identifier(namespace),
+            Expression::Identifier(vocabulary),
+            Expression::Identifier(code),
+        ] = items
+            && let Some(value) = arithmetic_error_code(
+                self.source.slice(*namespace),
+                self.source.slice(*vocabulary),
+                self.source.slice(*code),
+            )
+        {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ErrorCode(value),
+                value_type: CompilerType::ErrorCode,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [
             Expression::Identifier(operation),
             Expression::Identifier(domain),
         ] = items
@@ -1644,6 +1664,7 @@ impl Analyzer {
                 CompilerType::Boolean
                     | CompilerType::Unit
                     | CompilerType::Comparison
+                    | CompilerType::ErrorCode
                     | CompilerType::Enum(_)
             ) {
                 return Err(unsupported(
@@ -2806,6 +2827,7 @@ fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
         | CompilerExpressionKind::String(_)
+        | CompilerExpressionKind::ErrorCode(_)
         | CompilerExpressionKind::Enum(_) => true,
         CompilerExpressionKind::Tuple(values) => values.iter().all(compiler_expression_is_closed),
         CompilerExpressionKind::Local(_)
@@ -3366,6 +3388,24 @@ mod tests {
                 field: CompilerErrorField::Domain,
                 ..
             }
+        ));
+    }
+
+    #[test]
+    fn models_qualified_arithmetic_error_code_values() {
+        // TOPAL-NUM-ARITHMETIC-ERROR-001
+        let source = "use language (version is v0.1)\nretain is fn (value : ErrorCode) -> ErrorCode\n  value\n(retain (lang arithmetic division-by-zero), lang arithmetic indeterminate, (lang arithmetic out-of-range) = (lang arithmetic out-of-range))\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(lang arithmetic ArithmeticErrorCode, lang arithmetic ArithmeticErrorCode, Boolean)"
+        );
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("expected a tuple")
+        };
+        assert!(matches!(
+            values[1].kind,
+            CompilerExpressionKind::ErrorCode(3)
         ));
     }
 

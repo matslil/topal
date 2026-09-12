@@ -64,7 +64,8 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
     match &expression.kind {
         CompilerExpressionKind::String(_)
         | CompilerExpressionKind::ErrorField { .. }
-        | CompilerExpressionKind::ResultDecision { .. } => true,
+        | CompilerExpressionKind::ResultDecision { .. }
+        | CompilerExpressionKind::ErrorCode(_) => true,
         CompilerExpressionKind::Tuple(fields)
         | CompilerExpressionKind::Call {
             arguments: fields, ..
@@ -360,6 +361,7 @@ impl<'a> Generator<'a> {
             CompilerExpressionKind::String(value) => {
                 self.emit_string_literal(value, body, expression.span)
             }
+            CompilerExpressionKind::ErrorCode(value) => LlValue::ErrorCode(value.to_string()),
             CompilerExpressionKind::Enum(value) => {
                 let CompilerType::Enum(enumeration) = &expression.value_type else {
                     unreachable!("checked Enum value retains its nominal type")
@@ -1328,7 +1330,8 @@ impl<'a> Generator<'a> {
                     (LlValue::Boolean(left), LlValue::Boolean(right)) => {
                         format!("icmp {predicate} i1 {left}, {right}")
                     }
-                    (LlValue::Comparison(left), LlValue::Comparison(right)) => {
+                    (LlValue::Comparison(left), LlValue::Comparison(right))
+                    | (LlValue::ErrorCode(left), LlValue::ErrorCode(right)) => {
                         format!("icmp {predicate} i32 {left}, {right}")
                     }
                     (
