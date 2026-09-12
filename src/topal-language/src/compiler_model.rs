@@ -18,7 +18,7 @@ use topal_syntax::{
     Statement, lex, parse,
 };
 
-use crate::source::{parse_integer, parse_rational, parse_string};
+use crate::source::{parse_integer, parse_rational, parse_string, prove_int_recursion};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerEnumType {
@@ -411,7 +411,8 @@ struct Analyzer {
     enum_alternatives: EnumAlternativeBindings,
     functions: BTreeMap<String, Vec<FunctionSource>>,
     instances: Vec<CompilerFunction>,
-    active_calls: BTreeSet<String>,
+    active_calls: Vec<String>,
+    active_recursive_functions: BTreeMap<String, (String, CompilerType)>,
     static_context: bool,
     next_instance: usize,
 }
@@ -472,7 +473,8 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         enum_alternatives,
         functions,
         instances: Vec::new(),
-        active_calls: BTreeSet::new(),
+        active_calls: Vec::new(),
+        active_recursive_functions: BTreeMap::new(),
         static_context: false,
         next_instance: 0,
     };
@@ -3146,12 +3148,53 @@ impl Analyzer {
                 format!("no overload of `{function_name}` accepts ({actual}) in this context"),
             ));
         };
-        let identity = function_overload_identity(&self.source, &function_name, &declaration);
-        if !self.active_calls.insert(identity.clone()) {
+        self.finish_selected_call(&function_name, &declaration, arguments, span)
+    }
+
+    fn finish_selected_call(
+        &mut self,
+        function_name: &str,
+        declaration: &FunctionSource,
+        arguments: Vec<CompilerExpression>,
+        span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let identity = function_overload_identity(&self.source, function_name, declaration);
+        let recursion_rule = self.direct_decreasing_int_recursion_rule(function_name, declaration);
+        if self.active_calls.contains(&identity) {
+            if self.active_calls.last() == Some(&identity)
+                && let Some((symbol, result_type)) =
+                    self.active_recursive_functions.get(&identity).cloned()
+            {
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Call { symbol, arguments },
+                    value_type: result_type,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                });
+            }
             return Err(unsupported(&self.source, span, "recursive function call"));
         }
-        let result = self.instantiate_function(&function_name, &declaration, &arguments);
-        self.active_calls.remove(&identity);
+        let reserved_symbol = if recursion_rule.is_some() {
+            let symbol = self.reserve_function_symbol(function_name);
+            let result_type = self.parse_classifier(declaration.result)?;
+            self.active_recursive_functions
+                .insert(identity.clone(), (symbol.clone(), result_type));
+            Some(symbol)
+        } else {
+            None
+        };
+        self.active_calls.push(identity.clone());
+        let result = self.instantiate_function(
+            function_name,
+            declaration,
+            &arguments,
+            reserved_symbol.as_deref(),
+            recursion_rule.is_some(),
+        );
+        let popped = self.active_calls.pop();
+        debug_assert_eq!(popped.as_deref(), Some(identity.as_str()));
+        self.active_recursive_functions.remove(&identity);
         let (symbol, result_type, int_range, rational_value) = result?;
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::Call { symbol, arguments },
@@ -3168,6 +3211,8 @@ impl Analyzer {
         function_name: &str,
         declaration: &FunctionSource,
         arguments: &[CompilerExpression],
+        reserved_symbol: Option<&str>,
+        generalize_parameters: bool,
     ) -> Result<(String, CompilerType, Option<IntRange>, Option<BigRational>), Diagnostic> {
         let mut environment = BTreeMap::new();
         let mut parameters = Vec::new();
@@ -3203,9 +3248,15 @@ impl Analyzer {
                     name.clone(),
                     BindingFacts {
                         value_type: expected.clone(),
-                        int_range: argument.int_range.clone(),
-                        rational_value: argument.rational_value.clone(),
-                        string_value: exact_string(argument),
+                        int_range: (!generalize_parameters)
+                            .then(|| argument.int_range.clone())
+                            .flatten(),
+                        rational_value: (!generalize_parameters)
+                            .then(|| argument.rational_value.clone())
+                            .flatten(),
+                        string_value: (!generalize_parameters)
+                            .then(|| exact_string(argument))
+                            .flatten(),
                         record_fields: BTreeMap::new(),
                     },
                 );
@@ -3214,7 +3265,9 @@ impl Analyzer {
                 name,
                 discarded,
                 value_type: expected,
-                int_range: argument.int_range.clone(),
+                int_range: (!generalize_parameters)
+                    .then(|| argument.int_range.clone())
+                    .flatten(),
                 span: parameter.name,
             });
         }
@@ -3256,8 +3309,10 @@ impl Analyzer {
                 &body.result.value_type,
             )?;
         }
-        let symbol = format!("topal.fn.{}.{}", mangle(function_name), self.next_instance);
-        self.next_instance += 1;
+        let symbol = reserved_symbol.map_or_else(
+            || self.reserve_function_symbol(function_name),
+            str::to_owned,
+        );
         let int_range = body.result.int_range.clone();
         let rational_value = body.result.rational_value.clone();
         self.instances.push(CompilerFunction {
@@ -3270,6 +3325,33 @@ impl Analyzer {
             is_static: declaration.is_static,
         });
         Ok((symbol, result_type, int_range, rational_value))
+    }
+
+    fn reserve_function_symbol(&mut self, function_name: &str) -> String {
+        let symbol = format!("topal.fn.{}.{}", mangle(function_name), self.next_instance);
+        self.next_instance += 1;
+        symbol
+    }
+
+    fn direct_decreasing_int_recursion_rule(
+        &self,
+        function_name: &str,
+        declaration: &FunctionSource,
+    ) -> Option<&'static str> {
+        let [parameter] = declaration.parameters.as_slice() else {
+            return None;
+        };
+        if compact_classifier(self.source.slice(parameter.classifier)) != "Int" {
+            return None;
+        }
+        let parameters = vec![(
+            self.source.slice(parameter.name).to_owned(),
+            "Int".to_owned(),
+        )];
+        match prove_int_recursion(&self.source, function_name, &parameters, &declaration.body) {
+            Some(rule @ "TOPAL-FUNCTION-RECURSION-INT-001") => Some(rule),
+            _ => None,
+        }
     }
 
     fn analyze_decision(
@@ -5589,6 +5671,55 @@ mod tests {
             panic!("expected the earlier function to call the later declaration")
         };
         assert_eq!(symbol, &program.functions[0].symbol);
+    }
+
+    #[test]
+    fn models_only_structurally_proven_decreasing_int_recursion() {
+        // TOPAL-FUNCTION-RECURSION-INT-001,
+        // TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/decreasing-int-recursion.t"
+        ))
+        .unwrap();
+        assert_eq!(program.functions.len(), 1);
+        let function = &program.functions[0];
+        assert_eq!(function.source_name, "sum-down");
+        assert!(function.parameters[0].int_range.is_none());
+        let CompilerExpressionKind::OrderedComparisonDecision { otherwise, .. } =
+            &function.body.result.kind
+        else {
+            panic!("expected the structurally proven recursion decision")
+        };
+        let CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Add,
+            right,
+            ..
+        } = &otherwise.kind
+        else {
+            panic!("expected the recursive action")
+        };
+        let CompilerExpressionKind::Call { symbol, .. } = &right.kind else {
+            panic!("expected the direct recursive edge")
+        };
+        assert_eq!(symbol, &function.symbol);
+
+        assert!(
+            analyze_for_compiler(include_str!(
+                "../../../examples/language/multiple-recursive-calls.t"
+            ))
+            .is_ok()
+        );
+
+        for source in [
+            "use language (version is v0.1)\nloop is fn (value : Int) -> Int\n  value\n    <= 0 then 0\n    otherwise loop (value - 0)\nloop 1\n",
+            "use language (version is v0.1)\nloop is fn (value : Int) -> Int\n  value\n    <= 0 then loop (value - 1)\n    otherwise loop (value - 1)\nloop 1\n",
+            "use language (version is v0.1)\nfirst is fn (value : Int) -> Int\n  second value\nsecond is fn (value : Int) -> Int\n  first value\nfirst 1\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]

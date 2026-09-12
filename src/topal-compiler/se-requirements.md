@@ -225,8 +225,30 @@ These additions cover the admitted scalar cases of
 `TOPAL-FUNCTION-ORDINARY-001`, `TOPAL-FUNCTION-CALL-CHAIN-001`,
 `TOPAL-FUNCTION-LOCAL-SCOPE-001`, `TOPAL-FUNCTION-OVERLOAD-001`,
 and `TOPAL-FUNCTION-FORWARD-DECLARATION-001`. Dynamic structural applicability,
-function values, nested functions, recursion and its overload-identity rule,
-and other function forms remain in later increment-3 dispositions.
+function values, nested functions, remaining recursion and its overload-identity
+rules, and other function forms remain in later increment-3 dispositions.
+
+## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
+
+The checked compiler model shall reuse the shared structural proof for
+`TOPAL-FUNCTION-RECURSION-INT-001` and
+`TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001`. It shall reserve one function
+symbol only after that proof succeeds, direct every self-call in the recursive
+action to that symbol, and support every independently proven self-call in the
+action. A self-call in the base, a zero or otherwise invalid literal step, and
+an indirect cycle without an implemented complete-cycle proof shall remain
+`E-COMPILER-UNSUPPORTED`.
+
+The recursive function body shall discard initial-call range, Rational, and
+String facts for its parameters and check each against only its declared
+classifier. LLVM definitions and calls shall use the same exact private
+`fastcc` prototype and shall retain `noinline` without claiming `norecurse` or
+requiring a tail-call optimization. Recursive Int values shall use the existing
+immutable exact representation and Topal-owned Linux allocation/syscall layer,
+with no runtime dispatch, C/C++ runtime, other-language standard library, or
+`topal-native/6` revision. DWARF/GDB shall retain distinct recursive frames and
+the current Int parameter. This requirement realizes
+`TOPAL-COMPILER-RECURSION-INT-001` for increment 3b2-b5e1.
 
 ## TOPAL-COMP-RETURN-001 — Direct explicit function return
 

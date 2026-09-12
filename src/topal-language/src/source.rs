@@ -10937,7 +10937,7 @@ fn validate_parameter_names(
     Ok(())
 }
 
-fn prove_int_recursion(
+pub(super) fn prove_int_recursion(
     source: &SourceText,
     function_name: &str,
     parameters: &[(String, String)],

@@ -4384,6 +4384,21 @@
       "cpu_time_ns": 2813600,
       "memory_peak_bytes": 18423808,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_proven_direct_recursion_with_one_exact_private_signature": {
+      "cpu_time_ns": 5660799,
+      "memory_peak_bytes": 18018304,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_retains_recursive_int_frames_and_parameters": {
+      "cpu_time_ns": 247680360,
+      "memory_peak_bytes": 57335808,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_only_structurally_proven_decreasing_int_recursion": {
+      "cpu_time_ns": 4205080,
+      "memory_peak_bytes": 18423808,
+      "samples_per_test": 50
     }
   }
 }
