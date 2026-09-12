@@ -3766,6 +3766,38 @@ mod tests {
     }
 
     #[test]
+    fn emits_proven_mutual_nat_cycles_without_runtime_revalidation() {
+        // TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001,
+        // TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001
+        for source in [
+            include_str!("../../../examples/language/nat-mutual-recursion.t"),
+            include_str!("../../../examples/language/nat-mutual-increasing-recursion.t"),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            let llvm = Generator::new(&program, "nat-mutual-recursion.t").emit();
+            for function in &program.functions {
+                assert_eq!(function.parameters[0].value_type, CompilerType::Nat);
+                assert_eq!(
+                    llvm.matches(&format!(
+                        "define internal fastcc i1 @{}(ptr %arg0)",
+                        function.symbol
+                    ))
+                    .count(),
+                    1
+                );
+            }
+            assert!(llvm.matches("call fastcc i1").count() >= program.functions.len());
+            assert_eq!(
+                llvm.matches("call ptr @topal.runtime.int.try.to.nat")
+                    .count(),
+                0
+            );
+            assert!(llvm.contains("nounwind noinline"));
+            assert!(!llvm.contains("norecurse"));
+        }
+    }
+
+    #[test]
     fn emits_forward_callee_before_its_caller() {
         // TOPAL-FUNCTION-FORWARD-DECLARATION-001, TOPAL-COMPILER-FUNCTION-001
         let source = include_str!("../../../examples/language/forward-function-declarations.t");

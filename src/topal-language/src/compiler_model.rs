@@ -20,7 +20,7 @@ use topal_syntax::{
 
 use crate::source::{
     explicit_single_measure, parse_integer, parse_rational, parse_string,
-    prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_int_recursion_edge,
+    prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -3204,7 +3204,7 @@ impl Analyzer {
             if let Some(active) = self.active_recursive_functions.get(&identity).cloned()
                 && ((self.active_calls.last() == Some(&identity)
                     && active.proof.mutual_target.is_none())
-                    || self.closes_proven_mutual_int_cycle(&identity, function_name))
+                    || self.closes_proven_mutual_bounded_cycle(&identity, function_name))
             {
                 return Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Call {
@@ -3391,7 +3391,7 @@ impl Analyzer {
     ) -> Option<CompilerRecursionProof> {
         self.explicit_measure_recursion_proof(function_name, declaration)
             .or_else(|| self.direct_bounded_recursion_proof(function_name, declaration))
-            .or_else(|| self.mutual_int_recursion_proof(function_name, declaration))
+            .or_else(|| self.mutual_bounded_recursion_proof(function_name, declaration))
     }
 
     fn direct_bounded_recursion_proof(
@@ -3466,7 +3466,7 @@ impl Analyzer {
         })
     }
 
-    fn mutual_int_recursion_proof(
+    fn mutual_bounded_recursion_proof(
         &self,
         function_name: &str,
         declaration: &FunctionSource,
@@ -3481,7 +3481,7 @@ impl Analyzer {
                 )
             })
             .collect::<Vec<_>>();
-        let (mutual_target, rule) = prove_mutual_int_recursion_edge(
+        let (mutual_target, rule) = prove_mutual_bounded_recursion_edge(
             &self.source,
             function_name,
             &parameters,
@@ -3491,17 +3491,23 @@ impl Analyzer {
             rule,
             "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001"
                 | "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001"
+                | "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001"
+                | "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001"
         ) {
             return None;
         }
+        let nat_step_parameters = (parameters[0].1 == "Nat")
+            .then_some(0)
+            .into_iter()
+            .collect();
         Some(CompilerRecursionProof {
             rule,
-            nat_step_parameters: BTreeSet::new(),
+            nat_step_parameters,
             mutual_target: Some(mutual_target),
         })
     }
 
-    fn closes_proven_mutual_int_cycle(&self, target_identity: &str, target_name: &str) -> bool {
+    fn closes_proven_mutual_bounded_cycle(&self, target_identity: &str, target_name: &str) -> bool {
         let Some(cycle_start) = self
             .active_calls
             .iter()
@@ -3522,6 +3528,8 @@ impl Analyzer {
                 rule,
                 "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001"
                     | "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001"
+                    | "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001"
+                    | "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001"
             )
             || !cycle.iter().all(|identity| {
                 self.active_recursive_functions
@@ -3560,10 +3568,19 @@ impl Analyzer {
         if expected != &CompilerType::Nat || argument.value_type != CompilerType::Int {
             return None;
         }
-        let identity = function_overload_identity(&self.source, function_name, declaration);
-        if self.active_calls.last() != Some(&identity)
-            || !self.active_recursive_functions.contains_key(&identity)
-            || !self.active_nat_recursion_parameter(parameter_index)
+        let target_identity = function_overload_identity(&self.source, function_name, declaration);
+        let active_identity = self.active_calls.last()?;
+        let active = self.active_recursive_functions.get(active_identity)?;
+        let direct_edge =
+            active_identity == &target_identity && active.proof.mutual_target.is_none();
+        let mutual_nat_edge = active.proof.mutual_target.as_deref() == Some(function_name)
+            && matches!(
+                active.proof.rule,
+                "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001"
+                    | "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001"
+            );
+        if !(direct_edge || mutual_nat_edge)
+            || !active.proof.nat_step_parameters.contains(&parameter_index)
         {
             return None;
         }
@@ -3586,16 +3603,11 @@ impl Analyzer {
                         active.proof.rule,
                         "TOPAL-FUNCTION-RECURSION-NAT-001"
                             | "TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001"
+                            | "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001"
+                            | "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001"
                             | "TOPAL-FUNCTION-DECREASES-001"
                     )
             })
-    }
-
-    fn active_nat_recursion_parameter(&self, parameter_index: usize) -> bool {
-        self.active_calls
-            .last()
-            .and_then(|identity| self.active_recursive_functions.get(identity))
-            .is_some_and(|active| active.proof.nat_step_parameters.contains(&parameter_index))
     }
 
     fn analyze_decision(
@@ -5986,6 +5998,57 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+    }
+
+    #[test]
+    fn models_only_range_preserving_mutual_nat_cycles() {
+        // TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001,
+        // TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001
+        let source = include_str!("../../../examples/language/nat-mutual-recursion.t")
+            .replace("(even 8, odd 8)", "even 8");
+        let program = analyze_for_compiler(&source).unwrap();
+        assert_eq!(program.functions.len(), 2);
+        let even = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "even")
+            .unwrap();
+        let odd = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "odd")
+            .unwrap();
+        for (function, target) in [(even, odd), (odd, even)] {
+            assert_eq!(function.parameters[0].value_type, CompilerType::Nat);
+            assert!(function.parameters[0].int_range.is_none());
+            let CompilerExpressionKind::OrderedComparisonDecision { otherwise, .. } =
+                &function.body.result.kind
+            else {
+                panic!("expected a proven mutual Nat recursion decision")
+            };
+            let CompilerExpressionKind::Call { symbol, arguments } = &otherwise.kind else {
+                panic!("expected the next mutual Nat edge")
+            };
+            assert_eq!(symbol, &target.symbol);
+            let [argument] = arguments.as_slice() else {
+                panic!("expected one recursive Nat argument")
+            };
+            assert!(matches!(argument.kind, CompilerExpressionKind::IntToNat(_)));
+        }
+
+        assert!(
+            analyze_for_compiler(include_str!(
+                "../../../examples/language/nat-mutual-increasing-recursion.t"
+            ))
+            .is_ok()
+        );
+
+        let unsafe_overshoot = include_str!("../../../examples/language/nat-mutual-recursion.t")
+            .replace("<= 2", "<= 1");
+        assert_eq!(
+            analyze_for_compiler(&unsafe_overshoot).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 
     #[test]

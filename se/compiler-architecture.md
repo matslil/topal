@@ -95,6 +95,18 @@ proof establishes that addition preserves nonnegativity. The checked
 to `topal.runtime.int.try.to.nat`. Function linkage, DWARF `Nat` identity, and
 the private `fastcc` prototype otherwise remain identical to the `Int` path.
 
+Mutual `Nat` recursion composes the cycle check with that evidence boundary.
+Each active member records the single named next member and the unary `Nat`
+parameter whose bounded subtraction or nonnegative addition the shared proof
+authorizes. Only that named edge may regain `Nat` evidence; ordinary `Int`
+expressions and unrelated calls remain subject to dynamic validation or
+rejection. The decreasing proof also checks every edge against its own
+nonnegative inclusive bound, preventing an intermediate member from
+overshooting below zero. Once all adjacent names and one uniform decreasing or
+increasing rule close the active cycle, the already reserved exact prototypes
+form the LLVM cross-calls. The evidence conversion is erased, so neither a Nat
+check nor a cycle representation reaches the runtime or native ABI.
+
 An explicit single-parameter `Decreases` measure extends that mechanism to a
 larger scalar state. The compiler retains the v0.1 effect-bound span in the
 source declaration, invokes the interpreter's complete structural proof, and
@@ -327,7 +339,7 @@ work rather than being inferred by the backend. Because this increment has no
 single machine product value, it does not yet publish product bindings as DWARF
 locals; their source lines and lowered field operations remain debuggable, while
 a truthful aggregate DWARF representation is retained with general product
-storage and ABI work in increment 3b2-b5e7.
+storage and ABI work in increment 3b2-b5e8.
 
 An anonymous labeled Record uses the same decomposed expression-local strategy.
 The checked model evaluates fields in source order, rejects duplicate labels,
@@ -338,7 +350,7 @@ evaluated field and display recursively emits `label is value` through existing
 Topal syscall-backed value printers. This adds no record runtime or ABI. Scalar
 values projected from a record retain ordinary DWARF locals and can be inspected
 in GDB. The record binding itself is deliberately absent from DWARF until
-increment 3b2-b5e7 supplies a truthful aggregate storage and debug representation
+increment 3b2-b5e8 supplies a truthful aggregate storage and debug representation
 rather than describing a layout that does not exist.
 
 Structural comparison also remains over decomposed values. The frontend
@@ -360,7 +372,7 @@ aggregate remains unchanged because its value vector is cloned, and neither
 path acquires storage. This introduces no allocator, reconstruction runtime,
 foreign dependency, or ABI revision. Scalar projections from both versions use
 the existing DWARF path; aggregate layout and machine-boundary passage remain
-in increment 3b2-b5e7.
+in increment 3b2-b5e8.
 
 Nat validation already preserves an unchanged arbitrary-precision Int object
 with distinct checked constraint evidence and DWARF type identity. Comparison

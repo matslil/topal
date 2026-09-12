@@ -347,6 +347,26 @@ state, C/C++ runtime, other-language standard library, or `topal-native/6`
 revision. This realizes `TOPAL-COMPILER-RECURSION-INT-MUTUAL-001` for increment
 3b2-b5e6.
 
+## TOPAL-COMP-RECURSION-NAT-MUTUAL-001 — Proven mutual Nat recursion
+
+The checked compiler model shall reuse the shared decreasing and increasing
+mutual `Nat` edge proofs and the complete active-cycle check. All active members
+shall have the same direction-specific rule, each next-member name shall match
+the following selected overload, and the final target shall close a cycle of at
+least two members. Every decreasing edge shall satisfy its own nonnegative bound
+and literal-step limit. Unsafe overshoot, mixed directions, invalid steps, and
+incomplete cycles shall remain `E-COMPILER-UNSUPPORTED`.
+
+The current active member may restore `Nat` evidence only on the unary argument
+to the next member named by its proof. The checked `IntToNat` boundary shall emit
+no call to `topal.runtime.int.try.to.nat`; unrelated arithmetic receives no such
+authority. Every member shall use its reserved exact private `fastcc` prototype,
+retain `noinline`, omit `norecurse`, and expose distinct Nat parameters and
+recursive frames through DWARF/GDB. No unsigned carrier, dispatcher, hidden
+state, C/C++ runtime, other-language standard library, or `topal-native/6`
+revision is permitted. This realizes
+`TOPAL-COMPILER-RECURSION-NAT-MUTUAL-001` for increment 3b2-b5e7.
+
 ## TOPAL-COMP-RETURN-001 — Direct explicit function return
 
 Within an admitted linear function body, `return expression` shall evaluate and
