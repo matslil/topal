@@ -276,6 +276,46 @@
       "cpu_time_ns": 159866,
       "memory_peak_bytes": 18534400,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/dynamic-rational-int-validation.t": {
+      "cpu_time_ns": 118826460,
+      "memory_peak_bytes": 41373696,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/int-checked-construction.t": {
+      "cpu_time_ns": 117524640,
+      "memory_peak_bytes": 41365504,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/nat-checked-construction.t": {
+      "cpu_time_ns": 120303040,
+      "memory_peak_bytes": 41357312,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/result-success-projection.t": {
+      "cpu_time_ns": 119465480,
+      "memory_peak_bytes": 41316352,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/dynamic-rational-int-validation.t": {
+      "cpu_time_ns": 386058,
+      "memory_peak_bytes": 18612224,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/int-checked-construction.t": {
+      "cpu_time_ns": 173879,
+      "memory_peak_bytes": 18546688,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/nat-checked-construction.t": {
+      "cpu_time_ns": 169130,
+      "memory_peak_bytes": 18472960,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/result-success-projection.t": {
+      "cpu_time_ns": 323254,
+      "memory_peak_bytes": 18669568,
+      "samples_per_test": 500
     }
   }
 }

@@ -11,7 +11,7 @@ mod trace;
 pub use compiler_model::{
     CompilerBinary, CompilerBinding, CompilerBlock, CompilerComparisonRule, CompilerExpression,
     CompilerExpressionKind, CompilerFallible, CompilerFunction, CompilerParameter, CompilerProgram,
-    CompilerStatement, CompilerType, IntRange, analyze_for_compiler,
+    CompilerStatement, CompilerType, CompilerValidation, IntRange, analyze_for_compiler,
 };
 pub use concurrency::{
     Admission, DependencyGraph, DependencyKind, Interaction, InteractionForm, Protocol,

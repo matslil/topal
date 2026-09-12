@@ -525,3 +525,54 @@ fn gdb_renders_structured_arithmetic_result_parameters_and_locals() {
     assert!(text.contains(&format!("$1 = {expected}")), "{text}");
     assert!(text.contains(&format!("$2 = {expected}")), "{text}");
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_renders_checked_nat_result_parameters_and_locals() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-COMP-RESULT-001
+    let directory = temporary("gdb-nat-result");
+    let source = directory.join("nat-result-debug.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nas-nat is fn (value : Int) -> Result (Nat, lang arithmetic ArithmeticErrorCode)\n  Nat value\nretain is fn (value : Result (Nat, lang arithmetic ArithmeticErrorCode)) -> Result (Nat, lang arithmetic ArithmeticErrorCode)\n  result is value\n  result\n(as-nat -1) retain\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break nat-result-debug.t:6",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "print result",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    let expected = "Error ( domain is root.Nat(Int), code is out-of-range )";
+    assert!(text.contains(&format!("$1 = {expected}")), "{text}");
+    assert!(text.contains(&format!("$2 = {expected}")), "{text}");
+}
