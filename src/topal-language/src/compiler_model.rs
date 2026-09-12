@@ -101,6 +101,7 @@ pub enum CompilerExpressionKind {
     Tuple(Vec<CompilerExpression>),
     Local(String),
     Negate(Box<CompilerExpression>),
+    Absolute(Box<CompilerExpression>),
     Not(Box<CompilerExpression>),
     Binary {
         operation: CompilerBinary,
@@ -466,7 +467,6 @@ impl Analyzer {
                         "invalid integer literal",
                     )
                 })?;
-                ensure_i64(&self.source, *value, &IntRange::exact(integer.clone()))?;
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Int(integer.clone()),
                     value_type: CompilerType::Int,
@@ -562,11 +562,40 @@ impl Analyzer {
                 lower: -range.upper.clone(),
                 upper: -range.lower.clone(),
             });
-            if let Some(range) = &range {
-                ensure_i64(&self.source, span, range)?;
-            }
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::Negate(Box::new(operand)),
+                value_type: CompilerType::Int,
+                int_range: range,
+                span,
+            });
+        }
+        if let [Expression::Identifier(operation), operand] = items
+            && matches!(self.source.slice(*operation), "negate" | "absolute")
+        {
+            let negate = self.source.slice(*operation) == "negate";
+            let operand = self.analyze_expression(operand, environment)?;
+            require_type(
+                &self.source,
+                operand.span,
+                &CompilerType::Int,
+                &operand.value_type,
+            )?;
+            let range = operand.int_range.as_ref().map(|range| {
+                if negate {
+                    IntRange {
+                        lower: -range.upper.clone(),
+                        upper: -range.lower.clone(),
+                    }
+                } else {
+                    absolute_range(range)
+                }
+            });
+            return Ok(CompilerExpression {
+                kind: if negate {
+                    CompilerExpressionKind::Negate(Box::new(operand))
+                } else {
+                    CompilerExpressionKind::Absolute(Box::new(operand))
+                },
                 value_type: CompilerType::Int,
                 int_range: range,
                 span,
@@ -660,7 +689,12 @@ impl Analyzer {
                 &left_value.value_type,
             )?;
         }
-        self.finish_binary(operation, left_value, right_value, span)
+        Ok(Self::finish_binary(
+            operation,
+            left_value,
+            right_value,
+            span,
+        ))
     }
 
     fn analyze_binary(
@@ -676,16 +710,15 @@ impl Analyzer {
         let right = self.analyze_expression(right, environment)?;
         require_type(&self.source, left.span, expected, &left.value_type)?;
         require_type(&self.source, right.span, expected, &right.value_type)?;
-        self.finish_binary(operation, left, right, span)
+        Ok(Self::finish_binary(operation, left, right, span))
     }
 
     fn finish_binary(
-        &self,
         operation: CompilerBinary,
         left: CompilerExpression,
         right: CompilerExpression,
         span: Span,
-    ) -> Result<CompilerExpression, Diagnostic> {
+    ) -> CompilerExpression {
         let int_range = match operation {
             CompilerBinary::Add => combine_ranges(&left, &right, |a, b| IntRange {
                 lower: &a.lower + &b.lower,
@@ -698,9 +731,6 @@ impl Analyzer {
             CompilerBinary::Multiply => combine_ranges(&left, &right, multiply_range),
             _ => None,
         };
-        if let Some(range) = &int_range {
-            ensure_i64(&self.source, span, range)?;
-        }
         let value_type = if matches!(
             operation,
             CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply
@@ -709,7 +739,7 @@ impl Analyzer {
         } else {
             CompilerType::Boolean
         };
-        Ok(CompilerExpression {
+        CompilerExpression {
             kind: CompilerExpressionKind::Binary {
                 operation,
                 left: Box::new(left),
@@ -718,7 +748,7 @@ impl Analyzer {
             value_type,
             int_range,
             span,
-        })
+        }
     }
 
     fn analyze_call(
@@ -973,16 +1003,21 @@ fn multiply_range(left: &IntRange, right: &IntRange) -> IntRange {
     }
 }
 
-fn ensure_i64(source: &SourceText, span: Span, range: &IntRange) -> Result<(), Diagnostic> {
-    if range.lower < BigInt::from(i64::MIN) || range.upper > BigInt::from(i64::MAX) {
-        return Err(source_diagnostic(
-            source,
-            "E-COMPILER-UNSUPPORTED",
-            span,
-            "the first native increment requires proof that every Int result fits signed 64-bit storage",
-        ));
+fn absolute_range(range: &IntRange) -> IntRange {
+    let zero = BigInt::from(0);
+    if range.lower >= zero {
+        range.clone()
+    } else if range.upper <= zero {
+        IntRange {
+            lower: -range.upper.clone(),
+            upper: -range.lower.clone(),
+        }
+    } else {
+        IntRange {
+            lower: zero,
+            upper: (-range.lower.clone()).max(range.upper.clone()),
+        }
     }
-    Ok(())
 }
 
 fn require_type(
@@ -1038,7 +1073,7 @@ fn unsupported(source: &SourceText, span: Span, construct: &str) -> Diagnostic {
         source,
         "E-COMPILER-UNSUPPORTED",
         span,
-        format!("the first native compiler increment does not yet support {construct}"),
+        format!("the current native compiler increment does not yet support {construct}"),
     )
 }
 
@@ -1097,11 +1132,12 @@ mod tests {
     }
 
     #[test]
-    fn rejects_an_unproved_machine_integer_representation() {
+    fn preserves_arbitrary_integer_ranges_for_the_native_backend() {
         let source = "use language (version is v0.1)\n9223372036854775807 + 1\n";
+        let program = analyze_for_compiler(source).unwrap();
         assert_eq!(
-            analyze_for_compiler(source).unwrap_err().code,
-            "E-COMPILER-UNSUPPORTED"
+            program.main.result.int_range,
+            Some(IntRange::exact(BigInt::from(i64::MAX) + 1))
         );
     }
 

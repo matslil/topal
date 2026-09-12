@@ -7,6 +7,7 @@ use topal_compiler::{CompileError, CompileOptions, Emit, compile_source};
 use topal_language::Session;
 
 const SHARED_REGRESSIONS: &[&str] = &[
+    "examples/language/arbitrary-integer-arithmetic.t",
     "examples/language/bindings-and-discard.t",
     "examples/language/boolean-decisions.t",
     "examples/language/boolean-logic.t",

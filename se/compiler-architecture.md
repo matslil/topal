@@ -29,10 +29,30 @@ LLVM lowers an already selected LLVM calling convention to physical registers
 and stack locations, but a source-language frontend still owns semantic value
 representation and any coercion needed to form that LLVM signature. The C
 calling convention is therefore not a portable Topal ABI. Internal functions
-use an exact compiler-private signature keyed by `topal-native/1`, and future
+use an exact compiler-private signature keyed by `topal-native/2`, and future
 foreign adapters may use target `ccc` only with fixed-width scalars or opaque
 handles. Aggregate classification is adapter work and will be checked against
 the target's reference C frontend before a foreign interface is admitted.
+
+`topal-native/2` represents finite `Int` values as immutable pointers to a
+canonical sign-and-magnitude object with little-endian base-2^32 limbs. The
+private signature passes that pointer directly; it never exposes the object to
+a foreign calling convention. Runtime allocation uses the qualified Linux
+platform boundary and retains objects until process termination in this
+increment. This process-lifetime allocation policy is safe for immutable
+values but is not the final reclamation policy; ownership-aware reclamation is
+admitted with the container and closure representations that make reachability
+nontrivial.
+
+LLVM's [`iN` integer type](https://llvm.org/docs/LangRef.html#integer-type)
+has an arbitrary but compile-time-fixed width, capped by the IR format, while
+the [code generator](https://llvm.org/docs/CodeGenerator.html#selectiondag-instruction-selection-process)
+legalizes unsupported widths into target operations. It is useful for bounded
+bit vectors but cannot implement a source `Int` that grows with runtime data or
+available storage. Topal therefore owns the dynamic object and exact limb
+algorithms; LLVM still owns lowering their ordinary `i32`/`i64` arithmetic,
+control flow, registers, and instructions. This avoids both a hidden fixed
+semantic limit and target-specific wide-integer helper dependencies.
 
 GEIR remains the semantic library boundary. LLVM documents backward reading of
 older bitcode, not a permanent forward-compatible language-library contract;
@@ -87,10 +107,17 @@ pretend that the kernel entered `_start` through a language call convention.
 The first platform module uses the Linux x86-64 syscall ABI. Its inline assembly
 is confined to generated target-support functions and declares fixed registers,
 `rcx`/`r11`, and memory effects to LLVM. Initial operations are `write` (system
-call 1) and `exit` (system call 60), as assigned by the kernel's authoritative
+call 1), `mmap` (system call 9), and `exit` (system call 60), as assigned by the
+kernel's authoritative
 [x86-64 syscall table](https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl).
 Partial writes and interruption remain platform results handled by the Topal
 support routine; they are not replaced with libc behavior.
+
+The finite-Int runtime obtains private anonymous read/write mappings directly;
+the constants follow Linux's exported [`mman`
+interface](https://github.com/torvalds/linux/blob/master/include/uapi/asm-generic/mman-common.h).
+Mapping errors terminate through the same platform boundary rather than falling
+through to foreign allocation or unwinding support.
 
 Additional services will be exposed by ordinary typed Topal platform packages.
 They must record kernel ABI version assumptions, exact structures and constants,
@@ -177,10 +204,11 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, with a bundled renderer for the private Int object |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |
 | `llvm-link`, `llvm-dis`, `llvm-extract`, `llvm-diff`, `llvm-reduce` | qualification and failure reduction only | production linking occurs from verified modules; these tools remain useful for backend diagnosis but do not improve emitted semantics merely by being invoked |
-| `llvm-ar`, `llvm-ranlib`, `llvm-nm`, `llvm-size` | archive packaging deferred; inspection as needed | compiled-library container and installation rules must precede a public native archive format |
+| `llvm-ar`, `llvm-ranlib`, `llvm-size` | archive packaging deferred; inspection as needed | compiled-library container and installation rules must precede a public native archive format |
+| `llvm-nm` | qualification use | every freestanding runtime regression rejects undefined helper symbols |
 | `llvm-objcopy`, `llvm-strip`, `llvm-dwp` | split-debug/install packaging deferred | bootstrap artifacts retain full debug information; destructive stripping would violate the O0 debug contract |
 | `llvm-dwarfdump` | used when installed | structural debug-information verification |
 | full LTO / ThinLTO | deferred | GEIR/native-slice packaging and reproducible cache keys come first |

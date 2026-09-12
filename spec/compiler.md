@@ -18,8 +18,8 @@ no foreign-language startup object, standard library, runtime, default library,
 or ELF interpreter. Linux interactions SHALL occur only through target support
 operations whose exact syscall number, register convention, memory effects,
 partial completion, interruption, and error behavior are explicit. The first
-support operations SHALL implement complete standard-output writes and process
-termination.
+support operations SHALL implement complete standard-output writes, private
+anonymous mappings for compiler-owned runtime storage, and process termination.
 
 ### TOPAL-COMPILER-O0-001 — Unoptimized semantic reference
 
@@ -29,6 +29,21 @@ source-semantic rewrite or specialization beyond that required to represent an
 accepted program. LLVM verification and correctness-preserving backend lowering
 remain mandatory. The resulting executable's observable value and trace SHALL
 equal the interpreter's for every source in their shared implemented subset.
+
+### TOPAL-COMPILER-INT-001 — Arbitrary finite Int representation
+
+Every admitted finite `Int` SHALL be represented without a fixed machine-word
+bound. Its private native object SHALL use one canonical zero encoding, a
+normalized sign, no redundant high limbs, and enough dynamically allocated
+limbs to hold the exact magnitude. Integer negation, absolute value, addition,
+subtraction, multiplication, equality, ordering, function passage,
+control-flow joins, and decimal observation SHALL preserve the corresponding
+`TOPAL-NUM-*` value for all operand sizes that available target storage can
+hold.
+
+Runtime operations SHALL NOT call an undeclared foreign allocator, arithmetic
+helper, unwinder, or standard library. Storage failure SHALL follow an explicit
+platform-failure path rather than producing a truncated or invalid `Int`.
 
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
@@ -66,7 +81,8 @@ breakpoints, stepping, backtraces, and value inspection. Compiler-generated
 platform frames SHALL be distinguishable from source functions. A source value
 without a truthful machine representation SHALL be omitted until that
 representation is implemented; it SHALL NOT be represented by an unrelated
-machine value.
+machine value. A debugger renderer MAY decode a documented private object into
+its source value, but SHALL reject corrupt representation metadata safely.
 
 ### TOPAL-COMPILER-TEST-001 — Shared executable regressions
 

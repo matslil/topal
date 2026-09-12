@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::Path;
 
+use num_bigint::{BigInt, Sign};
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerExpression, CompilerExpressionKind, CompilerFunction,
     CompilerProgram, CompilerStatement, CompilerType, display_string_literal,
@@ -112,7 +113,7 @@ impl<'a> Generator<'a> {
         match result {
             LlValue::Unit => body.terminator("ret void", location),
             LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
-            LlValue::Int(value) => body.terminator(&format!("ret i64 {value}"), location),
+            LlValue::Int(value) => body.terminator(&format!("ret ptr {value}"), location),
             _ => unreachable!("shared model restricts machine results"),
         }
         self.functions.push(format!(
@@ -185,7 +186,7 @@ impl<'a> Generator<'a> {
         match &expression.kind {
             CompilerExpressionKind::Unit => LlValue::Unit,
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
-            CompilerExpressionKind::Int(value) => LlValue::Int(value.to_string()),
+            CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
             CompilerExpressionKind::String(value) => LlValue::String(value.clone()),
             CompilerExpressionKind::Tuple(values) => LlValue::Tuple(
                 values
@@ -201,7 +202,16 @@ impl<'a> Generator<'a> {
                 let emitted = self.emit_expression(operand, body, environment);
                 let operand = emitted.integer();
                 LlValue::Int(body.instruction(
-                    &format!("sub i64 0, {operand}"),
+                    &format!("call ptr @topal.runtime.int.negate(ptr {operand})"),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::Absolute(operand) => {
+                let emitted = self.emit_expression(operand, body, environment);
+                let operand = emitted.integer();
+                LlValue::Int(body.instruction(
+                    &format!("call ptr @topal.runtime.int.absolute(ptr {operand})"),
                     expression.span,
                     &mut self.debug,
                 ))
@@ -249,7 +259,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     )),
                     CompilerType::Int => LlValue::Int(body.instruction(
-                        &format!("call fastcc i64 @{symbol}({arguments})"),
+                        &format!("call fastcc ptr @{symbol}({arguments})"),
                         expression.span,
                         &mut self.debug,
                     )),
@@ -280,13 +290,21 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> LlValue {
         let instruction = match operation {
-            CompilerBinary::Add => format!("add i64 {}, {}", left.integer(), right.integer()),
-            CompilerBinary::Subtract => {
-                format!("sub i64 {}, {}", left.integer(), right.integer())
-            }
-            CompilerBinary::Multiply => {
-                format!("mul i64 {}, {}", left.integer(), right.integer())
-            }
+            CompilerBinary::Add => format!(
+                "call ptr @topal.runtime.int.add(ptr {}, ptr {})",
+                left.integer(),
+                right.integer()
+            ),
+            CompilerBinary::Subtract => format!(
+                "call ptr @topal.runtime.int.subtract(ptr {}, ptr {})",
+                left.integer(),
+                right.integer()
+            ),
+            CompilerBinary::Multiply => format!(
+                "call ptr @topal.runtime.int.multiply(ptr {}, ptr {})",
+                left.integer(),
+                right.integer()
+            ),
             CompilerBinary::And => {
                 format!("and i1 {}, {}", left.boolean(), right.boolean())
             }
@@ -306,7 +324,14 @@ impl<'a> Generator<'a> {
                         format!("icmp {predicate} i1 {left}, {right}")
                     }
                     (LlValue::Int(left), LlValue::Int(right)) => {
-                        format!("icmp {predicate} i64 {left}, {right}")
+                        let comparison = body.instruction(
+                            &format!(
+                                "call i32 @topal.runtime.int.compare(ptr {left}, ptr {right})"
+                            ),
+                            span,
+                            &mut self.debug,
+                        );
+                        format!("icmp {predicate} i32 {comparison}, 0")
                     }
                     _ => unreachable!("checked equality types agree"),
                 }
@@ -322,11 +347,16 @@ impl<'a> Generator<'a> {
                     CompilerBinary::GreaterEqual => "sge",
                     _ => unreachable!(),
                 };
-                format!(
-                    "icmp {predicate} i64 {}, {}",
-                    left.integer(),
-                    right.integer()
-                )
+                let comparison = body.instruction(
+                    &format!(
+                        "call i32 @topal.runtime.int.compare(ptr {}, ptr {})",
+                        left.integer(),
+                        right.integer()
+                    ),
+                    span,
+                    &mut self.debug,
+                );
+                format!("icmp {predicate} i32 {comparison}, 0")
             }
         };
         let value = body.instruction(&instruction, span, &mut self.debug);
@@ -385,7 +415,7 @@ impl<'a> Generator<'a> {
                 ))
             }
             (LlValue::Int(left), LlValue::Int(right)) => LlValue::Int(body.instruction(
-                &format!("phi i64 [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"),
+                &format!("phi ptr [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"),
                 span,
                 &mut self.debug,
             )),
@@ -414,7 +444,7 @@ impl<'a> Generator<'a> {
                 body.start_block(&done_label);
             }
             LlValue::Int(value) => body.effect(
-                &format!("call void @topal.runtime.print.i64(i64 {value})"),
+                &format!("call void @topal.runtime.int.print(ptr {value})"),
                 span,
                 &mut self.debug,
             ),
@@ -457,6 +487,25 @@ impl<'a> Generator<'a> {
             &mut self.debug,
         );
     }
+
+    fn emit_int_literal(&mut self, value: &BigInt) -> LlValue {
+        let (sign, limbs) = value.to_u32_digits();
+        let negative = usize::from(sign == Sign::Minus);
+        let name = format!(".topal.int.{}", self.next_global);
+        self.next_global += 1;
+        let values = limbs
+            .iter()
+            .map(|limb| format!("i32 {limb}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        self.globals.push(format!(
+            "@{name} = private unnamed_addr constant {{ i64, i64, [{} x i32] }} {{ i64 {negative}, i64 {}, [{} x i32] [{values}] }}, align 8",
+            limbs.len(),
+            limbs.len(),
+            limbs.len()
+        ));
+        LlValue::Int(format!("@{name}"))
+    }
 }
 
 #[derive(Clone)]
@@ -487,7 +536,7 @@ impl LlValue {
         match self {
             Self::Unit => "i8 0".into(),
             Self::Boolean(value) => format!("i1 {value}"),
-            Self::Int(value) => format!("i64 {value}"),
+            Self::Int(value) => format!("ptr {value}"),
             _ => unreachable!("checked call arguments are scalar"),
         }
     }
@@ -536,7 +585,7 @@ impl FunctionBody {
         let value = match value {
             LlValue::Unit => "i8 0".into(),
             LlValue::Boolean(value) => format!("i1 {value}"),
-            LlValue::Int(value) => format!("i64 {value}"),
+            LlValue::Int(value) => format!("ptr {value}"),
             LlValue::String(_) | LlValue::Tuple(_) => return,
         };
         self.lines.push(format!(
@@ -607,8 +656,28 @@ impl DebugInfo {
             debug.empty,
             debug.empty
         ));
-        debug.int_type =
-            debug.node("!DIBasicType(name: \"Int\", size: 64, encoding: DW_ATE_signed)".into());
+        let unsigned64 =
+            debug.node("!DIBasicType(name: \"u64\", size: 64, encoding: DW_ATE_unsigned)".into());
+        let negative = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"negative\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 0)",
+            debug.file
+        ));
+        let length = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"length\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 64)",
+            debug.file
+        ));
+        let members = debug.node(format!("!{{!{negative}, !{length}}}"));
+        let storage = debug.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalIntHeader\", file: !{}, size: 128, align: 64, elements: !{members})",
+            debug.file
+        ));
+        let pointer = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        debug.int_type = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Int\", file: !{}, baseType: !{pointer})",
+            debug.file
+        ));
         debug.boolean_type =
             debug.node("!DIBasicType(name: \"Boolean\", size: 8, encoding: DW_ATE_boolean)".into());
         debug.unit_type =
@@ -742,7 +811,7 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Unit => "void",
         CompilerType::Boolean => "i1",
-        CompilerType::Int => "i64",
+        CompilerType::Int => "ptr",
         _ => unreachable!("shared model restricts function ABI types"),
     }
 }
@@ -751,7 +820,7 @@ fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Unit => "i8",
         CompilerType::Boolean => "i1",
-        CompilerType::Int => "i64",
+        CompilerType::Int => "ptr",
         _ => unreachable!("shared model restricts function ABI types"),
     }
 }
@@ -774,85 +843,7 @@ fn llvm_string(value: &str) -> String {
         .collect()
 }
 
-const PLATFORM_RUNTIME: &str = r#"; topal.platform.linux-x86_64/1
-define internal i64 @topal.platform.write(i64 %fd, ptr %buffer, i64 %length) nounwind noinline {
-entry:
-  %result = call i64 asm sideeffect "syscall", "={rax},{rax},{rdi},{rsi},{rdx},~{rcx},~{r11},~{memory}"(i64 1, i64 %fd, ptr %buffer, i64 %length)
-  ret i64 %result
-}
-
-define internal void @topal.platform.exit(i64 %status) noreturn nounwind noinline {
-entry:
-  %ignored = call i64 asm sideeffect "syscall", "={rax},{rax},{rdi},~{rcx},~{r11},~{memory}"(i64 60, i64 %status)
-  unreachable
-}
-
-define internal void @topal.platform.write_all(ptr %buffer, i64 %length) nounwind noinline {
-entry:
-  %empty = icmp eq i64 %length, 0
-  br i1 %empty, label %done, label %loop
-loop:
-  %offset = phi i64 [0, %entry], [%next, %progress], [%offset, %retry]
-  %remaining = sub i64 %length, %offset
-  %cursor = getelementptr i8, ptr %buffer, i64 %offset
-  %written = call i64 @topal.platform.write(i64 1, ptr %cursor, i64 %remaining)
-  %positive = icmp sgt i64 %written, 0
-  br i1 %positive, label %progress, label %error
-progress:
-  %next = add i64 %offset, %written
-  %complete = icmp eq i64 %next, %length
-  br i1 %complete, label %done, label %loop
-error:
-  %interrupted = icmp eq i64 %written, -4
-  br i1 %interrupted, label %retry, label %failure
-retry:
-  br label %loop
-failure:
-  call void @topal.platform.exit(i64 74)
-  unreachable
-done:
-  ret void
-}
-
-define internal void @topal.runtime.print.i64(i64 %value) nounwind noinline {
-entry:
-  %buffer = alloca [20 x i8], align 1
-  %negative = icmp slt i64 %value, 0
-  %negated = sub i64 0, %value
-  %magnitude = select i1 %negative, i64 %negated, i64 %value
-  br i1 %negative, label %sign, label %digits.entry
-sign:
-  %minus = alloca i8, align 1
-  store i8 45, ptr %minus, align 1
-  call void @topal.platform.write_all(ptr %minus, i64 1)
-  br label %digits.entry
-digits.entry:
-  %zero = icmp eq i64 %magnitude, 0
-  br i1 %zero, label %zero.digit, label %digits.loop
-zero.digit:
-  %zero.pointer = getelementptr [20 x i8], ptr %buffer, i64 0, i64 19
-  store i8 48, ptr %zero.pointer, align 1
-  br label %emit
-digits.loop:
-  %current = phi i64 [%magnitude, %digits.entry], [%quotient, %digits.loop]
-  %index = phi i64 [20, %digits.entry], [%next.index, %digits.loop]
-  %next.index = sub i64 %index, 1
-  %remainder = urem i64 %current, 10
-  %digit = trunc i64 %remainder to i8
-  %ascii = add i8 %digit, 48
-  %digit.pointer = getelementptr [20 x i8], ptr %buffer, i64 0, i64 %next.index
-  store i8 %ascii, ptr %digit.pointer, align 1
-  %quotient = udiv i64 %current, 10
-  %more = icmp ne i64 %quotient, 0
-  br i1 %more, label %digits.loop, label %emit
-emit:
-  %start = phi i64 [19, %zero.digit], [%next.index, %digits.loop]
-  %count = sub i64 20, %start
-  %first = getelementptr [20 x i8], ptr %buffer, i64 0, i64 %start
-  call void @topal.platform.write_all(ptr %first, i64 %count)
-  ret void
-}
-"#;
+const PLATFORM_RUNTIME: &str = include_str!("runtime/linux_x86_64.ll");
 
 #[cfg(test)]
 mod tests {
@@ -870,9 +861,10 @@ mod tests {
         assert!(llvm.contains("define void @_start() naked"));
         assert!(llvm.contains("andq $$-16, %rsp"));
         assert!(llvm.contains("@llvm.used"));
-        assert!(llvm.contains("add i64 40, 2"));
-        assert!(llvm.contains("mul i64 6, 7"));
-        assert!(llvm.contains("icmp sge i64"));
+        assert!(llvm.contains("call ptr @topal.runtime.int.add"));
+        assert!(llvm.contains("call ptr @topal.runtime.int.multiply"));
+        assert!(llvm.contains("call i32 @topal.runtime.int.compare"));
+        assert!(llvm.contains("constant { i64, i64, [1 x i32] }"));
         assert!(llvm.contains("\\54\\6F\\70\\61\\6C"));
         assert!(llvm.contains("#dbg_value"));
         assert!(llvm.contains("Dwarf Version"));

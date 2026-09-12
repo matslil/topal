@@ -17,6 +17,11 @@
     ]
   },
   "tests": {
+    "topalc-build::examples/language/arbitrary-integer-arithmetic.t": {
+      "cpu_time_ns": 106086600,
+      "memory_peak_bytes": 39407616,
+      "samples_per_test": 50
+    },
     "topalc-build::examples/language/bindings-and-discard.t": {
       "cpu_time_ns": 99507920,
       "memory_peak_bytes": 39325696,
@@ -46,6 +51,11 @@
       "cpu_time_ns": 98298160,
       "memory_peak_bytes": 39477248,
       "samples_per_test": 50
+    },
+    "topalc-run::examples/language/arbitrary-integer-arithmetic.t": {
+      "cpu_time_ns": 231408,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
     },
     "topalc-run::examples/language/bindings-and-discard.t": {
       "cpu_time_ns": 129994,

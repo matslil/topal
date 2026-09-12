@@ -3,7 +3,7 @@
 These requirements refine `TOPAL-REQ-COMPILER-001`,
 `TOPAL-REQ-NATIVE-PLATFORM-001`, `TOPAL-REQ-NATIVE-ABI-001`,
 `TOPAL-REQ-NATIVE-ARTIFACT-001`, `TOPAL-REQ-NATIVE-DEBUG-001`, and
-`TOPAL-REQ-LLVM-001` for `topalc` increment 1.
+`TOPAL-REQ-LLVM-001` for the admitted `topalc` increments.
 
 ## TOPAL-COMP-TARGET-001 — Linux x86-64 qualification
 
@@ -45,17 +45,42 @@ This requirement covers `TOPAL-SYN-CONTEXT-001`, `TOPAL-SYN-BIND-001`,
 `TOPAL-NUM-COMPARE-001`, `TOPAL-FUNCTION-ORDINARY-001`, and
 `TOPAL-DECISION-BOOLEAN-001` within the stated incremental boundary.
 
+## TOPAL-COMP-INT-001 — Arbitrary finite Int runtime
+
+The compiler shall remove the increment-1 signed-64-bit admission boundary and
+represent every admitted finite `Int` with dynamically sized exact storage. At
+O0, literals, negation, absolute value, addition, subtraction, multiplication,
+equality, ordering, function passage, decision joins, decimal output, and GDB
+inspection shall preserve the normative value for operands of any size that
+available address space can hold.
+
+The private `topal-native/2` representation shall be canonical, immutable, and
+hidden from foreign calling conventions. Its allocator and output routines
+shall use only the qualified Linux x86-64 system-call boundary, detect mapping
+failure, introduce no C/C++ runtime dependency or undefined helper symbol, and
+retain allocated values safely until process termination. Reclamation beyond
+that process-lifetime policy is deferred until reachability-bearing values are
+admitted and shall not change source observations.
+
+This requirement covers `TOPAL-NUM-INT-001`, `TOPAL-NUM-NEG-001`,
+`TOPAL-NUM-ABS-001`, `TOPAL-NUM-ADD-001`, `TOPAL-NUM-SUB-001`,
+`TOPAL-NUM-MUL-001`, `TOPAL-NUM-COMPARE-001`, and the applicable Int cases of
+`TOPAL-TYPE-EQUALITY-001`.
+
+It realizes `TOPAL-COMPILER-INT-001` for compiler increment 2a.
+
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
 Debug-enabled O0 output shall map generated source functions, parameters,
 immutable scalar locals, and instructions to Topal files and source locations,
-emit DWARF 5 through LLVM, retain frame pointers, and pass automated GDB
-breakpoint, value, and backtrace scenarios.
+emit DWARF 5 through LLVM, retain frame pointers, provide a GDB renderer for
+private arbitrary-precision Int objects, and pass automated GDB breakpoint,
+value, and backtrace scenarios.
 
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 
 Every requested output shall receive a canonical
-`topal.native-artifact/1` JSON sidecar containing the complete increment-1
+`topal.native-artifact/1` JSON sidecar containing the complete admitted
 target, ABI, compiler, LLVM, optimization, debug, source, interface, dependency,
 export, platform, evidence, and provenance fields. The metadata API shall reject
 schema, target, revision, ordering, duplicate-identity, and digest errors before
