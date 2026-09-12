@@ -429,6 +429,29 @@ done:
   ret i1 %equal
 }
 
+define internal i1 @topal.runtime.optional.rational.equal(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.some = call i1 @topal.runtime.optional.is.some(ptr %left)
+  %right.some = call i1 @topal.runtime.optional.is.some(ptr %right)
+  %same.alternative = icmp eq i1 %left.some, %right.some
+  br i1 %same.alternative, label %same, label %different
+different:
+  br label %done
+same:
+  br i1 %left.some, label %payloads, label %both.none
+both.none:
+  br label %done
+payloads:
+  %left.payload = call ptr @topal.runtime.optional.payload(ptr %left)
+  %right.payload = call ptr @topal.runtime.optional.payload(ptr %right)
+  %ordering = call i32 @topal.runtime.rational.compare(ptr %left.payload, ptr %right.payload)
+  %payloads.equal = icmp eq i32 %ordering, 0
+  br label %done
+done:
+  %equal = phi i1 [ false, %different ], [ true, %both.none ], [ %payloads.equal, %payloads ]
+  ret i1 %equal
+}
+
 define internal i1 @topal.runtime.optional.string.equal(ptr %left, ptr %right) nounwind noinline {
 entry:
   %left.some = call i1 @topal.runtime.optional.is.some(ptr %left)

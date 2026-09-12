@@ -294,6 +294,8 @@ class _TopalOptionalPrinter:
             return "<invalid null Some payload>"
         if self._payload_type == "Int":
             rendered = _TopalIntPrinter(payload).to_string()
+        elif self._payload_type == "Rational":
+            rendered = _TopalRationalPrinter(payload).to_string()
         elif self._payload_type == "String":
             rendered = _TopalStringPrinter(payload).to_string()
         else:

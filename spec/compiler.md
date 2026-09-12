@@ -252,6 +252,21 @@ without load-time pointer relocations, passed only through sealed Topal
 signatures, and rendered without a foreign allocator, runtime, or standard
 library.
 
+### TOPAL-COMPILER-OPTIONAL-RATIONAL-001 — Exact Optional Rational values
+
+The native Optional rules SHALL extend to `Optional Rational` without changing
+the Optional header, Rational payload, Topal-private function signature, or
+native ABI revision. Construction, classified and contextual absence,
+function passage and result, direct return, control-flow joins, decisions,
+display, DWARF, and GDB SHALL retain the Rational payload classifier.
+
+Derived equality SHALL validate both Optional alternatives and invoke exact
+canonical Rational equality only when both values are `Some`. Two `None`
+values SHALL compare equal, and unlike alternatives SHALL compare unequal
+without loading an absent payload. The resulting equality SHALL compose as an
+admitted positional-product field equality under
+`TOPAL-COMPILER-TUPLE-EQUALITY-001`.
+
 ### TOPAL-COMPILER-TUPLE-EQUALITY-001 — Derived positional-product equality
 
 An admitted equality or inequality between positional products with the same

@@ -311,13 +311,33 @@ lookup. This requirement covers `TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`,
 `TOPAL-TYPE-OPTIONAL-EQUALITY-001`. It realizes
 `TOPAL-COMPILER-OPTIONAL-001` for compiler increment 3b2-b4.
 
+## TOPAL-COMP-OPTIONAL-RATIONAL-001 — Exact Optional Rational values
+
+The compiler shall extend the existing native Optional construction, contextual
+absence, function passage and result, direct return, control-flow join,
+decision, display, DWARF, and GDB paths to the admitted `Optional Rational`
+payload. It shall preserve the existing opaque Optional header and the existing
+canonical Rational payload pointer under `topal-native/6`, without a new public
+aggregate, runtime type lookup, C/C++ runtime, standard library, or ABI revision.
+
+Derived equality shall validate both Optional alternatives and call the exact
+canonical Rational comparator only when both are `Some`; it shall not load an
+absent payload. The equality shall also be available recursively to admitted
+same-classifier positional-product equality. This requirement covers the
+Rational-payload cases of `TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`,
+`TOPAL-TYPE-OPTIONAL-CONTEXT-001`, `TOPAL-TYPE-OPTIONAL-BOUNDARY-001`,
+`TOPAL-DECISION-OPTIONAL-001`, and `TOPAL-TYPE-OPTIONAL-EQUALITY-001`. It
+realizes `TOPAL-COMPILER-OPTIONAL-RATIONAL-001` for compiler increment
+3b2-b4a.
+
 ## TOPAL-COMP-TUPLE-EQUALITY-001 — Derived positional-product equality
 
 The compiler shall admit equality and inequality between same-classifier
 positional products exactly when every field has an admitted canonical equality
 lowering. The admitted recursive field set is Unit, Completed, Boolean, Int,
 Nat, Rational, Comparison, ErrorCode, String, payload-free source Enum,
-`Optional Int`, `Optional String`, and another admitted positional product.
+`Optional Int`, `Optional Rational`, `Optional String`, and another admitted
+positional product.
 Both complete operands shall be evaluated once from left to right before their
 corresponding fields are recursively compared, and inequality shall negate the
 same all-fields-equal result.
