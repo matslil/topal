@@ -136,6 +136,15 @@ one immutable native String descriptor. A relocation-free executable SHALL
 construct pointer-bearing descriptors at run time and print canonical ordinary
 or conflict-free tagged Topal literal syntax without a foreign runtime.
 
+### TOPAL-COMPILER-ERROR-CODE-001 — Qualified arithmetic code identity
+
+Each qualified value in the closed `lang arithmetic ArithmeticErrorCode`
+vocabulary SHALL use the same nominal identity, private tag, display label, and
+DWARF enumerator whether constructed directly or observed from an Error. Direct
+values SHALL support same-type equality and admitted scalar function passage.
+Generated code SHALL NOT perform a runtime namespace lookup or introduce a
+foreign runtime dependency for a statically qualified code.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve

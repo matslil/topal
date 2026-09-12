@@ -162,6 +162,20 @@ literal transport and display cases of `TOPAL-SYN-STRING-001`. They complete
 compiler increment 2c-b3; Optional Result composition and the remaining String
 operations retain their later roadmap dispositions.
 
+## TOPAL-COMP-CODE-001 — Qualified arithmetic ErrorCode values
+
+The compiler shall resolve the four qualified values published by
+`lang arithmetic` to the same closed nominal `ArithmeticErrorCode` identity and
+sealed `i32` tags stored in compiled Error values. Direct values shall support
+same-type equality, scalar function passage, canonical alternative-label
+display through the Topal platform writer, DWARF enumerators, and GDB
+inspection without a runtime namespace lookup or foreign-language dependency.
+An unknown or incompletely qualified code shall not be reinterpreted as an
+arithmetic code.
+
+This requirement covers `TOPAL-NUM-ARITHMETIC-ERROR-001` and realizes
+`TOPAL-COMPILER-ERROR-CODE-001` for compiler increment 2c-b4.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted

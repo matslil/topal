@@ -107,6 +107,10 @@ generic Error action is the default when present, while an exhaustive four-code
 table has an unreachable invalid-runtime default. String-valued actions merge
 as ordinary descriptor pointers through LLVM `phi`. Error field observation
 loads the stored code or domain descriptor without reconstructing the Error.
+The same four arithmetic codes are available as qualified root values using the
+identical sealed `i32` tags. Direct equality, function passage, display, DWARF,
+and GDB therefore cannot diverge from codes observed through an Error, and no
+namespace operation or foreign runtime survives into generated code.
 
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
