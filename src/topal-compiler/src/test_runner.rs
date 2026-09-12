@@ -21,7 +21,12 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/discard-function-pattern.t",
     "examples/language/dynamic-rational-int-validation.t",
     "examples/language/dynamic-rational-construction.t",
+    "examples/language/effect-classifier.t",
+    "examples/language/effect-function-boundary.t",
+    "examples/language/effect-identity.t",
+    "examples/language/effect-products.t",
     "examples/language/empty-block.t",
+    "examples/language/empty-effects.t",
     "examples/language/equality-and-ordering.t",
     "examples/language/enum-decisions.t",
     "examples/language/enum-functions.t",
@@ -91,6 +96,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/strings-and-products.t",
     "examples/language/tuple-equality.t",
     "examples/language/unicode-identifiers.t",
+    "examples/language/unit-effect-value.t",
 ];
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> Result<(), String> {

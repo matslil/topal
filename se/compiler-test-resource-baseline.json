@@ -856,6 +856,66 @@
       "cpu_time_ns": 167555,
       "memory_peak_bytes": 18350080,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/effect-classifier.t": {
+      "cpu_time_ns": 119030880,
+      "memory_peak_bytes": 41455616,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/effect-function-boundary.t": {
+      "cpu_time_ns": 119030280,
+      "memory_peak_bytes": 41463808,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/effect-identity.t": {
+      "cpu_time_ns": 118840700,
+      "memory_peak_bytes": 40960000,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/effect-products.t": {
+      "cpu_time_ns": 118411900,
+      "memory_peak_bytes": 41009152,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/empty-effects.t": {
+      "cpu_time_ns": 118348760,
+      "memory_peak_bytes": 41005056,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/unit-effect-value.t": {
+      "cpu_time_ns": 118844360,
+      "memory_peak_bytes": 40988672,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/effect-classifier.t": {
+      "cpu_time_ns": 129859,
+      "memory_peak_bytes": 18489344,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/effect-function-boundary.t": {
+      "cpu_time_ns": 132382,
+      "memory_peak_bytes": 18493440,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/effect-identity.t": {
+      "cpu_time_ns": 128095,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/effect-products.t": {
+      "cpu_time_ns": 131746,
+      "memory_peak_bytes": 18235392,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/empty-effects.t": {
+      "cpu_time_ns": 128634,
+      "memory_peak_bytes": 18374656,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/unit-effect-value.t": {
+      "cpu_time_ns": 131328,
+      "memory_peak_bytes": 18489344,
+      "samples_per_test": 500
     }
   }
 }

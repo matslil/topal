@@ -54,6 +54,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
             .any(|(_, value_type)| type_uses_extended_debug(value_type)),
         CompilerType::Unit
         | CompilerType::Completed
+        | CompilerType::Effect
         | CompilerType::Boolean
         | CompilerType::Int
         | CompilerType::Nat
@@ -163,6 +164,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         }
         CompilerExpressionKind::Unit
         | CompilerExpressionKind::Completed
+        | CompilerExpressionKind::Effect
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -270,7 +272,7 @@ impl<'a> Generator<'a> {
         let location = self.debug.location(function.body.result.span, subprogram);
         match result {
             LlValue::Unit => body.terminator("ret void", location),
-            LlValue::Completed(value) => {
+            LlValue::Completed(value) | LlValue::Effect(value) => {
                 body.terminator(&format!("ret i8 {value}"), location);
             }
             LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
@@ -364,6 +366,7 @@ impl<'a> Generator<'a> {
         match &expression.kind {
             CompilerExpressionKind::Unit => LlValue::Unit,
             CompilerExpressionKind::Completed => LlValue::Completed("0".into()),
+            CompilerExpressionKind::Effect => LlValue::Effect("0".into()),
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
             CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
             CompilerExpressionKind::Rational(value) => {
@@ -754,6 +757,11 @@ impl<'a> Generator<'a> {
                         LlValue::Unit
                     }
                     CompilerType::Completed => LlValue::Completed(body.instruction(
+                        &format!("call fastcc i8 @{symbol}({arguments})"),
+                        expression.span,
+                        &mut self.debug,
+                    )),
+                    CompilerType::Effect => LlValue::Effect(body.instruction(
                         &format!("call fastcc i8 @{symbol}({arguments})"),
                         expression.span,
                         &mut self.debug,
@@ -1578,7 +1586,8 @@ impl<'a> Generator<'a> {
             (LlValue::Unit, LlValue::Unit) => {
                 body.instruction("icmp eq i8 0, 0", span, &mut self.debug)
             }
-            (LlValue::Completed(left), LlValue::Completed(right)) => body.instruction(
+            (LlValue::Completed(left), LlValue::Completed(right))
+            | (LlValue::Effect(left), LlValue::Effect(right)) => body.instruction(
                 &format!("icmp eq i8 {left}, {right}"),
                 span,
                 &mut self.debug,
@@ -1972,6 +1981,7 @@ impl<'a> Generator<'a> {
         self.emit_decision_phi(&branches, body, span)
     }
 
+    #[allow(clippy::too_many_lines)] // Exhaustive scalar joins preserve checked representation identity.
     fn emit_decision_phi(
         &mut self,
         branches: &[(LlValue, String)],
@@ -1988,11 +1998,18 @@ impl<'a> Generator<'a> {
         };
         match first {
             LlValue::Unit => LlValue::Unit,
-            LlValue::Completed(_) => LlValue::Completed(body.instruction(
-                &format!("phi i8 {}", incoming(LlValue::completed)),
-                span,
-                &mut self.debug,
-            )),
+            LlValue::Completed(_) | LlValue::Effect(_) => {
+                let value = body.instruction(
+                    &format!("phi i8 {}", incoming(LlValue::singleton)),
+                    span,
+                    &mut self.debug,
+                );
+                if matches!(first, LlValue::Completed(_)) {
+                    LlValue::Completed(value)
+                } else {
+                    LlValue::Effect(value)
+                }
+            }
             LlValue::Boolean(_) => LlValue::Boolean(body.instruction(
                 &format!("phi i1 {}", incoming(LlValue::boolean)),
                 span,
@@ -2085,6 +2102,7 @@ impl<'a> Generator<'a> {
         match value {
             LlValue::Unit => self.emit_write_literal("()", body, span),
             LlValue::Completed(_) => self.emit_write_literal("Completed", body, span),
+            LlValue::Effect(_) => self.emit_write_literal("Effects ()", body, span),
             LlValue::Boolean(value) => {
                 let true_label = body.label("print.true");
                 let false_label = body.label("print.false");
@@ -2402,6 +2420,7 @@ impl<'a> Generator<'a> {
 enum LlValue {
     Unit,
     Completed(String),
+    Effect(String),
     Boolean(String),
     Int(String),
     Rational(String),
@@ -2431,11 +2450,11 @@ enum LlValue {
 }
 
 impl LlValue {
-    fn completed(&self) -> &str {
-        let Self::Completed(value) = self else {
-            unreachable!("checked value is Completed")
-        };
-        value
+    fn singleton(&self) -> &str {
+        match self {
+            Self::Completed(value) | Self::Effect(value) => value,
+            _ => unreachable!("checked value is a zero-data singleton"),
+        }
     }
 
     fn integer(&self) -> &str {
@@ -2529,7 +2548,7 @@ impl LlValue {
     fn argument(&self) -> String {
         match self {
             Self::Unit => "i8 0".into(),
-            Self::Completed(value) => format!("i8 {value}"),
+            Self::Completed(value) | Self::Effect(value) => format!("i8 {value}"),
             Self::Boolean(value) => format!("i1 {value}"),
             Self::Int(value)
             | Self::Rational(value)
@@ -2625,7 +2644,7 @@ impl FunctionBody {
     fn debug_value(&mut self, value: &LlValue, variable: usize, location: usize) {
         let value = match value {
             LlValue::Unit => "i8 0".into(),
-            LlValue::Completed(value) => format!("i8 {value}"),
+            LlValue::Completed(value) | LlValue::Effect(value) => format!("i8 {value}"),
             LlValue::Boolean(value) => format!("i1 {value}"),
             LlValue::Int(value)
             | LlValue::Rational(value)
@@ -2691,6 +2710,7 @@ struct DebugInfo {
     boolean_type: usize,
     unit_type: usize,
     completed_type: usize,
+    effect_type: usize,
     enum_types: BTreeMap<String, usize>,
     source: topal_source::SourceText,
     filename: String,
@@ -2735,6 +2755,7 @@ impl DebugInfo {
             boolean_type: 0,
             unit_type: 0,
             completed_type: 0,
+            effect_type: 0,
             enum_types: BTreeMap::new(),
             source,
             filename,
@@ -2787,17 +2808,27 @@ impl DebugInfo {
             "!DICompositeType(tag: DW_TAG_enumeration_type, name: \"Comparison\", file: !{}, size: 32, align: 32, elements: !{comparison_values})",
             debug.file
         ));
-        debug.boolean_type =
-            debug.node("!DIBasicType(name: \"Boolean\", size: 8, encoding: DW_ATE_boolean)".into());
-        debug.unit_type =
-            debug.node("!DIBasicType(name: \"Unit\", size: 8, encoding: DW_ATE_unsigned)".into());
-        let completed = debug.node("!DIEnumerator(name: \"Completed\", value: 0)".into());
-        let completed_values = debug.node(format!("!{{!{completed}}}"));
-        debug.completed_type = debug.node(format!(
-            "!DICompositeType(tag: DW_TAG_enumeration_type, name: \"Completed\", file: !{}, size: 8, align: 8, elements: !{completed_values})",
-            debug.file
-        ));
+        debug.install_zero_data_types();
         debug
+    }
+
+    fn install_zero_data_types(&mut self) {
+        self.boolean_type =
+            self.node("!DIBasicType(name: \"Boolean\", size: 8, encoding: DW_ATE_boolean)".into());
+        self.unit_type =
+            self.node("!DIBasicType(name: \"Unit\", size: 8, encoding: DW_ATE_unsigned)".into());
+        let completed = self.node("!DIEnumerator(name: \"Completed\", value: 0)".into());
+        let completed_values = self.node(format!("!{{!{completed}}}"));
+        self.completed_type = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_enumeration_type, name: \"Completed\", file: !{}, size: 8, align: 8, elements: !{completed_values})",
+            self.file
+        ));
+        let empty_effect = self.node("!DIEnumerator(name: \"empty\", value: 0)".into());
+        let effect_values = self.node(format!("!{{!{empty_effect}}}"));
+        self.effect_type = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_enumeration_type, name: \"Effect\", file: !{}, size: 8, align: 8, elements: !{effect_values})",
+            self.file
+        ));
     }
 
     fn install_aggregate_types(&mut self, unsigned64: usize, extended_types: bool) {
@@ -3044,6 +3075,7 @@ impl DebugInfo {
         match value_type {
             CompilerType::Unit => self.unit_type,
             CompilerType::Completed => self.completed_type,
+            CompilerType::Effect => self.effect_type,
             CompilerType::Boolean => self.boolean_type,
             CompilerType::Int => self.int_type,
             CompilerType::Nat => self.nat_type,
@@ -3247,7 +3279,7 @@ impl DebugInfo {
 fn llvm_type(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Unit => "void",
-        CompilerType::Completed => "i8",
+        CompilerType::Completed | CompilerType::Effect => "i8",
         CompilerType::Boolean => "i1",
         CompilerType::Int
         | CompilerType::Nat
@@ -3271,6 +3303,7 @@ fn function_parameter_value(value_type: &CompilerType, index: usize) -> LlValue 
     match value_type {
         CompilerType::Unit => LlValue::Unit,
         CompilerType::Completed => LlValue::Completed(value),
+        CompilerType::Effect => LlValue::Effect(value),
         CompilerType::Boolean => LlValue::Boolean(value),
         CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
         CompilerType::Rational => LlValue::Rational(value),
@@ -3303,7 +3336,7 @@ fn function_parameter_value(value_type: &CompilerType, index: usize) -> LlValue 
 
 fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
     match value_type {
-        CompilerType::Unit | CompilerType::Completed => "i8",
+        CompilerType::Unit | CompilerType::Completed | CompilerType::Effect => "i8",
         CompilerType::Boolean => "i1",
         CompilerType::Int
         | CompilerType::Nat
@@ -3417,6 +3450,39 @@ mod tests {
         assert!(llvm.contains("icmp eq i8 0, 0"));
         assert!(llvm.contains("ret i8 0"));
         assert!(llvm.contains("DW_TAG_enumeration_type, name: \"Completed\""));
+    }
+
+    #[test]
+    fn emits_empty_effect_as_a_distinct_zero_data_scalar() {
+        // TOPAL-EFFECT-EMPTY-001, TOPAL-EFFECT-IDENTITY-001,
+        // TOPAL-EFFECT-BOUNDARY-001, TOPAL-EFFECT-PRODUCT-001
+        for source in [
+            include_str!("../../../examples/language/empty-effects.t"),
+            include_str!("../../../examples/language/effect-classifier.t"),
+            include_str!("../../../examples/language/effect-identity.t"),
+            include_str!("../../../examples/language/effect-products.t"),
+            include_str!("../../../examples/language/unit-effect-value.t"),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            let llvm = Generator::new(&program, "empty-effects.t").emit();
+            assert!(llvm.contains("name: \"Effect\""));
+            assert!(llvm.contains("DIEnumerator(name: \"empty\", value: 0)"));
+            assert!(!llvm.contains("topal.runtime.effect"));
+        }
+
+        let source = include_str!("../../../examples/language/effect-function-boundary.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "effect-function-boundary.t").emit();
+        assert!(llvm.contains(&format!("define internal fastcc i8 @{symbol}(i8 %arg0)")));
+        assert!(llvm.contains(&format!("call fastcc i8 @{symbol}(i8 0)")));
+        assert!(!llvm.contains("topal.runtime.effect"));
+
+        let equality =
+            analyze_for_compiler(include_str!("../../../examples/language/effect-identity.t"))
+                .unwrap();
+        let llvm = Generator::new(&equality, "effect-identity.t").emit();
+        assert!(llvm.contains("icmp eq i8 0, 0"));
     }
 
     #[test]

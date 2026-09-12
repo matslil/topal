@@ -4489,6 +4489,21 @@
       "cpu_time_ns": 4410140,
       "memory_peak_bytes": 18427904,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_empty_effect_as_a_distinct_zero_data_scalar": {
+      "cpu_time_ns": 12739619,
+      "memory_peak_bytes": 18427904,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_retains_effect_identity_across_a_function_boundary": {
+      "cpu_time_ns": 244318180,
+      "memory_peak_bytes": 56909824,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_empty_effect_as_a_distinct_inert_scalar": {
+      "cpu_time_ns": 3096759,
+      "memory_peak_bytes": 18235392,
+      "samples_per_test": 50
     }
   }
 }

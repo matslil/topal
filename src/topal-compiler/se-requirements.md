@@ -414,6 +414,23 @@ integer or Unit value.
 This requirement covers `TOPAL-EXEC-COMPLETED-001` and realizes
 `TOPAL-COMPILER-COMPLETED-001` for compiler increment 3b2-b2.
 
+## TOPAL-COMP-EFFECT-EMPTY-001 — Canonical empty Effect value
+
+The checked compiler model shall classify `Effects ()` as the canonical empty
+`Effect` value without scheduling or performing an interaction. `Effect` shall
+remain distinct from Unit and `Completed` through classified bindings,
+same-classifier equality, decomposed positional products, scalar function
+parameters and results, and source display. Effect Lists and aggregate function
+results remain explicitly unsupported until their general representations and
+ABIs are admitted.
+
+The backend shall use a sealed zero-data scalar only in Topal-private signatures,
+emit a distinct `Effect` DWARF enumeration for GDB, and require neither
+allocation nor an effect-specific runtime function. Canonical display shall use
+the existing Topal-owned Linux write boundary. No C/C++ runtime, other-language
+standard library, public integer ABI, or `topal-native/6` revision is permitted.
+This realizes `TOPAL-COMPILER-EFFECT-EMPTY-001` for compiler increment 7a.
+
 ## TOPAL-COMP-PATTERN-001 — Positional product and discard inputs
 
 For an admitted ordinary function with multiple scalar parameters, a prefix

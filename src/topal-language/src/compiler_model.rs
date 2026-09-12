@@ -33,6 +33,7 @@ pub struct CompilerEnumType {
 pub enum CompilerType {
     Unit,
     Completed,
+    Effect,
     Boolean,
     Int,
     Nat,
@@ -58,6 +59,7 @@ impl CompilerType {
             self,
             Self::Unit
                 | Self::Completed
+                | Self::Effect
                 | Self::Boolean
                 | Self::Int
                 | Self::Nat
@@ -80,6 +82,7 @@ impl CompilerType {
         match self {
             Self::Unit => "Unit".into(),
             Self::Completed => "Completed".into(),
+            Self::Effect => "Effect".into(),
             Self::Boolean => "Boolean".into(),
             Self::Int => "Int".into(),
             Self::Nat => "Nat".into(),
@@ -219,6 +222,7 @@ pub struct CompilerEnumRule {
 pub enum CompilerExpressionKind {
     Unit,
     Completed,
+    Effect,
     Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
@@ -1206,6 +1210,17 @@ impl Analyzer {
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::StringEmpty,
                 value_type: CompilerType::String,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [Expression::Identifier(constructor), Expression::Unit(_)] = items
+            && self.source.slice(*constructor) == "Effects"
+        {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::Effect,
+                value_type: CompilerType::Effect,
                 int_range: None,
                 rational_value: None,
                 span,
@@ -4302,6 +4317,7 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         "RangeRational" => Some(CompilerType::Range(Box::new(CompilerType::Rational))),
         "Unit" => Some(CompilerType::Unit),
         "Completed" => Some(CompilerType::Completed),
+        "Effect" => Some(CompilerType::Effect),
         "Boolean" => Some(CompilerType::Boolean),
         "Int" => Some(CompilerType::Int),
         "Nat" => Some(CompilerType::Nat),
@@ -4447,6 +4463,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
     match value_type {
         CompilerType::Unit
         | CompilerType::Completed
+        | CompilerType::Effect
         | CompilerType::Boolean
         | CompilerType::Int
         | CompilerType::Nat
@@ -4530,6 +4547,7 @@ fn compiler_expression_is_closed_with(
     match &expression.kind {
         CompilerExpressionKind::Unit
         | CompilerExpressionKind::Completed
+        | CompilerExpressionKind::Effect
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -5852,6 +5870,51 @@ mod tests {
                 && function.body.result.value_type == CompilerType::Completed
         }));
         assert_ne!(CompilerType::Completed, CompilerType::Unit);
+    }
+
+    #[test]
+    fn models_empty_effect_as_a_distinct_inert_scalar() {
+        // TOPAL-EFFECT-EMPTY-001, TOPAL-EFFECT-CLASSIFIER-001,
+        // TOPAL-EFFECT-BOUNDARY-001, TOPAL-EFFECT-PRODUCT-001
+        let boundary = analyze_for_compiler(include_str!(
+            "../../../examples/language/effect-function-boundary.t"
+        ))
+        .unwrap();
+        assert_eq!(boundary.functions.len(), 1);
+        let function = &boundary.functions[0];
+        assert_eq!(function.parameters[0].value_type, CompilerType::Effect);
+        assert_eq!(function.result_type, CompilerType::Effect);
+        assert_eq!(function.body.result.value_type, CompilerType::Effect);
+        assert!(matches!(
+            boundary.main.result.kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+
+        let pair =
+            analyze_for_compiler(include_str!("../../../examples/language/effect-products.t"))
+                .unwrap();
+        assert_eq!(
+            pair.main.result.value_type,
+            CompilerType::Tuple(vec![CompilerType::Effect, CompilerType::Effect])
+        );
+        let unit = analyze_for_compiler(include_str!(
+            "../../../examples/language/unit-effect-value.t"
+        ))
+        .unwrap();
+        assert_eq!(
+            unit.main.result.value_type,
+            CompilerType::Tuple(vec![CompilerType::Unit, CompilerType::Effect])
+        );
+        assert_ne!(CompilerType::Effect, CompilerType::Unit);
+        assert_ne!(CompilerType::Effect, CompilerType::Completed);
+
+        for source in [
+            include_str!("../../../examples/language/empty-effects.t"),
+            include_str!("../../../examples/language/effect-classifier.t"),
+            include_str!("../../../examples/language/effect-identity.t"),
+        ] {
+            assert!(analyze_for_compiler(source).is_ok());
+        }
     }
 
     #[test]
