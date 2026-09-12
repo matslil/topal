@@ -284,6 +284,24 @@ SHALL remain unsupported until that conversion has an admitted product
 lowering; the compiler SHALL reject it at the checked boundary rather than
 silently compare incompatible representations.
 
+### TOPAL-COMPILER-RECORD-001 — Anonymous record construction and selection
+
+An admitted anonymous product whose fields are all labeled SHALL construct a
+structural Record. Field expressions SHALL be evaluated once from left to right,
+labels SHALL be unique, and canonical display SHALL retain construction order.
+The inferred type SHALL retain every label and exact field classifier while
+treating the label set canonically for static identity. Selecting `record label`
+SHALL return that field's already-evaluated value with its exact classifier; an
+absent label SHALL be rejected at the label source range.
+
+The admitted expression-local Record MAY remain a decomposed compiler aggregate
+and SHALL require no allocation, native object header, generated runtime, or
+foreign aggregate ABI. Record passage through machine signatures, derived
+equality, reconstruction, and aggregate storage remain unsupported. Until that
+storage exists, the compiler SHALL expose source locations and projected scalar
+bindings through DWARF/GDB but SHALL NOT publish a misleading aggregate-local
+debug representation.
+
 ### TOPAL-COMPILER-STRING-UTF8-BYTE-COUNT-001 — Native prospective byte count
 
 For an admitted plain String, `text byte-count Utf8` SHALL read the exact

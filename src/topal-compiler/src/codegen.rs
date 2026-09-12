@@ -49,6 +49,9 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
             type_uses_extended_debug(endpoint)
         }
         CompilerType::Tuple(fields) => fields.iter().any(type_uses_extended_debug),
+        CompilerType::Record(fields) => fields
+            .iter()
+            .any(|(_, value_type)| type_uses_extended_debug(value_type)),
         CompilerType::Unit
         | CompilerType::Completed
         | CompilerType::Boolean
@@ -75,6 +78,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Call {
             arguments: fields, ..
         } => fields.iter().any(expression_uses_extended_debug),
+        CompilerExpressionKind::Record(fields) => fields
+            .iter()
+            .any(|(_, value)| expression_uses_extended_debug(value)),
         CompilerExpressionKind::Block(block) => block_uses_extended_debug(block),
         CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
@@ -86,6 +92,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::OptionalSome(value)
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
+        | CompilerExpressionKind::RecordField { record: value, .. }
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
         | CompilerExpressionKind::RangeLowerInclusive(value)
@@ -275,7 +282,9 @@ impl<'a> Generator<'a> {
             | LlValue::Enum { value, .. } => {
                 body.terminator(&format!("ret i32 {value}"), location);
             }
-            LlValue::Tuple(_) => unreachable!("shared model restricts machine results"),
+            LlValue::Tuple(_) | LlValue::Record(_) => {
+                unreachable!("shared model restricts machine results")
+            }
         }
         self.functions.push(format!(
             "define internal fastcc {return_type} @{}({parameters}) nounwind noinline !dbg !{subprogram} {{\n{}\n}}\n",
@@ -410,6 +419,27 @@ impl<'a> Generator<'a> {
                     .map(|value| self.emit_expression(value, body, environment))
                     .collect(),
             ),
+            CompilerExpressionKind::Record(fields) => LlValue::Record(
+                fields
+                    .iter()
+                    .map(|(label, value)| {
+                        (
+                            label.clone(),
+                            self.emit_expression(value, body, environment),
+                        )
+                    })
+                    .collect(),
+            ),
+            CompilerExpressionKind::RecordField { record, label } => {
+                let LlValue::Record(fields) = self.emit_expression(record, body, environment)
+                else {
+                    unreachable!("checked field selection has a Record receiver")
+                };
+                fields
+                    .into_iter()
+                    .find_map(|(name, value)| (name == *label).then_some(value))
+                    .unwrap_or_else(|| panic!("checked Record retains field `{label}`"))
+            }
             CompilerExpressionKind::Block(block) => {
                 let parent_scope = body.subprogram;
                 body.subprogram = self.debug.lexical_block(expression.span, parent_scope);
@@ -780,7 +810,7 @@ impl<'a> Generator<'a> {
                         ),
                         payload: payload.as_ref().clone(),
                     },
-                    CompilerType::Tuple(_) => {
+                    CompilerType::Tuple(_) | CompilerType::Record(_) => {
                         unreachable!("shared model restricts call result types")
                     }
                 }
@@ -1941,7 +1971,7 @@ impl<'a> Generator<'a> {
                     payload,
                 }
             }
-            LlValue::Tuple(_) => {
+            LlValue::Tuple(_) | LlValue::Record(_) => {
                 unreachable!("checked decision result is machine scalar")
             }
         }
@@ -2053,6 +2083,18 @@ impl<'a> Generator<'a> {
                 }
                 if fields.len() == 1 {
                     self.emit_write_literal(",", body, span);
+                }
+                self.emit_write_literal(")", body, span);
+            }
+            LlValue::Record(fields) => {
+                self.emit_write_literal("(", body, span);
+                for (index, (label, field)) in fields.iter().enumerate() {
+                    if index != 0 {
+                        self.emit_write_literal(", ", body, span);
+                    }
+                    self.emit_write_literal(label, body, span);
+                    self.emit_write_literal(" is ", body, span);
+                    self.emit_print(field, body, span);
                 }
                 self.emit_write_literal(")", body, span);
             }
@@ -2282,6 +2324,7 @@ enum LlValue {
     },
     String(String),
     Tuple(Vec<Self>),
+    Record(Vec<(String, Self)>),
 }
 
 impl LlValue {
@@ -2398,7 +2441,9 @@ impl LlValue {
             Self::Comparison(value) | Self::ErrorCode(value) | Self::Enum { value, .. } => {
                 format!("i32 {value}")
             }
-            Self::Tuple(_) => unreachable!("checked call arguments are scalar"),
+            Self::Tuple(_) | Self::Record(_) => {
+                unreachable!("checked call arguments are scalar")
+            }
         }
     }
 }
@@ -2492,7 +2537,7 @@ impl FunctionBody {
             LlValue::Comparison(value)
             | LlValue::ErrorCode(value)
             | LlValue::Enum { value, .. } => format!("i32 {value}"),
-            LlValue::Tuple(_) => return,
+            LlValue::Tuple(_) | LlValue::Record(_) => return,
         };
         self.lines.push(format!(
             "    #dbg_value({value}, !{variable}, !DIExpression(), !{location})"
@@ -2950,7 +2995,7 @@ impl DebugInfo {
             CompilerType::Optional(_) => {
                 unreachable!("unsupported Optional payload type reached codegen")
             }
-            CompilerType::Tuple(_) => {
+            CompilerType::Tuple(_) | CompilerType::Record(_) => {
                 unreachable!("structural values have no native debug representation yet")
             }
         }
@@ -3112,7 +3157,9 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
         | CompilerType::Result(_)
         | CompilerType::Optional(_) => "ptr",
         CompilerType::Comparison | CompilerType::ErrorCode | CompilerType::Enum(_) => "i32",
-        CompilerType::Tuple(_) => unreachable!("shared model restricts function ABI types"),
+        CompilerType::Tuple(_) | CompilerType::Record(_) => {
+            unreachable!("shared model restricts function ABI types")
+        }
     }
 }
 
@@ -3145,7 +3192,9 @@ fn function_parameter_value(value_type: &CompilerType, index: usize) -> LlValue 
             value,
             payload: payload.as_ref().clone(),
         },
-        CompilerType::Tuple(_) => unreachable!("shared model restricts machine parameters"),
+        CompilerType::Tuple(_) | CompilerType::Record(_) => {
+            unreachable!("shared model restricts machine parameters")
+        }
     }
 }
 
@@ -3164,7 +3213,9 @@ fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
         | CompilerType::Result(_)
         | CompilerType::Optional(_) => "ptr",
         CompilerType::Comparison | CompilerType::ErrorCode | CompilerType::Enum(_) => "i32",
-        CompilerType::Tuple(_) => unreachable!("shared model restricts function ABI types"),
+        CompilerType::Tuple(_) | CompilerType::Record(_) => {
+            unreachable!("shared model restricts function ABI types")
+        }
     }
 }
 
@@ -3412,6 +3463,18 @@ mod tests {
             let llvm = Generator::new(&program, name).emit();
             assert!(!llvm.contains("runtime.unicode"));
         }
+    }
+
+    #[test]
+    fn lowers_anonymous_records_without_a_runtime_abi() {
+        // TOPAL-COMPILER-RECORD-001, TOPAL-TYPE-PRODUCT-001
+        let source = include_str!("../../../examples/language/strings-and-products.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "strings-and-products.t").emit();
+        assert!(llvm.contains(&llvm_bytes(b"name")));
+        assert!(llvm.contains(&llvm_bytes(b"active")));
+        assert!(llvm.contains(&llvm_bytes(b"Ada")));
+        assert!(!llvm.contains("runtime.record"));
     }
 
     #[test]

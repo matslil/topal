@@ -29,7 +29,8 @@ evidence.
 | 3b2-b4 | `Optional Int`/`Optional String` construction, contextual absence, scalar function passage, exhaustive decisions, display, `Optional Int` equality, and debugging | complete |
 | 3b2-b4a | extend the same native Optional paths to exact Rational payloads and recursively derived product equality | complete |
 | 3b2-b5a | same-classifier positional-product equality recursively derived from admitted field equality | complete |
-| 3b2-b5b | remaining function forms, return-through-block cleanup, recursion/totality evidence, nested declarations, records, unions, constraints, capabilities, and decisions | planned |
+| 3b2-b5b | anonymous labeled-record construction, static field selection, canonical display, and projected scalar debugging | complete |
+| 3b2-b5c | remaining function forms, return-through-block cleanup, recursion/totality evidence, nested declarations, record equality/reconstruction/storage/ABI, unions, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -85,8 +86,10 @@ dependency into Unit; 3b2-b3 completes positional-product prefix application
 and typed discard inputs without inventing bindings; 3b2-b4 adds a distinct
 freestanding Optional representation; 3b2-b4a admits Rational payloads without
 changing that representation; 3b2-b5a derives same-classifier
-positional-product equality without introducing an aggregate ABI; 3b2-b5b
-continues with nested declarations, recursive and nested-block exit
+positional-product equality without introducing an aggregate ABI; 3b2-b5b adds
+decomposed anonymous records, exact static selection, and source-ordered display
+without inventing aggregate storage or debug layout; 3b2-b5c continues with
+nested declarations, recursive and nested-block exit
 control flow, cleanup-bearing scopes, and the remaining user-defined value
 representations. Increment 4a admits the encoding-observation byte count without
 attaching an encoding or importing a foreign String runtime; 4b1 adds exact

@@ -72,6 +72,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/string-normalization.t",
     "examples/language/string-uppercase.t",
     "examples/language/string-utf8-byte-count.t",
+    "examples/language/strings-and-products.t",
     "examples/language/tuple-equality.t",
     "examples/language/unicode-identifiers.t",
 ];

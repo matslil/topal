@@ -267,7 +267,19 @@ work rather than being inferred by the backend. Because this increment has no
 single machine product value, it does not yet publish product bindings as DWARF
 locals; their source lines and lowered field operations remain debuggable, while
 a truthful aggregate DWARF representation is retained with general product
-storage and ABI work in increment 3b2-b5b.
+storage and ABI work in increment 3b2-b5c.
+
+An anonymous labeled Record uses the same decomposed expression-local strategy.
+The checked model evaluates fields in source order, rejects duplicate labels,
+keeps that order for display, and separately retains a canonical label-to-type
+map for selection and structural identity. LLVM lowering carries labeled field
+values without allocating a record object; selection chooses the already
+evaluated field and display recursively emits `label is value` through existing
+Topal syscall-backed value printers. This adds no record runtime or ABI. Scalar
+values projected from a record retain ordinary DWARF locals and can be inspected
+in GDB. The record binding itself is deliberately absent from DWARF until
+increment 3b2-b5c supplies a truthful aggregate storage and debug representation
+rather than describing a layout that does not exist.
 
 Nat validation already preserves an unchanged arbitrary-precision Int object
 with distinct checked constraint evidence and DWARF type identity. Comparison

@@ -4314,6 +4314,21 @@
       "cpu_time_ns": 3965419,
       "memory_peak_bytes": 18407424,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::lowers_anonymous_records_without_a_runtime_abi": {
+      "cpu_time_ns": 6377180,
+      "memory_peak_bytes": 18325504,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_values_projected_from_anonymous_records": {
+      "cpu_time_ns": 272110080,
+      "memory_peak_bytes": 57344000,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_anonymous_record_construction_and_selection": {
+      "cpu_time_ns": 3582999,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
     }
   }
 }
