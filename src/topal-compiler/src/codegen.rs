@@ -2414,7 +2414,7 @@ fn optional_payload_value(value: String, value_type: &CompilerType) -> LlValue {
     match value_type {
         CompilerType::Int => LlValue::Int(value),
         CompilerType::Rational => LlValue::Rational(value),
-        CompilerType::String => LlValue::String(value),
+        CompilerType::Character | CompilerType::String => LlValue::String(value),
         _ => unreachable!("checked Optional payload type is supported"),
     }
 }
@@ -2537,6 +2537,7 @@ struct DebugInfo {
     result_int_pair_type: usize,
     optional_int_type: usize,
     optional_rational_type: usize,
+    optional_character_type: usize,
     optional_string_type: usize,
     comparison_type: usize,
     boolean_type: usize,
@@ -2580,6 +2581,7 @@ impl DebugInfo {
             result_int_pair_type: 0,
             optional_int_type: 0,
             optional_rational_type: 0,
+            optional_character_type: 0,
             optional_string_type: 0,
             comparison_type: 0,
             boolean_type: 0,
@@ -2865,6 +2867,7 @@ impl DebugInfo {
         ));
         self.optional_int_type = self.optional_type("Int", pointer);
         self.optional_rational_type = self.optional_type("Rational", pointer);
+        self.optional_character_type = self.optional_type("Character", pointer);
         self.optional_string_type = self.optional_type("String", pointer);
     }
 
@@ -2937,6 +2940,9 @@ impl DebugInfo {
             }
             CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Rational => {
                 self.optional_rational_type
+            }
+            CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Character => {
+                self.optional_character_type
             }
             CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::String => {
                 self.optional_string_type
@@ -3337,6 +3343,30 @@ mod tests {
             5
         );
         assert!(!llvm.contains("runtime.character.validate"));
+    }
+
+    #[test]
+    fn folds_closed_character_counting_and_indexing() {
+        // TOPAL-COMPILER-CHARACTER-OBSERVATION-001
+        let source = include_str!("../../../examples/language/string-character-at.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/string-character-at.t").emit();
+        assert_eq!(
+            llvm.matches("call ptr @topal.runtime.optional.some")
+                .count(),
+            4
+        );
+        assert_eq!(
+            llvm.matches("call ptr @topal.runtime.optional.none")
+                .count(),
+            3
+        );
+        assert!(llvm.contains("name: \"Optional Character\""));
+        assert!(llvm.contains("define internal fastcc ptr @topal.fn.describe.0(ptr %arg0)"));
+        assert!(llvm.contains("optional.decision.some"));
+        assert!(llvm.contains("optional.decision.none"));
+        assert!(!llvm.contains("runtime.character.count"));
+        assert!(!llvm.contains("runtime.character.at"));
     }
 
     #[test]

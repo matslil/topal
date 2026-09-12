@@ -350,6 +350,23 @@ generated instruction. The machine value SHALL remain the same immutable
 String descriptor, exact equality SHALL reuse canonical String equality, and
 no native ABI revision or foreign Unicode/runtime dependency SHALL result.
 
+### TOPAL-COMPILER-CHARACTER-OBSERVATION-001 — Closed Character observations
+
+When the complete preserved String and, for indexing, exact Int index are known
+during checking, `character-count`, String `entry-count`, and `character-at`
+SHALL be evaluated under the selected language context's pinned extended-
+grapheme segmentation. Both counts SHALL produce the equal arbitrary-precision
+Int. Indexing SHALL produce `Some Character` containing the complete preserved
+cluster or `None` for a negative or out-of-range index.
+
+This evaluation SHALL be mandatory at `-O0`, not delegated to an LLVM
+optimization. The admitted `Optional Character` result SHALL use the existing
+private Optional header and String-descriptor payload through function passage,
+decisions, display, DWARF, and GDB. Dynamic text or index observations SHALL be
+rejected until a Topal-owned freestanding Unicode runtime path is admitted;
+the compiler SHALL NOT substitute bytes, scalar values, host Unicode tables,
+locale services, or another language's runtime.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate

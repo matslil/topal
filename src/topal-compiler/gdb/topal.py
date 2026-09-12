@@ -296,7 +296,7 @@ class _TopalOptionalPrinter:
             rendered = _TopalIntPrinter(payload).to_string()
         elif self._payload_type == "Rational":
             rendered = _TopalRationalPrinter(payload).to_string()
-        elif self._payload_type == "String":
+        elif self._payload_type in ("Character", "String"):
             rendered = _TopalStringPrinter(payload).to_string()
         else:
             return f"<unsupported Optional payload type {self._payload_type}>"

@@ -2732,12 +2732,14 @@ fn every_mode_indexes_user_perceived_string_characters() {
         assert!(output.status.success());
         assert!(
             output.stdout.ends_with(
-                "(Some \"a\u{301}\", Some \"👩‍🔬\", Some \"🇸🇪\", None, None, \"👩‍🔬\", \"missing\")\n"
+                "(3, 3, Some \"a\u{301}\", Some \"👩‍🔬\", Some \"🇸🇪\", None, None, \"👩‍🔬\", \"missing\")\n"
                     .as_bytes()
             )
         );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-STRING-CHARACTER-COUNT-001"));
+    assert!(trace.contains("TOPAL-STRING-ENTRY-COUNT-001"));
     assert_eq!(trace.matches("TOPAL-STRING-CHARACTER-AT-001").count(), 7);
     assert!(trace.contains("\"detail\":\"Some\""));
     assert!(trace.contains("\"detail\":\"None\""));

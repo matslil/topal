@@ -84,7 +84,7 @@ The syscall runtime writes canonical ordinary or tagged Topal literals without
 relying on a C locale or string library. This descriptor foundation admits
 literal transport and display; subsequent increments reuse it for byte count,
 exact equality, and concatenation, while the remaining Unicode String
-operations stay in roadmap increment 4b3b.
+operations stay in roadmap increment 4b3c.
 
 The prospective UTF-8 byte-count operation reads the preserved-byte length
 already stored in that descriptor; it does not scan display spelling, attach an
@@ -137,6 +137,17 @@ String comparator. Forgetting the evidence is therefore an IR no-op. Dynamic
 validation is rejected until a Result-producing, freestanding segmentation
 path is admitted, so generated behavior never falls back to host or OS Unicode
 tables.
+
+Closed Character counting and indexing use the same shared pinned segmentation
+while the checked frontend still has the complete preserved sequence. This is
+mandatory constant evaluation for the admitted semantic domain, not an LLVM
+optimization: counts become canonical Int constants, while a valid indexed
+cluster becomes an ordinary immutable String descriptor carried by the private
+Optional header as Character. A negative or out-of-range exact index becomes
+the existing `None` header. `Optional Character` function passage, decision
+payload extraction, display, DWARF, and GDB therefore reuse existing carriers
+without a new ABI. Unknown text or index values fail at the checked boundary
+until generated Topal Unicode tables and segmentation code exist.
 
 Fallible exact operations return immutable Result headers containing a
 canonical success-or-error tag and one opaque payload pointer. Successful
