@@ -103,6 +103,24 @@ exact-number cases of `TOPAL-TYPE-EQUALITY-001` and
 
 It realizes `TOPAL-COMPILER-EXACT-001` for compiler increment 2b.
 
+## TOPAL-COMP-NAT-COMPARISON-001 — Nat comparison evidence
+
+The compiler shall evaluate each admitted Nat comparison operand once and
+forget its validated constraint evidence to the unchanged canonical
+arbitrary-precision Int value. Equality, inequality, ordered predicates, and
+three-way comparison between Nat values or mixed Nat/Int values shall use the
+existing Int comparison. Mixed Nat/Rational comparison shall use the existing
+canonical Int-to-Rational conversion and Rational comparison.
+
+Evidence forgetting shall emit no runtime conversion, unsigned representation,
+fixed-width narrowing, allocation, Nat-specific operation, or ABI change. The
+original classified binding shall retain Nat DWARF identity. Nat shall also be
+admitted recursively as same-classifier positional-product equality evidence.
+This requirement covers `TOPAL-NUM-NAT-001`, `TOPAL-TYPE-CONSTRAINT-001`,
+`TOPAL-TYPE-EQUALITY-001`, `TOPAL-TYPE-ORDERING-001`,
+`TOPAL-NUM-COMPARE-001`, and `TOPAL-NUM-THREE-WAY-COMPARE-001`; it realizes
+`TOPAL-COMPILER-NAT-COMPARISON-001` for compiler increment 2e.
+
 ## TOPAL-COMP-RESULT-001 — Dynamic arithmetic Results
 
 The compiler shall represent an admitted arithmetic `Result` with an immutable
@@ -298,7 +316,7 @@ lookup. This requirement covers `TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`,
 The compiler shall admit equality and inequality between same-classifier
 positional products exactly when every field has an admitted canonical equality
 lowering. The admitted recursive field set is Unit, Completed, Boolean, Int,
-Rational, Comparison, ErrorCode, String, payload-free source Enum,
+Nat, Rational, Comparison, ErrorCode, String, payload-free source Enum,
 `Optional Int`, `Optional String`, and another admitted positional product.
 Both complete operands shall be evaluated once from left to right before their
 corresponding fields are recursively compared, and inequality shall negate the

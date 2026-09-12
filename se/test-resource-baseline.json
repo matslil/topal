@@ -4229,6 +4229,26 @@
       "cpu_time_ns": 3522079,
       "memory_peak_bytes": 18403328,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_nat_comparison_with_the_exact_int_representation": {
+      "cpu_time_ns": 5820960,
+      "memory_peak_bytes": 18247680,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_nat_comparison_parameters_with_nat_identity": {
+      "cpu_time_ns": 256041660,
+      "memory_peak_bytes": 57278464,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_compares_nat_constraint_values": {
+      "cpu_time_ns": 25223160,
+      "memory_peak_bytes": 18395136,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_nat_comparison_by_forgetting_constraint_evidence": {
+      "cpu_time_ns": 3423839,
+      "memory_peak_bytes": 18407424,
+      "samples_per_test": 50
     }
   }
 }

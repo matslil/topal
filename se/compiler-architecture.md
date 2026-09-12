@@ -234,6 +234,14 @@ locals; their source lines and lowered field operations remain debuggable, while
 a truthful aggregate DWARF representation is retained with general product
 storage and ABI work in increment 3b2-b5b.
 
+Nat validation already preserves an unchanged arbitrary-precision Int object
+with distinct checked constraint evidence and DWARF type identity. Comparison
+lowering forgets that evidence in the checked expression only: Nat/Int operands
+use the existing exact Int comparator, while a Nat paired with Rational takes
+the same single Int-to-Rational conversion as its base value. This emits no
+unsigned narrowing, bit reinterpretation, Nat-specific runtime symbol, or ABI
+conversion, and it does not retag the source binding exposed to GDB.
+
 The correctness-first exact runtime uses binary long division, Euclidean sign
 correction, Euclid's greatest-common-divisor algorithm, and exponentiation by
 squaring. LLVM's documented `llvm.ctlz.i32` intrinsic determines the last

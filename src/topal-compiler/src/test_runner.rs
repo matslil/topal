@@ -42,6 +42,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/inclusive-int-ranges.t",
     "examples/language/int-checked-construction.t",
     "examples/language/int-euclidean-modulo.t",
+    "examples/language/nat-equality-and-ordering.t",
     "examples/language/nat-functions.t",
     "examples/language/nat-checked-construction.t",
     "examples/language/ordinary-functions.t",

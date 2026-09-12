@@ -3193,6 +3193,25 @@ mod tests {
     }
 
     #[test]
+    fn emits_nat_comparison_with_the_exact_int_representation() {
+        // TOPAL-COMPILER-NAT-COMPARISON-001
+        let source = include_str!("../../../examples/language/nat-equality-and-ordering.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/nat-equality-and-ordering.t").emit();
+        assert!(llvm.matches("call i32 @topal.runtime.int.compare").count() >= 12);
+        assert!(
+            llvm.matches("call i32 @topal.runtime.rational.compare")
+                .count()
+                >= 1
+        );
+        assert!(!llvm.contains("topal.runtime.nat.compare"));
+        assert!(llvm.contains("name: \"Nat\""));
+        assert!(llvm.contains("define internal fastcc i32 @topal.fn.compare_2dnat.0"));
+        assert!(llvm.contains("DILocalVariable(name: \"left\", arg: 1"));
+        assert!(llvm.contains("DILocalVariable(name: \"right\", arg: 2"));
+    }
+
+    #[test]
     fn emits_lexical_block_scope_metadata() {
         // TOPAL-EXEC-BLOCK-001, TOPAL-COMPILER-BLOCK-001
         let source =
