@@ -42,7 +42,8 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         CompilerType::String
         | CompilerType::Error
         | CompilerType::ErrorCode
-        | CompilerType::ErrorDomain => true,
+        | CompilerType::ErrorDomain
+        | CompilerType::Optional(_) => true,
         CompilerType::Range(endpoint) | CompilerType::Result(endpoint) => {
             type_uses_extended_debug(endpoint)
         }
@@ -66,6 +67,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::String(_)
         | CompilerExpressionKind::ErrorField { .. }
         | CompilerExpressionKind::ResultDecision { .. }
+        | CompilerExpressionKind::OptionalDecision { .. }
         | CompilerExpressionKind::ErrorCode(_) => true,
         CompilerExpressionKind::Tuple(fields)
         | CompilerExpressionKind::Call {
@@ -79,6 +81,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::IntToNat(value)
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
+        | CompilerExpressionKind::OptionalSome(value)
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
         | CompilerExpressionKind::RangeLowerInclusive(value)
@@ -145,6 +148,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
         | CompilerExpressionKind::Enum(_)
+        | CompilerExpressionKind::OptionalNone
         | CompilerExpressionKind::Local(_) => false,
     }
 }
@@ -251,6 +255,10 @@ impl<'a> Generator<'a> {
                     value: format!("%arg{index}"),
                     success: success.as_ref().clone(),
                 },
+                CompilerType::Optional(payload) => LlValue::Optional {
+                    value: format!("%arg{index}"),
+                    payload: payload.as_ref().clone(),
+                },
                 CompilerType::Tuple(_) => {
                     unreachable!("shared model restricts machine parameters")
                 }
@@ -283,7 +291,8 @@ impl<'a> Generator<'a> {
             | LlValue::ErrorDomain(value)
             | LlValue::String(value)
             | LlValue::Range { value, .. }
-            | LlValue::Result { value, .. } => {
+            | LlValue::Result { value, .. }
+            | LlValue::Optional { value, .. } => {
                 body.terminator(&format!("ret ptr {value}"), location);
             }
             LlValue::Comparison(value)
@@ -488,6 +497,31 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::ResultProject(value) => {
                 self.emit_result_project(value, body, environment, expression.span)
+            }
+            CompilerExpressionKind::OptionalSome(value) => {
+                let payload_value = self.emit_expression(value, body, environment);
+                let payload = optional_payload_pointer(&payload_value);
+                LlValue::Optional {
+                    value: body.instruction(
+                        &format!("call ptr @topal.runtime.optional.some(ptr {payload})"),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    payload: value.value_type.clone(),
+                }
+            }
+            CompilerExpressionKind::OptionalNone => {
+                let CompilerType::Optional(payload) = &expression.value_type else {
+                    unreachable!("checked None retains its Optional classifier")
+                };
+                LlValue::Optional {
+                    value: body.instruction(
+                        "call ptr @topal.runtime.optional.none()",
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    payload: payload.as_ref().clone(),
+                }
             }
             CompilerExpressionKind::ErrorField { error, field } => {
                 let error_span = error.span;
@@ -723,6 +757,14 @@ impl<'a> Generator<'a> {
                         ),
                         success: success.as_ref().clone(),
                     },
+                    CompilerType::Optional(ref payload) => LlValue::Optional {
+                        value: body.instruction(
+                            &format!("call fastcc ptr @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        payload: payload.as_ref().clone(),
+                    },
                     CompilerType::Tuple(_) => {
                         unreachable!("shared model restricts call result types")
                     }
@@ -796,6 +838,20 @@ impl<'a> Generator<'a> {
                 environment,
                 expression.span,
             ),
+            CompilerExpressionKind::OptionalDecision {
+                subject,
+                some_binding,
+                some_action,
+                none_action,
+            } => self.emit_optional_decision(
+                subject,
+                some_binding.as_ref(),
+                some_action,
+                none_action,
+                body,
+                environment,
+                expression.span,
+            ),
         }
     }
 
@@ -831,6 +887,73 @@ impl<'a> Generator<'a> {
             &mut self.debug,
         );
         self.result_success_value(&payload, &success, body, span)
+    }
+
+    #[allow(clippy::too_many_arguments)] // Optional binding and delayed alternatives stay explicit.
+    fn emit_optional_decision(
+        &mut self,
+        subject: &CompilerExpression,
+        some_binding: Option<&(String, Span)>,
+        some_action: &CompilerExpression,
+        none_action: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let optional = self.emit_expression(subject, body, environment);
+        let LlValue::Optional { value, payload } = optional else {
+            unreachable!("checked Optional decision subject is Optional")
+        };
+        let is_some = body.instruction(
+            &format!("call i1 @topal.runtime.optional.is.some(ptr {value})"),
+            subject.span,
+            &mut self.debug,
+        );
+        let some_label = body.label("optional.decision.some");
+        let none_label = body.label("optional.decision.none");
+        let merge = body.label("optional.decision.merge");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {is_some}, label %{some_label}, label %{none_label}"),
+            location,
+        );
+
+        body.start_block(&some_label);
+        let mut some_environment = environment.clone();
+        if let Some((some_binding, some_binding_span)) = some_binding {
+            let payload_pointer = body.instruction(
+                &format!("call ptr @topal.runtime.optional.payload(ptr {value})"),
+                *some_binding_span,
+                &mut self.debug,
+            );
+            let payload_value = optional_payload_value(payload_pointer, &payload);
+            let variable =
+                self.debug
+                    .local(some_binding, *some_binding_span, &payload, body.subprogram);
+            let binding_location = self.debug.location(*some_binding_span, body.subprogram);
+            body.debug_value(&payload_value, variable, binding_location);
+            some_environment.insert(some_binding.into(), payload_value);
+        }
+        let some_value = self.emit_expression(some_action, body, &some_environment);
+        let some_predecessor = body.current_block.clone();
+        let some_location = self.debug.location(some_action.span, body.subprogram);
+        body.terminator(&format!("br label %{merge}"), some_location);
+
+        body.start_block(&none_label);
+        let none_value = self.emit_expression(none_action, body, environment);
+        let none_predecessor = body.current_block.clone();
+        let none_location = self.debug.location(none_action.span, body.subprogram);
+        body.terminator(&format!("br label %{merge}"), none_location);
+
+        body.start_block(&merge);
+        self.emit_decision_phi(
+            &[
+                (some_value, some_predecessor),
+                (none_value, none_predecessor),
+            ],
+            body,
+            span,
+        )
     }
 
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Result alternatives retain bindings and delayed actions explicitly.
@@ -1374,6 +1497,27 @@ impl<'a> Generator<'a> {
                         debug_assert_eq!(enumeration, right_enumeration);
                         format!("icmp {predicate} i32 {left}, {right}")
                     }
+                    (
+                        LlValue::Optional {
+                            value: left,
+                            payload,
+                        },
+                        LlValue::Optional {
+                            value: right,
+                            payload: right_payload,
+                        },
+                    ) => {
+                        debug_assert_eq!(payload, right_payload);
+                        debug_assert_eq!(payload, &CompilerType::Int);
+                        let equal = body.instruction(
+                            &format!(
+                                "call i1 @topal.runtime.optional.int.equal(ptr {left}, ptr {right})"
+                            ),
+                            span,
+                            &mut self.debug,
+                        );
+                        format!("icmp {predicate} i1 {equal}, true")
+                    }
                     (LlValue::Int(_), LlValue::Int(_))
                     | (LlValue::Rational(_), LlValue::Rational(_)) => format!(
                         "icmp {predicate} i32 {}, 0",
@@ -1718,6 +1862,17 @@ impl<'a> Generator<'a> {
                     success,
                 }
             }
+            LlValue::Optional { payload, .. } => {
+                let payload = payload.clone();
+                LlValue::Optional {
+                    value: body.instruction(
+                        &format!("phi ptr {}", incoming(LlValue::optional_pointer)),
+                        span,
+                        &mut self.debug,
+                    ),
+                    payload,
+                }
+            }
             LlValue::Tuple(_) => {
                 unreachable!("checked decision result is machine scalar")
             }
@@ -1788,6 +1943,9 @@ impl<'a> Generator<'a> {
             ),
             LlValue::Result { value, success } => {
                 self.emit_print_result(value, success, body, span);
+            }
+            LlValue::Optional { value, payload } => {
+                self.emit_print_optional(value, payload, body, span);
             }
             LlValue::String(value) => {
                 body.effect(
@@ -1912,6 +2070,42 @@ impl<'a> Generator<'a> {
         body.start_block(&done);
     }
 
+    fn emit_print_optional(
+        &mut self,
+        value: &str,
+        payload_type: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        let is_some = body.instruction(
+            &format!("call i1 @topal.runtime.optional.is.some(ptr {value})"),
+            span,
+            &mut self.debug,
+        );
+        let some = body.label("print.optional.some");
+        let none = body.label("print.optional.none");
+        let done = body.label("print.optional.done");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {is_some}, label %{some}, label %{none}"),
+            location,
+        );
+        body.start_block(&some);
+        self.emit_write_literal("Some ", body, span);
+        let payload = body.instruction(
+            &format!("call ptr @topal.runtime.optional.payload(ptr {value})"),
+            span,
+            &mut self.debug,
+        );
+        let payload = optional_payload_value(payload, payload_type);
+        self.emit_print(&payload, body, span);
+        body.terminator(&format!("br label %{done}"), location);
+        body.start_block(&none);
+        self.emit_write_literal("None", body, span);
+        body.terminator(&format!("br label %{done}"), location);
+        body.start_block(&done);
+    }
+
     fn emit_write_literal(&mut self, text: &str, body: &mut FunctionBody, span: Span) {
         if text.is_empty() {
             return;
@@ -2014,6 +2208,10 @@ enum LlValue {
         value: String,
         success: CompilerType,
     },
+    Optional {
+        value: String,
+        payload: CompilerType,
+    },
     String(String),
     Tuple(Vec<Self>),
 }
@@ -2107,6 +2305,13 @@ impl LlValue {
         value
     }
 
+    fn optional_pointer(&self) -> &str {
+        let Self::Optional { value, .. } = self else {
+            unreachable!("checked value is Optional")
+        };
+        value
+    }
+
     fn argument(&self) -> String {
         match self {
             Self::Unit => "i8 0".into(),
@@ -2118,7 +2323,8 @@ impl LlValue {
             | Self::ErrorDomain(value)
             | Self::String(value)
             | Self::Range { value, .. }
-            | Self::Result { value, .. } => {
+            | Self::Result { value, .. }
+            | Self::Optional { value, .. } => {
                 format!("ptr {value}")
             }
             Self::Comparison(value) | Self::ErrorCode(value) | Self::Enum { value, .. } => {
@@ -2126,6 +2332,21 @@ impl LlValue {
             }
             Self::Tuple(_) => unreachable!("checked call arguments are scalar"),
         }
+    }
+}
+
+fn optional_payload_pointer(value: &LlValue) -> &str {
+    match value {
+        LlValue::Int(value) | LlValue::String(value) => value,
+        _ => unreachable!("checked Optional payload has a pointer representation"),
+    }
+}
+
+fn optional_payload_value(value: String, value_type: &CompilerType) -> LlValue {
+    match value_type {
+        CompilerType::Int => LlValue::Int(value),
+        CompilerType::String => LlValue::String(value),
+        _ => unreachable!("checked Optional payload type is supported"),
     }
 }
 
@@ -2195,7 +2416,8 @@ impl FunctionBody {
             | LlValue::ErrorDomain(value)
             | LlValue::String(value)
             | LlValue::Range { value, .. }
-            | LlValue::Result { value, .. } => {
+            | LlValue::Result { value, .. }
+            | LlValue::Optional { value, .. } => {
                 format!("ptr {value}")
             }
             LlValue::Comparison(value)
@@ -2243,6 +2465,8 @@ struct DebugInfo {
     result_rational_type: usize,
     result_string_type: usize,
     result_int_pair_type: usize,
+    optional_int_type: usize,
+    optional_string_type: usize,
     comparison_type: usize,
     boolean_type: usize,
     unit_type: usize,
@@ -2282,6 +2506,8 @@ impl DebugInfo {
             result_rational_type: 0,
             result_string_type: 0,
             result_int_pair_type: 0,
+            optional_int_type: 0,
+            optional_string_type: 0,
             comparison_type: 0,
             boolean_type: 0,
             unit_type: 0,
@@ -2329,10 +2555,7 @@ impl DebugInfo {
         if extended_types {
             debug.install_string_and_error_types(unsigned64);
         }
-        debug.int_range_type = debug.range_type("Range Int", debug.int_type, unsigned64);
-        debug.rational_range_type =
-            debug.range_type("Range Rational", debug.rational_type, unsigned64);
-        debug.install_result_types(unsigned64);
+        debug.install_aggregate_types(unsigned64, extended_types);
         let less = debug.node("!DIEnumerator(name: \"Less\", value: -1)".into());
         let equal = debug.node("!DIEnumerator(name: \"Equal\", value: 0)".into());
         let greater = debug.node("!DIEnumerator(name: \"Greater\", value: 1)".into());
@@ -2352,6 +2575,16 @@ impl DebugInfo {
             debug.file
         ));
         debug
+    }
+
+    fn install_aggregate_types(&mut self, unsigned64: usize, extended_types: bool) {
+        self.int_range_type = self.range_type("Range Int", self.int_type, unsigned64);
+        self.rational_range_type =
+            self.range_type("Range Rational", self.rational_type, unsigned64);
+        self.install_result_types(unsigned64);
+        if extended_types {
+            self.install_optional_types(unsigned64);
+        }
     }
 
     fn install_integer_types(&mut self, unsigned64: usize) {
@@ -2533,6 +2766,37 @@ impl DebugInfo {
         ))
     }
 
+    fn install_optional_types(&mut self, unsigned64: usize) {
+        let tag = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"tag\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 0)",
+            self.file
+        ));
+        let opaque_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{unsigned64}, size: 64, align: 64)"
+        ));
+        let payload = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"payload\", file: !{}, baseType: !{opaque_pointer}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let members = self.node(format!("!{{!{tag}, !{payload}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalOptionalHeader\", file: !{}, size: 128, align: 64, elements: !{members})",
+            self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        self.optional_int_type = self.optional_type("Int", pointer);
+        self.optional_string_type = self.optional_type("String", pointer);
+    }
+
+    fn optional_type(&mut self, payload: &str, pointer: usize) -> usize {
+        self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Optional {payload}\", file: !{}, baseType: !{pointer})",
+            self.file
+        ))
+    }
+
     fn set_source(&mut self, source: topal_source::SourceText) {
         self.source = source;
     }
@@ -2588,6 +2852,15 @@ impl DebugInfo {
             }
             CompilerType::Result(_) => {
                 unreachable!("unsupported Result success type reached codegen")
+            }
+            CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Int => {
+                self.optional_int_type
+            }
+            CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::String => {
+                self.optional_string_type
+            }
+            CompilerType::Optional(_) => {
+                unreachable!("unsupported Optional payload type reached codegen")
             }
             CompilerType::Tuple(_) => {
                 unreachable!("structural values have no native debug representation yet")
@@ -2747,7 +3020,8 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
         | CompilerType::ErrorDomain
         | CompilerType::String
         | CompilerType::Range(_)
-        | CompilerType::Result(_) => "ptr",
+        | CompilerType::Result(_)
+        | CompilerType::Optional(_) => "ptr",
         CompilerType::Comparison | CompilerType::ErrorCode | CompilerType::Enum(_) => "i32",
         CompilerType::Tuple(_) => unreachable!("shared model restricts function ABI types"),
     }
@@ -2764,7 +3038,8 @@ fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
         | CompilerType::ErrorDomain
         | CompilerType::String
         | CompilerType::Range(_)
-        | CompilerType::Result(_) => "ptr",
+        | CompilerType::Result(_)
+        | CompilerType::Optional(_) => "ptr",
         CompilerType::Comparison | CompilerType::ErrorCode | CompilerType::Enum(_) => "i32",
         CompilerType::Tuple(_) => unreachable!("shared model restricts function ABI types"),
     }
@@ -2877,6 +3152,22 @@ mod tests {
         assert!(llvm.contains("name: \"Error\""));
         assert!(llvm.contains("name: \"ErrorDomain\""));
         assert!(llvm.contains("name: \"lang arithmetic ArithmeticErrorCode\""));
+    }
+
+    #[test]
+    fn emits_optional_values_decisions_equality_and_debug_metadata() {
+        // TOPAL-COMPILER-OPTIONAL-001
+        let source = include_str!("../../../examples/language/optional-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/optional-values.t").emit();
+        assert!(llvm.contains("%topal.OptionalStorage = type { i64, ptr }"));
+        assert!(llvm.contains("call ptr @topal.runtime.optional.some"));
+        assert!(llvm.contains("call ptr @topal.runtime.optional.none"));
+        assert!(llvm.contains("optional.decision.some"));
+        assert!(llvm.contains("optional.decision.none"));
+        assert!(llvm.contains("call i1 @topal.runtime.optional.int.equal"));
+        assert!(llvm.contains("name: \"Optional Int\""));
+        assert!(llvm.contains("name: \"Optional String\""));
     }
 
     #[test]

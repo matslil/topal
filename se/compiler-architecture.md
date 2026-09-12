@@ -112,6 +112,19 @@ identical sealed `i32` tags. Direct equality, function passage, display, DWARF,
 and GDB therefore cannot diverge from codes observed through an Error, and no
 namespace operation or foreign runtime survives into generated code.
 
+Optional values use their own immutable 16-byte header containing a validated
+`None`/`Some` tag and one opaque payload pointer. This is a distinct native
+semantic representation from Result even though the current private headers
+have the same physical shape: Optional constructors, observers, type identity,
+DWARF names, and GDB rendering never reuse Result semantics or its tag names.
+The admitted `Optional Int` and `Optional String` subset crosses Topal-private
+function boundaries as an opaque pointer, while a selected `Some` action
+reclassifies its payload from the statically retained classifier. `Optional
+Int` equality calls canonical Int comparison only when both values are present;
+the String equality case remains deferred with dynamic String operations.
+Headers are allocated through the same Linux `mmap` platform boundary, and no
+foreign aggregate convention, allocator, or standard library participates.
+
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
 action in its selected block, and compatible machine-scalar results merge with
