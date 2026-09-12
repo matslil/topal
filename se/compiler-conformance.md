@@ -34,7 +34,8 @@ evidence.
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
 | 4b3a | closed Character constraint validation, retained function/equality evidence, lossless String forgetting, and debugging | complete |
-| 4b3b | dynamic Character validation, remaining strings and Unicode operations, fundamental containers, traversal, and representation-safe allocation | planned |
+| 4b3b | closed Character/entry counting and exact indexing with Optional Character passage, decisions, display, and debugging | complete |
+| 4b3c | dynamic Character validation/observation, remaining strings and Unicode operations, fundamental containers, traversal, and representation-safe allocation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6 | module/package/application construction, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
 | 7 | effects, resources, layouts, locations, tasks, deterministic scheduling, transactions, time, static flow, and platform packages | planned |
@@ -91,5 +92,6 @@ attaching an encoding or importing a foreign String runtime; 4b1 adds exact
 preserved-sequence equality without normalization or locale policy; and 4b2
 adds empty construction, literal composition, exact dynamic concatenation,
 emptiness, and canonical dynamic display. Increment 4b3a retains statically
-proved Character evidence over the same descriptor; 4b3b retains dynamic
-validation plus the remaining Unicode and container work.
+proved Character evidence over the same descriptor; 4b3b adds closed
+observations under pinned segmentation; 4b3c retains dynamic validation and
+observation plus the remaining Unicode and container work.

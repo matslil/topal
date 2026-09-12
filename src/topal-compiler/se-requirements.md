@@ -432,6 +432,31 @@ covers `TOPAL-TYPE-CONSTRAINT-VALIDATE-001`,
 compiler increment 4b3a without a C/C++ runtime, standard library, foreign
 Unicode implementation, or `topal-native/6` revision.
 
+## TOPAL-COMP-CHARACTER-OBSERVATION-001 — Closed Character observations
+
+For a String whose complete preserved sequence is known to the checked model,
+the compiler shall evaluate `character-count` and String `entry-count` with the
+selected context's pinned extended-grapheme segmentation and materialize the
+equal canonical arbitrary-precision Int. When an exact Int index is also known,
+it shall evaluate `character-at` with that same segmentation and materialize an
+`Optional Character`: the complete cluster in `Some`, or `None` for a negative
+or out-of-range index.
+
+The fold shall be mandatory frontend semantics for this admitted subset at
+`-O0`, independent of LLVM optimization. A produced `Optional Character` shall
+reuse the existing private Optional header and immutable String-descriptor
+payload through ordinary function passage, decisions, display, DWARF, and GDB.
+General Optional-Character construction/equality and dynamic String or index
+observations remain rejected until reusable constraint evidence and a
+Topal-owned freestanding Unicode runtime are implemented.
+
+This requirement covers `TOPAL-STRING-CHARACTER-COUNT-001`,
+`TOPAL-STRING-ENTRY-COUNT-001`, `TOPAL-STRING-CHARACTER-AT-001`,
+`TOPAL-TYPE-OPTIONAL-BOUNDARY-001`, and `TOPAL-DECISION-OPTIONAL-001`; it
+realizes `TOPAL-COMPILER-CHARACTER-OBSERVATION-001` for compiler increment
+4b3b without a C/C++ runtime, standard library, host locale or Unicode table,
+or `topal-native/6` revision.
+
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
 The compiler shall represent explicitly bounded finite `Range Int` and

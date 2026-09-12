@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_semantics::LanguageVersion;
-use topal_source::{Diagnostic, SourceText, Span, character_count};
+use topal_source::{Diagnostic, SourceText, Span, character_at, character_count};
 use topal_syntax::{
     CallableKind, DecisionMatcher, Expression, FunctionClauses, FunctionParameter, Statement, lex,
     parse,
@@ -372,6 +372,7 @@ struct BindingFacts {
     value_type: CompilerType,
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
+    string_value: Option<String>,
 }
 
 struct Analyzer {
@@ -773,7 +774,7 @@ impl Analyzer {
                 Statement::Binding {
                     name,
                     classifier,
-                    value,
+                    value: initializer,
                 } => {
                     let name_text = self.source.slice(*name).to_owned();
                     if declared.contains(&name_text)
@@ -793,7 +794,7 @@ impl Analyzer {
                         .map(|classifier| self.parse_classifier(classifier))
                         .transpose()?;
                     let mut value = self.analyze_expression_with_expected(
-                        value,
+                        initializer,
                         environment,
                         expected.as_ref(),
                     )?;
@@ -831,12 +832,14 @@ impl Analyzer {
                         }
                         require_same_type(&self.source, *classifier, &expected, &value.value_type)?;
                     }
+                    let string_value = self.known_string_value(initializer, &value, environment);
                     environment.insert(
                         name_text.clone(),
                         BindingFacts {
                             value_type: value.value_type.clone(),
                             int_range: value.int_range.clone(),
                             rational_value: value.rational_value.clone(),
+                            string_value,
                         },
                     );
                     declared.insert(name_text.clone());
@@ -1174,6 +1177,19 @@ impl Analyzer {
                 rational_value: None,
                 span,
             });
+        }
+        if let [Expression::Identifier(operation), operand] = items
+            && matches!(
+                self.source.slice(*operation),
+                "character-count" | "entry-count"
+            )
+        {
+            return self.analyze_static_character_count(operand, span, environment);
+        }
+        if let [text, Expression::Identifier(operation), index] = items
+            && self.source.slice(*operation) == "character-at"
+        {
+            return self.analyze_static_character_at(text, index, span, environment);
         }
         if let [
             Expression::Identifier(constructor),
@@ -1566,6 +1582,97 @@ impl Analyzer {
         }
         value.value_type = CompilerType::Character;
         Ok(value)
+    }
+
+    fn analyze_static_character_count(
+        &mut self,
+        operand: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let operand_value = self.analyze_expression(operand, environment)?;
+        require_type(
+            &self.source,
+            operand_value.span,
+            &CompilerType::String,
+            &operand_value.value_type,
+        )?;
+        let text = self
+            .known_string_value(operand, &operand_value, environment)
+            .ok_or_else(|| {
+                unsupported(&self.source, operand.span(), "dynamic Character counting")
+            })?;
+        let count = BigInt::from(character_count(&text));
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::Int(count.clone()),
+            value_type: CompilerType::Int,
+            int_range: Some(IntRange::exact(count)),
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn analyze_static_character_at(
+        &mut self,
+        text: &Expression,
+        index: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let text_value = self.analyze_expression(text, environment)?;
+        require_type(
+            &self.source,
+            text_value.span,
+            &CompilerType::String,
+            &text_value.value_type,
+        )?;
+        let index_value = self.analyze_expression(index, environment)?;
+        require_type(
+            &self.source,
+            index_value.span,
+            &CompilerType::Int,
+            &index_value.value_type,
+        )?;
+        let text = self
+            .known_string_value(text, &text_value, environment)
+            .ok_or_else(|| unsupported(&self.source, text.span(), "dynamic Character indexing"))?;
+        let exact_index = exact_int(&index_value)
+            .ok_or_else(|| unsupported(&self.source, index.span(), "dynamic Character index"))?;
+        let payload = usize::try_from(&exact_index)
+            .ok()
+            .and_then(|index| character_at(&text, index))
+            .map(|character| CompilerExpression {
+                kind: CompilerExpressionKind::String(character.to_owned()),
+                value_type: CompilerType::Character,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        Ok(CompilerExpression {
+            kind: payload.map_or(CompilerExpressionKind::OptionalNone, |character| {
+                CompilerExpressionKind::OptionalSome(Box::new(character))
+            }),
+            value_type: CompilerType::Optional(Box::new(CompilerType::Character)),
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn known_string_value(
+        &self,
+        source: &Expression,
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Option<String> {
+        exact_string(value).or_else(|| {
+            let Expression::Identifier(name) = source else {
+                return None;
+            };
+            environment
+                .get(self.source.slice(*name))
+                .and_then(|facts| facts.string_value.clone())
+        })
     }
 
     fn finish_nat_conversion(
@@ -2389,6 +2496,7 @@ impl Analyzer {
                         value_type: expected.clone(),
                         int_range: argument.int_range.clone(),
                         rational_value: argument.rational_value.clone(),
+                        string_value: exact_string(argument),
                     },
                 );
             }
@@ -3195,7 +3303,10 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
         CompilerType::Optional(payload) => {
             matches!(
                 payload.as_ref(),
-                CompilerType::Int | CompilerType::Rational | CompilerType::String
+                CompilerType::Int
+                    | CompilerType::Rational
+                    | CompilerType::Character
+                    | CompilerType::String
             )
         }
         CompilerType::Result(success) => {
@@ -3227,6 +3338,7 @@ fn decision_binding_environment(
             value_type,
             int_range: None,
             rational_value: None,
+            string_value: None,
         },
     );
     branch
@@ -4047,6 +4159,35 @@ mod tests {
             analyze_for_compiler(dynamic).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
+    }
+
+    #[test]
+    fn models_closed_character_counting_and_indexing() {
+        // TOPAL-STRING-CHARACTER-COUNT-001, TOPAL-STRING-ENTRY-COUNT-001,
+        // TOPAL-STRING-CHARACTER-AT-001, TOPAL-TYPE-OPTIONAL-BOUNDARY-001,
+        // TOPAL-DECISION-OPTIONAL-001
+        let source = include_str!("../../../examples/language/string-character-at.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "describe"
+                && function.parameters[0].value_type
+                    == CompilerType::Optional(Box::new(CompilerType::Character))
+                && function.result_type == CompilerType::String
+        }));
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("expected the observation tuple")
+        };
+        assert_eq!(values.len(), 9);
+        assert!(matches!(values[0].kind, CompilerExpressionKind::Int(_)));
+        assert!(matches!(values[1].kind, CompilerExpressionKind::Int(_)));
+        assert!(matches!(
+            values[2].kind,
+            CompilerExpressionKind::OptionalSome(_)
+        ));
+        assert!(matches!(
+            values[5].kind,
+            CompilerExpressionKind::OptionalNone
+        ));
     }
 
     #[test]

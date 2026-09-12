@@ -10,4 +10,4 @@ describe is fn (candidate : Optional Character) -> String
     Some character then String character
     None then "missing"
 text is "á👩‍🔬🇸🇪"
-(text character-at 0, text character-at 1, text character-at 2, text character-at -1, text character-at 3, describe (text character-at 1), describe (text character-at 3))
+(character-count text, entry-count text, text character-at 0, text character-at 1, text character-at 2, text character-at -1, text character-at 3, describe (text character-at 1), describe (text character-at 3))
