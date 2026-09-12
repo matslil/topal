@@ -18,6 +18,12 @@ use topal_syntax::{
 use crate::source::{parse_integer, parse_rational, parse_string};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerEnumType {
+    pub name: String,
+    pub alternatives: Vec<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerType {
     Unit,
     Boolean,
@@ -28,6 +34,7 @@ pub enum CompilerType {
     Error,
     ErrorCode,
     ErrorDomain,
+    Enum(CompilerEnumType),
     Range(Box<Self>),
     Result(Box<Self>),
     String,
@@ -48,6 +55,7 @@ impl CompilerType {
                 | Self::Error
                 | Self::ErrorCode
                 | Self::ErrorDomain
+                | Self::Enum(_)
                 | Self::Range(_)
                 | Self::Result(_)
                 | Self::String
@@ -66,6 +74,7 @@ impl CompilerType {
             Self::Error => "Error".into(),
             Self::ErrorCode => "lang arithmetic ArithmeticErrorCode".into(),
             Self::ErrorDomain => "ErrorDomain".into(),
+            Self::Enum(enumeration) => enumeration.name.clone(),
             Self::Range(endpoint) => format!("Range {}", endpoint.name()),
             Self::Result(success) => format!(
                 "Result ({}, lang arithmetic ArithmeticErrorCode)",
@@ -176,12 +185,20 @@ pub struct CompilerErrorCodeRule {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerEnumRule {
+    pub value: u32,
+    pub action: CompilerExpression,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerExpressionKind {
     Unit,
     Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
     String(String),
+    Enum(u32),
     Tuple(Vec<CompilerExpression>),
     Local(String),
     Negate(Box<CompilerExpression>),
@@ -240,6 +257,11 @@ pub enum CompilerExpressionKind {
         when_less: Box<CompilerExpression>,
         when_equal: Box<CompilerExpression>,
         when_greater: Box<CompilerExpression>,
+    },
+    EnumDecision {
+        subject: Box<CompilerExpression>,
+        rules: Vec<CompilerEnumRule>,
+        otherwise: Option<Box<CompilerExpression>>,
     },
     ResultDecision {
         subject: Box<CompilerExpression>,
@@ -308,6 +330,15 @@ struct FunctionSource {
     is_static: bool,
 }
 
+type EnumTypes = BTreeMap<String, (CompilerEnumType, Span)>;
+type EnumAlternativeBindings = BTreeMap<String, (CompilerEnumType, u32, Span)>;
+
+struct EnumSource {
+    name: Span,
+    alternatives: Vec<(String, Span)>,
+    span: Span,
+}
+
 #[derive(Clone)]
 struct BindingFacts {
     value_type: CompilerType,
@@ -317,6 +348,8 @@ struct BindingFacts {
 
 struct Analyzer {
     source: SourceText,
+    enums: EnumTypes,
+    enum_alternatives: EnumAlternativeBindings,
     functions: BTreeMap<String, Vec<FunctionSource>>,
     instances: Vec<CompilerFunction>,
     active_calls: BTreeSet<String>,
@@ -366,10 +399,18 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         ));
     }
 
+    let (enums, enum_alternatives) = collect_enums(&source, &parsed.statements)?;
+    let reserved_names = enums
+        .keys()
+        .chain(enum_alternatives.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>();
     let mut functions = BTreeMap::new();
-    collect_functions(&source, &parsed.statements, &mut functions)?;
+    collect_functions(&source, &parsed.statements, &reserved_names, &mut functions)?;
     let mut analyzer = Analyzer {
         source: source.clone(),
+        enums,
+        enum_alternatives,
         functions,
         instances: Vec::new(),
         active_calls: BTreeSet::new(),
@@ -391,9 +432,116 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     })
 }
 
+fn collect_enums(
+    source: &SourceText,
+    statements: &[Statement],
+) -> Result<(EnumTypes, EnumAlternativeBindings), Diagnostic> {
+    let mut enums = BTreeMap::new();
+    let mut alternatives = BTreeMap::new();
+    for statement in statements {
+        let Some(declaration) = enum_declaration(source, statement) else {
+            continue;
+        };
+        let EnumSource {
+            name: name_span,
+            alternatives: declarations,
+            span: declaration_span,
+        } = declaration;
+        let name = source.slice(name_span).to_owned();
+        if enums.contains_key(&name) || alternatives.contains_key(&name) {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-BINDING",
+                name_span,
+                format!("`{name}` is already declared in this scope"),
+            ));
+        }
+        let mut local = BTreeSet::new();
+        for (label, alternative_span) in &declarations {
+            if label == &name
+                || !local.insert(label.clone())
+                || enums.contains_key(label)
+                || alternatives.contains_key(label)
+            {
+                return Err(source_diagnostic(
+                    source,
+                    "E-DUPLICATE-ENUM-ALTERNATIVE",
+                    *alternative_span,
+                    format!("enum alternative `{label}` is already declared in this scope"),
+                ));
+            }
+        }
+        let enumeration = CompilerEnumType {
+            name: name.clone(),
+            alternatives: declarations.into_iter().map(|(label, _)| label).collect(),
+        };
+        enums.insert(name, (enumeration.clone(), declaration_span));
+        for (index, label) in enumeration.alternatives.iter().enumerate() {
+            let index = u32::try_from(index).map_err(|_| {
+                source_diagnostic(
+                    source,
+                    "E-COMPILER-UNSUPPORTED",
+                    declaration_span,
+                    "an Enum has more alternatives than the native tag can represent",
+                )
+            })?;
+            alternatives.insert(
+                label.clone(),
+                (enumeration.clone(), index, declaration_span),
+            );
+        }
+    }
+    Ok((enums, alternatives))
+}
+
+fn enum_declaration(source: &SourceText, statement: &Statement) -> Option<EnumSource> {
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value,
+    } = (match statement {
+        Statement::Published { declaration, .. } => declaration.as_ref(),
+        statement => statement,
+    })
+    else {
+        return None;
+    };
+    let Expression::Application { items, span } = value else {
+        return None;
+    };
+    let [
+        Expression::Identifier(constructor),
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    if source.slice(*constructor) != "Enum" {
+        return None;
+    }
+    let alternatives = fields
+        .iter()
+        .map(|field| {
+            let Expression::Identifier(alternative) = &field.value else {
+                return None;
+            };
+            field
+                .label
+                .is_none()
+                .then(|| (source.slice(*alternative).to_owned(), *alternative))
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(EnumSource {
+        name: *name,
+        alternatives,
+        span: Span::new(name.start, span.end),
+    })
+}
+
 fn collect_functions(
     source: &SourceText,
     statements: &[Statement],
+    reserved_names: &BTreeSet<String>,
     functions: &mut BTreeMap<String, Vec<FunctionSource>>,
 ) -> Result<(), Diagnostic> {
     for statement in statements {
@@ -436,6 +584,8 @@ fn collect_functions(
                         span: *span,
                         is_static: *is_static,
                     })
+                } else if enum_declaration(source, statement).is_some() {
+                    None
                 } else {
                     return Err(unsupported(
                         source,
@@ -455,6 +605,14 @@ fn collect_functions(
         };
         if let Some(function) = declaration {
             let name = source.slice(function.name).to_owned();
+            if reserved_names.contains(&name) {
+                return Err(source_diagnostic(
+                    source,
+                    "E-DUPLICATE-BINDING",
+                    function.name,
+                    format!("`{name}` is already declared in this scope"),
+                ));
+            }
             let overloads = functions.entry(name.clone()).or_default();
             if overloads
                 .iter()
@@ -497,6 +655,34 @@ enum BlockKind {
 }
 
 impl Analyzer {
+    fn parse_classifier(&self, span: Span) -> Result<CompilerType, Diagnostic> {
+        let classifier = compact_classifier(self.source.slice(span));
+        if let Some((enumeration, declaration)) = self.enums.get(&classifier)
+            && declaration.end <= span.start
+        {
+            return Ok(CompilerType::Enum(enumeration.clone()));
+        }
+        parse_compact_classifier(&classifier)
+            .ok_or_else(|| unsupported(&self.source, span, "classifier"))
+    }
+
+    fn is_declaration(&self, statement: &Statement) -> bool {
+        if matches!(
+            statement,
+            Statement::LanguageSelection { .. } | Statement::Function { .. }
+        ) || matches!(statement, Statement::Published { declaration, .. } if matches!(declaration.as_ref(), Statement::Function { .. }))
+        {
+            return true;
+        }
+        let Some(declaration) = enum_declaration(&self.source, statement) else {
+            return false;
+        };
+        let name = self.source.slice(declaration.name);
+        self.enums
+            .get(name)
+            .is_some_and(|(_, span)| *span == declaration.span)
+    }
+
     #[allow(clippy::too_many_lines)] // Exhaustive statement admission keeps the subset boundary visible.
     fn analyze_block(
         &mut self,
@@ -509,7 +695,7 @@ impl Analyzer {
         let mut result = None;
         let executable = statements
             .iter()
-            .filter(|statement| !is_declaration(statement))
+            .filter(|statement| !self.is_declaration(statement))
             .collect::<Vec<_>>();
 
         for (index, statement) in executable.iter().enumerate() {
@@ -523,6 +709,8 @@ impl Analyzer {
                     let name_text = self.source.slice(*name).to_owned();
                     if environment.contains_key(&name_text)
                         || self.functions.contains_key(&name_text)
+                        || self.enums.contains_key(&name_text)
+                        || self.enum_alternatives.contains_key(&name_text)
                     {
                         return Err(source_diagnostic(
                             &self.source,
@@ -533,7 +721,7 @@ impl Analyzer {
                     }
                     let mut value = self.analyze_expression(value, environment)?;
                     if let Some(classifier) = classifier {
-                        let expected = parse_classifier(&self.source, *classifier)?;
+                        let expected = self.parse_classifier(*classifier)?;
                         if expected == CompilerType::Int
                             && value.value_type == CompilerType::Rational
                         {
@@ -705,6 +893,25 @@ impl Analyzer {
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::String(value.to_owned()),
                     value_type: CompilerType::String,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Identifier(name)
+                if self
+                    .enum_alternatives
+                    .get(self.source.slice(*name))
+                    .is_some_and(|(_, _, declaration)| declaration.end <= name.start) =>
+            {
+                let (enumeration, value, _) = self
+                    .enum_alternatives
+                    .get(self.source.slice(*name))
+                    .expect("checked enum alternative exists")
+                    .clone();
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Enum(value),
+                    value_type: CompilerType::Enum(enumeration),
                     int_range: None,
                     rational_value: None,
                     span,
@@ -1440,7 +1647,10 @@ impl Analyzer {
             )?;
             if !matches!(
                 left_value.value_type,
-                CompilerType::Boolean | CompilerType::Unit | CompilerType::Comparison
+                CompilerType::Boolean
+                    | CompilerType::Unit
+                    | CompilerType::Comparison
+                    | CompilerType::Enum(_)
             ) {
                 return Err(unsupported(
                     &self.source,
@@ -1737,7 +1947,7 @@ impl Analyzer {
                         "packaged, defaulted, or qualified parameter",
                     ));
                 }
-                let expected = parse_classifier(&self.source, parameter.classifier)?;
+                let expected = self.parse_classifier(parameter.classifier)?;
                 let Some(argument) = adapt_call_argument(&expected, argument) else {
                     adapted.clear();
                     break;
@@ -1797,7 +2007,7 @@ impl Analyzer {
                     "packaged, defaulted, or qualified parameter",
                 ));
             }
-            let expected = parse_classifier(&self.source, parameter.classifier)?;
+            let expected = self.parse_classifier(parameter.classifier)?;
             require_same_type(
                 &self.source,
                 parameter.classifier,
@@ -1827,7 +2037,7 @@ impl Analyzer {
                 span: parameter.name,
             });
         }
-        let result_type = parse_classifier(&self.source, declaration.result)?;
+        let result_type = self.parse_classifier(declaration.result)?;
         if !result_type.machine_scalar() || !compiler_abi_type_supported(&result_type) {
             return Err(unsupported(
                 &self.source,
@@ -1896,6 +2106,10 @@ impl Analyzer {
             CompilerType::Comparison => {
                 self.analyze_comparison_value_decision(subject, rules, span, environment)
             }
+            CompilerType::Enum(enumeration) => {
+                let enumeration = enumeration.clone();
+                self.analyze_enum_decision(subject, &enumeration, rules, span, environment)
+            }
             CompilerType::Result(success) => {
                 let success = success.as_ref().clone();
                 self.analyze_result_decision(subject, &success, rules, span, environment)
@@ -1909,6 +2123,97 @@ impl Analyzer {
                 "decision subject type",
             )),
         }
+    }
+
+    fn analyze_enum_decision(
+        &mut self,
+        subject: CompilerExpression,
+        enumeration: &CompilerEnumType,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let mut lowered = Vec::new();
+        let mut seen = BTreeSet::new();
+        let mut otherwise = None;
+        for rule in rules {
+            match rule.matcher {
+                DecisionMatcher::Identifier(matcher) if otherwise.is_none() => {
+                    let label = self.source.slice(matcher);
+                    let Some(value) = enumeration
+                        .alternatives
+                        .iter()
+                        .position(|alternative| alternative == label)
+                    else {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-UNKNOWN-ENUM-ALTERNATIVE",
+                            matcher,
+                            format!("`{label}` is not an alternative of `{}`", enumeration.name),
+                        ));
+                    };
+                    let value =
+                        u32::try_from(value).expect("enum declaration already fits the native tag");
+                    if !seen.insert(value) {
+                        // The earlier source-ordered matcher always selects this
+                        // alternative, so the repeated action is unreachable.
+                        continue;
+                    }
+                    lowered.push(CompilerEnumRule {
+                        value,
+                        action: self.analyze_expression(&rule.action, environment)?,
+                        span: rule.span,
+                    });
+                }
+                DecisionMatcher::Otherwise(_) if otherwise.is_none() => {
+                    otherwise = Some(Box::new(
+                        self.analyze_expression(&rule.action, environment)?,
+                    ));
+                }
+                _ if otherwise.is_some() => {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-UNREACHABLE-DECISION-RULE",
+                        rule.span,
+                        "an Enum rule cannot follow otherwise",
+                    ));
+                }
+                _ => {
+                    return Err(unsupported(
+                        &self.source,
+                        rule.span,
+                        "Enum decision matcher",
+                    ));
+                }
+            }
+        }
+        if otherwise.is_none() && seen.len() != enumeration.alternatives.len() {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                format!(
+                    "decision does not cover every `{}` alternative",
+                    enumeration.name
+                ),
+            ));
+        }
+        let mut actions = lowered.iter().map(|rule| &rule.action).collect::<Vec<_>>();
+        if let Some(action) = &otherwise {
+            actions.push(action);
+        }
+        let (value_type, int_range, rational_value) = self.decision_facts(&actions, span)?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::EnumDecision {
+                subject: Box::new(subject),
+                rules: lowered,
+                otherwise,
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        })
     }
 
     #[allow(clippy::too_many_lines)] // Result binding, reachability, and completeness checks stay adjacent.
@@ -2306,18 +2611,6 @@ impl Analyzer {
     }
 }
 
-fn is_declaration(statement: &Statement) -> bool {
-    matches!(
-        statement,
-        Statement::LanguageSelection { .. } | Statement::Function { .. }
-    ) || matches!(statement, Statement::Published { declaration, .. } if matches!(declaration.as_ref(), Statement::Function { .. }))
-}
-
-fn parse_classifier(source: &SourceText, span: Span) -> Result<CompilerType, Diagnostic> {
-    let classifier = compact_classifier(source.slice(span));
-    parse_compact_classifier(&classifier).ok_or_else(|| unsupported(source, span, "classifier"))
-}
-
 fn compact_classifier(classifier: &str) -> String {
     classifier
         .chars()
@@ -2518,7 +2811,8 @@ fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
-        | CompilerExpressionKind::String(_) => true,
+        | CompilerExpressionKind::String(_)
+        | CompilerExpressionKind::Enum(_) => true,
         CompilerExpressionKind::Tuple(values) => values.iter().all(compiler_expression_is_closed),
         CompilerExpressionKind::Local(_)
         | CompilerExpressionKind::Call { .. }
@@ -2577,6 +2871,19 @@ fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
                 && compiler_expression_is_closed(when_less)
                 && compiler_expression_is_closed(when_equal)
                 && compiler_expression_is_closed(when_greater)
+        }
+        CompilerExpressionKind::EnumDecision {
+            subject,
+            rules,
+            otherwise,
+        } => {
+            compiler_expression_is_closed(subject)
+                && rules
+                    .iter()
+                    .all(|rule| compiler_expression_is_closed(&rule.action))
+                && otherwise
+                    .as_deref()
+                    .is_none_or(compiler_expression_is_closed)
         }
     }
 }
@@ -3010,6 +3317,13 @@ mod tests {
                 )
             })
         }));
+
+        let repeated = "use language (version is v0.1)\nColor is Enum (Red, Green)\nname is fn (value : Color) -> String\n  value\n    Red then \"first\"\n    Red then 42\n    Green then \"green\"\nname Red\n";
+        let repeated = analyze_for_compiler(repeated).unwrap();
+        assert!(repeated.functions.iter().any(|function| matches!(
+            &function.body.result.kind,
+            CompilerExpressionKind::EnumDecision { rules, .. } if rules.len() == 2
+        )));
         assert!(program.functions.iter().any(|function| matches!(
             function.body.result.kind,
             CompilerExpressionKind::Validate { .. }
@@ -3094,6 +3408,74 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(invalid_static_call).unwrap_err().code,
             "E-NO-APPLICABLE-OVERLOAD"
+        );
+    }
+
+    #[test]
+    fn models_nominal_enum_values_functions_and_exhaustive_decisions() {
+        // TOPAL-TYPE-ENUM-001, TOPAL-DECISION-ENUM-001
+        let source = "use language (version is v0.1)\nColor is Enum (Red, Green, Blue)\nnext is fn (value : Color) -> Color\n  value\n    Red then Green\n    Green then Blue\n    Blue then Red\nfavorite : Color is Red\n(next favorite, next Green, Red = Green)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Color, Color, Boolean)"
+        );
+        let enumeration = CompilerEnumType {
+            name: "Color".into(),
+            alternatives: vec!["Red".into(), "Green".into(), "Blue".into()],
+        };
+        assert!(program.functions.iter().any(|function| {
+            function.parameters[0].value_type == CompilerType::Enum(enumeration.clone())
+                && matches!(
+                    &function.body.result.kind,
+                    CompilerExpressionKind::EnumDecision {
+                        rules,
+                        otherwise: None,
+                        ..
+                    } if rules.len() == 3
+                )
+        }));
+    }
+
+    #[test]
+    fn rejects_invalid_nominal_enum_declarations_and_decisions() {
+        // TOPAL-TYPE-ENUM-001, TOPAL-DECISION-ENUM-001
+        let duplicate = "use language (version is v0.1)\nColor is Enum (Red, Red)\nRed\n";
+        assert_eq!(
+            analyze_for_compiler(duplicate).unwrap_err().code,
+            "E-DUPLICATE-ENUM-ALTERNATIVE"
+        );
+
+        let type_as_alternative =
+            "use language (version is v0.1)\nColor is Enum (Color, Green)\nGreen\n";
+        assert_eq!(
+            analyze_for_compiler(type_as_alternative).unwrap_err().code,
+            "E-DUPLICATE-ENUM-ALTERNATIVE"
+        );
+
+        let incomplete = "use language (version is v0.1)\nColor is Enum (Red, Green)\nname is fn (value : Color) -> String\n  value\n    Red then \"red\"\nname Green\n";
+        assert_eq!(
+            analyze_for_compiler(incomplete).unwrap_err().code,
+            "E-INCOMPLETE-DECISION"
+        );
+
+        let nominal_mismatch = "use language (version is v0.1)\nColor is Enum (Red, Green)\nSignal is Enum (Stop, Go)\n(Red = Stop)\n";
+        assert_eq!(
+            analyze_for_compiler(nominal_mismatch).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+
+        let before_declaration =
+            "use language (version is v0.1)\nvalue is Red\nColor is Enum (Red, Green)\nvalue\n";
+        assert_eq!(
+            analyze_for_compiler(before_declaration).unwrap_err().code,
+            "E-UNBOUND-NAME"
+        );
+
+        let nested = "use language (version is v0.1)\nmake is fn () -> Unit\n  Local is Enum (First, Second)\n  ()\nmake ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
         );
     }
 

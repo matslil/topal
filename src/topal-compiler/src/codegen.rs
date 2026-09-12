@@ -5,10 +5,10 @@ use std::path::Path;
 use num_bigint::{BigInt, Sign};
 use num_rational::BigRational;
 use topal_language::{
-    CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerErrorCodeRule,
-    CompilerErrorField, CompilerExpression, CompilerExpressionKind, CompilerFallible,
-    CompilerFunction, CompilerProgram, CompilerStatement, CompilerType, CompilerValidation,
-    display_string_literal,
+    CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
+    CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
+    CompilerFallible, CompilerFunction, CompilerProgram, CompilerStatement, CompilerType,
+    CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -52,7 +52,8 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Int
         | CompilerType::Nat
         | CompilerType::Rational
-        | CompilerType::Comparison => false,
+        | CompilerType::Comparison
+        | CompilerType::Enum(_) => false,
     }
 }
 
@@ -122,10 +123,24 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
                 || expression_uses_extended_debug(when_equal)
                 || expression_uses_extended_debug(when_greater)
         }
+        CompilerExpressionKind::EnumDecision {
+            subject,
+            rules,
+            otherwise,
+        } => {
+            expression_uses_extended_debug(subject)
+                || rules
+                    .iter()
+                    .any(|rule| expression_uses_extended_debug(&rule.action))
+                || otherwise
+                    .as_deref()
+                    .is_some_and(expression_uses_extended_debug)
+        }
         CompilerExpressionKind::Unit
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
+        | CompilerExpressionKind::Enum(_)
         | CompilerExpressionKind::Local(_) => false,
     }
 }
@@ -218,6 +233,10 @@ impl<'a> Generator<'a> {
                 CompilerType::Error => LlValue::Error(format!("%arg{index}")),
                 CompilerType::ErrorCode => LlValue::ErrorCode(format!("%arg{index}")),
                 CompilerType::ErrorDomain => LlValue::ErrorDomain(format!("%arg{index}")),
+                CompilerType::Enum(enumeration) => LlValue::Enum {
+                    value: format!("%arg{index}"),
+                    enumeration: enumeration.clone(),
+                },
                 CompilerType::String => LlValue::String(format!("%arg{index}")),
                 CompilerType::Range(endpoint) => LlValue::Range {
                     value: format!("%arg{index}"),
@@ -256,7 +275,9 @@ impl<'a> Generator<'a> {
             | LlValue::Result { value, .. } => {
                 body.terminator(&format!("ret ptr {value}"), location);
             }
-            LlValue::Comparison(value) | LlValue::ErrorCode(value) => {
+            LlValue::Comparison(value)
+            | LlValue::ErrorCode(value)
+            | LlValue::Enum { value, .. } => {
                 body.terminator(&format!("ret i32 {value}"), location);
             }
             LlValue::Tuple(_) => unreachable!("shared model restricts machine results"),
@@ -338,6 +359,15 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::String(value) => {
                 self.emit_string_literal(value, body, expression.span)
+            }
+            CompilerExpressionKind::Enum(value) => {
+                let CompilerType::Enum(enumeration) = &expression.value_type else {
+                    unreachable!("checked Enum value retains its nominal type")
+                };
+                LlValue::Enum {
+                    value: value.to_string(),
+                    enumeration: enumeration.clone(),
+                }
             }
             CompilerExpressionKind::Tuple(values) => LlValue::Tuple(
                 values
@@ -628,6 +658,14 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
+                    CompilerType::Enum(ref enumeration) => LlValue::Enum {
+                        value: body.instruction(
+                            &format!("call fastcc i32 @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        enumeration: enumeration.clone(),
+                    },
                     CompilerType::Error => LlValue::Error(body.instruction(
                         &format!("call fastcc ptr @{symbol}({arguments})"),
                         expression.span,
@@ -698,6 +736,18 @@ impl<'a> Generator<'a> {
                 when_less,
                 when_equal,
                 when_greater,
+                body,
+                environment,
+                expression.span,
+            ),
+            CompilerExpressionKind::EnumDecision {
+                subject,
+                rules,
+                otherwise,
+            } => self.emit_enum_decision(
+                subject,
+                rules,
+                otherwise.as_deref(),
                 body,
                 environment,
                 expression.span,
@@ -1281,6 +1331,19 @@ impl<'a> Generator<'a> {
                     (LlValue::Comparison(left), LlValue::Comparison(right)) => {
                         format!("icmp {predicate} i32 {left}, {right}")
                     }
+                    (
+                        LlValue::Enum {
+                            value: left,
+                            enumeration,
+                        },
+                        LlValue::Enum {
+                            value: right,
+                            enumeration: right_enumeration,
+                        },
+                    ) => {
+                        debug_assert_eq!(enumeration, right_enumeration);
+                        format!("icmp {predicate} i32 {left}, {right}")
+                    }
                     (LlValue::Int(_), LlValue::Int(_))
                     | (LlValue::Rational(_), LlValue::Rational(_)) => format!(
                         "icmp {predicate} i32 {}, 0",
@@ -1476,6 +1539,64 @@ impl<'a> Generator<'a> {
         self.emit_decision_phi(&branches, body, span)
     }
 
+    fn emit_enum_decision(
+        &mut self,
+        subject: &CompilerExpression,
+        rules: &[CompilerEnumRule],
+        otherwise: Option<&CompilerExpression>,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let emitted_subject = self.emit_expression(subject, body, environment);
+        let LlValue::Enum { value: subject, .. } = emitted_subject else {
+            unreachable!("checked decision subject is a nominal Enum")
+        };
+        let labels = rules
+            .iter()
+            .map(|_| body.label("enum.decision.alternative"))
+            .collect::<Vec<_>>();
+        let default = body.label("enum.decision.default");
+        let merge = body.label("enum.decision.merge");
+        let cases = rules
+            .iter()
+            .zip(&labels)
+            .map(|(rule, label)| format!("i32 {}, label %{label}", rule.value))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("switch i32 {subject}, label %{default} [ {cases} ]"),
+            location,
+        );
+        let mut branches = Vec::with_capacity(rules.len() + usize::from(otherwise.is_some()));
+        for (rule, label) in rules.iter().zip(labels) {
+            body.start_block(&label);
+            let value = self.emit_expression(&rule.action, body, environment);
+            let predecessor = body.current_block.clone();
+            let action_location = self.debug.location(rule.action.span, body.subprogram);
+            body.terminator(&format!("br label %{merge}"), action_location);
+            branches.push((value, predecessor));
+        }
+        body.start_block(&default);
+        if let Some(otherwise) = otherwise {
+            let value = self.emit_expression(otherwise, body, environment);
+            let predecessor = body.current_block.clone();
+            let action_location = self.debug.location(otherwise.span, body.subprogram);
+            body.terminator(&format!("br label %{merge}"), action_location);
+            branches.push((value, predecessor));
+        } else {
+            body.effect(
+                "call void @topal.platform.exit(i64 70)",
+                span,
+                &mut self.debug,
+            );
+            body.terminator("unreachable", location);
+        }
+        body.start_block(&merge);
+        self.emit_decision_phi(&branches, body, span)
+    }
+
     fn emit_decision_phi(
         &mut self,
         branches: &[(LlValue, String)],
@@ -1532,6 +1653,14 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             )),
+            LlValue::Enum { enumeration, .. } => LlValue::Enum {
+                value: body.instruction(
+                    &format!("phi i32 {}", incoming(LlValue::enumeration)),
+                    span,
+                    &mut self.debug,
+                ),
+                enumeration: enumeration.clone(),
+            },
             LlValue::Range { endpoint, .. } => {
                 let endpoint = endpoint.clone();
                 LlValue::Range {
@@ -1610,6 +1739,9 @@ impl<'a> Generator<'a> {
                 }
                 body.start_block(&done);
             }
+            LlValue::Enum { value, enumeration } => {
+                self.emit_print_enum(value, enumeration, body, span);
+            }
             LlValue::Range { value, endpoint } => body.effect(
                 &format!(
                     "call void @topal.runtime.range.{}.print(ptr {value})",
@@ -1663,6 +1795,46 @@ impl<'a> Generator<'a> {
                 self.emit_write_literal(")", body, span);
             }
         }
+    }
+
+    fn emit_print_enum(
+        &mut self,
+        value: &str,
+        enumeration: &CompilerEnumType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        let labels = enumeration
+            .alternatives
+            .iter()
+            .map(|_| body.label("print.enum.alternative"))
+            .collect::<Vec<_>>();
+        let invalid = body.label("print.enum.invalid");
+        let done = body.label("print.enum.done");
+        let cases = labels
+            .iter()
+            .enumerate()
+            .map(|(index, label)| format!("i32 {index}, label %{label}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("switch i32 {value}, label %{invalid} [ {cases} ]"),
+            location,
+        );
+        for (label, alternative) in labels.iter().zip(&enumeration.alternatives) {
+            body.start_block(label);
+            self.emit_write_literal(alternative, body, span);
+            body.terminator(&format!("br label %{done}"), location);
+        }
+        body.start_block(&invalid);
+        body.effect(
+            "call void @topal.platform.exit(i64 70)",
+            span,
+            &mut self.debug,
+        );
+        body.terminator("unreachable", location);
+        body.start_block(&done);
     }
 
     fn emit_print_result(
@@ -1793,6 +1965,10 @@ enum LlValue {
     Error(String),
     ErrorCode(String),
     ErrorDomain(String),
+    Enum {
+        value: String,
+        enumeration: CompilerEnumType,
+    },
     Range {
         value: String,
         endpoint: CompilerType,
@@ -1855,6 +2031,13 @@ impl LlValue {
         value
     }
 
+    fn enumeration(&self) -> &str {
+        let Self::Enum { value, .. } = self else {
+            unreachable!("checked value is a nominal Enum")
+        };
+        value
+    }
+
     fn string(&self) -> &str {
         let Self::String(value) = self else {
             unreachable!("checked value is String")
@@ -1893,7 +2076,9 @@ impl LlValue {
             | Self::Result { value, .. } => {
                 format!("ptr {value}")
             }
-            Self::Comparison(value) | Self::ErrorCode(value) => format!("i32 {value}"),
+            Self::Comparison(value) | Self::ErrorCode(value) | Self::Enum { value, .. } => {
+                format!("i32 {value}")
+            }
             Self::Tuple(_) => unreachable!("checked call arguments are scalar"),
         }
     }
@@ -1967,7 +2152,9 @@ impl FunctionBody {
             | LlValue::Result { value, .. } => {
                 format!("ptr {value}")
             }
-            LlValue::Comparison(value) | LlValue::ErrorCode(value) => format!("i32 {value}"),
+            LlValue::Comparison(value)
+            | LlValue::ErrorCode(value)
+            | LlValue::Enum { value, .. } => format!("i32 {value}"),
             LlValue::Tuple(_) => return,
         };
         self.lines.push(format!(
@@ -2013,6 +2200,7 @@ struct DebugInfo {
     comparison_type: usize,
     boolean_type: usize,
     unit_type: usize,
+    enum_types: BTreeMap<String, usize>,
     source: topal_source::SourceText,
     filename: String,
 }
@@ -2050,6 +2238,7 @@ impl DebugInfo {
             comparison_type: 0,
             boolean_type: 0,
             unit_type: 0,
+            enum_types: BTreeMap::new(),
             source,
             filename,
         };
@@ -2304,7 +2493,7 @@ impl DebugInfo {
         id
     }
 
-    fn type_id(&self, value_type: &CompilerType) -> usize {
+    fn type_id(&mut self, value_type: &CompilerType) -> usize {
         match value_type {
             CompilerType::Unit => self.unit_type,
             CompilerType::Boolean => self.boolean_type,
@@ -2315,6 +2504,7 @@ impl DebugInfo {
             CompilerType::Error => self.error_type,
             CompilerType::ErrorCode => self.error_code_type,
             CompilerType::ErrorDomain => self.error_domain_type,
+            CompilerType::Enum(enumeration) => self.enum_type(enumeration),
             CompilerType::String => self.string_type,
             CompilerType::Range(endpoint) if endpoint.as_ref() == &CompilerType::Int => {
                 self.int_range_type
@@ -2350,6 +2540,38 @@ impl DebugInfo {
         }
     }
 
+    fn enum_type(&mut self, enumeration: &CompilerEnumType) -> usize {
+        if let Some(value_type) = self.enum_types.get(&enumeration.name) {
+            return *value_type;
+        }
+        let enumerators = enumeration
+            .alternatives
+            .iter()
+            .enumerate()
+            .map(|(value, name)| {
+                self.node(format!(
+                    "!DIEnumerator(name: \"{}\", value: {value})",
+                    llvm_string(name)
+                ))
+            })
+            .collect::<Vec<_>>();
+        let elements = self.node(format!(
+            "!{{{}}}",
+            enumerators
+                .iter()
+                .map(|value| format!("!{value}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let value_type = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_enumeration_type, name: \"{}\", file: !{}, size: 32, align: 32, elements: !{elements})",
+            llvm_string(&enumeration.name),
+            self.file
+        ));
+        self.enum_types.insert(enumeration.name.clone(), value_type);
+        value_type
+    }
+
     fn subprogram(
         &mut self,
         name: &str,
@@ -2358,16 +2580,16 @@ impl DebugInfo {
         result: &CompilerType,
         parameters: &[CompilerType],
     ) -> usize {
-        let mut types = vec![if *result == CompilerType::Unit {
+        let result_type = if *result == CompilerType::Unit {
             "null".into()
         } else {
             format!("!{}", self.type_id(result))
-        }];
-        types.extend(
-            parameters
-                .iter()
-                .map(|parameter| format!("!{}", self.type_id(parameter))),
-        );
+        };
+        let mut types = vec![result_type];
+        for parameter in parameters {
+            let parameter_type = self.type_id(parameter);
+            types.push(format!("!{parameter_type}"));
+        }
         let types = self.node(format!("!{{{}}}", types.join(", ")));
         let signature = self.node(format!("!DISubroutineType(types: !{types})"));
         let position = self
@@ -2413,12 +2635,13 @@ impl DebugInfo {
             .source
             .position(span.start.min(self.source.as_str().len()));
         let argument = argument.map_or_else(String::new, |value| format!(", arg: {value}"));
+        let value_type = self.type_id(value_type);
         self.node(format!(
             "!DILocalVariable(name: \"{}\"{argument}, scope: !{scope}, file: !{}, line: {}, type: !{})",
             llvm_string(name),
             self.file,
             position.line,
-            self.type_id(value_type)
+            value_type
         ))
     }
 
@@ -2459,7 +2682,7 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
         | CompilerType::String
         | CompilerType::Range(_)
         | CompilerType::Result(_) => "ptr",
-        CompilerType::Comparison | CompilerType::ErrorCode => "i32",
+        CompilerType::Comparison | CompilerType::ErrorCode | CompilerType::Enum(_) => "i32",
         CompilerType::Tuple(_) => unreachable!("shared model restricts function ABI types"),
     }
 }
@@ -2476,7 +2699,7 @@ fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
         | CompilerType::String
         | CompilerType::Range(_)
         | CompilerType::Result(_) => "ptr",
-        CompilerType::Comparison | CompilerType::ErrorCode => "i32",
+        CompilerType::Comparison | CompilerType::ErrorCode | CompilerType::Enum(_) => "i32",
         CompilerType::Tuple(_) => unreachable!("shared model restricts function ABI types"),
     }
 }
@@ -2565,5 +2788,20 @@ mod tests {
                 .count(),
             2
         );
+    }
+
+    #[test]
+    fn emits_nominal_enums_as_checked_i32_tags_with_dwarf_enumerators() {
+        // TOPAL-COMPILER-ENUM-001
+        let source = "use language (version is v0.1)\nColor is Enum (Red, Green, Blue)\nnext is fn (value : Color) -> Color\n  value\n    Red then Green\n    Green then Blue\n    Blue then Red\n(next Red, next Green)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/enums.t").emit();
+        assert!(llvm.contains("define internal fastcc i32 @topal.fn.next"));
+        assert!(llvm.contains("switch i32 %arg0"));
+        assert!(llvm.contains("phi i32"));
+        assert!(llvm.contains("DW_TAG_enumeration_type, name: \"Color\""));
+        assert!(llvm.contains("DIEnumerator(name: \"Red\", value: 0)"));
+        assert!(llvm.contains("DIEnumerator(name: \"Green\", value: 1)"));
+        assert!(llvm.contains("DIEnumerator(name: \"Blue\", value: 2)"));
     }
 }

@@ -235,8 +235,33 @@ Debug-enabled O0 output shall map generated source functions, parameters,
 immutable scalar locals, and instructions to Topal files and source locations,
 emit DWARF 5 through LLVM, retain frame pointers, provide GDB renderers for
 private arbitrary-precision Int, Rational, `Range Int`, and `Range Rational`
-objects, distinguish selected overload and static-function frames, and pass
-automated GDB breakpoint, value, and backtrace scenarios.
+objects, describe source-declared nominal enums with their alternative labels,
+distinguish selected overload and static-function frames, and pass automated
+GDB breakpoint, value, and backtrace scenarios.
+
+## TOPAL-COMP-ENUM-001 — Payload-free nominal enums
+
+The compiler shall recognize admitted root-scope payload-free
+`Name is Enum (A, …)` declarations as distinct from general `Union`, preserve
+their declaration-scoped nominal identity, classify their alternatives and
+scalar function boundaries, and permit equality only within the same enum type.
+Each declaration shall use a declaration-ordered `i32` tag in the sealed private
+ABI; the representation shall not be exposed as a portable foreign enum
+convention.
+
+Enum display shall emit the selected source label through the Topal platform
+writer. Enum decisions shall evaluate their subject once, select only the
+first matching alternative action, diagnose missing, foreign, or unknown
+alternatives, and merge compatible reachable scalar actions through LLVM
+control flow. Generated invalid-tag paths shall fail closed as compiler-runtime
+corruption. DWARF shall retain the nominal type and every enumerator so GDB
+renders parameters and locals as source alternatives without a language-runtime
+dependency.
+
+This requirement covers `TOPAL-TYPE-ENUM-001` and the source-declared enum case
+of `TOPAL-DECISION-ENUM-001`. It realizes `TOPAL-COMPILER-ENUM-001` for
+compiler increment 3b1; nested enum declarations and general unions remain in
+increment 3b2.
 
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 
