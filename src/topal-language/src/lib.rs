@@ -9,9 +9,10 @@ mod source;
 mod trace;
 
 pub use compiler_model::{
-    CompilerBinary, CompilerBinding, CompilerBlock, CompilerComparisonRule, CompilerExpression,
-    CompilerExpressionKind, CompilerFallible, CompilerFunction, CompilerParameter, CompilerProgram,
-    CompilerStatement, CompilerType, CompilerValidation, IntRange, analyze_for_compiler,
+    CompilerBinary, CompilerBinding, CompilerBlock, CompilerComparisonRule, CompilerErrorCodeRule,
+    CompilerErrorField, CompilerExpression, CompilerExpressionKind, CompilerFallible,
+    CompilerFunction, CompilerParameter, CompilerProgram, CompilerStatement, CompilerType,
+    CompilerValidation, IntRange, analyze_for_compiler,
 };
 pub use concurrency::{
     Admission, DependencyGraph, DependencyKind, Interaction, InteractionForm, Protocol,

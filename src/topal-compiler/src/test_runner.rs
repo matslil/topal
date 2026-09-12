@@ -15,10 +15,14 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/comparison-decisions.t",
     "examples/language/dynamic-rational-int-validation.t",
     "examples/language/dynamic-rational-construction.t",
+    "examples/language/error-code-decisions.t",
+    "examples/language/error-field-selection.t",
     "examples/language/exact-arithmetic.t",
     "examples/language/exact-numeric-absolute.t",
     "examples/language/exact-numeric-negate.t",
     "examples/language/exact-numeric-zero.t",
+    "examples/language/exhaustive-boolean-decisions.t",
+    "examples/language/exhaustive-error-code-decisions.t",
     "examples/language/finite-exact-division-and-comparison.t",
     "examples/language/finite-range-observation.t",
     "examples/language/function-call-chains.t",
@@ -35,8 +39,10 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/result-division-error.t",
     "examples/language/result-error-propagation.t",
     "examples/language/result-negative-power-error.t",
+    "examples/language/result-decisions.t",
     "examples/language/result-success.t",
     "examples/language/result-success-projection.t",
+    "examples/language/string-display-delimiters.t",
 ];
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> Result<(), String> {

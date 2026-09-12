@@ -316,6 +316,66 @@
       "cpu_time_ns": 323254,
       "memory_peak_bytes": 18669568,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/error-code-decisions.t": {
+      "cpu_time_ns": 120977620,
+      "memory_peak_bytes": 41398272,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/error-field-selection.t": {
+      "cpu_time_ns": 119040860,
+      "memory_peak_bytes": 41320448,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/exhaustive-boolean-decisions.t": {
+      "cpu_time_ns": 118037339,
+      "memory_peak_bytes": 41308160,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/exhaustive-error-code-decisions.t": {
+      "cpu_time_ns": 123051860,
+      "memory_peak_bytes": 41472000,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/result-decisions.t": {
+      "cpu_time_ns": 120175340,
+      "memory_peak_bytes": 41373696,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/string-display-delimiters.t": {
+      "cpu_time_ns": 118663900,
+      "memory_peak_bytes": 41336832,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/error-code-decisions.t": {
+      "cpu_time_ns": 225980,
+      "memory_peak_bytes": 18616320,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/error-field-selection.t": {
+      "cpu_time_ns": 156682,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/exhaustive-boolean-decisions.t": {
+      "cpu_time_ns": 144332,
+      "memory_peak_bytes": 18325504,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/exhaustive-error-code-decisions.t": {
+      "cpu_time_ns": 228924,
+      "memory_peak_bytes": 18669568,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/result-decisions.t": {
+      "cpu_time_ns": 225307,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/string-display-delimiters.t": {
+      "cpu_time_ns": 146284,
+      "memory_peak_bytes": 18542592,
+      "samples_per_test": 500
     }
   }
 }

@@ -29,12 +29,12 @@ LLVM lowers an already selected LLVM calling convention to physical registers
 and stack locations, but a source-language frontend still owns semantic value
 representation and any coercion needed to form that LLVM signature. The C
 calling convention is therefore not a portable Topal ABI. Internal functions
-use an exact compiler-private signature keyed by `topal-native/5`, and future
+use an exact compiler-private signature keyed by `topal-native/6`, and future
 foreign adapters may use target `ccc` only with fixed-width scalars or opaque
 handles. Aggregate classification is adapter work and will be checked against
 the target's reference C frontend before a foreign interface is admitted.
 
-`topal-native/5` represents finite `Int` values as immutable pointers to a
+`topal-native/6` represents finite `Int` values as immutable pointers to a
 canonical sign-and-magnitude object with little-endian base-2^32 limbs. The
 private signature passes that pointer directly; it never exposes the object to
 a foreign calling convention. Runtime allocation uses the qualified Linux
@@ -60,12 +60,26 @@ for membership, emptiness, and intersection and never enumerates or adjusts an
 open endpoint. Pointer-bearing range objects are also constructed at run time
 to preserve relocation-free no-loader PIE output.
 
+String values use immutable `{data, length, display, display-length}`
+descriptors containing UTF-8 bytes and a cached canonical source spelling.
+Only relocation-free byte arrays reside in the static image; descriptors are
+constructed through the Topal allocator at run time because their pointers
+otherwise require loader-applied absolute relocations. The compiler computes
+the display spelling for the literal-only admitted slice; future dynamic String
+constructors must populate the same invariant. Functions, decision joins,
+Result payloads, DWARF, and GDB all use the same private pointer representation.
+The syscall runtime writes canonical ordinary or tagged Topal literals without
+relying on a C locale or string library. This increment admits literal transport
+and display, not the remaining Unicode String operations in roadmap increment
+4.
+
 Fallible exact operations return immutable Result headers containing a
 canonical success-or-error tag and one opaque payload pointer. Successful
 payloads retain their statically known Topal type. Error payloads use an
 intrinsic record containing the reporting domain, arithmetic code, absent
-detail and cause fields, and source file, line, and column provenance. This
-`topal-native/5` layout is private to Topal signatures and GDB renderers; it is
+detail and cause fields, and source file, line, and column provenance. Domain
+and source text refer to the same immutable String descriptors. This
+`topal-native/6` layout is private to Topal signatures and GDB renderers; it is
 never classified as a C aggregate or passed through a foreign runtime.
 
 Exact Rational-to-Int and Int-to-Nat validation calls return the same Result
@@ -74,6 +88,14 @@ returns the original Result pointer immediately from the enclosing compatible
 function, while only the success path loads and reclassifies the payload. This
 keeps propagation field-preserving and makes early return explicit in the O0
 control-flow graph.
+
+Result decisions branch once on the Result tag. The success and whole-Error
+payload bindings exist only in their selected action blocks. Qualified
+arithmetic Error-code decisions switch on the closed nominal code value; a
+generic Error action is the default when present, while an exhaustive four-code
+table has an unreachable invalid-runtime default. String-valued actions merge
+as ordinary descriptor pointers through LLVM `phi`. Error field observation
+loads the stored code or domain descriptor without reconstructing the Error.
 
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each

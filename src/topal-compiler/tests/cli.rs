@@ -91,7 +91,7 @@ fn arbitrary_int_runtime_is_exact_and_self_contained() {
     let metadata =
         NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
     assert_eq!(metadata.native_abi, NATIVE_ABI);
-    assert_eq!(metadata.native_abi, "topal-native/5");
+    assert_eq!(metadata.native_abi, "topal-native/6");
 
     let tools = LlvmTools::discover(None).unwrap();
     let undefined = run(Command::new(tools.directory.join("llvm-nm"))
@@ -575,4 +575,82 @@ fn gdb_renders_checked_nat_result_parameters_and_locals() {
     let expected = "Error ( domain is root.Nat(Int), code is out-of-range )";
     assert!(text.contains(&format!("$1 = {expected}")), "{text}");
     assert!(text.contains(&format!("$2 = {expected}")), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_renders_string_and_error_fields() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-COMP-RESULT-001
+    let directory = temporary("gdb-result-decision");
+    let source = directory.join("result-decision-debug.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ninspect-error is fn (value : Error) -> ErrorDomain\n  result is value domain\n  result\nretain-string is fn (value : String) -> String\n  result is value\n  result\nretain-code is fn (value : ErrorCode) -> ErrorCode\n  result is value\n  result\nretain-domain is fn (value : ErrorDomain) -> ErrorDomain\n  result is value\n  result\ndivide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\ndescribe is fn (denominator : Rational, fallback : Result (Rational, lang arithmetic ArithmeticErrorCode)) -> ErrorDomain\n  1.0 divide denominator\n    Ok value then fallback domain\n    Error problem then problem inspect-error\nfailed is 1.0 divide 0.0\ncode is failed code\ndomain is failed domain\ndescription is \"error\"\nobserved is 0.0 describe failed\n(description retain-string, code retain-code, domain retain-domain, observed, failed)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break result-decision-debug.t:3",
+            "-ex",
+            "break result-decision-debug.t:7",
+            "-ex",
+            "break result-decision-debug.t:10",
+            "-ex",
+            "break result-decision-debug.t:13",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "print result",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "print result",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "print result",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    let expected = "Error ( domain is root./(Rational,Rational), code is division-by-zero )";
+    assert!(text.contains(&format!("$1 = {expected}")), "{text}");
+    assert!(text.contains("$2 = \"error\""), "{text}");
+    assert!(text.contains("$3 = \"error\""), "{text}");
+    assert!(text.contains("$4 = division-by-zero"), "{text}");
+    assert!(text.contains("$5 = division-by-zero"), "{text}");
+    assert!(text.contains("$6 = root./(Rational,Rational)"), "{text}");
+    assert!(text.contains("$7 = root./(Rational,Rational)"), "{text}");
 }
