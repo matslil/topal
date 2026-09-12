@@ -54,7 +54,7 @@ equality, ordering, function passage, decision joins, decimal output, and GDB
 inspection shall preserve the normative value for operands of any size that
 available address space can hold.
 
-The private `topal-native/4` representation shall be canonical, immutable, and
+The private `topal-native/5` representation shall be canonical, immutable, and
 hidden from foreign calling conventions. Its allocator and output routines
 shall use only the qualified Linux x86-64 system-call boundary, detect mapping
 failure, introduce no C/C++ runtime dependency or undefined helper symbol, and
@@ -102,6 +102,30 @@ exact-number cases of `TOPAL-TYPE-EQUALITY-001` and
 `TOPAL-TYPE-ORDERING-001`.
 
 It realizes `TOPAL-COMPILER-EXACT-001` for compiler increment 2b.
+
+## TOPAL-COMP-RESULT-001 — Dynamic arithmetic Results
+
+The compiler shall represent an admitted arithmetic `Result` with an immutable
+success-or-error tag and one statically classified payload. It shall represent
+every intrinsic Error with its reporting domain, nominal arithmetic code,
+absent detail and cause, and source file, line, and column provenance. The
+private representation shall be versioned as `topal-native/5`, remain opaque to
+foreign calling conventions, and be inspectable through the bundled GDB
+renderer.
+
+Dynamic finite Rational construction shall distinguish `division-by-zero` from
+`indeterminate`. Dynamic Rational division and negative power, plus dynamic Int
+modulo and quotient/modulo, shall return `division-by-zero` from their specified
+reporting domains rather than terminate the process. Ordinary success values
+shall satisfy explicit Result contracts, and returning or passing through a
+failed Result shall preserve the complete Error unchanged.
+
+This requirement covers `TOPAL-NUM-RATIONAL-CONSTRUCT-DYNAMIC-001`,
+`TOPAL-NUM-INT-MODULO-001`, `TOPAL-NUM-INT-QUOTIENT-MODULO-001`,
+`TOPAL-NUM-DYNAMIC-DIVZERO-001`, `TOPAL-NUM-RAT-NEG-POW-001`,
+`TOPAL-NUM-ARITHMETIC-ERROR-001`, and the admitted function-contract and
+propagation cases of `TOPAL-TYPE-RESULT-001`. It realizes
+`TOPAL-COMPILER-RESULT-001` for compiler increment 2c-b1.
 
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 

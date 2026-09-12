@@ -25,6 +25,7 @@ pub enum CompilerType {
     Rational,
     Comparison,
     Range(Box<Self>),
+    Result(Box<Self>),
     String,
     Tuple(Vec<Self>),
 }
@@ -40,6 +41,7 @@ impl CompilerType {
                 | Self::Rational
                 | Self::Comparison
                 | Self::Range(_)
+                | Self::Result(_)
         )
     }
 
@@ -52,6 +54,10 @@ impl CompilerType {
             Self::Rational => "Rational".into(),
             Self::Comparison => "Comparison".into(),
             Self::Range(endpoint) => format!("Range {}", endpoint.name()),
+            Self::Result(success) => format!(
+                "Result ({}, lang arithmetic ArithmeticErrorCode)",
+                success.name()
+            ),
             Self::String => "String".into(),
             Self::Tuple(fields) => format!(
                 "({})",
@@ -128,6 +134,15 @@ pub struct CompilerComparisonRule {
     pub span: Span,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerFallible {
+    RationalConstruct,
+    RationalDivide,
+    RationalPower,
+    IntModulo,
+    IntQuotientModulo,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerExpressionKind {
     Unit,
@@ -143,6 +158,13 @@ pub enum CompilerExpressionKind {
     RationalConstruct {
         numerator: Box<CompilerExpression>,
         denominator: Box<CompilerExpression>,
+    },
+    ResultSuccess(Box<CompilerExpression>),
+    Fallible {
+        operation: CompilerFallible,
+        left: Box<CompilerExpression>,
+        right: Box<CompilerExpression>,
+        error_span: Span,
     },
     RangeLower(Box<CompilerExpression>),
     RangeUpper(Box<CompilerExpression>),
@@ -803,7 +825,45 @@ impl Analyzer {
                 &CompilerType::Int,
                 &denominator.value_type,
             )?;
-            require_proven_nonzero_int(&self.source, denominator.span, &denominator)?;
+            if is_proven_zero_numeric(&denominator) {
+                if compiler_expression_is_closed(&denominator) {
+                    if is_proven_zero_numeric(&numerator) {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-INDETERMINATE-RATIONAL",
+                            argument.span(),
+                            "Rational (0, 0) does not determine one numeric value",
+                        ));
+                    }
+                    return Err(division_by_zero(&self.source, argument.span()));
+                }
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Fallible {
+                        operation: CompilerFallible::RationalConstruct,
+                        left: Box::new(numerator),
+                        right: Box::new(denominator),
+                        error_span: argument.span(),
+                    },
+                    value_type: CompilerType::Result(Box::new(CompilerType::Rational)),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                });
+            }
+            if !is_proven_nonzero_numeric(&denominator) {
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Fallible {
+                        operation: CompilerFallible::RationalConstruct,
+                        left: Box::new(numerator),
+                        right: Box::new(denominator),
+                        error_span: argument.span(),
+                    },
+                    value_type: CompilerType::Result(Box::new(CompilerType::Rational)),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                });
+            }
             let rational_value = exact_int(&numerator)
                 .zip(exact_int(&denominator))
                 .map(|(numerator, denominator)| BigRational::new(numerator, denominator));
@@ -1032,12 +1092,42 @@ impl Analyzer {
                 &CompilerType::Int,
                 &right_value.value_type,
             )?;
-            require_proven_nonzero_int(&self.source, right_value.span, &right_value)?;
             let result_type = if operation == CompilerBinary::Modulo {
                 CompilerType::Int
             } else {
                 CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int])
             };
+            if is_proven_zero_numeric(&right_value) {
+                if compiler_expression_is_closed(&right_value) {
+                    return Err(division_by_zero(&self.source, right_value.span));
+                }
+                return Ok(Self::finish_fallible_binary(
+                    if operation == CompilerBinary::Modulo {
+                        CompilerFallible::IntModulo
+                    } else {
+                        CompilerFallible::IntQuotientModulo
+                    },
+                    left_value,
+                    right_value,
+                    result_type,
+                    span,
+                    right.span(),
+                ));
+            }
+            if !is_proven_nonzero_numeric(&right_value) {
+                return Ok(Self::finish_fallible_binary(
+                    if operation == CompilerBinary::Modulo {
+                        CompilerFallible::IntModulo
+                    } else {
+                        CompilerFallible::IntQuotientModulo
+                    },
+                    left_value,
+                    right_value,
+                    result_type,
+                    span,
+                    right.span(),
+                ));
+            }
             return Ok(Self::finish_binary(
                 operation,
                 left_value,
@@ -1081,9 +1171,6 @@ impl Analyzer {
 
         require_exact_numeric(&self.source, left_value.span, &left_value.value_type)?;
         require_exact_numeric(&self.source, right_value.span, &right_value.value_type)?;
-        if operation == CompilerBinary::Divide {
-            require_proven_nonzero_numeric(&self.source, right_value.span, &right_value)?;
-        }
         let both_int = left_value.value_type == CompilerType::Int
             && right_value.value_type == CompilerType::Int;
         let rational_result = operation == CompilerBinary::Divide
@@ -1092,6 +1179,43 @@ impl Analyzer {
         if rational_result {
             left_value = into_rational(left_value);
             right_value = into_rational(right_value);
+        }
+        if operation == CompilerBinary::Divide && is_proven_zero_numeric(&right_value) {
+            if compiler_expression_is_closed(&right_value) {
+                return Err(division_by_zero(&self.source, right_value.span));
+            }
+            if both_int {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "dynamic Int division Result",
+                ));
+            }
+            return Ok(Self::finish_fallible_binary(
+                CompilerFallible::RationalDivide,
+                left_value,
+                right_value,
+                CompilerType::Rational,
+                span,
+                right.span(),
+            ));
+        }
+        if operation == CompilerBinary::Divide && !is_proven_nonzero_numeric(&right_value) {
+            if both_int {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "dynamic Int division Result",
+                ));
+            }
+            return Ok(Self::finish_fallible_binary(
+                CompilerFallible::RationalDivide,
+                left_value,
+                right_value,
+                CompilerType::Rational,
+                span,
+                right.span(),
+            ));
         }
         let result_type = match operation {
             CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply => {
@@ -1134,35 +1258,41 @@ impl Analyzer {
             &CompilerType::Int,
             &right.value_type,
         )?;
-        let Some(exponent) = exact_int(&right) else {
-            return Err(unsupported(
-                &self.source,
-                right.span,
-                "power with an exponent not proven by specialization",
-            ));
-        };
-        if left.value_type == CompilerType::Int && exponent < BigInt::from(0) {
-            return Err(source_diagnostic(
-                &self.source,
-                "E-TYPE-MISMATCH",
-                right.span,
-                "an Int exponent must satisfy Nat",
-            ));
+        let exponent = exact_int(&right);
+        if left.value_type == CompilerType::Int {
+            let Some(ref exponent) = exponent else {
+                return Err(unsupported(
+                    &self.source,
+                    right.span,
+                    "Int power with an exponent not proven to satisfy Nat",
+                ));
+            };
+            if exponent < &BigInt::from(0) {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-TYPE-MISMATCH",
+                    right.span,
+                    "an Int exponent must satisfy Nat",
+                ));
+            }
         }
-        if left.value_type == CompilerType::Rational
-            && exponent < BigInt::from(0)
-            && is_proven_zero_numeric(&left)
-        {
+        let can_fail = left.value_type == CompilerType::Rational
+            && !is_proven_nonzero_numeric(&left)
+            && exponent
+                .as_ref()
+                .is_none_or(|value| value < &BigInt::from(0));
+        if can_fail && is_proven_zero_numeric(&left) && compiler_expression_is_closed(&left) {
             return Err(division_by_zero(&self.source, left.span));
         }
-        if left.value_type == CompilerType::Rational
-            && exponent < BigInt::from(0)
-            && !is_proven_nonzero_numeric(&left)
-        {
-            return Err(unsupported(
-                &self.source,
-                left.span,
-                "negative Rational power with a base not proven nonzero",
+        if can_fail {
+            let error_span = left.span;
+            return Ok(Self::finish_fallible_binary(
+                CompilerFallible::RationalPower,
+                left,
+                right,
+                CompilerType::Rational,
+                span,
+                error_span,
             ));
         }
         let result_type = left.value_type.clone();
@@ -1214,6 +1344,28 @@ impl Analyzer {
             value_type,
             int_range,
             rational_value,
+            span,
+        }
+    }
+
+    fn finish_fallible_binary(
+        operation: CompilerFallible,
+        left: CompilerExpression,
+        right: CompilerExpression,
+        success_type: CompilerType,
+        span: Span,
+        error_span: Span,
+    ) -> CompilerExpression {
+        CompilerExpression {
+            kind: CompilerExpressionKind::Fallible {
+                operation,
+                left: Box::new(left),
+                right: Box::new(right),
+                error_span,
+            },
+            value_type: CompilerType::Result(Box::new(success_type)),
+            int_range: None,
+            rational_value: None,
             span,
         }
     }
@@ -1309,7 +1461,7 @@ impl Analyzer {
                 &expected,
                 &argument.value_type,
             )?;
-            if !expected.machine_scalar() {
+            if !expected.machine_scalar() || !compiler_abi_type_supported(&expected) {
                 return Err(unsupported(
                     &self.source,
                     parameter.classifier,
@@ -1333,20 +1485,35 @@ impl Analyzer {
             });
         }
         let result_type = parse_classifier(&self.source, declaration.result)?;
-        if !result_type.machine_scalar() {
+        if !result_type.machine_scalar() || !compiler_abi_type_supported(&result_type) {
             return Err(unsupported(
                 &self.source,
                 declaration.result,
                 "non-scalar function result",
             ));
         }
-        let body = self.analyze_block(&declaration.body, &mut environment, BlockKind::Function)?;
-        require_same_type(
-            &self.source,
-            declaration.result,
-            &result_type,
-            &body.result.value_type,
-        )?;
+        let mut body =
+            self.analyze_block(&declaration.body, &mut environment, BlockKind::Function)?;
+        if let CompilerType::Result(success_type) = &result_type
+            && body.result.value_type == **success_type
+        {
+            let result = body.result;
+            let span = result.span;
+            body.result = CompilerExpression {
+                kind: CompilerExpressionKind::ResultSuccess(Box::new(result)),
+                value_type: result_type.clone(),
+                int_range: None,
+                rational_value: None,
+                span,
+            };
+        } else {
+            require_same_type(
+                &self.source,
+                declaration.result,
+                &result_type,
+                &body.result.value_type,
+            )?;
+        }
         let symbol = format!("topal.fn.{}.{}", mangle(function_name), self.next_instance);
         self.next_instance += 1;
         let int_range = body.result.int_range.clone();
@@ -1660,23 +1827,79 @@ fn is_declaration(statement: &Statement) -> bool {
 }
 
 fn parse_classifier(source: &SourceText, span: Span) -> Result<CompilerType, Diagnostic> {
-    let classifier = source.slice(span).trim();
-    if let Some(endpoint) = classifier.strip_prefix("Range ") {
-        return match endpoint {
-            "Int" => Ok(CompilerType::Range(Box::new(CompilerType::Int))),
-            "Rational" => Ok(CompilerType::Range(Box::new(CompilerType::Rational))),
-            _ => Err(unsupported(source, span, "Range endpoint classifier")),
-        };
+    let classifier = source
+        .slice(span)
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .collect::<String>();
+    parse_compact_classifier(&classifier).ok_or_else(|| unsupported(source, span, "classifier"))
+}
+
+fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
+    if let Some(success_and_codes) = classifier
+        .strip_prefix("Result(")
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        let (success, codes) = split_classifier_once(success_and_codes)?;
+        if codes != "langarithmeticArithmeticErrorCode" {
+            return None;
+        }
+        return Some(CompilerType::Result(Box::new(parse_compact_classifier(
+            success,
+        )?)));
+    }
+    if let Some(fields) = classifier
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        let fields = split_classifier_fields(fields)?;
+        if fields.len() > 1 {
+            return Some(CompilerType::Tuple(
+                fields
+                    .into_iter()
+                    .map(parse_compact_classifier)
+                    .collect::<Option<Vec<_>>>()?,
+            ));
+        }
     }
     match classifier {
-        "Unit" => Ok(CompilerType::Unit),
-        "Boolean" => Ok(CompilerType::Boolean),
-        "Int" => Ok(CompilerType::Int),
-        "Rational" => Ok(CompilerType::Rational),
-        "Comparison" => Ok(CompilerType::Comparison),
-        "String" => Ok(CompilerType::String),
-        _ => Err(unsupported(source, span, "classifier")),
+        "RangeInt" => Some(CompilerType::Range(Box::new(CompilerType::Int))),
+        "RangeRational" => Some(CompilerType::Range(Box::new(CompilerType::Rational))),
+        "Unit" => Some(CompilerType::Unit),
+        "Boolean" => Some(CompilerType::Boolean),
+        "Int" => Some(CompilerType::Int),
+        "Rational" => Some(CompilerType::Rational),
+        "Comparison" => Some(CompilerType::Comparison),
+        "String" => Some(CompilerType::String),
+        _ => None,
     }
+}
+
+fn split_classifier_once(classifier: &str) -> Option<(&str, &str)> {
+    let mut depth = 0_u32;
+    for (index, byte) in classifier.bytes().enumerate() {
+        match byte {
+            b'(' => depth += 1,
+            b')' => depth = depth.checked_sub(1)?,
+            b',' if depth == 0 => return Some((&classifier[..index], &classifier[index + 1..])),
+            _ => {}
+        }
+    }
+    None
+}
+
+fn split_classifier_fields(classifier: &str) -> Option<Vec<&str>> {
+    let mut fields = Vec::new();
+    let mut remaining = classifier;
+    while let Some((field, rest)) = split_classifier_once(remaining) {
+        fields.push(field);
+        remaining = rest;
+    }
+    fields.push(remaining);
+    fields
+        .iter()
+        .all(|field| !field.is_empty())
+        .then_some(fields)
 }
 
 fn is_range_construction(operation: CompilerBinary) -> bool {
@@ -1687,6 +1910,20 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
             | CompilerBinary::RangeInclusive
             | CompilerBinary::RangeOpenInclusive
     )
+}
+
+fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Result(success) => {
+            matches!(success.as_ref(), CompilerType::Int | CompilerType::Rational)
+                || matches!(
+                    success.as_ref(),
+                    CompilerType::Tuple(fields)
+                        if matches!(fields.as_slice(), [CompilerType::Int, CompilerType::Int])
+                )
+        }
+        _ => true,
+    }
 }
 
 fn comparison_binary(kind: CallableKind) -> Option<CompilerBinary> {
@@ -1725,6 +1962,69 @@ fn require_exact_numeric(
 fn exact_int(expression: &CompilerExpression) -> Option<BigInt> {
     let range = expression.int_range.as_ref()?;
     (range.lower == range.upper).then(|| range.lower.clone())
+}
+
+fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
+    match &expression.kind {
+        CompilerExpressionKind::Unit
+        | CompilerExpressionKind::Boolean(_)
+        | CompilerExpressionKind::Int(_)
+        | CompilerExpressionKind::Rational(_)
+        | CompilerExpressionKind::String(_) => true,
+        CompilerExpressionKind::Tuple(values) => values.iter().all(compiler_expression_is_closed),
+        CompilerExpressionKind::Local(_)
+        | CompilerExpressionKind::Call { .. }
+        | CompilerExpressionKind::Fallible { .. } => false,
+        CompilerExpressionKind::Negate(value)
+        | CompilerExpressionKind::Absolute(value)
+        | CompilerExpressionKind::IntToRational(value)
+        | CompilerExpressionKind::ResultSuccess(value)
+        | CompilerExpressionKind::RangeLower(value)
+        | CompilerExpressionKind::RangeUpper(value)
+        | CompilerExpressionKind::RangeLowerInclusive(value)
+        | CompilerExpressionKind::RangeUpperInclusive(value)
+        | CompilerExpressionKind::RangeEmpty(value)
+        | CompilerExpressionKind::Not(value) => compiler_expression_is_closed(value),
+        CompilerExpressionKind::RationalConstruct {
+            numerator,
+            denominator,
+        } => compiler_expression_is_closed(numerator) && compiler_expression_is_closed(denominator),
+        CompilerExpressionKind::Binary { left, right, .. } => {
+            compiler_expression_is_closed(left) && compiler_expression_is_closed(right)
+        }
+        CompilerExpressionKind::BooleanDecision {
+            subject,
+            when_true,
+            when_false,
+        } => {
+            compiler_expression_is_closed(subject)
+                && compiler_expression_is_closed(when_true)
+                && compiler_expression_is_closed(when_false)
+        }
+        CompilerExpressionKind::OrderedComparisonDecision {
+            subject,
+            rules,
+            otherwise,
+        } => {
+            compiler_expression_is_closed(subject)
+                && rules.iter().all(|rule| {
+                    compiler_expression_is_closed(&rule.operand)
+                        && compiler_expression_is_closed(&rule.action)
+                })
+                && compiler_expression_is_closed(otherwise)
+        }
+        CompilerExpressionKind::ComparisonValueDecision {
+            subject,
+            when_less,
+            when_equal,
+            when_greater,
+        } => {
+            compiler_expression_is_closed(subject)
+                && compiler_expression_is_closed(when_less)
+                && compiler_expression_is_closed(when_equal)
+                && compiler_expression_is_closed(when_greater)
+        }
+    }
 }
 
 fn into_rational(expression: CompilerExpression) -> CompilerExpression {
@@ -1772,33 +2072,6 @@ fn is_proven_nonzero_numeric(expression: &CompilerExpression) -> bool {
             .as_ref()
             .is_some_and(|value| value.numer() != &BigInt::from(0)),
         _ => false,
-    }
-}
-
-fn require_proven_nonzero_int(
-    source: &SourceText,
-    span: Span,
-    expression: &CompilerExpression,
-) -> Result<(), Diagnostic> {
-    debug_assert_eq!(expression.value_type, CompilerType::Int);
-    require_proven_nonzero_numeric(source, span, expression)
-}
-
-fn require_proven_nonzero_numeric(
-    source: &SourceText,
-    span: Span,
-    expression: &CompilerExpression,
-) -> Result<(), Diagnostic> {
-    if is_proven_zero_numeric(expression) {
-        Err(division_by_zero(source, span))
-    } else if is_proven_nonzero_numeric(expression) {
-        Ok(())
-    } else {
-        Err(unsupported(
-            source,
-            span,
-            "exact division with a divisor not proven nonzero",
-        ))
     }
 }
 
@@ -2080,6 +2353,25 @@ mod tests {
         assert!(program.functions.iter().any(|function| matches!(
             function.body.result.kind,
             CompilerExpressionKind::OrderedComparisonDecision { .. }
+        )));
+    }
+
+    #[test]
+    fn models_dynamic_arithmetic_results_without_reclassifying_parameter_errors_as_static() {
+        // TOPAL-COMPILER-RESULT-001
+        let source = "use language (version is v0.1)\ndivide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\nratio is fn (numerator : Int, denominator : Int) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  Rational (numerator, denominator)\nmodulo is fn (left : Int, right : Int) -> Result (Int, lang arithmetic ArithmeticErrorCode)\n  left % right\n(1.0 divide 2.0, 1.0 divide 0.0, 1 ratio 0, 17 modulo 0)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Result (Rational, lang arithmetic ArithmeticErrorCode), Result (Rational, lang arithmetic ArithmeticErrorCode), Result (Rational, lang arithmetic ArithmeticErrorCode), Result (Int, lang arithmetic ArithmeticErrorCode))"
+        );
+        assert!(program.functions.iter().any(|function| matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Fallible { .. }
+        )));
+        assert!(program.functions.iter().any(|function| matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::ResultSuccess(_)
         )));
     }
 

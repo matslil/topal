@@ -4024,6 +4024,16 @@
       "cpu_time_ns": 2966940,
       "memory_peak_bytes": 18128896,
       "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_structured_arithmetic_result_parameters_and_locals": {
+      "cpu_time_ns": 248104880,
+      "memory_peak_bytes": 57032704,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_dynamic_arithmetic_results_without_reclassifying_parameter_errors_as_static": {
+      "cpu_time_ns": 3582180,
+      "memory_peak_bytes": 18071552,
+      "samples_per_test": 50
     }
   }
 }

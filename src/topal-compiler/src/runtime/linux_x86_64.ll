@@ -1,5 +1,5 @@
 ; topal.platform.linux-x86_64/1
-; Freestanding Linux services and the private topal-native/4 exact-value runtime.
+; Freestanding Linux services and the private topal-native/5 exact-value runtime.
 ; Int values are immutable sign-and-magnitude objects with little-endian
 ; base-2^32 limbs. A zero has sign = 0 and length = 0.
 
@@ -7,6 +7,8 @@
 %topal.IntDivmod = type { ptr, ptr }
 %topal.RationalStorage = type { ptr, ptr }
 %topal.RangeStorage = type { ptr, ptr, i64, i64 }
+%topal.ResultStorage = type { i64, ptr }
+%topal.ErrorStorage = type { ptr, i64, i32, i32, ptr, i64, ptr, ptr, i64, i64, i64 }
 
 @topal.runtime.int.zero = private constant { i64, i64, [0 x i32] } { i64 0, i64 0, [0 x i32] zeroinitializer }, align 8
 @topal.runtime.int.one = private constant { i64, i64, [1 x i32] } { i64 0, i64 1, [1 x i32] [i32 1] }, align 8
@@ -19,6 +21,13 @@
 @topal.runtime.range.open.open = private constant [5 x i8] c" <.. ", align 1
 @topal.runtime.range.closed.closed = private constant [5 x i8] c" ..= ", align 1
 @topal.runtime.range.open.closed = private constant [6 x i8] c" <..= ", align 1
+@topal.runtime.error.prefix = private constant [18 x i8] c"Error ( domain is ", align 1
+@topal.runtime.error.code.separator = private constant [10 x i8] c", code is ", align 1
+@topal.runtime.error.suffix = private constant [2 x i8] c" )", align 1
+@topal.runtime.error.code.out.of.range = private constant [12 x i8] c"out-of-range", align 1
+@topal.runtime.error.code.not.representable = private constant [17 x i8] c"not-representable", align 1
+@topal.runtime.error.code.division.by.zero = private constant [16 x i8] c"division-by-zero", align 1
+@topal.runtime.error.code.indeterminate = private constant [13 x i8] c"indeterminate", align 1
 
 declare i32 @llvm.ctlz.i32(i32, i1 immarg)
 
@@ -74,6 +83,105 @@ failure:
   call void @topal.platform.exit(i64 74)
   unreachable
 done:
+  ret void
+}
+
+define internal ptr @topal.runtime.result.success(ptr %payload) nounwind noinline {
+entry:
+  %result = call ptr @topal.platform.allocate(i64 16)
+  %tag.pointer = getelementptr %topal.ResultStorage, ptr %result, i32 0, i32 0
+  %payload.pointer = getelementptr %topal.ResultStorage, ptr %result, i32 0, i32 1
+  store i64 0, ptr %tag.pointer, align 8
+  store ptr %payload, ptr %payload.pointer, align 8
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.result.error(ptr %payload) nounwind noinline {
+entry:
+  %result = call ptr @topal.platform.allocate(i64 16)
+  %tag.pointer = getelementptr %topal.ResultStorage, ptr %result, i32 0, i32 0
+  %payload.pointer = getelementptr %topal.ResultStorage, ptr %result, i32 0, i32 1
+  store i64 1, ptr %tag.pointer, align 8
+  store ptr %payload, ptr %payload.pointer, align 8
+  ret ptr %result
+}
+
+define internal i1 @topal.runtime.result.is.error(ptr %result) nounwind noinline {
+entry:
+  %tag.pointer = getelementptr %topal.ResultStorage, ptr %result, i32 0, i32 0
+  %tag = load i64, ptr %tag.pointer, align 8
+  %is.error = icmp eq i64 %tag, 1
+  ret i1 %is.error
+}
+
+define internal ptr @topal.runtime.result.payload(ptr %result) nounwind noinline {
+entry:
+  %payload.pointer = getelementptr %topal.ResultStorage, ptr %result, i32 0, i32 1
+  %payload = load ptr, ptr %payload.pointer, align 8
+  ret ptr %payload
+}
+
+define internal ptr @topal.runtime.error.make(i32 %code, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column) nounwind noinline {
+entry:
+  %error = call ptr @topal.platform.allocate(i64 80)
+  %domain.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 0
+  %domain.length.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 1
+  %code.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 2
+  %reserved.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 3
+  %detail.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 4
+  %detail.length.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 5
+  %cause.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 6
+  %source.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 7
+  %source.length.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 8
+  %line.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 9
+  %column.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 10
+  store ptr %domain, ptr %domain.pointer, align 8
+  store i64 %domain.length, ptr %domain.length.pointer, align 8
+  store i32 %code, ptr %code.pointer, align 4
+  store i32 0, ptr %reserved.pointer, align 4
+  store ptr null, ptr %detail.pointer, align 8
+  store i64 0, ptr %detail.length.pointer, align 8
+  store ptr null, ptr %cause.pointer, align 8
+  store ptr %source, ptr %source.pointer, align 8
+  store i64 %source.length, ptr %source.length.pointer, align 8
+  store i64 %line, ptr %line.pointer, align 8
+  store i64 %column, ptr %column.pointer, align 8
+  ret ptr %error
+}
+
+define internal ptr @topal.runtime.result.failure(i32 %code, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column) nounwind noinline {
+entry:
+  %error = call ptr @topal.runtime.error.make(i32 %code, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column)
+  %result = call ptr @topal.runtime.result.error(ptr %error)
+  ret ptr %result
+}
+
+define internal void @topal.runtime.error.print(ptr %error) nounwind noinline {
+entry:
+  %domain.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 0
+  %domain.length.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 1
+  %code.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 2
+  %domain = load ptr, ptr %domain.pointer, align 8
+  %domain.length = load i64, ptr %domain.length.pointer, align 8
+  %code = load i32, ptr %code.pointer, align 4
+  call void @topal.platform.write_all(ptr @topal.runtime.error.prefix, i64 18)
+  call void @topal.platform.write_all(ptr %domain, i64 %domain.length)
+  call void @topal.platform.write_all(ptr @topal.runtime.error.code.separator, i64 10)
+  switch i32 %code, label %indeterminate [ i32 0, label %out.of.range i32 1, label %not.representable i32 2, label %division.by.zero ]
+out.of.range:
+  call void @topal.platform.write_all(ptr @topal.runtime.error.code.out.of.range, i64 12)
+  br label %done
+not.representable:
+  call void @topal.platform.write_all(ptr @topal.runtime.error.code.not.representable, i64 17)
+  br label %done
+division.by.zero:
+  call void @topal.platform.write_all(ptr @topal.runtime.error.code.division.by.zero, i64 16)
+  br label %done
+indeterminate:
+  call void @topal.platform.write_all(ptr @topal.runtime.error.code.indeterminate, i64 13)
+  br label %done
+done:
+  call void @topal.platform.write_all(ptr @topal.runtime.error.suffix, i64 2)
   ret void
 }
 
@@ -692,6 +800,32 @@ entry:
   ret ptr %remainder
 }
 
+define internal ptr @topal.runtime.int.try.modulo(ptr %left, ptr %right, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column) nounwind noinline {
+entry:
+  %right.zero = call i1 @topal.runtime.int.is.zero(ptr %right)
+  br i1 %right.zero, label %failure, label %success
+failure:
+  %failed = call ptr @topal.runtime.result.failure(i32 2, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column)
+  ret ptr %failed
+success:
+  %remainder = call ptr @topal.runtime.int.modulo(ptr %left, ptr %right)
+  %result = call ptr @topal.runtime.result.success(ptr %remainder)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.int.try.quotient.modulo(ptr %left, ptr %right, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column) nounwind noinline {
+entry:
+  %right.zero = call i1 @topal.runtime.int.is.zero(ptr %right)
+  br i1 %right.zero, label %failure, label %success
+failure:
+  %failed = call ptr @topal.runtime.result.failure(i32 2, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column)
+  ret ptr %failed
+success:
+  %pair = call ptr @topal.runtime.int.quotient.modulo(ptr %left, ptr %right)
+  %result = call ptr @topal.runtime.result.success(ptr %pair)
+  ret ptr %result
+}
+
 define internal ptr @topal.runtime.int.power(ptr %base, ptr %exponent) nounwind noinline {
 entry:
   %sign.pointer = getelementptr %topal.IntStorage, ptr %exponent, i32 0, i32 0
@@ -915,6 +1049,54 @@ failure:
   unreachable
 invert:
   %result = call ptr @topal.runtime.rational.make(ptr %powered.denominator, ptr %powered.numerator)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.rational.try.make(ptr %numerator, ptr %denominator, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column) nounwind noinline {
+entry:
+  %denominator.zero = call i1 @topal.runtime.int.is.zero(ptr %denominator)
+  br i1 %denominator.zero, label %failure, label %success
+failure:
+  %numerator.zero = call i1 @topal.runtime.int.is.zero(ptr %numerator)
+  %code = select i1 %numerator.zero, i32 3, i32 2
+  %failed = call ptr @topal.runtime.result.failure(i32 %code, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column)
+  ret ptr %failed
+success:
+  %ratio = call ptr @topal.runtime.rational.make(ptr %numerator, ptr %denominator)
+  %result = call ptr @topal.runtime.result.success(ptr %ratio)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.rational.try.divide(ptr %left, ptr %right, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column) nounwind noinline {
+entry:
+  %right.numerator = call ptr @topal.runtime.rational.numerator(ptr %right)
+  %right.zero = call i1 @topal.runtime.int.is.zero(ptr %right.numerator)
+  br i1 %right.zero, label %failure, label %success
+failure:
+  %failed = call ptr @topal.runtime.result.failure(i32 2, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column)
+  ret ptr %failed
+success:
+  %ratio = call ptr @topal.runtime.rational.divide(ptr %left, ptr %right)
+  %result = call ptr @topal.runtime.result.success(ptr %ratio)
+  ret ptr %result
+}
+
+define internal ptr @topal.runtime.rational.try.power(ptr %base, ptr %exponent, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column) nounwind noinline {
+entry:
+  %exponent.sign.pointer = getelementptr %topal.IntStorage, ptr %exponent, i32 0, i32 0
+  %exponent.sign = load i64, ptr %exponent.sign.pointer, align 8
+  %negative = icmp ne i64 %exponent.sign, 0
+  br i1 %negative, label %check.base, label %success
+check.base:
+  %numerator = call ptr @topal.runtime.rational.numerator(ptr %base)
+  %base.zero = call i1 @topal.runtime.int.is.zero(ptr %numerator)
+  br i1 %base.zero, label %failure, label %success
+failure:
+  %failed = call ptr @topal.runtime.result.failure(i32 2, ptr %domain, i64 %domain.length, ptr %source, i64 %source.length, i64 %line, i64 %column)
+  ret ptr %failed
+success:
+  %ratio = call ptr @topal.runtime.rational.power(ptr %base, ptr %exponent)
+  %result = call ptr @topal.runtime.result.success(ptr %ratio)
   ret ptr %result
 }
 

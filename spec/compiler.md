@@ -56,11 +56,10 @@ comparison, decimal observation, function passage, and control-flow joins
 SHALL preserve the corresponding `TOPAL-NUM-*` value without approximation.
 
 Finite Int power, Euclidean modulo, and quotient/modulo SHALL use the same
-unbounded representation and normative sign rules. A path requiring a dynamic
-arithmetic `Result` SHALL remain outside the admitted subset until its complete
-value and error representation is implemented; the compiler SHALL NOT replace
-that Result with process termination. A statically evident zero divisor SHALL
-remain a source diagnostic.
+unbounded representation and normative sign rules. A statically evident zero
+divisor SHALL remain a source diagnostic. Every admitted dynamic failure path
+SHALL follow `TOPAL-COMPILER-RESULT-001`; a compiler SHALL NOT replace a typed
+Result with process termination.
 
 Position-independent output without an ELF interpreter SHALL contain no
 load-time pointer relocation. Runtime construction SHALL be used when a private
@@ -96,6 +95,23 @@ SHALL distinguish the closed `Less`, `Equal`, and `Greater` alternatives and
 execute exactly the selected action. Both forms SHALL preserve compatible
 machine-scalar action values across the merge without introducing eager source
 evaluation or a runtime-library dispatch dependency.
+
+### TOPAL-COMPILER-RESULT-001 — Dynamic arithmetic Result representation
+
+Every admitted arithmetic `Result` SHALL preserve a success-or-error tag and a
+payload classified by the declared success type or the common structured Error
+type. An intrinsic Error SHALL retain its compiler-derived reporting domain,
+nominal arithmetic code, absent detail and cause, and source file, line, and
+column provenance. Passing or returning a Result SHALL preserve those fields
+unchanged, while an ordinary successful value SHALL satisfy its explicit Result
+contract without a source-level wrapper operation.
+
+Dynamic finite Rational construction, Rational division and negative power,
+and Int modulo and quotient/modulo SHALL construct their specified arithmetic
+Error instead of terminating or exposing an undefined runtime operation. The
+private representation and function signatures SHALL remain sealed by the
+exact native-ABI revision, shall be debuggable at O0, and shall introduce no
+foreign allocator, runtime, or calling convention.
 
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 

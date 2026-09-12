@@ -12,7 +12,9 @@ evidence.
 | 2a | arbitrary finite `Int` representation, literals, negation, absolute value, addition, subtraction, multiplication, equality, ordering, decimal output, GDB rendering, and freestanding allocation | complete |
 | 2b | finite `Int` identities/division/modulo/power, finite exact `Rational`, static zero-divisor diagnostics, exact equality/ordering, and direct three-way comparison | complete |
 | 2c-a | ordered comparison matchers and exhaustive decisions over `Comparison` values | complete |
-| 2c-b | dynamic arithmetic `Result` values and exact narrowing/validation | planned |
+| 2c-b1 | dynamic arithmetic `Result`/Error representation, construction, division, power, modulo, quotient/modulo, propagation, output, and debugging | complete |
+| 2c-b2 | exact Rational-to-Int and Nat narrowing/validation plus contextual success projection | planned |
+| 2c-b3 | structured Error observation and exhaustive Result/error-code decisions | planned |
 | 2c-c | normatively completed infinity construction and arithmetic | planned |
 | 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |
 | 2d-b | unbounded range construction and infinity endpoints after their prerequisite normative and runtime work | planned |
@@ -46,8 +48,10 @@ range evidence proved that its exact result fit the initial signed 64-bit
 representation. Increment 2a removes that boundary with a freestanding Topal
 numeric runtime and a private, dynamically sized representation. Increment 2b
 adds finite exact division and Rational values. Increment 2c-a adds the fully
-normative Comparison decision forms; 2c-b retains typed arithmetic failures and
-2c-c retains the infinity work that requires normative completion. Increment
+normative Comparison decision forms; 2c-b1 adds the initial typed arithmetic
+Result ABI and failure paths, while 2c-b2 and 2c-b3 retain narrowing,
+projection, observation, and Result decisions. Increment 2c-c retains the
+infinity work that requires normative completion. Increment
 2d-a adds the fully normative explicitly bounded finite range subset; 2d-b
 closes unbounded and infinite endpoints after increment 2c-c.
 Range-based collection selection remains grouped with containers. The roadmap

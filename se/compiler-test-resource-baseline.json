@@ -216,6 +216,66 @@
       "cpu_time_ns": 154550,
       "memory_peak_bytes": 18403328,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/dynamic-rational-construction.t": {
+      "cpu_time_ns": 117783720,
+      "memory_peak_bytes": 41299968,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/int-euclidean-modulo.t": {
+      "cpu_time_ns": 118005439,
+      "memory_peak_bytes": 41312256,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/result-division-error.t": {
+      "cpu_time_ns": 116517420,
+      "memory_peak_bytes": 41275392,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/result-error-propagation.t": {
+      "cpu_time_ns": 115783220,
+      "memory_peak_bytes": 41267200,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/result-negative-power-error.t": {
+      "cpu_time_ns": 116732540,
+      "memory_peak_bytes": 41246720,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/result-success.t": {
+      "cpu_time_ns": 115993780,
+      "memory_peak_bytes": 41320448,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/dynamic-rational-construction.t": {
+      "cpu_time_ns": 214973,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/int-euclidean-modulo.t": {
+      "cpu_time_ns": 467797,
+      "memory_peak_bytes": 18485248,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/result-division-error.t": {
+      "cpu_time_ns": 153895,
+      "memory_peak_bytes": 18554880,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/result-error-propagation.t": {
+      "cpu_time_ns": 149188,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/result-negative-power-error.t": {
+      "cpu_time_ns": 148920,
+      "memory_peak_bytes": 18661376,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/result-success.t": {
+      "cpu_time_ns": 159866,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
     }
   }
 }
