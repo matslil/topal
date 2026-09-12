@@ -327,6 +327,26 @@ runtime dispatch, type tag, foreign dependency, C/C++ runtime, other-language
 standard library, or `topal-native/6` revision is permitted. This realizes
 `TOPAL-COMPILER-RECURSION-OVERLOAD-IDENTITY-001` for increment 3b2-b5e5.
 
+## TOPAL-COMP-RECURSION-INT-MUTUAL-001 — Proven mutual Int recursion
+
+The checked compiler model shall reuse the shared decreasing and increasing
+mutual `Int` edge proofs. Before admitting a return to an active overload, it
+shall verify an active slice of at least two members in which every proof rule
+is identical, every next-member name matches the following active identity,
+and the last member targets the first. Isolated candidates, mixed directions,
+zero or otherwise invalid steps, and incomplete cycles shall remain
+`E-COMPILER-UNSUPPORTED`. Multiple next-member calls shall be checked and
+instantiated independently.
+
+Every member shall use its reserved exact private `fastcc` prototype. Generated
+definitions shall retain `noinline`, omit the false `norecurse` attribute, and
+require no tail-call optimization for O0 correctness. Distinct source members,
+parameters, and nested frames shall remain available through DWARF/GDB. The
+cycle proof shall be erased before lowering and add no dispatch table, hidden
+state, C/C++ runtime, other-language standard library, or `topal-native/6`
+revision. This realizes `TOPAL-COMPILER-RECURSION-INT-MUTUAL-001` for increment
+3b2-b5e6.
+
 ## TOPAL-COMP-RETURN-001 — Direct explicit function return
 
 Within an admitted linear function body, `return expression` shall evaluate and

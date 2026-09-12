@@ -806,6 +806,36 @@
       "cpu_time_ns": 165318,
       "memory_peak_bytes": 18362368,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/mutual-increasing-int-recursion.t": {
+      "cpu_time_ns": 123054640,
+      "memory_peak_bytes": 41644032,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/mutual-int-recursion.t": {
+      "cpu_time_ns": 122856060,
+      "memory_peak_bytes": 41635840,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/mutual-multiple-recursive-calls.t": {
+      "cpu_time_ns": 122506300,
+      "memory_peak_bytes": 41603072,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/mutual-increasing-int-recursion.t": {
+      "cpu_time_ns": 173962,
+      "memory_peak_bytes": 18411520,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/mutual-int-recursion.t": {
+      "cpu_time_ns": 220419,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/mutual-multiple-recursive-calls.t": {
+      "cpu_time_ns": 193204,
+      "memory_peak_bytes": 18690048,
+      "samples_per_test": 500
     }
   }
 }

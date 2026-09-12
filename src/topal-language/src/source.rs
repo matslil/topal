@@ -11398,7 +11398,7 @@ fn recursive_calls_fit_nat_bound(
     }
 }
 
-fn prove_mutual_int_recursion_edge(
+pub(super) fn prove_mutual_int_recursion_edge(
     source: &SourceText,
     function_name: &str,
     parameters: &[(String, String)],

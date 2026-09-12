@@ -4459,6 +4459,21 @@
       "cpu_time_ns": 2869380,
       "memory_peak_bytes": 18423808,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_closed_mutual_int_cycles_with_exact_private_edges": {
+      "cpu_time_ns": 12828320,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_retains_distinct_mutual_recursion_frames": {
+      "cpu_time_ns": 252056920,
+      "memory_peak_bytes": 57675776,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_only_complete_uniform_mutual_int_cycles": {
+      "cpu_time_ns": 5686819,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
     }
   }
 }

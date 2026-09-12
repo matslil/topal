@@ -3738,6 +3738,34 @@ mod tests {
     }
 
     #[test]
+    fn emits_closed_mutual_int_cycles_with_exact_private_edges() {
+        // TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001,
+        // TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001
+        for source in [
+            include_str!("../../../examples/language/mutual-int-recursion.t"),
+            include_str!("../../../examples/language/mutual-increasing-int-recursion.t"),
+            include_str!("../../../examples/language/mutual-multiple-recursive-calls.t"),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            let llvm = Generator::new(&program, "mutual-int-recursion.t").emit();
+            for function in &program.functions {
+                assert_eq!(
+                    llvm.matches(&format!(
+                        "define internal fastcc {} @{}(",
+                        llvm_type(&function.result_type),
+                        function.symbol
+                    ))
+                    .count(),
+                    1
+                );
+            }
+            assert!(llvm.matches("call fastcc").count() >= program.functions.len());
+            assert!(llvm.contains("nounwind noinline"));
+            assert!(!llvm.contains("norecurse"));
+        }
+    }
+
+    #[test]
     fn emits_forward_callee_before_its_caller() {
         // TOPAL-FUNCTION-FORWARD-DECLARATION-001, TOPAL-COMPILER-FUNCTION-001
         let source = include_str!("../../../examples/language/forward-function-declarations.t");
