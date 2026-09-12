@@ -696,6 +696,16 @@
       "cpu_time_ns": 225171,
       "memory_peak_bytes": 18530304,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/equality-and-ordering.t": {
+      "cpu_time_ns": 125876000,
+      "memory_peak_bytes": 41623552,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/equality-and-ordering.t": {
+      "cpu_time_ns": 260724,
+      "memory_peak_bytes": 18616320,
+      "samples_per_test": 500
     }
   }
 }

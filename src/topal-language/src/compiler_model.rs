@@ -2405,6 +2405,66 @@ impl Analyzer {
             return self.finish_power(left_value, right_value, span);
         }
 
+        if matches!(operation, CompilerBinary::Equal | CompilerBinary::NotEqual)
+            && (matches!(
+                left_value.value_type,
+                CompilerType::Tuple(_) | CompilerType::Record(_)
+            ) || matches!(
+                right_value.value_type,
+                CompilerType::Tuple(_) | CompilerType::Record(_)
+            ))
+        {
+            let (left_value, right_value, value_type) =
+                self.adapt_structural_equality(left_value, right_value, span)?;
+            if !compiler_equality_supported(&value_type) {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "equality for this structural value type",
+                ));
+            }
+            return Ok(Self::finish_binary(
+                operation,
+                left_value,
+                right_value,
+                CompilerType::Boolean,
+                span,
+            ));
+        }
+
+        if matches!(
+            operation,
+            CompilerBinary::Less
+                | CompilerBinary::Greater
+                | CompilerBinary::LessEqual
+                | CompilerBinary::GreaterEqual
+                | CompilerBinary::Compare
+        ) && (matches!(left_value.value_type, CompilerType::Tuple(_))
+            || matches!(right_value.value_type, CompilerType::Tuple(_)))
+        {
+            let (left_value, right_value, value_type) =
+                self.adapt_tuple_ordering(left_value, right_value, span)?;
+            if !compiler_ordering_supported(&value_type) {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "ordering for this structural value type",
+                ));
+            }
+            let result_type = if operation == CompilerBinary::Compare {
+                CompilerType::Comparison
+            } else {
+                CompilerType::Boolean
+            };
+            return Ok(Self::finish_binary(
+                operation,
+                left_value,
+                right_value,
+                result_type,
+                span,
+            ));
+        }
+
         let comparison = matches!(
             operation,
             CompilerBinary::Equal
@@ -2532,6 +2592,217 @@ impl Analyzer {
             result_type,
             span,
         ))
+    }
+
+    fn adapt_structural_equality(
+        &self,
+        mut left: CompilerExpression,
+        mut right: CompilerExpression,
+        span: Span,
+    ) -> Result<(CompilerExpression, CompilerExpression, CompilerType), Diagnostic> {
+        if is_exact_comparable(&left.value_type) && is_exact_comparable(&right.value_type) {
+            left = forget_nat_evidence(left);
+            right = forget_nat_evidence(right);
+            let value_type = if left.value_type == CompilerType::Rational
+                || right.value_type == CompilerType::Rational
+            {
+                left = into_rational(left);
+                right = into_rational(right);
+                CompilerType::Rational
+            } else {
+                CompilerType::Int
+            };
+            return Ok((left, right, value_type));
+        }
+        if left.value_type == CompilerType::Character && right.value_type == CompilerType::String {
+            left = forget_character_evidence(left);
+        } else if left.value_type == CompilerType::String
+            && right.value_type == CompilerType::Character
+        {
+            right = forget_character_evidence(right);
+        }
+        if left.value_type == right.value_type {
+            if compiler_equality_supported(&left.value_type) {
+                let value_type = left.value_type.clone();
+                return Ok((left, right, value_type));
+            }
+            return Err(
+                self.no_structural_comparison(span, "corresponding fields have no common equality")
+            );
+        }
+
+        match (left.value_type.clone(), right.value_type.clone()) {
+            (CompilerType::Tuple(left_types), CompilerType::Tuple(right_types))
+                if left_types.len() == right_types.len() =>
+            {
+                let (
+                    CompilerExpressionKind::Tuple(left_fields),
+                    CompilerExpressionKind::Tuple(right_fields),
+                ) = (&mut left.kind, &mut right.kind)
+                else {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "structural equality conversion on an opaque tuple",
+                    ));
+                };
+                let mut field_types = Vec::with_capacity(left_fields.len());
+                for index in 0..left_fields.len() {
+                    let (left_field, right_field, field_type) = self.adapt_structural_equality(
+                        left_fields[index].clone(),
+                        right_fields[index].clone(),
+                        span,
+                    )?;
+                    left_fields[index] = left_field;
+                    right_fields[index] = right_field;
+                    field_types.push(field_type);
+                }
+                let value_type = CompilerType::Tuple(field_types);
+                left.value_type = value_type.clone();
+                right.value_type = value_type.clone();
+                Ok((left, right, value_type))
+            }
+            (CompilerType::Record(left_types), CompilerType::Record(right_types)) => {
+                self.adapt_record_equality(left, right, left_types, &right_types, span)
+            }
+            _ => {
+                Err(self
+                    .no_structural_comparison(span, "corresponding fields have no common equality"))
+            }
+        }
+    }
+
+    fn adapt_record_equality(
+        &self,
+        mut left: CompilerExpression,
+        mut right: CompilerExpression,
+        left_types: Vec<(String, CompilerType)>,
+        right_types: &[(String, CompilerType)],
+        span: Span,
+    ) -> Result<(CompilerExpression, CompilerExpression, CompilerType), Diagnostic> {
+        let left_labels = left_types
+            .iter()
+            .map(|(label, _)| label)
+            .collect::<Vec<_>>();
+        let right_labels = right_types
+            .iter()
+            .map(|(label, _)| label)
+            .collect::<Vec<_>>();
+        if left_labels != right_labels {
+            return Err(self.no_structural_comparison(span, "record shapes differ"));
+        }
+        let (
+            CompilerExpressionKind::Record(left_fields),
+            CompilerExpressionKind::Record(right_fields),
+        ) = (&mut left.kind, &mut right.kind)
+        else {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "structural equality conversion on an opaque record",
+            ));
+        };
+        let mut field_types = Vec::with_capacity(left_types.len());
+        for (label, _) in left_types {
+            let left_index = left_fields
+                .iter()
+                .position(|(name, _)| name == &label)
+                .expect("checked left Record retains its type labels");
+            let right_index = right_fields
+                .iter()
+                .position(|(name, _)| name == &label)
+                .expect("checked right Record retains its type labels");
+            let (left_field, right_field, field_type) = self.adapt_structural_equality(
+                left_fields[left_index].1.clone(),
+                right_fields[right_index].1.clone(),
+                span,
+            )?;
+            left_fields[left_index].1 = left_field;
+            right_fields[right_index].1 = right_field;
+            field_types.push((label, field_type));
+        }
+        let value_type = CompilerType::Record(field_types);
+        left.value_type = value_type.clone();
+        right.value_type = value_type.clone();
+        Ok((left, right, value_type))
+    }
+
+    fn adapt_tuple_ordering(
+        &self,
+        mut left: CompilerExpression,
+        mut right: CompilerExpression,
+        span: Span,
+    ) -> Result<(CompilerExpression, CompilerExpression, CompilerType), Diagnostic> {
+        if is_exact_comparable(&left.value_type) && is_exact_comparable(&right.value_type) {
+            left = forget_nat_evidence(left);
+            right = forget_nat_evidence(right);
+            let value_type = if left.value_type == CompilerType::Rational
+                || right.value_type == CompilerType::Rational
+            {
+                left = into_rational(left);
+                right = into_rational(right);
+                CompilerType::Rational
+            } else {
+                CompilerType::Int
+            };
+            return Ok((left, right, value_type));
+        }
+        if left.value_type == right.value_type {
+            if compiler_ordering_supported(&left.value_type) {
+                let value_type = left.value_type.clone();
+                return Ok((left, right, value_type));
+            }
+            return Err(self.no_structural_comparison(
+                span,
+                "corresponding fields have no common total order",
+            ));
+        }
+        let (CompilerType::Tuple(left_types), CompilerType::Tuple(right_types)) =
+            (left.value_type.clone(), right.value_type.clone())
+        else {
+            return Err(self.no_structural_comparison(
+                span,
+                "corresponding fields have no common total order",
+            ));
+        };
+        if left_types.len() != right_types.len() {
+            return Err(self.no_structural_comparison(span, "tuple arities differ"));
+        }
+        let (
+            CompilerExpressionKind::Tuple(left_fields),
+            CompilerExpressionKind::Tuple(right_fields),
+        ) = (&mut left.kind, &mut right.kind)
+        else {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "structural ordering conversion on an opaque tuple",
+            ));
+        };
+        let mut field_types = Vec::with_capacity(left_fields.len());
+        for index in 0..left_fields.len() {
+            let (left_field, right_field, field_type) = self.adapt_tuple_ordering(
+                left_fields[index].clone(),
+                right_fields[index].clone(),
+                span,
+            )?;
+            left_fields[index] = left_field;
+            right_fields[index] = right_field;
+            field_types.push(field_type);
+        }
+        let value_type = CompilerType::Tuple(field_types);
+        left.value_type = value_type.clone();
+        right.value_type = value_type.clone();
+        Ok((left, right, value_type))
+    }
+
+    fn no_structural_comparison(&self, span: Span, reason: &str) -> Diagnostic {
+        source_diagnostic(
+            &self.source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            span,
+            format!("no structural comparison applies: {reason}"),
+        )
     }
 
     fn finish_power(
@@ -3743,11 +4014,21 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
             )
         }
         CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
-        CompilerType::Record(_)
-        | CompilerType::Error
+        CompilerType::Record(fields) => fields
+            .iter()
+            .all(|(_, value_type)| compiler_equality_supported(value_type)),
+        CompilerType::Error
         | CompilerType::ErrorDomain
         | CompilerType::Range(_)
         | CompilerType::Result(_) => false,
+    }
+}
+
+fn compiler_ordering_supported(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Int | CompilerType::Nat | CompilerType::Rational => true,
+        CompilerType::Tuple(fields) => fields.iter().all(compiler_ordering_supported),
+        _ => false,
     }
 }
 
@@ -4678,6 +4959,79 @@ mod tests {
     }
 
     #[test]
+    fn models_recursive_structural_comparisons() {
+        // TOPAL-TYPE-EQUALITY-001, TOPAL-TYPE-ORDERING-001,
+        // TOPAL-NUM-INT-RATIONAL-CONVERT-001,
+        // TOPAL-COMPILER-STRUCTURAL-COMPARISON-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/equality-and-ordering.t"
+        ))
+        .unwrap();
+        let binding = |name: &str| {
+            program
+                .main
+                .statements
+                .iter()
+                .find_map(|statement| match statement {
+                    CompilerStatement::Binding(binding) if binding.name == name => Some(binding),
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("the shared regression binds `{name}`"))
+        };
+        let CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Less,
+            left,
+            right,
+        } = &binding("ordered").value.kind
+        else {
+            panic!("expected derived tuple ordering")
+        };
+        let ordered_type = CompilerType::Tuple(vec![
+            CompilerType::Rational,
+            CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int]),
+        ]);
+        assert_eq!(left.value_type, ordered_type);
+        assert_eq!(right.value_type, ordered_type);
+
+        let CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Equal,
+            left,
+            right,
+        } = &binding("same-record").value.kind
+        else {
+            panic!("expected derived Record equality")
+        };
+        let record_type = CompilerType::Record(vec![
+            ("name".into(), CompilerType::String),
+            ("score".into(), CompilerType::Rational),
+        ]);
+        assert_eq!(left.value_type, record_type);
+        assert_eq!(right.value_type, record_type);
+        let CompilerExpressionKind::Record(left_fields) = &left.kind else {
+            panic!("expected the left Record")
+        };
+        let CompilerExpressionKind::Record(right_fields) = &right.kind else {
+            panic!("expected the right Record")
+        };
+        assert_eq!(left_fields[0].0, "name");
+        assert_eq!(right_fields[0].0, "score");
+
+        let shape_error =
+            analyze_for_compiler("use language (version is v0.1)\n(a is 1) = (b is 1)\n")
+                .unwrap_err();
+        assert_eq!(shape_error.code, "E-NO-APPLICABLE-OVERLOAD");
+        for source in [
+            "use language (version is v0.1)\n(value is (1 .. 2)) = (value is (1 .. 2))\n",
+            "use language (version is v0.1)\n(true, 1) < (false, 1)\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-NO-APPLICABLE-OVERLOAD"
+            );
+        }
+    }
+
+    #[test]
     fn models_prospective_utf8_string_byte_counts() {
         // TOPAL-TYPE-CALL-001, TOPAL-STRING-UTF8-BYTE-COUNT-001
         let source = include_str!("../../../examples/language/string-utf8-byte-count.t");
@@ -4726,13 +5080,7 @@ mod tests {
         let unsupported_field = "use language (version is v0.1)\nleft is (1 .. 2, true)\nright is (1 .. 2, true)\nleft = right\n";
         assert_eq!(
             analyze_for_compiler(unsupported_field).unwrap_err().code,
-            "E-COMPILER-UNSUPPORTED"
-        );
-
-        let field_conversion = "use language (version is v0.1)\n(1, true) = (1.0, true)\n";
-        assert_eq!(
-            analyze_for_compiler(field_conversion).unwrap_err().code,
-            "E-TYPE-MISMATCH"
+            "E-NO-APPLICABLE-OVERLOAD"
         );
     }
 

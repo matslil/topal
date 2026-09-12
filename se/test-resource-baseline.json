@@ -4329,6 +4329,26 @@
       "cpu_time_ns": 3582999,
       "memory_peak_bytes": 18399232,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::lowers_recursive_structural_comparisons": {
+      "cpu_time_ns": 6301580,
+      "memory_peak_bytes": 18075648,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_structural_comparison_results": {
+      "cpu_time_ns": 276623919,
+      "memory_peak_bytes": 56881152,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::structural_comparison_runtime_matches_interpreter": {
+      "cpu_time_ns": 135257760,
+      "memory_peak_bytes": 41127936,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_recursive_structural_comparisons": {
+      "cpu_time_ns": 3546939,
+      "memory_peak_bytes": 18223104,
+      "samples_per_test": 50
     }
   }
 }

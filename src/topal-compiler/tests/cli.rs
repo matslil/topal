@@ -159,6 +159,33 @@ fn finite_exact_runtime_matches_large_gcd_and_division_semantics() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn structural_comparison_runtime_matches_interpreter() {
+    // TOPAL-COMP-STRUCTURAL-COMPARISON-001,
+    // TOPAL-TYPE-EQUALITY-001, TOPAL-TYPE-ORDERING-001
+    let directory = temporary("structural-comparison");
+    let source = directory.join("structural-comparison.t");
+    let executable = directory.join("application");
+    let source_text = "use language (version is v0.1)\nleft is (1, 2)\nequal is (1, 2)\ngreater is (1, 3)\nrecord-left is (name is \"Ada\", score is 1)\nrecord-equal is (score is 1, name is \"Ada\")\nrecord-different is (name is \"Ada\", score is 2)\n(left < greater, greater > left, left <= equal, greater >= left, left <=> greater, equal <=> left, greater <=> left, record-left = record-equal, record-left != record-different)\n";
+    fs::write(&source, source_text).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn finite_range_runtime_matches_exact_interpreter_semantics() {
     // TOPAL-COMP-RANGE-001; TOPAL-RANGE-BOUNDS/MEMBERSHIP/INTERSECTION/EMPTY/BOUND-001
     let directory = temporary("finite-ranges");
@@ -999,6 +1026,58 @@ fn gdb_renders_values_projected_from_anonymous_records() {
     let text = String::from_utf8_lossy(&debugged.stdout);
     assert!(text.contains("$1 = \"Ada\""), "{text}");
     assert!(text.contains("$2 = \"Hello, Ada\""), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_renders_structural_comparison_results() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-COMP-STRUCTURAL-COMPARISON-001
+    let directory = temporary("gdb-structural-comparison");
+    let source = directory.join("equality-and-ordering.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/equality-and-ordering.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            "break equality-and-ordering.t:9",
+            "-ex",
+            "run",
+            "-ex",
+            "print 'same-exact-value'",
+            "-ex",
+            "print 'different-text'",
+            "-ex",
+            "next",
+            "-ex",
+            "print 'same-record'",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = true"), "{text}");
+    assert!(text.contains("$2 = true"), "{text}");
+    assert!(text.contains("$3 = true"), "{text}");
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

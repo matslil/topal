@@ -302,6 +302,29 @@ storage exists, the compiler SHALL expose source locations and projected scalar
 bindings through DWARF/GDB but SHALL NOT publish a misleading aggregate-local
 debug representation.
 
+### TOPAL-COMPILER-STRUCTURAL-COMPARISON-001 — Derived structural comparison
+
+An admitted Tuple SHALL provide total ordering when every corresponding field
+has an admitted total order, including recursively nested Tuples. Both complete
+operands SHALL evaluate exactly once from left to right. Field comparison SHALL
+then proceed lexicographically in position order and SHALL stop at the first
+non-Equal result. `<`, `>`, `<=`, `>=`, and `<=>` SHALL select their result from
+that single ordering. Canonical Int/Nat/Rational conversion SHALL be applied per
+field before comparison when required.
+
+An admitted anonymous Record SHALL provide equality and inequality when both
+operands have the same canonical label set and every corresponding field has an
+admitted equality. Fields SHALL align by label regardless of construction order,
+and canonical field conversions SHALL occur before equality. A different label
+set or a field pair with no common evidence SHALL have no applicable structural
+comparison rather than compare unequal.
+
+Lowering SHALL operate on the existing decomposed aggregates, use short-circuit
+LLVM control flow for lexicographic comparison, and introduce no aggregate
+allocation, runtime, or native ABI. A required field conversion hidden inside
+an opaque aggregate SHALL remain unsupported until aggregate projection or
+storage exists.
+
 ### TOPAL-COMPILER-STRING-UTF8-BYTE-COUNT-001 — Native prospective byte count
 
 For an admitted plain String, `text byte-count Utf8` SHALL read the exact

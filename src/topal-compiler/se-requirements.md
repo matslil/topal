@@ -370,6 +370,30 @@ record binding itself rather than claim a false aggregate debug layout. This
 requirement realizes `TOPAL-COMPILER-RECORD-001` for compiler increment
 3b2-b5b.
 
+## TOPAL-COMP-STRUCTURAL-COMPARISON-001 — Derived structural comparison
+
+The checked compiler model shall derive Tuple total ordering recursively when
+every corresponding field has admitted ordering. It shall evaluate both
+complete operands once from left to right, apply canonical Int/Nat/Rational
+conversion per field, and lower lexicographic comparison so later field
+comparisons execute only after every preceding field compares Equal. The same
+three-way result shall drive `<`, `>`, `<=`, `>=`, and `<=>`.
+
+The compiler shall derive anonymous Record equality and inequality for the same
+canonical label set when corresponding label values have admitted equality. It
+shall align fields by label independently of construction order and apply
+admitted canonical field conversions. Different shapes or unsupported field
+pairs shall produce `E-NO-APPLICABLE-OVERLOAD`; conversions hidden in a
+non-decomposable aggregate shall remain explicitly unsupported.
+
+LLVM lowering shall reuse decomposed Tuple and Record values, existing exact
+comparators, `br`, and `phi`, without aggregate allocation, a structural runtime,
+C/C++ runtime, standard library, or native ABI revision. Boolean and Comparison
+results shall reuse their existing DWARF/GDB paths. This requirement covers the
+admitted structural cases of `TOPAL-TYPE-EQUALITY-001`,
+`TOPAL-TYPE-ORDERING-001`, and `TOPAL-NUM-INT-RATIONAL-CONVERT-001`; it realizes
+`TOPAL-COMPILER-STRUCTURAL-COMPARISON-001` for increment 3b2-b5c.
+
 ## TOPAL-COMP-STRING-UTF8-BYTE-COUNT-001 — Prospective UTF-8 byte count
 
 For an admitted plain String, the compiler shall evaluate

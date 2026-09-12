@@ -21,6 +21,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/dynamic-rational-int-validation.t",
     "examples/language/dynamic-rational-construction.t",
     "examples/language/empty-block.t",
+    "examples/language/equality-and-ordering.t",
     "examples/language/enum-decisions.t",
     "examples/language/enum-functions.t",
     "examples/language/enum-values.t",

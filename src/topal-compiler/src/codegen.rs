@@ -1470,7 +1470,7 @@ impl<'a> Generator<'a> {
                 _ => unreachable!("checked power base is exact numeric"),
             },
             CompilerBinary::Compare => {
-                LlValue::Comparison(self.emit_numeric_compare(left, right, body, span))
+                LlValue::Comparison(self.emit_total_compare(left, right, body, span))
             }
             CompilerBinary::And => match (left, right) {
                 (LlValue::Boolean(left), LlValue::Boolean(right)) => LlValue::Boolean(
@@ -1535,7 +1535,7 @@ impl<'a> Generator<'a> {
                     CompilerBinary::GreaterEqual => "sge",
                     _ => unreachable!(),
                 };
-                let comparison = self.emit_numeric_compare(left, right, body, span);
+                let comparison = self.emit_total_compare(left, right, body, span);
                 LlValue::Boolean(body.instruction(
                     &format!("icmp {predicate} i32 {comparison}, 0"),
                     span,
@@ -1642,7 +1642,88 @@ impl<'a> Generator<'a> {
                 }
                 equal
             }
+            (LlValue::Record(left), LlValue::Record(right)) => {
+                self.emit_record_equal(left, right, body, span)
+            }
             _ => unreachable!("checked equality values agree"),
+        }
+    }
+
+    fn emit_record_equal(
+        &mut self,
+        left: &[(String, LlValue)],
+        right: &[(String, LlValue)],
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        debug_assert_eq!(left.len(), right.len());
+        let mut equal = None;
+        for (label, left) in left {
+            let right = right
+                .iter()
+                .find_map(|(name, value)| (name == label).then_some(value))
+                .unwrap_or_else(|| panic!("checked Record equality retains `{label}`"));
+            let field_equal = self.emit_equal(left, right, body, span);
+            equal = Some(match equal {
+                None => field_equal,
+                Some(equal) => body.instruction(
+                    &format!("and i1 {equal}, {field_equal}"),
+                    span,
+                    &mut self.debug,
+                ),
+            });
+        }
+        equal.unwrap_or_else(|| "true".into())
+    }
+
+    fn emit_total_compare(
+        &mut self,
+        left: &LlValue,
+        right: &LlValue,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        match (left, right) {
+            (LlValue::Int(_), LlValue::Int(_)) | (LlValue::Rational(_), LlValue::Rational(_)) => {
+                self.emit_numeric_compare(left, right, body, span)
+            }
+            (LlValue::Tuple(left), LlValue::Tuple(right)) => {
+                debug_assert_eq!(left.len(), right.len());
+                let mut fields = left.iter().zip(right);
+                let Some((left, right)) = fields.next() else {
+                    return "0".into();
+                };
+                let mut comparison = self.emit_total_compare(left, right, body, span);
+                for (left, right) in fields {
+                    let comparison_block = body.current_block.clone();
+                    let compare_next = body.label("tuple.compare.next");
+                    let compare_done = body.label("tuple.compare.done");
+                    let equal = body.instruction(
+                        &format!("icmp eq i32 {comparison}, 0"),
+                        span,
+                        &mut self.debug,
+                    );
+                    let location = self.debug.location(span, body.subprogram);
+                    body.terminator(
+                        &format!("br i1 {equal}, label %{compare_next}, label %{compare_done}"),
+                        location,
+                    );
+                    body.start_block(&compare_next);
+                    let next = self.emit_total_compare(left, right, body, span);
+                    let next_block = body.current_block.clone();
+                    body.terminator(&format!("br label %{compare_done}"), location);
+                    body.start_block(&compare_done);
+                    comparison = body.instruction(
+                        &format!(
+                            "phi i32 [ {comparison}, %{comparison_block} ], [ {next}, %{next_block} ]"
+                        ),
+                        span,
+                        &mut self.debug,
+                    );
+                }
+                comparison
+            }
+            _ => unreachable!("checked total-order values agree"),
         }
     }
 
@@ -3474,6 +3555,20 @@ mod tests {
         assert!(llvm.contains(&llvm_bytes(b"name")));
         assert!(llvm.contains(&llvm_bytes(b"active")));
         assert!(llvm.contains(&llvm_bytes(b"Ada")));
+        assert!(!llvm.contains("runtime.record"));
+    }
+
+    #[test]
+    fn lowers_recursive_structural_comparisons() {
+        // TOPAL-COMPILER-STRUCTURAL-COMPARISON-001
+        let source = include_str!("../../../examples/language/equality-and-ordering.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "equality-and-ordering.t").emit();
+        assert!(llvm.contains("tuple.compare.next"));
+        assert!(llvm.contains("phi i32"));
+        assert!(llvm.contains("@topal.runtime.rational.compare"));
+        assert!(llvm.contains("@topal.runtime.string.equal"));
+        assert!(!llvm.contains("runtime.tuple"));
         assert!(!llvm.contains("runtime.record"));
     }
 
