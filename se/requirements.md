@@ -218,3 +218,49 @@ Hard target-dependent requirements shall consume typed provider evidence
 without exposing target facts to ordinary semantic computation. Architecture,
 scheduler, device, fault-domain, and foreign-ABI schemas remain separately
 deferred and shall not be inferred from this seam.
+
+## TOPAL-REQ-COMPILER-001 — Correct native compilation
+
+At its unoptimized reference level, the compiler shall preserve the observable
+semantics of every accepted source program and shall reject every feature
+outside its explicitly versioned implementation subset. Optional optimization
+shall not repair, weaken, or change source meaning.
+
+## TOPAL-REQ-NATIVE-PLATFORM-001 — Freestanding platform boundary
+
+A native Topal executable shall depend only on the interfaces explicitly
+selected for its target. It shall not implicitly require a C or C++ standard
+library, foreign-language runtime, startup object, or dynamic loader. Direct
+operating-system mechanisms shall be isolated in a versioned platform layer
+with typed inputs, results, failures, effects, and target identity.
+
+## TOPAL-REQ-NATIVE-ABI-001 — Target-qualified ABI lowering
+
+Every machine-code artifact shall record its target triple, data layout,
+object format, CPU baseline, platform ABI, and Topal private-ABI revision.
+Target-specific calling and layout decisions shall be derived only from a
+qualified target implementation. A foreign boundary shall use an explicit
+adapter and shall not expose a private Topal aggregate representation.
+
+## TOPAL-REQ-NATIVE-ARTIFACT-001 — Validated library code-generation metadata
+
+A compiled library shall retain the semantic GEIR and public interface
+information needed for source-independent checking and instantiation, plus
+target-qualified native slices and reproducible dependency, toolchain,
+provenance, and debug mappings. LLVM IR or bitcode shall not become the stable
+library compatibility boundary.
+
+## TOPAL-REQ-NATIVE-DEBUG-001 — Source-level native debugging
+
+An unoptimized native artifact shall retain sufficient source, scope, function,
+parameter, local-value, type, and unwind information for deterministic GDB
+breakpoints, stepping, backtraces, and value inspection. Optimized artifacts
+shall state their reduced variable-availability guarantees.
+
+## TOPAL-REQ-LLVM-001 — Qualified LLVM use
+
+The compiler shall version-check LLVM, verify every generated module, delegate
+target-independent and target-dependent transformations only where LLVM's
+semantics match Topal's proved facts, and record the disposition of applicable
+LLVM facilities. A deferred or deliberately unused facility shall have a
+documented reason.

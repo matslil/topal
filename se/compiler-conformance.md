@@ -1,0 +1,42 @@
+# Compiler conformance roadmap
+
+This roadmap turns the approved compiler direction into reviewable increments.
+Each increment ends in a PR and extends the same compiler rather than creating
+disposable prototypes. A domain is complete only when every applicable stable
+rule has an explicit compiler disposition and shared executable regression
+evidence.
+
+| Increment | Language and tool closure | Status |
+| ---: | --- | --- |
+| 1 | LLVM 22 pipeline, Linux x86-64 freestanding startup/syscalls, O0, DWARF/GDB, native metadata, Unit/Boolean/bounded exact Int/positional products, immutable bindings, eager Boolean and checked integer operations, ordinary nonrecursive function specialization, Boolean decisions | complete |
+| 2 | arbitrary-precision `Int`, exact `Rational`, complete numeric construction/arithmetic/errors/ranges | planned |
+| 3 | complete function forms, recursion/totality evidence, overloads, records, enums, unions, constraints, capabilities, and decisions | planned |
+| 4 | strings, Unicode operations, fundamental containers, traversal, and representation-safe allocation | planned |
+| 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
+| 6 | module/package/application construction, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
+| 7 | effects, resources, layouts, locations, tasks, deterministic scheduling, transactions, time, static flow, and platform packages | planned |
+| 8 | native serialization, introspection, contracts/evidence, implementation plans, information flow, and remaining `v0.2` assurance behavior | planned |
+| 9 | complete cross-tool rule audit, optimized-level admission, LTO/sanitizer/coverage/PGO dispositions, and whole-core parity qualification | planned |
+
+## Increment acceptance
+
+Every increment shall:
+
+1. cite all newly accepted specification rule IDs in compiler requirements and
+   functional tests;
+2. compile and run the same `.t` sources used by the interpreter, without a
+   copied compiler version;
+3. compare interpreter and `-O0` executable observations for the supported
+   shared corpus;
+4. reject still-unsupported constructs with stable compiler diagnostics;
+5. retain distinct compiler-build, compiler-execution, and interpreter resource
+   measurements;
+6. verify LLVM IR, native artifact metadata, binary dependency freedom, and
+   applicable debug information; and
+7. update this table, `se/traceability.md`, and the compiler requirement file.
+
+Increment 1's bounded integer lowering accepts an operation only when static
+range evidence proves that its exact result fits the initial signed 64-bit
+representation. This is a temporary explicit compiler subset, not a change to
+Topal's arbitrary-precision `Int` semantics. Increment 2 removes that boundary
+with a freestanding Topal numeric runtime.

@@ -3739,6 +3739,221 @@
       "cpu_time_ns": 3341579,
       "memory_peak_bytes": 18235392,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::artifact::tests::native_metadata_rejects_target_and_dependency_ambiguity": {
+      "cpu_time_ns": 2090400,
+      "memory_peak_bytes": 18460672,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::artifact::tests::native_metadata_round_trips_only_in_canonical_form": {
+      "cpu_time_ns": 2677960,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_target_platform_runtime_and_debug_metadata": {
+      "cpu_time_ns": 2359799,
+      "memory_peak_bytes": 18391040,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::compiles_and_executes_shared_regression_with_canonical_metadata": {
+      "cpu_time_ns": 100139700,
+      "memory_peak_bytes": 38490112,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::emits_verifiable_llvm_ir_and_object": {
+      "cpu_time_ns": 93482320,
+      "memory_peak_bytes": 37933056,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::executable_is_static_pie_without_foreign_runtime_or_loader": {
+      "cpu_time_ns": 106133519,
+      "memory_peak_bytes": 37933056,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_observes_source_breakpoint_stack_and_local_value": {
+      "cpu_time_ns": 272996940,
+      "memory_peak_bytes": 56930304,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::unsupported_source_and_missing_llvm_do_not_publish_outputs": {
+      "cpu_time_ns": 5717260,
+      "memory_peak_bytes": 18329600,
+      "samples_per_test": 50
+    },
+    "topal-geir::lib:topal_geir::tests::legacy_revision_remains_decodable_without_v02_fields": {
+      "cpu_time_ns": 1356480,
+      "memory_peak_bytes": 18333696,
+      "samples_per_test": 50
+    },
+    "topal-geir::lib:topal_geir::tests::revision_two_rejects_missing_or_impermissibly_trusted_metadata": {
+      "cpu_time_ns": 1279360,
+      "memory_peak_bytes": 18391040,
+      "samples_per_test": 50
+    },
+    "topal-geir::lib:topal_geir::tests::revision_two_round_trips_contract_and_implementation_evidence_context": {
+      "cpu_time_ns": 1406319,
+      "memory_peak_bytes": 18202624,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_destructures_an_anonymous_product_pattern": {
+      "cpu_time_ns": 11131400,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_executes_an_explicit_multi_parameter_measure": {
+      "cpu_time_ns": 29554180,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::malformed_source_regex_reports_a_diagnostic_instead_of_a_nonmatch": {
+      "cpu_time_ns": 1796061340,
+      "memory_peak_bytes": 105152512,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::analyzes_functions_and_boolean_decisions_for_the_native_backend": {
+      "cpu_time_ns": 2380799,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_a_library_until_compiled_dependency_loading_exists": {
+      "cpu_time_ns": 1984959,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_an_unproved_machine_integer_representation": {
+      "cpu_time_ns": 2057159,
+      "memory_peak_bytes": 18395136,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::source::tests::interpreter_fails_closed_for_unproved_parameter_evidence": {
+      "cpu_time_ns": 2549159,
+      "memory_peak_bytes": 18386944,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::source::tests::interpreter_requires_evidence_for_hard_implementation_guarantees": {
+      "cpu_time_ns": 3704020,
+      "memory_peak_bytes": 18391040,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::source::tests::language_revisions_keep_function_clause_syntax_disjoint": {
+      "cpu_time_ns": 2660679,
+      "memory_peak_bytes": 18386944,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::source::tests::v02_enforces_function_preconditions_and_named_result_postconditions": {
+      "cpu_time_ns": 4438839,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::source::tests::v02_language_owned_properties_cannot_be_shadowed_at_root": {
+      "cpu_time_ns": 5513180,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::source::v02_interface_contracts_are_retained_and_required_of_implementations": {
+      "cpu_time_ns": 4075060,
+      "memory_peak_bytes": 18317312,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::assurance::tests::evidence_authority_and_assumptions_fail_closed": {
+      "cpu_time_ns": 1385120,
+      "memory_peak_bytes": 18386944,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::assurance::tests::exclusivity_and_regions_reject_aliases_and_escapes": {
+      "cpu_time_ns": 1399740,
+      "memory_peak_bytes": 18403328,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::assurance::tests::implementation_plan_is_compiler_owned_and_canonical": {
+      "cpu_time_ns": 1303900,
+      "memory_peak_bytes": 18513920,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::assurance::tests::resource_composition_is_dimension_specific_and_unknown_fails": {
+      "cpu_time_ns": 1303179,
+      "memory_peak_bytes": 18391040,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::layout_and_information::tests::blocked_layout_validates_and_rejects_out_of_range_coordinates": {
+      "cpu_time_ns": 1435700,
+      "memory_peak_bytes": 18386944,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::layout_and_information::tests::explicit_stride_validation_is_bounded_and_accounts_for_element_extent": {
+      "cpu_time_ns": 1389440,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::layout_and_information::tests::policy_checks_lattice_implicit_flow_and_authority": {
+      "cpu_time_ns": 1493440,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::layout_and_information::tests::sparse_representation_is_canonical_and_duplicate_checked": {
+      "cpu_time_ns": 1430780,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::portable_runtime::tests::channel_progress_requires_derived_spsc_and_certificate": {
+      "cpu_time_ns": 1275800,
+      "memory_peak_bytes": 18378752,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::portable_runtime::tests::flow_derives_repetitions_schedule_and_capacity": {
+      "cpu_time_ns": 1365620,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::portable_runtime::tests::resumptions_are_affine_unless_multishot_is_verified": {
+      "cpu_time_ns": 1273479,
+      "memory_peak_bytes": 18305024,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::portable_runtime::tests::snapshots_never_reclaim_an_observed_version": {
+      "cpu_time_ns": 1275840,
+      "memory_peak_bytes": 18386944,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::portable_runtime::tests::time_is_clock_typed_and_periodic_release_does_not_drift": {
+      "cpu_time_ns": 1282079,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::portable_runtime::tests::transaction_conflict_and_cancellation_publish_nothing": {
+      "cpu_time_ns": 1237580,
+      "memory_peak_bytes": 18386944,
+      "samples_per_test": 50
+    },
+    "topal-semantics::lib:topal_semantics::portable_runtime::tests::wait_free_bound_is_not_implied_by_lock_free": {
+      "cpu_time_ns": 1273919,
+      "memory_peak_bytes": 18333696,
+      "samples_per_test": 50
+    },
+    "topal-source::lib:topal_source::tests::decomposes_text_at_scalar_boundaries": {
+      "cpu_time_ns": 1250040,
+      "memory_peak_bytes": 18391040,
+      "samples_per_test": 50
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::keeps_exclusive_and_consumes_on_parameters": {
+      "cpu_time_ns": 1413620,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::rejects_out_of_order_function_clauses": {
+      "cpu_time_ns": 1400100,
+      "memory_peak_bytes": 18513920,
+      "samples_per_test": 50
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::retains_v02_clauses_on_interface_operations": {
+      "cpu_time_ns": 1548980,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::retains_v02_function_clauses_around_their_arrow": {
+      "cpu_time_ns": 1578600,
+      "memory_peak_bytes": 18386944,
+      "samples_per_test": 50
     }
   }
 }

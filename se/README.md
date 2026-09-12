@@ -12,6 +12,8 @@ formal specification.
 - [Verification strategy](verification-strategy.md)
 - [Test strategy](test-strategy.md)
 - [Toolchain architecture](toolchain-architecture.md)
+- [LLVM compiler and native platform architecture](compiler-architecture.md)
+- [Compiler conformance roadmap](compiler-conformance.md)
 - [Design-pattern language-support architecture](design-pattern-language-support.md)
 - [Core-language coverage ledger](core-language-coverage.md)
 - [Source-tool conformance matrix](tool-conformance.md)

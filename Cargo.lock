@@ -541,6 +541,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "topal-compiler"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "topal-geir",
+ "topal-language",
+ "topal-source",
+]
+
+[[package]]
 name = "topal-debugger"
 version = "0.1.0"
 dependencies = [

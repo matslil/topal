@@ -1,0 +1,21 @@
+[package]
+name = "topal-compiler"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.151"
+sha2 = "0.10"
+topal-geir = { path = "../topal-geir" }
+topal-language = { path = "../topal-language" }
+topal-source = { path = "../topal-source" }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "topalc"
+path = "src/main.rs"
