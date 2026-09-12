@@ -200,7 +200,7 @@ class _TopalResultPrinter:
             return _TopalErrorPrinter(payload).to_string()
         if tag != 0:
             return f"<invalid Result tag {tag}>"
-        if self._success == "Int":
+        if self._success in ("Int", "Nat"):
             return _TopalIntPrinter(payload).to_string()
         if self._success == "Rational":
             return _TopalRationalPrinter(payload).to_string()
@@ -221,6 +221,8 @@ class _TopalResultPrinter:
 def _lookup_topal_value(value):
     value_type = str(value.type)
     if value_type == "Int":
+        return _TopalIntPrinter(value)
+    if value_type == "Nat":
         return _TopalIntPrinter(value)
     if value_type == "Rational":
         return _TopalRationalPrinter(value)

@@ -22,6 +22,7 @@ pub enum CompilerType {
     Unit,
     Boolean,
     Int,
+    Nat,
     Rational,
     Comparison,
     Range(Box<Self>),
@@ -38,6 +39,7 @@ impl CompilerType {
             Self::Unit
                 | Self::Boolean
                 | Self::Int
+                | Self::Nat
                 | Self::Rational
                 | Self::Comparison
                 | Self::Range(_)
@@ -51,6 +53,7 @@ impl CompilerType {
             Self::Unit => "Unit".into(),
             Self::Boolean => "Boolean".into(),
             Self::Int => "Int".into(),
+            Self::Nat => "Nat".into(),
             Self::Rational => "Rational".into(),
             Self::Comparison => "Comparison".into(),
             Self::Range(endpoint) => format!("Range {}", endpoint.name()),
@@ -143,6 +146,12 @@ pub enum CompilerFallible {
     IntQuotientModulo,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerValidation {
+    RationalToInt,
+    IntToNat,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerExpressionKind {
     Unit,
@@ -159,7 +168,15 @@ pub enum CompilerExpressionKind {
         numerator: Box<CompilerExpression>,
         denominator: Box<CompilerExpression>,
     },
+    RationalToInt(Box<CompilerExpression>),
+    IntToNat(Box<CompilerExpression>),
     ResultSuccess(Box<CompilerExpression>),
+    ResultProject(Box<CompilerExpression>),
+    Validate {
+        operation: CompilerValidation,
+        value: Box<CompilerExpression>,
+        error_span: Span,
+    },
     Fallible {
         operation: CompilerFallible,
         left: Box<CompilerExpression>,
@@ -321,7 +338,12 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         next_instance: 0,
     };
     let mut environment = BTreeMap::new();
-    let main = analyzer.analyze_block(&parsed.statements, &mut environment, BlockKind::TopLevel)?;
+    let main = analyzer.analyze_block(
+        &parsed.statements,
+        &mut environment,
+        BlockKind::TopLevel,
+        None,
+    )?;
     Ok(CompilerProgram {
         source,
         language_version,
@@ -418,6 +440,7 @@ impl Analyzer {
         statements: &[Statement],
         environment: &mut BTreeMap<String, BindingFacts>,
         kind: BlockKind,
+        enclosing_result: Option<&CompilerType>,
     ) -> Result<CompilerBlock, Diagnostic> {
         let mut lowered = Vec::new();
         let mut result = None;
@@ -445,9 +468,40 @@ impl Analyzer {
                             format!("`{name_text}` is already declared in this scope"),
                         ));
                     }
-                    let value = self.analyze_expression(value, environment)?;
+                    let mut value = self.analyze_expression(value, environment)?;
                     if let Some(classifier) = classifier {
                         let expected = parse_classifier(&self.source, *classifier)?;
+                        if expected == CompilerType::Int
+                            && value.value_type == CompilerType::Rational
+                        {
+                            let span = value.span;
+                            value = self.finish_int_conversion(value, span, span)?;
+                        } else if expected == CompilerType::Nat
+                            && value.value_type == CompilerType::Int
+                        {
+                            let span = value.span;
+                            value = self.finish_nat_conversion(value, span, span)?;
+                        }
+                        if let CompilerType::Result(success) = &value.value_type
+                            && success.as_ref() == &expected
+                        {
+                            if !matches!(enclosing_result, Some(CompilerType::Result(_))) {
+                                return Err(source_diagnostic(
+                                    &self.source,
+                                    "E-RESULT-PROJECTION-CONTEXT",
+                                    value.span,
+                                    "Result success projection requires an enclosing compatible Result function",
+                                ));
+                            }
+                            let span = value.span;
+                            value = CompilerExpression {
+                                kind: CompilerExpressionKind::ResultProject(Box::new(value)),
+                                value_type: expected.clone(),
+                                int_range: None,
+                                rational_value: None,
+                                span,
+                            };
+                        }
                         require_same_type(&self.source, *classifier, &expected, &value.value_type)?;
                     }
                     environment.insert(
@@ -659,9 +713,14 @@ impl Analyzer {
             return match self.source.slice(*domain) {
                 "Int" | "Nat" => {
                     let value = BigInt::from(u8::from(one));
+                    let value_type = if self.source.slice(*domain) == "Nat" {
+                        CompilerType::Nat
+                    } else {
+                        CompilerType::Int
+                    };
                     Ok(CompilerExpression {
                         kind: CompilerExpressionKind::Int(value.clone()),
-                        value_type: CompilerType::Int,
+                        value_type,
                         int_range: Some(IntRange::exact(value)),
                         rational_value: None,
                         span,
@@ -683,6 +742,13 @@ impl Analyzer {
                     "numeric identity domain",
                 )),
             };
+        }
+        if let [Expression::Identifier(constructor), argument] = items {
+            match self.source.slice(*constructor) {
+                "Int" => return self.analyze_int_constructor(argument, span, environment),
+                "Nat" => return self.analyze_nat_constructor(argument, span, environment),
+                _ => {}
+            }
         }
         if let [Expression::Identifier(constructor), argument] = items
             && self.source.slice(*constructor) == "Rational"
@@ -799,6 +865,121 @@ impl Analyzer {
             return self.analyze_identifier_binary(&operation, left, right, span, environment);
         }
         self.analyze_call(items, span, environment)
+    }
+
+    fn analyze_int_constructor(
+        &mut self,
+        argument: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let value = self.analyze_expression(argument, environment)?;
+        self.finish_int_conversion(value, span, argument.span())
+    }
+
+    fn finish_int_conversion(
+        &self,
+        value: CompilerExpression,
+        span: Span,
+        error_span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        if value.value_type == CompilerType::Int {
+            return Ok(value);
+        }
+        require_type(
+            &self.source,
+            value.span,
+            &CompilerType::Rational,
+            &value.value_type,
+        )?;
+        if let Some(rational) = &value.rational_value {
+            if rational.denom() != &BigInt::from(1) && compiler_expression_is_closed(&value) {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-RATIONAL-NOT-EXACT-INT",
+                    error_span,
+                    format!(
+                        "exact Rational operand has denominator {}, so Int cannot represent it",
+                        rational.denom()
+                    ),
+                ));
+            }
+            if rational.denom() == &BigInt::from(1) {
+                let numerator = rational.numer().clone();
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::RationalToInt(Box::new(value)),
+                    value_type: CompilerType::Int,
+                    int_range: Some(IntRange::exact(numerator)),
+                    rational_value: None,
+                    span,
+                });
+            }
+        }
+        Ok(Self::finish_validation(
+            CompilerValidation::RationalToInt,
+            value,
+            CompilerType::Int,
+            span,
+            error_span,
+        ))
+    }
+
+    fn analyze_nat_constructor(
+        &mut self,
+        argument: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let value = self.analyze_expression(argument, environment)?;
+        self.finish_nat_conversion(value, span, argument.span())
+    }
+
+    fn finish_nat_conversion(
+        &self,
+        value: CompilerExpression,
+        span: Span,
+        error_span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        require_type(
+            &self.source,
+            value.span,
+            &CompilerType::Int,
+            &value.value_type,
+        )?;
+        if value
+            .int_range
+            .as_ref()
+            .is_some_and(|range| range.lower >= BigInt::from(0))
+        {
+            let int_range = value.int_range.clone();
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::IntToNat(Box::new(value)),
+                value_type: CompilerType::Nat,
+                int_range,
+                rational_value: None,
+                span,
+            });
+        }
+        if value
+            .int_range
+            .as_ref()
+            .is_some_and(|range| range.upper < BigInt::from(0))
+            && compiler_expression_is_closed(&value)
+        {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-NAT-OUT-OF-RANGE",
+                error_span,
+                "a negative Int is outside the Nat constraint",
+            ));
+        }
+        Ok(Self::finish_validation(
+            CompilerValidation::IntToNat,
+            value,
+            CompilerType::Nat,
+            span,
+            error_span,
+        ))
     }
 
     fn analyze_rational_constructor(
@@ -1370,6 +1551,26 @@ impl Analyzer {
         }
     }
 
+    fn finish_validation(
+        operation: CompilerValidation,
+        value: CompilerExpression,
+        success_type: CompilerType,
+        span: Span,
+        error_span: Span,
+    ) -> CompilerExpression {
+        CompilerExpression {
+            kind: CompilerExpressionKind::Validate {
+                operation,
+                value: Box::new(value),
+                error_span,
+            },
+            value_type: CompilerType::Result(Box::new(success_type)),
+            int_range: None,
+            rational_value: None,
+            span,
+        }
+    }
+
     fn analyze_call(
         &mut self,
         items: &[Expression],
@@ -1492,8 +1693,12 @@ impl Analyzer {
                 "non-scalar function result",
             ));
         }
-        let mut body =
-            self.analyze_block(&declaration.body, &mut environment, BlockKind::Function)?;
+        let mut body = self.analyze_block(
+            &declaration.body,
+            &mut environment,
+            BlockKind::Function,
+            Some(&result_type),
+        )?;
         if let CompilerType::Result(success_type) = &result_type
             && body.result.value_type == **success_type
         {
@@ -1868,6 +2073,7 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         "Unit" => Some(CompilerType::Unit),
         "Boolean" => Some(CompilerType::Boolean),
         "Int" => Some(CompilerType::Int),
+        "Nat" => Some(CompilerType::Nat),
         "Rational" => Some(CompilerType::Rational),
         "Comparison" => Some(CompilerType::Comparison),
         "String" => Some(CompilerType::String),
@@ -1915,12 +2121,14 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
         CompilerType::Result(success) => {
-            matches!(success.as_ref(), CompilerType::Int | CompilerType::Rational)
-                || matches!(
-                    success.as_ref(),
-                    CompilerType::Tuple(fields)
-                        if matches!(fields.as_slice(), [CompilerType::Int, CompilerType::Int])
-                )
+            matches!(
+                success.as_ref(),
+                CompilerType::Int | CompilerType::Nat | CompilerType::Rational
+            ) || matches!(
+                success.as_ref(),
+                CompilerType::Tuple(fields)
+                    if matches!(fields.as_slice(), [CompilerType::Int, CompilerType::Int])
+            )
         }
         _ => true,
     }
@@ -1974,11 +2182,15 @@ fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::Tuple(values) => values.iter().all(compiler_expression_is_closed),
         CompilerExpressionKind::Local(_)
         | CompilerExpressionKind::Call { .. }
-        | CompilerExpressionKind::Fallible { .. } => false,
+        | CompilerExpressionKind::Fallible { .. }
+        | CompilerExpressionKind::Validate { .. } => false,
         CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
         | CompilerExpressionKind::IntToRational(value)
+        | CompilerExpressionKind::RationalToInt(value)
+        | CompilerExpressionKind::IntToNat(value)
         | CompilerExpressionKind::ResultSuccess(value)
+        | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
         | CompilerExpressionKind::RangeLowerInclusive(value)
@@ -2372,6 +2584,31 @@ mod tests {
         assert!(program.functions.iter().any(|function| matches!(
             function.body.result.kind,
             CompilerExpressionKind::ResultSuccess(_)
+        )));
+    }
+
+    #[test]
+    fn models_exact_validation_and_contextual_result_projection() {
+        // TOPAL-COMPILER-RESULT-001
+        let source = "use language (version is v0.1)\ndivide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\nincrement is fn (denominator : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  quotient : Rational is 1.0 divide denominator\n  quotient + 1.0\nas-int is fn (value : Rational) -> Result (Int, lang arithmetic ArithmeticErrorCode)\n  Int value\nas-nat is fn (value : Int) -> Result (Nat, lang arithmetic ArithmeticErrorCode)\n  Nat value\n(increment 0.0, as-int 1.5, as-nat -1)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert!(program.functions.iter().any(|function| {
+            function.body.statements.iter().any(|statement| {
+                matches!(
+                    statement,
+                    CompilerStatement::Binding(CompilerBinding {
+                        value: CompilerExpression {
+                            kind: CompilerExpressionKind::ResultProject(_),
+                            ..
+                        },
+                        ..
+                    })
+                )
+            })
+        }));
+        assert!(program.functions.iter().any(|function| matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Validate { .. }
         )));
     }
 

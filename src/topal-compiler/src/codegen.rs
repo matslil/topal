@@ -7,7 +7,7 @@ use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerExpression,
     CompilerExpressionKind, CompilerFallible, CompilerFunction, CompilerProgram, CompilerStatement,
-    CompilerType, display_string_literal,
+    CompilerType, CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -98,7 +98,7 @@ impl<'a> Generator<'a> {
             let value = match &parameter.value_type {
                 CompilerType::Unit => LlValue::Unit,
                 CompilerType::Boolean => LlValue::Boolean(format!("%arg{index}")),
-                CompilerType::Int => LlValue::Int(format!("%arg{index}")),
+                CompilerType::Int | CompilerType::Nat => LlValue::Int(format!("%arg{index}")),
                 CompilerType::Rational => LlValue::Rational(format!("%arg{index}")),
                 CompilerType::Comparison => LlValue::Comparison(format!("%arg{index}")),
                 CompilerType::Range(endpoint) => LlValue::Range {
@@ -281,6 +281,20 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ))
             }
+            CompilerExpressionKind::RationalToInt(value) => {
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Int(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.rational.numerator(ptr {})",
+                        value.rational()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::IntToNat(value) => {
+                self.emit_expression(value, body, environment)
+            }
             CompilerExpressionKind::ResultSuccess(value) => {
                 let success = self.emit_expression(value, body, environment);
                 let payload =
@@ -294,6 +308,21 @@ impl<'a> Generator<'a> {
                     success: value.value_type.clone(),
                 }
             }
+            CompilerExpressionKind::ResultProject(value) => {
+                self.emit_result_project(value, body, environment, expression.span)
+            }
+            CompilerExpressionKind::Validate {
+                operation,
+                value,
+                error_span,
+            } => self.emit_validation(
+                *operation,
+                value,
+                *error_span,
+                body,
+                environment,
+                expression.span,
+            ),
             CompilerExpressionKind::Fallible {
                 operation,
                 left,
@@ -405,7 +434,7 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
-                    CompilerType::Int => LlValue::Int(body.instruction(
+                    CompilerType::Int | CompilerType::Nat => LlValue::Int(body.instruction(
                         &format!("call fastcc ptr @{symbol}({arguments})"),
                         expression.span,
                         &mut self.debug,
@@ -477,6 +506,81 @@ impl<'a> Generator<'a> {
                 environment,
                 expression.span,
             ),
+        }
+    }
+
+    fn emit_result_project(
+        &mut self,
+        value: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let result = self.emit_expression(value, body, environment);
+        let LlValue::Result { value, success } = result else {
+            unreachable!("checked projection operand is Result")
+        };
+        let is_error = body.instruction(
+            &format!("call i1 @topal.runtime.result.is.error(ptr {value})"),
+            span,
+            &mut self.debug,
+        );
+        let failure = body.label("result.project.error");
+        let success_label = body.label("result.project.ok");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {is_error}, label %{failure}, label %{success_label}"),
+            location,
+        );
+        body.start_block(&failure);
+        body.terminator(&format!("ret ptr {value}"), location);
+        body.start_block(&success_label);
+        let payload = body.instruction(
+            &format!("call ptr @topal.runtime.result.payload(ptr {value})"),
+            span,
+            &mut self.debug,
+        );
+        self.result_success_value(&payload, &success, body, span)
+    }
+
+    #[allow(clippy::too_many_arguments)] // Validation retains explicit Error provenance at the ABI call.
+    fn emit_validation(
+        &mut self,
+        operation: CompilerValidation,
+        value: &CompilerExpression,
+        error_span: Span,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let value = self.emit_expression(value, body, environment);
+        let (runtime, domain, success, value) = match operation {
+            CompilerValidation::RationalToInt => (
+                "rational.try.to.int",
+                "root.Int(Rational)",
+                CompilerType::Int,
+                value.rational(),
+            ),
+            CompilerValidation::IntToNat => (
+                "int.try.to.nat",
+                "root.Nat(Int)",
+                CompilerType::Nat,
+                value.integer(),
+            ),
+        };
+        let (domain_global, domain_length) = self.emit_bytes_global(domain);
+        let (source_global, source_length) = self.emit_bytes_global(self.source_name);
+        let position = self.program.source.position(error_span.start);
+        LlValue::Result {
+            value: body.instruction(
+                &format!(
+                    "call ptr @topal.runtime.{runtime}(ptr {value}, ptr {domain_global}, i64 {domain_length}, ptr {source_global}, i64 {source_length}, i64 {}, i64 {})",
+                    position.line, position.column
+                ),
+                span,
+                &mut self.debug,
+            ),
+            success,
         }
     }
 
@@ -555,7 +659,7 @@ impl<'a> Generator<'a> {
     ) -> String {
         match (value, value_type) {
             (LlValue::Unit, CompilerType::Unit) => "null".into(),
-            (LlValue::Int(value), CompilerType::Int)
+            (LlValue::Int(value), CompilerType::Int | CompilerType::Nat)
             | (LlValue::Rational(value), CompilerType::Rational)
             | (LlValue::Range { value, .. }, CompilerType::Range(_))
             | (LlValue::Result { value, .. }, CompilerType::Result(_)) => value.clone(),
@@ -588,7 +692,7 @@ impl<'a> Generator<'a> {
     ) -> LlValue {
         match success {
             CompilerType::Unit => LlValue::Unit,
-            CompilerType::Int => LlValue::Int(payload.into()),
+            CompilerType::Int | CompilerType::Nat => LlValue::Int(payload.into()),
             CompilerType::Rational => LlValue::Rational(payload.into()),
             CompilerType::Range(endpoint) => LlValue::Range {
                 value: payload.into(),
@@ -1429,10 +1533,12 @@ struct DebugInfo {
     compile_unit: usize,
     empty: usize,
     int_type: usize,
+    nat_type: usize,
     rational_type: usize,
     int_range_type: usize,
     rational_range_type: usize,
     result_int_type: usize,
+    result_nat_type: usize,
     result_rational_type: usize,
     result_int_pair_type: usize,
     comparison_type: usize,
@@ -1459,10 +1565,12 @@ impl DebugInfo {
             compile_unit: 0,
             empty: 0,
             int_type: 0,
+            nat_type: 0,
             rational_type: 0,
             int_range_type: 0,
             rational_range_type: 0,
             result_int_type: 0,
+            result_nat_type: 0,
             result_rational_type: 0,
             result_int_pair_type: 0,
             comparison_type: 0,
@@ -1486,26 +1594,7 @@ impl DebugInfo {
         ));
         let unsigned64 =
             debug.node("!DIBasicType(name: \"u64\", size: 64, encoding: DW_ATE_unsigned)".into());
-        let negative = debug.node(format!(
-            "!DIDerivedType(tag: DW_TAG_member, name: \"negative\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 0)",
-            debug.file
-        ));
-        let length = debug.node(format!(
-            "!DIDerivedType(tag: DW_TAG_member, name: \"length\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 64)",
-            debug.file
-        ));
-        let members = debug.node(format!("!{{!{negative}, !{length}}}"));
-        let storage = debug.node(format!(
-            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalIntHeader\", file: !{}, size: 128, align: 64, elements: !{members})",
-            debug.file
-        ));
-        let pointer = debug.node(format!(
-            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
-        ));
-        debug.int_type = debug.node(format!(
-            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Int\", file: !{}, baseType: !{pointer})",
-            debug.file
-        ));
+        debug.install_integer_types(unsigned64);
         let numerator = debug.node(format!(
             "!DIDerivedType(tag: DW_TAG_member, name: \"numerator\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
             debug.file, debug.int_type
@@ -1543,6 +1632,33 @@ impl DebugInfo {
         debug.unit_type =
             debug.node("!DIBasicType(name: \"Unit\", size: 8, encoding: DW_ATE_unsigned)".into());
         debug
+    }
+
+    fn install_integer_types(&mut self, unsigned64: usize) {
+        let negative = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"negative\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 0)",
+            self.file
+        ));
+        let length = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"length\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let members = self.node(format!("!{{!{negative}, !{length}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalIntHeader\", file: !{}, size: 128, align: 64, elements: !{members})",
+            self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        self.int_type = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Int\", file: !{}, baseType: !{pointer})",
+            self.file
+        ));
+        self.nat_type = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Nat\", file: !{}, baseType: !{pointer})",
+            self.file
+        ));
     }
 
     fn range_type(&mut self, name: &str, endpoint_type: usize, flag_type: usize) -> usize {
@@ -1600,6 +1716,7 @@ impl DebugInfo {
             "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{result_storage}, size: 64, align: 64)"
         ));
         self.result_int_type = self.result_type("Int", result_pointer);
+        self.result_nat_type = self.result_type("Nat", result_pointer);
         self.result_rational_type = self.result_type("Rational", result_pointer);
         self.result_int_pair_type = self.result_type("(Int, Int)", result_pointer);
     }
@@ -1630,6 +1747,7 @@ impl DebugInfo {
             CompilerType::Unit => self.unit_type,
             CompilerType::Boolean => self.boolean_type,
             CompilerType::Int => self.int_type,
+            CompilerType::Nat => self.nat_type,
             CompilerType::Rational => self.rational_type,
             CompilerType::Comparison => self.comparison_type,
             CompilerType::Range(endpoint) if endpoint.as_ref() == &CompilerType::Int => {
@@ -1641,6 +1759,9 @@ impl DebugInfo {
             CompilerType::Range(_) => unreachable!("unsupported Range endpoint reached codegen"),
             CompilerType::Result(success) if success.as_ref() == &CompilerType::Int => {
                 self.result_int_type
+            }
+            CompilerType::Result(success) if success.as_ref() == &CompilerType::Nat => {
+                self.result_nat_type
             }
             CompilerType::Result(success) if success.as_ref() == &CompilerType::Rational => {
                 self.result_rational_type
@@ -1762,6 +1883,7 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
         CompilerType::Unit => "void",
         CompilerType::Boolean => "i1",
         CompilerType::Int
+        | CompilerType::Nat
         | CompilerType::Rational
         | CompilerType::Range(_)
         | CompilerType::Result(_) => "ptr",
@@ -1775,6 +1897,7 @@ fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
         CompilerType::Unit => "i8",
         CompilerType::Boolean => "i1",
         CompilerType::Int
+        | CompilerType::Nat
         | CompilerType::Rational
         | CompilerType::Range(_)
         | CompilerType::Result(_) => "ptr",

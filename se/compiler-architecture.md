@@ -68,6 +68,13 @@ detail and cause fields, and source file, line, and column provenance. This
 `topal-native/5` layout is private to Topal signatures and GDB renderers; it is
 never classified as a C aggregate or passed through a foreign runtime.
 
+Exact Rational-to-Int and Int-to-Nat validation calls return the same Result
+shape. Contextual success projection branches on the Result tag: an Error path
+returns the original Result pointer immediately from the enclosing compatible
+function, while only the success path loads and reclassifies the payload. This
+keeps propagation field-preserving and makes early return explicit in the O0
+control-flow graph.
+
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
 action in its selected block, and compatible machine-scalar results merge with

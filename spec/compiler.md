@@ -113,6 +113,14 @@ private representation and function signatures SHALL remain sealed by the
 exact native-ABI revision, shall be debuggable at O0, and shall introduce no
 foreign allocator, runtime, or calling convention.
 
+Exact checked Int and Nat construction and a classified Rational-to-Int
+binding SHALL preserve proven values directly and use the same structured
+Result representation for dynamic validation. Contextual success projection
+SHALL return the original complete Error from a compatible enclosing Result
+function before evaluating later statements; only the success continuation may
+load and reclassify the payload. Validation SHALL neither round, truncate,
+clamp, nor reconstruct a propagated Error.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

@@ -4034,6 +4034,16 @@
       "cpu_time_ns": 3582180,
       "memory_peak_bytes": 18071552,
       "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_checked_nat_result_parameters_and_locals": {
+      "cpu_time_ns": 246038939,
+      "memory_peak_bytes": 57307136,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_exact_validation_and_contextual_result_projection": {
+      "cpu_time_ns": 3454020,
+      "memory_peak_bytes": 18223104,
+      "samples_per_test": 50
     }
   }
 }

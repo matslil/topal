@@ -13,7 +13,7 @@ evidence.
 | 2b | finite `Int` identities/division/modulo/power, finite exact `Rational`, static zero-divisor diagnostics, exact equality/ordering, and direct three-way comparison | complete |
 | 2c-a | ordered comparison matchers and exhaustive decisions over `Comparison` values | complete |
 | 2c-b1 | dynamic arithmetic `Result`/Error representation, construction, division, power, modulo, quotient/modulo, propagation, output, and debugging | complete |
-| 2c-b2 | exact Rational-to-Int and Nat narrowing/validation plus contextual success projection | planned |
+| 2c-b2 | exact Rational-to-Int and Nat narrowing/validation plus contextual success projection | complete |
 | 2c-b3 | structured Error observation and exhaustive Result/error-code decisions | planned |
 | 2c-c | normatively completed infinity construction and arithmetic | planned |
 | 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |

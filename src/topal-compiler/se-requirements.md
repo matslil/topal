@@ -127,6 +127,18 @@ This requirement covers `TOPAL-NUM-RATIONAL-CONSTRUCT-DYNAMIC-001`,
 propagation cases of `TOPAL-TYPE-RESULT-001`. It realizes
 `TOPAL-COMPILER-RESULT-001` for compiler increment 2c-b1.
 
+Exact checked Int construction and an Int-classified binding shall validate a
+dynamically obtained Rational denominator, returning `not-representable` from
+`root.Int(Rational)` without rounding or truncation. Checked Nat construction
+shall preserve a nonnegative Int or return `out-of-range` from `root.Nat(Int)`.
+A compatible classified binding shall project the success payload and return
+the original complete Error immediately on failure.
+
+These additions cover `TOPAL-NUM-RATIONAL-INT-EXACT-001`,
+`TOPAL-NUM-RATIONAL-INT-VALIDATE-001`, `TOPAL-NUM-INT-CONSTRUCT-001`,
+`TOPAL-NUM-NAT-CONSTRUCT-001`, and `TOPAL-TYPE-RESULT-PROJECT-001`. They realize
+the remaining `TOPAL-COMPILER-RESULT-001` scope for compiler increment 2c-b2.
+
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
 The compiler shall represent explicitly bounded finite `Range Int` and
