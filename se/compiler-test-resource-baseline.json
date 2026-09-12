@@ -466,6 +466,36 @@
       "cpu_time_ns": 152314,
       "memory_peak_bytes": 18608128,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/decision-operand-expressions.t": {
+      "cpu_time_ns": 118062840,
+      "memory_peak_bytes": 41332736,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/exact-rational-int-narrowing.t": {
+      "cpu_time_ns": 116855040,
+      "memory_peak_bytes": 41308160,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/exact-three-way-comparison.t": {
+      "cpu_time_ns": 121080040,
+      "memory_peak_bytes": 41988096,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/decision-operand-expressions.t": {
+      "cpu_time_ns": 148802,
+      "memory_peak_bytes": 18530304,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/exact-rational-int-narrowing.t": {
+      "cpu_time_ns": 414940,
+      "memory_peak_bytes": 18538496,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/exact-three-way-comparison.t": {
+      "cpu_time_ns": 167359,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
     }
   }
 }
