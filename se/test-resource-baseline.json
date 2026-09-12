@@ -4014,6 +4014,16 @@
       "cpu_time_ns": 3643619,
       "memory_peak_bytes": 18481152,
       "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_executes_comparison_decision_forms": {
+      "cpu_time_ns": 23408460,
+      "memory_peak_bytes": 18313216,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_ordered_and_comparison_value_decisions": {
+      "cpu_time_ns": 2966940,
+      "memory_peak_bytes": 18128896,
+      "samples_per_test": 50
     }
   }
 }

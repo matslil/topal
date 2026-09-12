@@ -196,6 +196,26 @@
       "cpu_time_ns": 276321,
       "memory_peak_bytes": 18669568,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/comparison-decision-forms.t": {
+      "cpu_time_ns": 120156760,
+      "memory_peak_bytes": 41828352,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/comparison-decisions.t": {
+      "cpu_time_ns": 115382240,
+      "memory_peak_bytes": 41095168,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/comparison-decision-forms.t": {
+      "cpu_time_ns": 504482,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/comparison-decisions.t": {
+      "cpu_time_ns": 154550,
+      "memory_peak_bytes": 18403328,
+      "samples_per_test": 500
     }
   }
 }

@@ -60,6 +60,14 @@ for membership, emptiness, and intersection and never enumerates or adjusts an
 open endpoint. Pointer-bearing range objects are also constructed at run time
 to preserve relocation-free no-loader PIE output.
 
+Ordered comparison decisions lower directly to LLVM conditional branches in
+source order. Each matcher operand is emitted in its reached test block, each
+action in its selected block, and compatible machine-scalar results merge with
+an SSA `phi`. Closed decisions over `Comparison` lower through `switch` to the
+three nominal alternatives. The subject is emitted once before either control
+flow graph, so LLVM optimization may simplify the graph later without changing
+Topal evaluation order at O0.
+
 The correctness-first exact runtime uses binary long division, Euclidean sign
 correction, Euclid's greatest-common-divisor algorithm, and exponentiation by
 squaring. LLVM's documented `llvm.ctlz.i32` intrinsic determines the last
@@ -228,6 +236,7 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
+| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, and Comparison decision control flow with typed result joins |
 | DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, with bundled renderers for private Int, Rational, and finite exact Range objects |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |

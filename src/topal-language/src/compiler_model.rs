@@ -120,6 +120,15 @@ pub struct CompilerExpression {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerComparisonRule {
+    pub operation: CompilerBinary,
+    pub operand: CompilerExpression,
+    pub action: CompilerExpression,
+    pub subject_to_rational: bool,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerExpressionKind {
     Unit,
     Boolean(bool),
@@ -154,6 +163,17 @@ pub enum CompilerExpressionKind {
         subject: Box<CompilerExpression>,
         when_true: Box<CompilerExpression>,
         when_false: Box<CompilerExpression>,
+    },
+    OrderedComparisonDecision {
+        subject: Box<CompilerExpression>,
+        rules: Vec<CompilerComparisonRule>,
+        otherwise: Box<CompilerExpression>,
+    },
+    ComparisonValueDecision {
+        subject: Box<CompilerExpression>,
+        when_less: Box<CompilerExpression>,
+        when_equal: Box<CompilerExpression>,
+        when_greater: Box<CompilerExpression>,
     },
 }
 
@@ -594,7 +614,7 @@ impl Analyzer {
                 self.analyze_application(items, span, environment)
             }
             Expression::DecisionTable { subject, rules, .. } => {
-                self.analyze_boolean_decision(subject, rules, span, environment)
+                self.analyze_decision(subject, rules, span, environment)
             }
             _ => Err(unsupported(&self.source, span, "expression form")),
         }
@@ -1342,7 +1362,7 @@ impl Analyzer {
         Ok((symbol, result_type, int_range, rational_value))
     }
 
-    fn analyze_boolean_decision(
+    fn analyze_decision(
         &mut self,
         subject: &Expression,
         rules: &[topal_syntax::DecisionRule],
@@ -1350,6 +1370,31 @@ impl Analyzer {
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
         let subject = self.analyze_expression(subject, environment)?;
+        match &subject.value_type {
+            CompilerType::Boolean => {
+                self.analyze_boolean_decision(subject, rules, span, environment)
+            }
+            CompilerType::Comparison => {
+                self.analyze_comparison_value_decision(subject, rules, span, environment)
+            }
+            CompilerType::Int | CompilerType::Rational => {
+                self.analyze_ordered_comparison_decision(subject, rules, span, environment)
+            }
+            _ => Err(unsupported(
+                &self.source,
+                subject.span,
+                "decision subject type",
+            )),
+        }
+    }
+
+    fn analyze_boolean_decision(
+        &mut self,
+        subject: CompilerExpression,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
         require_type(
             &self.source,
             subject.span,
@@ -1389,21 +1434,10 @@ impl Analyzer {
                 "Boolean decision does not cover `false`",
             )
         })?;
-        require_same_type(
-            &self.source,
-            span,
-            &when_true.value_type,
-            &when_false.value_type,
-        )?;
-        let int_range = match (&when_true.int_range, &when_false.int_range) {
-            (Some(left), Some(right)) => Some(IntRange::union(left, right)),
-            _ => None,
-        };
-        let rational_value = (when_true.rational_value == when_false.rational_value)
-            .then(|| when_true.rational_value.clone())
-            .flatten();
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&when_true, &when_false], span)?;
         Ok(CompilerExpression {
-            value_type: when_true.value_type.clone(),
+            value_type,
             kind: CompilerExpressionKind::BooleanDecision {
                 subject: Box::new(subject),
                 when_true: Box::new(when_true),
@@ -1413,6 +1447,208 @@ impl Analyzer {
             rational_value,
             span,
         })
+    }
+
+    fn analyze_ordered_comparison_decision(
+        &mut self,
+        subject: CompilerExpression,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        require_exact_numeric(&self.source, subject.span, &subject.value_type)?;
+        let mut lowered = Vec::new();
+        let mut otherwise = None;
+        for (index, rule) in rules.iter().enumerate() {
+            match &rule.matcher {
+                DecisionMatcher::Comparison {
+                    kind,
+                    operand,
+                    span: matcher_span,
+                } => {
+                    if otherwise.is_some() {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-UNREACHABLE-DECISION-RULE",
+                            rule.span,
+                            "a comparison rule cannot follow otherwise",
+                        ));
+                    }
+                    let Some(operation) = comparison_binary(*kind) else {
+                        return Err(unsupported(
+                            &self.source,
+                            *matcher_span,
+                            "comparison decision callable",
+                        ));
+                    };
+                    let mut operand = self.analyze_expression(operand, environment)?;
+                    require_exact_numeric(&self.source, operand.span, &operand.value_type)?;
+                    let subject_to_rational = subject.value_type == CompilerType::Int
+                        && operand.value_type == CompilerType::Rational;
+                    if subject.value_type == CompilerType::Rational
+                        && operand.value_type == CompilerType::Int
+                    {
+                        operand = into_rational(operand);
+                    }
+                    if !subject_to_rational {
+                        require_same_type(
+                            &self.source,
+                            operand.span,
+                            &subject.value_type,
+                            &operand.value_type,
+                        )?;
+                    }
+                    lowered.push(CompilerComparisonRule {
+                        operation,
+                        operand,
+                        action: self.analyze_expression(&rule.action, environment)?,
+                        subject_to_rational,
+                        span: rule.span,
+                    });
+                }
+                DecisionMatcher::Otherwise(_) if index + 1 == rules.len() => {
+                    otherwise = Some(self.analyze_expression(&rule.action, environment)?);
+                }
+                DecisionMatcher::Otherwise(_) => {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-UNREACHABLE-DECISION-RULE",
+                        rule.span,
+                        "otherwise must be the final comparison rule",
+                    ));
+                }
+                _ => return Err(unsupported(&self.source, rule.span, "decision matcher")),
+            }
+        }
+        let otherwise = otherwise.ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "a comparison decision requires otherwise",
+            )
+        })?;
+        let mut branches = lowered.iter().map(|rule| &rule.action).collect::<Vec<_>>();
+        branches.push(&otherwise);
+        let (value_type, int_range, rational_value) = self.decision_facts(&branches, span)?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::OrderedComparisonDecision {
+                subject: Box::new(subject),
+                rules: lowered,
+                otherwise: Box::new(otherwise),
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        })
+    }
+
+    fn analyze_comparison_value_decision(
+        &mut self,
+        subject: CompilerExpression,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let mut when_less = None;
+        let mut when_equal = None;
+        let mut when_greater = None;
+        let mut otherwise = None;
+        for (index, rule) in rules.iter().enumerate() {
+            let destination = match &rule.matcher {
+                DecisionMatcher::Identifier(name) => match self.source.slice(*name) {
+                    "Less" => &mut when_less,
+                    "Equal" => &mut when_equal,
+                    "Greater" => &mut when_greater,
+                    _ => return Err(unsupported(&self.source, *name, "Comparison alternative")),
+                },
+                DecisionMatcher::Otherwise(_) if index + 1 == rules.len() => &mut otherwise,
+                DecisionMatcher::Otherwise(_) => {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-UNREACHABLE-DECISION-RULE",
+                        rule.span,
+                        "otherwise must be the final Comparison rule",
+                    ));
+                }
+                _ => return Err(unsupported(&self.source, rule.span, "decision matcher")),
+            };
+            if destination.is_some() {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-DUPLICATE-DECISION-RULE",
+                    rule.span,
+                    "a Comparison alternative appears more than once",
+                ));
+            }
+            *destination = Some(self.analyze_expression(&rule.action, environment)?);
+        }
+        let missing = |name: &str| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                format!("Comparison decision does not cover {name}"),
+            )
+        };
+        let when_less = when_less
+            .or_else(|| otherwise.clone())
+            .ok_or_else(|| missing("Less"))?;
+        let when_equal = when_equal
+            .or_else(|| otherwise.clone())
+            .ok_or_else(|| missing("Equal"))?;
+        let when_greater = when_greater
+            .or(otherwise)
+            .ok_or_else(|| missing("Greater"))?;
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&when_less, &when_equal, &when_greater], span)?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::ComparisonValueDecision {
+                subject: Box::new(subject),
+                when_less: Box::new(when_less),
+                when_equal: Box::new(when_equal),
+                when_greater: Box::new(when_greater),
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        })
+    }
+
+    fn decision_facts(
+        &self,
+        branches: &[&CompilerExpression],
+        span: Span,
+    ) -> Result<(CompilerType, Option<IntRange>, Option<BigRational>), Diagnostic> {
+        let first = branches.first().expect("a complete decision has a branch");
+        for branch in &branches[1..] {
+            require_same_type(&self.source, span, &first.value_type, &branch.value_type)?;
+        }
+        if !first.value_type.machine_scalar() {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "decision actions with non-scalar results",
+            ));
+        }
+        let int_range = branches
+            .iter()
+            .try_fold(None, |range: Option<IntRange>, branch| {
+                match (range, &branch.int_range) {
+                    (None, Some(next)) => Some(Some(next.clone())),
+                    (Some(current), Some(next)) => Some(Some(IntRange::union(&current, next))),
+                    (_, None) => None,
+                }
+            })
+            .flatten();
+        let rational_value = first.rational_value.clone().filter(|value| {
+            branches
+                .iter()
+                .all(|branch| branch.rational_value.as_ref() == Some(value))
+        });
+        Ok((first.value_type.clone(), int_range, rational_value))
     }
 }
 
@@ -1451,6 +1687,18 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
             | CompilerBinary::RangeInclusive
             | CompilerBinary::RangeOpenInclusive
     )
+}
+
+fn comparison_binary(kind: CallableKind) -> Option<CompilerBinary> {
+    match kind {
+        CallableKind::Equal => Some(CompilerBinary::Equal),
+        CallableKind::NotEqual => Some(CompilerBinary::NotEqual),
+        CallableKind::Less => Some(CompilerBinary::Less),
+        CallableKind::Greater => Some(CompilerBinary::Greater),
+        CallableKind::LessEqual => Some(CompilerBinary::LessEqual),
+        CallableKind::GreaterEqual => Some(CompilerBinary::GreaterEqual),
+        _ => None,
+    }
 }
 
 fn is_exact_numeric(value_type: &CompilerType) -> bool {
@@ -1819,6 +2067,20 @@ mod tests {
                 .iter()
                 .any(|function| function.result_type.name() == "Range Rational")
         );
+    }
+
+    #[test]
+    fn models_ordered_and_comparison_value_decisions() {
+        let source = "use language (version is v0.1)\nrank is fn (value : Comparison) -> Int\n  value\n    Less then -1\n    Equal then 0\n    Greater then 1\nlocate is fn (value : Int, pivot : Rational) -> Int\n  value\n    < pivot - 0.5 then -1\n    = pivot then 0\n    otherwise 1\n(rank (1 <=> 2), 0 locate 1.5)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert!(program.functions.iter().any(|function| matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::ComparisonValueDecision { .. }
+        )));
+        assert!(program.functions.iter().any(|function| matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::OrderedComparisonDecision { .. }
+        )));
     }
 
     #[test]

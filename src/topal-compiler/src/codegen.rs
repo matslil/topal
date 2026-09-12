@@ -5,8 +5,9 @@ use std::path::Path;
 use num_bigint::{BigInt, Sign};
 use num_rational::BigRational;
 use topal_language::{
-    CompilerBinary, CompilerBlock, CompilerExpression, CompilerExpressionKind, CompilerFunction,
-    CompilerProgram, CompilerStatement, CompilerType, display_string_literal,
+    CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerExpression,
+    CompilerExpressionKind, CompilerFunction, CompilerProgram, CompilerStatement, CompilerType,
+    display_string_literal,
 };
 use topal_source::Span;
 
@@ -406,6 +407,32 @@ impl<'a> Generator<'a> {
                 environment,
                 expression.span,
             ),
+            CompilerExpressionKind::OrderedComparisonDecision {
+                subject,
+                rules,
+                otherwise,
+            } => self.emit_ordered_comparison_decision(
+                subject,
+                rules,
+                otherwise,
+                body,
+                environment,
+                expression.span,
+            ),
+            CompilerExpressionKind::ComparisonValueDecision {
+                subject,
+                when_less,
+                when_equal,
+                when_greater,
+            } => self.emit_comparison_value_decision(
+                subject,
+                when_less,
+                when_equal,
+                when_greater,
+                body,
+                environment,
+                expression.span,
+            ),
         }
     }
 
@@ -747,6 +774,162 @@ impl<'a> Generator<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)] // Mirrors the checked decision node without hiding evaluation order.
+    fn emit_ordered_comparison_decision(
+        &mut self,
+        subject: &CompilerExpression,
+        rules: &[CompilerComparisonRule],
+        otherwise: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let subject = self.emit_expression(subject, body, environment);
+        let merge = body.label("comparison.decision.merge");
+        let mut branches = Vec::with_capacity(rules.len() + 1);
+        for rule in rules {
+            let action_label = body.label("comparison.decision.action");
+            let next_label = body.label("comparison.decision.next");
+            let operand = self.emit_expression(&rule.operand, body, environment);
+            let comparable_subject = if rule.subject_to_rational {
+                LlValue::Rational(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.rational.from.int(ptr {})",
+                        subject.integer()
+                    ),
+                    rule.span,
+                    &mut self.debug,
+                ))
+            } else {
+                subject.clone()
+            };
+            let predicate = self
+                .emit_binary(
+                    rule.operation,
+                    &comparable_subject,
+                    &operand,
+                    body,
+                    rule.span,
+                )
+                .boolean()
+                .to_owned();
+            let location = self.debug.location(rule.span, body.subprogram);
+            body.terminator(
+                &format!("br i1 {predicate}, label %{action_label}, label %{next_label}"),
+                location,
+            );
+            body.start_block(&action_label);
+            let action = self.emit_expression(&rule.action, body, environment);
+            let predecessor = body.current_block.clone();
+            body.terminator(&format!("br label %{merge}"), location);
+            branches.push((action, predecessor));
+            body.start_block(&next_label);
+        }
+        let fallback = self.emit_expression(otherwise, body, environment);
+        let fallback_predecessor = body.current_block.clone();
+        let fallback_location = self.debug.location(otherwise.span, body.subprogram);
+        body.terminator(&format!("br label %{merge}"), fallback_location);
+        branches.push((fallback, fallback_predecessor));
+        body.start_block(&merge);
+        self.emit_decision_phi(&branches, body, span)
+    }
+
+    #[allow(clippy::too_many_arguments)] // Mirrors the three closed Comparison alternatives.
+    fn emit_comparison_value_decision(
+        &mut self,
+        subject: &CompilerExpression,
+        when_less: &CompilerExpression,
+        when_equal: &CompilerExpression,
+        when_greater: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let emitted_subject = self.emit_expression(subject, body, environment);
+        let LlValue::Comparison(subject) = emitted_subject else {
+            unreachable!("checked decision subject is Comparison")
+        };
+        let less = body.label("comparison.value.less");
+        let equal = body.label("comparison.value.equal");
+        let greater = body.label("comparison.value.greater");
+        let merge = body.label("comparison.value.merge");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!(
+                "switch i32 {subject}, label %{greater} [ i32 -1, label %{less} i32 0, label %{equal} ]"
+            ),
+            location,
+        );
+        let mut branches = Vec::with_capacity(3);
+        for (label, action) in [
+            (&less, when_less),
+            (&equal, when_equal),
+            (&greater, when_greater),
+        ] {
+            body.start_block(label);
+            let value = self.emit_expression(action, body, environment);
+            let predecessor = body.current_block.clone();
+            let action_location = self.debug.location(action.span, body.subprogram);
+            body.terminator(&format!("br label %{merge}"), action_location);
+            branches.push((value, predecessor));
+        }
+        body.start_block(&merge);
+        self.emit_decision_phi(&branches, body, span)
+    }
+
+    fn emit_decision_phi(
+        &mut self,
+        branches: &[(LlValue, String)],
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        let first = &branches.first().expect("complete decision has a branch").0;
+        let incoming = |value: fn(&LlValue) -> &str| {
+            branches
+                .iter()
+                .map(|(branch, predecessor)| format!("[{}, %{predecessor}]", value(branch)))
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        match first {
+            LlValue::Unit => LlValue::Unit,
+            LlValue::Boolean(_) => LlValue::Boolean(body.instruction(
+                &format!("phi i1 {}", incoming(LlValue::boolean)),
+                span,
+                &mut self.debug,
+            )),
+            LlValue::Int(_) => LlValue::Int(body.instruction(
+                &format!("phi ptr {}", incoming(LlValue::integer)),
+                span,
+                &mut self.debug,
+            )),
+            LlValue::Rational(_) => LlValue::Rational(body.instruction(
+                &format!("phi ptr {}", incoming(LlValue::rational)),
+                span,
+                &mut self.debug,
+            )),
+            LlValue::Comparison(_) => LlValue::Comparison(body.instruction(
+                &format!("phi i32 {}", incoming(LlValue::comparison)),
+                span,
+                &mut self.debug,
+            )),
+            LlValue::Range { endpoint, .. } => {
+                let endpoint = endpoint.clone();
+                LlValue::Range {
+                    value: body.instruction(
+                        &format!("phi ptr {}", incoming(LlValue::range_pointer)),
+                        span,
+                        &mut self.debug,
+                    ),
+                    endpoint,
+                }
+            }
+            LlValue::String(_) | LlValue::Tuple(_) => {
+                unreachable!("checked decision result is machine scalar")
+            }
+        }
+    }
+
     fn emit_print(&mut self, value: &LlValue, body: &mut FunctionBody, span: Span) {
         match value {
             LlValue::Unit => self.emit_write_literal("()", body, span),
@@ -920,11 +1103,22 @@ impl LlValue {
         value
     }
 
+    fn comparison(&self) -> &str {
+        let Self::Comparison(value) = self else {
+            unreachable!("checked value is Comparison")
+        };
+        value
+    }
+
     fn range(&self) -> (&str, &CompilerType) {
         let Self::Range { value, endpoint } = self else {
             unreachable!("checked value is Range")
         };
         (value, endpoint)
+    }
+
+    fn range_pointer(&self) -> &str {
+        self.range().0
     }
 
     fn argument(&self) -> String {
@@ -1354,7 +1548,7 @@ mod tests {
 
     #[test]
     fn emits_target_platform_runtime_and_debug_metadata() {
-        let source = "use language (version is v0.1)\nvalue is 40 + 2\nproduct is 6 * 7\nratio is 6 / 8\ninterval is 0 ..= 2.5\nordered is product >= value\n(value, product, ratio, 1 in interval, ordered, true, \"Topal\")\n";
+        let source = "use language (version is v0.1)\nrank is fn (value : Comparison) -> Int\n  value\n    Less then -1\n    Equal then 0\n    Greater then 1\nminimum is fn (left : Int, right : Int) -> Int\n  left\n    < right then left\n    otherwise right\nvalue is 40 + 2\nproduct is 6 * 7\nratio is 6 / 8\ninterval is 0 ..= 2.5\nordered is product >= value\n(value, product, ratio, 1 in interval, ordered, rank (value <=> product), value minimum product, true, \"Topal\")\n";
         let program = analyze_for_compiler(source).unwrap();
         let llvm = Generator::new(&program, "/source/example.t").emit();
         assert!(llvm.contains("target triple = \"x86_64-unknown-linux-gnu\""));
@@ -1371,6 +1565,8 @@ mod tests {
         assert!(llvm.contains("@llvm.ctlz.i32"));
         assert!(llvm.contains("name: \"Rational\""));
         assert!(llvm.contains("name: \"Range Rational\""));
+        assert!(llvm.contains("comparison.decision.next"));
+        assert!(llvm.contains("comparison.value.less"));
         assert!(llvm.contains("constant { i64, i64, [1 x i32] }"));
         assert!(llvm.contains("\\54\\6F\\70\\61\\6C"));
         assert!(llvm.contains("#dbg_value"));

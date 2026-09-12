@@ -82,6 +82,21 @@ interpreter. Unbounded ranges, infinite endpoints, and range-based collection
 selection SHALL remain outside the admitted subset until their prerequisite
 semantics and value representations are implemented.
 
+### TOPAL-COMPILER-DECISION-001 — Comparison decision control flow
+
+For every admitted comparison-matcher decision, generated control flow SHALL
+evaluate the subject exactly once, evaluate matcher operands in source order
+only when their rule is reached, execute only the first selected action, and
+use the required final `otherwise` action when no comparison succeeds. Mixed
+exact operands SHALL retain the same canonical conversion and comparison
+semantics as an ordinary application.
+
+For every admitted decision over a `Comparison` value, generated control flow
+SHALL distinguish the closed `Less`, `Equal`, and `Greater` alternatives and
+execute exactly the selected action. Both forms SHALL preserve compatible
+machine-scalar action values across the merge without introducing eager source
+evaluation or a runtime-library dispatch dependency.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

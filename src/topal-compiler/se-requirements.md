@@ -124,6 +124,25 @@ This requirement covers `TOPAL-RANGE-BOUNDS-001`,
 `TOPAL-RANGE-EMPTY-001`, and `TOPAL-RANGE-BOUND-001`. It realizes
 `TOPAL-COMPILER-RANGE-001` for compiler increment 2d-a.
 
+## TOPAL-COMP-DECISION-001 — Comparison decisions
+
+The compiler shall lower ordered comparison-matcher tables over admitted exact
+numeric subjects to explicit source-ordered control flow with one subject
+evaluation, branch-local matcher operand evaluation, first-match selection, a
+required final `otherwise`, and one selected action. It shall also lower
+complete decisions over the closed `Comparison` alternatives `Less`, `Equal`,
+and `Greater`. Compatible machine-scalar action values shall merge through
+typed SSA values.
+
+Mixed Int/Rational matcher operands shall use the same canonical conversion as
+ordinary exact comparisons. Lowering shall not evaluate a later matcher or any
+unselected action and shall not call a runtime decision dispatcher.
+
+This requirement covers `TOPAL-DECISION-COMPARISON-001`,
+`TOPAL-DECISION-OPERAND-EXPRESSION-001`, and the language-defined `Comparison`
+case of `TOPAL-DECISION-ENUM-001`. It realizes
+`TOPAL-COMPILER-DECISION-001` for compiler increment 2c-a.
+
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
 Debug-enabled O0 output shall map generated source functions, parameters,
