@@ -186,6 +186,32 @@ fn structural_comparison_runtime_matches_interpreter() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn record_reconstruction_runtime_matches_interpreter() {
+    // TOPAL-COMP-RECONSTRUCT-001, TOPAL-TYPE-RECONSTRUCT-001
+    let directory = temporary("record-reconstruction");
+    let source = directory.join("record-reconstruction.t");
+    let executable = directory.join("application");
+    let source_text = "use language (version is v0.1)\nperson is (name is \"Ada\", age is 36)\nupdated is person with (age is person age + 1)\n(person, updated, person age, updated name, updated age)\n";
+    fs::write(&source, source_text).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn finite_range_runtime_matches_exact_interpreter_semantics() {
     // TOPAL-COMP-RANGE-001; TOPAL-RANGE-BOUNDS/MEMBERSHIP/INTERSECTION/EMPTY/BOUND-001
     let directory = temporary("finite-ranges");
@@ -1026,6 +1052,62 @@ fn gdb_renders_values_projected_from_anonymous_records() {
     let text = String::from_utf8_lossy(&debugged.stdout);
     assert!(text.contains("$1 = \"Ada\""), "{text}");
     assert!(text.contains("$2 = \"Hello, Ada\""), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_renders_values_projected_from_reconstructed_records() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-COMP-RECONSTRUCT-001
+    let directory = temporary("gdb-record-reconstruction");
+    let source = directory.join("record-reconstruction-debug.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nperson is (name is \"Ada\", age is 36)\nupdated is person with (age is person age + 1)\noriginal-age is person age + 0\nupdated-age is updated age\n(original-age, updated-age, original-age + updated-age)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break topal.main",
+            "-ex",
+            "run",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "print 'original-age'",
+            "-ex",
+            "print 'updated-age'",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 36"), "{text}");
+    assert!(text.contains("$2 = 37"), "{text}");
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

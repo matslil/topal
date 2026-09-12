@@ -363,12 +363,11 @@ shall diagnose an absent label with `E-NO-SUCH-RECORD-FIELD` at that label.
 
 Expression-local Records shall lower as decomposed LLVM values without an
 allocation, native header, generated record runtime, C/C++ runtime, standard
-library, or ABI revision. Record equality, reconstruction, aggregate function
-passage, and storage remain rejected. Projected scalar bindings and field source
-locations shall use the existing DWARF/GDB paths; the compiler shall defer the
-record binding itself rather than claim a false aggregate debug layout. This
-requirement realizes `TOPAL-COMPILER-RECORD-001` for compiler increment
-3b2-b5b.
+library, or ABI revision. Aggregate function passage and storage remain
+rejected. Projected scalar bindings and field source locations shall use the
+existing DWARF/GDB paths; the compiler shall defer the record binding itself
+rather than claim a false aggregate debug layout. This requirement realizes
+`TOPAL-COMPILER-RECORD-001` for compiler increment 3b2-b5b.
 
 ## TOPAL-COMP-STRUCTURAL-COMPARISON-001 — Derived structural comparison
 
@@ -393,6 +392,26 @@ results shall reuse their existing DWARF/GDB paths. This requirement covers the
 admitted structural cases of `TOPAL-TYPE-EQUALITY-001`,
 `TOPAL-TYPE-ORDERING-001`, and `TOPAL-NUM-INT-RATIONAL-CONVERT-001`; it realizes
 `TOPAL-COMPILER-STRUCTURAL-COMPARISON-001` for increment 3b2-b5c.
+
+## TOPAL-COMP-RECONSTRUCT-001 — Immutable record reconstruction
+
+The checked compiler model shall admit `with` reconstruction of a structural
+Record under `TOPAL-TYPE-RECONSTRUCT-001`. It shall evaluate the complete base
+once before replacements, then evaluate replacements once from left to right.
+Each replacement label shall be unique and present in the base, and its value
+shall retain the original field classifier after any admitted exact canonical
+conversion. The result shall preserve the base field order and unreplaced
+values without changing the original Record.
+
+LLVM lowering shall replace named values in the existing decomposed Record and
+shall introduce no allocation, generated reconstruction runtime, public ABI,
+C/C++ runtime, or standard-library dependency. Existing scalar DWARF values
+projected from the original and reconstructed Records shall remain inspectable;
+the compiler shall continue to omit the nonexistent aggregate storage from
+DWARF. The compiler shall retain the interpreter diagnostics
+`E-RECONSTRUCT-NON-RECORD`, `E-DUPLICATE-RECONSTRUCTION-FIELD`,
+`E-NO-SUCH-RECORD-FIELD`, and `E-TYPE-MISMATCH` at the checked boundary. This
+requirement realizes `TOPAL-COMPILER-RECONSTRUCT-001` for increment 3b2-b5d.
 
 ## TOPAL-COMP-STRING-UTF8-BYTE-COUNT-001 — Prospective UTF-8 byte count
 

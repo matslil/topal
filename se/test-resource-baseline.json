@@ -4349,6 +4349,26 @@
       "cpu_time_ns": 3546939,
       "memory_peak_bytes": 18223104,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::lowers_record_reconstruction_without_a_runtime_abi": {
+      "cpu_time_ns": 4615779,
+      "memory_peak_bytes": 18313216,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_values_projected_from_reconstructed_records": {
+      "cpu_time_ns": 252886120,
+      "memory_peak_bytes": 57286656,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_immutable_record_reconstruction": {
+      "cpu_time_ns": 3697300,
+      "memory_peak_bytes": 18354176,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::record_reconstruction_runtime_matches_interpreter": {
+      "cpu_time_ns": 132673460,
+      "memory_peak_bytes": 40968192,
+      "samples_per_test": 50
     }
   }
 }
