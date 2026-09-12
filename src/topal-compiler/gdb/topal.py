@@ -311,6 +311,8 @@ def _lookup_topal_value(value):
         return _TopalIntPrinter(value)
     if value_type == "Rational":
         return _TopalRationalPrinter(value)
+    if value_type == "Character":
+        return _TopalStringPrinter(value)
     if value_type == "String":
         return _TopalStringPrinter(value)
     if value_type == "Error":

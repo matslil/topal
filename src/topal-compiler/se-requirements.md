@@ -335,9 +335,9 @@ realizes `TOPAL-COMPILER-OPTIONAL-RATIONAL-001` for compiler increment
 The compiler shall admit equality and inequality between same-classifier
 positional products exactly when every field has an admitted canonical equality
 lowering. The admitted recursive field set is Unit, Completed, Boolean, Int,
-Nat, Rational, Comparison, ErrorCode, String, payload-free source Enum,
-`Optional Int`, `Optional Rational`, `Optional String`, and another admitted
-positional product.
+Nat, Rational, Comparison, ErrorCode, Character, String, payload-free source
+Enum, `Optional Int`, `Optional Rational`, `Optional String`, and another
+admitted positional product.
 Both complete operands shall be evaluated once from left to right before their
 corresponding fields are recursively compared, and inequality shall negate the
 same all-fields-equal result.
@@ -408,6 +408,29 @@ This requirement covers `TOPAL-TYPE-CALL-001`, `TOPAL-STRING-EMPTY-001`,
 `TOPAL-STRING-LITERAL-COMPOSE-001`, `TOPAL-STRING-CONCAT-001`, and
 `TOPAL-STRING-EMPTY-PREDICATE-001`; it realizes
 `TOPAL-COMPILER-STRING-CONSTRUCTION-001` for compiler increment 4b2.
+
+## TOPAL-COMP-CHARACTER-001 — Retained static Character evidence
+
+For a closed String expression known to the checked model, the compiler shall
+use the selected language context's pinned Unicode segmentation to admit the
+Character constraint exactly when the preserved sequence has one extended
+grapheme cluster. It shall report `E-CHARACTER-CLASSIFIER` with the observed
+count for a closed invalid value. Dynamic validation shall remain rejected at
+the checked boundary until its explicit Result and freestanding runtime path
+are implemented.
+
+Character bindings and ordinary function parameters/results shall retain their
+classifier, while explicit or implicit forgetting to String shall emit no
+conversion and preserve every scalar. Character equality and derived product
+field equality shall call the existing exact String comparator. DWARF shall
+expose a distinct Character typedef over the same immutable String descriptor,
+and the GDB renderer shall display its preserved sequence. This requirement
+covers `TOPAL-TYPE-CONSTRAINT-VALIDATE-001`,
+`TOPAL-STRING-CHARACTER-CLASSIFIER-001`,
+`TOPAL-STRING-FROM-CHARACTER-001`, and the Character case of
+`TOPAL-TYPE-EQUALITY-001`; it realizes `TOPAL-COMPILER-CHARACTER-001` for
+compiler increment 4b3a without a C/C++ runtime, standard library, foreign
+Unicode implementation, or `topal-native/6` revision.
 
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 

@@ -4269,6 +4269,21 @@
       "cpu_time_ns": 3596600,
       "memory_peak_bytes": 18399232,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_static_character_evidence_as_the_string_carrier": {
+      "cpu_time_ns": 5216799,
+      "memory_peak_bytes": 18407424,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_character_parameters": {
+      "cpu_time_ns": 252718280,
+      "memory_peak_bytes": 57323520,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_static_character_constraint_evidence": {
+      "cpu_time_ns": 3476180,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
     }
   }
 }

@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_semantics::LanguageVersion;
-use topal_source::{Diagnostic, SourceText, Span};
+use topal_source::{Diagnostic, SourceText, Span, character_count};
 use topal_syntax::{
     CallableKind, DecisionMatcher, Expression, FunctionClauses, FunctionParameter, Statement, lex,
     parse,
@@ -39,6 +39,7 @@ pub enum CompilerType {
     Range(Box<Self>),
     Result(Box<Self>),
     Optional(Box<Self>),
+    Character,
     String,
     Tuple(Vec<Self>),
 }
@@ -62,6 +63,7 @@ impl CompilerType {
                 | Self::Range(_)
                 | Self::Result(_)
                 | Self::Optional(_)
+                | Self::Character
                 | Self::String
         )
     }
@@ -86,6 +88,7 @@ impl CompilerType {
                 success.name()
             ),
             Self::Optional(payload) => format!("Optional {}", payload.name()),
+            Self::Character => "Character".into(),
             Self::String => "String".into(),
             Self::Tuple(fields) => format!(
                 "({})",
@@ -693,7 +696,16 @@ impl Analyzer {
         {
             return self.finish_optional_none(payload.as_ref().clone(), expression.span());
         }
-        self.analyze_expression(expression, environment)
+        let value = self.analyze_expression(expression, environment)?;
+        match expected {
+            Some(CompilerType::Character) if value.value_type == CompilerType::String => {
+                self.finish_character_conversion(value, expression.span())
+            }
+            Some(CompilerType::String) if value.value_type == CompilerType::Character => {
+                Ok(forget_character_evidence(value))
+            }
+            _ => Ok(value),
+        }
     }
 
     fn parse_classifier(&self, span: Span) -> Result<CompilerType, Diagnostic> {
@@ -1265,6 +1277,15 @@ impl Analyzer {
             match self.source.slice(*constructor) {
                 "Int" => return self.analyze_int_constructor(argument, span, environment),
                 "Nat" => return self.analyze_nat_constructor(argument, span, environment),
+                "Character" => {
+                    let value = self.analyze_expression(argument, environment)?;
+                    return self.finish_character_conversion(value, argument.span());
+                }
+                "String" => {
+                    let value = self.analyze_expression(argument, environment)?;
+                    let value = self.finish_character_conversion(value, argument.span())?;
+                    return Ok(forget_character_evidence(value));
+                }
                 _ => {}
             }
         }
@@ -1509,6 +1530,42 @@ impl Analyzer {
     ) -> Result<CompilerExpression, Diagnostic> {
         let value = self.analyze_expression(argument, environment)?;
         self.finish_nat_conversion(value, span, argument.span())
+    }
+
+    fn finish_character_conversion(
+        &self,
+        mut value: CompilerExpression,
+        error_span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        if value.value_type == CompilerType::Character {
+            return Ok(value);
+        }
+        require_type(
+            &self.source,
+            value.span,
+            &CompilerType::String,
+            &value.value_type,
+        )?;
+        let Some(text) = exact_string(&value) else {
+            return Err(unsupported(
+                &self.source,
+                error_span,
+                "dynamic Character constraint validation",
+            ));
+        };
+        let count = character_count(&text);
+        if count != 1 {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-CHARACTER-CLASSIFIER",
+                error_span,
+                format!(
+                    "Character requires exactly one user-perceived character, but this String contains {count}"
+                ),
+            ));
+        }
+        value.value_type = CompilerType::Character;
+        Ok(value)
     }
 
     fn finish_nat_conversion(
@@ -1924,6 +1981,17 @@ impl Analyzer {
         {
             left_value = forget_nat_evidence(left_value);
             right_value = forget_nat_evidence(right_value);
+        }
+        if matches!(operation, CompilerBinary::Equal | CompilerBinary::NotEqual) {
+            if left_value.value_type == CompilerType::Character
+                && right_value.value_type == CompilerType::String
+            {
+                left_value = forget_character_evidence(left_value);
+            } else if left_value.value_type == CompilerType::String
+                && right_value.value_type == CompilerType::Character
+            {
+                right_value = forget_character_evidence(right_value);
+            }
         }
         let numeric =
             is_exact_numeric(&left_value.value_type) && is_exact_numeric(&right_value.value_type);
@@ -3079,6 +3147,7 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         "Error" => Some(CompilerType::Error),
         "ErrorCode" | "langarithmeticArithmeticErrorCode" => Some(CompilerType::ErrorCode),
         "ErrorDomain" => Some(CompilerType::ErrorDomain),
+        "Character" => Some(CompilerType::Character),
         "String" => Some(CompilerType::String),
         _ => None,
     }
@@ -3216,6 +3285,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Rational
         | CompilerType::Comparison
         | CompilerType::ErrorCode
+        | CompilerType::Character
         | CompilerType::String
         | CompilerType::Enum(_) => true,
         CompilerType::Optional(payload) => {
@@ -3410,6 +3480,38 @@ fn into_rational(expression: CompilerExpression) -> CompilerExpression {
     }
 }
 
+fn forget_character_evidence(mut expression: CompilerExpression) -> CompilerExpression {
+    debug_assert_eq!(expression.value_type, CompilerType::Character);
+    expression.value_type = CompilerType::String;
+    expression
+}
+
+fn retain_character_evidence(mut expression: CompilerExpression) -> Option<CompilerExpression> {
+    if expression.value_type == CompilerType::Character {
+        return Some(expression);
+    }
+    if expression.value_type != CompilerType::String
+        || exact_string(&expression).is_none_or(|text| character_count(&text) != 1)
+    {
+        return None;
+    }
+    expression.value_type = CompilerType::Character;
+    Some(expression)
+}
+
+fn exact_string(expression: &CompilerExpression) -> Option<String> {
+    match &expression.kind {
+        CompilerExpressionKind::String(value) => Some(value.clone()),
+        CompilerExpressionKind::StringEmpty => Some(String::new()),
+        CompilerExpressionKind::StringConcat { left, right } => {
+            let mut value = exact_string(left)?;
+            value.push_str(&exact_string(right)?);
+            Some(value)
+        }
+        _ => None,
+    }
+}
+
 fn adapt_call_argument(
     expected: &CompilerType,
     argument: &CompilerExpression,
@@ -3418,6 +3520,12 @@ fn adapt_call_argument(
         return Some(argument.clone());
     }
     match (expected, &argument.value_type) {
+        (CompilerType::Character, CompilerType::String) => {
+            retain_character_evidence(argument.clone())
+        }
+        (CompilerType::String, CompilerType::Character) => {
+            Some(forget_character_evidence(argument.clone()))
+        }
         (CompilerType::Int, CompilerType::Nat) => {
             let mut value = argument.clone();
             value.value_type = CompilerType::Int;
@@ -3609,6 +3717,9 @@ fn require_type(
     expected: &CompilerType,
     actual: &CompilerType,
 ) -> Result<(), Diagnostic> {
+    if expected == &CompilerType::String && actual == &CompilerType::Character {
+        return Ok(());
+    }
     require_same_type(source, span, expected, actual)
 }
 
@@ -3900,6 +4011,41 @@ mod tests {
         assert_eq!(
             program.main.result.value_type.name(),
             "(Optional Rational, Optional Rational, Boolean, Boolean, Boolean, Boolean, Boolean, String, String)"
+        );
+    }
+
+    #[test]
+    fn models_static_character_constraint_evidence() {
+        // TOPAL-TYPE-CONSTRAINT-VALIDATE-001,
+        // TOPAL-STRING-CHARACTER-CLASSIFIER-001,
+        // TOPAL-STRING-FROM-CHARACTER-001, TOPAL-TYPE-EQUALITY-001
+        let source = include_str!("../../../examples/language/character-classification.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "identity"
+                && function.parameters[0].value_type == CompilerType::Character
+                && function.result_type == CompilerType::Character
+        }));
+        assert_eq!(
+            program.main.result.value_type,
+            CompilerType::Tuple(vec![
+                CompilerType::String,
+                CompilerType::String,
+                CompilerType::Boolean,
+                CompilerType::Boolean,
+                CompilerType::Boolean,
+            ])
+        );
+
+        let invalid =
+            analyze_for_compiler("use language (version is v0.1)\ninvalid : Character is \"ab\"\n")
+                .unwrap_err();
+        assert_eq!(invalid.code, "E-CHARACTER-CLASSIFIER");
+        assert!(invalid.message.contains("contains 2"));
+        let dynamic = "use language (version is v0.1)\nretain is fn (value : String) -> Character\n  value\nretain \"a\"\n";
+        assert_eq!(
+            analyze_for_compiler(dynamic).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
         );
     }
 
