@@ -266,6 +266,41 @@ class _TopalResultPrinter:
         return f"<unsupported Result success type {self._success}>"
 
 
+class _TopalOptionalPrinter:
+    """Render a topal-native Optional through its statically known payload type."""
+
+    def __init__(self, value, payload_type):
+        self._value = value
+        self._payload_type = payload_type
+
+    def to_string(self):
+        address = int(self._value)
+        if address == 0:
+            return "<invalid null Optional>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 16))
+        except gdb.MemoryError:
+            return "<unreadable Optional>"
+        tag = int.from_bytes(header[0:8], "little")
+        payload = int.from_bytes(header[8:16], "little")
+        if tag == 0:
+            if payload:
+                return "<invalid None payload>"
+            return "None"
+        if tag != 1:
+            return f"<invalid Optional tag {tag}>"
+        if not payload:
+            return "<invalid null Some payload>"
+        if self._payload_type == "Int":
+            rendered = _TopalIntPrinter(payload).to_string()
+        elif self._payload_type == "String":
+            rendered = _TopalStringPrinter(payload).to_string()
+        else:
+            return f"<unsupported Optional payload type {self._payload_type}>"
+        return f"Some {rendered}"
+
+
 def _lookup_topal_value(value):
     value_type = str(value.type)
     if value_type == "Int":
@@ -286,6 +321,9 @@ def _lookup_topal_value(value):
         return _TopalRangePrinter(value, "Int")
     if value_type == "Range Rational":
         return _TopalRangePrinter(value, "Rational")
+    optional_prefix = "Optional "
+    if value_type.startswith(optional_prefix):
+        return _TopalOptionalPrinter(value, value_type[len(optional_prefix) :])
     prefix = "Result ("
     suffix = ", lang arithmetic ArithmeticErrorCode)"
     if value_type.startswith(prefix) and value_type.endswith(suffix):

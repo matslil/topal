@@ -267,6 +267,32 @@ This requirement covers the admitted function-input case of
 `TOPAL-TYPE-MATCH-001` and realizes `TOPAL-COMPILER-PATTERN-001` for compiler
 increment 3b2-b3.
 
+## TOPAL-COMP-OPTIONAL-001 — Optional values and control flow
+
+The compiler shall construct `Some` and explicit or immediately contextual
+`None` values for the admitted `Optional Int` and `Optional String` subset,
+retain the nominal payload classifier through classified bindings and ordinary
+function parameters/results, and preserve the value through a direct return or
+machine-scalar decision join. The representation shall be an immutable opaque
+pointer with its own validated Optional tag semantics under `topal-native/6`;
+it shall not be reclassified as Result or exposed to a foreign aggregate ABI.
+
+An Optional decision shall evaluate its subject once, load and bind a present
+payload only in the selected `Some` action, execute only the selected action,
+and require `Some` plus `None` coverage or a final `otherwise`. `Optional Int`
+shall implement derived equality using canonical arbitrary-precision Int
+equality. `Optional String` equality remains rejected until canonical dynamic
+String equality is admitted.
+
+Construction, display, function passage, decisions, equality, DWARF, and GDB
+shall use the same private header and Linux syscall-backed allocator without a
+C/C++ runtime, standard library, load-time pointer relocation, or runtime type
+lookup. This requirement covers `TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`,
+`TOPAL-TYPE-OPTIONAL-CONTEXT-001`, `TOPAL-TYPE-OPTIONAL-BOUNDARY-001`,
+`TOPAL-DECISION-OPTIONAL-001`, and the admitted Int-payload case of
+`TOPAL-TYPE-OPTIONAL-EQUALITY-001`. It realizes
+`TOPAL-COMPILER-OPTIONAL-001` for compiler increment 3b2-b4.
+
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
 The compiler shall represent explicitly bounded finite `Range Int` and
@@ -312,9 +338,9 @@ case of `TOPAL-DECISION-ENUM-001`. It realizes
 Debug-enabled O0 output shall map generated source functions, parameters,
 immutable scalar locals, lexical scopes, and instructions to Topal files and
 source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
-renderers for
-private arbitrary-precision Int, Rational, `Range Int`, and `Range Rational`
-objects, describe source-declared nominal enums with their alternative labels,
+renderers for private arbitrary-precision Int, Rational, `Range Int`,
+`Range Rational`, `Optional Int`, and `Optional String` objects, describe
+source-declared nominal enums with their alternative labels,
 distinguish selected overload and static-function frames, and pass automated
 GDB breakpoint, value, and backtrace scenarios.
 

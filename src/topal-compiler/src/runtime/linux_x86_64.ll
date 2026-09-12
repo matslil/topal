@@ -9,6 +9,7 @@
 %topal.RationalStorage = type { ptr, ptr }
 %topal.RangeStorage = type { ptr, ptr, i64, i64 }
 %topal.ResultStorage = type { i64, ptr }
+%topal.OptionalStorage = type { i64, ptr }
 %topal.ErrorStorage = type { ptr, i32, i32, ptr, ptr, ptr, i64, i64 }
 
 @topal.runtime.int.zero = private constant { i64, i64, [0 x i32] } { i64 0, i64 0, [0 x i32] zeroinitializer }, align 8
@@ -154,6 +155,70 @@ entry:
   %payload.pointer = getelementptr %topal.ResultStorage, ptr %result, i32 0, i32 1
   %payload = load ptr, ptr %payload.pointer, align 8
   ret ptr %payload
+}
+
+define internal ptr @topal.runtime.optional.some(ptr %payload) nounwind noinline {
+entry:
+  %optional = call ptr @topal.platform.allocate(i64 16)
+  %tag.pointer = getelementptr %topal.OptionalStorage, ptr %optional, i32 0, i32 0
+  %payload.pointer = getelementptr %topal.OptionalStorage, ptr %optional, i32 0, i32 1
+  store i64 1, ptr %tag.pointer, align 8
+  store ptr %payload, ptr %payload.pointer, align 8
+  ret ptr %optional
+}
+
+define internal ptr @topal.runtime.optional.none() nounwind noinline {
+entry:
+  %optional = call ptr @topal.platform.allocate(i64 16)
+  %tag.pointer = getelementptr %topal.OptionalStorage, ptr %optional, i32 0, i32 0
+  %payload.pointer = getelementptr %topal.OptionalStorage, ptr %optional, i32 0, i32 1
+  store i64 0, ptr %tag.pointer, align 8
+  store ptr null, ptr %payload.pointer, align 8
+  ret ptr %optional
+}
+
+define internal i1 @topal.runtime.optional.is.some(ptr %optional) nounwind noinline {
+entry:
+  %tag.pointer = getelementptr %topal.OptionalStorage, ptr %optional, i32 0, i32 0
+  %tag = load i64, ptr %tag.pointer, align 8
+  %valid = icmp ule i64 %tag, 1
+  br i1 %valid, label %checked, label %invalid
+checked:
+  %is.some = icmp eq i64 %tag, 1
+  ret i1 %is.some
+invalid:
+  call void @topal.platform.exit(i64 70)
+  unreachable
+}
+
+define internal ptr @topal.runtime.optional.payload(ptr %optional) nounwind noinline {
+entry:
+  %payload.pointer = getelementptr %topal.OptionalStorage, ptr %optional, i32 0, i32 1
+  %payload = load ptr, ptr %payload.pointer, align 8
+  ret ptr %payload
+}
+
+define internal i1 @topal.runtime.optional.int.equal(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.some = call i1 @topal.runtime.optional.is.some(ptr %left)
+  %right.some = call i1 @topal.runtime.optional.is.some(ptr %right)
+  %same.alternative = icmp eq i1 %left.some, %right.some
+  br i1 %same.alternative, label %same, label %different
+different:
+  br label %done
+same:
+  br i1 %left.some, label %payloads, label %both.none
+both.none:
+  br label %done
+payloads:
+  %left.payload = call ptr @topal.runtime.optional.payload(ptr %left)
+  %right.payload = call ptr @topal.runtime.optional.payload(ptr %right)
+  %ordering = call i32 @topal.runtime.int.compare(ptr %left.payload, ptr %right.payload)
+  %payloads.equal = icmp eq i32 %ordering, 0
+  br label %done
+done:
+  %equal = phi i1 [ false, %different ], [ true, %both.none ], [ %payloads.equal, %payloads ]
+  ret i1 %equal
 }
 
 define internal ptr @topal.runtime.error.make(i32 %code, ptr %domain, ptr %source, i64 %line, i64 %column) nounwind noinline {

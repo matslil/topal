@@ -38,6 +38,7 @@ pub enum CompilerType {
     Enum(CompilerEnumType),
     Range(Box<Self>),
     Result(Box<Self>),
+    Optional(Box<Self>),
     String,
     Tuple(Vec<Self>),
 }
@@ -60,6 +61,7 @@ impl CompilerType {
                 | Self::Enum(_)
                 | Self::Range(_)
                 | Self::Result(_)
+                | Self::Optional(_)
                 | Self::String
         )
     }
@@ -83,6 +85,7 @@ impl CompilerType {
                 "Result ({}, lang arithmetic ArithmeticErrorCode)",
                 success.name()
             ),
+            Self::Optional(payload) => format!("Optional {}", payload.name()),
             Self::String => "String".into(),
             Self::Tuple(fields) => format!(
                 "({})",
@@ -218,6 +221,8 @@ pub enum CompilerExpressionKind {
     IntToNat(Box<CompilerExpression>),
     ResultSuccess(Box<CompilerExpression>),
     ResultProject(Box<CompilerExpression>),
+    OptionalSome(Box<CompilerExpression>),
+    OptionalNone,
     ErrorField {
         error: Box<CompilerExpression>,
         field: CompilerErrorField,
@@ -276,6 +281,12 @@ pub enum CompilerExpressionKind {
         ok_action: Box<CompilerExpression>,
         error_codes: Vec<CompilerErrorCodeRule>,
         error_fallback: Option<(String, Span, Box<CompilerExpression>)>,
+    },
+    OptionalDecision {
+        subject: Box<CompilerExpression>,
+        some_binding: Option<(String, Span)>,
+        some_action: Box<CompilerExpression>,
+        none_action: Box<CompilerExpression>,
     },
 }
 
@@ -663,6 +674,21 @@ enum BlockKind {
 }
 
 impl Analyzer {
+    fn analyze_expression_with_expected(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        expected: Option<&CompilerType>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        if let Expression::Identifier(name) = expression
+            && self.source.slice(*name) == "None"
+            && let Some(CompilerType::Optional(payload)) = expected
+        {
+            return self.finish_optional_none(payload.as_ref().clone(), expression.span());
+        }
+        self.analyze_expression(expression, environment)
+    }
+
     fn parse_classifier(&self, span: Span) -> Result<CompilerType, Diagnostic> {
         let classifier = compact_classifier(self.source.slice(span));
         if let Some((enumeration, declaration)) = self.enums.get(&classifier)
@@ -744,9 +770,15 @@ impl Analyzer {
                             format!("`{name_text}` is already declared in this scope"),
                         ));
                     }
-                    let mut value = self.analyze_expression(value, environment)?;
-                    if let Some(classifier) = classifier {
-                        let expected = self.parse_classifier(*classifier)?;
+                    let expected = classifier
+                        .map(|classifier| self.parse_classifier(classifier))
+                        .transpose()?;
+                    let mut value = self.analyze_expression_with_expected(
+                        value,
+                        environment,
+                        expected.as_ref(),
+                    )?;
+                    if let (Some(classifier), Some(expected)) = (classifier, expected) {
                         if expected == CompilerType::Int
                             && value.value_type == CompilerType::Rational
                         {
@@ -807,7 +839,11 @@ impl Analyzer {
                     }
                 }
                 Statement::Expression(expression) if last => {
-                    result = Some(self.analyze_expression(expression, environment)?);
+                    result = Some(self.analyze_expression_with_expected(
+                        expression,
+                        environment,
+                        enclosing_result,
+                    )?);
                 }
                 Statement::Expression(_) => {
                     return Err(source_diagnostic(
@@ -818,7 +854,11 @@ impl Analyzer {
                     ));
                 }
                 Statement::Return { value, .. } if kind == BlockKind::Function => {
-                    result = Some(self.analyze_expression(value, environment)?);
+                    result = Some(self.analyze_expression_with_expected(
+                        value,
+                        environment,
+                        enclosing_result,
+                    )?);
                     break;
                 }
                 Statement::Return { .. } if kind == BlockKind::TopLevel => {
@@ -1025,6 +1065,28 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let [Expression::Identifier(constructor), value] = items
+            && self.source.slice(*constructor) == "Some"
+        {
+            let value = self.analyze_expression(value, environment)?;
+            require_optional_payload(&self.source, value.span, &value.value_type)?;
+            return Ok(CompilerExpression {
+                value_type: CompilerType::Optional(Box::new(value.value_type.clone())),
+                kind: CompilerExpressionKind::OptionalSome(Box::new(value)),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [
+            Expression::Identifier(constructor),
+            Expression::Identifier(payload),
+        ] = items
+            && self.source.slice(*constructor) == "None"
+        {
+            let payload = self.parse_classifier(*payload)?;
+            return self.finish_optional_none(payload, span);
+        }
         if let [
             Expression::Identifier(namespace),
             Expression::Identifier(vocabulary),
@@ -1211,6 +1273,21 @@ impl Analyzer {
             return self.analyze_identifier_binary(&operation, left, right, span, environment);
         }
         self.analyze_call(items, span, environment)
+    }
+
+    fn finish_optional_none(
+        &self,
+        payload: CompilerType,
+        span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        require_optional_payload(&self.source, span, &payload)?;
+        Ok(CompilerExpression {
+            value_type: CompilerType::Optional(Box::new(payload)),
+            kind: CompilerExpressionKind::OptionalNone,
+            int_range: None,
+            rational_value: None,
+            span,
+        })
     }
 
     fn analyze_error_field(
@@ -1716,15 +1793,19 @@ impl Analyzer {
                 &left_value.value_type,
                 &right_value.value_type,
             )?;
-            if !matches!(
-                left_value.value_type,
+            let equatable = matches!(
+                &left_value.value_type,
                 CompilerType::Boolean
                     | CompilerType::Unit
                     | CompilerType::Completed
                     | CompilerType::Comparison
                     | CompilerType::ErrorCode
                     | CompilerType::Enum(_)
-            ) {
+            ) || matches!(
+                &left_value.value_type,
+                CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Int
+            );
+            if !equatable {
                 return Err(unsupported(
                     &self.source,
                     span,
@@ -2199,6 +2280,10 @@ impl Analyzer {
                 let success = success.as_ref().clone();
                 self.analyze_result_decision(subject, &success, rules, span, environment)
             }
+            CompilerType::Optional(payload) => {
+                let payload = payload.as_ref().clone();
+                self.analyze_optional_decision(subject, &payload, rules, span, environment)
+            }
             CompilerType::Int | CompilerType::Rational => {
                 self.analyze_ordered_comparison_decision(subject, rules, span, environment)
             }
@@ -2208,6 +2293,104 @@ impl Analyzer {
                 "decision subject type",
             )),
         }
+    }
+
+    fn analyze_optional_decision(
+        &mut self,
+        subject: CompilerExpression,
+        payload_type: &CompilerType,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let mut some = None;
+        let mut none = None;
+        let mut otherwise = None;
+        for rule in rules {
+            if otherwise.is_some() {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-UNREACHABLE-DECISION-RULE",
+                    rule.span,
+                    "an Optional rule cannot follow otherwise",
+                ));
+            }
+            match rule.matcher {
+                DecisionMatcher::Optional {
+                    some: true,
+                    binding: Some(binding),
+                    ..
+                } if some.is_none() => {
+                    let name = self.source.slice(binding).to_owned();
+                    let branch =
+                        decision_binding_environment(environment, &name, payload_type.clone());
+                    some = Some((
+                        name,
+                        binding,
+                        self.analyze_expression(&rule.action, &branch)?,
+                    ));
+                }
+                DecisionMatcher::Optional {
+                    some: false,
+                    binding: None,
+                    ..
+                } if none.is_none() => {
+                    none = Some(self.analyze_expression(&rule.action, environment)?);
+                }
+                DecisionMatcher::Otherwise(_) => {
+                    otherwise = Some(self.analyze_expression(&rule.action, environment)?);
+                }
+                DecisionMatcher::Optional { .. } => {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-DUPLICATE-DECISION-RULE",
+                        rule.span,
+                        "an Optional alternative appears more than once",
+                    ));
+                }
+                _ => {
+                    return Err(unsupported(
+                        &self.source,
+                        rule.span,
+                        "Optional decision matcher",
+                    ));
+                }
+            }
+        }
+        let (some_binding, some_action) = if let Some((name, binding, action)) = some {
+            (Some((name, binding)), action)
+        } else if let Some(action) = otherwise.clone() {
+            (None, action)
+        } else {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "Optional decision does not cover Some",
+            ));
+        };
+        let none_action = none.or(otherwise).ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "Optional decision does not cover None",
+            )
+        })?;
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&some_action, &none_action], span)?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::OptionalDecision {
+                subject: Box::new(subject),
+                some_binding,
+                some_action: Box::new(some_action),
+                none_action: Box::new(none_action),
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        })
     }
 
     fn analyze_enum_decision(
@@ -2723,6 +2906,11 @@ fn function_overload_identity(
 }
 
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
+    if let Some(payload) = classifier.strip_prefix("Optional") {
+        return Some(CompilerType::Optional(Box::new(parse_compact_classifier(
+            payload,
+        )?)));
+    }
     if let Some(success_and_codes) = classifier
         .strip_prefix("Result(")
         .and_then(|value| value.strip_suffix(')'))
@@ -2806,6 +2994,9 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
+        CompilerType::Optional(payload) => {
+            matches!(payload.as_ref(), CompilerType::Int | CompilerType::String)
+        }
         CompilerType::Result(success) => {
             matches!(
                 success.as_ref(),
@@ -2869,6 +3060,18 @@ fn is_exact_numeric(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Int | CompilerType::Rational)
 }
 
+fn require_optional_payload(
+    source: &SourceText,
+    span: Span,
+    value_type: &CompilerType,
+) -> Result<(), Diagnostic> {
+    if matches!(value_type, CompilerType::Int | CompilerType::String) {
+        Ok(())
+    } else {
+        Err(unsupported(source, span, "Optional payload type"))
+    }
+}
+
 fn require_exact_numeric(
     source: &SourceText,
     span: Span,
@@ -2907,7 +3110,8 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Rational(_)
         | CompilerExpressionKind::String(_)
         | CompilerExpressionKind::ErrorCode(_)
-        | CompilerExpressionKind::Enum(_) => true,
+        | CompilerExpressionKind::Enum(_)
+        | CompilerExpressionKind::OptionalNone => true,
         CompilerExpressionKind::Tuple(values) => values
             .iter()
             .all(|value| compiler_expression_is_closed_with(value, bound)),
@@ -2916,7 +3120,8 @@ fn compiler_expression_is_closed_with(
         CompilerExpressionKind::Call { .. }
         | CompilerExpressionKind::Fallible { .. }
         | CompilerExpressionKind::Validate { .. }
-        | CompilerExpressionKind::ResultDecision { .. } => false,
+        | CompilerExpressionKind::ResultDecision { .. }
+        | CompilerExpressionKind::OptionalDecision { .. } => false,
         CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
         | CompilerExpressionKind::IntToRational(value)
@@ -2924,6 +3129,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::IntToNat(value)
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
+        | CompilerExpressionKind::OptionalSome(value)
         | CompilerExpressionKind::ErrorField { error: value, .. }
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
@@ -3418,6 +3624,57 @@ mod tests {
             function.body.result.kind,
             CompilerExpressionKind::ResultSuccess(_)
         )));
+    }
+
+    #[test]
+    fn models_optional_construction_boundaries_decisions_and_equality() {
+        // TOPAL-TYPE-OPTIONAL-CONSTRUCT-001, TOPAL-TYPE-OPTIONAL-CONTEXT-001,
+        // TOPAL-TYPE-OPTIONAL-BOUNDARY-001, TOPAL-DECISION-OPTIONAL-001,
+        // TOPAL-TYPE-OPTIONAL-EQUALITY-001
+        let source = "use language (version is v0.1)\nmissing : Optional Int is None\npreserve is fn (candidate : Optional Int) -> Optional Int\n  candidate\nabsent is fn () -> Optional Int\n  None\ndescribe is fn (candidate : Optional Int) -> String\n  candidate\n    Some payload then \"present\"\n    None then \"absent\"\n(Some 42, Some \"present\", None Int, None String, missing, preserve (Some 7), preserve (None Int), absent (), describe (Some 7), describe missing, (None Int) = (None Int), (Some 7) != (Some 8))\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "preserve"
+                && function.parameters[0].value_type
+                    == CompilerType::Optional(Box::new(CompilerType::Int))
+                && function.result_type == CompilerType::Optional(Box::new(CompilerType::Int))
+        }));
+        assert!(program.functions.iter().any(|function| matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::OptionalDecision { .. }
+        )));
+        assert!(matches!(
+            program.main.result.kind,
+            CompilerExpressionKind::Tuple(_)
+        ));
+    }
+
+    #[test]
+    fn rejects_equality_between_distinct_optional_classifiers() {
+        // TOPAL-TYPE-OPTIONAL-EQUALITY-001
+        let source = "use language (version is v0.1)\n(None Int) = (None String)\n";
+        assert_eq!(
+            analyze_for_compiler(source).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+    }
+
+    #[test]
+    fn models_optional_otherwise_as_the_missing_alternative_without_a_payload_binding() {
+        // TOPAL-DECISION-OPTIONAL-001
+        let source = "use language (version is v0.1)\ndescribe is fn (candidate : Optional Int) -> Int\n  candidate\n    None then 0\n    otherwise 1\n(describe (Some 42), describe (None Int))\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "describe")
+            .unwrap();
+        let CompilerExpressionKind::OptionalDecision { some_binding, .. } =
+            &function.body.result.kind
+        else {
+            panic!("expected Optional decision")
+        };
+        assert!(some_binding.is_none());
     }
 
     #[test]

@@ -4144,6 +4144,31 @@
       "cpu_time_ns": 2717660,
       "memory_peak_bytes": 18227200,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_optional_values_decisions_equality_and_debug_metadata": {
+      "cpu_time_ns": 7121400,
+      "memory_peak_bytes": 18423808,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_optional_parameters_and_locals": {
+      "cpu_time_ns": 249421839,
+      "memory_peak_bytes": 57524224,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_optional_construction_boundaries_decisions_and_equality": {
+      "cpu_time_ns": 3442240,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_optional_otherwise_as_the_missing_alternative_without_a_payload_binding": {
+      "cpu_time_ns": 2703700,
+      "memory_peak_bytes": 18239488,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_equality_between_distinct_optional_classifiers": {
+      "cpu_time_ns": 2197440,
+      "memory_peak_bytes": 18358272,
+      "samples_per_test": 50
     }
   }
 }

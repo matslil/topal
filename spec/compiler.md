@@ -212,6 +212,31 @@ Same-type equality, scalar function passage, control-flow joins, canonical
 display, DWARF, and GDB SHALL preserve the singleton source identity. Its
 machine carrier SHALL NOT be exposed as a public integer or foreign ABI.
 
+### TOPAL-COMPILER-OPTIONAL-001 — Native Optional values
+
+Within the admitted `Int` and `String` payload subset, `Optional T` SHALL retain
+its nominal payload classifier and a distinct present-or-absent alternative at
+construction, classified bindings, ordinary function parameters and results,
+direct returns, control-flow joins, display, DWARF, and GDB inspection. Bare
+`None` SHALL be admitted only where the immediate classified binding or
+function-result context determines `Optional T`; explicit `None T` and
+`Some value` SHALL preserve the same identity rules.
+
+An admitted Optional decision SHALL evaluate its subject once, bind the
+present payload only in the selected `Some` action, execute exactly one action,
+and require both alternatives or `otherwise`. Derived equality SHALL be
+available only for an admitted payload type whose canonical equality is
+implemented; it SHALL compare payloads only when both alternatives are `Some`,
+make two `None` alternatives equal, and make unlike alternatives unequal.
+
+The native Optional representation SHALL remain distinct from Result even if
+their private storage shapes coincide. Its tag SHALL be validated before an
+alternative-sensitive observation, and its opaque payload pointer SHALL be
+loaded only after `Some` is established. The header SHALL be constructed
+without load-time pointer relocations, passed only through sealed Topal
+signatures, and rendered without a foreign allocator, runtime, or standard
+library.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate

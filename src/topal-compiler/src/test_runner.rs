@@ -45,6 +45,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/nat-functions.t",
     "examples/language/nat-checked-construction.t",
     "examples/language/ordinary-functions.t",
+    "examples/language/optional-values.t",
     "examples/language/rational-exact-construction.t",
     "examples/language/rational-exponentiation.t",
     "examples/language/rational-negative-exponent.t",
