@@ -544,6 +544,8 @@ dependencies = [
 name = "topal-compiler"
 version = "0.1.0"
 dependencies = [
+ "num-bigint",
+ "num-rational",
  "serde",
  "serde_json",
  "sha2",

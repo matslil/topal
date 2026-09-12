@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::Path;
 
+use num_bigint::{BigInt, Sign};
+use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerExpression, CompilerExpressionKind, CompilerFunction,
     CompilerProgram, CompilerStatement, CompilerType, display_string_literal,
@@ -94,6 +96,8 @@ impl<'a> Generator<'a> {
                 CompilerType::Unit => LlValue::Unit,
                 CompilerType::Boolean => LlValue::Boolean(format!("%arg{index}")),
                 CompilerType::Int => LlValue::Int(format!("%arg{index}")),
+                CompilerType::Rational => LlValue::Rational(format!("%arg{index}")),
+                CompilerType::Comparison => LlValue::Comparison(format!("%arg{index}")),
                 _ => unreachable!("shared model restricts machine parameters"),
             };
             let variable = self.debug.parameter(
@@ -112,7 +116,10 @@ impl<'a> Generator<'a> {
         match result {
             LlValue::Unit => body.terminator("ret void", location),
             LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
-            LlValue::Int(value) => body.terminator(&format!("ret i64 {value}"), location),
+            LlValue::Int(value) | LlValue::Rational(value) => {
+                body.terminator(&format!("ret ptr {value}"), location);
+            }
+            LlValue::Comparison(value) => body.terminator(&format!("ret i32 {value}"), location),
             _ => unreachable!("shared model restricts machine results"),
         }
         self.functions.push(format!(
@@ -176,6 +183,7 @@ impl<'a> Generator<'a> {
         self.emit_expression(&block.result, body, environment)
     }
 
+    #[allow(clippy::too_many_lines)] // Exhaustive checked-model lowering keeps every admitted form explicit.
     fn emit_expression(
         &mut self,
         expression: &CompilerExpression,
@@ -185,7 +193,10 @@ impl<'a> Generator<'a> {
         match &expression.kind {
             CompilerExpressionKind::Unit => LlValue::Unit,
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
-            CompilerExpressionKind::Int(value) => LlValue::Int(value.to_string()),
+            CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
+            CompilerExpressionKind::Rational(value) => {
+                self.emit_rational_literal(value, body, expression.span)
+            }
             CompilerExpressionKind::String(value) => LlValue::String(value.clone()),
             CompilerExpressionKind::Tuple(values) => LlValue::Tuple(
                 values
@@ -199,9 +210,59 @@ impl<'a> Generator<'a> {
                 .clone(),
             CompilerExpressionKind::Negate(operand) => {
                 let emitted = self.emit_expression(operand, body, environment);
-                let operand = emitted.integer();
-                LlValue::Int(body.instruction(
-                    &format!("sub i64 0, {operand}"),
+                match emitted {
+                    LlValue::Int(operand) => LlValue::Int(body.instruction(
+                        &format!("call ptr @topal.runtime.int.negate(ptr {operand})"),
+                        expression.span,
+                        &mut self.debug,
+                    )),
+                    LlValue::Rational(operand) => LlValue::Rational(body.instruction(
+                        &format!("call ptr @topal.runtime.rational.negate(ptr {operand})"),
+                        expression.span,
+                        &mut self.debug,
+                    )),
+                    _ => unreachable!("checked negate operand is exact numeric"),
+                }
+            }
+            CompilerExpressionKind::Absolute(operand) => {
+                let emitted = self.emit_expression(operand, body, environment);
+                match emitted {
+                    LlValue::Int(operand) => LlValue::Int(body.instruction(
+                        &format!("call ptr @topal.runtime.int.absolute(ptr {operand})"),
+                        expression.span,
+                        &mut self.debug,
+                    )),
+                    LlValue::Rational(operand) => LlValue::Rational(body.instruction(
+                        &format!("call ptr @topal.runtime.rational.absolute(ptr {operand})"),
+                        expression.span,
+                        &mut self.debug,
+                    )),
+                    _ => unreachable!("checked absolute operand is exact numeric"),
+                }
+            }
+            CompilerExpressionKind::IntToRational(operand) => {
+                let emitted = self.emit_expression(operand, body, environment);
+                LlValue::Rational(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.rational.from.int(ptr {})",
+                        emitted.integer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::RationalConstruct {
+                numerator,
+                denominator,
+            } => {
+                let numerator = self.emit_expression(numerator, body, environment);
+                let denominator = self.emit_expression(denominator, body, environment);
+                LlValue::Rational(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.rational.make(ptr {}, ptr {})",
+                        numerator.integer(),
+                        denominator.integer()
+                    ),
                     expression.span,
                     &mut self.debug,
                 ))
@@ -249,7 +310,17 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     )),
                     CompilerType::Int => LlValue::Int(body.instruction(
-                        &format!("call fastcc i64 @{symbol}({arguments})"),
+                        &format!("call fastcc ptr @{symbol}({arguments})"),
+                        expression.span,
+                        &mut self.debug,
+                    )),
+                    CompilerType::Rational => LlValue::Rational(body.instruction(
+                        &format!("call fastcc ptr @{symbol}({arguments})"),
+                        expression.span,
+                        &mut self.debug,
+                    )),
+                    CompilerType::Comparison => LlValue::Comparison(body.instruction(
+                        &format!("call fastcc i32 @{symbol}({arguments})"),
                         expression.span,
                         &mut self.debug,
                     )),
@@ -271,6 +342,7 @@ impl<'a> Generator<'a> {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Exact domains and result representations are selected together.
     fn emit_binary(
         &mut self,
         operation: CompilerBinary,
@@ -279,37 +351,134 @@ impl<'a> Generator<'a> {
         body: &mut FunctionBody,
         span: Span,
     ) -> LlValue {
-        let instruction = match operation {
-            CompilerBinary::Add => format!("add i64 {}, {}", left.integer(), right.integer()),
-            CompilerBinary::Subtract => {
-                format!("sub i64 {}, {}", left.integer(), right.integer())
+        match operation {
+            CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply => {
+                let name = match operation {
+                    CompilerBinary::Add => "add",
+                    CompilerBinary::Subtract => "subtract",
+                    CompilerBinary::Multiply => "multiply",
+                    _ => unreachable!(),
+                };
+                let (domain, left, right) = match (left, right) {
+                    (LlValue::Int(left), LlValue::Int(right)) => ("int", left, right),
+                    (LlValue::Rational(left), LlValue::Rational(right)) => {
+                        ("rational", left, right)
+                    }
+                    _ => unreachable!("checked arithmetic operands agree"),
+                };
+                let value = body.instruction(
+                    &format!("call ptr @topal.runtime.{domain}.{name}(ptr {left}, ptr {right})"),
+                    span,
+                    &mut self.debug,
+                );
+                if domain == "int" {
+                    LlValue::Int(value)
+                } else {
+                    LlValue::Rational(value)
+                }
             }
-            CompilerBinary::Multiply => {
-                format!("mul i64 {}, {}", left.integer(), right.integer())
+            CompilerBinary::Divide => {
+                let value = body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.rational.divide(ptr {}, ptr {})",
+                        left.rational(),
+                        right.rational()
+                    ),
+                    span,
+                    &mut self.debug,
+                );
+                LlValue::Rational(value)
             }
-            CompilerBinary::And => {
-                format!("and i1 {}, {}", left.boolean(), right.boolean())
+            CompilerBinary::Modulo => LlValue::Int(body.instruction(
+                &format!(
+                    "call ptr @topal.runtime.int.modulo(ptr {}, ptr {})",
+                    left.integer(),
+                    right.integer()
+                ),
+                span,
+                &mut self.debug,
+            )),
+            CompilerBinary::QuotientModulo => {
+                let pair = body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.int.quotient.modulo(ptr {}, ptr {})",
+                        left.integer(),
+                        right.integer()
+                    ),
+                    span,
+                    &mut self.debug,
+                );
+                let quotient = body.instruction(
+                    &format!("call ptr @topal.runtime.int.divmod.quotient(ptr {pair})"),
+                    span,
+                    &mut self.debug,
+                );
+                let remainder = body.instruction(
+                    &format!("call ptr @topal.runtime.int.divmod.remainder(ptr {pair})"),
+                    span,
+                    &mut self.debug,
+                );
+                LlValue::Tuple(vec![LlValue::Int(quotient), LlValue::Int(remainder)])
             }
-            CompilerBinary::Or => format!("or i1 {}, {}", left.boolean(), right.boolean()),
-            CompilerBinary::Xor => {
-                format!("xor i1 {}, {}", left.boolean(), right.boolean())
+            CompilerBinary::Power => match left {
+                LlValue::Int(left) => LlValue::Int(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.int.power(ptr {left}, ptr {})",
+                        right.integer()
+                    ),
+                    span,
+                    &mut self.debug,
+                )),
+                LlValue::Rational(left) => LlValue::Rational(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.rational.power(ptr {left}, ptr {})",
+                        right.integer()
+                    ),
+                    span,
+                    &mut self.debug,
+                )),
+                _ => unreachable!("checked power base is exact numeric"),
+            },
+            CompilerBinary::Compare => {
+                LlValue::Comparison(self.emit_numeric_compare(left, right, body, span))
             }
+            CompilerBinary::And => LlValue::Boolean(body.instruction(
+                &format!("and i1 {}, {}", left.boolean(), right.boolean()),
+                span,
+                &mut self.debug,
+            )),
+            CompilerBinary::Or => LlValue::Boolean(body.instruction(
+                &format!("or i1 {}, {}", left.boolean(), right.boolean()),
+                span,
+                &mut self.debug,
+            )),
+            CompilerBinary::Xor => LlValue::Boolean(body.instruction(
+                &format!("xor i1 {}, {}", left.boolean(), right.boolean()),
+                span,
+                &mut self.debug,
+            )),
             CompilerBinary::Equal | CompilerBinary::NotEqual => {
                 let predicate = if operation == CompilerBinary::Equal {
                     "eq"
                 } else {
                     "ne"
                 };
-                match (&left, &right) {
+                let instruction = match (left, right) {
                     (LlValue::Unit, LlValue::Unit) => format!("icmp {predicate} i8 0, 0"),
                     (LlValue::Boolean(left), LlValue::Boolean(right)) => {
                         format!("icmp {predicate} i1 {left}, {right}")
                     }
-                    (LlValue::Int(left), LlValue::Int(right)) => {
-                        format!("icmp {predicate} i64 {left}, {right}")
+                    (LlValue::Comparison(left), LlValue::Comparison(right)) => {
+                        format!("icmp {predicate} i32 {left}, {right}")
                     }
+                    (LlValue::Int(_), LlValue::Int(_))
+                    | (LlValue::Rational(_), LlValue::Rational(_)) => format!(
+                        "icmp {predicate} i32 {}, 0",
+                        self.emit_numeric_compare(left, right, body, span)
+                    ),
                     _ => unreachable!("checked equality types agree"),
-                }
+                };
+                LlValue::Boolean(body.instruction(&instruction, span, &mut self.debug))
             }
             CompilerBinary::Less
             | CompilerBinary::Greater
@@ -322,22 +491,33 @@ impl<'a> Generator<'a> {
                     CompilerBinary::GreaterEqual => "sge",
                     _ => unreachable!(),
                 };
-                format!(
-                    "icmp {predicate} i64 {}, {}",
-                    left.integer(),
-                    right.integer()
-                )
+                let comparison = self.emit_numeric_compare(left, right, body, span);
+                LlValue::Boolean(body.instruction(
+                    &format!("icmp {predicate} i32 {comparison}, 0"),
+                    span,
+                    &mut self.debug,
+                ))
             }
-        };
-        let value = body.instruction(&instruction, span, &mut self.debug);
-        if matches!(
-            operation,
-            CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply
-        ) {
-            LlValue::Int(value)
-        } else {
-            LlValue::Boolean(value)
         }
+    }
+
+    fn emit_numeric_compare(
+        &mut self,
+        left: &LlValue,
+        right: &LlValue,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        let (domain, left, right) = match (left, right) {
+            (LlValue::Int(left), LlValue::Int(right)) => ("int", left, right),
+            (LlValue::Rational(left), LlValue::Rational(right)) => ("rational", left, right),
+            _ => unreachable!("checked numeric comparison operands agree"),
+        };
+        body.instruction(
+            &format!("call i32 @topal.runtime.{domain}.compare(ptr {left}, ptr {right})"),
+            span,
+            &mut self.debug,
+        )
     }
 
     fn emit_boolean_decision(
@@ -385,10 +565,28 @@ impl<'a> Generator<'a> {
                 ))
             }
             (LlValue::Int(left), LlValue::Int(right)) => LlValue::Int(body.instruction(
-                &format!("phi i64 [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"),
+                &format!("phi ptr [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"),
                 span,
                 &mut self.debug,
             )),
+            (LlValue::Rational(left), LlValue::Rational(right)) => {
+                LlValue::Rational(body.instruction(
+                    &format!(
+                        "phi ptr [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"
+                    ),
+                    span,
+                    &mut self.debug,
+                ))
+            }
+            (LlValue::Comparison(left), LlValue::Comparison(right)) => {
+                LlValue::Comparison(body.instruction(
+                    &format!(
+                        "phi i32 [{left}, %{true_predecessor}], [{right}, %{false_predecessor}]"
+                    ),
+                    span,
+                    &mut self.debug,
+                ))
+            }
             _ => unreachable!("checked decision branch types agree"),
         }
     }
@@ -414,10 +612,34 @@ impl<'a> Generator<'a> {
                 body.start_block(&done_label);
             }
             LlValue::Int(value) => body.effect(
-                &format!("call void @topal.runtime.print.i64(i64 {value})"),
+                &format!("call void @topal.runtime.int.print(ptr {value})"),
                 span,
                 &mut self.debug,
             ),
+            LlValue::Rational(value) => body.effect(
+                &format!("call void @topal.runtime.rational.print(ptr {value})"),
+                span,
+                &mut self.debug,
+            ),
+            LlValue::Comparison(value) => {
+                let less = body.label("print.less");
+                let equal = body.label("print.equal");
+                let greater = body.label("print.greater");
+                let done = body.label("print.comparison.done");
+                let location = self.debug.location(span, body.subprogram);
+                body.terminator(
+                    &format!(
+                        "switch i32 {value}, label %{greater} [ i32 -1, label %{less} i32 0, label %{equal} ]"
+                    ),
+                    location,
+                );
+                for (label, text) in [(&less, "Less"), (&equal, "Equal"), (&greater, "Greater")] {
+                    body.start_block(label);
+                    self.emit_write_literal(text, body, span);
+                    body.terminator(&format!("br label %{done}"), location);
+                }
+                body.start_block(&done);
+            }
             LlValue::String(value) => {
                 self.emit_write_literal(&display_string_literal(value), body, span);
             }
@@ -457,6 +679,44 @@ impl<'a> Generator<'a> {
             &mut self.debug,
         );
     }
+
+    fn emit_int_literal(&mut self, value: &BigInt) -> LlValue {
+        LlValue::Int(self.emit_int_global(value))
+    }
+
+    fn emit_int_global(&mut self, value: &BigInt) -> String {
+        let (sign, limbs) = value.to_u32_digits();
+        let negative = usize::from(sign == Sign::Minus);
+        let name = format!(".topal.int.{}", self.next_global);
+        self.next_global += 1;
+        let values = limbs
+            .iter()
+            .map(|limb| format!("i32 {limb}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        self.globals.push(format!(
+            "@{name} = private unnamed_addr constant {{ i64, i64, [{} x i32] }} {{ i64 {negative}, i64 {}, [{} x i32] [{values}] }}, align 8",
+            limbs.len(),
+            limbs.len(),
+            limbs.len()
+        ));
+        format!("@{name}")
+    }
+
+    fn emit_rational_literal(
+        &mut self,
+        value: &BigRational,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        let numerator = self.emit_int_global(value.numer());
+        let denominator = self.emit_int_global(value.denom());
+        LlValue::Rational(body.instruction(
+            &format!("call ptr @topal.runtime.rational.raw(ptr {numerator}, ptr {denominator})"),
+            span,
+            &mut self.debug,
+        ))
+    }
 }
 
 #[derive(Clone)]
@@ -464,6 +724,8 @@ enum LlValue {
     Unit,
     Boolean(String),
     Int(String),
+    Rational(String),
+    Comparison(String),
     String(String),
     Tuple(Vec<Self>),
 }
@@ -483,11 +745,19 @@ impl LlValue {
         value
     }
 
+    fn rational(&self) -> &str {
+        let Self::Rational(value) = self else {
+            unreachable!("checked value is Rational")
+        };
+        value
+    }
+
     fn argument(&self) -> String {
         match self {
             Self::Unit => "i8 0".into(),
             Self::Boolean(value) => format!("i1 {value}"),
-            Self::Int(value) => format!("i64 {value}"),
+            Self::Int(value) | Self::Rational(value) => format!("ptr {value}"),
+            Self::Comparison(value) => format!("i32 {value}"),
             _ => unreachable!("checked call arguments are scalar"),
         }
     }
@@ -536,7 +806,8 @@ impl FunctionBody {
         let value = match value {
             LlValue::Unit => "i8 0".into(),
             LlValue::Boolean(value) => format!("i1 {value}"),
-            LlValue::Int(value) => format!("i64 {value}"),
+            LlValue::Int(value) | LlValue::Rational(value) => format!("ptr {value}"),
+            LlValue::Comparison(value) => format!("i32 {value}"),
             LlValue::String(_) | LlValue::Tuple(_) => return,
         };
         self.lines.push(format!(
@@ -566,6 +837,8 @@ struct DebugInfo {
     compile_unit: usize,
     empty: usize,
     int_type: usize,
+    rational_type: usize,
+    comparison_type: usize,
     boolean_type: usize,
     unit_type: usize,
     source: topal_source::SourceText,
@@ -589,6 +862,8 @@ impl DebugInfo {
             compile_unit: 0,
             empty: 0,
             int_type: 0,
+            rational_type: 0,
+            comparison_type: 0,
             boolean_type: 0,
             unit_type: 0,
             source,
@@ -607,8 +882,56 @@ impl DebugInfo {
             debug.empty,
             debug.empty
         ));
-        debug.int_type =
-            debug.node("!DIBasicType(name: \"Int\", size: 64, encoding: DW_ATE_signed)".into());
+        let unsigned64 =
+            debug.node("!DIBasicType(name: \"u64\", size: 64, encoding: DW_ATE_unsigned)".into());
+        let negative = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"negative\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 0)",
+            debug.file
+        ));
+        let length = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"length\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 64)",
+            debug.file
+        ));
+        let members = debug.node(format!("!{{!{negative}, !{length}}}"));
+        let storage = debug.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalIntHeader\", file: !{}, size: 128, align: 64, elements: !{members})",
+            debug.file
+        ));
+        let pointer = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        debug.int_type = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Int\", file: !{}, baseType: !{pointer})",
+            debug.file
+        ));
+        let numerator = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"numerator\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            debug.file, debug.int_type
+        ));
+        let denominator = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"denominator\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 64)",
+            debug.file, debug.int_type
+        ));
+        let rational_members = debug.node(format!("!{{!{numerator}, !{denominator}}}"));
+        let rational_storage = debug.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalRationalHeader\", file: !{}, size: 128, align: 64, elements: !{rational_members})",
+            debug.file
+        ));
+        let rational_pointer = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{rational_storage}, size: 64, align: 64)"
+        ));
+        debug.rational_type = debug.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Rational\", file: !{}, baseType: !{rational_pointer})",
+            debug.file
+        ));
+        let less = debug.node("!DIEnumerator(name: \"Less\", value: -1)".into());
+        let equal = debug.node("!DIEnumerator(name: \"Equal\", value: 0)".into());
+        let greater = debug.node("!DIEnumerator(name: \"Greater\", value: 1)".into());
+        let comparison_values = debug.node(format!("!{{!{less}, !{equal}, !{greater}}}"));
+        debug.comparison_type = debug.node(format!(
+            "!DICompositeType(tag: DW_TAG_enumeration_type, name: \"Comparison\", file: !{}, size: 32, align: 32, elements: !{comparison_values})",
+            debug.file
+        ));
         debug.boolean_type =
             debug.node("!DIBasicType(name: \"Boolean\", size: 8, encoding: DW_ATE_boolean)".into());
         debug.unit_type =
@@ -635,6 +958,8 @@ impl DebugInfo {
             CompilerType::Unit => self.unit_type,
             CompilerType::Boolean => self.boolean_type,
             CompilerType::Int => self.int_type,
+            CompilerType::Rational => self.rational_type,
+            CompilerType::Comparison => self.comparison_type,
             CompilerType::String | CompilerType::Tuple(_) => {
                 unreachable!("structural values have no native debug representation yet")
             }
@@ -742,7 +1067,8 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Unit => "void",
         CompilerType::Boolean => "i1",
-        CompilerType::Int => "i64",
+        CompilerType::Int | CompilerType::Rational => "ptr",
+        CompilerType::Comparison => "i32",
         _ => unreachable!("shared model restricts function ABI types"),
     }
 }
@@ -751,7 +1077,8 @@ fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Unit => "i8",
         CompilerType::Boolean => "i1",
-        CompilerType::Int => "i64",
+        CompilerType::Int | CompilerType::Rational => "ptr",
+        CompilerType::Comparison => "i32",
         _ => unreachable!("shared model restricts function ABI types"),
     }
 }
@@ -774,85 +1101,7 @@ fn llvm_string(value: &str) -> String {
         .collect()
 }
 
-const PLATFORM_RUNTIME: &str = r#"; topal.platform.linux-x86_64/1
-define internal i64 @topal.platform.write(i64 %fd, ptr %buffer, i64 %length) nounwind noinline {
-entry:
-  %result = call i64 asm sideeffect "syscall", "={rax},{rax},{rdi},{rsi},{rdx},~{rcx},~{r11},~{memory}"(i64 1, i64 %fd, ptr %buffer, i64 %length)
-  ret i64 %result
-}
-
-define internal void @topal.platform.exit(i64 %status) noreturn nounwind noinline {
-entry:
-  %ignored = call i64 asm sideeffect "syscall", "={rax},{rax},{rdi},~{rcx},~{r11},~{memory}"(i64 60, i64 %status)
-  unreachable
-}
-
-define internal void @topal.platform.write_all(ptr %buffer, i64 %length) nounwind noinline {
-entry:
-  %empty = icmp eq i64 %length, 0
-  br i1 %empty, label %done, label %loop
-loop:
-  %offset = phi i64 [0, %entry], [%next, %progress], [%offset, %retry]
-  %remaining = sub i64 %length, %offset
-  %cursor = getelementptr i8, ptr %buffer, i64 %offset
-  %written = call i64 @topal.platform.write(i64 1, ptr %cursor, i64 %remaining)
-  %positive = icmp sgt i64 %written, 0
-  br i1 %positive, label %progress, label %error
-progress:
-  %next = add i64 %offset, %written
-  %complete = icmp eq i64 %next, %length
-  br i1 %complete, label %done, label %loop
-error:
-  %interrupted = icmp eq i64 %written, -4
-  br i1 %interrupted, label %retry, label %failure
-retry:
-  br label %loop
-failure:
-  call void @topal.platform.exit(i64 74)
-  unreachable
-done:
-  ret void
-}
-
-define internal void @topal.runtime.print.i64(i64 %value) nounwind noinline {
-entry:
-  %buffer = alloca [20 x i8], align 1
-  %negative = icmp slt i64 %value, 0
-  %negated = sub i64 0, %value
-  %magnitude = select i1 %negative, i64 %negated, i64 %value
-  br i1 %negative, label %sign, label %digits.entry
-sign:
-  %minus = alloca i8, align 1
-  store i8 45, ptr %minus, align 1
-  call void @topal.platform.write_all(ptr %minus, i64 1)
-  br label %digits.entry
-digits.entry:
-  %zero = icmp eq i64 %magnitude, 0
-  br i1 %zero, label %zero.digit, label %digits.loop
-zero.digit:
-  %zero.pointer = getelementptr [20 x i8], ptr %buffer, i64 0, i64 19
-  store i8 48, ptr %zero.pointer, align 1
-  br label %emit
-digits.loop:
-  %current = phi i64 [%magnitude, %digits.entry], [%quotient, %digits.loop]
-  %index = phi i64 [20, %digits.entry], [%next.index, %digits.loop]
-  %next.index = sub i64 %index, 1
-  %remainder = urem i64 %current, 10
-  %digit = trunc i64 %remainder to i8
-  %ascii = add i8 %digit, 48
-  %digit.pointer = getelementptr [20 x i8], ptr %buffer, i64 0, i64 %next.index
-  store i8 %ascii, ptr %digit.pointer, align 1
-  %quotient = udiv i64 %current, 10
-  %more = icmp ne i64 %quotient, 0
-  br i1 %more, label %digits.loop, label %emit
-emit:
-  %start = phi i64 [19, %zero.digit], [%next.index, %digits.loop]
-  %count = sub i64 20, %start
-  %first = getelementptr [20 x i8], ptr %buffer, i64 0, i64 %start
-  call void @topal.platform.write_all(ptr %first, i64 %count)
-  ret void
-}
-"#;
+const PLATFORM_RUNTIME: &str = include_str!("runtime/linux_x86_64.ll");
 
 #[cfg(test)]
 mod tests {
@@ -862,7 +1111,7 @@ mod tests {
 
     #[test]
     fn emits_target_platform_runtime_and_debug_metadata() {
-        let source = "use language (version is v0.1)\nvalue is 40 + 2\nproduct is 6 * 7\nordered is product >= value\n(value, product, ordered, true, \"Topal\")\n";
+        let source = "use language (version is v0.1)\nvalue is 40 + 2\nproduct is 6 * 7\nratio is 6 / 8\nordered is product >= value\n(value, product, ratio, ordered, true, \"Topal\")\n";
         let program = analyze_for_compiler(source).unwrap();
         let llvm = Generator::new(&program, "/source/example.t").emit();
         assert!(llvm.contains("target triple = \"x86_64-unknown-linux-gnu\""));
@@ -870,9 +1119,13 @@ mod tests {
         assert!(llvm.contains("define void @_start() naked"));
         assert!(llvm.contains("andq $$-16, %rsp"));
         assert!(llvm.contains("@llvm.used"));
-        assert!(llvm.contains("add i64 40, 2"));
-        assert!(llvm.contains("mul i64 6, 7"));
-        assert!(llvm.contains("icmp sge i64"));
+        assert!(llvm.contains("call ptr @topal.runtime.int.add"));
+        assert!(llvm.contains("call ptr @topal.runtime.int.multiply"));
+        assert!(llvm.contains("call i32 @topal.runtime.int.compare"));
+        assert!(llvm.contains("call ptr @topal.runtime.rational.divide"));
+        assert!(llvm.contains("@llvm.ctlz.i32"));
+        assert!(llvm.contains("name: \"Rational\""));
+        assert!(llvm.contains("constant { i64, i64, [1 x i32] }"));
         assert!(llvm.contains("\\54\\6F\\70\\61\\6C"));
         assert!(llvm.contains("#dbg_value"));
         assert!(llvm.contains("Dwarf Version"));

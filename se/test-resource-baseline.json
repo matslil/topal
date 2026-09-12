@@ -3820,11 +3820,6 @@
       "memory_peak_bytes": 18382848,
       "samples_per_test": 50
     },
-    "topal-language::lib:topal_language::compiler_model::tests::rejects_an_unproved_machine_integer_representation": {
-      "cpu_time_ns": 2057159,
-      "memory_peak_bytes": 18395136,
-      "samples_per_test": 50
-    },
     "topal-language::lib:topal_language::source::tests::interpreter_fails_closed_for_unproved_parameter_evidence": {
       "cpu_time_ns": 2549159,
       "memory_peak_bytes": 18386944,
@@ -3953,6 +3948,51 @@
     "topal-syntax::lib:topal_syntax::parser::tests::retains_v02_function_clauses_around_their_arrow": {
       "cpu_time_ns": 1578600,
       "memory_peak_bytes": 18386944,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::arbitrary_int_runtime_is_exact_and_self_contained": {
+      "cpu_time_ns": 184448780,
+      "memory_peak_bytes": 39362560,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::arbitrary_int_runtime_matches_limb_boundary_semantics": {
+      "cpu_time_ns": 122639080,
+      "memory_peak_bytes": 38961152,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_executes_arbitrary_integer_arithmetic": {
+      "cpu_time_ns": 21606959,
+      "memory_peak_bytes": 18395136,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::preserves_arbitrary_integer_ranges_for_the_native_backend": {
+      "cpu_time_ns": 3250699,
+      "memory_peak_bytes": 18243584,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::finite_exact_runtime_matches_large_gcd_and_division_semantics": {
+      "cpu_time_ns": 149516480,
+      "memory_peak_bytes": 40828928,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_renders_canonical_rational_parameters_and_locals": {
+      "cpu_time_ns": 259942260,
+      "memory_peak_bytes": 57020416,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_executes_finite_exact_division_and_comparison": {
+      "cpu_time_ns": 16658880,
+      "memory_peak_bytes": 17936384,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_finite_exact_conversion_division_and_power": {
+      "cpu_time_ns": 3437480,
+      "memory_peak_bytes": 18235392,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_statically_zero_exact_divisors": {
+      "cpu_time_ns": 3096299,
+      "memory_peak_bytes": 18014208,
       "samples_per_test": 50
     }
   }

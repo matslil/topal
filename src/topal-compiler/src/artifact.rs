@@ -9,7 +9,7 @@ use topal_language::CompilerProgram;
 use crate::{DATA_LAYOUT, LLVM_MAJOR, TARGET_TRIPLE};
 
 pub const NATIVE_ARTIFACT_SCHEMA: &str = "topal.native-artifact/1";
-pub const NATIVE_ABI: &str = "topal-native/1";
+pub const NATIVE_ABI: &str = "topal-native/3";
 pub const PLATFORM_ABI: &str = "linux-x86_64-syscall/1";
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -372,6 +372,9 @@ mod tests {
         metadata.target_triple = "x86_64-pc-windows-msvc".into();
         assert!(metadata.validate().is_err());
         metadata.target_triple = TARGET_TRIPLE.into();
+        metadata.native_abi = "topal-native/2".into();
+        assert!(metadata.validate().is_err());
+        metadata.native_abi = NATIVE_ABI.into();
         metadata.dependencies = vec![
             DigestEntry {
                 identity: "same".into(),

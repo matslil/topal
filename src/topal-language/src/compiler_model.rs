@@ -7,6 +7,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use num_bigint::BigInt;
+use num_rational::BigRational;
 use topal_semantics::LanguageVersion;
 use topal_source::{Diagnostic, SourceText, Span};
 use topal_syntax::{
@@ -14,13 +15,15 @@ use topal_syntax::{
     parse,
 };
 
-use crate::source::{parse_integer, parse_string};
+use crate::source::{parse_integer, parse_rational, parse_string};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerType {
     Unit,
     Boolean,
     Int,
+    Rational,
+    Comparison,
     String,
     Tuple(Vec<Self>),
 }
@@ -28,7 +31,10 @@ pub enum CompilerType {
 impl CompilerType {
     #[must_use]
     pub const fn machine_scalar(&self) -> bool {
-        matches!(self, Self::Unit | Self::Boolean | Self::Int)
+        matches!(
+            self,
+            Self::Unit | Self::Boolean | Self::Int | Self::Rational | Self::Comparison
+        )
     }
 
     #[must_use]
@@ -37,6 +43,8 @@ impl CompilerType {
             Self::Unit => "Unit".into(),
             Self::Boolean => "Boolean".into(),
             Self::Int => "Int".into(),
+            Self::Rational => "Rational".into(),
+            Self::Comparison => "Comparison".into(),
             Self::String => "String".into(),
             Self::Tuple(fields) => format!(
                 "({})",
@@ -73,6 +81,11 @@ pub enum CompilerBinary {
     Add,
     Subtract,
     Multiply,
+    Divide,
+    Modulo,
+    QuotientModulo,
+    Power,
+    Compare,
     Equal,
     NotEqual,
     Less,
@@ -89,6 +102,7 @@ pub struct CompilerExpression {
     pub kind: CompilerExpressionKind,
     pub value_type: CompilerType,
     pub int_range: Option<IntRange>,
+    pub rational_value: Option<BigRational>,
     pub span: Span,
 }
 
@@ -97,10 +111,17 @@ pub enum CompilerExpressionKind {
     Unit,
     Boolean(bool),
     Int(BigInt),
+    Rational(BigRational),
     String(String),
     Tuple(Vec<CompilerExpression>),
     Local(String),
     Negate(Box<CompilerExpression>),
+    Absolute(Box<CompilerExpression>),
+    IntToRational(Box<CompilerExpression>),
+    RationalConstruct {
+        numerator: Box<CompilerExpression>,
+        denominator: Box<CompilerExpression>,
+    },
     Not(Box<CompilerExpression>),
     Binary {
         operation: CompilerBinary,
@@ -177,6 +198,7 @@ struct FunctionSource {
 struct BindingFacts {
     value_type: CompilerType,
     int_range: Option<IntRange>,
+    rational_value: Option<BigRational>,
 }
 
 struct Analyzer {
@@ -373,6 +395,7 @@ impl Analyzer {
                         BindingFacts {
                             value_type: value.value_type.clone(),
                             int_range: value.int_range.clone(),
+                            rational_value: value.rational_value.clone(),
                         },
                     );
                     lowered.push(CompilerStatement::Binding(CompilerBinding {
@@ -443,6 +466,7 @@ impl Analyzer {
         })
     }
 
+    #[allow(clippy::too_many_lines)] // Exhaustive expression admission keeps the subset boundary visible.
     fn analyze_expression(
         &mut self,
         expression: &Expression,
@@ -455,6 +479,7 @@ impl Analyzer {
                 kind: CompilerExpressionKind::Boolean(self.source.slice(*value) == "true"),
                 value_type: CompilerType::Boolean,
                 int_range: None,
+                rational_value: None,
                 span,
             }),
             Expression::Integer(value) => {
@@ -466,11 +491,28 @@ impl Analyzer {
                         "invalid integer literal",
                     )
                 })?;
-                ensure_i64(&self.source, *value, &IntRange::exact(integer.clone()))?;
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Int(integer.clone()),
                     value_type: CompilerType::Int,
                     int_range: Some(IntRange::exact(integer)),
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Rational(value) => {
+                let rational = parse_rational(self.source.slice(*value)).ok_or_else(|| {
+                    source_diagnostic(
+                        &self.source,
+                        "E-NUMERIC-LITERAL",
+                        *value,
+                        "invalid rational literal",
+                    )
+                })?;
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Rational(rational.clone()),
+                    value_type: CompilerType::Rational,
+                    int_range: None,
+                    rational_value: Some(rational),
                     span,
                 })
             }
@@ -487,6 +529,7 @@ impl Analyzer {
                     kind: CompilerExpressionKind::String(value.to_owned()),
                     value_type: CompilerType::String,
                     int_range: None,
+                    rational_value: None,
                     span,
                 })
             }
@@ -507,6 +550,7 @@ impl Analyzer {
                     ),
                     kind: CompilerExpressionKind::Tuple(values),
                     int_range: None,
+                    rational_value: None,
                     span,
                 })
             }
@@ -524,6 +568,7 @@ impl Analyzer {
                     kind: CompilerExpressionKind::Local(name_text.to_owned()),
                     value_type: facts.value_type.clone(),
                     int_range: facts.int_range.clone(),
+                    rational_value: facts.rational_value.clone(),
                     span,
                 })
             }
@@ -537,12 +582,53 @@ impl Analyzer {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Root operations are admitted explicitly and in source-selection order.
     fn analyze_application(
         &mut self,
         items: &[Expression],
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let [
+            Expression::Identifier(operation),
+            Expression::Identifier(domain),
+        ] = items
+            && matches!(self.source.slice(*operation), "zero" | "one")
+        {
+            let one = self.source.slice(*operation) == "one";
+            return match self.source.slice(*domain) {
+                "Int" | "Nat" => {
+                    let value = BigInt::from(u8::from(one));
+                    Ok(CompilerExpression {
+                        kind: CompilerExpressionKind::Int(value.clone()),
+                        value_type: CompilerType::Int,
+                        int_range: Some(IntRange::exact(value)),
+                        rational_value: None,
+                        span,
+                    })
+                }
+                "Rational" => {
+                    let value = BigRational::from_integer(BigInt::from(u8::from(one)));
+                    Ok(CompilerExpression {
+                        kind: CompilerExpressionKind::Rational(value.clone()),
+                        value_type: CompilerType::Rational,
+                        int_range: None,
+                        rational_value: Some(value),
+                        span,
+                    })
+                }
+                _ => Err(unsupported(
+                    &self.source,
+                    *domain,
+                    "numeric identity domain",
+                )),
+            };
+        }
+        if let [Expression::Identifier(constructor), argument] = items
+            && self.source.slice(*constructor) == "Rational"
+        {
+            return self.analyze_rational_constructor(argument, span, environment);
+        }
         if let [
             Expression::Callable {
                 kind: CallableKind::Minus,
@@ -552,23 +638,60 @@ impl Analyzer {
         ] = items
         {
             let operand = self.analyze_expression(operand, environment)?;
-            require_type(
-                &self.source,
-                operand.span,
-                &CompilerType::Int,
-                &operand.value_type,
-            )?;
-            let range = operand.int_range.as_ref().map(|range| IntRange {
-                lower: -range.upper.clone(),
-                upper: -range.lower.clone(),
-            });
-            if let Some(range) = &range {
-                ensure_i64(&self.source, span, range)?;
-            }
+            require_exact_numeric(&self.source, operand.span, &operand.value_type)?;
+            let range = (operand.value_type == CompilerType::Int)
+                .then_some(operand.int_range.as_ref())
+                .flatten()
+                .map(|range| IntRange {
+                    lower: -range.upper.clone(),
+                    upper: -range.lower.clone(),
+                });
+            let rational_value = operand.rational_value.as_ref().map(|value| -value.clone());
+            let value_type = operand.value_type.clone();
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::Negate(Box::new(operand)),
-                value_type: CompilerType::Int,
+                value_type,
                 int_range: range,
+                rational_value,
+                span,
+            });
+        }
+        if let [Expression::Identifier(operation), operand] = items
+            && matches!(self.source.slice(*operation), "negate" | "absolute")
+        {
+            let negate = self.source.slice(*operation) == "negate";
+            let operand = self.analyze_expression(operand, environment)?;
+            require_exact_numeric(&self.source, operand.span, &operand.value_type)?;
+            let range = (operand.value_type == CompilerType::Int)
+                .then_some(operand.int_range.as_ref())
+                .flatten()
+                .map(|range| {
+                    if negate {
+                        IntRange {
+                            lower: -range.upper.clone(),
+                            upper: -range.lower.clone(),
+                        }
+                    } else {
+                        absolute_range(range)
+                    }
+                });
+            let rational_value = operand.rational_value.as_ref().map(|value| {
+                if negate {
+                    -value.clone()
+                } else {
+                    rational_absolute(value)
+                }
+            });
+            let value_type = operand.value_type.clone();
+            return Ok(CompilerExpression {
+                kind: if negate {
+                    CompilerExpressionKind::Negate(Box::new(operand))
+                } else {
+                    CompilerExpressionKind::Absolute(Box::new(operand))
+                },
+                value_type,
+                int_range: range,
+                rational_value,
                 span,
             });
         }
@@ -586,6 +709,7 @@ impl Analyzer {
                 kind: CompilerExpressionKind::Not(Box::new(operand)),
                 value_type: CompilerType::Boolean,
                 int_range: None,
+                rational_value: None,
                 span,
             });
         }
@@ -613,6 +737,63 @@ impl Analyzer {
         self.analyze_call(items, span, environment)
     }
 
+    fn analyze_rational_constructor(
+        &mut self,
+        argument: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        if let Expression::Product { fields, .. } = argument
+            && fields.len() == 2
+            && fields.iter().all(|field| field.label.is_none())
+        {
+            let numerator = self.analyze_expression(&fields[0].value, environment)?;
+            let denominator = self.analyze_expression(&fields[1].value, environment)?;
+            require_type(
+                &self.source,
+                numerator.span,
+                &CompilerType::Int,
+                &numerator.value_type,
+            )?;
+            require_type(
+                &self.source,
+                denominator.span,
+                &CompilerType::Int,
+                &denominator.value_type,
+            )?;
+            require_proven_nonzero_int(&self.source, denominator.span, &denominator)?;
+            let rational_value = exact_int(&numerator)
+                .zip(exact_int(&denominator))
+                .map(|(numerator, denominator)| BigRational::new(numerator, denominator));
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::RationalConstruct {
+                    numerator: Box::new(numerator),
+                    denominator: Box::new(denominator),
+                },
+                value_type: CompilerType::Rational,
+                int_range: None,
+                rational_value,
+                span,
+            });
+        }
+        let value = self.analyze_expression(argument, environment)?;
+        require_type(
+            &self.source,
+            value.span,
+            &CompilerType::Int,
+            &value.value_type,
+        )?;
+        let rational_value = exact_int(&value).map(BigRational::from_integer);
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::IntToRational(Box::new(value)),
+            value_type: CompilerType::Rational,
+            int_range: None,
+            rational_value,
+            span,
+        })
+    }
+
+    #[allow(clippy::too_many_lines)] // Numeric coercion and fail-closed obligations stay in one selection path.
     fn analyze_symbolic_binary(
         &mut self,
         kind: CallableKind,
@@ -625,6 +806,11 @@ impl Analyzer {
             CallableKind::Plus => CompilerBinary::Add,
             CallableKind::Minus => CompilerBinary::Subtract,
             CallableKind::Multiply => CompilerBinary::Multiply,
+            CallableKind::Divide => CompilerBinary::Divide,
+            CallableKind::Modulo => CompilerBinary::Modulo,
+            CallableKind::QuotientModulo => CompilerBinary::QuotientModulo,
+            CallableKind::Power => CompilerBinary::Power,
+            CallableKind::Compare => CompilerBinary::Compare,
             CallableKind::Equal => CompilerBinary::Equal,
             CallableKind::NotEqual => CompilerBinary::NotEqual,
             CallableKind::Less => CompilerBinary::Less,
@@ -633,18 +819,56 @@ impl Analyzer {
             CallableKind::GreaterEqual => CompilerBinary::GreaterEqual,
             _ => return Err(unsupported(&self.source, span, "numeric callable")),
         };
-        let left_value = self.analyze_expression(left, environment)?;
-        let right_value = self.analyze_expression(right, environment)?;
-        require_same_type(
-            &self.source,
-            span,
-            &left_value.value_type,
-            &right_value.value_type,
-        )?;
-        if matches!(operation, CompilerBinary::Equal | CompilerBinary::NotEqual) {
+        let mut left_value = self.analyze_expression(left, environment)?;
+        let mut right_value = self.analyze_expression(right, environment)?;
+
+        if matches!(
+            operation,
+            CompilerBinary::Modulo | CompilerBinary::QuotientModulo
+        ) {
+            require_type(
+                &self.source,
+                left_value.span,
+                &CompilerType::Int,
+                &left_value.value_type,
+            )?;
+            require_type(
+                &self.source,
+                right_value.span,
+                &CompilerType::Int,
+                &right_value.value_type,
+            )?;
+            require_proven_nonzero_int(&self.source, right_value.span, &right_value)?;
+            let result_type = if operation == CompilerBinary::Modulo {
+                CompilerType::Int
+            } else {
+                CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int])
+            };
+            return Ok(Self::finish_binary(
+                operation,
+                left_value,
+                right_value,
+                result_type,
+                span,
+            ));
+        }
+
+        if operation == CompilerBinary::Power {
+            return self.finish_power(left_value, right_value, span);
+        }
+
+        let numeric =
+            is_exact_numeric(&left_value.value_type) && is_exact_numeric(&right_value.value_type);
+        if matches!(operation, CompilerBinary::Equal | CompilerBinary::NotEqual) && !numeric {
+            require_same_type(
+                &self.source,
+                span,
+                &left_value.value_type,
+                &right_value.value_type,
+            )?;
             if !matches!(
                 left_value.value_type,
-                CompilerType::Int | CompilerType::Boolean | CompilerType::Unit
+                CompilerType::Boolean | CompilerType::Unit | CompilerType::Comparison
             ) {
                 return Err(unsupported(
                     &self.source,
@@ -652,15 +876,55 @@ impl Analyzer {
                     "equality for this value type",
                 ));
             }
-        } else {
-            require_type(
-                &self.source,
+            return Ok(Self::finish_binary(
+                operation,
+                left_value,
+                right_value,
+                CompilerType::Boolean,
                 span,
-                &CompilerType::Int,
-                &left_value.value_type,
-            )?;
+            ));
         }
-        self.finish_binary(operation, left_value, right_value, span)
+
+        require_exact_numeric(&self.source, left_value.span, &left_value.value_type)?;
+        require_exact_numeric(&self.source, right_value.span, &right_value.value_type)?;
+        if operation == CompilerBinary::Divide {
+            require_proven_nonzero_numeric(&self.source, right_value.span, &right_value)?;
+        }
+        let both_int = left_value.value_type == CompilerType::Int
+            && right_value.value_type == CompilerType::Int;
+        let rational_result = operation == CompilerBinary::Divide
+            || left_value.value_type == CompilerType::Rational
+            || right_value.value_type == CompilerType::Rational;
+        if rational_result {
+            left_value = into_rational(left_value);
+            right_value = into_rational(right_value);
+        }
+        let result_type = match operation {
+            CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply => {
+                if rational_result {
+                    CompilerType::Rational
+                } else {
+                    CompilerType::Int
+                }
+            }
+            CompilerBinary::Divide => CompilerType::Rational,
+            CompilerBinary::Compare => CompilerType::Comparison,
+            CompilerBinary::Equal
+            | CompilerBinary::NotEqual
+            | CompilerBinary::Less
+            | CompilerBinary::Greater
+            | CompilerBinary::LessEqual
+            | CompilerBinary::GreaterEqual => CompilerType::Boolean,
+            _ => unreachable!("numeric operation handled above"),
+        };
+        debug_assert!(!both_int || !rational_result || operation == CompilerBinary::Divide);
+        Ok(Self::finish_binary(
+            operation,
+            left_value,
+            right_value,
+            result_type,
+            span,
+        ))
     }
 
     fn analyze_binary(
@@ -676,40 +940,100 @@ impl Analyzer {
         let right = self.analyze_expression(right, environment)?;
         require_type(&self.source, left.span, expected, &left.value_type)?;
         require_type(&self.source, right.span, expected, &right.value_type)?;
-        self.finish_binary(operation, left, right, span)
+        Ok(Self::finish_binary(
+            operation,
+            left,
+            right,
+            CompilerType::Boolean,
+            span,
+        ))
     }
 
-    fn finish_binary(
+    fn finish_power(
         &self,
-        operation: CompilerBinary,
         left: CompilerExpression,
         right: CompilerExpression,
         span: Span,
     ) -> Result<CompilerExpression, Diagnostic> {
-        let int_range = match operation {
-            CompilerBinary::Add => combine_ranges(&left, &right, |a, b| IntRange {
-                lower: &a.lower + &b.lower,
-                upper: &a.upper + &b.upper,
-            }),
-            CompilerBinary::Subtract => combine_ranges(&left, &right, |a, b| IntRange {
-                lower: &a.lower - &b.upper,
-                upper: &a.upper - &b.lower,
-            }),
-            CompilerBinary::Multiply => combine_ranges(&left, &right, multiply_range),
+        require_exact_numeric(&self.source, left.span, &left.value_type)?;
+        require_type(
+            &self.source,
+            right.span,
+            &CompilerType::Int,
+            &right.value_type,
+        )?;
+        let Some(exponent) = exact_int(&right) else {
+            return Err(unsupported(
+                &self.source,
+                right.span,
+                "power with an exponent not proven by specialization",
+            ));
+        };
+        if left.value_type == CompilerType::Int && exponent < BigInt::from(0) {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-TYPE-MISMATCH",
+                right.span,
+                "an Int exponent must satisfy Nat",
+            ));
+        }
+        if left.value_type == CompilerType::Rational
+            && exponent < BigInt::from(0)
+            && is_proven_zero_numeric(&left)
+        {
+            return Err(division_by_zero(&self.source, left.span));
+        }
+        if left.value_type == CompilerType::Rational
+            && exponent < BigInt::from(0)
+            && !is_proven_nonzero_numeric(&left)
+        {
+            return Err(unsupported(
+                &self.source,
+                left.span,
+                "negative Rational power with a base not proven nonzero",
+            ));
+        }
+        let result_type = left.value_type.clone();
+        Ok(Self::finish_binary(
+            CompilerBinary::Power,
+            left,
+            right,
+            result_type,
+            span,
+        ))
+    }
+
+    fn finish_binary(
+        operation: CompilerBinary,
+        left: CompilerExpression,
+        right: CompilerExpression,
+        value_type: CompilerType,
+        span: Span,
+    ) -> CompilerExpression {
+        let int_range = match (&value_type, operation) {
+            (CompilerType::Int, CompilerBinary::Add) => {
+                combine_ranges(&left, &right, |a, b| IntRange {
+                    lower: &a.lower + &b.lower,
+                    upper: &a.upper + &b.upper,
+                })
+            }
+            (CompilerType::Int, CompilerBinary::Subtract) => {
+                combine_ranges(&left, &right, |a, b| IntRange {
+                    lower: &a.lower - &b.upper,
+                    upper: &a.upper - &b.lower,
+                })
+            }
+            (CompilerType::Int, CompilerBinary::Multiply) => {
+                combine_ranges(&left, &right, multiply_range)
+            }
+            (CompilerType::Int, CompilerBinary::Modulo) => modulo_range(&left, &right),
+            (CompilerType::Int, CompilerBinary::Power) => power_range(&left, &right),
             _ => None,
         };
-        if let Some(range) = &int_range {
-            ensure_i64(&self.source, span, range)?;
-        }
-        let value_type = if matches!(
-            operation,
-            CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply
-        ) {
-            CompilerType::Int
-        } else {
-            CompilerType::Boolean
-        };
-        Ok(CompilerExpression {
+        let rational_value = (value_type == CompilerType::Rational)
+            .then(|| exact_rational_binary(operation, &left, &right))
+            .flatten();
+        CompilerExpression {
             kind: CompilerExpressionKind::Binary {
                 operation,
                 left: Box::new(left),
@@ -717,8 +1041,9 @@ impl Analyzer {
             },
             value_type,
             int_range,
+            rational_value,
             span,
-        })
+        }
     }
 
     fn analyze_call(
@@ -776,11 +1101,12 @@ impl Analyzer {
         }
         let result = self.instantiate_function(&function_name, &declaration, &arguments);
         self.active_calls.remove(&function_name);
-        let (symbol, result_type, int_range) = result?;
+        let (symbol, result_type, int_range, rational_value) = result?;
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::Call { symbol, arguments },
             value_type: result_type,
             int_range,
+            rational_value,
             span,
         })
     }
@@ -790,7 +1116,7 @@ impl Analyzer {
         function_name: &str,
         declaration: &FunctionSource,
         arguments: &[CompilerExpression],
-    ) -> Result<(String, CompilerType, Option<IntRange>), Diagnostic> {
+    ) -> Result<(String, CompilerType, Option<IntRange>, Option<BigRational>), Diagnostic> {
         let mut environment = BTreeMap::new();
         let mut parameters = Vec::new();
         for (parameter, argument) in declaration.parameters.iter().zip(arguments) {
@@ -824,6 +1150,7 @@ impl Analyzer {
                 BindingFacts {
                     value_type: expected.clone(),
                     int_range: argument.int_range.clone(),
+                    rational_value: argument.rational_value.clone(),
                 },
             );
             parameters.push(CompilerParameter {
@@ -851,6 +1178,7 @@ impl Analyzer {
         let symbol = format!("topal.fn.{}.{}", mangle(function_name), self.next_instance);
         self.next_instance += 1;
         let int_range = body.result.int_range.clone();
+        let rational_value = body.result.rational_value.clone();
         self.instances.push(CompilerFunction {
             source_name: function_name.to_owned(),
             symbol: symbol.clone(),
@@ -859,7 +1187,7 @@ impl Analyzer {
             body,
             span: declaration.span,
         });
-        Ok((symbol, result_type, int_range))
+        Ok((symbol, result_type, int_range, rational_value))
     }
 
     fn analyze_boolean_decision(
@@ -919,6 +1247,9 @@ impl Analyzer {
             (Some(left), Some(right)) => Some(IntRange::union(left, right)),
             _ => None,
         };
+        let rational_value = (when_true.rational_value == when_false.rational_value)
+            .then(|| when_true.rational_value.clone())
+            .flatten();
         Ok(CompilerExpression {
             value_type: when_true.value_type.clone(),
             kind: CompilerExpressionKind::BooleanDecision {
@@ -927,6 +1258,7 @@ impl Analyzer {
                 when_false: Box::new(when_false),
             },
             int_range,
+            rational_value,
             span,
         })
     }
@@ -944,8 +1276,168 @@ fn parse_classifier(source: &SourceText, span: Span) -> Result<CompilerType, Dia
         "Unit" => Ok(CompilerType::Unit),
         "Boolean" => Ok(CompilerType::Boolean),
         "Int" => Ok(CompilerType::Int),
+        "Rational" => Ok(CompilerType::Rational),
+        "Comparison" => Ok(CompilerType::Comparison),
         "String" => Ok(CompilerType::String),
         _ => Err(unsupported(source, span, "classifier")),
+    }
+}
+
+fn is_exact_numeric(value_type: &CompilerType) -> bool {
+    matches!(value_type, CompilerType::Int | CompilerType::Rational)
+}
+
+fn require_exact_numeric(
+    source: &SourceText,
+    span: Span,
+    value_type: &CompilerType,
+) -> Result<(), Diagnostic> {
+    if is_exact_numeric(value_type) {
+        Ok(())
+    } else {
+        Err(source_diagnostic(
+            source,
+            "E-TYPE-MISMATCH",
+            span,
+            format!("expected Int or Rational, found {}", value_type.name()),
+        ))
+    }
+}
+
+fn exact_int(expression: &CompilerExpression) -> Option<BigInt> {
+    let range = expression.int_range.as_ref()?;
+    (range.lower == range.upper).then(|| range.lower.clone())
+}
+
+fn into_rational(expression: CompilerExpression) -> CompilerExpression {
+    if expression.value_type == CompilerType::Rational {
+        return expression;
+    }
+    let span = expression.span;
+    let rational_value = exact_int(&expression).map(BigRational::from_integer);
+    CompilerExpression {
+        kind: CompilerExpressionKind::IntToRational(Box::new(expression)),
+        value_type: CompilerType::Rational,
+        int_range: None,
+        rational_value,
+        span,
+    }
+}
+
+fn rational_absolute(value: &BigRational) -> BigRational {
+    if value.numer() < &BigInt::from(0) {
+        -value.clone()
+    } else {
+        value.clone()
+    }
+}
+
+fn is_proven_zero_numeric(expression: &CompilerExpression) -> bool {
+    match expression.value_type {
+        CompilerType::Int => exact_int(expression).is_some_and(|value| value == BigInt::from(0)),
+        CompilerType::Rational => expression
+            .rational_value
+            .as_ref()
+            .is_some_and(|value| value.numer() == &BigInt::from(0)),
+        _ => false,
+    }
+}
+
+fn is_proven_nonzero_numeric(expression: &CompilerExpression) -> bool {
+    match expression.value_type {
+        CompilerType::Int => expression
+            .int_range
+            .as_ref()
+            .is_some_and(|range| range.upper < BigInt::from(0) || range.lower > BigInt::from(0)),
+        CompilerType::Rational => expression
+            .rational_value
+            .as_ref()
+            .is_some_and(|value| value.numer() != &BigInt::from(0)),
+        _ => false,
+    }
+}
+
+fn require_proven_nonzero_int(
+    source: &SourceText,
+    span: Span,
+    expression: &CompilerExpression,
+) -> Result<(), Diagnostic> {
+    debug_assert_eq!(expression.value_type, CompilerType::Int);
+    require_proven_nonzero_numeric(source, span, expression)
+}
+
+fn require_proven_nonzero_numeric(
+    source: &SourceText,
+    span: Span,
+    expression: &CompilerExpression,
+) -> Result<(), Diagnostic> {
+    if is_proven_zero_numeric(expression) {
+        Err(division_by_zero(source, span))
+    } else if is_proven_nonzero_numeric(expression) {
+        Ok(())
+    } else {
+        Err(unsupported(
+            source,
+            span,
+            "exact division with a divisor not proven nonzero",
+        ))
+    }
+}
+
+fn division_by_zero(source: &SourceText, span: Span) -> Diagnostic {
+    source_diagnostic(
+        source,
+        "E-DIVISION-BY-ZERO",
+        span,
+        "exact division requires a nonzero divisor",
+    )
+}
+
+fn modulo_range(dividend: &CompilerExpression, divisor: &CompilerExpression) -> Option<IntRange> {
+    if let (Some(dividend), Some(divisor)) = (exact_int(dividend), exact_int(divisor)) {
+        let magnitude = if divisor < BigInt::from(0) {
+            -divisor
+        } else {
+            divisor
+        };
+        let mut remainder = dividend % &magnitude;
+        if remainder < BigInt::from(0) {
+            remainder += magnitude;
+        }
+        return Some(IntRange::exact(remainder));
+    }
+    let range = divisor.int_range.as_ref()?;
+    let magnitude = (-range.lower.clone()).max(range.upper.clone());
+    Some(IntRange {
+        lower: BigInt::from(0),
+        upper: magnitude - 1,
+    })
+}
+
+fn power_range(base: &CompilerExpression, exponent: &CompilerExpression) -> Option<IntRange> {
+    let base = exact_int(base)?;
+    let exponent = exact_int(exponent)?.to_string().parse::<u32>().ok()?;
+    Some(IntRange::exact(base.pow(exponent)))
+}
+
+fn exact_rational_binary(
+    operation: CompilerBinary,
+    left: &CompilerExpression,
+    right: &CompilerExpression,
+) -> Option<BigRational> {
+    let left = left.rational_value.as_ref()?;
+    if operation == CompilerBinary::Power {
+        let exponent = exact_int(right)?.to_string().parse::<i32>().ok()?;
+        Some(left.pow(exponent))
+    } else {
+        let right = right.rational_value.as_ref()?;
+        match operation {
+            CompilerBinary::Add => Some(left + right),
+            CompilerBinary::Subtract => Some(left - right),
+            CompilerBinary::Multiply => Some(left * right),
+            CompilerBinary::Divide => Some(left / right),
+            _ => None,
+        }
     }
 }
 
@@ -973,16 +1465,21 @@ fn multiply_range(left: &IntRange, right: &IntRange) -> IntRange {
     }
 }
 
-fn ensure_i64(source: &SourceText, span: Span, range: &IntRange) -> Result<(), Diagnostic> {
-    if range.lower < BigInt::from(i64::MIN) || range.upper > BigInt::from(i64::MAX) {
-        return Err(source_diagnostic(
-            source,
-            "E-COMPILER-UNSUPPORTED",
-            span,
-            "the first native increment requires proof that every Int result fits signed 64-bit storage",
-        ));
+fn absolute_range(range: &IntRange) -> IntRange {
+    let zero = BigInt::from(0);
+    if range.lower >= zero {
+        range.clone()
+    } else if range.upper <= zero {
+        IntRange {
+            lower: -range.upper.clone(),
+            upper: -range.lower.clone(),
+        }
+    } else {
+        IntRange {
+            lower: zero,
+            upper: (-range.lower.clone()).max(range.upper.clone()),
+        }
     }
-    Ok(())
 }
 
 fn require_type(
@@ -1017,6 +1514,7 @@ fn unit_expression(span: Span) -> CompilerExpression {
         kind: CompilerExpressionKind::Unit,
         value_type: CompilerType::Unit,
         int_range: None,
+        rational_value: None,
         span,
     }
 }
@@ -1038,7 +1536,7 @@ fn unsupported(source: &SourceText, span: Span, construct: &str) -> Diagnostic {
         source,
         "E-COMPILER-UNSUPPORTED",
         span,
-        format!("the first native compiler increment does not yet support {construct}"),
+        format!("the current native compiler increment does not yet support {construct}"),
     )
 }
 
@@ -1097,11 +1595,43 @@ mod tests {
     }
 
     #[test]
-    fn rejects_an_unproved_machine_integer_representation() {
+    fn preserves_arbitrary_integer_ranges_for_the_native_backend() {
         let source = "use language (version is v0.1)\n9223372036854775807 + 1\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.int_range,
+            Some(IntRange::exact(BigInt::from(i64::MAX) + 1))
+        );
+    }
+
+    #[test]
+    fn models_finite_exact_conversion_division_and_power() {
+        let source = "use language (version is v0.1)\n(1 + 0.5, 6 / 8, -17 % 5, 2 ^ 16, 1 <=> 2)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Rational, Rational, Int, Int, Comparison)"
+        );
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("expected a tuple")
+        };
+        assert_eq!(
+            values[0].rational_value,
+            Some(BigRational::new(BigInt::from(3), BigInt::from(2)))
+        );
+        assert_eq!(values[2].int_range, Some(IntRange::exact(BigInt::from(3))));
+        assert_eq!(
+            values[3].int_range,
+            Some(IntRange::exact(BigInt::from(65_536)))
+        );
+    }
+
+    #[test]
+    fn rejects_statically_zero_exact_divisors() {
+        let source = "use language (version is v0.1)\n1 / 0\n";
         assert_eq!(
             analyze_for_compiler(source).unwrap_err().code,
-            "E-COMPILER-UNSUPPORTED"
+            "E-DIVISION-BY-ZERO"
         );
     }
 

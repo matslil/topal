@@ -9,7 +9,10 @@ evidence.
 | Increment | Language and tool closure | Status |
 | ---: | --- | --- |
 | 1 | LLVM 22 pipeline, Linux x86-64 freestanding startup/syscalls, O0, DWARF/GDB, native metadata, Unit/Boolean/bounded exact Int/positional products, immutable bindings, eager Boolean and checked integer operations, ordinary nonrecursive function specialization, Boolean decisions | complete |
-| 2 | arbitrary-precision `Int`, exact `Rational`, complete numeric construction/arithmetic/errors/ranges | planned |
+| 2a | arbitrary finite `Int` representation, literals, negation, absolute value, addition, subtraction, multiplication, equality, ordering, decimal output, GDB rendering, and freestanding allocation | complete |
+| 2b | finite `Int` identities/division/modulo/power, finite exact `Rational`, static zero-divisor diagnostics, exact equality/ordering, and direct three-way comparison | complete |
+| 2c | dynamic arithmetic `Result` values, exact narrowing/validation, complete Comparison decisions, and normatively completed infinity construction/arithmetic | planned |
+| 2d | finite and infinite numeric range construction, classification, membership, intersection, and bound observation | planned |
 | 3 | complete function forms, recursion/totality evidence, overloads, records, enums, unions, constraints, capabilities, and decisions | planned |
 | 4 | strings, Unicode operations, fundamental containers, traversal, and representation-safe allocation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
@@ -35,8 +38,11 @@ Every increment shall:
    applicable debug information; and
 7. update this table, `se/traceability.md`, and the compiler requirement file.
 
-Increment 1's bounded integer lowering accepts an operation only when static
-range evidence proves that its exact result fits the initial signed 64-bit
-representation. This is a temporary explicit compiler subset, not a change to
-Topal's arbitrary-precision `Int` semantics. Increment 2 removes that boundary
-with a freestanding Topal numeric runtime.
+Increment 1's bounded integer lowering accepted an operation only when static
+range evidence proved that its exact result fit the initial signed 64-bit
+representation. Increment 2a removes that boundary with a freestanding Topal
+numeric runtime and a private, dynamically sized representation. Increment 2b
+adds finite exact division and Rational values. Increment 2c closes typed
+arithmetic failures and the infinity semantics that require normative
+completion; increment 2d then closes numeric ranges before the roadmap proceeds
+to general control flow and user-defined value representations.

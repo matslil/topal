@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 194);
+    assert_eq!(examples.len(), 196);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2102,6 +2102,18 @@ fn all_modes_execute_mixed_exact_arithmetic() {
 }
 
 #[test]
+fn every_mode_executes_arbitrary_integer_arithmetic() {
+    let source = include_str!("../../../examples/language/arbitrary-integer-arithmetic.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(
+            b"(123456789012345678901234567890, -123456789012345678901234567890, 864197532086419753208641975320, 1111111110111111111011111111100, -864197532086419753208641975320, 0, 121932631137021795226185032733622923332237463801111263526900, -121932631137021795226185032733622923332237463801111263526900, true, true, true, true)\n"
+        ));
+    }
+}
+
+#[test]
 fn conversion_trace_precedes_rational_overload_selection() {
     let output = run(&["--test"], "1 + 0.5\n");
     assert!(output.status.success());
@@ -2349,6 +2361,18 @@ fn every_mode_executes_euclidean_int_modulo() {
     assert!(trace.contains("root.%(Int,Int);division-by-zero"));
     assert!(trace.contains("TOPAL-NUM-INT-QUOTIENT-MODULO-001"));
     assert!(trace.contains("root./%(Int,Int);division-by-zero"));
+}
+
+#[test]
+fn every_mode_executes_finite_exact_division_and_comparison() {
+    let source = include_str!("../../../examples/language/finite-exact-division-and-comparison.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(output.stdout.ends_with(
+            b"(2, 3, 2, (-4, 3), (-3, 2), Rational ( 12345678901234567890123456789, 1 ), 52, Less, Greater, true, Rational ( 5, 2 ), Rational ( -5, 2 ))\n"
+        ));
+    }
 }
 
 #[test]
