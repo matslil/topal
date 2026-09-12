@@ -27,7 +27,8 @@ evidence.
 | 3b2-b3 | ordinary positional-product prefix calls and typed discard input patterns without source/debug bindings | complete |
 | 3b2-b4 | `Optional Int`/`Optional String` construction, contextual absence, scalar function passage, exhaustive decisions, display, `Optional Int` equality, and debugging | complete |
 | 3b2-b5 | remaining function forms, return-through-block cleanup, recursion/totality evidence, nested declarations, records, unions, constraints, capabilities, and decisions | planned |
-| 4 | strings, Unicode operations, fundamental containers, traversal, and representation-safe allocation | planned |
+| 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
+| 4b | remaining strings, Unicode operations, fundamental containers, traversal, and representation-safe allocation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6 | module/package/application construction, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
 | 7 | effects, resources, layouts, locations, tasks, deterministic scheduling, transactions, time, static flow, and platform packages | planned |
@@ -75,4 +76,6 @@ and typed discard inputs without inventing bindings; 3b2-b4 adds a distinct
 freestanding Optional representation; 3b2-b5 continues with
 nested declarations, recursive and nested-block exit
 control flow, cleanup-bearing scopes, and the remaining user-defined value
-representations.
+representations. Increment 4a admits the encoding-observation byte count without
+attaching an encoding or importing a foreign String runtime; 4b retains the
+remaining Unicode and container work.

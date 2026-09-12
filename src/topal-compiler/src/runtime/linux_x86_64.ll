@@ -122,6 +122,14 @@ entry:
   ret void
 }
 
+define internal ptr @topal.runtime.string.utf8.byte.count(ptr %string) nounwind noinline {
+entry:
+  %length.pointer = getelementptr %topal.StringStorage, ptr %string, i32 0, i32 1
+  %length = load i64, ptr %length.pointer, align 8
+  %count = call ptr @topal.runtime.int.from.u64(i64 %length)
+  ret ptr %count
+}
+
 define internal ptr @topal.runtime.result.success(ptr %payload) nounwind noinline {
 entry:
   %result = call ptr @topal.platform.allocate(i64 16)
@@ -342,6 +350,30 @@ allocate:
 failure:
   call void @topal.platform.exit(i64 71)
   unreachable
+}
+
+define internal ptr @topal.runtime.int.from.u64(i64 %source) nounwind noinline {
+entry:
+  %is.zero = icmp eq i64 %source, 0
+  br i1 %is.zero, label %zero, label %nonzero
+zero:
+  ret ptr @topal.runtime.int.zero
+nonzero:
+  %high.source = lshr i64 %source, 32
+  %has.high = icmp ne i64 %high.source, 0
+  %length = select i1 %has.high, i64 2, i64 1
+  %value = call ptr @topal.runtime.int.allocate(i64 %length, i64 0)
+  %low = trunc i64 %source to i32
+  %low.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 2, i64 0
+  store i32 %low, ptr %low.pointer, align 4
+  br i1 %has.high, label %store.high, label %done
+store.high:
+  %high = trunc i64 %high.source to i32
+  %high.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 2, i64 1
+  store i32 %high, ptr %high.pointer, align 4
+  br label %done
+done:
+  ret ptr %value
 }
 
 define internal i64 @topal.runtime.int.limb.or.zero(ptr %value, i64 %index) nounwind noinline {

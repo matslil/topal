@@ -4169,6 +4169,16 @@
       "cpu_time_ns": 2197440,
       "memory_peak_bytes": 18358272,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_utf8_byte_counts_through_the_native_string_descriptor": {
+      "cpu_time_ns": 2921220,
+      "memory_peak_bytes": 18288640,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_prospective_utf8_string_byte_counts": {
+      "cpu_time_ns": 2951420,
+      "memory_peak_bytes": 18358272,
+      "samples_per_test": 50
     }
   }
 }

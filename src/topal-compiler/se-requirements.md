@@ -293,6 +293,22 @@ lookup. This requirement covers `TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`,
 `TOPAL-TYPE-OPTIONAL-EQUALITY-001`. It realizes
 `TOPAL-COMPILER-OPTIONAL-001` for compiler increment 3b2-b4.
 
+## TOPAL-COMP-STRING-UTF8-BYTE-COUNT-001 — Prospective UTF-8 byte count
+
+For an admitted plain String, the compiler shall evaluate
+`text byte-count Utf8` once, load the preserved UTF-8 byte length from the
+immutable native descriptor, and return the equal canonical arbitrary-
+precision Int. The operation shall neither use the cached display spelling nor
+modify, normalize, encode, or reclassify the String.
+
+The runtime shall convert the complete unsigned target length to normalized
+base-2^32 Int limbs without truncation, a fixed source-value width, or a
+foreign conversion helper. It shall allocate only through the Linux syscall
+platform boundary and introduce no C/C++ runtime or standard-library
+dependency. This requirement covers `TOPAL-TYPE-CALL-001` and
+`TOPAL-STRING-UTF8-BYTE-COUNT-001`; it realizes
+`TOPAL-COMPILER-STRING-UTF8-BYTE-COUNT-001` for compiler increment 4a.
+
 ## TOPAL-COMP-RANGE-001 — Finite exact ranges
 
 The compiler shall represent explicitly bounded finite `Range Int` and

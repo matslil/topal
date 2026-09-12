@@ -59,6 +59,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/static-nullary-functions.t",
     "examples/language/static-product-functions.t",
     "examples/language/string-display-delimiters.t",
+    "examples/language/string-utf8-byte-count.t",
     "examples/language/unicode-identifiers.t",
 ];
 

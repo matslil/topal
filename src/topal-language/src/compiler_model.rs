@@ -205,6 +205,7 @@ pub enum CompilerExpressionKind {
     Int(BigInt),
     Rational(BigRational),
     String(String),
+    StringUtf8ByteCount(Box<CompilerExpression>),
     ErrorCode(u32),
     Enum(u32),
     Tuple(Vec<CompilerExpression>),
@@ -1086,6 +1087,36 @@ impl Analyzer {
         {
             let payload = self.parse_classifier(*payload)?;
             return self.finish_optional_none(payload, span);
+        }
+        if let [
+            value,
+            Expression::Identifier(operation),
+            Expression::Identifier(encoding),
+        ] = items
+            && self.source.slice(*operation) == "byte-count"
+        {
+            if self.source.slice(*encoding) != "Utf8" {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-NO-APPLICABLE-OVERLOAD",
+                    *encoding,
+                    "the compiler String byte-count operation requires Utf8",
+                ));
+            }
+            let value = self.analyze_expression(value, environment)?;
+            require_type(
+                &self.source,
+                value.span,
+                &CompilerType::String,
+                &value.value_type,
+            )?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::StringUtf8ByteCount(Box::new(value)),
+                value_type: CompilerType::Int,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
         }
         if let [
             Expression::Identifier(namespace),
@@ -3130,6 +3161,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::OptionalSome(value)
+        | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::ErrorField { error: value, .. }
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
@@ -3647,6 +3679,32 @@ mod tests {
             program.main.result.kind,
             CompilerExpressionKind::Tuple(_)
         ));
+    }
+
+    #[test]
+    fn models_prospective_utf8_string_byte_counts() {
+        // TOPAL-TYPE-CALL-001, TOPAL-STRING-UTF8-BYTE-COUNT-001
+        let source = include_str!("../../../examples/language/string-utf8-byte-count.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program
+                .main
+                .statements
+                .iter()
+                .filter(|statement| matches!(
+                    statement,
+                    CompilerStatement::Binding(CompilerBinding {
+                        value: CompilerExpression {
+                            kind: CompilerExpressionKind::StringUtf8ByteCount(_),
+                            ..
+                        },
+                        ..
+                    })
+                ))
+                .count(),
+            3
+        );
+        assert_eq!(program.main.result.value_type.name(), "(Int, Int, Int)");
     }
 
     #[test]

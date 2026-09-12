@@ -82,6 +82,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::OptionalSome(value)
+        | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
         | CompilerExpressionKind::RangeLowerInclusive(value)
@@ -380,6 +381,17 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::String(value) => {
                 self.emit_string_literal(value, body, expression.span)
+            }
+            CompilerExpressionKind::StringUtf8ByteCount(value) => {
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Int(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.string.utf8.byte.count(ptr {})",
+                        value.string()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
             }
             CompilerExpressionKind::ErrorCode(value) => LlValue::ErrorCode(value.to_string()),
             CompilerExpressionKind::Enum(value) => {
@@ -3168,6 +3180,23 @@ mod tests {
         assert!(llvm.contains("call i1 @topal.runtime.optional.int.equal"));
         assert!(llvm.contains("name: \"Optional Int\""));
         assert!(llvm.contains("name: \"Optional String\""));
+    }
+
+    #[test]
+    fn emits_utf8_byte_counts_through_the_native_string_descriptor() {
+        // TOPAL-COMPILER-STRING-UTF8-BYTE-COUNT-001
+        let source = include_str!("../../../examples/language/string-utf8-byte-count.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/string-utf8-byte-count.t").emit();
+        assert_eq!(
+            llvm.matches("call ptr @topal.runtime.string.utf8.byte.count")
+                .count(),
+            3
+        );
+        assert!(llvm.contains("define internal ptr @topal.runtime.int.from.u64"));
+        assert!(llvm.contains("lshr i64 %source, 32"));
+        assert!(llvm.contains("select i1 %has.high, i64 2, i64 1"));
+        assert!(llvm.contains("ret ptr @topal.runtime.int.zero"));
     }
 
     #[test]
