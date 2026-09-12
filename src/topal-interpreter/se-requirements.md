@@ -1944,8 +1944,9 @@ change program values or semantic decision traces.
 ## TOPAL-INTP-SUBSET-241 — Lexical blocks
 
 All modes shall evaluate an empty block as Unit and a nonempty block in a fresh
-lexical scope under `TOPAL-SYN-GRAMMAR-001`. Statements execute in order, the
-final value becomes the block value, and local bindings do not escape. Test
+lexical scope under `TOPAL-SYN-GRAMMAR-001` and `TOPAL-EXEC-BLOCK-001`.
+Statements execute in order, the final value becomes the block value, and local
+bindings do not escape. Test
 traces and debugger history shall retain block evaluation as a distinct source
 decision.
 

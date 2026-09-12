@@ -4104,6 +4104,21 @@
       "cpu_time_ns": 3655680,
       "memory_peak_bytes": 18477056,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_lexical_block_scope_metadata": {
+      "cpu_time_ns": 3639740,
+      "memory_peak_bytes": 18489344,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_observes_innermost_lexical_block_binding": {
+      "cpu_time_ns": 302862160,
+      "memory_peak_bytes": 56291328,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_lexical_blocks_with_fresh_shadowing_scope": {
+      "cpu_time_ns": 2721960,
+      "memory_peak_bytes": 18411520,
+      "samples_per_test": 50
     }
   }
 }

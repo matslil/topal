@@ -186,6 +186,21 @@ semantic lowering at `-O0`, not dead-code optimization. The backend SHALL use
 the function's ordinary private result representation and truthful return-line
 debug location. A root-level return SHALL be rejected.
 
+### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
+
+For the admitted cleanup-free subset of `TOPAL-EXEC-BLOCK-001`, an empty block
+SHALL produce Unit without allocation. An admitted
+nonempty block SHALL evaluate statements in source order in a fresh child
+binding environment and deliver its final value. A child binding MAY shadow an
+outer name, SHALL become visible only after its initializer, and SHALL NOT
+escape the block. Lowering SHALL preserve those rules without mutating the
+enclosing compiler or generated-value environment.
+
+Every generated instruction and machine-represented immutable local belonging
+to the block SHALL carry a nested DWARF lexical scope. A source block form whose
+exit or lifetime semantics have no admitted lowering SHALL be rejected rather
+than flattened into the enclosing scope.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,

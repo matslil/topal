@@ -136,8 +136,17 @@ the checked frontend as a control-flow boundary, not an optional optimization.
 The return expression is checked once against the declared output, preceding
 statements remain ordered, and the unreachable source tail never enters LLVM
 IR. The backend then uses the same private signature, return instruction, and
-DWARF source mapping as an implicit final result. Nested lexical blocks acquire
-explicit exit edges when their representation and cleanup model are admitted.
+DWARF source mapping as an implicit final result.
+
+An admitted lexical block clones the enclosing checked binding environment,
+evaluates its statements in order, and discards the child environment after
+constructing the final value. This implements inner shadowing and non-escape
+without mutating an outer compiler environment. The backend mirrors that rule
+with a private LLVM-value environment and a nested `DILexicalBlock`, so GDB
+resolves an innermost scalar binding by its source scope. An empty block is the
+zero-data Unit value and allocates nothing. Returns through a nested block,
+nested declarations, and scopes requiring cleanup retain their later explicit
+exit-edge and lifetime lowering.
 
 The correctness-first exact runtime uses binary long division, Euclidean sign
 correction, Euclid's greatest-common-divisor algorithm, and exponentiation by

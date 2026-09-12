@@ -29,6 +29,20 @@ invoked generic body and SHALL be substituted recursively into its result.
 Constructing `Empty T` with such a bound type value SHALL produce an empty
 `List T`; it SHALL NOT fall back to an unrelated element classifier.
 
+### TOPAL-EXEC-BLOCK-001 — Lexical block evaluation
+
+Every block SHALL evaluate its statements from top to bottom in a fresh lexical
+scope. A binding SHALL become visible only after its initializer completes,
+MAY shadow a name from an enclosing scope, and SHALL NOT escape its block. Each
+non-final expression SHALL introduce a binding, be explicitly discarded, or
+produce Unit. The final expression SHALL become the block value; an empty block
+SHALL have value Unit.
+
+Cleanup owned by the block SHALL run after constructing its result and before
+delivering that result to the enclosing scope. A block exited by return or
+propagation SHALL perform the same required cleanup before control reaches the
+corresponding function boundary.
+
 ### TOPAL-EXEC-COMPLETED-001 — Completion evidence
 
 The identifier `Completed` in expression position shall evaluate to the
@@ -128,11 +142,9 @@ declaration order before selection, entry, body decisions, and return.
 ### TOPAL-FUNCTION-BLOCK-001 — Function block execution
 
 An executable function body may contain one or more equally indented statements.
-They shall execute from top to bottom in a fresh function scope according to
-the block and sequencing rules of the language design. Each non-final statement
-shall either introduce a binding, explicitly discard its value, or evaluate to
-`Unit`; the final statement's value is the function result and shall satisfy the
-declared result classifier.
+They shall execute in a fresh function scope according to
+`TOPAL-EXEC-BLOCK-001`; the final value shall satisfy the declared result
+classifier.
 
 Bindings introduced by the block shall become visible only to later statements
 in the same invocation and shall not escape it. Test traces and debugger history
