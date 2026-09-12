@@ -11,7 +11,9 @@ evidence.
 | 1 | LLVM 22 pipeline, Linux x86-64 freestanding startup/syscalls, O0, DWARF/GDB, native metadata, Unit/Boolean/bounded exact Int/positional products, immutable bindings, eager Boolean and checked integer operations, ordinary nonrecursive function specialization, Boolean decisions | complete |
 | 2a | arbitrary finite `Int` representation, literals, negation, absolute value, addition, subtraction, multiplication, equality, ordering, decimal output, GDB rendering, and freestanding allocation | complete |
 | 2b | finite `Int` identities/division/modulo/power, finite exact `Rational`, static zero-divisor diagnostics, exact equality/ordering, and direct three-way comparison | complete |
-| 2c | dynamic arithmetic `Result` values, exact narrowing/validation, complete Comparison decisions, and normatively completed infinity construction/arithmetic | planned |
+| 2c-a | ordered comparison matchers and exhaustive decisions over `Comparison` values | complete |
+| 2c-b | dynamic arithmetic `Result` values and exact narrowing/validation | planned |
+| 2c-c | normatively completed infinity construction and arithmetic | planned |
 | 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |
 | 2d-b | unbounded range construction and infinity endpoints after their prerequisite normative and runtime work | planned |
 | 3 | complete function forms, recursion/totality evidence, overloads, records, enums, unions, constraints, capabilities, and decisions | planned |
@@ -43,9 +45,10 @@ Increment 1's bounded integer lowering accepted an operation only when static
 range evidence proved that its exact result fit the initial signed 64-bit
 representation. Increment 2a removes that boundary with a freestanding Topal
 numeric runtime and a private, dynamically sized representation. Increment 2b
-adds finite exact division and Rational values. Increment 2c closes typed
-arithmetic failures and the infinity semantics that require normative
-completion. Increment 2d-a adds the fully normative explicitly bounded finite
-range subset; 2d-b closes unbounded and infinite endpoints after increment 2c.
+adds finite exact division and Rational values. Increment 2c-a adds the fully
+normative Comparison decision forms; 2c-b retains typed arithmetic failures and
+2c-c retains the infinity work that requires normative completion. Increment
+2d-a adds the fully normative explicitly bounded finite range subset; 2d-b
+closes unbounded and infinite endpoints after increment 2c-c.
 Range-based collection selection remains grouped with containers. The roadmap
 then proceeds to general control flow and user-defined value representations.

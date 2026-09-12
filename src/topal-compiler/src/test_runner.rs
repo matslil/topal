@@ -11,6 +11,8 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/bindings-and-discard.t",
     "examples/language/boolean-decisions.t",
     "examples/language/boolean-logic.t",
+    "examples/language/comparison-decision-forms.t",
+    "examples/language/comparison-decisions.t",
     "examples/language/exact-arithmetic.t",
     "examples/language/exact-numeric-absolute.t",
     "examples/language/exact-numeric-negate.t",
