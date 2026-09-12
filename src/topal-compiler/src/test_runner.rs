@@ -95,6 +95,10 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/string-utf8-byte-count.t",
     "examples/language/strings-and-products.t",
     "examples/language/tuple-equality.t",
+    "examples/language/type-classifier.t",
+    "examples/language/type-function-boundary.t",
+    "examples/language/type-identity.t",
+    "examples/language/type-values.t",
     "examples/language/unicode-identifiers.t",
     "examples/language/unit-effect-value.t",
 ];

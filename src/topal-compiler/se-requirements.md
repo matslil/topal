@@ -431,6 +431,23 @@ the existing Topal-owned Linux write boundary. No C/C++ runtime, other-language
 standard library, public integer ABI, or `topal-native/6` revision is permitted.
 This realizes `TOPAL-COMPILER-EFFECT-EMPTY-001` for compiler increment 7a.
 
+## TOPAL-COMP-TYPE-VALUE-001 — Closed fundamental Type values
+
+The checked compiler model shall recognize the seven fundamental Type values
+defined by `TOPAL-ABSTRACTION-TYPE-VALUE-001`, preserve the enclosing `Type`
+classifier and each exact identity, compare only canonical identities, and
+retain the values through bindings, decomposed products, and scalar function
+boundaries. Canonical display and DWARF/GDB shall expose the source type names.
+User-defined Type values and runtime reflection remain explicitly unsupported.
+
+The backend may lower the closed set to private tags, but shall not expose tag
+numbers through a public ABI or use them as serialized library-metadata
+identities. Future library metadata shall carry canonical semantic identities
+independent of this target representation. No registry, allocation, foreign
+type-information runtime, C/C++ runtime, other-language standard library, or
+`topal-native/6` revision is permitted. This realizes
+`TOPAL-COMPILER-TYPE-VALUE-001` for compiler increment 8a.
+
 ## TOPAL-COMP-PATTERN-001 — Positional product and discard inputs
 
 For an admitted ordinary function with multiple scalar parameters, a prefix

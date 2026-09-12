@@ -916,6 +916,46 @@
       "cpu_time_ns": 131328,
       "memory_peak_bytes": 18489344,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/type-classifier.t": {
+      "cpu_time_ns": 119414380,
+      "memory_peak_bytes": 41611264,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/type-function-boundary.t": {
+      "cpu_time_ns": 121276680,
+      "memory_peak_bytes": 41500672,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/type-identity.t": {
+      "cpu_time_ns": 119312380,
+      "memory_peak_bytes": 40943616,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/type-values.t": {
+      "cpu_time_ns": 122118700,
+      "memory_peak_bytes": 41095168,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/type-classifier.t": {
+      "cpu_time_ns": 128391,
+      "memory_peak_bytes": 18427904,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/type-function-boundary.t": {
+      "cpu_time_ns": 131057,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/type-identity.t": {
+      "cpu_time_ns": 130274,
+      "memory_peak_bytes": 18558976,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/type-values.t": {
+      "cpu_time_ns": 134374,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 500
     }
   }
 }

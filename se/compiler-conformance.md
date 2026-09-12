@@ -51,7 +51,8 @@ evidence.
 | 6 | module/package/application construction, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
 | 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
 | 7b | nonempty effects and inference, resources, layouts, locations, tasks, deterministic scheduling, transactions, time, static flow, and platform packages | planned |
-| 8 | native serialization, introspection, contracts/evidence, implementation plans, information flow, and remaining `v0.2` assurance behavior | planned |
+| 8a | closed fundamental Type values, canonical identity equality/display, scalar function passage, and debugging | complete |
+| 8b | user-defined Type values, native serialization, introspection, contracts/evidence, implementation plans, information flow, and remaining `v0.2` assurance behavior | planned |
 | 9 | complete cross-tool rule audit, optimized-level admission, LTO/sanitizer/coverage/PGO dispositions, and whole-core parity qualification | planned |
 
 ## Increment acceptance
@@ -123,4 +124,6 @@ observations under pinned segmentation; 4b3c adds closed pinned-Unicode
 transformations and canonical equivalence; 4b3d retains dynamic observations
 plus the remaining Unicode and container work. Increment 7a admits the inert
 canonical empty `Effect` as a distinct zero-data value; 7b retains effect
-execution/inference and the remaining platform-semantic work.
+execution/inference and the remaining platform-semantic work. Increment 8a
+admits the closed fundamental `Type` identities without runtime reflection;
+8b retains open-world type metadata and the remaining assurance work.

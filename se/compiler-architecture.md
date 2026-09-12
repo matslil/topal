@@ -329,6 +329,17 @@ alternative to GDB. No effect-specific runtime entry point, allocation, public
 integer ABI, or foreign standard library is introduced; nonempty rows, effect
 inference, collections, and aggregate function results remain later work.
 
+The closed v0.1 fundamental `Type` values use one compiler-private `i32` tag set
+for `Boolean`, `Int`, `Nat`, `Rational`, `String`, `Unit`, and `Scope`. The
+checked model retains the enclosing `Type` kind and exact constant identity;
+equality compares those identities, scalar calls preserve the tag, and display
+selects the canonical source name. DWARF describes the closed set as `Type`, so
+GDB shows the semantic identity rather than a raw integer. This is not runtime
+reflection and the tag numbering is not a public ABI or library-metadata key:
+future compiled-library metadata records canonical semantic identities and lets
+each target lowering choose its private representation. No registry, allocation,
+foreign type-information runtime, or standard library is linked.
+
 An ordinary prefix call with one positional product operand is flattened by the
 checked frontend into the declared scalar parameter sequence before overload
 selection. Evaluation and ABI argument order remain left-to-right. A typed `_`
