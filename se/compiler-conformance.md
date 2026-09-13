@@ -61,6 +61,8 @@ evidence.
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
 | 6b2a | stable source-root and alias data members, alias-chain declaration snapshots, typed Scope lookup, and published root bindings within one application | complete |
 | 6b2b | function-body root data, nested qualified Scope members, generator members, non-root aliases, general Scope boundaries, `use`, published module/package/application interfaces, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
+| 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
+| 6c2 | cross-function capture forwarding, aggregate/callable environments, anonymous and escaping closures, qualified root access, and public/library context ABI | planned |
 | 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
 | 7b | nonempty effects and inference, resources, layouts, locations, tasks, deterministic scheduling, transactions, time, static flow, and platform packages | planned |
 | 8a | closed fundamental Type values, canonical identity equality/display, scalar function passage, and debugging | complete |
@@ -154,9 +156,11 @@ executable root Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
 chains, and overload order without a namespace runtime; 6b2a adds stable
 entry-frame data identities and exact alias snapshots without initializer
-re-execution; and 6b2b retains cross-function root storage, nested Scope and
-generator members, general Scope boundaries, package construction, published
-interfaces, and source/compiled-library work. Increment 7a admits the inert
+re-execution; 6c1 closure-converts direct-entry scalar `@ member` selections to
+explicit private capture parameters; and 6b2b/6c2 retain cross-function root
+storage and capture forwarding, nested Scope and generator members, general
+Scope boundaries, package construction, published interfaces, and
+source/compiled-library work. Increment 7a admits the inert
 canonical empty `Effect` as a distinct zero-data value; 7b retains effect
 execution/inference and the remaining platform-semantic work. Increment 8a
 admits the closed fundamental `Type` identities without runtime reflection;

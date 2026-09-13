@@ -2989,3 +2989,81 @@ fn packaged_function_operand_is_flat_private_freestanding_and_debuggable() {
     assert!(text.contains("topal.fn.sum.0"), "{text}");
     assert!(text.contains("topal.main"), "{text}");
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn defining_context_capture_is_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-CONTEXT-CAPTURE-001, TOPAL-CONTEXT-SELECT-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-defining-context-capture");
+    let source = directory.join("constructed-context.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/constructed-context.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"42\n");
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break constructed-context.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "print '@ offset'",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 2"), "{text}");
+    assert!(text.contains("$2 = 40"), "{text}");
+    assert!(text.contains("@ offset=40"), "{text}");
+    assert!(text.contains("topal.fn.add_2doffset.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}

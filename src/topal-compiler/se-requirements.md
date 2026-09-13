@@ -449,6 +449,34 @@ ABI, or `topal-native/6` revision. This realizes
 `TOPAL-COMPILER-PACKAGED-OPERAND-001`, `TOPAL-FUNCTION-PACKAGED-OPERAND-001`,
 and `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5n.
 
+## TOPAL-COMP-CONTEXT-CAPTURE-001 — Private defining-context capture
+
+The checked compiler model shall admit `@ member` in a root function called
+directly from the source entry frame when `member` is an admitted scalar root
+binding declared before the function. Resolution shall use only the function's
+immutable defining context: later root declarations and same-named caller or
+lexical bindings shall not participate. The call shall reuse the already
+evaluated root compiler value and shall not replay its initializer.
+
+The frontend shall detect referenced context members and append them in root
+declaration order as explicit private capture arguments and parameters. The
+capture shall retain its exact checked classifier and static facts. LLVM shall
+receive the same exact private `fastcc` prototype at definition and call sites
+and own physical x86-64 placement. Full O0 DWARF/GDB shall expose `@ member`, its
+source type and value, and the surrounding ordinary source function frame.
+Native tests shall cover exact output, lexical shadow isolation, declaration
+order, invalid context use, forwarding rejection, IR, artifact independence,
+and debugger observation.
+
+This increment shall add no global context storage, lookup table, closure
+allocation/runtime, function pointer, indirect call, foreign dependency, C/C++
+runtime, other-language standard library, public closure ABI, or
+`topal-native/6` revision. Aggregate, Scope, and Function captures,
+cross-function forwarding, anonymous/escaping closures, qualified root data in
+functions, and public/library contexts remain rejected. This realizes
+`TOPAL-COMPILER-CONTEXT-CAPTURE-001` and `TOPAL-CONTEXT-SELECT-001` for compiler
+increment 6c1.
+
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 
 The checked compiler model shall reuse the shared structural proof for

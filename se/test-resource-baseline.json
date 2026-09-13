@@ -4714,6 +4714,21 @@
       "cpu_time_ns": 4558740,
       "memory_peak_bytes": 18243584,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_defining_context_as_a_private_direct_capture_parameter": {
+      "cpu_time_ns": 7723880,
+      "memory_peak_bytes": 18358272,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::defining_context_capture_is_private_freestanding_and_debuggable": {
+      "cpu_time_ns": 341705699,
+      "memory_peak_bytes": 57339904,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_private_scalar_defining_context_capture": {
+      "cpu_time_ns": 4353140,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
     }
   }
 }

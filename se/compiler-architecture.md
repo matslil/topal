@@ -141,8 +141,21 @@ selection carries that key into the checked expression, so LLVM reuses the
 already-emitted SSA value even through a caller lexical shadow; it neither
 replays the initializer nor consults a namespace object. Entry-frame SSA is not
 valid in an independently callable function, so function-body root-data access
-remains rejected until root storage receives an explicit cross-function
-representation compatible with compiled-library interfaces.
+through qualified `root member` remains rejected until root storage receives an
+explicit cross-function representation compatible with compiled-library
+interfaces.
+
+Explicit defining-context selection has a narrower first representation. For a
+root function called from the source entry frame, the frontend finds scalar
+root members referenced as `@ member`, filters them by the function declaration
+position, and appends their already-evaluated compiler values as private capture
+arguments in root declaration order. The callee receives ordinary exact LLVM
+parameters under `fastcc`; its body binds them under distinct `@ member` storage
+keys, so neither caller locals nor ordinary same-named parameters can intercept
+selection. DWARF uses the source spelling `@ member`. This is private closure
+conversion without an environment object: cross-function forwarding,
+aggregate/callable capture, escape, qualified root access, and public/library
+contexts remain deferred to the unified closure and compiled-library ABI.
 
 Named function values similarly split observable identity from call lowering.
 The checked binding retains the original declaration vector and application
