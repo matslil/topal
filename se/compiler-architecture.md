@@ -319,6 +319,16 @@ allocation, equality compares the sealed singleton carrier, display writes the
 source name through the Topal syscall layer, and DWARF describes a singleton
 enumeration so GDB does not mislabel the value as an integer or Unit.
 
+The canonical empty `Effect` row is another zero-data value but retains a third
+checked identity. Its private `i8` singleton carrier crosses scalar Topal
+function boundaries and decomposed products without being interchangeable with
+Unit or `Completed`. Construction performs no described interaction, equality
+compares canonical row identity, and display alone uses the existing Topal
+write syscall. A distinct DWARF enumeration exposes `Effect` and its empty
+alternative to GDB. No effect-specific runtime entry point, allocation, public
+integer ABI, or foreign standard library is introduced; nonempty rows, effect
+inference, collections, and aggregate function results remain later work.
+
 An ordinary prefix call with one positional product operand is flattened by the
 checked frontend into the declared scalar parameter sequence before overload
 selection. Evaluation and ABI argument order remain left-to-right. A typed `_`

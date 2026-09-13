@@ -363,6 +363,22 @@ Same-type equality, scalar function passage, control-flow joins, canonical
 display, DWARF, and GDB SHALL preserve the singleton source identity. Its
 machine carrier SHALL NOT be exposed as a public integer or foreign ABI.
 
+### TOPAL-COMPILER-EFFECT-EMPTY-001 — Canonical empty Effect value
+
+`Effects ()` SHALL produce the canonical empty value classified by `Effect`
+without performing a runtime interaction. The compiler SHALL keep that checked
+identity distinct from Unit and `Completed` through bindings, same-type
+equality, decomposed positional products, scalar function parameters and
+results, canonical display, DWARF, and GDB. The current scalar subset SHALL NOT
+claim aggregate function-result or Effect-list support.
+
+The empty row MAY use a sealed singleton machine carrier, but that carrier SHALL
+NOT become a public integer ABI or make distinct Topal types interchangeable.
+Construction and passage SHALL require no allocation or effect-specific runtime
+call. Display SHALL use only the Topal-owned platform write boundary. This
+increment SHALL add no foreign dependency, other-language standard library, or
+native ABI revision.
+
 ### TOPAL-COMPILER-OPTIONAL-001 — Native Optional values
 
 Within the admitted `Int` and `String` payload subset, `Optional T` SHALL retain

@@ -49,7 +49,8 @@ evidence.
 | 4b3d | dynamic Character and Unicode operations, remaining strings, fundamental containers, traversal, and representation-safe allocation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6 | module/package/application construction, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
-| 7 | effects, resources, layouts, locations, tasks, deterministic scheduling, transactions, time, static flow, and platform packages | planned |
+| 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
+| 7b | nonempty effects and inference, resources, layouts, locations, tasks, deterministic scheduling, transactions, time, static flow, and platform packages | planned |
 | 8 | native serialization, introspection, contracts/evidence, implementation plans, information flow, and remaining `v0.2` assurance behavior | planned |
 | 9 | complete cross-tool rule audit, optimized-level admission, LTO/sanitizer/coverage/PGO dispositions, and whole-core parity qualification | planned |
 
@@ -120,4 +121,6 @@ emptiness, and canonical dynamic display. Increment 4b3a retains statically
 proved Character evidence over the same descriptor; 4b3b adds closed
 observations under pinned segmentation; 4b3c adds closed pinned-Unicode
 transformations and canonical equivalence; 4b3d retains dynamic observations
-plus the remaining Unicode and container work.
+plus the remaining Unicode and container work. Increment 7a admits the inert
+canonical empty `Effect` as a distinct zero-data value; 7b retains effect
+execution/inference and the remaining platform-semantic work.
