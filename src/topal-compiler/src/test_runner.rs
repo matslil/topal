@@ -16,6 +16,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/comparison-decision-forms.t",
     "examples/language/comparison-decisions.t",
     "examples/language/completed-evidence.t",
+    "examples/language/completion-effect-value.t",
     "examples/language/decreasing-int-recursion.t",
     "examples/language/decision-operand-expressions.t",
     "examples/language/discard-function-pattern.t",

@@ -420,9 +420,10 @@ The checked compiler model shall classify `Effects ()` as the canonical empty
 `Effect` value without scheduling or performing an interaction. `Effect` shall
 remain distinct from Unit and `Completed` through classified bindings,
 same-classifier equality, decomposed positional products, scalar function
-parameters and results, and source display. Effect Lists and aggregate function
-results remain explicitly unsupported until their general representations and
-ABIs are admitted.
+parameters and results, and source display. This scalar rule does not admit
+Effect Lists or aggregate results; `TOPAL-COMP-TUPLE-RESULT-001` separately
+admits a qualified Tuple result containing this value. Effect Lists remain
+unsupported until their general representation is admitted.
 
 The backend shall use a sealed zero-data scalar only in Topal-private signatures,
 emit a distinct `Effect` DWARF enumeration for GDB, and require neither
@@ -430,6 +431,32 @@ allocation nor an effect-specific runtime function. Canonical display shall use
 the existing Topal-owned Linux write boundary. No C/C++ runtime, other-language
 standard library, public integer ABI, or `topal-native/6` revision is permitted.
 This realizes `TOPAL-COMPILER-EFFECT-EMPTY-001` for compiler increment 7a.
+
+## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
+
+In the admitted decision-free subset, the checked compiler model shall admit an
+ordinary or static Tuple result when every recursively nested leaf has an exact
+supported private scalar representation. It shall retain the source field order
+and identities and reject Record results, aggregate parameters, Tuple-valued
+control-flow joins, and unsupported leaves rather than inventing a layout or
+conversion. Function execution and all field evaluation shall remain correct at
+O0 without semantic heap storage, runtime allocation, or optimization.
+
+The Linux x86-64 backend shall lower each admitted result to a recursively
+nested, non-packed LLVM literal struct. Definition and calls shall use the same
+exact private `fastcc` prototype, with `insertvalue` and `extractvalue` forming
+and observing the SSA value while LLVM performs target-specific physical call
+lowering. The representation shall remain module-private and shall not become a
+stable compiled-library ABI, C ABI, or other foreign interface.
+
+DWARF shall describe the ordered source Tuple with size, alignment, and offsets
+derived from the qualified x86-64 data layout. Because the LLVM 22 x86 backend
+does not retain a directly described SSA aggregate as an inspectable O0 local,
+named Tuple bindings shall use a target-aligned debug-only stack shadow and
+`#dbg_declare`. This shall introduce no semantic aggregate storage, runtime,
+allocator, foreign dependency, C/C++ runtime, other-language standard library,
+or `topal-native/6` revision. This realizes
+`TOPAL-COMPILER-TUPLE-RESULT-001` for compiler increment 3b2-b5f.
 
 ## TOPAL-COMP-TYPE-VALUE-001 — Closed fundamental Type values
 

@@ -956,6 +956,16 @@
       "cpu_time_ns": 134374,
       "memory_peak_bytes": 18366464,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/completion-effect-value.t": {
+      "cpu_time_ns": 120661540,
+      "memory_peak_bytes": 41476096,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/completion-effect-value.t": {
+      "cpu_time_ns": 130013,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 500
     }
   }
 }
