@@ -4744,6 +4744,196 @@
       "cpu_time_ns": 3024280,
       "memory_peak_bytes": 18411520,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_constraint_validation_with_erased_base_storage_and_result_paths": {
+      "cpu_time_ns": 7671140,
+      "memory_peak_bytes": 18341888,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::constraint_validation_executes_dynamic_success_and_failure": {
+      "cpu_time_ns": 126756880,
+      "memory_peak_bytes": 41906176,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::constraint_validation_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 320494319,
+      "memory_peak_bytes": 57466880,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_named_constraint_validation_and_refined_base_operations": {
+      "cpu_time_ns": 3675199,
+      "memory_peak_bytes": 18411520,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_nominal_sums_as_private_tagged_aggregates_with_dwarf": {
+      "cpu_time_ns": 9315220,
+      "memory_peak_bytes": 18403328,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::nominal_sum_display_matches_the_interpreter": {
+      "cpu_time_ns": 128098859,
+      "memory_peak_bytes": 41086976,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::nominal_sums_are_private_freestanding_and_debuggable": {
+      "cpu_time_ns": 327757560,
+      "memory_peak_bytes": 57753600,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_nominal_union_and_variant_payload_decisions": {
+      "cpu_time_ns": 4221760,
+      "memory_peak_bytes": 18407424,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_invalid_nominal_sum_construction_and_matching": {
+      "cpu_time_ns": 3762640,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_scope_parameters_with_private_data_environment_arguments": {
+      "cpu_time_ns": 7515260,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::scope_parameter_is_specialized_freestanding_and_debuggable": {
+      "cpu_time_ns": 317105160,
+      "memory_peak_bytes": 57597952,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_scope_parameters_as_specialized_private_environments": {
+      "cpu_time_ns": 4002519,
+      "memory_peak_bytes": 18280448,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_nested_functions_with_exact_private_capture_parameters": {
+      "cpu_time_ns": 7984180,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::nested_functions_are_private_freestanding_and_debuggable": {
+      "cpu_time_ns": 322207480,
+      "memory_peak_bytes": 57634816,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_non_escaping_nested_functions_with_private_captures": {
+      "cpu_time_ns": 3478440,
+      "memory_peak_bytes": 18231296,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::erases_diagnostic_controls_before_llvm_lowering": {
+      "cpu_time_ns": 5084060,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::diagnostic_controls_are_validated_erased_and_freestanding": {
+      "cpu_time_ns": 319100440,
+      "memory_peak_bytes": 57335808,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::erases_valid_diagnostic_controls_after_shared_validation": {
+      "cpu_time_ns": 3093360,
+      "memory_peak_bytes": 18481152,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_use_namespace_as_the_existing_private_scope_identity": {
+      "cpu_time_ns": 6187020,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::use_root_namespace_is_static_freestanding_and_debuggable": {
+      "cpu_time_ns": 320703400,
+      "memory_peak_bytes": 57655296,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_use_of_root_and_root_alias_namespaces": {
+      "cpu_time_ns": 3783300,
+      "memory_peak_bytes": 18239488,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_optional_structured_error_fields_and_source_metadata": {
+      "cpu_time_ns": 7954100,
+      "memory_peak_bytes": 18231296,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::optional_error_fields_are_freestanding_and_debuggable": {
+      "cpu_time_ns": 323335979,
+      "memory_peak_bytes": 57470976,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_optional_structured_error_fields": {
+      "cpu_time_ns": 3889240,
+      "memory_peak_bytes": 18292736,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_modular_values_as_nominal_int_backed_private_values": {
+      "cpu_time_ns": 4501199,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::modular_values_are_private_freestanding_and_debuggable": {
+      "cpu_time_ns": 325832020,
+      "memory_peak_bytes": 57479168,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_nominal_modular_construction_reduction_and_arithmetic": {
+      "cpu_time_ns": 3089639,
+      "memory_peak_bytes": 18378752,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_invalid_or_unproven_modular_construction": {
+      "cpu_time_ns": 2975799,
+      "memory_peak_bytes": 18358272,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_dynamic_modular_validation_as_a_native_result": {
+      "cpu_time_ns": 7435719,
+      "memory_peak_bytes": 18214912,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::dynamic_modular_results_are_freestanding_and_debuggable": {
+      "cpu_time_ns": 323986040,
+      "memory_peak_bytes": 57446400,
+      "samples_per_test": 50
+    },
+    "topal-debugger::test:cli::records_checked_modular_construction_reversibly": {
+      "cpu_time_ns": 8588420,
+      "memory_peak_bytes": 18214912,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_checks_dynamic_modular_construction_from_a_named_range": {
+      "cpu_time_ns": 21990380,
+      "memory_peak_bytes": 18219008,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_named_ranges_and_dynamic_checked_modular_construction": {
+      "cpu_time_ns": 3389380,
+      "memory_peak_bytes": 18345984,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_invalid_modular_construction": {
+      "cpu_time_ns": 2957820,
+      "memory_peak_bytes": 18223104,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::modular_function_boundaries_preserve_nominal_identity": {
+      "cpu_time_ns": 5161160,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_private_effect_list_nodes_and_pointer_boundaries": {
+      "cpu_time_ns": 8287540,
+      "memory_peak_bytes": 18374656,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::effect_list_is_freestanding_and_gdb_renders_its_source_shape": {
+      "cpu_time_ns": 319123020,
+      "memory_peak_bytes": 57823232,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_contextual_effect_list_construction": {
+      "cpu_time_ns": 2851100,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
     }
   }
 }

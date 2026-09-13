@@ -45,6 +45,30 @@ This requirement covers `TOPAL-SYN-CONTEXT-001`, `TOPAL-SYN-BIND-001`,
 `TOPAL-NUM-COMPARE-001`, `TOPAL-FUNCTION-ORDINARY-001`, and
 `TOPAL-DECISION-BOOLEAN-001` within the stated incremental boundary.
 
+## TOPAL-COMP-DIAGNOSTIC-CONTROL-001 — Static diagnostic controls
+
+The compiler shall accept legacy warning controls and structured
+diagnostic-identity controls whose stack and next-statement structure the shared
+parser has validated. Shared underflow, mismatch, missing-target, and unclosed-
+stack diagnostics shall reach the compiler caller unchanged. Language errors
+shall remain unsuppressible.
+
+The checked compiler model shall erase valid controls after their static effect
+has been accounted for. Because this increment emits no configurable compiler
+warnings or severity-neutral diagnostics, it has no diagnostic event to filter;
+future such diagnostics shall consult the active source identity and lexical
+extent. LLVM IR and the executable shall contain no operation or state for an
+erased control. Native tests shall cover both control spellings, shared invalid-
+stack validation, exact interpreter/compiler output, absent runtime lowering,
+freestanding artifacts, source debugging, the shared corpus, and separate
+resource baselines.
+
+This shall add no runtime diagnostic table, allocation, foreign dependency,
+C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision. This realizes
+`TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001` and `TOPAL-SYN-DIAG-001` for compiler
+increment 1a.
+
 ## TOPAL-COMP-INT-001 — Arbitrary finite Int runtime
 
 The compiler shall remove the increment-1 signed-64-bit admission boundary and
@@ -121,6 +145,76 @@ This requirement covers `TOPAL-NUM-NAT-001`, `TOPAL-TYPE-CONSTRAINT-001`,
 `TOPAL-NUM-COMPARE-001`, and `TOPAL-NUM-THREE-WAY-COMPARE-001`; it realizes
 `TOPAL-COMPILER-NAT-COMPARISON-001` for compiler increment 2e.
 
+## TOPAL-COMP-MODULAR-001 — Nominal modular numbers
+
+The compiler shall collect admitted root-scope `ModNat` and `ModInt`
+declarations whose modulus is given by a direct finite inclusive Int range,
+retain their nominal identity and canonical bounds, and reject malformed or
+cross-nominal operations. Checked construction shall require statically proven
+in-range input until dynamic Result-producing construction is available.
+Explicit `value modulo Type` shall accept an admitted Int value and reduce it
+to the unique representative.
+
+Wrapping addition, subtraction, multiplication, and negation shall use the
+existing exact arbitrary-precision Int runtime before canonical reduction.
+Equality, ordering, and three-way comparison shall compare canonical
+representatives only for identical modular types. Canonical display shall
+include the source type name. Private function passage, returns, and decision
+joins shall retain the classifier while reusing the existing Int pointer
+carrier; LLVM shall own its physical x86-64 call lowering.
+
+DWARF shall give every modular declaration a distinct semantic typedef and
+storage identity, and the bundled GDB renderer shall safely show both the type
+name and canonical value. Tests shall compile the unchanged interpreter
+modular-number regression, compare exact output, inspect checked and LLVM
+lowering, reject invalid construction and nominal mixing, and verify undefined
+symbols, needed libraries, relocations, and GDB parameter values.
+
+This increment shall use only the existing Topal Linux syscall allocator and
+writer. It adds no machine-width wraparound, LLVM-optimization dependency,
+foreign allocator, C/C++ runtime, other-language standard library, public ABI,
+or `topal-native/6` revision. Named range operands, dynamic checked
+construction, modular absolute value, persistent/public representation,
+serialization, and compiled-library metadata remain deferred. This realizes
+`TOPAL-COMPILER-MODULAR-001` and the admitted portions of
+`TOPAL-NUM-MODULAR-TYPE-001`, `TOPAL-NUM-MODULAR-CONSTRUCT-001`,
+`TOPAL-NUM-MODULAR-REDUCE-001`, and `TOPAL-NUM-MODULAR-ARITHMETIC-001` for
+compiler increment 2f.
+
+## TOPAL-COMP-MODULAR-CONSTRUCTION-001 — Named ranges and dynamic construction
+
+The compiler shall accept a root modular declaration whose operand names an
+earlier root binding initialized by a closed finite inclusive `Range Int`.
+Resolution shall follow immutable source order and preserve the same exact
+canonical bounds as direct range syntax; dynamic, cyclic, forward, malformed,
+and non-range operands shall remain rejected.
+
+For checked `Name value`, statically proven in-range inputs shall retain the
+direct nominal value path and closed proven out-of-range inputs shall retain
+the source diagnostic. Every other admitted Int shall be evaluated once and
+compared against both arbitrary-precision inclusive bounds in generated LLVM
+control flow. Success shall wrap the original Int pointer; rejection shall
+produce the existing arithmetic Result/Error representation with code
+`out-of-range`, lexical domain `root.Name(Int)`, and exact operand provenance.
+
+`Result (Name, lang arithmetic ArithmeticErrorCode)` shall be admitted through
+the existing private pointer call, return, projection, decision, display, and
+Error-observation paths. Its DWARF header shall retain a nominally typed Name
+payload so the bundled GDB renderer can validate and print success and failure
+values. Tests shall use one unchanged interpreter/compiler regression, compare
+exact output, inspect checked and LLVM control flow, and verify no undefined
+symbol, needed library, dynamic relocation, or lost GDB type/value/frame.
+
+This increment shall reuse only the existing exact Int comparison, Result,
+Error, Linux syscall allocation, and writer facilities. It adds no C/C++
+runtime, other-language standard library, public ABI, serialization contract,
+or `topal-native/6` revision. Modular absolute value, persistent/public
+representation, serialization, introspection, and compiled-library metadata
+remain deferred. This realizes
+`TOPAL-COMPILER-MODULAR-CONSTRUCTION-001` and completes the named-range and
+dynamic-construction portions of `TOPAL-NUM-MODULAR-TYPE-001` and
+`TOPAL-NUM-MODULAR-CONSTRUCT-001` for compiler increment 2f1.
+
 ## TOPAL-COMP-RESULT-001 — Dynamic arithmetic Results
 
 The compiler shall represent an admitted arithmetic `Result` with an immutable
@@ -177,8 +271,36 @@ conflict-free tagged literal form using only the Topal Linux syscall runtime.
 These additions cover `TOPAL-DECISION-RESULT-001`,
 `TOPAL-DECISION-ERROR-CODE-001`, `TOPAL-ERROR-FIELD-001`, and the admitted
 literal transport and display cases of `TOPAL-SYN-STRING-001`. They complete
-compiler increment 2c-b3; Optional Result composition and the remaining String
-operations retain their later roadmap dispositions.
+compiler increment 2c-b3; generic Result/library composition and the remaining
+String operations retain their later roadmap dispositions.
+
+## TOPAL-COMP-ERROR-OPTIONAL-FIELDS-001 — Optional Error provenance fields
+
+The compiler shall classify `detail`, `cause`, and `source` selection from an
+admitted Error or failed Result as `Optional String`, `Optional Error`, and
+`Optional SourceLocation`. It shall wrap the existing nullable detail and cause
+slots without synthesizing information. A present source descriptor shall
+produce a private immutable SourceLocation containing canonical Int pointers
+for the stored one-based line and column; an absent descriptor shall produce
+`None`. Selection shall not reconstruct or alter the Error.
+
+The existing private Optional header shall carry all three results across
+admitted decisions and private function boundaries. LLVM shall own physical
+x86-64 call lowering while the frontend retains the payload classifier.
+Canonical output shall render a present source as
+`Some (line is N, column is N)`. DWARF shall describe SourceLocation and both
+new Optional payload types, and the bundled GDB renderer shall safely render
+them. Tests shall compile the unchanged interpreter composition regression,
+compare its exact output, inspect the lowering and DWARF, and verify undefined
+symbols, needed libraries, relocations, and GDB values.
+
+SourceLocation and Optional allocations shall use only the existing Topal
+Linux `mmap` boundary. The already reserved Error layout and private opaque-
+pointer Optional layout remain `topal-native/6`; this increment adds no foreign
+allocator, C/C++ runtime, other-language standard library, public ABI, or ABI
+revision. This realizes `TOPAL-COMPILER-ERROR-OPTIONAL-FIELDS-001` and the
+remaining field-selection portion of `TOPAL-ERROR-FIELD-001` for compiler
+increment 2c-b5.
 
 ## TOPAL-COMP-CODE-001 — Qualified arithmetic ErrorCode values
 
@@ -253,6 +375,34 @@ covers the direct-value and qualified-function subset of
 `TOPAL-NAMESPACE-ROOT-001` and realizes
 `TOPAL-COMPILER-ROOT-NAMESPACE-001` for compiler increment 6a.
 
+## TOPAL-COMP-NAMESPACE-USE-001 — Static root namespace use
+
+At source root, the checked compiler model shall accept `use root` and `use`
+of an already retained root alias. It shall require the operand to be Scope,
+preserve the same concrete root identity and source-position declaration
+snapshot for optional binding, and diagnose a non-Scope operand with the shared
+`E-USE-NON-NAMESPACE`. Subsequent qualified function or data selection shall
+use the existing retained namespace facts without flattening them into lexical
+lookup.
+
+The backend shall erase the `use` operation itself. An observed binding shall
+reuse the existing private Scope tag, display, and DWARF/GDB type, while
+qualified functions remain direct private calls and qualified data retain their
+original already-evaluated storage identity. Native tests shall cover the
+existing interpreter regression, root and alias operands, non-Scope rejection,
+exact output, checked snapshots, absent use/namespace runtime IR, freestanding
+artifacts, source frames, Scope/value debugging, the shared corpus, and separate
+resource baselines.
+
+This shall add no lookup table, allocation, indirect dispatch, filesystem or
+process-global resolution, foreign dependency, C/C++ runtime, other-language
+standard library, public Scope ABI, or `topal-native/6` revision.
+Multi-component or non-root published paths, nested namespaces, generator
+members, function-body `use`, packages, source/compiled libraries, and public
+interface metadata remain rejected. This realizes
+`TOPAL-COMPILER-NAMESPACE-USE-001` and `TOPAL-NAMESPACE-USE-001` for compiler
+increment 6b3a.
+
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 For the admitted source-root subset, the checked compiler model shall retain an
@@ -304,11 +454,42 @@ This shall add no runtime namespace lookup/table, Scope allocation, foreign
 dependency, C/C++ runtime, other-language standard library, public data ABI, or
 `topal-native/6` revision. Function-body root-data access, nested qualified Scope
 members, general Scope function boundaries, generators, `use`, packages, and
-source/compiled libraries remain rejected. This realizes
+source/compiled libraries remain rejected by increment 6b2a. This realizes
 `TOPAL-COMPILER-NAMESPACE-DATA-001` for increment 6b2a under
 `TOPAL-NAMESPACE-ROOT-001`, `TOPAL-NAMESPACE-ALIAS-001`,
 `TOPAL-NAMESPACE-SNAPSHOT-001`, `TOPAL-NAMESPACE-CLASSIFIER-001`, and
 `TOPAL-NAMESPACE-ALIAS-CHAIN-001`.
+
+## TOPAL-COMP-NAMESPACE-BOUNDARY-001 — Specialized Scope parameters
+
+For an ordinary function called with the live source `root` Scope, a retained
+root alias, or an already-specialized Scope parameter, the checked model shall
+specialize each `Scope` parameter with the concrete namespace identity,
+source-position declaration snapshot, function overload sets, and represented
+data members. Qualified function calls shall use the existing direct
+specialization path. For each non-discarded Scope parameter, the frontend shall
+carry every data member with an admitted private representation as an exact
+hidden argument, so direct selection and transitive Scope-parameter forwarding
+reference the original already-evaluated value without caller-frame lookup. It
+shall diagnose a missing selected member and a selected member that lacks an
+admitted private representation.
+
+The Linux x86-64 backend shall retain the explicit sealed `i32` Scope value and
+append exact typed hidden parameters under private `fastcc`; definitions and
+calls shall have identical LLVM types, and LLVM shall own physical register,
+stack, and aggregate classification. It shall preserve the explicit Scope
+parameter and material hidden arguments in DWARF/GDB at O0. Tests shall cover
+the shared interpreter regression, data selection, direct qualified functions,
+forwarding, stale alias rejection, single initializer execution, native
+artifacts, source frames, and separate resource baselines.
+
+This shall add no runtime namespace lookup/table, indirect dispatch, Scope or
+environment allocation, foreign dependency, C/C++ runtime, other-language
+standard library, public Scope ABI, or `topal-native/6` revision. Scope results
+or escape, function-local live-root arguments, nested/non-root namespaces,
+generator members, `use`, packages, and compiled-library environments remain
+deferred. This realizes `TOPAL-COMPILER-NAMESPACE-BOUNDARY-001` and
+`TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001` for increment 6b2b1.
 
 ## TOPAL-COMP-NAMED-FUNCTION-VALUE-001 — Retained named function values
 
@@ -418,6 +599,39 @@ interfaces remain rejected. This realizes
 `TOPAL-COMPILER-ANONYMOUS-DIRECT-001` and the admitted portion of
 `TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-SYN-GRAMMAR-001`, and
 `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5m.
+
+## TOPAL-COMP-NESTED-FUNCTION-001 — Private direct nested lexical functions
+
+The checked compiler model shall admit an unpublished ordinary nested function
+declared as a direct statement of an ordinary non-static function body. It
+shall bind that function from its declaration point, retain its source
+declaration, and apply it only by direct name within the same invocation scope.
+It shall snapshot every visible immutable lexical data value with an admitted
+private representation, excluding names shadowed by explicit nested
+parameters, and shall reject any attempted value escape. A call shall reuse
+each already-evaluated captured value and shall not access storage in another
+native frame.
+
+Each application shall specialize a compiler-private nested `fastcc` function.
+Its exact signature shall contain source parameters followed by deterministic
+exact typed capture parameters, with the identical prototype at every emitted
+definition and call. LLVM shall own physical x86-64 register, stack, and
+aggregate placement. Full O0 debugging shall expose the nested source frame,
+source parameters, and material captures as named arguments. Native tests shall
+cover the existing interpreter regression, exact execution, capture forwarding,
+value-escape rejection, private direct IR, freestanding artifacts, source
+frames, argument values, the shared corpus, and separate resource baselines.
+
+This shall add no caller-frame reference, environment allocation/runtime,
+function pointer, indirect call, foreign dependency, C/C++ runtime,
+other-language standard library, public closure ABI, or `topal-native/6`
+revision. Declarations inside nested lexical/decision blocks and published,
+static, measured, constrained, or effectful nested functions; nested overloads,
+recursion, sibling calls, visible/active named-callable collisions, anonymous
+captures, Scope/Function/Constraint/refined/defining-context captures, escaping
+closures, and public/library closure metadata remain rejected. This realizes
+`TOPAL-COMPILER-NESTED-FUNCTION-001` and `TOPAL-FUNCTION-NESTED-001` for compiler
+increment 3b2-b5p.
 
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 
@@ -669,10 +883,10 @@ The checked compiler model shall classify `Effects ()` as the canonical empty
 `Effect` value without scheduling or performing an interaction. `Effect` shall
 remain distinct from Unit and `Completed` through classified bindings,
 same-classifier equality, decomposed positional products, scalar function
-parameters and results, and source display. This scalar rule does not admit
-Effect Lists or aggregate results; `TOPAL-COMP-TUPLE-RESULT-001` separately
-admits a qualified Tuple result containing this value. Effect Lists remain
-unsupported until their general representation is admitted.
+parameters and results, and source display. This scalar rule does not itself
+admit Effect Lists or aggregate results; `TOPAL-COMP-TUPLE-RESULT-001`
+separately admits a qualified Tuple result containing this value, and
+`TOPAL-COMP-LIST-EFFECT-001` admits the first immutable List representation.
 
 The backend shall use a sealed zero-data scalar only in Topal-private signatures,
 emit a distinct `Effect` DWARF enumeration for GDB, and require neither
@@ -680,6 +894,31 @@ allocation nor an effect-specific runtime function. Canonical display shall use
 the existing Topal-owned Linux write boundary. No C/C++ runtime, other-language
 standard library, public integer ABI, or `topal-native/6` revision is permitted.
 This realizes `TOPAL-COMPILER-EFFECT-EMPTY-001` for compiler increment 7a.
+
+## TOPAL-COMP-LIST-EFFECT-001 — Immutable Effect List foundation
+
+The checked compiler model shall admit `List Effect` where a classifier gives
+the contextual element type, construct `Empty` and `Entry (value, remaining)`
+with exact homogeneous typing, and retain the List classifier through immutable
+bindings and ordinary function parameters and results. Construction shall
+evaluate the entry value and remaining List in source order. Canonical output
+shall match the shared interpreter's recursive `Entry`/`Empty` spelling.
+
+The Linux x86-64 backend shall represent `Empty` as a null private pointer and
+each `Entry` as an immutable, naturally aligned 16-byte node containing the
+zero-data Effect carrier and the remaining-node pointer. It shall allocate
+nodes only through the existing Topal-owned Linux mapping boundary, retain them
+safely for process lifetime, and express private function passage as an LLVM
+pointer so LLVM owns physical AMD64 calling-convention lowering. DWARF shall
+expose the semantic `List Effect` identity and node shape, and the bundled GDB
+renderer shall validate, bound, and render finite chains without recursive
+host-stack growth.
+
+This first container slice shall add no List equality, decisions, traversal,
+mutation, reclamation contract, other element type, public or serialized node
+layout, C/C++ runtime, other-language standard library, foreign allocator, or
+`topal-native/6` revision. It realizes `TOPAL-COMPILER-LIST-EFFECT-001` and
+`TOPAL-TYPE-LIST-CONSTRUCT-001` for compiler increment 4b3d-a.
 
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
@@ -1124,13 +1363,39 @@ identities, checked Boolean result, exact shared-interpreter output, undefined
 symbols, needed libraries, relocations, local types, values, and source frame.
 The tag shall not dispatch the predicate or become a public ABI/library key.
 
-Constraint application/evidence, capturing predicates, function or aggregate
-boundaries, and public compiled-library constraint identities remain rejected.
-This shall add no allocation, constraint runtime, foreign dependency, C/C++
-runtime, other-language standard library, or `topal-native/6` revision. This
-realizes `TOPAL-COMPILER-CONSTRAINT-VALUE-001`,
+Constraint application/evidence, capturing predicates, function or
+persistent/public aggregate machine boundaries, and public compiled-library
+constraint identities remain rejected. This shall add no allocation, constraint
+runtime, foreign dependency, C/C++ runtime, other-language standard library, or
+`topal-native/6` revision. This realizes `TOPAL-COMPILER-CONSTRAINT-VALUE-001`,
 `TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001`, and the construction-only portion
 of `TOPAL-TYPE-CONSTRAINT-001` for compiler increment 8a1.
+
+## TOPAL-COMP-CONSTRAINT-VALIDATE-001 — Int constraint validation
+
+The checked compiler shall apply an admitted named Int constraint to a closed
+exact operand by evaluating the retained predicate, diagnosing a known failure,
+and giving an accepted unchanged Int value a distinct refined classifier.
+Equality, ordering, and arithmetic shall deliberately forget this evidence and
+reuse the canonical base operations. Unknown Int operands shall evaluate that
+same predicate exactly once in generated code and use the existing Result/Error
+representation with `root.Name(Int)`, `out-of-range`, and source provenance.
+
+LLVM lowering shall bind the unchanged operand into a private predicate
+environment and use explicit branches for success and failure. The success
+payload shall be the original Int pointer. Refined locals shall use a DWARF
+typedef over Int and a debug-only stack shadow so GDB preserves both source type
+and value at O0. Native tests shall cover static success/rejection, base mismatch,
+dynamic success/failure, equality, ordering, arithmetic, exact shared output,
+IR paths, freestanding ELF properties, GDB values/types, and frames.
+
+This shall add no duplicate numeric object, predicate dispatcher, constraint
+runtime, foreign dependency, C/C++ runtime, other-language standard library,
+public evidence ABI, or `topal-native/6` revision. Other bases, captured or
+dependent predicates, evidence across function or persistent/public aggregate
+machine boundaries, and dynamic constraint identities remain rejected. This
+realizes `TOPAL-COMPILER-CONSTRAINT-VALIDATE-001` and
+`TOPAL-TYPE-CONSTRAINT-VALIDATE-001` for compiler increment 8a2.
 
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
@@ -1138,11 +1403,13 @@ Debug-enabled O0 output shall map generated source functions, parameters,
 immutable scalar locals, lexical scopes, and instructions to Topal files and
 source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
 renderers for private arbitrary-precision Int, Rational, `Range Int`,
-`Range Rational`, `Optional Int`, and `Optional String` objects, describe
-source-declared nominal enums and retained Constraint identities with their
-alternative labels,
-distinguish selected overload and static-function frames, and pass automated
-GDB breakpoint, value, and backtrace scenarios.
+`Range Rational`, `Optional Int`, `Optional String`, `Optional Error`,
+`Optional SourceLocation`, `SourceLocation`, nominal modular-number objects,
+modular-success Result objects, and `List Effect`, describe source-declared
+nominal enums, retained Constraint
+identities, and refined Int bindings with their semantic names, distinguish
+selected overload and static-function frames, and pass automated GDB
+breakpoint, value, and backtrace scenarios.
 
 ## TOPAL-COMP-ENUM-001 — Payload-free nominal enums
 
@@ -1167,6 +1434,40 @@ This requirement covers `TOPAL-TYPE-ENUM-001` and the source-declared enum case
 of `TOPAL-DECISION-ENUM-001`. It realizes `TOPAL-COMPILER-ENUM-001` for
 compiler increment 3b1; nested enum declarations and general unions remain in
 increment 3b2.
+
+## TOPAL-COMP-SUM-001 — Private nominal Union and Variant values
+
+The checked compiler shall collect root-scope `Name is Union` declarations and
+`Name is Variant (...)` bindings, retain one nominal identity and the ordered
+payload classifier of every alternative, and admit payload types that already
+have recursively complete private representations. Payload-free Union
+alternatives shall carry Unit without a payload slot. Construction shall
+evaluate and classify the selected complete payload exactly once. Complete
+decisions shall evaluate their subject once, select by the retained tag, bind a
+payload only in its selected action, and diagnose unknown, foreign, duplicate
+declaration, or missing alternatives at the checked boundary.
+
+The Linux x86-64 backend shall use one non-packed LLVM literal struct containing
+a declaration-ordered `i32` tag followed by one statically typed slot for every
+payload-bearing alternative. It shall initialize all machine slots, observe
+only the active one, and use the same exact type in private `fastcc`
+definitions, calls, and returns. LLVM shall own physical register/stack
+classification. Invalid tags shall take the compiler-runtime corruption exit.
+Source display shall match the interpreter's labeled or positional alternative
+spelling through the Topal writer.
+
+DWARF shall expose the nominal source typedef, an enumerated source-alternative
+tag, and correctly laid-out payload members. Named values and aggregate payload
+bindings shall use target-aligned debug-only shadows where LLVM 22 cannot retain
+an inspectable SSA aggregate. The bundled GDB renderer shall show only the
+active alternative and payload. This shall add no semantic heap allocation,
+sum runtime helper, foreign dependency, C/C++ runtime, other-language standard
+library, public aggregate ABI, or `topal-native/6` revision. Recursive nominal
+sums, nested declarations, derived equality/ordering, persistent/public
+storage, serialization, introspection, and library metadata remain deferred.
+This realizes `TOPAL-COMPILER-SUM-001`, `TOPAL-TYPE-UNION-001`,
+`TOPAL-TYPE-VARIANT-001`, and `TOPAL-DECISION-UNION-001` for compiler increment
+3b2-b5o.
 
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 

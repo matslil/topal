@@ -7,8 +7,8 @@ use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
     CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerFallible, CompilerFunction, CompilerProgram, CompilerStatement, CompilerType,
-    CompilerValidation, display_string_literal,
+    CompilerFallible, CompilerFunction, CompilerModularType, CompilerProgram, CompilerStatement,
+    CompilerSumRule, CompilerSumType, CompilerType, CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -39,19 +39,28 @@ fn block_uses_extended_debug(block: &CompilerBlock) -> bool {
 
 fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
     match value_type {
+        CompilerType::Refined { base, .. } => type_uses_extended_debug(base),
         CompilerType::Character
         | CompilerType::String
         | CompilerType::Error
         | CompilerType::ErrorCode
         | CompilerType::ErrorDomain
+        | CompilerType::SourceLocation
+        | CompilerType::Modular(_)
         | CompilerType::Optional(_) => true,
-        CompilerType::Range(endpoint) | CompilerType::Result(endpoint) => {
-            type_uses_extended_debug(endpoint)
-        }
+        CompilerType::Range(endpoint)
+        | CompilerType::Result(endpoint)
+        | CompilerType::List(endpoint) => type_uses_extended_debug(endpoint),
         CompilerType::Tuple(fields) => fields.iter().any(type_uses_extended_debug),
         CompilerType::Record(fields) => fields
             .iter()
             .any(|(_, value_type)| type_uses_extended_debug(value_type)),
+        CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_some_and(type_uses_extended_debug)
+        }),
         CompilerType::Unit
         | CompilerType::Completed
         | CompilerType::Effect
@@ -93,8 +102,14 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
                     .iter()
                     .any(|(_, value)| expression_uses_extended_debug(value))
         }
+        CompilerExpressionKind::Sum { payload, .. } => payload
+            .as_deref()
+            .is_some_and(expression_uses_extended_debug),
         CompilerExpressionKind::Block(block) => block_uses_extended_debug(block),
-        CompilerExpressionKind::Negate(value)
+        CompilerExpressionKind::IntToModular { value, .. }
+        | CompilerExpressionKind::ModularReduce { value, .. }
+        | CompilerExpressionKind::ModularValidate { value, .. }
+        | CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
         | CompilerExpressionKind::IntToRational(value)
         | CompilerExpressionKind::RationalToInt(value)
@@ -113,6 +128,10 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Not(value)
         | CompilerExpressionKind::Validate { value, .. } => expression_uses_extended_debug(value),
         CompilerExpressionKind::StringConcat { left, right }
+        | CompilerExpressionKind::ListEntry {
+            value: left,
+            remaining: right,
+        }
         | CompilerExpressionKind::RationalConstruct {
             numerator: left,
             denominator: right,
@@ -166,6 +185,19 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
                     .as_deref()
                     .is_some_and(expression_uses_extended_debug)
         }
+        CompilerExpressionKind::SumDecision {
+            subject,
+            rules,
+            otherwise,
+        } => {
+            expression_uses_extended_debug(subject)
+                || rules
+                    .iter()
+                    .any(|rule| expression_uses_extended_debug(&rule.action))
+                || otherwise
+                    .as_deref()
+                    .is_some_and(expression_uses_extended_debug)
+        }
         CompilerExpressionKind::Unit
         | CompilerExpressionKind::Completed
         | CompilerExpressionKind::Effect
@@ -178,6 +210,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Rational(_)
         | CompilerExpressionKind::Enum(_)
         | CompilerExpressionKind::OptionalNone
+        | CompilerExpressionKind::ListEmpty
         | CompilerExpressionKind::Local(_) => false,
     }
 }
@@ -276,13 +309,16 @@ impl<'a> Generator<'a> {
             }
             LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
             LlValue::Int(value)
+            | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
             | LlValue::Error(value)
             | LlValue::ErrorDomain(value)
+            | LlValue::SourceLocation(value)
             | LlValue::String(value)
             | LlValue::Range { value, .. }
             | LlValue::Result { value, .. }
-            | LlValue::Optional { value, .. } => {
+            | LlValue::Optional { value, .. }
+            | LlValue::List { value, .. } => {
                 body.terminator(&format!("ret ptr {value}"), location);
             }
             LlValue::Comparison(value)
@@ -321,6 +357,14 @@ impl<'a> Generator<'a> {
                     location,
                 );
             }
+            LlValue::Sum { .. } => {
+                let aggregate =
+                    self.emit_sum_aggregate(&result, &mut body, function.body.result.span);
+                body.terminator(
+                    &format!("ret {} {aggregate}", llvm_value_type(&function.result_type)),
+                    location,
+                );
+            }
         }
         self.functions.push(format!(
             "define internal fastcc {return_type} @{}({parameters}) nounwind noinline !dbg !{subprogram} {{\n{}\n}}\n",
@@ -347,6 +391,9 @@ impl<'a> Generator<'a> {
                 CompilerType::Record(fields) => {
                     self.emit_record_extract(&argument, fields, body, parameter.span)
                 }
+                CompilerType::Sum(sum) => {
+                    self.emit_sum_extract(&argument, sum, body, parameter.span)
+                }
                 CompilerType::Function => LlValue::Enum {
                     value: argument.clone(),
                     enumeration: function_value_enumeration(self.program),
@@ -363,7 +410,11 @@ impl<'a> Generator<'a> {
             let location = self.debug.location(parameter.span, body.subprogram);
             if matches!(
                 parameter.value_type,
-                CompilerType::Function | CompilerType::Tuple(_) | CompilerType::Record(_)
+                CompilerType::Scope
+                    | CompilerType::Function
+                    | CompilerType::Tuple(_)
+                    | CompilerType::Record(_)
+                    | CompilerType::Sum(_)
             ) {
                 self.emit_aggregate_debug_shadow(
                     &argument,
@@ -417,6 +468,10 @@ impl<'a> Generator<'a> {
                 let aggregate = self.emit_record_aggregate(fields, order, field_types, body, span);
                 format!("{} {aggregate}", llvm_value_type(value_type))
             }
+            (LlValue::Sum { .. }, CompilerType::Sum(_)) => {
+                let aggregate = self.emit_sum_aggregate(value, body, span);
+                format!("{} {aggregate}", llvm_value_type(value_type))
+            }
             _ => value.argument(),
         }
     }
@@ -446,6 +501,7 @@ impl<'a> Generator<'a> {
                         CompilerType::Record(nested_types) => {
                             self.emit_record_extract(&field, nested_types, body, span)
                         }
+                        CompilerType::Sum(sum) => self.emit_sum_extract(&field, sum, body, span),
                         _ => machine_value(field_type, field),
                     }
                 })
@@ -515,6 +571,7 @@ impl<'a> Generator<'a> {
                     CompilerType::Record(nested_types) => {
                         self.emit_record_extract(&field, nested_types, body, span)
                     }
+                    CompilerType::Sum(sum) => self.emit_sum_extract(&field, sum, body, span),
                     _ => machine_value(field_type, field),
                 };
                 (label.clone(), field)
@@ -533,6 +590,96 @@ impl<'a> Generator<'a> {
             })
             .collect();
         LlValue::Record { fields, order }
+    }
+
+    fn emit_sum_aggregate(
+        &mut self,
+        value: &LlValue,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        let LlValue::Sum { tag, payloads, sum } = value else {
+            unreachable!("checked sum aggregate retains its sum value")
+        };
+        let value_type = CompilerType::Sum(sum.clone());
+        let aggregate_type = llvm_value_type(&value_type);
+        let mut aggregate = body.instruction(
+            &format!("insertvalue {aggregate_type} poison, i32 {tag}, 0"),
+            span,
+            &mut self.debug,
+        );
+        let mut field_index = 1;
+        for (alternative, payload) in sum.alternatives.iter().zip(payloads) {
+            if let Some(payload_type) = &alternative.payload {
+                let payload = payload
+                    .as_deref()
+                    .expect("every represented sum payload has a checked machine value");
+                let operand = self.emit_machine_operand(payload, payload_type, body, span);
+                aggregate = body.instruction(
+                    &format!("insertvalue {aggregate_type} {aggregate}, {operand}, {field_index}"),
+                    span,
+                    &mut self.debug,
+                );
+                field_index += 1;
+            }
+        }
+        aggregate
+    }
+
+    fn emit_sum_extract(
+        &mut self,
+        aggregate: &str,
+        sum: &CompilerSumType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        let aggregate_type = llvm_value_type(&CompilerType::Sum(sum.clone()));
+        let tag = body.instruction(
+            &format!("extractvalue {aggregate_type} {aggregate}, 0"),
+            span,
+            &mut self.debug,
+        );
+        let mut field_index = 1;
+        let mut payloads = Vec::with_capacity(sum.alternatives.len());
+        for alternative in &sum.alternatives {
+            let payload = if let Some(payload_type) = &alternative.payload {
+                let field = body.instruction(
+                    &format!("extractvalue {aggregate_type} {aggregate}, {field_index}"),
+                    span,
+                    &mut self.debug,
+                );
+                field_index += 1;
+                Some(Box::new(self.machine_or_aggregate_value(
+                    payload_type,
+                    field,
+                    body,
+                    span,
+                )))
+            } else {
+                None
+            };
+            payloads.push(payload);
+        }
+        LlValue::Sum {
+            tag,
+            payloads,
+            sum: sum.clone(),
+        }
+    }
+
+    fn machine_or_aggregate_value(
+        &mut self,
+        value_type: &CompilerType,
+        value: String,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        match value_type {
+            CompilerType::Tuple(fields) => self.emit_tuple_extract(&value, fields, body, span),
+            CompilerType::Record(fields) => self.emit_record_extract(&value, fields, body, span),
+            CompilerType::Sum(sum) => self.emit_sum_extract(&value, sum, body, span),
+            _ => machine_value(value_type, value),
+        }
     }
 
     fn emit_aggregate_debug_shadow(
@@ -593,7 +740,27 @@ impl<'a> Generator<'a> {
             match statement {
                 CompilerStatement::Binding(binding) => {
                     let value = self.emit_expression(&binding.value, body, environment);
-                    if binding.value.value_type.machine_scalar() {
+                    if let CompilerType::Refined { base, .. } = &binding.value.value_type {
+                        let variable = self.debug.local(
+                            &binding.name,
+                            binding.span,
+                            &binding.value.value_type,
+                            body.subprogram,
+                        );
+                        let location = self.debug.location(binding.span, body.subprogram);
+                        let machine_value = match base.as_ref() {
+                            CompilerType::Int => value.integer(),
+                            _ => unreachable!("checked refined debug base is supported"),
+                        };
+                        self.emit_aggregate_debug_shadow(
+                            machine_value,
+                            &binding.value.value_type,
+                            variable,
+                            location,
+                            body,
+                            binding.span,
+                        );
+                    } else if binding.value.value_type.machine_scalar() {
                         let variable = self.debug.local(
                             &binding.name,
                             binding.span,
@@ -617,6 +784,9 @@ impl<'a> Generator<'a> {
                                 body,
                                 binding.span,
                             ),
+                            (LlValue::Sum { .. }, CompilerType::Sum(_)) => {
+                                self.emit_sum_aggregate(&value, body, binding.span)
+                            }
                             _ => unreachable!("checked aggregate binding retains its type"),
                         };
                         let variable = self.debug.local(
@@ -674,6 +844,29 @@ impl<'a> Generator<'a> {
             },
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
             CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
+            CompilerExpressionKind::IntToModular { value, modular } => {
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Modular {
+                    value: value.integer().to_owned(),
+                    modular: modular.clone(),
+                }
+            }
+            CompilerExpressionKind::ModularReduce { value, modular } => {
+                let value = self.emit_expression(value, body, environment);
+                self.emit_modular_reduce(value.integer(), modular, body, expression.span)
+            }
+            CompilerExpressionKind::ModularValidate {
+                value,
+                modular,
+                error_span,
+            } => self.emit_modular_validation(
+                value,
+                modular,
+                *error_span,
+                body,
+                environment,
+                expression.span,
+            ),
             CompilerExpressionKind::Rational(value) => {
                 self.emit_rational_literal(value, body, expression.span)
             }
@@ -726,6 +919,30 @@ impl<'a> Generator<'a> {
                 LlValue::Enum {
                     value: value.to_string(),
                     enumeration: enumeration.clone(),
+                }
+            }
+            CompilerExpressionKind::Sum { value, payload } => {
+                let CompilerType::Sum(sum) = &expression.value_type else {
+                    unreachable!("checked sum value retains its nominal type")
+                };
+                let mut payloads = sum
+                    .alternatives
+                    .iter()
+                    .map(|alternative| {
+                        alternative
+                            .payload
+                            .as_ref()
+                            .map(|payload_type| Box::new(zero_machine_value(payload_type)))
+                    })
+                    .collect::<Vec<_>>();
+                if let Some(payload) = payload {
+                    payloads[usize::try_from(*value).expect("u32 sum tag fits usize")] =
+                        Some(Box::new(self.emit_expression(payload, body, environment)));
+                }
+                LlValue::Sum {
+                    tag: value.to_string(),
+                    payloads,
+                    sum: sum.clone(),
                 }
             }
             CompilerExpressionKind::Tuple(values) => LlValue::Tuple(
@@ -816,6 +1033,14 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
+                    LlValue::Modular { value, modular } => {
+                        let value = body.instruction(
+                            &format!("call ptr @topal.runtime.int.negate(ptr {value})"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        self.emit_modular_reduce(&value, &modular, body, expression.span)
+                    }
                     _ => unreachable!("checked negate operand is exact numeric"),
                 }
             }
@@ -917,6 +1142,51 @@ impl<'a> Generator<'a> {
                     payload: payload.as_ref().clone(),
                 }
             }
+            CompilerExpressionKind::ListEmpty => {
+                let CompilerType::List(element) = &expression.value_type else {
+                    unreachable!("checked Empty retains its List classifier")
+                };
+                LlValue::List {
+                    value: "null".into(),
+                    element: element.as_ref().clone(),
+                }
+            }
+            CompilerExpressionKind::ListEntry { value, remaining } => {
+                let value = self.emit_expression(value, body, environment);
+                let remaining = self.emit_expression(remaining, body, environment);
+                let LlValue::List {
+                    value: remaining,
+                    element,
+                } = remaining
+                else {
+                    unreachable!("checked Entry tail retains its List classifier")
+                };
+                debug_assert_eq!(element, CompilerType::Effect);
+                let node = body.instruction(
+                    "call ptr @topal.platform.allocate(i64 16)",
+                    expression.span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store i8 {}, ptr {node}, align 1", value.singleton()),
+                    expression.span,
+                    &mut self.debug,
+                );
+                let next = body.instruction(
+                    &format!("getelementptr i8, ptr {node}, i64 8"),
+                    expression.span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store ptr {remaining}, ptr {next}, align 8"),
+                    expression.span,
+                    &mut self.debug,
+                );
+                LlValue::List {
+                    value: node,
+                    element,
+                }
+            }
             CompilerExpressionKind::ErrorField { error, field } => {
                 let error_span = error.span;
                 let error = self.emit_expression(error, body, environment);
@@ -962,6 +1232,30 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
+                    CompilerErrorField::Detail => LlValue::Optional {
+                        value: body.instruction(
+                            &format!("call ptr @topal.runtime.error.detail(ptr {error})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        payload: CompilerType::String,
+                    },
+                    CompilerErrorField::Cause => LlValue::Optional {
+                        value: body.instruction(
+                            &format!("call ptr @topal.runtime.error.cause(ptr {error})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        payload: CompilerType::Error,
+                    },
+                    CompilerErrorField::Source => LlValue::Optional {
+                        value: body.instruction(
+                            &format!("call ptr @topal.runtime.error.source(ptr {error})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        payload: CompilerType::SourceLocation,
+                    },
                 }
             }
             CompilerExpressionKind::Validate {
@@ -1124,7 +1418,9 @@ impl<'a> Generator<'a> {
                         ),
                         enumeration: root_scope_enumeration(),
                     },
-                    CompilerType::Function | CompilerType::Constraint => {
+                    CompilerType::Function
+                    | CompilerType::Constraint
+                    | CompilerType::Refined { .. } => {
                         unreachable!("checked functions do not return this static object kind")
                     }
                     CompilerType::Boolean => LlValue::Boolean(body.instruction(
@@ -1137,6 +1433,14 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
+                    CompilerType::Modular(ref modular) => LlValue::Modular {
+                        value: body.instruction(
+                            &format!("call fastcc ptr @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        modular: modular.clone(),
+                    },
                     CompilerType::Rational => LlValue::Rational(body.instruction(
                         &format!("call fastcc ptr @{symbol}({arguments})"),
                         expression.span,
@@ -1166,6 +1470,11 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     )),
                     CompilerType::ErrorDomain => LlValue::ErrorDomain(body.instruction(
+                        &format!("call fastcc ptr @{symbol}({arguments})"),
+                        expression.span,
+                        &mut self.debug,
+                    )),
+                    CompilerType::SourceLocation => LlValue::SourceLocation(body.instruction(
                         &format!("call fastcc ptr @{symbol}({arguments})"),
                         expression.span,
                         &mut self.debug,
@@ -1201,6 +1510,14 @@ impl<'a> Generator<'a> {
                         ),
                         payload: payload.as_ref().clone(),
                     },
+                    CompilerType::List(ref element) => LlValue::List {
+                        value: body.instruction(
+                            &format!("call fastcc ptr @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        element: element.as_ref().clone(),
+                    },
                     CompilerType::Tuple(ref field_types) => {
                         let aggregate_type = llvm_value_type(&expression.value_type);
                         let aggregate = body.instruction(
@@ -1218,6 +1535,15 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         );
                         self.emit_record_extract(&aggregate, field_types, body, expression.span)
+                    }
+                    CompilerType::Sum(ref sum) => {
+                        let aggregate_type = llvm_value_type(&expression.value_type);
+                        let aggregate = body.instruction(
+                            &format!("call fastcc {aggregate_type} @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        self.emit_sum_extract(&aggregate, sum, body, expression.span)
                     }
                 }
             }
@@ -1264,6 +1590,18 @@ impl<'a> Generator<'a> {
                 rules,
                 otherwise,
             } => self.emit_enum_decision(
+                subject,
+                rules,
+                otherwise.as_deref(),
+                body,
+                environment,
+                expression.span,
+            ),
+            CompilerExpressionKind::SumDecision {
+                subject,
+                rules,
+                otherwise,
+            } => self.emit_sum_decision(
                 subject,
                 rules,
                 otherwise.as_deref(),
@@ -1565,6 +1903,16 @@ impl<'a> Generator<'a> {
         environment: &BTreeMap<String, LlValue>,
         span: Span,
     ) -> LlValue {
+        if let CompilerValidation::Constraint(tag) = operation {
+            return self.emit_constraint_validation(
+                tag,
+                value,
+                error_span,
+                body,
+                environment,
+                span,
+            );
+        }
         let value = self.emit_expression(value, body, environment);
         let (runtime, domain, success, value) = match operation {
             CompilerValidation::RationalToInt => (
@@ -1579,6 +1927,9 @@ impl<'a> Generator<'a> {
                 CompilerType::Nat,
                 value.integer(),
             ),
+            CompilerValidation::Constraint(_) => {
+                unreachable!("Constraint validation was lowered above")
+            }
         };
         let domain_global = self.emit_string_value(domain, body, span);
         let source_global = self.emit_string_value(self.source_name, body, span);
@@ -1593,6 +1944,159 @@ impl<'a> Generator<'a> {
                 &mut self.debug,
             ),
             success,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)] // Predicate environment and Error provenance stay explicit.
+    fn emit_constraint_validation(
+        &mut self,
+        tag: u32,
+        value: &CompilerExpression,
+        error_span: Span,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let constraint =
+            self.program.constraints[usize::try_from(tag).expect("u32 tag fits usize")].clone();
+        let value = self.emit_expression(value, body, environment);
+        let mut predicate_environment = environment.clone();
+        predicate_environment.insert(constraint.parameter_storage, value.clone());
+        let accepted = self.emit_expression(&constraint.predicate, body, &predicate_environment);
+        let accepted_label = body.label("constraint.accepted");
+        let rejected_label = body.label("constraint.rejected");
+        let merge = body.label("constraint.merge");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!(
+                "br i1 {}, label %{accepted_label}, label %{rejected_label}",
+                accepted.boolean()
+            ),
+            location,
+        );
+
+        body.start_block(&accepted_label);
+        let payload = self.emit_result_payload(&value, &constraint.base_type, body, error_span);
+        let success = body.instruction(
+            &format!("call ptr @topal.runtime.result.success(ptr {payload})"),
+            span,
+            &mut self.debug,
+        );
+        let success_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+
+        body.start_block(&rejected_label);
+        let domain = format!("root.{}({})", constraint.name, constraint.base_type.name());
+        let domain = self.emit_string_value(&domain, body, span);
+        let source = self.emit_string_value(self.source_name, body, span);
+        let position = self.program.source.position(error_span.start);
+        let failure = body.instruction(
+            &format!(
+                "call ptr @topal.runtime.result.failure(i32 0, ptr {domain}, ptr {source}, i64 {}, i64 {})",
+                position.line, position.column
+            ),
+            span,
+            &mut self.debug,
+        );
+        let failure_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+
+        body.start_block(&merge);
+        let value = body.instruction(
+            &format!(
+                "phi ptr [{success}, %{success_predecessor}], [{failure}, %{failure_predecessor}]"
+            ),
+            span,
+            &mut self.debug,
+        );
+        LlValue::Result {
+            value,
+            success: constraint.base_type,
+        }
+    }
+
+    fn emit_modular_validation(
+        &mut self,
+        value: &CompilerExpression,
+        modular: &CompilerModularType,
+        error_span: Span,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let value = self.emit_expression(value, body, environment);
+        let value = value.integer();
+        let lower = self.emit_int_global(&modular.lower);
+        let upper = self.emit_int_global(&modular.upper);
+        let lower_order = body.instruction(
+            &format!("call i32 @topal.runtime.int.compare(ptr {value}, ptr {lower})"),
+            span,
+            &mut self.debug,
+        );
+        let upper_order = body.instruction(
+            &format!("call i32 @topal.runtime.int.compare(ptr {value}, ptr {upper})"),
+            span,
+            &mut self.debug,
+        );
+        let at_or_above = body.instruction(
+            &format!("icmp sge i32 {lower_order}, 0"),
+            span,
+            &mut self.debug,
+        );
+        let at_or_below = body.instruction(
+            &format!("icmp sle i32 {upper_order}, 0"),
+            span,
+            &mut self.debug,
+        );
+        let accepted = body.instruction(
+            &format!("and i1 {at_or_above}, {at_or_below}"),
+            span,
+            &mut self.debug,
+        );
+        let accepted_label = body.label("modular.accepted");
+        let rejected_label = body.label("modular.rejected");
+        let merge = body.label("modular.merge");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {accepted}, label %{accepted_label}, label %{rejected_label}"),
+            location,
+        );
+
+        body.start_block(&accepted_label);
+        let success = body.instruction(
+            &format!("call ptr @topal.runtime.result.success(ptr {value})"),
+            span,
+            &mut self.debug,
+        );
+        let success_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+
+        body.start_block(&rejected_label);
+        let domain = self.emit_string_value(&format!("root.{}(Int)", modular.name), body, span);
+        let source = self.emit_string_value(self.source_name, body, span);
+        let position = self.program.source.position(error_span.start);
+        let failure = body.instruction(
+            &format!(
+                "call ptr @topal.runtime.result.failure(i32 0, ptr {domain}, ptr {source}, i64 {}, i64 {})",
+                position.line, position.column
+            ),
+            span,
+            &mut self.debug,
+        );
+        let failure_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+
+        body.start_block(&merge);
+        let value = body.instruction(
+            &format!(
+                "phi ptr [{success}, %{success_predecessor}], [{failure}, %{failure_predecessor}]"
+            ),
+            span,
+            &mut self.debug,
+        );
+        LlValue::Result {
+            value,
+            success: CompilerType::Modular(modular.clone()),
         }
     }
 
@@ -1671,6 +2175,11 @@ impl<'a> Generator<'a> {
     ) -> String {
         match (value, value_type) {
             (LlValue::Unit, CompilerType::Unit) => "null".into(),
+            (LlValue::Modular { value, modular }, CompilerType::Modular(modular_type))
+                if modular == modular_type =>
+            {
+                value.clone()
+            }
             (LlValue::Int(value), CompilerType::Int | CompilerType::Nat)
             | (LlValue::Rational(value), CompilerType::Rational)
             | (LlValue::String(value), CompilerType::String)
@@ -1706,6 +2215,10 @@ impl<'a> Generator<'a> {
         match success {
             CompilerType::Unit => LlValue::Unit,
             CompilerType::Int | CompilerType::Nat => LlValue::Int(payload.into()),
+            CompilerType::Modular(modular) => LlValue::Modular {
+                value: payload.into(),
+                modular: modular.clone(),
+            },
             CompilerType::Rational => LlValue::Rational(payload.into()),
             CompilerType::String => LlValue::String(payload.into()),
             CompilerType::Range(endpoint) => LlValue::Range {
@@ -1795,6 +2308,25 @@ impl<'a> Generator<'a> {
                     CompilerBinary::Multiply => "multiply",
                     _ => unreachable!(),
                 };
+                if let (
+                    LlValue::Modular {
+                        value: left,
+                        modular,
+                    },
+                    LlValue::Modular {
+                        value: right,
+                        modular: right_modular,
+                    },
+                ) = (left, right)
+                {
+                    debug_assert_eq!(modular, right_modular);
+                    let value = body.instruction(
+                        &format!("call ptr @topal.runtime.int.{name}(ptr {left}, ptr {right})"),
+                        span,
+                        &mut self.debug,
+                    );
+                    return self.emit_modular_reduce(&value, modular, body, span);
+                }
                 let (domain, left, right) = match (left, right) {
                     (LlValue::Int(left), LlValue::Int(right)) => ("int", left, right),
                     (LlValue::Rational(left), LlValue::Rational(right)) => {
@@ -2024,7 +2556,9 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 )
             }
-            (LlValue::Int(_), LlValue::Int(_)) | (LlValue::Rational(_), LlValue::Rational(_)) => {
+            (LlValue::Int(_), LlValue::Int(_))
+            | (LlValue::Modular { .. }, LlValue::Modular { .. })
+            | (LlValue::Rational(_), LlValue::Rational(_)) => {
                 let comparison = self.emit_numeric_compare(left, right, body, span);
                 body.instruction(
                     &format!("icmp eq i32 {comparison}, 0"),
@@ -2091,7 +2625,9 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> String {
         match (left, right) {
-            (LlValue::Int(_), LlValue::Int(_)) | (LlValue::Rational(_), LlValue::Rational(_)) => {
+            (LlValue::Int(_), LlValue::Int(_))
+            | (LlValue::Modular { .. }, LlValue::Modular { .. })
+            | (LlValue::Rational(_), LlValue::Rational(_)) => {
                 self.emit_numeric_compare(left, right, body, span)
             }
             (LlValue::Tuple(left), LlValue::Tuple(right)) => {
@@ -2143,6 +2679,19 @@ impl<'a> Generator<'a> {
     ) -> String {
         let (domain, left, right) = match (left, right) {
             (LlValue::Int(left), LlValue::Int(right)) => ("int", left, right),
+            (
+                LlValue::Modular {
+                    value: left,
+                    modular,
+                },
+                LlValue::Modular {
+                    value: right,
+                    modular: right_modular,
+                },
+            ) => {
+                debug_assert_eq!(modular, right_modular);
+                ("int", left, right)
+            }
             (LlValue::Rational(left), LlValue::Rational(right)) => ("rational", left, right),
             _ => unreachable!("checked numeric comparison operands agree"),
         };
@@ -2357,6 +2906,111 @@ impl<'a> Generator<'a> {
         self.emit_decision_phi(&branches, body, span)
     }
 
+    fn emit_sum_decision(
+        &mut self,
+        subject: &CompilerExpression,
+        rules: &[CompilerSumRule],
+        otherwise: Option<&CompilerExpression>,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let emitted_subject = self.emit_expression(subject, body, environment);
+        let LlValue::Sum { tag, payloads, sum } = emitted_subject else {
+            unreachable!("checked decision subject is a nominal sum")
+        };
+        let labels = rules
+            .iter()
+            .map(|_| body.label("sum.decision.alternative"))
+            .collect::<Vec<_>>();
+        let default = body.label("sum.decision.default");
+        let merge = body.label("sum.decision.merge");
+        let cases = rules
+            .iter()
+            .zip(&labels)
+            .map(|(rule, label)| format!("i32 {}, label %{label}", rule.value))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("switch i32 {tag}, label %{default} [ {cases} ]"),
+            location,
+        );
+        let mut branches = Vec::with_capacity(rules.len() + usize::from(otherwise.is_some()));
+        for (rule, label) in rules.iter().zip(labels) {
+            body.start_block(&label);
+            let mut branch_environment = environment.clone();
+            if let Some((name, binding_span)) = &rule.binding {
+                let index = usize::try_from(rule.value).expect("u32 sum tag fits usize");
+                let payload_type = sum.alternatives[index]
+                    .payload
+                    .as_ref()
+                    .expect("checked payload matcher retains its payload type");
+                let payload = payloads[index]
+                    .as_deref()
+                    .expect("checked payload matcher retains its payload value")
+                    .clone();
+                let variable = self
+                    .debug
+                    .local(name, *binding_span, payload_type, body.subprogram);
+                let binding_location = self.debug.location(*binding_span, body.subprogram);
+                if payload_type.machine_scalar() {
+                    body.debug_value(&payload, variable, binding_location);
+                } else if private_aggregate_value_supported(payload_type) {
+                    let aggregate = match (&payload, payload_type) {
+                        (LlValue::Tuple(fields), CompilerType::Tuple(field_types)) => {
+                            self.emit_tuple_aggregate(fields, field_types, body, *binding_span)
+                        }
+                        (LlValue::Record { fields, order }, CompilerType::Record(field_types)) => {
+                            self.emit_record_aggregate(
+                                fields,
+                                order,
+                                field_types,
+                                body,
+                                *binding_span,
+                            )
+                        }
+                        (LlValue::Sum { .. }, CompilerType::Sum(_)) => {
+                            self.emit_sum_aggregate(&payload, body, *binding_span)
+                        }
+                        _ => unreachable!("checked sum payload retains its aggregate type"),
+                    };
+                    self.emit_aggregate_debug_shadow(
+                        &aggregate,
+                        payload_type,
+                        variable,
+                        binding_location,
+                        body,
+                        *binding_span,
+                    );
+                }
+                branch_environment.insert(name.clone(), payload);
+            }
+            let value = self.emit_expression(&rule.action, body, &branch_environment);
+            let predecessor = body.current_block.clone();
+            let action_location = self.debug.location(rule.action.span, body.subprogram);
+            body.terminator(&format!("br label %{merge}"), action_location);
+            branches.push((value, predecessor));
+        }
+        body.start_block(&default);
+        if let Some(otherwise) = otherwise {
+            let value = self.emit_expression(otherwise, body, environment);
+            let predecessor = body.current_block.clone();
+            let action_location = self.debug.location(otherwise.span, body.subprogram);
+            body.terminator(&format!("br label %{merge}"), action_location);
+            branches.push((value, predecessor));
+        } else {
+            body.effect(
+                "call void @topal.platform.exit(i64 70)",
+                span,
+                &mut self.debug,
+            );
+            body.terminator("unreachable", location);
+        }
+        body.start_block(&merge);
+        self.emit_decision_phi(&branches, body, span)
+    }
+
     #[allow(clippy::too_many_lines)] // Exhaustive joins preserve checked representation identity.
     fn emit_decision_phi(
         &mut self,
@@ -2396,6 +3050,14 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             )),
+            LlValue::Modular { modular, .. } => LlValue::Modular {
+                value: body.instruction(
+                    &format!("phi ptr {}", incoming(LlValue::modular_pointer)),
+                    span,
+                    &mut self.debug,
+                ),
+                modular: modular.clone(),
+            },
             LlValue::Rational(_) => LlValue::Rational(body.instruction(
                 &format!("phi ptr {}", incoming(LlValue::rational)),
                 span,
@@ -2413,6 +3075,11 @@ impl<'a> Generator<'a> {
             )),
             LlValue::ErrorDomain(_) => LlValue::ErrorDomain(body.instruction(
                 &format!("phi ptr {}", incoming(LlValue::error_domain)),
+                span,
+                &mut self.debug,
+            )),
+            LlValue::SourceLocation(_) => LlValue::SourceLocation(body.instruction(
+                &format!("phi ptr {}", incoming(LlValue::source_location)),
                 span,
                 &mut self.debug,
             )),
@@ -2466,6 +3133,57 @@ impl<'a> Generator<'a> {
                     ),
                     payload,
                 }
+            }
+            LlValue::List { element, .. } => {
+                let element = element.clone();
+                LlValue::List {
+                    value: body.instruction(
+                        &format!("phi ptr {}", incoming(LlValue::list_pointer)),
+                        span,
+                        &mut self.debug,
+                    ),
+                    element,
+                }
+            }
+            LlValue::Sum { sum, .. } => {
+                let sum = sum.clone();
+                let tags = branches
+                    .iter()
+                    .map(|(branch, predecessor)| {
+                        let LlValue::Sum { tag, .. } = branch else {
+                            unreachable!("checked decision branches share a sum type")
+                        };
+                        format!("[{tag}, %{predecessor}]")
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let tag = body.instruction(&format!("phi i32 {tags}"), span, &mut self.debug);
+                let payloads = sum
+                    .alternatives
+                    .iter()
+                    .enumerate()
+                    .map(|(index, alternative)| {
+                        alternative.payload.as_ref().map(|_| {
+                            let payload_branches = branches
+                                .iter()
+                                .map(|(branch, predecessor)| {
+                                    let LlValue::Sum { payloads, .. } = branch else {
+                                        unreachable!("checked decision branches share a sum type")
+                                    };
+                                    (
+                                        payloads[index]
+                                            .as_deref()
+                                            .expect("sum payload slot retains a machine value")
+                                            .clone(),
+                                        predecessor.clone(),
+                                    )
+                                })
+                                .collect::<Vec<_>>();
+                            Box::new(self.emit_decision_phi(&payload_branches, body, span))
+                        })
+                    })
+                    .collect();
+                LlValue::Sum { tag, payloads, sum }
             }
             LlValue::Tuple(fields) => LlValue::Tuple(
                 (0..fields.len())
@@ -2549,6 +3267,15 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             ),
+            LlValue::Modular { value, modular } => {
+                self.emit_write_literal(&modular.name, body, span);
+                self.emit_write_literal(" ", body, span);
+                body.effect(
+                    &format!("call void @topal.runtime.int.print(ptr {value})"),
+                    span,
+                    &mut self.debug,
+                );
+            }
             LlValue::Rational(value) => body.effect(
                 &format!("call void @topal.runtime.rational.print(ptr {value})"),
                 span,
@@ -2576,6 +3303,45 @@ impl<'a> Generator<'a> {
             LlValue::Enum { value, enumeration } => {
                 self.emit_print_enum(value, enumeration, body, span);
             }
+            LlValue::Sum { tag, payloads, sum } => {
+                let labels = sum
+                    .alternatives
+                    .iter()
+                    .map(|_| body.label("print.sum.alternative"))
+                    .collect::<Vec<_>>();
+                let invalid = body.label("print.sum.invalid");
+                let done = body.label("print.sum.done");
+                let cases = labels
+                    .iter()
+                    .enumerate()
+                    .map(|(index, label)| format!("i32 {index}, label %{label}"))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                let location = self.debug.location(span, body.subprogram);
+                body.terminator(
+                    &format!("switch i32 {tag}, label %{invalid} [ {cases} ]"),
+                    location,
+                );
+                for (index, (label, alternative)) in
+                    labels.iter().zip(&sum.alternatives).enumerate()
+                {
+                    body.start_block(label);
+                    self.emit_write_literal(&alternative.name, body, span);
+                    if let Some(payload) = payloads[index].as_deref() {
+                        self.emit_write_literal(" ", body, span);
+                        self.emit_print(payload, body, span);
+                    }
+                    body.terminator(&format!("br label %{done}"), location);
+                }
+                body.start_block(&invalid);
+                body.effect(
+                    "call void @topal.platform.exit(i64 70)",
+                    span,
+                    &mut self.debug,
+                );
+                body.terminator("unreachable", location);
+                body.start_block(&done);
+            }
             LlValue::Range { value, endpoint } => body.effect(
                 &format!(
                     "call void @topal.runtime.range.{}.print(ptr {value})",
@@ -2589,6 +3355,9 @@ impl<'a> Generator<'a> {
             }
             LlValue::Optional { value, payload } => {
                 self.emit_print_optional(value, payload, body, span);
+            }
+            LlValue::List { value, element } => {
+                self.emit_print_list(value, element, body, span);
             }
             LlValue::String(value) => {
                 body.effect(
@@ -2617,6 +3386,31 @@ impl<'a> Generator<'a> {
                     span,
                     &mut self.debug,
                 );
+            }
+            LlValue::SourceLocation(value) => {
+                self.emit_write_literal("(line is ", body, span);
+                let line = body.instruction(
+                    &format!("call ptr @topal.runtime.source.location.line(ptr {value})"),
+                    span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("call void @topal.runtime.int.print(ptr {line})"),
+                    span,
+                    &mut self.debug,
+                );
+                self.emit_write_literal(", column is ", body, span);
+                let column = body.instruction(
+                    &format!("call ptr @topal.runtime.source.location.column(ptr {value})"),
+                    span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("call void @topal.runtime.int.print(ptr {column})"),
+                    span,
+                    &mut self.debug,
+                );
+                self.emit_write_literal(")", body, span);
             }
             LlValue::Tuple(fields) => {
                 self.emit_write_literal("(", body, span);
@@ -2818,6 +3612,108 @@ impl<'a> Generator<'a> {
         body.start_block(&done);
     }
 
+    fn emit_print_list(
+        &mut self,
+        value: &str,
+        element: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        debug_assert_eq!(element, &CompilerType::Effect);
+        let initial = body.current_block.clone();
+        let loop_label = body.label("print.list.loop");
+        let entry = body.label("print.list.entry");
+        let empty = body.label("print.list.empty");
+        let close_loop = body.label("print.list.close.loop");
+        let close_one = body.label("print.list.close.one");
+        let done = body.label("print.list.done");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let next_name = format!("%{entry}.next");
+        let next_depth_name = format!("%{entry}.depth.next");
+        let current = body.instruction(
+            &format!("phi ptr [{value}, %{initial}], [{next_name}, %{entry}]"),
+            span,
+            &mut self.debug,
+        );
+        let depth = body.instruction(
+            &format!("phi i64 [0, %{initial}], [{next_depth_name}, %{entry}]"),
+            span,
+            &mut self.debug,
+        );
+        let is_empty = body.instruction(
+            &format!("icmp eq ptr {current}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {is_empty}, label %{empty}, label %{entry}"),
+            location,
+        );
+
+        body.start_block(&entry);
+        self.emit_write_literal("Entry ( ", body, span);
+        let payload = body.instruction(
+            &format!("load i8, ptr {current}, align 1"),
+            span,
+            &mut self.debug,
+        );
+        self.emit_print(&LlValue::Effect(payload), body, span);
+        self.emit_write_literal(", ", body, span);
+        let next_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.named_instruction(
+            &next_name,
+            &format!("load ptr, ptr {next_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        body.named_instruction(
+            &next_depth_name,
+            &format!("add i64 {depth}, 1"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&empty);
+        self.emit_write_literal("Empty", body, span);
+        body.terminator(&format!("br label %{close_loop}"), location);
+
+        body.start_block(&close_loop);
+        let close_next_name = format!("%{close_one}.next");
+        let remaining = body.instruction(
+            &format!("phi i64 [{depth}, %{empty}], [{close_next_name}, %{close_one}]"),
+            span,
+            &mut self.debug,
+        );
+        let closed = body.instruction(
+            &format!("icmp eq i64 {remaining}, 0"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {closed}, label %{done}, label %{close_one}"),
+            location,
+        );
+
+        body.start_block(&close_one);
+        self.emit_write_literal(" )", body, span);
+        body.named_instruction(
+            &close_next_name,
+            &format!("sub i64 {remaining}, 1"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{close_loop}"), location);
+        body.start_block(&done);
+    }
+
     fn emit_write_literal(&mut self, text: &str, body: &mut FunctionBody, span: Span) {
         if text.is_empty() {
             return;
@@ -2881,6 +3777,36 @@ impl<'a> Generator<'a> {
         format!("@{name}")
     }
 
+    fn emit_modular_reduce(
+        &mut self,
+        value: &str,
+        modular: &CompilerModularType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        let lower = self.emit_int_global(&modular.lower);
+        let modulus = self.emit_int_global(&(&modular.upper - &modular.lower + BigInt::from(1)));
+        let shifted = body.instruction(
+            &format!("call ptr @topal.runtime.int.subtract(ptr {value}, ptr {lower})"),
+            span,
+            &mut self.debug,
+        );
+        let residue = body.instruction(
+            &format!("call ptr @topal.runtime.int.modulo(ptr {shifted}, ptr {modulus})"),
+            span,
+            &mut self.debug,
+        );
+        let canonical = body.instruction(
+            &format!("call ptr @topal.runtime.int.add(ptr {residue}, ptr {lower})"),
+            span,
+            &mut self.debug,
+        );
+        LlValue::Modular {
+            value: canonical,
+            modular: modular.clone(),
+        }
+    }
+
     fn emit_rational_literal(
         &mut self,
         value: &BigRational,
@@ -2904,14 +3830,24 @@ enum LlValue {
     Effect(String),
     Boolean(String),
     Int(String),
+    Modular {
+        value: String,
+        modular: CompilerModularType,
+    },
     Rational(String),
     Comparison(String),
     Error(String),
     ErrorCode(String),
     ErrorDomain(String),
+    SourceLocation(String),
     Enum {
         value: String,
         enumeration: CompilerEnumType,
+    },
+    Sum {
+        tag: String,
+        payloads: Vec<Option<Box<Self>>>,
+        sum: CompilerSumType,
     },
     Range {
         value: String,
@@ -2924,6 +3860,10 @@ enum LlValue {
     Optional {
         value: String,
         payload: CompilerType,
+    },
+    List {
+        value: String,
+        element: CompilerType,
     },
     String(String),
     Tuple(Vec<Self>),
@@ -2942,8 +3882,15 @@ impl LlValue {
     }
 
     fn integer(&self) -> &str {
-        let Self::Int(value) = self else {
-            unreachable!("checked value is Int")
+        match self {
+            Self::Int(value) | Self::Modular { value, .. } => value,
+            _ => unreachable!("checked value has an integer representation"),
+        }
+    }
+
+    fn modular_pointer(&self) -> &str {
+        let Self::Modular { value, .. } = self else {
+            unreachable!("checked value is modular")
         };
         value
     }
@@ -2990,6 +3937,13 @@ impl LlValue {
         value
     }
 
+    fn source_location(&self) -> &str {
+        let Self::SourceLocation(value) = self else {
+            unreachable!("checked value is SourceLocation")
+        };
+        value
+    }
+
     fn enumeration(&self) -> &str {
         let Self::Enum { value, .. } = self else {
             unreachable!("checked value is a nominal Enum")
@@ -3029,34 +3983,125 @@ impl LlValue {
         value
     }
 
+    fn list_pointer(&self) -> &str {
+        let Self::List { value, .. } = self else {
+            unreachable!("checked value is List")
+        };
+        value
+    }
+
     fn argument(&self) -> String {
         match self {
             Self::Unit => "i8 0".into(),
             Self::Completed(value) | Self::Effect(value) => format!("i8 {value}"),
             Self::Boolean(value) => format!("i1 {value}"),
             Self::Int(value)
+            | Self::Modular { value, .. }
             | Self::Rational(value)
             | Self::Error(value)
             | Self::ErrorDomain(value)
+            | Self::SourceLocation(value)
             | Self::String(value)
             | Self::Range { value, .. }
             | Self::Result { value, .. }
-            | Self::Optional { value, .. } => {
+            | Self::Optional { value, .. }
+            | Self::List { value, .. } => {
                 format!("ptr {value}")
             }
             Self::Comparison(value) | Self::ErrorCode(value) | Self::Enum { value, .. } => {
                 format!("i32 {value}")
             }
-            Self::Tuple(_) | Self::Record { .. } => {
+            Self::Tuple(_) | Self::Record { .. } | Self::Sum { .. } => {
                 unreachable!("checked call arguments are scalar")
             }
         }
     }
 }
 
+fn zero_machine_value(value_type: &CompilerType) -> LlValue {
+    match value_type {
+        CompilerType::Unit => LlValue::Unit,
+        CompilerType::Completed => LlValue::Completed("0".into()),
+        CompilerType::Effect => LlValue::Effect("0".into()),
+        CompilerType::Boolean => LlValue::Boolean("false".into()),
+        CompilerType::Int | CompilerType::Nat => LlValue::Int("null".into()),
+        CompilerType::Modular(modular) => LlValue::Modular {
+            value: "null".into(),
+            modular: modular.clone(),
+        },
+        CompilerType::Rational => LlValue::Rational("null".into()),
+        CompilerType::Comparison => LlValue::Comparison("0".into()),
+        CompilerType::Error => LlValue::Error("null".into()),
+        CompilerType::ErrorCode => LlValue::ErrorCode("0".into()),
+        CompilerType::ErrorDomain => LlValue::ErrorDomain("null".into()),
+        CompilerType::SourceLocation => LlValue::SourceLocation("null".into()),
+        CompilerType::Enum(enumeration) => LlValue::Enum {
+            value: "0".into(),
+            enumeration: enumeration.clone(),
+        },
+        CompilerType::Range(endpoint) => LlValue::Range {
+            value: "null".into(),
+            endpoint: endpoint.as_ref().clone(),
+        },
+        CompilerType::Result(success) => LlValue::Result {
+            value: "null".into(),
+            success: success.as_ref().clone(),
+        },
+        CompilerType::Optional(payload) => LlValue::Optional {
+            value: "null".into(),
+            payload: payload.as_ref().clone(),
+        },
+        CompilerType::List(element) => LlValue::List {
+            value: "null".into(),
+            element: element.as_ref().clone(),
+        },
+        CompilerType::Character | CompilerType::String => LlValue::String("null".into()),
+        CompilerType::Refined { base, .. } => zero_machine_value(base),
+        CompilerType::Tuple(fields) => {
+            LlValue::Tuple(fields.iter().map(zero_machine_value).collect())
+        }
+        CompilerType::Record(fields) => LlValue::Record {
+            fields: fields
+                .iter()
+                .map(|(label, field)| (label.clone(), zero_machine_value(field)))
+                .collect(),
+            order: (0..fields.len()).map(|index| index.to_string()).collect(),
+        },
+        CompilerType::Sum(sum) => LlValue::Sum {
+            tag: "0".into(),
+            payloads: sum
+                .alternatives
+                .iter()
+                .map(|alternative| {
+                    alternative
+                        .payload
+                        .as_ref()
+                        .map(|payload| Box::new(zero_machine_value(payload)))
+                })
+                .collect(),
+            sum: sum.clone(),
+        },
+        CompilerType::Type | CompilerType::Scope => LlValue::Enum {
+            value: "0".into(),
+            enumeration: if value_type == &CompilerType::Type {
+                fundamental_type_enumeration()
+            } else {
+                root_scope_enumeration()
+            },
+        },
+        CompilerType::Function | CompilerType::Constraint => {
+            unreachable!("static object values are not admitted in sum payloads")
+        }
+    }
+}
+
 fn optional_payload_pointer(value: &LlValue) -> &str {
     match value {
-        LlValue::Int(value) | LlValue::Rational(value) | LlValue::String(value) => value,
+        LlValue::Int(value)
+        | LlValue::Rational(value)
+        | LlValue::Error(value)
+        | LlValue::SourceLocation(value)
+        | LlValue::String(value) => value,
         _ => unreachable!("checked Optional payload has a pointer representation"),
     }
 }
@@ -3066,6 +4111,8 @@ fn optional_payload_value(value: String, value_type: &CompilerType) -> LlValue {
         CompilerType::Int => LlValue::Int(value),
         CompilerType::Rational => LlValue::Rational(value),
         CompilerType::Character | CompilerType::String => LlValue::String(value),
+        CompilerType::Error => LlValue::Error(value),
+        CompilerType::SourceLocation => LlValue::SourceLocation(value),
         _ => unreachable!("checked Optional payload type is supported"),
     }
 }
@@ -3157,6 +4204,18 @@ impl FunctionBody {
             .push(format!("  {instruction}, !dbg !{location}"));
     }
 
+    fn named_instruction(
+        &mut self,
+        name: &str,
+        instruction: &str,
+        span: Span,
+        debug: &mut DebugInfo,
+    ) {
+        let location = debug.location(span, self.subprogram);
+        self.lines
+            .push(format!("  {name} = {instruction}, !dbg !{location}"));
+    }
+
     fn terminator(&mut self, instruction: &str, location: usize) {
         self.lines
             .push(format!("  {instruction}, !dbg !{location}"));
@@ -3168,19 +4227,22 @@ impl FunctionBody {
             LlValue::Completed(value) | LlValue::Effect(value) => format!("i8 {value}"),
             LlValue::Boolean(value) => format!("i1 {value}"),
             LlValue::Int(value)
+            | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
             | LlValue::Error(value)
             | LlValue::ErrorDomain(value)
+            | LlValue::SourceLocation(value)
             | LlValue::String(value)
             | LlValue::Range { value, .. }
             | LlValue::Result { value, .. }
-            | LlValue::Optional { value, .. } => {
+            | LlValue::Optional { value, .. }
+            | LlValue::List { value, .. } => {
                 format!("ptr {value}")
             }
             LlValue::Comparison(value)
             | LlValue::ErrorCode(value)
             | LlValue::Enum { value, .. } => format!("i32 {value}"),
-            LlValue::Tuple(_) | LlValue::Record { .. } => return,
+            LlValue::Tuple(_) | LlValue::Record { .. } | LlValue::Sum { .. } => return,
         };
         self.debug_value_operand(&value, variable, location);
     }
@@ -3218,6 +4280,7 @@ struct DebugInfo {
     file: usize,
     compile_unit: usize,
     empty: usize,
+    unsigned64_type: usize,
     int_type: usize,
     nat_type: usize,
     rational_type: usize,
@@ -3226,6 +4289,7 @@ struct DebugInfo {
     error_type: usize,
     error_code_type: usize,
     error_domain_type: usize,
+    source_location_type: usize,
     int_range_type: usize,
     rational_range_type: usize,
     result_int_type: usize,
@@ -3233,23 +4297,31 @@ struct DebugInfo {
     result_rational_type: usize,
     result_string_type: usize,
     result_int_pair_type: usize,
+    result_modular_types: Vec<(CompilerModularType, usize)>,
     optional_int_type: usize,
     optional_rational_type: usize,
     optional_character_type: usize,
     optional_string_type: usize,
+    optional_error_type: usize,
+    optional_source_location_type: usize,
     comparison_type: usize,
     boolean_type: usize,
     unit_type: usize,
     completed_type: usize,
     effect_type: usize,
     enum_types: BTreeMap<String, usize>,
+    modular_types: Vec<(CompilerModularType, usize)>,
+    list_types: Vec<(CompilerType, usize)>,
+    refined_types: Vec<(CompilerType, usize)>,
     tuple_types: Vec<(CompilerType, usize)>,
     record_types: Vec<(CompilerType, usize)>,
+    sum_types: Vec<(CompilerType, usize)>,
     source: topal_source::SourceText,
     filename: String,
 }
 
 impl DebugInfo {
+    #[allow(clippy::too_many_lines)] // Initialization keeps the complete emitted DWARF type graph visible.
     fn new(source_name: &str, extended_types: bool) -> Self {
         let path = Path::new(source_name);
         let filename = path.file_name().map_or_else(
@@ -3265,6 +4337,7 @@ impl DebugInfo {
             file: 0,
             compile_unit: 0,
             empty: 0,
+            unsigned64_type: 0,
             int_type: 0,
             nat_type: 0,
             rational_type: 0,
@@ -3273,6 +4346,7 @@ impl DebugInfo {
             error_type: 0,
             error_code_type: 0,
             error_domain_type: 0,
+            source_location_type: 0,
             int_range_type: 0,
             rational_range_type: 0,
             result_int_type: 0,
@@ -3280,18 +4354,25 @@ impl DebugInfo {
             result_rational_type: 0,
             result_string_type: 0,
             result_int_pair_type: 0,
+            result_modular_types: Vec::new(),
             optional_int_type: 0,
             optional_rational_type: 0,
             optional_character_type: 0,
             optional_string_type: 0,
+            optional_error_type: 0,
+            optional_source_location_type: 0,
             comparison_type: 0,
             boolean_type: 0,
             unit_type: 0,
             completed_type: 0,
             effect_type: 0,
             enum_types: BTreeMap::new(),
+            modular_types: Vec::new(),
+            list_types: Vec::new(),
+            refined_types: Vec::new(),
             tuple_types: Vec::new(),
             record_types: Vec::new(),
+            sum_types: Vec::new(),
             source,
             filename,
         };
@@ -3308,9 +4389,7 @@ impl DebugInfo {
             debug.empty,
             debug.empty
         ));
-        let unsigned64 =
-            debug.node("!DIBasicType(name: \"u64\", size: 64, encoding: DW_ATE_unsigned)".into());
-        debug.install_integer_types(unsigned64);
+        let unsigned64 = debug.install_base_integer_types();
         let numerator = debug.node(format!(
             "!DIDerivedType(tag: DW_TAG_member, name: \"numerator\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
             debug.file, debug.int_type
@@ -3345,6 +4424,14 @@ impl DebugInfo {
         ));
         debug.install_zero_data_types();
         debug
+    }
+
+    fn install_base_integer_types(&mut self) -> usize {
+        let unsigned64 =
+            self.node("!DIBasicType(name: \"u64\", size: 64, encoding: DW_ATE_unsigned)".into());
+        self.unsigned64_type = unsigned64;
+        self.install_integer_types(unsigned64);
+        unsigned64
     }
 
     fn install_zero_data_types(&mut self) {
@@ -3448,6 +4535,8 @@ impl DebugInfo {
             self.file
         ));
 
+        self.install_source_location_type();
+
         let enumerators = [
             ("out-of-range", 0),
             ("not-representable", 1),
@@ -3487,6 +4576,29 @@ impl DebugInfo {
         ));
         self.error_type = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_typedef, name: \"Error\", file: !{}, baseType: !{error_pointer})",
+            self.file
+        ));
+    }
+
+    fn install_source_location_type(&mut self) {
+        let line = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"line\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.int_type
+        ));
+        let column = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"column\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 64)",
+            self.file, self.int_type
+        ));
+        let members = self.node(format!("!{{!{line}, !{column}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalSourceLocationHeader\", file: !{}, size: 128, align: 64, elements: !{members})",
+            self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        self.source_location_type = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"SourceLocation\", file: !{}, baseType: !{pointer})",
             self.file
         ));
     }
@@ -3583,6 +4695,8 @@ impl DebugInfo {
         self.optional_rational_type = self.optional_type("Rational", pointer);
         self.optional_character_type = self.optional_type("Character", pointer);
         self.optional_string_type = self.optional_type("String", pointer);
+        self.optional_error_type = self.optional_type("Error", pointer);
+        self.optional_source_location_type = self.optional_type("SourceLocation", pointer);
     }
 
     fn optional_type(&mut self, payload: &str, pointer: usize) -> usize {
@@ -3629,6 +4743,8 @@ impl DebugInfo {
             CompilerType::Error => self.error_type,
             CompilerType::ErrorCode => self.error_code_type,
             CompilerType::ErrorDomain => self.error_domain_type,
+            CompilerType::SourceLocation => self.source_location_type,
+            CompilerType::Modular(modular) => self.modular_type(modular),
             CompilerType::Enum(enumeration) => self.enum_type(enumeration),
             CompilerType::Character => self.character_type,
             CompilerType::String => self.string_type,
@@ -3657,6 +4773,14 @@ impl DebugInfo {
             {
                 self.result_int_pair_type
             }
+            CompilerType::Result(success)
+                if matches!(success.as_ref(), CompilerType::Modular(_)) =>
+            {
+                let CompilerType::Modular(modular) = success.as_ref() else {
+                    unreachable!()
+                };
+                self.result_modular_type(modular)
+            }
             CompilerType::Result(_) => {
                 unreachable!("unsupported Result success type reached codegen")
             }
@@ -3672,12 +4796,148 @@ impl DebugInfo {
             CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::String => {
                 self.optional_string_type
             }
+            CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Error => {
+                self.optional_error_type
+            }
+            CompilerType::Optional(payload)
+                if payload.as_ref() == &CompilerType::SourceLocation =>
+            {
+                self.optional_source_location_type
+            }
             CompilerType::Optional(_) => {
                 unreachable!("unsupported Optional payload type reached codegen")
             }
+            CompilerType::List(element) => self.list_type(element),
+            CompilerType::Refined { constraint, base } => self.refined_type(constraint, base),
             CompilerType::Tuple(fields) => self.tuple_type(fields),
             CompilerType::Record(fields) => self.record_type(fields),
+            CompilerType::Sum(sum) => self.sum_type(sum),
         }
+    }
+
+    fn modular_type(&mut self, modular: &CompilerModularType) -> usize {
+        if let Some((_, type_id)) = self
+            .modular_types
+            .iter()
+            .find(|(known, _)| known == modular)
+        {
+            return *type_id;
+        }
+        let negative = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"negative\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.unsigned64_type
+        ));
+        let length = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"length\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 64)",
+            self.file, self.unsigned64_type
+        ));
+        let members = self.node(format!("!{{!{negative}, !{length}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalModular.{}\", file: !{}, size: 128, align: 64, elements: !{members})",
+            llvm_string(&modular.name), self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"{}\", file: !{}, baseType: !{pointer})",
+            llvm_string(&modular.name),
+            self.file
+        ));
+        self.modular_types.push((modular.clone(), type_id));
+        type_id
+    }
+
+    fn list_type(&mut self, element: &CompilerType) -> usize {
+        let value_type = CompilerType::List(Box::new(element.clone()));
+        if let Some((_, type_id)) = self
+            .list_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+        debug_assert_eq!(element, &CompilerType::Effect);
+        let element_type = self.type_id(element);
+        let payload = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"value\", file: !{}, baseType: !{element_type}, size: 8, align: 8, offset: 0)",
+            self.file
+        ));
+        let opaque_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{}, size: 64, align: 64)",
+            self.unsigned64_type
+        ));
+        let next = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"remaining\", file: !{}, baseType: !{opaque_pointer}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let members = self.node(format!("!{{!{payload}, !{next}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalList.Effect\", file: !{}, size: 128, align: 64, elements: !{members})",
+            self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"List {}\", file: !{}, baseType: !{pointer})",
+            llvm_string(&element.name()),
+            self.file
+        ));
+        self.list_types.push((value_type, type_id));
+        type_id
+    }
+
+    fn result_modular_type(&mut self, modular: &CompilerModularType) -> usize {
+        if let Some((_, type_id)) = self
+            .result_modular_types
+            .iter()
+            .find(|(known, _)| known == modular)
+        {
+            return *type_id;
+        }
+        let modular_type = self.modular_type(modular);
+        let tag = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"is_error\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.unsigned64_type
+        ));
+        let payload = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"payload\", file: !{}, baseType: !{modular_type}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let members = self.node(format!("!{{!{tag}, !{payload}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalResult.Modular.{}\", file: !{}, size: 128, align: 64, elements: !{members})",
+            llvm_string(&modular.name), self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.result_type(&modular.name, pointer);
+        self.result_modular_types.push((modular.clone(), type_id));
+        type_id
+    }
+
+    fn refined_type(&mut self, constraint: &str, base: &CompilerType) -> usize {
+        let value_type = CompilerType::Refined {
+            constraint: constraint.to_owned(),
+            base: Box::new(base.clone()),
+        };
+        if let Some((_, type_id)) = self
+            .refined_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+        let base_type = self.type_id(base);
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"{}\", file: !{}, baseType: !{base_type})",
+            llvm_string(constraint),
+            self.file
+        ));
+        self.refined_types.push((value_type, type_id));
+        type_id
     }
 
     fn tuple_type(&mut self, fields: &[CompilerType]) -> usize {
@@ -3766,6 +5026,84 @@ impl DebugInfo {
             self.file
         ));
         self.record_types.push((value_type, type_id));
+        type_id
+    }
+
+    fn sum_type(&mut self, sum: &CompilerSumType) -> usize {
+        let value_type = CompilerType::Sum(sum.clone());
+        if let Some((_, type_id)) = self
+            .sum_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+        let enumerators = sum
+            .alternatives
+            .iter()
+            .enumerate()
+            .map(|(value, alternative)| {
+                self.node(format!(
+                    "!DIEnumerator(name: \"{}\", value: {value})",
+                    llvm_string(&alternative.name)
+                ))
+            })
+            .collect::<Vec<_>>();
+        let tag_values = self.node(format!(
+            "!{{{}}}",
+            enumerators
+                .iter()
+                .map(|value| format!("!{value}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let tag_type = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_enumeration_type, name: \"{}.alternative\", file: !{}, size: 32, align: 32, elements: !{tag_values})",
+            llvm_string(&sum.name),
+            self.file
+        ));
+        let mut members = vec![self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"tag\", file: !{}, baseType: !{tag_type}, size: 32, align: 32, offset: 0)",
+            self.file
+        ))];
+        let mut offset = 32;
+        let mut alignment = 32;
+        for (index, alternative) in sum.alternatives.iter().enumerate() {
+            let Some(payload) = &alternative.payload else {
+                continue;
+            };
+            let layout = target_value_layout(payload);
+            offset = align_bits(offset, layout.alignment);
+            alignment = alignment.max(layout.alignment);
+            let payload_type = self.type_id(payload);
+            members.push(self.node(format!(
+                "!DIDerivedType(tag: DW_TAG_member, name: \"payload_{index}\", file: !{}, baseType: !{payload_type}, size: {}, align: {}, offset: {offset})",
+                self.file, layout.size, layout.alignment
+            )));
+            offset += layout.size;
+        }
+        let size = align_bits(offset, alignment);
+        debug_assert_eq!(size, target_value_layout(&value_type).size);
+        let elements = self.node(format!(
+            "!{{{}}}",
+            members
+                .iter()
+                .map(|member| format!("!{member}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let kind = if sum.positional { "Variant" } else { "Union" };
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"Topal{kind}.{}\", file: !{}, size: {size}, align: {alignment}, elements: !{elements})",
+            llvm_string(&sum.name),
+            self.file
+        ));
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"{}\", file: !{}, baseType: !{storage})",
+            llvm_string(&sum.name),
+            self.file
+        ));
+        self.sum_types.push((value_type, type_id));
         type_id
     }
 
@@ -3943,17 +5281,21 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         },
         CompilerType::Int
         | CompilerType::Nat
+        | CompilerType::Modular(_)
         | CompilerType::Rational
         | CompilerType::Error
         | CompilerType::ErrorDomain
+        | CompilerType::SourceLocation
         | CompilerType::Range(_)
         | CompilerType::Result(_)
         | CompilerType::Optional(_)
+        | CompilerType::List(_)
         | CompilerType::Character
         | CompilerType::String => TargetValueLayout {
             size: 64,
             alignment: 64,
         },
+        CompilerType::Refined { base, .. } => target_value_layout(base),
         CompilerType::Tuple(fields) => {
             let mut size = 0;
             let mut alignment = 8;
@@ -3984,6 +5326,23 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
                 alignment,
             }
         }
+        CompilerType::Sum(sum) => {
+            let mut size = 32;
+            let mut alignment = 32;
+            for payload in sum
+                .alternatives
+                .iter()
+                .filter_map(|alternative| alternative.payload.as_ref())
+            {
+                let payload = target_value_layout(payload);
+                size = align_bits(size, payload.alignment) + payload.size;
+                alignment = alignment.max(payload.alignment);
+            }
+            TargetValueLayout {
+                size: align_bits(size, alignment),
+                alignment,
+            }
+        }
     }
 }
 
@@ -3997,6 +5356,12 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
         CompilerType::Record(fields) => fields
             .iter()
             .all(|(_, field)| private_aggregate_value_supported(field)),
+        CompilerType::Sum(sum) => sum.alternatives.iter().all(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_none_or(private_aggregate_value_supported)
+        }),
         _ => true,
     }
 }
@@ -4007,14 +5372,17 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         CompilerType::Boolean => "i1".into(),
         CompilerType::Int
         | CompilerType::Nat
+        | CompilerType::Modular(_)
         | CompilerType::Rational
         | CompilerType::Character
         | CompilerType::Error
         | CompilerType::ErrorDomain
+        | CompilerType::SourceLocation
         | CompilerType::String
         | CompilerType::Range(_)
         | CompilerType::Result(_)
-        | CompilerType::Optional(_) => "ptr".into(),
+        | CompilerType::Optional(_)
+        | CompilerType::List(_) => "ptr".into(),
         CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
@@ -4022,6 +5390,7 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Comparison
         | CompilerType::ErrorCode
         | CompilerType::Enum(_) => "i32".into(),
+        CompilerType::Refined { base, .. } => llvm_value_type(base),
         CompilerType::Tuple(fields) => format!(
             "{{ {} }}",
             fields
@@ -4036,6 +5405,18 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
                 .iter()
                 .map(|(_, value_type)| llvm_value_type(value_type))
                 .chain(fields.iter().map(|_| "i32".to_owned()))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        CompilerType::Sum(sum) => format!(
+            "{{ {} }}",
+            std::iter::once("i32".to_owned())
+                .chain(
+                    sum.alternatives
+                        .iter()
+                        .filter_map(|alternative| alternative.payload.as_ref())
+                        .map(llvm_value_type)
+                )
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
@@ -4067,11 +5448,16 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         }
         CompilerType::Boolean => LlValue::Boolean(value),
         CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
+        CompilerType::Modular(modular) => LlValue::Modular {
+            value,
+            modular: modular.clone(),
+        },
         CompilerType::Rational => LlValue::Rational(value),
         CompilerType::Comparison => LlValue::Comparison(value),
         CompilerType::Error => LlValue::Error(value),
         CompilerType::ErrorCode => LlValue::ErrorCode(value),
         CompilerType::ErrorDomain => LlValue::ErrorDomain(value),
+        CompilerType::SourceLocation => LlValue::SourceLocation(value),
         CompilerType::Enum(enumeration) => LlValue::Enum {
             value,
             enumeration: enumeration.clone(),
@@ -4089,7 +5475,12 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             value,
             payload: payload.as_ref().clone(),
         },
-        CompilerType::Tuple(_) | CompilerType::Record(_) => {
+        CompilerType::List(element) => LlValue::List {
+            value,
+            element: element.as_ref().clone(),
+        },
+        CompilerType::Refined { base, .. } => machine_value(base, value),
+        CompilerType::Tuple(_) | CompilerType::Record(_) | CompilerType::Sum(_) => {
             unreachable!("aggregate machine values require structural lowering")
         }
     }
@@ -4146,6 +5537,47 @@ mod tests {
         assert!(llvm.contains("\\54\\6F\\70\\61\\6C"));
         assert!(llvm.contains("#dbg_value"));
         assert!(llvm.contains("Dwarf Version"));
+    }
+
+    #[test]
+    fn emits_private_effect_list_nodes_and_pointer_boundaries() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-COMPILER-LIST-EFFECT-001,
+        // TOPAL-COMPILER-ABI-001, TOPAL-COMPILER-DEBUG-001
+        let source = "use language (version is v0.1)\nretain is fn (rows : List Effect) -> List Effect\n  rows\nrows : List Effect is Entry (Effects (), Empty)\nretain rows\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "list-effect-boundary.t").emit();
+
+        assert!(llvm.contains(&format!("define internal fastcc ptr @{symbol}(ptr %arg0)")));
+        assert!(llvm.contains(&format!("call fastcc ptr @{symbol}(ptr")));
+        assert!(llvm.contains("call ptr @topal.platform.allocate(i64 16)"));
+        assert!(llvm.contains("store i8 0, ptr"));
+        assert!(llvm.contains("getelementptr i8, ptr"));
+        assert!(llvm.contains("store ptr null, ptr"));
+        assert!(llvm.contains("print.list.loop"));
+        assert!(llvm.contains("print.list.close.loop"));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"List Effect\""));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalList.Effect\""));
+        assert!(llvm.contains("#dbg_value(ptr"));
+        assert!(!llvm.contains("topal.runtime.list"));
+    }
+
+    #[test]
+    fn erases_diagnostic_controls_before_llvm_lowering() {
+        // TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001, TOPAL-SYN-DIAG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/diagnostic-controls.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "diagnostic-controls.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module defines the source entry point")
+            .1;
+        assert_eq!(main.matches("call ptr @topal.runtime.int.add(").count(), 1);
+        assert!(!llvm.contains("disable-warning"));
+        assert!(!llvm.contains("disable-diagnostic"));
+        assert!(!llvm.contains("topal.runtime.diagnostic"));
     }
 
     #[test]
@@ -4492,6 +5924,26 @@ mod tests {
     }
 
     #[test]
+    fn emits_constraint_validation_with_erased_base_storage_and_result_paths() {
+        // TOPAL-TYPE-CONSTRAINT-VALIDATE-001,
+        // TOPAL-COMPILER-CONSTRAINT-VALIDATE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/constraints-and-derived-capabilities.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "constraints-and-derived-capabilities.t").emit();
+        assert!(llvm.contains("DIDerivedType(tag: DW_TAG_typedef, name: \"Positive\""));
+        assert!(llvm.contains("constraint.accepted"));
+        assert!(llvm.contains("constraint.rejected"));
+        assert!(llvm.contains("constraint.merge"));
+        assert!(llvm.contains("call ptr @topal.runtime.result.success"));
+        assert!(llvm.contains("call ptr @topal.runtime.result.failure(i32 0"));
+        assert!(llvm.contains("phi ptr"));
+        assert!(llvm.contains("#dbg_declare(ptr"));
+        assert!(!llvm.contains("topal.runtime.constraint"));
+    }
+
+    #[test]
     fn emits_root_namespace_identity_and_statically_qualified_call() {
         // TOPAL-COMPILER-ROOT-NAMESPACE-001, TOPAL-NAMESPACE-ROOT-001
         let program =
@@ -4503,6 +5955,22 @@ mod tests {
         assert!(llvm.contains(&format!("call fastcc ptr @{symbol}(ptr")));
         assert!(!llvm.contains("topal.runtime.namespace"));
         assert!(!llvm.contains("topal.runtime.scope"));
+    }
+
+    #[test]
+    fn emits_use_namespace_as_the_existing_private_scope_identity() {
+        // TOPAL-COMPILER-NAMESPACE-USE-001, TOPAL-NAMESPACE-USE-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/use-namespace.t"))
+                .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "use-namespace.t").emit();
+        assert!(llvm.contains(&format!("call fastcc ptr @{symbol}(ptr")));
+        assert!(llvm.contains("!DILocalVariable(name: \"current\""));
+        assert!(!llvm.contains("topal.runtime.use"));
+        assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("topal.runtime.scope"));
+        assert!(!llvm.contains("call ptr %"));
     }
 
     #[test]
@@ -4561,6 +6029,41 @@ mod tests {
             assert!(!llvm.contains("topal.runtime.namespace"));
             assert!(!llvm.contains("topal.runtime.scope"));
         }
+    }
+
+    #[test]
+    fn emits_scope_parameters_with_private_data_environment_arguments() {
+        // TOPAL-COMPILER-NAMESPACE-BOUNDARY-001,
+        // TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001
+        let source = "use language (version is v0.1)\nanswer is 40 + 2\nincrement is fn (value : Int) -> Int\n  value + 1\nread-answer is fn (api : Scope) -> Int\n  api answer\napply is fn (api : Scope, value : Int) -> Int\n  api increment value\nforward is fn (api : Scope) -> Int\n  read-answer api\n(read-answer root, apply root 41, forward root)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let forward = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "forward")
+            .unwrap();
+        let llvm = Generator::new(&program, "scope-parameter.t").emit();
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(i32 %arg0, ptr %arg1)",
+            forward.symbol
+        )));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr") && line.contains("(i32 %arg0, ptr %arg1)")
+        }));
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module defines the source entry point")
+            .1;
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.int.add(").count(),
+            1,
+            "the captured namespace initializer executes once"
+        );
+        assert!(llvm.contains("!DILocalVariable(name: \"api\", arg: 1"));
+        assert!(llvm.contains("!DILocalVariable(name: \"api answer\", arg: 2"));
+        assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("topal.runtime.scope"));
+        assert!(!llvm.contains("call ptr %"));
     }
 
     #[test]
@@ -4702,6 +6205,44 @@ mod tests {
     }
 
     #[test]
+    fn emits_nested_functions_with_exact_private_capture_parameters() {
+        // TOPAL-COMPILER-NESTED-FUNCTION-001, TOPAL-FUNCTION-NESTED-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/nested-functions.t"
+        ))
+        .unwrap();
+        let symbol = |name: &str| {
+            program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap()
+                .symbol
+                .as_str()
+        };
+        let nested = symbol("add-input");
+        let outer = symbol("answer");
+        let llvm = Generator::new(&program, "nested-functions.t").emit();
+
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{nested}(ptr %arg0, ptr %arg1)"
+        )));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr")
+                && line.contains(&format!("@{nested}(ptr @.topal.int.0, ptr %arg0)"))
+        }));
+        assert!(llvm.contains(&format!("define internal fastcc ptr @{outer}(ptr %arg0)")));
+        assert!(llvm.contains("!DISubprogram(name: \"add-input\""));
+        assert!(llvm.contains("!DISubprogram(name: \"answer\""));
+        assert!(llvm.contains("!DILocalVariable(name: \"value\", arg: 1"));
+        assert!(llvm.contains("!DILocalVariable(name: \"input\", arg: 2"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_packaged_fields_as_an_exact_flat_private_signature() {
         // TOPAL-COMPILER-PACKAGED-OPERAND-001,
         // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-COMPILER-DEBUG-001
@@ -4753,6 +6294,26 @@ mod tests {
         assert!(llvm.contains("name: \"Error\""));
         assert!(llvm.contains("name: \"ErrorDomain\""));
         assert!(llvm.contains("name: \"lang arithmetic ArithmeticErrorCode\""));
+    }
+
+    #[test]
+    fn emits_optional_structured_error_fields_and_source_metadata() {
+        // TOPAL-COMPILER-ERROR-OPTIONAL-FIELDS-001, TOPAL-ERROR-FIELD-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/optional-result-composition.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "/source/optional-result-composition.t").emit();
+        assert!(llvm.contains("%topal.SourceLocationStorage = type { ptr, ptr }"));
+        assert!(llvm.contains("call ptr @topal.runtime.error.detail"));
+        assert!(llvm.contains("call ptr @topal.runtime.error.cause"));
+        assert!(llvm.contains("call ptr @topal.runtime.error.source"));
+        assert!(llvm.contains("call ptr @topal.runtime.source.location.line"));
+        assert!(llvm.contains("call ptr @topal.runtime.source.location.column"));
+        assert!(llvm.contains("name: \"Optional Error\""));
+        assert!(llvm.contains("name: \"Optional SourceLocation\""));
+        assert!(llvm.contains("name: \"SourceLocation\""));
     }
 
     #[test]
@@ -4810,13 +6371,19 @@ mod tests {
         let source = include_str!("../../../examples/language/string-character-at.t");
         let program = analyze_for_compiler(source).unwrap();
         let llvm = Generator::new(&program, "/source/string-character-at.t").emit();
+        let generated = llvm
+            .split_once("@topal.fn.")
+            .expect("regression has a generated source function")
+            .1;
         assert_eq!(
-            llvm.matches("call ptr @topal.runtime.optional.some")
+            generated
+                .matches("call ptr @topal.runtime.optional.some")
                 .count(),
             4
         );
         assert_eq!(
-            llvm.matches("call ptr @topal.runtime.optional.none")
+            generated
+                .matches("call ptr @topal.runtime.optional.none")
                 .count(),
             3
         );
@@ -5252,5 +6819,59 @@ mod tests {
         assert!(llvm.contains("DIEnumerator(name: \"Red\", value: 0)"));
         assert!(llvm.contains("DIEnumerator(name: \"Green\", value: 1)"));
         assert!(llvm.contains("DIEnumerator(name: \"Blue\", value: 2)"));
+    }
+
+    #[test]
+    fn emits_nominal_sums_as_private_tagged_aggregates_with_dwarf() {
+        // TOPAL-COMPILER-SUM-001, TOPAL-TYPE-UNION-001,
+        // TOPAL-TYPE-VARIANT-001, TOPAL-DECISION-UNION-001
+        let source = include_str!("../../../examples/language/unions-and-recursive-products.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/unions-and-recursive-products.t").emit();
+        assert!(llvm.contains("define internal fastcc { ptr, { ptr, ptr } } @topal.fn.describe"));
+        assert!(llvm.contains("({ i32, { ptr, { ptr, ptr } } } %arg0)"));
+        assert!(llvm.contains("({ i32, ptr, ptr } %arg0)"));
+        assert!(llvm.contains("insertvalue { i32, { ptr, { ptr, ptr } } }"));
+        assert!(llvm.contains("extractvalue { i32, { ptr, { ptr, ptr } } } %arg0, 0"));
+        assert!(llvm.contains("sum.decision.alternative"));
+        assert!(llvm.contains("switch i32"));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalUnion.Message\""));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalVariant.Scalar\""));
+        assert!(llvm.contains("DIEnumerator(name: \"Move\", value: 1)"));
+        assert!(llvm.contains("DIEnumerator(name: \"at 0\", value: 0)"));
+    }
+
+    #[test]
+    fn emits_modular_values_as_nominal_int_backed_private_values() {
+        // TOPAL-COMPILER-MODULAR-001, TOPAL-NUM-MODULAR-ARITHMETIC-001
+        let source = "use language (version is v0.1)\nByteCounter is ModNat (0 ..= 255)\nretain is fn (value : ByteCounter) -> ByteCounter\n  value\nstart is ByteCounter 255\nresult is (retain start) + (ByteCounter 1)\nresult\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/modular-values.t").emit();
+        assert!(llvm.contains("define internal fastcc ptr @topal.fn.retain"));
+        assert!(llvm.contains("call fastcc ptr @topal.fn.retain"));
+        assert!(llvm.contains("call ptr @topal.runtime.int.add("));
+        assert!(llvm.contains("call ptr @topal.runtime.int.subtract("));
+        assert!(llvm.contains("call ptr @topal.runtime.int.modulo("));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalModular.ByteCounter\""));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"ByteCounter\""));
+    }
+
+    #[test]
+    fn emits_dynamic_modular_validation_as_a_native_result() {
+        // TOPAL-COMPILER-MODULAR-CONSTRUCTION-001,
+        // TOPAL-NUM-MODULAR-CONSTRUCT-001
+        let source = include_str!("../../../examples/language/modular-checked-construction.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/modular-checked-construction.t").emit();
+        assert!(llvm.contains("modular.accepted"));
+        assert!(llvm.contains("modular.rejected"));
+        assert!(llvm.contains("modular.merge"));
+        assert!(llvm.matches("call i32 @topal.runtime.int.compare").count() >= 2);
+        assert!(llvm.contains("call ptr @topal.runtime.result.success"));
+        assert!(llvm.contains("call ptr @topal.runtime.result.failure(i32 0"));
+        assert!(llvm.contains(&llvm_bytes(b"root.ByteCounter(Int)")));
+        assert!(llvm.contains(
+            "DW_TAG_typedef, name: \"Result (ByteCounter, lang arithmetic ArithmeticErrorCode)\""
+        ));
     }
 }

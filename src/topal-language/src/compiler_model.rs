@@ -30,6 +30,27 @@ pub struct CompilerEnumType {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerSumAlternative {
+    pub name: String,
+    pub payload: Option<CompilerType>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerSumType {
+    pub name: String,
+    pub positional: bool,
+    pub alternatives: Vec<CompilerSumAlternative>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerModularType {
+    pub name: String,
+    pub signed: bool,
+    pub lower: BigInt,
+    pub upper: BigInt,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerType {
     Unit,
     Completed,
@@ -46,10 +67,15 @@ pub enum CompilerType {
     Error,
     ErrorCode,
     ErrorDomain,
+    SourceLocation,
+    Modular(CompilerModularType),
     Enum(CompilerEnumType),
+    Sum(CompilerSumType),
     Range(Box<Self>),
     Result(Box<Self>),
     Optional(Box<Self>),
+    List(Box<Self>),
+    Refined { constraint: String, base: Box<Self> },
     Character,
     String,
     Tuple(Vec<Self>),
@@ -76,13 +102,16 @@ impl CompilerType {
                 | Self::Error
                 | Self::ErrorCode
                 | Self::ErrorDomain
+                | Self::SourceLocation
+                | Self::Modular(_)
                 | Self::Enum(_)
                 | Self::Range(_)
                 | Self::Result(_)
                 | Self::Optional(_)
+                | Self::List(_)
                 | Self::Character
                 | Self::String
-        )
+        ) || matches!(self, Self::Refined { base, .. } if base.machine_scalar())
     }
 
     #[must_use]
@@ -103,13 +132,18 @@ impl CompilerType {
             Self::Error => "Error".into(),
             Self::ErrorCode => "lang arithmetic ArithmeticErrorCode".into(),
             Self::ErrorDomain => "ErrorDomain".into(),
+            Self::SourceLocation => "SourceLocation".into(),
+            Self::Modular(modular) => modular.name.clone(),
             Self::Enum(enumeration) => enumeration.name.clone(),
+            Self::Sum(sum) => sum.name.clone(),
             Self::Range(endpoint) => format!("Range {}", endpoint.name()),
             Self::Result(success) => format!(
                 "Result ({}, lang arithmetic ArithmeticErrorCode)",
                 success.name()
             ),
             Self::Optional(payload) => format!("Optional {}", payload.name()),
+            Self::List(element) => format!("List {}", element.name()),
+            Self::Refined { constraint, .. } => constraint.clone(),
             Self::Character => "Character".into(),
             Self::String => "String".into(),
             Self::Tuple(fields) => format!(
@@ -208,12 +242,16 @@ pub enum CompilerFallible {
 pub enum CompilerValidation {
     RationalToInt,
     IntToNat,
+    Constraint(u32),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompilerErrorField {
     Code,
     Domain,
+    Detail,
+    Cause,
+    Source,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -226,6 +264,14 @@ pub struct CompilerErrorCodeRule {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerEnumRule {
     pub value: u32,
+    pub action: CompilerExpression,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerSumRule {
+    pub value: u32,
+    pub binding: Option<(String, Span)>,
     pub action: CompilerExpression,
     pub span: Span,
 }
@@ -251,7 +297,24 @@ pub enum CompilerExpressionKind {
     StringEmptyPredicate(Box<CompilerExpression>),
     StringUtf8ByteCount(Box<CompilerExpression>),
     ErrorCode(u32),
+    IntToModular {
+        value: Box<CompilerExpression>,
+        modular: CompilerModularType,
+    },
+    ModularReduce {
+        value: Box<CompilerExpression>,
+        modular: CompilerModularType,
+    },
+    ModularValidate {
+        value: Box<CompilerExpression>,
+        modular: CompilerModularType,
+        error_span: Span,
+    },
     Enum(u32),
+    Sum {
+        value: u32,
+        payload: Option<Box<CompilerExpression>>,
+    },
     Tuple(Vec<CompilerExpression>),
     Record(Vec<(String, CompilerExpression)>),
     RecordReconstruct {
@@ -277,6 +340,11 @@ pub enum CompilerExpressionKind {
     ResultProject(Box<CompilerExpression>),
     OptionalSome(Box<CompilerExpression>),
     OptionalNone,
+    ListEmpty,
+    ListEntry {
+        value: Box<CompilerExpression>,
+        remaining: Box<CompilerExpression>,
+    },
     ErrorField {
         error: Box<CompilerExpression>,
         field: CompilerErrorField,
@@ -326,6 +394,11 @@ pub enum CompilerExpressionKind {
     EnumDecision {
         subject: Box<CompilerExpression>,
         rules: Vec<CompilerEnumRule>,
+        otherwise: Option<Box<CompilerExpression>>,
+    },
+    SumDecision {
+        subject: Box<CompilerExpression>,
+        rules: Vec<CompilerSumRule>,
         otherwise: Option<Box<CompilerExpression>>,
     },
     ResultDecision {
@@ -389,6 +462,7 @@ pub struct CompilerConstraint {
     pub name: String,
     pub base_type: CompilerType,
     pub parameter: String,
+    pub parameter_storage: String,
     pub predicate: CompilerExpression,
     pub span: Span,
 }
@@ -432,6 +506,9 @@ struct ActiveRecursiveFunction {
 
 type EnumTypes = BTreeMap<String, (CompilerEnumType, Span)>;
 type EnumAlternativeBindings = BTreeMap<String, (CompilerEnumType, u32, Span)>;
+type SumTypes = BTreeMap<String, (CompilerSumType, Span)>;
+type SumAlternativeBindings = BTreeMap<String, (CompilerSumType, u32, Span)>;
+type ModularTypes = BTreeMap<String, (CompilerModularType, Span)>;
 
 struct EnumSource {
     name: Span,
@@ -439,9 +516,24 @@ struct EnumSource {
     span: Span,
 }
 
+struct SumSource {
+    name: Span,
+    positional: bool,
+    alternatives: Vec<(String, Option<Span>, Span)>,
+    span: Span,
+}
+
+struct ModularSource {
+    name: Span,
+    signed: bool,
+    range: Expression,
+    span: Span,
+}
+
 #[derive(Clone)]
 struct BindingFacts {
     storage_name: String,
+    runtime_bound: bool,
     value_type: CompilerType,
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
@@ -477,11 +569,20 @@ struct CompilerContextCapture {
     span: Span,
 }
 
+struct CompilerCallMetadata {
+    callable_arguments: Vec<Option<CompilerCallableFacts>>,
+    scope_arguments: Vec<Option<CompilerNamespaceFacts>>,
+    scope_captures: Vec<CompilerContextCapture>,
+    lexical_captures: Vec<CompilerContextCapture>,
+    context_captures: Vec<CompilerContextCapture>,
+}
+
 #[derive(Clone)]
 enum CompilerCallableFacts {
     Named {
         name: String,
         declarations: Vec<FunctionSource>,
+        captures: Vec<CompilerContextCapture>,
     },
     Symbolic(CallableKind),
     Anonymous {
@@ -517,6 +618,9 @@ struct Analyzer {
     source: SourceText,
     enums: EnumTypes,
     enum_alternatives: EnumAlternativeBindings,
+    sums: SumTypes,
+    sum_alternatives: SumAlternativeBindings,
+    modulars: ModularTypes,
     functions: BTreeMap<String, Vec<FunctionSource>>,
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
@@ -575,18 +679,33 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     }
 
     let (enums, enum_alternatives) = collect_enums(&source, &parsed.statements)?;
-    let mut reserved_names = enums
-        .keys()
-        .chain(enum_alternatives.keys())
-        .cloned()
-        .collect::<BTreeSet<_>>();
-    reserved_names.insert("root".to_owned());
+    let (sums, sum_alternatives) =
+        collect_sums(&source, &parsed.statements, &enums, &enum_alternatives)?;
+    let modular_sources = collect_modular_sources(
+        &source,
+        &parsed.statements,
+        &enums,
+        &enum_alternatives,
+        &sums,
+        &sum_alternatives,
+    )?;
+    let reserved_names = compiler_reserved_names(
+        &source,
+        &enums,
+        &enum_alternatives,
+        &sums,
+        &sum_alternatives,
+        &modular_sources,
+    );
     let mut functions = BTreeMap::new();
     collect_functions(&source, &parsed.statements, &reserved_names, &mut functions)?;
     let mut analyzer = Analyzer {
         source: source.clone(),
         enums,
         enum_alternatives,
+        sums,
+        sum_alternatives,
+        modulars: BTreeMap::new(),
         functions,
         instances: Vec::new(),
         active_calls: Vec::new(),
@@ -601,6 +720,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         static_context: false,
         next_instance: 0,
     };
+    analyzer.install_modular_types(&modular_sources)?;
     let mut environment = BTreeMap::new();
     let main = analyzer.analyze_block(
         &parsed.statements,
@@ -608,17 +728,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         BlockKind::TopLevel,
         None,
     )?;
-    let function_value_names = if analyzer.function_values_used {
-        analyzer
-            .functions
-            .keys()
-            .map(|name| format!("<fn {name}>"))
-            .chain(["+".into(), "-".into(), "<=>".into()])
-            .chain(analyzer.anonymous_function_value_names)
-            .collect()
-    } else {
-        Vec::new()
-    };
+    let function_value_names = compiler_function_value_names(&mut analyzer);
     Ok(CompilerProgram {
         source,
         language_version,
@@ -627,6 +737,42 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         constraints: analyzer.constraints,
         functions: analyzer.instances,
     })
+}
+
+fn compiler_function_value_names(analyzer: &mut Analyzer) -> Vec<String> {
+    if !analyzer.function_values_used {
+        return Vec::new();
+    }
+    analyzer
+        .functions
+        .keys()
+        .map(|name| format!("<fn {name}>"))
+        .chain(["+".into(), "-".into(), "<=>".into()])
+        .chain(std::mem::take(&mut analyzer.anonymous_function_value_names))
+        .collect()
+}
+
+fn compiler_reserved_names(
+    source: &SourceText,
+    enums: &EnumTypes,
+    enum_alternatives: &EnumAlternativeBindings,
+    sums: &SumTypes,
+    sum_alternatives: &SumAlternativeBindings,
+    modulars: &[ModularSource],
+) -> BTreeSet<String> {
+    enums
+        .keys()
+        .chain(enum_alternatives.keys())
+        .chain(sums.keys())
+        .chain(sum_alternatives.keys())
+        .cloned()
+        .chain(
+            modulars
+                .iter()
+                .map(|declaration| source.slice(declaration.name).to_owned()),
+        )
+        .chain(["root".to_owned()])
+        .collect()
 }
 
 fn collect_enums(
@@ -736,6 +882,279 @@ fn enum_declaration(source: &SourceText, statement: &Statement) -> Option<EnumSo
     })
 }
 
+fn sum_declaration(source: &SourceText, statement: &Statement) -> Option<SumSource> {
+    let statement = match statement {
+        Statement::Published { declaration, .. } => declaration.as_ref(),
+        statement => statement,
+    };
+    if let Statement::Union {
+        name,
+        alternatives,
+        span,
+    } = statement
+    {
+        return Some(SumSource {
+            name: *name,
+            positional: false,
+            alternatives: alternatives
+                .iter()
+                .map(|alternative| {
+                    (
+                        source.slice(alternative.name).to_owned(),
+                        alternative.classifier,
+                        alternative.name,
+                    )
+                })
+                .collect(),
+            span: *span,
+        });
+    }
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return None;
+    };
+    let [
+        Expression::Identifier(constructor),
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    if source.slice(*constructor) != "Variant" || fields.iter().any(|field| field.label.is_some()) {
+        return None;
+    }
+    Some(SumSource {
+        name: *name,
+        positional: true,
+        alternatives: fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| {
+                (
+                    format!("at {index}"),
+                    Some(field.value.span()),
+                    field.value.span(),
+                )
+            })
+            .collect(),
+        span: Span::new(name.start, span.end),
+    })
+}
+
+fn modular_declaration(source: &SourceText, statement: &Statement) -> Option<ModularSource> {
+    let statement = match statement {
+        Statement::Published { declaration, .. } => declaration.as_ref(),
+        statement => statement,
+    };
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return None;
+    };
+    let [Expression::Identifier(kind), range] = items.as_slice() else {
+        return None;
+    };
+    let signed = match source.slice(*kind) {
+        "ModNat" => false,
+        "ModInt" => true,
+        _ => return None,
+    };
+    Some(ModularSource {
+        name: *name,
+        signed,
+        range: range.clone(),
+        span: Span::new(name.start, span.end),
+    })
+}
+
+fn collect_modular_sources(
+    source: &SourceText,
+    statements: &[Statement],
+    enums: &EnumTypes,
+    enum_alternatives: &EnumAlternativeBindings,
+    sums: &SumTypes,
+    sum_alternatives: &SumAlternativeBindings,
+) -> Result<Vec<ModularSource>, Diagnostic> {
+    let mut declarations = Vec::new();
+    let mut names = BTreeSet::new();
+    for statement in statements {
+        let Some(mut declaration) = modular_declaration(source, statement) else {
+            continue;
+        };
+        let name = source.slice(declaration.name);
+        if name == "root"
+            || enums.contains_key(name)
+            || enum_alternatives.contains_key(name)
+            || sums.contains_key(name)
+            || sum_alternatives.contains_key(name)
+            || !names.insert(name.to_owned())
+        {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-BINDING",
+                declaration.name,
+                format!("`{name}` is already declared in this scope"),
+            ));
+        }
+        declaration.range = resolve_modular_range_source(
+            source,
+            statements,
+            &declaration.range,
+            declaration.name.start,
+        );
+        declarations.push(declaration);
+    }
+    Ok(declarations)
+}
+
+fn resolve_modular_range_source(
+    source: &SourceText,
+    statements: &[Statement],
+    range: &Expression,
+    mut before: usize,
+) -> Expression {
+    let mut range = range.clone();
+    let mut seen = BTreeSet::new();
+    while let Expression::Identifier(name) = &range {
+        let name = source.slice(*name);
+        if !seen.insert(name.to_owned()) {
+            break;
+        }
+        let Some((value, declaration_start)) = statements.iter().rev().find_map(|statement| {
+            let statement = match statement {
+                Statement::Published { declaration, .. } => declaration.as_ref(),
+                statement => statement,
+            };
+            let Statement::Binding {
+                name: candidate,
+                value,
+                ..
+            } = statement
+            else {
+                return None;
+            };
+            (candidate.start < before && source.slice(*candidate) == name)
+                .then_some((value.clone(), candidate.start))
+        }) else {
+            break;
+        };
+        range = value;
+        before = declaration_start;
+    }
+    range
+}
+
+fn collect_sums(
+    source: &SourceText,
+    statements: &[Statement],
+    enums: &EnumTypes,
+    enum_alternatives: &EnumAlternativeBindings,
+) -> Result<(SumTypes, SumAlternativeBindings), Diagnostic> {
+    let mut sums: SumTypes = BTreeMap::new();
+    let mut alternatives: SumAlternativeBindings = BTreeMap::new();
+    for statement in statements {
+        let Some(declaration) = sum_declaration(source, statement) else {
+            continue;
+        };
+        let name = source.slice(declaration.name).to_owned();
+        if name == "root"
+            || enums.contains_key(&name)
+            || enum_alternatives.contains_key(&name)
+            || sums.contains_key(&name)
+            || alternatives.contains_key(&name)
+        {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-UNION",
+                declaration.name,
+                format!("`{name}` is already declared in this scope"),
+            ));
+        }
+        let mut local = BTreeSet::new();
+        let mut lowered = Vec::with_capacity(declaration.alternatives.len());
+        for (label, classifier, alternative_span) in &declaration.alternatives {
+            if !local.insert(label.clone()) {
+                return Err(source_diagnostic(
+                    source,
+                    "E-DUPLICATE-UNION-ALTERNATIVE",
+                    *alternative_span,
+                    format!("sum alternative `{label}` occurs more than once"),
+                ));
+            }
+            if !declaration.positional
+                && (label == "root"
+                    || label == &name
+                    || enums.contains_key(label)
+                    || enum_alternatives.contains_key(label)
+                    || sums.contains_key(label)
+                    || alternatives.contains_key(label))
+            {
+                return Err(source_diagnostic(
+                    source,
+                    "E-DUPLICATE-UNION-ALTERNATIVE",
+                    *alternative_span,
+                    format!("sum alternative `{label}` is already declared in this scope"),
+                ));
+            }
+            let payload = classifier
+                .map(|classifier| {
+                    let classifier_text = compact_classifier(source.slice(classifier));
+                    enums
+                        .get(&classifier_text)
+                        .filter(|(_, declaration)| declaration.end <= classifier.start)
+                        .map(|(enumeration, _)| CompilerType::Enum(enumeration.clone()))
+                        .or_else(|| {
+                            sums.get(&classifier_text)
+                                .filter(|(_, declaration)| declaration.end <= classifier.start)
+                                .map(|(sum, _)| CompilerType::Sum(sum.clone()))
+                        })
+                        .or_else(|| parse_compact_classifier(&classifier_text))
+                        .ok_or_else(|| unsupported(source, classifier, "sum payload classifier"))
+                })
+                .transpose()?;
+            if payload
+                .as_ref()
+                .is_some_and(|payload| !compiler_function_result_supported(payload))
+            {
+                return Err(unsupported(
+                    source,
+                    classifier.expect("unsupported payload has a classifier"),
+                    "sum payload without an admitted private representation",
+                ));
+            }
+            lowered.push(CompilerSumAlternative {
+                name: label.clone(),
+                payload,
+            });
+        }
+        let sum = CompilerSumType {
+            name: name.clone(),
+            positional: declaration.positional,
+            alternatives: lowered,
+        };
+        if !sum.positional {
+            for (index, alternative) in sum.alternatives.iter().enumerate() {
+                let index = u32::try_from(index).map_err(|_| {
+                    unsupported(source, declaration.span, "native Union alternative tag")
+                })?;
+                alternatives.insert(
+                    alternative.name.clone(),
+                    (sum.clone(), index, declaration.span),
+                );
+            }
+        }
+        sums.insert(name, (sum, declaration.span));
+    }
+    Ok((sums, alternatives))
+}
+
 fn constraint_definition<'a>(
     source: &SourceText,
     expression: &'a Expression,
@@ -810,6 +1229,7 @@ fn collect_functions(
                         is_static: *is_static,
                     })
                 } else if enum_declaration(source, statement).is_some()
+                    || sum_declaration(source, statement).is_some()
                     || matches!(declaration.as_ref(), Statement::Binding { .. })
                 {
                     None
@@ -883,6 +1303,73 @@ enum BlockKind {
 }
 
 impl Analyzer {
+    fn install_modular_types(&mut self, declarations: &[ModularSource]) -> Result<(), Diagnostic> {
+        let environment = BTreeMap::new();
+        for declaration in declarations {
+            let range = self.analyze_expression(&declaration.range, &environment)?;
+            let CompilerExpressionKind::Binary {
+                operation: CompilerBinary::RangeInclusive,
+                left,
+                right,
+            } = &range.kind
+            else {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-MODULAR-RANGE",
+                    declaration.range.span(),
+                    "ModNat and ModInt require a finite inclusive Int range",
+                ));
+            };
+            if left.value_type != CompilerType::Int || right.value_type != CompilerType::Int {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-MODULAR-RANGE",
+                    declaration.range.span(),
+                    "ModNat and ModInt require a finite inclusive Int range",
+                ));
+            }
+            let Some(lower) = exact_int(left) else {
+                return Err(unsupported(
+                    &self.source,
+                    left.span,
+                    "dynamic modular lower bound",
+                ));
+            };
+            let Some(upper) = exact_int(right) else {
+                return Err(unsupported(
+                    &self.source,
+                    right.span,
+                    "dynamic modular upper bound",
+                ));
+            };
+            if lower > BigInt::from(0)
+                || upper < BigInt::from(0)
+                || (!declaration.signed && lower != BigInt::from(0))
+            {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-MODULAR-RANGE",
+                    declaration.range.span(),
+                    "modular range must contain zero and ModNat must begin at zero",
+                ));
+            }
+            let name = self.source.slice(declaration.name).to_owned();
+            self.modulars.insert(
+                name.clone(),
+                (
+                    CompilerModularType {
+                        name,
+                        signed: declaration.signed,
+                        lower,
+                        upper,
+                    },
+                    declaration.span,
+                ),
+            );
+        }
+        Ok(())
+    }
+
     fn analyze_expression_with_expected(
         &mut self,
         expression: &Expression,
@@ -894,6 +1381,58 @@ impl Analyzer {
             && let Some(CompilerType::Optional(payload)) = expected
         {
             return self.finish_optional_none(payload.as_ref().clone(), expression.span());
+        }
+        if let Some(CompilerType::List(element)) = expected {
+            if let Expression::Identifier(name) = expression
+                && self.source.slice(*name) == "Empty"
+            {
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::ListEmpty,
+                    value_type: CompilerType::List(element.clone()),
+                    int_range: None,
+                    rational_value: None,
+                    span: expression.span(),
+                });
+            }
+            if let Expression::Application { items, span } = expression
+                && let [
+                    Expression::Identifier(constructor),
+                    Expression::Product { fields, .. },
+                ] = items.as_slice()
+                && self.source.slice(*constructor) == "Entry"
+                && let [value, remaining] = fields.as_slice()
+                && value.label.is_none()
+                && remaining.label.is_none()
+            {
+                let value = self.analyze_expression_with_expected(
+                    &value.value,
+                    environment,
+                    Some(element),
+                )?;
+                require_same_type(&self.source, value.span, element, &value.value_type)?;
+                let list_type = CompilerType::List(element.clone());
+                let remaining = self.analyze_expression_with_expected(
+                    &remaining.value,
+                    environment,
+                    Some(&list_type),
+                )?;
+                require_same_type(
+                    &self.source,
+                    remaining.span,
+                    &list_type,
+                    &remaining.value_type,
+                )?;
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::ListEntry {
+                        value: Box::new(value),
+                        remaining: Box::new(remaining),
+                    },
+                    value_type: list_type,
+                    int_range: None,
+                    rational_value: None,
+                    span: *span,
+                });
+            }
         }
         let value = self.analyze_expression(expression, environment)?;
         match expected {
@@ -914,6 +1453,39 @@ impl Analyzer {
         {
             return Ok(CompilerType::Enum(enumeration.clone()));
         }
+        if let Some((sum, declaration)) = self.sums.get(&classifier)
+            && declaration.end <= span.start
+        {
+            return Ok(CompilerType::Sum(sum.clone()));
+        }
+        if let Some((modular, declaration)) = self.modulars.get(&classifier)
+            && declaration.end <= span.start
+        {
+            return Ok(CompilerType::Modular(modular.clone()));
+        }
+        if let Some((success, codes)) = classifier
+            .strip_prefix("Result(")
+            .and_then(|value| value.strip_suffix(')'))
+            .and_then(split_classifier_once)
+            && codes == "langarithmeticArithmeticErrorCode"
+            && let Some((modular, declaration)) = self.modulars.get(success)
+            && declaration.end <= span.start
+        {
+            return Ok(CompilerType::Result(Box::new(CompilerType::Modular(
+                modular.clone(),
+            ))));
+        }
+        if let Some(tag) = self.constraint_bindings.get(&classifier)
+            && let Some(constraint) = self
+                .constraints
+                .get(usize::try_from(*tag).expect("u32 tag fits usize"))
+            && constraint.span.end <= span.start
+        {
+            return Ok(CompilerType::Refined {
+                constraint: classifier,
+                base: Box::new(constraint.base_type.clone()),
+            });
+        }
         parse_compact_classifier(&classifier)
             .ok_or_else(|| unsupported(&self.source, span, "classifier"))
     }
@@ -926,13 +1498,136 @@ impl Analyzer {
         {
             return true;
         }
-        let Some(declaration) = enum_declaration(&self.source, statement) else {
-            return false;
+        if let Some(declaration) = enum_declaration(&self.source, statement) {
+            let name = self.source.slice(declaration.name);
+            return self
+                .enums
+                .get(name)
+                .is_some_and(|(_, span)| *span == declaration.span);
+        }
+        if let Some(declaration) = sum_declaration(&self.source, statement) {
+            let name = self.source.slice(declaration.name);
+            return self
+                .sums
+                .get(name)
+                .is_some_and(|(_, span)| *span == declaration.span);
+        }
+        if let Some(declaration) = modular_declaration(&self.source, statement) {
+            let name = self.source.slice(declaration.name);
+            return self
+                .modulars
+                .get(name)
+                .is_some_and(|(_, span)| *span == declaration.span);
+        }
+        false
+    }
+
+    fn bind_nested_function(
+        &self,
+        statement: &Statement,
+        environment: &mut BTreeMap<String, BindingFacts>,
+        declared: &mut BTreeSet<String>,
+    ) -> Result<(), Diagnostic> {
+        let Statement::Function {
+            name,
+            is_static,
+            parameters,
+            result,
+            effect_bound,
+            clauses,
+            body,
+            span,
+        } = statement
+        else {
+            return Err(unsupported(
+                &self.source,
+                statement_span(statement),
+                "published nested function declaration",
+            ));
         };
-        let name = self.source.slice(declaration.name);
-        self.enums
-            .get(name)
-            .is_some_and(|(_, span)| *span == declaration.span)
+        if self.static_context
+            || *is_static
+            || effect_bound.is_some()
+            || **clauses != FunctionClauses::default()
+        {
+            return Err(unsupported(
+                &self.source,
+                *span,
+                "static, measured, constrained, or effectful nested function",
+            ));
+        }
+        let name_text = self.source.slice(*name).to_owned();
+        if declared.contains(&name_text)
+            || self.functions.contains_key(&name_text)
+            || self.active_calls.iter().any(|identity| {
+                identity
+                    .split_once(':')
+                    .is_some_and(|(name, _)| name == name_text)
+            })
+        {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-DUPLICATE-BINDING",
+                *name,
+                format!("`{name_text}` is already declared in this invocation scope"),
+            ));
+        }
+        let parameter_names = parameters
+            .iter()
+            .map(|parameter| self.source.slice(parameter.name))
+            .collect::<BTreeSet<_>>();
+        let captures = environment
+            .iter()
+            .filter(|(candidate, facts)| {
+                facts.runtime_bound
+                    && !candidate.starts_with("@ ")
+                    && !parameter_names.contains(candidate.as_str())
+                    && compiler_function_result_supported(&facts.value_type)
+            })
+            .map(|(candidate, facts)| CompilerContextCapture {
+                parameter_name: candidate.clone(),
+                value_type: facts.value_type.clone(),
+                int_range: facts.int_range.clone(),
+                rational_value: facts.rational_value.clone(),
+                argument: CompilerExpression {
+                    kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
+                    value_type: facts.value_type.clone(),
+                    int_range: facts.int_range.clone(),
+                    rational_value: facts.rational_value.clone(),
+                    span: *name,
+                },
+                span: *name,
+            })
+            .collect();
+        let declaration = FunctionSource {
+            name: *name,
+            parameters: parameters.clone(),
+            result: *result,
+            effect_bound: None,
+            body: body.clone(),
+            span: *span,
+            is_static: false,
+        };
+        environment.insert(
+            name_text.clone(),
+            BindingFacts {
+                storage_name: format!("topal.nested.function.{}.{}", name.start, name_text),
+                runtime_bound: false,
+                value_type: CompilerType::Function,
+                int_range: None,
+                rational_value: None,
+                string_value: None,
+                record_fields: BTreeMap::new(),
+                namespace: None,
+                callable: Some(CompilerCallableFacts::Named {
+                    name: name_text.clone(),
+                    declarations: vec![declaration],
+                    captures,
+                }),
+            },
+        );
+        declared.insert(name_text);
+        Ok(())
     }
 
     #[allow(clippy::too_many_lines)] // Exhaustive statement admission keeps the subset boundary visible.
@@ -963,7 +1658,16 @@ impl Analyzer {
         }
         let executable = statements
             .iter()
-            .filter(|statement| !self.is_declaration(statement))
+            .filter(|statement| {
+                !self.is_declaration(statement)
+                    || (kind == BlockKind::Function
+                        && (matches!(statement, Statement::Function { .. })
+                            || matches!(
+                                statement,
+                                Statement::Published { declaration, .. }
+                                    if matches!(declaration.as_ref(), Statement::Function { .. })
+                            )))
+            })
             .collect::<Vec<_>>();
 
         for (index, statement) in executable.iter().enumerate() {
@@ -977,6 +1681,26 @@ impl Analyzer {
                 statement => statement,
             };
             match statement {
+                Statement::DiagnosticControl { .. } => {
+                    if last {
+                        result = Some(unit_expression(statement_span(statement)));
+                    }
+                }
+                Statement::Function { .. } if kind == BlockKind::Function => {
+                    self.bind_nested_function(statement, environment, &mut declared)?;
+                    if last {
+                        result = Some(unit_expression(statement_span(statement)));
+                    }
+                }
+                Statement::Published { declaration, .. }
+                    if kind == BlockKind::Function
+                        && matches!(declaration.as_ref(), Statement::Function { .. }) =>
+                {
+                    self.bind_nested_function(statement, environment, &mut declared)?;
+                    if last {
+                        result = Some(unit_expression(statement_span(statement)));
+                    }
+                }
                 Statement::Binding {
                     name,
                     classifier,
@@ -988,7 +1712,10 @@ impl Analyzer {
                             && (name_text == "root"
                                 || self.functions.contains_key(&name_text)
                                 || self.enums.contains_key(&name_text)
-                                || self.enum_alternatives.contains_key(&name_text)))
+                                || self.enum_alternatives.contains_key(&name_text)
+                                || self.sums.contains_key(&name_text)
+                                || self.sum_alternatives.contains_key(&name_text)
+                                || self.modulars.contains_key(&name_text)))
                     {
                         return Err(source_diagnostic(
                             &self.source,
@@ -1102,6 +1829,7 @@ impl Analyzer {
                     };
                     let facts = BindingFacts {
                         storage_name: storage_name.clone(),
+                        runtime_bound: true,
                         value_type: value.value_type.clone(),
                         int_range: value.int_range.clone(),
                         rational_value: value.rational_value.clone(),
@@ -1475,6 +2203,35 @@ impl Analyzer {
                     span,
                 })
             }
+            Expression::Identifier(name)
+                if !environment.contains_key(self.source.slice(*name))
+                    && self
+                        .sum_alternatives
+                        .get(self.source.slice(*name))
+                        .is_some_and(|(sum, value, declaration)| {
+                            declaration.end <= name.start
+                                && sum.alternatives
+                                    [usize::try_from(*value).expect("u32 sum tag fits usize")]
+                                .payload
+                                .is_none()
+                        }) =>
+            {
+                let (sum, value, _) = self
+                    .sum_alternatives
+                    .get(self.source.slice(*name))
+                    .expect("checked payload-free Union alternative exists")
+                    .clone();
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Sum {
+                        value,
+                        payload: None,
+                    },
+                    value_type: CompilerType::Sum(sum),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
             Expression::Product { fields, .. } => {
                 if !fields.is_empty() && fields.iter().all(|field| field.label.is_some()) {
                     let mut values = Vec::with_capacity(fields.len());
@@ -1533,6 +2290,13 @@ impl Analyzer {
                         format!("name `{name_text}` is not bound"),
                     )
                 })?;
+                if !facts.runtime_bound {
+                    return Err(unsupported(
+                        &self.source,
+                        *name,
+                        "nested Function value outside direct application",
+                    ));
+                }
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
                     value_type: facts.value_type.clone(),
@@ -1597,7 +2361,8 @@ impl Analyzer {
         predicate_environment.insert(
             parameter_name.clone(),
             BindingFacts {
-                storage_name,
+                storage_name: storage_name.clone(),
+                runtime_bound: true,
                 value_type: base_type.clone(),
                 int_range: None,
                 rational_value: None,
@@ -1624,6 +2389,7 @@ impl Analyzer {
             name: name.to_owned(),
             base_type,
             parameter: parameter_name,
+            parameter_storage: storage_name,
             predicate,
             span,
         });
@@ -1636,6 +2402,248 @@ impl Analyzer {
         })
     }
 
+    fn analyze_constraint_application(
+        &mut self,
+        tag: u32,
+        operand: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let constraint =
+            self.constraints[usize::try_from(tag).expect("u32 tag fits usize")].clone();
+        if constraint.base_type != CompilerType::Int {
+            return Err(unsupported(
+                &self.source,
+                operand.span(),
+                "native constraint application base classifier",
+            ));
+        }
+        let mut value = self.analyze_expression(operand, environment)?;
+        if matches!(value.value_type, CompilerType::Refined { .. }) {
+            value = forget_refined_evidence(value);
+        }
+        require_same_type(
+            &self.source,
+            operand.span(),
+            &constraint.base_type,
+            &value.value_type,
+        )?;
+        if compiler_expression_is_closed(&value) {
+            let accepted = known_constraint_predicate(
+                &constraint.predicate,
+                &constraint.parameter_storage,
+                &value,
+            )
+            .ok_or_else(|| {
+                unsupported(
+                    &self.source,
+                    constraint.predicate.span,
+                    "closed constraint predicate evaluation",
+                )
+            })?;
+            if !accepted {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-CONSTRAINT-REJECTED",
+                    operand.span(),
+                    format!("value does not satisfy constraint `{}`", constraint.name),
+                ));
+            }
+            value.value_type = CompilerType::Refined {
+                constraint: constraint.name,
+                base: Box::new(constraint.base_type),
+            };
+            value.span = span;
+            return Ok(value);
+        }
+        Ok(Self::finish_validation(
+            CompilerValidation::Constraint(tag),
+            value,
+            constraint.base_type,
+            span,
+            operand.span(),
+        ))
+    }
+
+    fn analyze_sum_construction(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let selected = if let [Expression::Identifier(constructor), payload] = items {
+            let Some((sum, value, declaration)) = self
+                .sum_alternatives
+                .get(self.source.slice(*constructor))
+                .cloned()
+            else {
+                return Ok(None);
+            };
+            if declaration.end > constructor.start {
+                return Ok(None);
+            }
+            let expected = sum.alternatives
+                [usize::try_from(value).expect("u32 sum tag fits usize")]
+            .payload
+            .clone();
+            let Some(expected) = expected else {
+                return Ok(None);
+            };
+            (sum, value, expected, payload)
+        } else if let [
+            Expression::Identifier(type_name),
+            Expression::Identifier(at),
+            Expression::Integer(index),
+            payload,
+        ] = items
+            && self.source.slice(*at) == "at"
+            && let Some((sum, declaration)) = self.sums.get(self.source.slice(*type_name)).cloned()
+            && sum.positional
+            && declaration.end <= type_name.start
+        {
+            let value = parse_integer(self.source.slice(*index))
+                .and_then(|value| value.to_string().parse::<usize>().ok())
+                .filter(|value| *value < sum.alternatives.len())
+                .ok_or_else(|| {
+                    source_diagnostic(
+                        &self.source,
+                        "E-VARIANT-INDEX",
+                        *index,
+                        "Variant alternative index is outside its declared bounds",
+                    )
+                })?;
+            let expected = sum.alternatives[value]
+                .payload
+                .clone()
+                .expect("positional Variant alternatives carry payloads");
+            (
+                sum,
+                u32::try_from(value).expect("validated native sum tag"),
+                expected,
+                payload,
+            )
+        } else {
+            return Ok(None);
+        };
+        let (sum, value, expected, payload) = selected;
+        let payload_value =
+            self.analyze_expression_with_expected(payload, environment, Some(&expected))?;
+        let payload_value = adapt_call_argument(&expected, &payload_value).ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                if sum.positional {
+                    "E-VARIANT-PAYLOAD-CLASSIFIER"
+                } else {
+                    "E-UNION-PAYLOAD-CLASSIFIER"
+                },
+                payload.span(),
+                format!(
+                    "sum alternative `{}` requires {}, found {}",
+                    sum.alternatives[usize::try_from(value).expect("u32 sum tag fits usize")].name,
+                    expected.name(),
+                    payload_value.value_type.name()
+                ),
+            )
+        })?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::Sum {
+                value,
+                payload: Some(Box::new(payload_value)),
+            },
+            value_type: CompilerType::Sum(sum),
+            int_range: None,
+            rational_value: None,
+            span,
+        }))
+    }
+
+    fn analyze_modular_construction(
+        &mut self,
+        modular: CompilerModularType,
+        operand: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let operand = self.analyze_expression(operand, environment)?;
+        require_type(
+            &self.source,
+            operand.span,
+            &CompilerType::Int,
+            &operand.value_type,
+        )?;
+        if operand
+            .int_range
+            .as_ref()
+            .is_some_and(|range| range.lower >= modular.lower && range.upper <= modular.upper)
+        {
+            let int_range = operand.int_range.clone();
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::IntToModular {
+                    value: Box::new(operand),
+                    modular: modular.clone(),
+                },
+                value_type: CompilerType::Modular(modular),
+                int_range,
+                rational_value: None,
+                span,
+            });
+        }
+        if operand
+            .int_range
+            .as_ref()
+            .is_some_and(|range| range.upper < modular.lower || range.lower > modular.upper)
+            && compiler_expression_is_closed(&operand)
+        {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-MODULAR-OUT-OF-RANGE",
+                operand.span,
+                format!("value is outside `{}` canonical range", modular.name),
+            ));
+        }
+        let error_span = operand.span;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::ModularValidate {
+                value: Box::new(operand),
+                modular: modular.clone(),
+                error_span,
+            },
+            value_type: CompilerType::Result(Box::new(CompilerType::Modular(modular))),
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn analyze_modular_reduction(
+        &mut self,
+        modular: CompilerModularType,
+        operand: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let operand = self.analyze_expression(operand, environment)?;
+        require_type(
+            &self.source,
+            operand.span,
+            &CompilerType::Int,
+            &operand.value_type,
+        )?;
+        let int_range = exact_int(&operand)
+            .map(|value| IntRange::exact(reduce_modular(value, &modular)))
+            .or_else(|| Some(modular_range(&modular)));
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::ModularReduce {
+                value: Box::new(operand),
+                modular: modular.clone(),
+            },
+            value_type: CompilerType::Modular(modular),
+            int_range,
+            rational_value: None,
+            span,
+        })
+    }
+
     #[allow(clippy::too_many_lines)] // Root operations are admitted explicitly and in source-selection order.
     fn analyze_application(
         &mut self,
@@ -1643,6 +2651,47 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Some(sum) = self.analyze_sum_construction(items, span, environment)? {
+            return Ok(sum);
+        }
+        if let [Expression::Identifier(name), operand] = items
+            && let Some((modular, declaration)) = self.modulars.get(self.source.slice(*name))
+            && declaration.end <= name.start
+        {
+            return self.analyze_modular_construction(modular.clone(), operand, span, environment);
+        }
+        if let [
+            operand,
+            Expression::Identifier(operation),
+            Expression::Identifier(name),
+        ] = items
+            && self.source.slice(*operation) == "modulo"
+            && let Some((modular, declaration)) = self.modulars.get(self.source.slice(*name))
+            && declaration.end <= name.start
+        {
+            return self.analyze_modular_reduction(modular.clone(), operand, span, environment);
+        }
+        if let [Expression::Identifier(keyword), selected] = items
+            && self.source.slice(*keyword) == "use"
+        {
+            if self.in_function {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "function-body namespace use",
+                ));
+            }
+            let selected = self.analyze_expression(selected, environment)?;
+            if selected.value_type != CompilerType::Scope {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-USE-NON-NAMESPACE",
+                    selected.span,
+                    "use requires a published namespace path",
+                ));
+            }
+            return Ok(selected);
+        }
         if let Some((Expression::Identifier(namespace), remaining)) = items.split_first()
             && self.source.slice(*namespace) == "root"
             && let Some(Expression::Identifier(member)) = remaining.first()
@@ -1674,10 +2723,10 @@ impl Analyzer {
                     0,
                     &member_name,
                     declarations,
+                    &[],
                 );
             }
             if remaining.len() == 1
-                && !self.in_function
                 && let Some(facts) = namespace.bindings.get(&member_name)
             {
                 return Ok(data_member_expression(facts, span));
@@ -1698,9 +2747,19 @@ impl Analyzer {
                 .and_then(|facts| facts.callable.as_ref())
         {
             return match callable {
-                CompilerCallableFacts::Named { name, declarations } => {
-                    self.analyze_resolved_call_from(items, span, environment, 0, name, declarations)
-                }
+                CompilerCallableFacts::Named {
+                    name,
+                    declarations,
+                    captures,
+                } => self.analyze_resolved_call_from(
+                    items,
+                    span,
+                    environment,
+                    0,
+                    name,
+                    declarations,
+                    captures,
+                ),
                 CompilerCallableFacts::Symbolic(kind) => {
                     self.analyze_bound_symbolic_callable(*kind, items, span, environment)
                 }
@@ -1721,6 +2780,18 @@ impl Analyzer {
                     environment,
                 ),
             };
+        }
+        if let [Expression::Identifier(name), operand] = items
+            && let Some(tag) = self
+                .constraint_bindings
+                .get(self.source.slice(*name))
+                .copied()
+            && self.constraints[usize::try_from(tag).expect("u32 tag fits usize")]
+                .span
+                .end
+                <= name.start
+        {
+            return self.analyze_constraint_application(tag, operand, span, environment);
         }
         if items.len() > 1
             && items
@@ -2010,7 +3081,10 @@ impl Analyzer {
             return self.analyze_record_field(record, *field, span, environment);
         }
         if let [error, Expression::Identifier(field)] = items
-            && matches!(self.source.slice(*field), "code" | "domain")
+            && matches!(
+                self.source.slice(*field),
+                "code" | "domain" | "detail" | "cause" | "source"
+            )
         {
             return self.analyze_error_field(error, *field, span, environment);
         }
@@ -2023,6 +3097,18 @@ impl Analyzer {
         ] = items
         {
             let operand = self.analyze_expression(operand, environment)?;
+            if let CompilerType::Modular(modular) = operand.value_type.clone() {
+                let int_range = exact_int(&operand)
+                    .map(|value| IntRange::exact(reduce_modular(-value, &modular)))
+                    .or_else(|| Some(modular_range(&modular)));
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Negate(Box::new(operand)),
+                    value_type: CompilerType::Modular(modular),
+                    int_range,
+                    rational_value: None,
+                    span,
+                });
+            }
             require_exact_numeric(&self.source, operand.span, &operand.value_type)?;
             let range = (operand.value_type == CompilerType::Int)
                 .then_some(operand.int_range.as_ref())
@@ -2046,6 +3132,25 @@ impl Analyzer {
         {
             let negate = self.source.slice(*operation) == "negate";
             let operand = self.analyze_expression(operand, environment)?;
+            if let CompilerType::Modular(modular) = operand.value_type.clone() {
+                if !negate {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "absolute value over a modular value",
+                    ));
+                }
+                let int_range = exact_int(&operand)
+                    .map(|value| IntRange::exact(reduce_modular(-value, &modular)))
+                    .or_else(|| Some(modular_range(&modular)));
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Negate(Box::new(operand)),
+                    value_type: CompilerType::Modular(modular),
+                    int_range,
+                    rational_value: None,
+                    span,
+                });
+            }
             require_exact_numeric(&self.source, operand.span, &operand.value_type)?;
             let range = (operand.value_type == CompilerType::Int)
                 .then_some(operand.int_range.as_ref())
@@ -2313,6 +3418,18 @@ impl Analyzer {
         let (field, value_type) = match self.source.slice(field) {
             "code" => (CompilerErrorField::Code, CompilerType::ErrorCode),
             "domain" => (CompilerErrorField::Domain, CompilerType::ErrorDomain),
+            "detail" => (
+                CompilerErrorField::Detail,
+                CompilerType::Optional(Box::new(CompilerType::String)),
+            ),
+            "cause" => (
+                CompilerErrorField::Cause,
+                CompilerType::Optional(Box::new(CompilerType::Error)),
+            ),
+            "source" => (
+                CompilerErrorField::Source,
+                CompilerType::Optional(Box::new(CompilerType::SourceLocation)),
+            ),
             _ => unreachable!("implemented Error field spelling selected above"),
         };
         Ok(CompilerExpression {
@@ -2726,6 +3843,15 @@ impl Analyzer {
                 "non-root namespace alias binding",
             ));
         }
+        self.resolve_namespace(value, environment, capture_position)
+    }
+
+    fn resolve_namespace(
+        &self,
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+        capture_position: usize,
+    ) -> Result<Option<CompilerNamespaceFacts>, Diagnostic> {
         match &value.kind {
             CompilerExpressionKind::Root => Ok(Some(CompilerNamespaceFacts {
                 name: "root".into(),
@@ -2753,6 +3879,72 @@ impl Analyzer {
                 "computed Scope alias",
             )),
         }
+    }
+
+    fn scope_parameter_arguments(
+        &self,
+        declaration: &FunctionSource,
+        arguments: &[CompilerExpression],
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<
+        (
+            Vec<Option<CompilerNamespaceFacts>>,
+            Vec<CompilerContextCapture>,
+        ),
+        Diagnostic,
+    > {
+        let mut namespaces = Vec::with_capacity(declaration.parameters.len());
+        let mut captures = Vec::new();
+        for (parameter, argument) in declaration.parameters.iter().zip(arguments) {
+            if self.parse_classifier(parameter.classifier)? != CompilerType::Scope {
+                namespaces.push(None);
+                continue;
+            }
+            if self.in_function && matches!(argument.kind, CompilerExpressionKind::Root) {
+                return Err(unsupported(
+                    &self.source,
+                    argument.span,
+                    "function-body live root Scope argument",
+                ));
+            }
+            let mut namespace = self
+                .resolve_namespace(argument, environment, argument.span.start)?
+                .ok_or_else(|| unsupported(&self.source, argument.span, "opaque Scope argument"))?;
+            let parameter_name = self.source.slice(parameter.name);
+            if parameter_name == "_" {
+                namespaces.push(Some(namespace));
+                continue;
+            }
+            let represented_members = namespace
+                .bindings
+                .iter()
+                .map(|(member_name, facts)| (member_name.clone(), facts.clone()))
+                .collect::<Vec<_>>();
+            for (member_name, facts) in represented_members {
+                if !compiler_function_result_supported(&facts.value_type) {
+                    namespace.bindings.remove(&member_name);
+                    continue;
+                }
+                let span = parameter.name;
+                let hidden_name = format!("{parameter_name} {member_name}");
+                namespace
+                    .bindings
+                    .get_mut(&member_name)
+                    .expect("captured namespace data member exists")
+                    .storage_name
+                    .clone_from(&hidden_name);
+                captures.push(CompilerContextCapture {
+                    parameter_name: hidden_name,
+                    value_type: facts.value_type.clone(),
+                    int_range: facts.int_range.clone(),
+                    rational_value: facts.rational_value.clone(),
+                    argument: data_member_expression(&facts, span),
+                    span,
+                });
+            }
+            namespaces.push(Some(namespace));
+        }
+        Ok((namespaces, captures))
     }
 
     fn known_callable(
@@ -2796,7 +3988,11 @@ impl Analyzer {
                     .filter(|declaration| declaration.span.end <= capture_position)
                     .cloned()
                     .collect::<Vec<_>>();
-                Ok(Some(CompilerCallableFacts::Named { name, declarations }))
+                Ok(Some(CompilerCallableFacts::Named {
+                    name,
+                    declarations,
+                    captures: Vec::new(),
+                }))
             }
             CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .and_then(|facts| facts.callable.clone())
@@ -3250,7 +4446,9 @@ impl Analyzer {
                     format!("`{name}` is already declared in this parameter pattern"),
                 ));
             }
-            if !compiler_function_parameter_supported(&argument.value_type) {
+            if argument.value_type == CompilerType::Scope
+                || !compiler_function_parameter_supported(&argument.value_type)
+            {
                 return Err(unsupported(
                     &self.source,
                     argument.span,
@@ -3262,6 +4460,7 @@ impl Analyzer {
                     name.clone(),
                     BindingFacts {
                         storage_name: name.clone(),
+                        runtime_bound: true,
                         value_type: argument.value_type.clone(),
                         int_range: argument.int_range.clone(),
                         rational_value: argument.rational_value.clone(),
@@ -3365,6 +4564,18 @@ impl Analyzer {
         };
         let mut left_value = self.analyze_expression(left, environment)?;
         let mut right_value = self.analyze_expression(right, environment)?;
+        if matches!(left_value.value_type, CompilerType::Refined { .. }) {
+            left_value = forget_refined_evidence(left_value);
+        }
+        if matches!(right_value.value_type, CompilerType::Refined { .. }) {
+            right_value = forget_refined_evidence(right_value);
+        }
+
+        if matches!(left_value.value_type, CompilerType::Modular(_))
+            || matches!(right_value.value_type, CompilerType::Modular(_))
+        {
+            return self.finish_modular_binary(operation, left_value, right_value, span);
+        }
 
         if is_range_construction(operation) {
             require_exact_numeric(&self.source, left_value.span, &left_value.value_type)?;
@@ -3918,6 +5129,55 @@ impl Analyzer {
         ))
     }
 
+    fn finish_modular_binary(
+        &self,
+        operation: CompilerBinary,
+        left: CompilerExpression,
+        right: CompilerExpression,
+        span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        require_same_type(&self.source, span, &left.value_type, &right.value_type)?;
+        let CompilerType::Modular(modular) = &left.value_type else {
+            unreachable!("same-type modular operation has two modular operands")
+        };
+        let (value_type, int_range) = match operation {
+            CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply => {
+                let exact = exact_int(&left)
+                    .zip(exact_int(&right))
+                    .map(|(left, right)| {
+                        let value = match operation {
+                            CompilerBinary::Add => left + right,
+                            CompilerBinary::Subtract => left - right,
+                            CompilerBinary::Multiply => left * right,
+                            _ => unreachable!("selected modular arithmetic operation"),
+                        };
+                        IntRange::exact(reduce_modular(value, modular))
+                    });
+                (
+                    left.value_type.clone(),
+                    exact.or_else(|| Some(modular_range(modular))),
+                )
+            }
+            CompilerBinary::Equal
+            | CompilerBinary::NotEqual
+            | CompilerBinary::Less
+            | CompilerBinary::Greater
+            | CompilerBinary::LessEqual
+            | CompilerBinary::GreaterEqual => (CompilerType::Boolean, None),
+            CompilerBinary::Compare => (CompilerType::Comparison, None),
+            _ => {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "operation over modular values",
+                ));
+            }
+        };
+        let mut result = Self::finish_binary(operation, left, right, value_type, span);
+        result.int_range = int_range;
+        Ok(result)
+    }
+
     fn finish_binary(
         operation: CompilerBinary,
         left: CompilerExpression,
@@ -4043,10 +5303,11 @@ impl Analyzer {
             function_index,
             function_name,
             &declarations,
+            &[],
         )
     }
 
-    #[allow(clippy::too_many_lines)] // Candidate-specific source packages and ordinary parameters remain visibly fail-closed.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Candidate-specific source packages and captures remain visibly fail-closed.
     fn analyze_resolved_call_from(
         &mut self,
         items: &[Expression],
@@ -4055,6 +5316,7 @@ impl Analyzer {
         function_index: usize,
         function_name: &str,
         declarations: &[FunctionSource],
+        lexical_captures: &[CompilerContextCapture],
     ) -> Result<CompilerExpression, Diagnostic> {
         let argument_sources = items
             .iter()
@@ -4154,6 +5416,8 @@ impl Analyzer {
             .iter()
             .map(|argument| self.known_callable(argument, environment, argument.span.start))
             .collect::<Result<Vec<_>, _>>()?;
+        let (scope_arguments, scope_captures) =
+            self.scope_parameter_arguments(&declaration, &arguments, environment)?;
         let context_captures = self.defining_context_captures(&declaration)?;
         if self.in_function && !context_captures.is_empty() {
             return Err(unsupported(
@@ -4162,20 +5426,33 @@ impl Analyzer {
                 "cross-function defining-context capture forwarding",
             ));
         }
+        let metadata = CompilerCallMetadata {
+            callable_arguments,
+            scope_arguments,
+            scope_captures,
+            lexical_captures: lexical_captures.to_vec(),
+            context_captures,
+        };
         let mut arguments = arguments;
         arguments.extend(
-            context_captures
+            metadata
+                .scope_captures
                 .iter()
                 .map(|capture| capture.argument.clone()),
         );
-        self.finish_selected_call(
-            function_name,
-            &declaration,
-            arguments,
-            &callable_arguments,
-            &context_captures,
-            span,
-        )
+        arguments.extend(
+            metadata
+                .lexical_captures
+                .iter()
+                .map(|capture| capture.argument.clone()),
+        );
+        arguments.extend(
+            metadata
+                .context_captures
+                .iter()
+                .map(|capture| capture.argument.clone()),
+        );
+        self.finish_selected_call(function_name, &declaration, arguments, &metadata, span)
     }
 
     #[allow(clippy::too_many_lines)] // Every admitted and deferred package shape is checked explicitly.
@@ -4280,7 +5557,10 @@ impl Analyzer {
                 ));
             }
             let expected = self.parse_classifier(field.classifier)?;
-            if !expected.machine_scalar() || !compiler_function_parameter_supported(&expected) {
+            if expected == CompilerType::Scope
+                || !expected.machine_scalar()
+                || !compiler_function_parameter_supported(&expected)
+            {
                 return Err(unsupported(
                     &self.source,
                     field.classifier,
@@ -4382,8 +5662,7 @@ impl Analyzer {
         function_name: &str,
         declaration: &FunctionSource,
         arguments: Vec<CompilerExpression>,
-        callable_arguments: &[Option<CompilerCallableFacts>],
-        context_captures: &[CompilerContextCapture],
+        metadata: &CompilerCallMetadata,
         span: Span,
     ) -> Result<CompilerExpression, Diagnostic> {
         let identity = function_overload_identity(&self.source, function_name, declaration);
@@ -4428,8 +5707,7 @@ impl Analyzer {
             function_name,
             declaration,
             &arguments,
-            callable_arguments,
-            context_captures,
+            metadata,
             reserved_symbol.as_deref(),
             recursion_proof.is_some(),
         );
@@ -4446,17 +5724,23 @@ impl Analyzer {
         })
     }
 
-    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Specialization keeps ABI and checked evidence decisions together.
+    #[allow(clippy::too_many_lines)] // Specialization keeps ABI and checked evidence decisions together.
     fn instantiate_function(
         &mut self,
         function_name: &str,
         declaration: &FunctionSource,
         arguments: &[CompilerExpression],
-        callable_arguments: &[Option<CompilerCallableFacts>],
-        context_captures: &[CompilerContextCapture],
+        metadata: &CompilerCallMetadata,
         reserved_symbol: Option<&str>,
         generalize_parameters: bool,
     ) -> Result<(String, CompilerType, Option<IntRange>, Option<BigRational>), Diagnostic> {
+        let CompilerCallMetadata {
+            callable_arguments,
+            scope_arguments,
+            scope_captures,
+            lexical_captures,
+            context_captures,
+        } = metadata;
         let mut environment = BTreeMap::new();
         let mut parameters = Vec::new();
         for (parameter_index, (parameter, argument)) in
@@ -4493,6 +5777,7 @@ impl Analyzer {
                     name.clone(),
                     BindingFacts {
                         storage_name: name.clone(),
+                        runtime_bound: true,
                         value_type: expected.clone(),
                         int_range: (!generalize_parameters)
                             .then(|| argument.int_range.clone())
@@ -4504,7 +5789,7 @@ impl Analyzer {
                             .then(|| exact_string(argument))
                             .flatten(),
                         record_fields: BTreeMap::new(),
-                        namespace: None,
+                        namespace: scope_arguments[parameter_index].clone(),
                         callable: callable_arguments[parameter_index].clone(),
                     },
                 );
@@ -4519,7 +5804,73 @@ impl Analyzer {
                 span: parameter.name,
             });
         }
-        let context_arguments = &arguments[declaration.parameters.len()..];
+        let scope_arguments_start = declaration.parameters.len();
+        let lexical_arguments_start = scope_arguments_start + scope_captures.len();
+        let context_arguments_start = lexical_arguments_start + lexical_captures.len();
+        let captured_scope_arguments = &arguments[scope_arguments_start..lexical_arguments_start];
+        debug_assert_eq!(captured_scope_arguments.len(), scope_captures.len());
+        for (capture, argument) in scope_captures.iter().zip(captured_scope_arguments) {
+            require_same_type(
+                &self.source,
+                capture.span,
+                &capture.value_type,
+                &argument.value_type,
+            )?;
+            environment.insert(
+                capture.parameter_name.clone(),
+                BindingFacts {
+                    storage_name: capture.parameter_name.clone(),
+                    runtime_bound: true,
+                    value_type: capture.value_type.clone(),
+                    int_range: capture.int_range.clone(),
+                    rational_value: capture.rational_value.clone(),
+                    string_value: exact_string(argument),
+                    record_fields: BTreeMap::new(),
+                    namespace: None,
+                    callable: None,
+                },
+            );
+            parameters.push(CompilerParameter {
+                name: capture.parameter_name.clone(),
+                discarded: false,
+                value_type: capture.value_type.clone(),
+                int_range: capture.int_range.clone(),
+                span: capture.span,
+            });
+        }
+        let captured_lexical_arguments =
+            &arguments[lexical_arguments_start..context_arguments_start];
+        debug_assert_eq!(captured_lexical_arguments.len(), lexical_captures.len());
+        for (capture, argument) in lexical_captures.iter().zip(captured_lexical_arguments) {
+            require_same_type(
+                &self.source,
+                capture.span,
+                &capture.value_type,
+                &argument.value_type,
+            )?;
+            environment.insert(
+                capture.parameter_name.clone(),
+                BindingFacts {
+                    storage_name: capture.parameter_name.clone(),
+                    runtime_bound: true,
+                    value_type: capture.value_type.clone(),
+                    int_range: capture.int_range.clone(),
+                    rational_value: capture.rational_value.clone(),
+                    string_value: exact_string(argument),
+                    record_fields: BTreeMap::new(),
+                    namespace: None,
+                    callable: None,
+                },
+            );
+            parameters.push(CompilerParameter {
+                name: capture.parameter_name.clone(),
+                discarded: false,
+                value_type: capture.value_type.clone(),
+                int_range: capture.int_range.clone(),
+                span: capture.span,
+            });
+        }
+        let context_arguments = &arguments[context_arguments_start..];
         debug_assert_eq!(context_arguments.len(), context_captures.len());
         for (capture, argument) in context_captures.iter().zip(context_arguments) {
             require_same_type(
@@ -4532,6 +5883,7 @@ impl Analyzer {
                 capture.parameter_name.clone(),
                 BindingFacts {
                     storage_name: capture.parameter_name.clone(),
+                    runtime_bound: true,
                     value_type: capture.value_type.clone(),
                     int_range: capture.int_range.clone(),
                     rational_value: capture.rational_value.clone(),
@@ -4859,6 +6211,10 @@ impl Analyzer {
                 let enumeration = enumeration.clone();
                 self.analyze_enum_decision(subject, &enumeration, rules, span, environment)
             }
+            CompilerType::Sum(sum) => {
+                let sum = sum.clone();
+                self.analyze_sum_decision(subject, &sum, rules, span, environment)
+            }
             CompilerType::Result(success) => {
                 let success = success.as_ref().clone();
                 self.analyze_result_decision(subject, &success, rules, span, environment)
@@ -5063,6 +6419,171 @@ impl Analyzer {
         let (value_type, int_range, rational_value) = self.decision_facts(&actions, span)?;
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::EnumDecision {
+                subject: Box::new(subject),
+                rules: lowered,
+                otherwise,
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        })
+    }
+
+    #[allow(clippy::too_many_lines)] // Nominal and positional matcher validation stays adjacent to completeness checks.
+    fn analyze_sum_decision(
+        &mut self,
+        subject: CompilerExpression,
+        sum: &CompilerSumType,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let mut lowered = Vec::new();
+        let mut seen = BTreeSet::new();
+        let mut otherwise = None;
+        for rule in rules {
+            if otherwise.is_some() {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-UNREACHABLE-DECISION-RULE",
+                    rule.span,
+                    "a sum rule cannot follow otherwise",
+                ));
+            }
+            if matches!(rule.matcher, DecisionMatcher::Otherwise(_)) {
+                otherwise = Some(Box::new(
+                    self.analyze_expression(&rule.action, environment)?,
+                ));
+                continue;
+            }
+            let (value, binding) = match rule.matcher {
+                DecisionMatcher::Identifier(matcher) if !sum.positional => {
+                    let label = self.source.slice(matcher);
+                    let value = sum
+                        .alternatives
+                        .iter()
+                        .position(|alternative| alternative.name == label)
+                        .ok_or_else(|| {
+                            source_diagnostic(
+                                &self.source,
+                                "E-UNKNOWN-UNION-ALTERNATIVE",
+                                matcher,
+                                format!("`{label}` is not an alternative of `{}`", sum.name),
+                            )
+                        })?;
+                    if sum.alternatives[value].payload.is_some() {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-UNION-PAYLOAD-BINDING",
+                            matcher,
+                            format!("Union alternative `{label}` requires a payload binding"),
+                        ));
+                    }
+                    (value, None)
+                }
+                DecisionMatcher::Union {
+                    alternative,
+                    binding,
+                    ..
+                } if !sum.positional => {
+                    let label = self.source.slice(alternative);
+                    let value = sum
+                        .alternatives
+                        .iter()
+                        .position(|candidate| candidate.name == label)
+                        .ok_or_else(|| {
+                            source_diagnostic(
+                                &self.source,
+                                "E-UNKNOWN-UNION-ALTERNATIVE",
+                                alternative,
+                                format!("`{label}` is not an alternative of `{}`", sum.name),
+                            )
+                        })?;
+                    if sum.alternatives[value].payload.is_none() {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-UNION-PAYLOAD-BINDING",
+                            binding,
+                            format!("Union alternative `{label}` has no payload"),
+                        ));
+                    }
+                    (value, Some(binding))
+                }
+                DecisionMatcher::Variant {
+                    type_name,
+                    index,
+                    binding,
+                    ..
+                } if sum.positional => {
+                    let matcher_type = self.source.slice(type_name);
+                    if matcher_type != sum.name {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-VARIANT-TYPE",
+                            type_name,
+                            format!(
+                                "Variant matcher `{matcher_type}` does not match `{}`",
+                                sum.name
+                            ),
+                        ));
+                    }
+                    let value = parse_integer(self.source.slice(index))
+                        .and_then(|value| value.to_string().parse::<usize>().ok())
+                        .filter(|value| *value < sum.alternatives.len())
+                        .ok_or_else(|| {
+                            source_diagnostic(
+                                &self.source,
+                                "E-VARIANT-INDEX",
+                                index,
+                                "Variant alternative index is outside its declared bounds",
+                            )
+                        })?;
+                    (value, Some(binding))
+                }
+                _ => {
+                    return Err(unsupported(&self.source, rule.span, "sum decision matcher"));
+                }
+            };
+            let value = u32::try_from(value).expect("sum alternative fits native tag");
+            if !seen.insert(value) {
+                continue;
+            }
+            let binding = binding.map(|binding| (self.source.slice(binding).to_owned(), binding));
+            let branch = if let Some((name, _)) = &binding {
+                decision_binding_environment(
+                    environment,
+                    name,
+                    sum.alternatives[usize::try_from(value).expect("u32 sum tag fits usize")]
+                        .payload
+                        .clone()
+                        .expect("payload matcher selected a payload alternative"),
+                )
+            } else {
+                environment.clone()
+            };
+            lowered.push(CompilerSumRule {
+                value,
+                binding,
+                action: self.analyze_expression(&rule.action, &branch)?,
+                span: rule.span,
+            });
+        }
+        if otherwise.is_none() && seen.len() != sum.alternatives.len() {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                format!("decision does not cover every `{}` alternative", sum.name),
+            ));
+        }
+        let mut actions = lowered.iter().map(|rule| &rule.action).collect::<Vec<_>>();
+        if let Some(action) = &otherwise {
+            actions.push(action);
+        }
+        let (value_type, int_range, rational_value) = self.decision_facts(&actions, span)?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::SumDecision {
                 subject: Box::new(subject),
                 rules: lowered,
                 otherwise,
@@ -5584,6 +7105,9 @@ fn fundamental_type_value(name: &str) -> Option<u32> {
 }
 
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
+    if classifier == "ListEffect" {
+        return Some(CompilerType::List(Box::new(CompilerType::Effect)));
+    }
     if let Some(payload) = classifier.strip_prefix("Optional") {
         return Some(CompilerType::Optional(Box::new(parse_compact_classifier(
             payload,
@@ -5655,6 +7179,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "Error" => Some(CompilerType::Error),
         "ErrorCode" | "langarithmeticArithmeticErrorCode" => Some(CompilerType::ErrorCode),
         "ErrorDomain" => Some(CompilerType::ErrorDomain),
+        "SourceLocation" => Some(CompilerType::SourceLocation),
         "Character" => Some(CompilerType::Character),
         "String" => Some(CompilerType::String),
         _ => None,
@@ -5718,6 +7243,7 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
+        CompilerType::List(element) => element.as_ref() == &CompilerType::Effect,
         CompilerType::Optional(payload) => {
             matches!(
                 payload.as_ref(),
@@ -5725,6 +7251,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Rational
                     | CompilerType::Character
                     | CompilerType::String
+                    | CompilerType::Error
+                    | CompilerType::SourceLocation
             )
         }
         CompilerType::Result(success) => {
@@ -5734,6 +7262,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Nat
                     | CompilerType::Rational
                     | CompilerType::String
+                    | CompilerType::Modular(_)
             ) || matches!(
                 success.as_ref(),
                 CompilerType::Tuple(fields)
@@ -5747,7 +7276,10 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
 fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
     if matches!(
         value_type,
-        CompilerType::Scope | CompilerType::Function | CompilerType::Constraint
+        CompilerType::Scope
+            | CompilerType::Function
+            | CompilerType::Constraint
+            | CompilerType::Refined { .. }
     ) {
         return false;
     }
@@ -5764,11 +7296,19 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
             if fields
                 .iter()
                 .all(|(_, field)| compiler_function_result_supported(field))
+    ) || matches!(
+        value_type,
+        CompilerType::Sum(sum)
+            if sum.alternatives.iter().all(|alternative| alternative
+                .payload
+                .as_ref()
+                .is_none_or(compiler_function_result_supported))
     )
 }
 
 fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
-    value_type == &CompilerType::Function || compiler_function_result_supported(value_type)
+    matches!(value_type, CompilerType::Scope | CompilerType::Function)
+        || compiler_function_result_supported(value_type)
 }
 
 fn data_member_expression(facts: &CompilerDataMemberFacts, span: Span) -> CompilerExpression {
@@ -5800,6 +7340,7 @@ fn decision_binding_environment(
         name.to_owned(),
         BindingFacts {
             storage_name: name.to_owned(),
+            runtime_bound: true,
             value_type,
             int_range: None,
             rational_value: None,
@@ -5841,6 +7382,127 @@ fn is_exact_numeric(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Int | CompilerType::Rational)
 }
 
+fn forget_refined_evidence(mut expression: CompilerExpression) -> CompilerExpression {
+    let CompilerType::Refined { base, .. } = expression.value_type else {
+        return expression;
+    };
+    expression.value_type = *base;
+    expression
+}
+
+fn known_constraint_predicate(
+    predicate: &CompilerExpression,
+    parameter_storage: &str,
+    argument: &CompilerExpression,
+) -> Option<bool> {
+    match &predicate.kind {
+        CompilerExpressionKind::Boolean(value) => Some(*value),
+        CompilerExpressionKind::Not(value) => Some(!known_constraint_predicate(
+            value,
+            parameter_storage,
+            argument,
+        )?),
+        CompilerExpressionKind::Binary {
+            operation: CompilerBinary::And,
+            left,
+            right,
+        } => Some(
+            known_constraint_predicate(left, parameter_storage, argument)?
+                & known_constraint_predicate(right, parameter_storage, argument)?,
+        ),
+        CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Or,
+            left,
+            right,
+        } => Some(
+            known_constraint_predicate(left, parameter_storage, argument)?
+                | known_constraint_predicate(right, parameter_storage, argument)?,
+        ),
+        CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Xor,
+            left,
+            right,
+        } => Some(
+            known_constraint_predicate(left, parameter_storage, argument)?
+                ^ known_constraint_predicate(right, parameter_storage, argument)?,
+        ),
+        CompilerExpressionKind::Binary {
+            operation,
+            left,
+            right,
+        } if matches!(
+            operation,
+            CompilerBinary::Equal
+                | CompilerBinary::NotEqual
+                | CompilerBinary::Less
+                | CompilerBinary::Greater
+                | CompilerBinary::LessEqual
+                | CompilerBinary::GreaterEqual
+        ) =>
+        {
+            let left = known_constraint_numeric(left, parameter_storage, argument)?;
+            let right = known_constraint_numeric(right, parameter_storage, argument)?;
+            Some(match operation {
+                CompilerBinary::Equal => left == right,
+                CompilerBinary::NotEqual => left != right,
+                CompilerBinary::Less => left < right,
+                CompilerBinary::Greater => left > right,
+                CompilerBinary::LessEqual => left <= right,
+                CompilerBinary::GreaterEqual => left >= right,
+                _ => unreachable!("guard selected a Boolean comparison"),
+            })
+        }
+        _ => None,
+    }
+}
+
+fn known_constraint_numeric(
+    expression: &CompilerExpression,
+    parameter_storage: &str,
+    argument: &CompilerExpression,
+) -> Option<BigRational> {
+    match &expression.kind {
+        CompilerExpressionKind::Local(name) if name == parameter_storage => argument
+            .rational_value
+            .clone()
+            .or_else(|| exact_int(argument).map(BigRational::from_integer)),
+        CompilerExpressionKind::Int(value) => Some(BigRational::from_integer(value.clone())),
+        CompilerExpressionKind::Rational(value) => Some(value.clone()),
+        CompilerExpressionKind::Negate(value) => Some(-known_constraint_numeric(
+            value,
+            parameter_storage,
+            argument,
+        )?),
+        CompilerExpressionKind::Absolute(value) => Some(rational_absolute(
+            &known_constraint_numeric(value, parameter_storage, argument)?,
+        )),
+        CompilerExpressionKind::IntToRational(value)
+        | CompilerExpressionKind::RationalToInt(value)
+        | CompilerExpressionKind::IntToNat(value) => {
+            known_constraint_numeric(value, parameter_storage, argument)
+        }
+        CompilerExpressionKind::Binary {
+            operation,
+            left,
+            right,
+        } if matches!(
+            operation,
+            CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply
+        ) =>
+        {
+            let left = known_constraint_numeric(left, parameter_storage, argument)?;
+            let right = known_constraint_numeric(right, parameter_storage, argument)?;
+            Some(match operation {
+                CompilerBinary::Add => left + right,
+                CompilerBinary::Subtract => left - right,
+                CompilerBinary::Multiply => left * right,
+                _ => unreachable!("guard selected exact arithmetic"),
+            })
+        }
+        _ => None,
+    }
+}
+
 fn is_exact_comparable(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -5869,6 +7531,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::ErrorCode
         | CompilerType::Character
         | CompilerType::String
+        | CompilerType::Modular(_)
         | CompilerType::Enum(_) => true,
         CompilerType::Optional(payload) => {
             matches!(
@@ -5880,19 +7543,26 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         CompilerType::Record(fields) => fields
             .iter()
             .all(|(_, value_type)| compiler_equality_supported(value_type)),
+        CompilerType::Refined { base, .. } => compiler_equality_supported(base),
         CompilerType::Scope
         | CompilerType::Function
         | CompilerType::Constraint
         | CompilerType::Error
         | CompilerType::ErrorDomain
+        | CompilerType::SourceLocation
+        | CompilerType::Sum(_)
         | CompilerType::Range(_)
-        | CompilerType::Result(_) => false,
+        | CompilerType::Result(_)
+        | CompilerType::List(_) => false,
     }
 }
 
 fn compiler_ordering_supported(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::Int | CompilerType::Nat | CompilerType::Rational => true,
+        CompilerType::Int
+        | CompilerType::Nat
+        | CompilerType::Rational
+        | CompilerType::Modular(_) => true,
         CompilerType::Tuple(fields) => fields.iter().all(compiler_ordering_supported),
         _ => false,
     }
@@ -5905,7 +7575,11 @@ fn require_optional_payload(
 ) -> Result<(), Diagnostic> {
     if matches!(
         value_type,
-        CompilerType::Int | CompilerType::Rational | CompilerType::String
+        CompilerType::Int
+            | CompilerType::Rational
+            | CompilerType::String
+            | CompilerType::Error
+            | CompilerType::SourceLocation
     ) {
         Ok(())
     } else {
@@ -5959,7 +7633,15 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::StringEmpty
         | CompilerExpressionKind::ErrorCode(_)
         | CompilerExpressionKind::Enum(_)
-        | CompilerExpressionKind::OptionalNone => true,
+        | CompilerExpressionKind::OptionalNone
+        | CompilerExpressionKind::ListEmpty => true,
+        CompilerExpressionKind::ListEntry { value, remaining } => {
+            compiler_expression_is_closed_with(value, bound)
+                && compiler_expression_is_closed_with(remaining, bound)
+        }
+        CompilerExpressionKind::Sum { payload, .. } => payload
+            .as_deref()
+            .is_none_or(|value| compiler_expression_is_closed_with(value, bound)),
         CompilerExpressionKind::Tuple(values) => values
             .iter()
             .all(|value| compiler_expression_is_closed_with(value, bound)),
@@ -5977,9 +7659,13 @@ fn compiler_expression_is_closed_with(
         CompilerExpressionKind::Call { .. }
         | CompilerExpressionKind::Fallible { .. }
         | CompilerExpressionKind::Validate { .. }
+        | CompilerExpressionKind::ModularValidate { .. }
+        | CompilerExpressionKind::SumDecision { .. }
         | CompilerExpressionKind::ResultDecision { .. }
         | CompilerExpressionKind::OptionalDecision { .. } => false,
-        CompilerExpressionKind::Negate(value)
+        CompilerExpressionKind::IntToModular { value, .. }
+        | CompilerExpressionKind::ModularReduce { value, .. }
+        | CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
         | CompilerExpressionKind::IntToRational(value)
         | CompilerExpressionKind::RationalToInt(value)
@@ -6256,6 +7942,22 @@ fn division_by_zero(source: &SourceText, span: Span) -> Diagnostic {
     )
 }
 
+fn modular_range(modular: &CompilerModularType) -> IntRange {
+    IntRange {
+        lower: modular.lower.clone(),
+        upper: modular.upper.clone(),
+    }
+}
+
+fn reduce_modular(value: BigInt, modular: &CompilerModularType) -> BigInt {
+    let modulus = &modular.upper - &modular.lower + BigInt::from(1);
+    let mut residue = (value - &modular.lower) % &modulus;
+    if residue < BigInt::from(0) {
+        residue += &modulus;
+    }
+    &modular.lower + residue
+}
+
 fn modulo_range(dividend: &CompilerExpression, divisor: &CompilerExpression) -> Option<IntRange> {
     if let (Some(dividend), Some(divisor)) = (exact_int(dividend), exact_int(divisor)) {
         let magnitude = if divisor < BigInt::from(0) {
@@ -6458,6 +8160,23 @@ mod tests {
         let program = analyze_for_compiler(source).unwrap();
         assert_eq!(program.functions.len(), 2);
         assert_eq!(program.main.result.value_type.name(), "(Int, Int)");
+    }
+
+    #[test]
+    fn erases_valid_diagnostic_controls_after_shared_validation() {
+        // TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001, TOPAL-SYN-DIAG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/diagnostic-controls.t"
+        ))
+        .unwrap();
+        assert_eq!(program.main.statements.len(), 2);
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+
+        let invalid = "use language (version is v0.1)\nlang push-disable-warning unclosed\n()\n";
+        assert_eq!(
+            analyze_for_compiler(invalid).unwrap_err().code,
+            "E-DIAGNOSTIC-CONTROL-UNCLOSED"
+        );
     }
 
     #[test]
@@ -7228,6 +8947,32 @@ mod tests {
     }
 
     #[test]
+    fn models_optional_structured_error_fields() {
+        // TOPAL-COMPILER-ERROR-OPTIONAL-FIELDS-001, TOPAL-ERROR-FIELD-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/optional-result-composition.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(fields) = &program.main.result.kind else {
+            panic!("expected top-level tuple")
+        };
+        for (index, field, payload) in [
+            (4, CompilerErrorField::Detail, CompilerType::String),
+            (5, CompilerErrorField::Cause, CompilerType::Error),
+            (6, CompilerErrorField::Source, CompilerType::SourceLocation),
+        ] {
+            assert_eq!(
+                fields[index].value_type,
+                CompilerType::Optional(Box::new(payload))
+            );
+            assert!(matches!(
+                fields[index].kind,
+                CompilerExpressionKind::ErrorField { field: actual, .. } if actual == field
+            ));
+        }
+    }
+
+    #[test]
     fn models_qualified_arithmetic_error_code_values() {
         // TOPAL-NUM-ARITHMETIC-ERROR-001
         let source = "use language (version is v0.1)\nretain is fn (value : ErrorCode) -> ErrorCode\n  value\n(retain (lang arithmetic division-by-zero), lang arithmetic indeterminate, (lang arithmetic out-of-range) = (lang arithmetic out-of-range))\n";
@@ -7340,6 +9085,39 @@ mod tests {
             include_str!("../../../examples/language/effect-identity.t"),
         ] {
             assert!(analyze_for_compiler(source).is_ok());
+        }
+    }
+
+    #[test]
+    fn models_contextual_effect_list_construction() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-COMPILER-LIST-EFFECT-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/effect-list.t")).unwrap();
+        let [CompilerStatement::Binding(rows)] = program.main.statements.as_slice() else {
+            panic!("shared regression binds one List value")
+        };
+        assert_eq!(
+            rows.value.value_type,
+            CompilerType::List(Box::new(CompilerType::Effect))
+        );
+        let CompilerExpressionKind::ListEntry { value, remaining } = &rows.value.kind else {
+            panic!("expected contextual Entry construction")
+        };
+        assert!(matches!(value.kind, CompilerExpressionKind::Effect));
+        assert!(matches!(remaining.kind, CompilerExpressionKind::ListEmpty));
+        assert!(matches!(
+            program.main.result.kind,
+            CompilerExpressionKind::Local(ref storage) if storage == &rows.storage_name
+        ));
+
+        for invalid in [
+            "use language (version is v0.1)\nrows : List Effect is Entry (Completed, Empty)\nrows\n",
+            "use language (version is v0.1)\nrows : List Effect is Entry (Effects (), Effects ())\nrows\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(invalid).unwrap_err().code,
+                "E-TYPE-MISMATCH"
+            );
         }
     }
 
@@ -7681,6 +9459,65 @@ mod tests {
     }
 
     #[test]
+    fn models_named_constraint_validation_and_refined_base_operations() {
+        // TOPAL-TYPE-CONSTRAINT-001, TOPAL-TYPE-CONSTRAINT-VALIDATE-001,
+        // TOPAL-COMPILER-CONSTRAINT-VALIDATE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/constraints-and-derived-capabilities.t"
+        ))
+        .unwrap();
+        let refined = CompilerType::Refined {
+            constraint: "Positive".into(),
+            base: Box::new(CompilerType::Int),
+        };
+        for statement in &program.main.statements[1..=2] {
+            let CompilerStatement::Binding(binding) = statement else {
+                panic!("expected a refined binding")
+            };
+            assert_eq!(binding.value.value_type, refined);
+            assert!(matches!(binding.value.kind, CompilerExpressionKind::Int(_)));
+        }
+        let validate = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "validate")
+            .unwrap();
+        assert_eq!(
+            validate.result_type,
+            CompilerType::Result(Box::new(CompilerType::Int))
+        );
+        assert!(matches!(
+            validate.body.result.kind,
+            CompilerExpressionKind::Validate {
+                operation: CompilerValidation::Constraint(0),
+                ..
+            }
+        ));
+        let CompilerExpressionKind::Tuple(observations) = &program.main.result.kind else {
+            panic!("expected constraint observations")
+        };
+        assert_eq!(observations[0].value_type, refined);
+        assert_eq!(observations[1].value_type, CompilerType::Boolean);
+        assert_eq!(observations[2].value_type, CompilerType::Boolean);
+        assert_eq!(observations[3].value_type, CompilerType::Int);
+        assert_eq!(
+            observations[4].value_type,
+            CompilerType::Result(Box::new(CompilerType::Int))
+        );
+
+        let rejected = "use language (version is v0.1)\nPositive is Int constraint { value } value > 0\nPositive 0\n";
+        assert_eq!(
+            analyze_for_compiler(rejected).unwrap_err().code,
+            "E-CONSTRAINT-REJECTED"
+        );
+        let wrong_base = "use language (version is v0.1)\nPositive is Int constraint { value } value > 0\nPositive \"one\"\n";
+        assert_eq!(
+            analyze_for_compiler(wrong_base).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+    }
+
+    #[test]
     fn models_the_executable_root_namespace_and_qualified_function() {
         // TOPAL-COMPILER-ROOT-NAMESPACE-001, TOPAL-NAMESPACE-ROOT-001
         let program =
@@ -7720,6 +9557,54 @@ mod tests {
         ] {
             assert_eq!(analyze_for_compiler(source).unwrap_err().code, expected);
         }
+    }
+
+    #[test]
+    fn models_use_of_root_and_root_alias_namespaces() {
+        // TOPAL-COMPILER-NAMESPACE-USE-001, TOPAL-NAMESPACE-USE-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/use-namespace.t"))
+                .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::Root,
+                    value_type: CompilerType::Scope,
+                    ..
+                },
+                ..
+            })]
+        ));
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+
+        let alias = analyze_for_compiler(
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\napi is root\ncurrent is use api\ncurrent increment 41\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&alias.main.result), Some(BigInt::from(42)));
+
+        let data = analyze_for_compiler(
+            "use language (version is v0.1)\nanswer is 42\ncurrent is use root\ncurrent answer\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&data.main.result), Some(BigInt::from(42)));
+
+        let stale = analyze_for_compiler(
+            "use language (version is v0.1)\ncurrent is use root\nlater is 42\ncurrent later\n",
+        )
+        .unwrap_err();
+        assert_eq!(stale.code, "E-COMPILER-UNSUPPORTED");
+
+        let non_namespace =
+            analyze_for_compiler("use language (version is v0.1)\nuse 42\n").unwrap_err();
+        assert_eq!(non_namespace.code, "E-USE-NON-NAMESPACE");
+
+        let function_body = analyze_for_compiler(
+            "use language (version is v0.1)\nprobe is fn () -> Scope\n  use root\nprobe ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(function_body.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]
@@ -7840,6 +9725,59 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(rejected.code, "E-COMPILER-UNSUPPORTED");
+    }
+
+    #[test]
+    fn models_scope_parameters_as_specialized_private_environments() {
+        // TOPAL-COMPILER-NAMESPACE-BOUNDARY-001,
+        // TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001
+        let program = analyze_for_compiler(
+            "use language (version is v0.1)\nanswer is 42\nincrement is fn (value : Int) -> Int\n  value + 1\nread-answer is fn (api : Scope) -> Int\n  api answer\napply is fn (api : Scope, value : Int) -> Int\n  api increment value\nforward is fn (api : Scope) -> Int\n  read-answer api\n(read-answer root, apply root 41, forward root)\n",
+        )
+        .unwrap();
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("expected Scope-boundary result product")
+        };
+        assert!(
+            values
+                .iter()
+                .all(|value| exact_int(value) == Some(BigInt::from(42)))
+        );
+        let forward = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "forward")
+            .expect("forwarding Scope specialization exists");
+        assert_eq!(forward.parameters.len(), 2);
+        assert_eq!(forward.parameters[0].value_type, CompilerType::Scope);
+        assert_eq!(forward.parameters[1].name, "api answer");
+        assert_eq!(forward.parameters[1].value_type, CompilerType::Int);
+        let CompilerExpressionKind::Call { arguments, .. } = &forward.body.result.kind else {
+            panic!("forwarding body retains a direct private call")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(name) if name == "api answer"
+        ));
+
+        let stale = analyze_for_compiler(
+            "use language (version is v0.1)\napi is root\nanswer is 42\nread-answer is fn (scope : Scope) -> Int\n  scope answer\nread-answer api\n",
+        )
+        .unwrap_err();
+        assert_eq!(stale.code, "E-COMPILER-UNSUPPORTED");
+
+        let unsupported_member = analyze_for_compiler(
+            "use language (version is v0.1)\nnested is root\nread is fn (api : Scope) -> Int\n  api nested\nread root\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported_member.code, "E-COMPILER-UNSUPPORTED");
+
+        let local_root = analyze_for_compiler(
+            "use language (version is v0.1)\naccept is fn (_ : Scope) -> Int\n  1\nwrapper is fn () -> Int\n  accept root\nwrapper ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(local_root.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]
@@ -8363,6 +10301,62 @@ mod tests {
     }
 
     #[test]
+    fn models_non_escaping_nested_functions_with_private_captures() {
+        // TOPAL-COMPILER-NESTED-FUNCTION-001, TOPAL-FUNCTION-NESTED-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/nested-functions.t"
+        ))
+        .unwrap();
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+        let nested = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "add-input")
+            .expect("nested specialization is emitted");
+        assert_eq!(nested.parameters.len(), 2);
+        assert_eq!(nested.parameters[0].name, "value");
+        assert_eq!(nested.parameters[1].name, "input");
+        assert!(
+            nested
+                .parameters
+                .iter()
+                .all(|parameter| parameter.value_type == CompilerType::Int)
+        );
+        let outer = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .expect("outer specialization is emitted");
+        let CompilerExpressionKind::Call { arguments, .. } = &outer.body.result.kind else {
+            panic!("outer body directly calls the nested specialization")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(name) if name == "input"
+        ));
+
+        let escaped = analyze_for_compiler(
+            "use language (version is v0.1)\nconsume is fn (_ : Function) -> Int\n  1\nouter is fn (input : Int) -> Int\n  helper is fn (value : Int) -> Int\n    value + input\n  consume helper\nouter 1\n",
+        )
+        .unwrap_err();
+        assert_eq!(escaped.code, "E-COMPILER-UNSUPPORTED");
+
+        let shadowed = analyze_for_compiler(
+            "use language (version is v0.1)\nouter is fn (value : Int) -> Int\n  helper is fn (value : Int) -> Int\n    value\n  helper 42\nouter 1\n",
+        )
+        .unwrap();
+        let nested = shadowed
+            .functions
+            .iter()
+            .find(|function| function.source_name == "helper")
+            .unwrap();
+        assert_eq!(nested.parameters.len(), 1);
+        assert_eq!(nested.parameters[0].name, "value");
+        assert_eq!(exact_int(&shadowed.main.result), Some(BigInt::from(42)));
+    }
+
+    #[test]
     fn models_complete_header_forward_function_calls() {
         // TOPAL-FUNCTION-FORWARD-DECLARATION-001, TOPAL-COMPILER-FUNCTION-001
         let program = analyze_for_compiler(include_str!(
@@ -8668,6 +10662,161 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_nominal_union_and_variant_payload_decisions() {
+        // TOPAL-TYPE-UNION-001, TOPAL-TYPE-VARIANT-001,
+        // TOPAL-DECISION-UNION-001
+        let source = include_str!("../../../examples/language/unions-and-recursive-products.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "((Int, (Int, Int)), (Int, (Int, Int)), String, String)"
+        );
+        let describe = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "describe")
+            .expect("shared regression instantiates describe");
+        let CompilerType::Sum(message) = &describe.parameters[0].value_type else {
+            panic!("describe retains the nominal Message type")
+        };
+        assert!(!message.positional);
+        assert_eq!(message.alternatives.len(), 2);
+        assert!(message.alternatives[0].payload.is_none());
+        let CompilerExpressionKind::SumDecision { rules, .. } = &describe.body.result.kind else {
+            panic!("describe lowers a sum decision")
+        };
+        assert_eq!(rules.len(), 2);
+        assert!(rules.iter().any(|rule| rule.binding.is_some()));
+
+        let show = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "show-scalar")
+            .expect("shared regression instantiates show-scalar");
+        let CompilerType::Sum(scalar) = &show.parameters[0].value_type else {
+            panic!("show-scalar retains the nominal Scalar type")
+        };
+        assert!(scalar.positional);
+        assert!(
+            scalar
+                .alternatives
+                .iter()
+                .all(|alternative| alternative.payload.is_some())
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_nominal_sum_construction_and_matching() {
+        // TOPAL-TYPE-UNION-001, TOPAL-TYPE-VARIANT-001,
+        // TOPAL-DECISION-UNION-001
+        let wrong_payload = "use language (version is v0.1)\nMessage is Union\n  Move : Int\n\nvalue is Move true\nvalue\n";
+        assert_eq!(
+            analyze_for_compiler(wrong_payload).unwrap_err().code,
+            "E-UNION-PAYLOAD-CLASSIFIER"
+        );
+        let invalid_index =
+            "use language (version is v0.1)\nScalar is Variant (String, Int)\nScalar at 2 42\n";
+        assert_eq!(
+            analyze_for_compiler(invalid_index).unwrap_err().code,
+            "E-VARIANT-INDEX"
+        );
+        let incomplete = "use language (version is v0.1)\nMessage is Union\n  Stop\n  Move : Int\n\nread is fn (message : Message) -> Int\n  message\n    Stop then 0\nread Stop\n";
+        assert_eq!(
+            analyze_for_compiler(incomplete).unwrap_err().code,
+            "E-INCOMPLETE-DECISION"
+        );
+        let foreign_variant = "use language (version is v0.1)\nScalar is Variant (String, Int)\nOther is Variant (String, Int)\nread is fn (scalar : Scalar) -> String\n  scalar\n    Other at 0 text then text\n    otherwise \"number\"\nread (Scalar at 0 \"text\")\n";
+        assert_eq!(
+            analyze_for_compiler(foreign_variant).unwrap_err().code,
+            "E-VARIANT-TYPE"
+        );
+    }
+
+    #[test]
+    fn models_nominal_modular_construction_reduction_and_arithmetic() {
+        // TOPAL-NUM-MODULAR-TYPE-001, TOPAL-NUM-MODULAR-CONSTRUCT-001,
+        // TOPAL-NUM-MODULAR-REDUCE-001, TOPAL-NUM-MODULAR-ARITHMETIC-001
+        let source = include_str!("../../../examples/language/modular-numbers.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(ByteCounter, SignedByte, ByteCounter, SignedByte, Boolean, Boolean)"
+        );
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("modular regression retains its result product")
+        };
+        assert!(matches!(
+            values[0].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Add,
+                ..
+            }
+        ));
+        let CompilerExpressionKind::Binary { left, .. } = &values[0].kind else {
+            unreachable!("checked above")
+        };
+        assert!(matches!(
+            left.kind,
+            CompilerExpressionKind::IntToModular { .. }
+        ));
+        assert!(matches!(
+            values[2].kind,
+            CompilerExpressionKind::ModularReduce { .. }
+        ));
+        assert_eq!(exact_int(&values[0]), Some(BigInt::from(0)));
+        assert_eq!(exact_int(&values[1]), Some(BigInt::from(-128)));
+        assert_eq!(exact_int(&values[2]), Some(BigInt::from(255)));
+        assert_eq!(exact_int(&values[3]), Some(BigInt::from(-128)));
+    }
+
+    #[test]
+    fn models_named_ranges_and_dynamic_checked_modular_construction() {
+        // TOPAL-NUM-MODULAR-TYPE-001, TOPAL-NUM-MODULAR-CONSTRUCT-001
+        let source = include_str!("../../../examples/language/modular-checked-construction.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Result (ByteCounter, lang arithmetic ArithmeticErrorCode), Result (ByteCounter, lang arithmetic ArithmeticErrorCode), lang arithmetic ArithmeticErrorCode, ErrorDomain, Optional SourceLocation)"
+        );
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "construct"
+                && matches!(
+                    function.body.result.kind,
+                    CompilerExpressionKind::ResultSuccess(_)
+                )
+        }));
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "construct"
+                && matches!(
+                    function.body.result.kind,
+                    CompilerExpressionKind::ModularValidate { .. }
+                )
+        }));
+    }
+
+    #[test]
+    fn rejects_invalid_modular_construction() {
+        // TOPAL-NUM-MODULAR-TYPE-001, TOPAL-NUM-MODULAR-CONSTRUCT-001
+        let invalid_range = "use language (version is v0.1)\nDigit is ModNat (1 ..= 9)\nDigit 1\n";
+        assert_eq!(
+            analyze_for_compiler(invalid_range).unwrap_err().code,
+            "E-MODULAR-RANGE"
+        );
+
+        let outside = "use language (version is v0.1)\nDigit is ModNat (0 ..= 9)\nDigit 10\n";
+        assert_eq!(
+            analyze_for_compiler(outside).unwrap_err().code,
+            "E-MODULAR-OUT-OF-RANGE"
+        );
+
+        let nominal_mismatch = "use language (version is v0.1)\nDigit is ModNat (0 ..= 9)\nHour is ModNat (0 ..= 23)\n(Digit 1) + (Hour 1)\n";
+        assert_eq!(
+            analyze_for_compiler(nominal_mismatch).unwrap_err().code,
+            "E-TYPE-MISMATCH"
         );
     }
 

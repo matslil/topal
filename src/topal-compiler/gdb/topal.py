@@ -59,6 +59,17 @@ class _TopalIntPrinter:
         return magnitude
 
 
+class _TopalModularPrinter:
+    """Render a nominal modular value backed by a canonical Topal Int."""
+
+    def __init__(self, value, name):
+        self._value = value
+        self._name = name
+
+    def to_string(self):
+        return f"{self._name} {_TopalIntPrinter(self._value).to_string()}"
+
+
 def _display_string(value):
     if '"' not in value:
         return f'"{value}"'
@@ -224,6 +235,30 @@ class _TopalErrorPrinter:
         return f"Error ( domain is {domain}, code is {code} )"
 
 
+class _TopalSourceLocationPrinter:
+    """Render the source-visible line and column of an Error."""
+
+    def __init__(self, address):
+        self._address = address
+
+    def to_string(self):
+        address = int(self._address)
+        if address == 0:
+            return "<invalid null SourceLocation>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 16))
+        except gdb.MemoryError:
+            return "<unreadable SourceLocation>"
+        line = int.from_bytes(header[0:8], "little")
+        column = int.from_bytes(header[8:16], "little")
+        if not line or not column:
+            return "<invalid SourceLocation field>"
+        line = _TopalIntPrinter(line).to_string()
+        column = _TopalIntPrinter(column).to_string()
+        return f"(line is {line}, column is {column})"
+
+
 class _TopalResultPrinter:
     """Render a topal-native Result through its statically known success type."""
 
@@ -263,6 +298,14 @@ class _TopalResultPrinter:
                 f"({_TopalIntPrinter(quotient).to_string()}, "
                 f"{_TopalIntPrinter(remainder).to_string()})"
             )
+        try:
+            success_type = gdb.lookup_type(self._success).strip_typedefs()
+        except gdb.error:
+            success_type = None
+        if success_type is not None and str(success_type).startswith(
+            "struct TopalModular."
+        ):
+            return _TopalModularPrinter(payload, self._success).to_string()
         return f"<unsupported Result success type {self._success}>"
 
 
@@ -298,16 +341,100 @@ class _TopalOptionalPrinter:
             rendered = _TopalRationalPrinter(payload).to_string()
         elif self._payload_type in ("Character", "String"):
             rendered = _TopalStringPrinter(payload).to_string()
+        elif self._payload_type == "Error":
+            rendered = _TopalErrorPrinter(payload).to_string()
+        elif self._payload_type == "SourceLocation":
+            rendered = _TopalSourceLocationPrinter(payload).to_string()
         else:
             return f"<unsupported Optional payload type {self._payload_type}>"
         return f"Some {rendered}"
 
 
+class _TopalListPrinter:
+    """Render an immutable topal-native List through its element type."""
+
+    def __init__(self, value, element_type):
+        self._value = value
+        self._element_type = element_type
+
+    def to_string(self):
+        address = int(self._value)
+        inferior = gdb.selected_inferior()
+        entries = []
+        visited = set()
+        while address:
+            if address in visited:
+                return "<cyclic List>"
+            if len(entries) >= 100_000:
+                return "<List too large to render safely>"
+            visited.add(address)
+            try:
+                node = bytes(inferior.read_memory(address, 16))
+            except gdb.MemoryError:
+                return "<unreadable List node>"
+            if self._element_type == "Effect":
+                payload = node[0]
+                if payload:
+                    return f"<invalid Effect value {payload}>"
+                entries.append("Effects ()")
+            else:
+                return f"<unsupported List element type {self._element_type}>"
+            address = int.from_bytes(node[8:16], "little")
+        rendered = "Empty"
+        for entry in reversed(entries):
+            rendered = f"Entry ( {entry}, {rendered} )"
+        return rendered
+
+
+def _render_topal_value(value):
+    printer = _lookup_topal_value(value)
+    if printer is not None:
+        return printer.to_string()
+    value_type = value.type.strip_typedefs()
+    try:
+        fields = value_type.fields()
+    except gdb.error:
+        fields = ()
+    if fields and all(field.name and field.name.startswith("_") for field in fields):
+        rendered = [_render_topal_value(value[field.name]) for field in fields]
+        suffix = "," if len(rendered) == 1 else ""
+        return "(" + ", ".join(rendered) + suffix + ")"
+    return str(value)
+
+
+class _TopalSumPrinter:
+    """Render a private aggregate while observing only its active sum payload."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def to_string(self):
+        tag = self._value["tag"]
+        index = int(tag)
+        alternative = str(tag)
+        valid_tags = {
+            field.enumval for field in tag.type.strip_typedefs().fields()
+        }
+        if index not in valid_tags:
+            return f"<invalid sum tag {index}>"
+        prefix = alternative
+        try:
+            payload = self._value[f"payload_{index}"]
+        except gdb.error:
+            return prefix
+        return f"{prefix} {_render_topal_value(payload)}"
+
+
 def _lookup_topal_value(value):
     value_type = str(value.type)
+    storage_type = str(value.type.strip_typedefs())
+    if storage_type.startswith("struct TopalModular."):
+        return _TopalModularPrinter(value, value_type)
     if value_type == "Int":
         return _TopalIntPrinter(value)
     if value_type == "Nat":
+        return _TopalIntPrinter(value)
+    if storage_type == "struct TopalIntHeader *":
         return _TopalIntPrinter(value)
     if value_type == "Rational":
         return _TopalRationalPrinter(value)
@@ -321,6 +448,8 @@ def _lookup_topal_value(value):
         return _TopalErrorCodePrinter(value)
     if value_type == "ErrorDomain":
         return _TopalStringPrinter(value, quoted=False)
+    if value_type == "SourceLocation":
+        return _TopalSourceLocationPrinter(value)
     if value_type == "Range Int":
         return _TopalRangePrinter(value, "Int")
     if value_type == "Range Rational":
@@ -328,10 +457,19 @@ def _lookup_topal_value(value):
     optional_prefix = "Optional "
     if value_type.startswith(optional_prefix):
         return _TopalOptionalPrinter(value, value_type[len(optional_prefix) :])
+    list_prefix = "List "
+    if value_type.startswith(list_prefix) and storage_type.startswith(
+        "struct TopalList."
+    ):
+        return _TopalListPrinter(value, value_type[len(list_prefix) :])
     prefix = "Result ("
     suffix = ", lang arithmetic ArithmeticErrorCode)"
     if value_type.startswith(prefix) and value_type.endswith(suffix):
         return _TopalResultPrinter(value, value_type[len(prefix) : -len(suffix)])
+    if storage_type.startswith("struct TopalUnion."):
+        return _TopalSumPrinter(value)
+    if storage_type.startswith("struct TopalVariant."):
+        return _TopalSumPrinter(value)
     return None
 
 

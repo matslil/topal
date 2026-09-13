@@ -134,16 +134,47 @@ lookup tables, callable pointers, or public Scope layout before root data
 storage, generators, packages, and compiled-library interfaces have defined
 their distinct representation and artifact requirements.
 
+Source-root `use` composes with that snapshot representation rather than adding
+a second namespace mechanism. The frontend requires the single operand to be
+the live root Scope or an already retained root alias and returns the same
+checked namespace facts; an optional binding captures them at its ordinary
+source position. Member resolution therefore continues through the existing
+direct private function calls and stable data storage identities. `use` itself
+is erased before LLVM, while an observed binding retains only the existing
+sealed Scope tag and DWARF identity. Multi-component published paths and
+package/library lookup wait for canonical interface metadata and never consult
+ambient host filesystem or process state as a substitute.
+
 Source-root data members use a parallel immutable snapshot map. Each checked
 binding receives an internal storage key derived from its declaration location,
 while its source spelling remains the DWARF variable name. Qualified data
 selection carries that key into the checked expression, so LLVM reuses the
 already-emitted SSA value even through a caller lexical shadow; it neither
 replays the initializer nor consults a namespace object. Entry-frame SSA is not
-valid in an independently callable function, so function-body root-data access
+valid in an independently callable function, so direct function-body access
 through qualified `root member` remains rejected until root storage receives an
 explicit cross-function representation compatible with compiled-library
 interfaces.
+
+The first general Scope-parameter increment crosses that frame boundary by
+specialization rather than by inventing a public namespace object. At each
+admitted root or root-alias call, the checked function environment receives the
+concrete immutable declaration snapshot. Function members remain frontend
+metadata and still select direct private callees. For each non-discarded Scope
+parameter, every snapshot data member whose value already has a complete
+private representation is appended as an exact hidden `fastcc` parameter; the
+callee rewrites its namespace data map to those parameter storage identities.
+Passing the Scope onward repeats that
+typed environment threading, so forwarded selection never reaches back into a
+caller frame. Unsupported members remain static facts and are rejected if
+selected. The explicit sealed `i32` Scope parameter and material hidden values
+receive DWARF entries, with target-aligned debug shadows where needed. This
+finite closure conversion deliberately over-captures represented immutable data
+to make forwarding correct without analysis-order mutation. LLVM owns physical
+AMD64 parameter classification, and no namespace table, allocation, indirect
+dispatch, foreign runtime, public Scope ABI, or ABI revision results. Scope
+escape/results, function-local live-root formation, nested/non-root namespaces,
+and compiled-library environments remain later representation decisions.
 
 Explicit defining-context selection has a narrower first representation. For a
 root function called from the source entry frame, the frontend finds scalar
@@ -194,8 +225,25 @@ source order, and flat mixed symbolic applications are explicitly regrouped
 left-to-right before ordinary operation checking. The observation tag exists
 only for `<anonymous fn/N>` display and DWARF. A detected data capture is
 rejected rather than allowing entry-frame SSA to leak across function frames;
-hidden capture parameters, environments, escape analysis, and a public closure
-representation remain one coordinated later design.
+anonymous capture parameters, environments, escape analysis, and a public
+closure representation remain one coordinated later design.
+
+Named nested lexical functions declared directly in an ordinary function body
+establish the first private capture boundary without choosing that general
+closure design. At the declaration point, the frontend snapshots the finite
+visible immutable environment and retains every value with an admitted private
+representation, except names shadowed by the nested function's explicit
+parameters. Direct application specializes the nested declaration and passes
+source parameters followed by those original SSA values as deterministic exact
+hidden `fastcc` parameters. The nested name has no runtime value and cannot
+escape, so there is no function pointer, indirect dispatch, environment
+allocation, or caller-frame reference. LLVM owns the physical AMD64 parameter
+classification, while DWARF presents the nested source frame and both explicit
+and captured arguments under their source names. Static, effectful, recursive,
+overloaded, sibling-referencing, anonymous, or escaping closures, name
+collisions with visible or active callables, and captures of callable, Scope,
+constraint/evidence, or defining-context state remain deferred to the unified
+closure and library-interface design.
 
 One scalar packaged operand is normalized at the same checked boundary. A full
 positional product already has declaration order; the initial labeled form is
@@ -302,6 +350,33 @@ construction remains a predicate value: the runtime compares exact endpoints
 for membership, emptiness, and intersection and never enumerates or adjusts an
 open endpoint. Pointer-bearing range objects are also constructed at run time
 to preserve relocation-free no-loader PIE output.
+
+Nominal modular values reuse the canonical arbitrary-precision Int pointer as
+their private carrier rather than acquiring a machine-width representation.
+The checked model retains the declaration identity and canonical inclusive
+bounds; generated wrapping arithmetic performs the exact Int operation and
+then lowers `lower + ((value - lower) modulo modulus)` through existing runtime
+calls. This gives `-O0` the specified result for positive and negative ranges
+without relying on LLVM overflow behavior. Private `fastcc` functions carry the
+pointer directly and leave physical AMD64 lowering to LLVM. Distinct DWARF
+storage identities and typedefs restore the nominal source type for GDB even
+though the runtime layout is shared. This is not a public, foreign,
+serialization, or compiled-library numeric ABI, and it does not revise
+`topal-native/6`.
+
+A modular declaration may resolve an earlier immutable root binding whose
+initializer is a closed finite inclusive Int range; the compiler substitutes
+that source expression while collecting declarations, before ordinary value
+lowering. Checked construction uses static interval evidence when conclusive.
+Otherwise generated control flow compares the once-evaluated arbitrary-
+precision Int with both inclusive bounds and joins either the original Int
+pointer in the existing Result success header or a source-located
+`root.Name(Int)`/`out-of-range` Error. A modular-success Result uses the same
+private two-word runtime header as every arithmetic Result. Its specialized
+DWARF header changes only the debug payload type from opaque pointer to the
+nominal modular typedef, preserving layout while keeping that type reachable
+and renderable in GDB. This extension therefore needs neither a platform ABI
+choice nor a `topal-native/6` revision.
 
 String values use immutable `{data, length, display, display-length}`
 descriptors containing UTF-8 bytes and an optional cached canonical display.
@@ -419,6 +494,21 @@ identical sealed `i32` tags. Direct equality, function passage, display, DWARF,
 and GDB therefore cannot diverge from codes observed through an Error, and no
 namespace operation or foreign runtime survives into generated code.
 
+The remaining Error observations preserve the already allocated Error object.
+`detail` and `cause` load their reserved nullable pointer slots and translate
+null only into the matching nominal Optional `None`. `source` first checks the
+stored source descriptor; when present, it copies the stored one-based line and
+column into canonical Int objects referenced by a private 16-byte
+SourceLocation header. The existing Optional header then carries the String,
+Error, or SourceLocation pointer with its statically retained classifier.
+SourceLocation display loads the two Int pointers and uses the Topal integer
+writer, while DWARF describes the same two-field layout and GDB validates and
+decodes it. This allocation is semantic representation work required at O0,
+not an optimization. LLVM remains responsible for ordinary branch and private
+calling-convention lowering. Because Error's reserved fields and Optional's
+opaque payload layout do not change, the new previously unavailable private
+type does not revise `topal-native/6` or create a public/foreign interface.
+
 Optional values use their own immutable 16-byte header containing a validated
 `None`/`Some` tag and one opaque payload pointer. This is a distinct native
 semantic representation from Result even though the current private headers
@@ -434,6 +524,22 @@ reuses the existing pointer payload and therefore does not revise
 `topal-native/6`. Headers are allocated through the same Linux `mmap` platform
 boundary, and no foreign aggregate convention, allocator, or standard library
 participates.
+
+The first immutable container representation specializes `List Effect` without
+claiming a generic or public List layout. `Empty` is a null pointer. Each
+`Entry` is a naturally aligned 16-byte process-lifetime node with the sealed
+one-byte Effect carrier at offset zero and its remaining-node pointer at offset
+eight; padding is not source state. Construction evaluates the value before the
+remaining List, then allocates through the existing Linux `mmap` boundary.
+Canonical output walks the chain iteratively and emits closing constructors
+without recursion, while the GDB renderer bounds traversal and rejects cycles
+or unreadable nodes. Private `fastcc` signatures carry only the pointer and let
+LLVM select physical AMD64 placement. DWARF describes the semantic
+`List Effect` typedef and private node shape, but neither that description nor
+the storage becomes a foreign ABI, serialized identity, compiled-library
+contract, or layout commitment for other element types. General reachability
+reclamation remains deferred; process-lifetime retention is safe for this
+immutable executable-only slice and does not revise `topal-native/6`.
 
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
@@ -451,8 +557,34 @@ decisions lower to LLVM `switch` plus typed `phi` joins. An impossible invalid
 tag takes the compiler-runtime corruption exit rather than selecting an
 arbitrary source alternative. Display switches to the declared label bytes
 through the Topal syscall boundary, while DWARF describes a genuine enumeration
-so stock GDB shows source labels. General `Union` layout and nested enum
-declarations remain separate representation and scope increments.
+so stock GDB shows source labels. Nested enum declarations remain a separate
+scope increment.
+
+An admitted root-scope labeled `Union` or positional `Variant` retains its
+nominal identity and declaration-ordered payload classifiers in the checked
+model. Its private LLVM carrier is one non-packed literal struct containing an
+`i32` tag followed by one statically typed field for every payload-bearing
+alternative. Construction initializes every field with either the active
+payload or an inert zero bit pattern; generated control flow never observes an
+inactive field as a Topal value. This deliberately larger SSA carrier avoids a
+type-erased payload, allocation, and target-specific union coercion in the
+frontend. The same exact aggregate type appears at every private `fastcc`
+definition, call, and return, leaving x86-64 register/stack classification to
+LLVM under the qualified triple and data layout.
+
+A sum decision emits its subject once, switches on the tag, and introduces the
+complete active payload only in the selected branch environment. Invalid tags
+take the compiler-runtime corruption exit. Compatible action results use the
+existing typed leaf `phi` machinery. Display switches to the interpreter's
+source spelling and prints only the active payload through existing Topal value
+printers. DWARF describes a nominal typedef over the exact aggregate, an enum
+tag carrying source alternative names, and the real payload offsets. A
+target-aligned debug-only shadow compensates for LLVM 22's O0 SSA-aggregate
+visibility limits, while the bundled GDB renderer hides inactive storage and
+recursively renders the active payload. This carrier is neither a public or C
+sum ABI nor a serialization or library-metadata identity. Recursive nominal
+sums, persistent/public storage, and foreign adapters remain separate
+representation increments.
 
 A direct explicit `return` in an admitted linear function body is resolved by
 the checked frontend as a control-flow boundary, not an optional optimization.
@@ -511,9 +643,25 @@ increment does not apply the predicate. Display and DWARF enumerate the
 canonical `<Constraint name>` spellings, so ordinary output and GDB agree
 without reflection, allocation, lookup, or a constraint runtime. The tag is
 neither predicate dispatch nor a library metadata key. Capturing predicates,
-constraint application/evidence, function boundaries, aggregates, and public
-library identities remain deferred and are rejected rather than assigned a
-premature environment or ABI representation.
+constraint application/evidence, function boundaries, persistent/public
+aggregate machine boundaries, and public library identities remain deferred
+and are rejected rather than assigned a premature environment or ABI
+representation.
+
+For admitted application of a closed Int constraint, the frontend evaluates
+the retained predicate when the operand is structurally closed, rejects a known
+failure, and attaches a distinct refined classifier to an accepted unchanged
+Int pointer. Equality, ordering, and arithmetic explicitly forget only that
+evidence and reuse the base Int operations. An unknown operand causes the
+predicate's checked expression to be emitted once with the operand bound in a
+private LLVM environment; explicit `br` paths construct the existing
+`Result (Int, lang arithmetic ArithmeticErrorCode)` success or the
+`root.Name(Int)`/`out-of-range` Error. No optimizer is needed for either rule.
+DWARF represents a refined binding as a typedef over the same Int pointer, and
+a debug-only stack shadow keeps closed constants inspectable in GDB at O0.
+Other bases, dependent/capturing predicates, evidence across function or
+persistent/public aggregate machine boundaries, existential selection, and
+public constraint metadata remain separate increments.
 
 An ordinary prefix call with one positional product operand is flattened by the
 checked frontend into the declared scalar parameter sequence before overload
@@ -630,6 +778,15 @@ Rust. The compiler locates an explicit `--llvm-tools` directory,
 `TOPAL_LLVM_TOOLS`, `LLVM_SYS_220_PREFIX`, or the matching Rust LLVM-tools
 component, and rejects a different major version.
 
+Diagnostic controls remain entirely above the LLVM boundary. The shared parser
+validates warning and structured-identity stack discipline before the checked
+compiler model runs. The current compiler emits no configurable warning stream,
+so a valid control has no event to filter and is erased from the executable
+model; shared syntax errors and all language errors remain unsuppressible. When
+compiler warnings are added, filtering belongs at diagnostic publication using
+the retained source identity and lexical extent, never in generated runtime
+state.
+
 Every compilation assembles and verifies the IR before code generation. `llc`
 owns instruction selection, register allocation, machine scheduling, and ELF
 object emission. LLD owns relocation and executable layout. Topal supplies its
@@ -740,8 +897,9 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
-| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum, and fallible arithmetic control flow with typed result joins |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including native enum labels and bundled renderers for private Int, Rational, and finite exact Range objects |
+| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum, modular bound validation, and fallible arithmetic control flow with typed result joins |
+| `insertvalue` and `extractvalue` | used | target-independent construction and decomposition of exact private Tuple, Record, Union, and Variant aggregate signatures |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular and modular-success Result values, and bundled renderers for private Int, Rational, finite exact Range, modular, and active sum values |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm.memcpy.inline` | used | target-qualified dynamic String copies while retaining LLVM's guarantee that lowering calls no external function |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |

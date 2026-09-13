@@ -98,15 +98,38 @@ topalc -O0 -g -o hello hello.t
 `--emit object` stops before linking. These implementation formats do not
 replace Topal's versioned library interface and generic metadata.
 
+Valid `lang disable-warning` and structured `lang disable-diagnostic` controls
+are handled statically. They produce no LLVM instruction or runtime dependency;
+malformed control stacks remain shared source diagnostics, and language errors
+cannot be disabled by these controls.
+
 Unoptimized native output carries DWARF 5 source, function, parameter, and
 local-variable information. Load the bundled GDB value printers before a
 debugging session so private runtime values such as arbitrary-precision `Int`,
-exact `Rational`, `Range Int`, and `Range Rational` are displayed in source
-form:
+exact `Rational`, `Range Int`, `Range Rational`, and active nominal
+`Union`/`Variant` alternatives are displayed in source form:
 
 ```console
 gdb -ex 'source src/topal-compiler/gdb/topal.py' ./hello
 ```
+
+Specialized `Scope` function parameters remain visible as their source
+namespace value. Any immutable namespace data threaded through the private
+call boundary is also available as a named argument for diagnosis; it is not a
+runtime namespace table or a public environment layout.
+
+Within a single-source application, `use root` (or `use` of a retained root
+alias) is resolved statically and preserves the namespace snapshot at an
+optional binding. It neither flattens members nor performs a runtime filesystem
+lookup. External package and library paths remain tied to the future versioned
+interface-metadata pipeline rather than ambient host discovery.
+
+A directly applied nested lexical function appears as its own source frame.
+Represented immutable values captured from its enclosing invocation appear as
+named arguments after the declared parameters, so GDB can inspect both without
+a foreign closure runtime or an opaque environment object. This is a private
+compiler boundary; the nested function value cannot yet escape or define a
+published callable ABI.
 
 Topal executables are freestanding with respect to other language runtimes.
 They do not acquire a C or C++ standard library, process-startup object, or

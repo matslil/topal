@@ -1146,6 +1146,106 @@
       "cpu_time_ns": 131946,
       "memory_peak_bytes": 18530304,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/constraints-and-derived-capabilities.t": {
+      "cpu_time_ns": 124207299,
+      "memory_peak_bytes": 41832448,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/constraints-and-derived-capabilities.t": {
+      "cpu_time_ns": 171362,
+      "memory_peak_bytes": 18538496,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/unions-and-recursive-products.t": {
+      "cpu_time_ns": 127382239,
+      "memory_peak_bytes": 42414080,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/unions-and-recursive-products.t": {
+      "cpu_time_ns": 176130,
+      "memory_peak_bytes": 18669568,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/namespace-function-parameter.t": {
+      "cpu_time_ns": 120544739,
+      "memory_peak_bytes": 41611264,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/namespace-function-parameter.t": {
+      "cpu_time_ns": 143400,
+      "memory_peak_bytes": 18530304,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/nested-functions.t": {
+      "cpu_time_ns": 121273880,
+      "memory_peak_bytes": 41668608,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/nested-functions.t": {
+      "cpu_time_ns": 146582,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/diagnostic-controls.t": {
+      "cpu_time_ns": 120554620,
+      "memory_peak_bytes": 41365504,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/diagnostic-controls.t": {
+      "cpu_time_ns": 144360,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/use-namespace.t": {
+      "cpu_time_ns": 121094440,
+      "memory_peak_bytes": 41697280,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/use-namespace.t": {
+      "cpu_time_ns": 141250,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/optional-result-composition.t": {
+      "cpu_time_ns": 126924320,
+      "memory_peak_bytes": 41852928,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/optional-result-composition.t": {
+      "cpu_time_ns": 213036,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/modular-numbers.t": {
+      "cpu_time_ns": 123909460,
+      "memory_peak_bytes": 41095168,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/modular-numbers.t": {
+      "cpu_time_ns": 420050,
+      "memory_peak_bytes": 18501632,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/modular-checked-construction.t": {
+      "cpu_time_ns": 125376640,
+      "memory_peak_bytes": 41811968,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/modular-checked-construction.t": {
+      "cpu_time_ns": 200704,
+      "memory_peak_bytes": 18485248,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/effect-list.t": {
+      "cpu_time_ns": 120426700,
+      "memory_peak_bytes": 41570304,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/effect-list.t": {
+      "cpu_time_ns": 139650,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 500
     }
   }
 }
