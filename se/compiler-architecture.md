@@ -111,6 +111,18 @@ statically decidable scalar headers. Dynamic structural classifier dispatch,
 function values, closures, and remaining recursive call graphs remain later
 frontend work and do not leak into the private ABI prematurely.
 
+Within a single compiled source application, the executable `root` namespace
+is also a frontend identity rather than a runtime lookup table. The checked
+model recognizes the live root value and resolves a directly qualified
+function against the collected root declaration set before ordinary overload
+selection. This lookup bypasses same-named lexical bindings by construction.
+The resulting IR is the same direct private call used by unqualified selection;
+a sealed constant represents `root` only when the source observes the Scope
+value itself. Namespace aliases require declaration snapshots, packages require
+published interfaces, and compiled libraries require canonical artifact
+metadata, so those remain explicit later representation decisions rather than
+being approximated by this direct-root path.
+
 Recursion identity uses that complete selected input header, not source-name
 spelling alone. A call from an active `String` overload to a same-named `Int`
 overload is therefore an ordinary acyclic edge: it receives a distinct private

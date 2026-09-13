@@ -182,6 +182,29 @@ SHALL NOT select an ordinary callee. LLVM lowering and DWARF SHALL retain each
 selected overload's source function, typed parameters, invocation-local
 bindings, and frame without exposing staticness as an unqualified foreign ABI.
 
+### TOPAL-COMPILER-ROOT-NAMESPACE-001 — Direct executable-root qualification
+
+In the admitted single-source application subset, `root` in value position
+SHALL denote the current executable root namespace and canonically display as
+`<namespace root>` without copying, flattening, or executing its declarations.
+A qualified ordinary or static function path beginning `root member` SHALL
+resolve `member` only from
+the collected root declaration set before applying remaining operands with the
+ordinary checked overload and evaluation rules. A lexically shadowing local
+binding with the same member name SHALL NOT intercept that qualified selection.
+
+The root value MAY use a sealed zero-data compiler-private tag when carried in
+an expression-local positional product. Qualified calls SHALL lower directly to
+the selected private LLVM function and retain its source subprogram, parameter,
+location, and call frame in DWARF/GDB at O0. No runtime namespace lookup, Scope
+object allocation, foreign dependency, C/C++ runtime, other-language standard
+library, public tag ABI, or native ABI revision is permitted.
+
+Qualified namespace-alias lookup, classified Scope bindings, data-member
+lookup, `use`, published interfaces, generators, package loading, and
+compiled-library resolution remain outside this increment and SHALL be rejected
+rather than reinterpreted as direct-root function qualification.
+
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 
 The compiler SHALL admit a direct unary decreasing `Int` recursion edge only
