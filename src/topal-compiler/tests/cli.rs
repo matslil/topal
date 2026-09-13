@@ -1776,3 +1776,69 @@ fn gdb_retains_explicit_measure_state_across_recursive_frames() {
     );
     assert!(text.contains("topal.main"), "{text}");
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_distinguishes_same_named_cross_overload_frames() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-FUNCTION-RECURSION-OVERLOAD-IDENTITY-001
+    let directory = temporary("gdb-overload-recursion-identity");
+    let source = directory.join("overload-recursion-identity.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/overload-recursion-identity.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break overload-recursion-identity.t:10",
+            "-ex",
+            "break overload-recursion-identity.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "continue",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = String"), "{text}");
+    assert!(text.contains("$1 = \"Topal\""), "{text}");
+    assert!(text.contains("$2 = \"Topal\""), "{text}");
+    assert!(text.contains("topal.fn.describe.0"), "{text}");
+    assert!(text.contains("topal.fn.describe.1"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}

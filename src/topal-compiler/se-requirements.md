@@ -310,6 +310,23 @@ Topal-owned Linux syscall runtime. No C/C++ runtime, other-language standard
 library, or `topal-native/6` revision is permitted. This realizes
 `TOPAL-COMPILER-FUNCTION-DECREASES-001` for increment 3b2-b5e4.
 
+## TOPAL-COMP-RECURSION-OVERLOAD-IDENTITY-001 — Overload-specific recursion identity
+
+The checked compiler model shall use function name, staticness, and the complete
+selected input classifier sequence as an active call-graph identity. A call
+from one overload to a same-named overload with a different input header shall
+be an ordinary acyclic edge and shall not consume or require the active
+overload's recursion proof. A later edge returning to an active complete
+identity shall remain subject to the applicable proof gate.
+
+Every selected overload shall retain a distinct compiler-private symbol,
+checked source signature, and DWARF subprogram even when its scalar LLVM
+prototype uses the same carrier types. The acyclic callee shall precede its
+caller in generated definitions and appear as a distinct nested GDB frame. No
+runtime dispatch, type tag, foreign dependency, C/C++ runtime, other-language
+standard library, or `topal-native/6` revision is permitted. This realizes
+`TOPAL-COMPILER-RECURSION-OVERLOAD-IDENTITY-001` for increment 3b2-b5e5.
+
 ## TOPAL-COMP-RETURN-001 — Direct explicit function return
 
 Within an admitted linear function body, `return expression` shall evaluate and
