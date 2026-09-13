@@ -228,6 +228,31 @@ and `TOPAL-FUNCTION-FORWARD-DECLARATION-001`. Dynamic structural applicability,
 function values, nested functions, remaining recursion and its overload-identity
 rules, and other function forms remain in later increment-3 dispositions.
 
+## TOPAL-COMP-ROOT-NAMESPACE-001 — Direct executable-root qualification
+
+For the admitted single-source application subset, the checked compiler model
+shall recognize `root` as the executable root Scope value and shall resolve a
+directly qualified root function from the collected root declarations before
+ordinary source-ordered overload selection. The remaining operands shall be
+analyzed once under the existing call rules, and a same-named lexical binding
+shall not intercept the qualified root member. Binding or displaying `root`
+shall not copy, flatten, or execute its declarations, and canonical display
+shall match the interpreter's `<namespace root>` observation.
+
+The backend shall render the sealed root identity through the Topal-owned Linux
+writer and lower a qualified call directly to the selected private function.
+DWARF/GDB shall retain the selected source function, typed argument, call site,
+and runtime frame at O0. This shall require no runtime namespace lookup, Scope
+object allocation, foreign dependency, C/C++ runtime, other-language standard
+library, public tag ABI, or `topal-native/6` revision.
+
+Qualified namespace-alias lookup, classified Scope bindings, root data-member
+lookup, `use`, published interfaces, generators, package loading, and
+compiled-library resolution remain rejected in this increment. This requirement
+covers the direct-value and qualified-function subset of
+`TOPAL-NAMESPACE-ROOT-001` and realizes
+`TOPAL-COMPILER-ROOT-NAMESPACE-001` for compiler increment 6a.
+
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 
 The checked compiler model shall reuse the shared structural proof for

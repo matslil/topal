@@ -56,6 +56,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Completed
         | CompilerType::Effect
         | CompilerType::Type
+        | CompilerType::Scope
         | CompilerType::Boolean
         | CompilerType::Int
         | CompilerType::Nat
@@ -167,6 +168,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Completed
         | CompilerExpressionKind::Effect
         | CompilerExpressionKind::TypeValue(_)
+        | CompilerExpressionKind::Root
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -644,6 +646,10 @@ impl<'a> Generator<'a> {
                 value: value.to_string(),
                 enumeration: fundamental_type_enumeration(),
             },
+            CompilerExpressionKind::Root => LlValue::Enum {
+                value: "0".into(),
+                enumeration: root_scope_enumeration(),
+            },
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
             CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
             CompilerExpressionKind::Rational(value) => {
@@ -1087,6 +1093,14 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         enumeration: fundamental_type_enumeration(),
+                    },
+                    CompilerType::Scope => LlValue::Enum {
+                        value: body.instruction(
+                            &format!("call fastcc i32 @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        enumeration: root_scope_enumeration(),
                     },
                     CompilerType::Boolean => LlValue::Boolean(body.instruction(
                         &format!("call fastcc i1 @{symbol}({arguments})"),
@@ -3051,6 +3065,13 @@ fn fundamental_type_enumeration() -> CompilerEnumType {
     }
 }
 
+fn root_scope_enumeration() -> CompilerEnumType {
+    CompilerEnumType {
+        name: "Scope".into(),
+        alternatives: vec!["<namespace root>".into()],
+    }
+}
+
 fn numeric_domain(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Int => "int",
@@ -3548,6 +3569,7 @@ impl DebugInfo {
             CompilerType::Completed => self.completed_type,
             CompilerType::Effect => self.effect_type,
             CompilerType::Type => self.enum_type(&fundamental_type_enumeration()),
+            CompilerType::Scope => self.enum_type(&root_scope_enumeration()),
             CompilerType::Boolean => self.boolean_type,
             CompilerType::Int => self.int_type,
             CompilerType::Nat => self.nat_type,
@@ -3859,6 +3881,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
             alignment: 8,
         },
         CompilerType::Type
+        | CompilerType::Scope
         | CompilerType::Comparison
         | CompilerType::ErrorCode
         | CompilerType::Enum(_) => TargetValueLayout {
@@ -3940,6 +3963,7 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Result(_)
         | CompilerType::Optional(_) => "ptr".into(),
         CompilerType::Type
+        | CompilerType::Scope
         | CompilerType::Comparison
         | CompilerType::ErrorCode
         | CompilerType::Enum(_) => "i32".into(),
@@ -3975,6 +3999,10 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::Type => LlValue::Enum {
             value,
             enumeration: fundamental_type_enumeration(),
+        },
+        CompilerType::Scope => LlValue::Enum {
+            value,
+            enumeration: root_scope_enumeration(),
         },
         CompilerType::Boolean => LlValue::Boolean(value),
         CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
@@ -4382,6 +4410,20 @@ mod tests {
         let llvm = Generator::new(&identity, "type-identity.t").emit();
         assert!(llvm.contains("icmp eq i32 1, 1"));
         assert!(llvm.contains("icmp eq i32 1, 4"));
+    }
+
+    #[test]
+    fn emits_root_namespace_identity_and_statically_qualified_call() {
+        // TOPAL-COMPILER-ROOT-NAMESPACE-001, TOPAL-NAMESPACE-ROOT-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/root-namespace.t"))
+                .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "root-namespace.t").emit();
+        assert!(llvm.contains(&llvm_bytes(b"root")));
+        assert!(llvm.contains(&format!("call fastcc ptr @{symbol}(ptr")));
+        assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("topal.runtime.scope"));
     }
 
     #[test]

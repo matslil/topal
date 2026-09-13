@@ -52,7 +52,8 @@ evidence.
 | 4b3c | closed pinned-Unicode uppercase, lowercase, full case-fold, NFC/NFD normalization, canonical equivalence, and debugging | complete |
 | 4b3d | dynamic Character and Unicode operations, remaining strings, fundamental containers, traversal, and representation-safe allocation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
-| 6 | module/package/application construction, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
+| 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
+| 6b | namespace aliases and snapshots, Scope boundaries, `use`, published module/package/application construction, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
 | 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
 | 7b | nonempty effects and inference, resources, layouts, locations, tasks, deterministic scheduling, transactions, time, static flow, and platform packages | planned |
 | 8a | closed fundamental Type values, canonical identity equality/display, scalar function passage, and debugging | complete |
@@ -135,7 +136,10 @@ emptiness, and canonical dynamic display. Increment 4b3a retains statically
 proved Character evidence over the same descriptor; 4b3b adds closed
 observations under pinned segmentation; 4b3c adds closed pinned-Unicode
 transformations and canonical equivalence; 4b3d retains dynamic observations
-plus the remaining Unicode and container work. Increment 7a admits the inert
+plus the remaining Unicode and container work. Increment 6a resolves the
+executable root Scope identity and direct qualified root functions entirely in
+the frontend; 6b retains namespace snapshots, package construction, published
+interfaces, and source/compiled-library work. Increment 7a admits the inert
 canonical empty `Effect` as a distinct zero-data value; 7b retains effect
 execution/inference and the remaining platform-semantic work. Increment 8a
 admits the closed fundamental `Type` identities without runtime reflection;

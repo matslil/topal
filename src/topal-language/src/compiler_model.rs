@@ -35,6 +35,7 @@ pub enum CompilerType {
     Completed,
     Effect,
     Type,
+    Scope,
     Boolean,
     Int,
     Nat,
@@ -62,6 +63,7 @@ impl CompilerType {
                 | Self::Completed
                 | Self::Effect
                 | Self::Type
+                | Self::Scope
                 | Self::Boolean
                 | Self::Int
                 | Self::Nat
@@ -86,6 +88,7 @@ impl CompilerType {
             Self::Completed => "Completed".into(),
             Self::Effect => "Effect".into(),
             Self::Type => "Type".into(),
+            Self::Scope => "Scope".into(),
             Self::Boolean => "Boolean".into(),
             Self::Int => "Int".into(),
             Self::Nat => "Nat".into(),
@@ -227,6 +230,7 @@ pub enum CompilerExpressionKind {
     Completed,
     Effect,
     TypeValue(u32),
+    Root,
     Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
@@ -487,11 +491,12 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     }
 
     let (enums, enum_alternatives) = collect_enums(&source, &parsed.statements)?;
-    let reserved_names = enums
+    let mut reserved_names = enums
         .keys()
         .chain(enum_alternatives.keys())
         .cloned()
         .collect::<BTreeSet<_>>();
+    reserved_names.insert("root".to_owned());
     let mut functions = BTreeMap::new();
     collect_functions(&source, &parsed.statements, &reserved_names, &mut functions)?;
     let mut analyzer = Analyzer {
@@ -536,7 +541,7 @@ fn collect_enums(
             span: declaration_span,
         } = declaration;
         let name = source.slice(name_span).to_owned();
-        if enums.contains_key(&name) || alternatives.contains_key(&name) {
+        if name == "root" || enums.contains_key(&name) || alternatives.contains_key(&name) {
             return Err(source_diagnostic(
                 source,
                 "E-DUPLICATE-BINDING",
@@ -546,7 +551,8 @@ fn collect_enums(
         }
         let mut local = BTreeSet::new();
         for (label, alternative_span) in &declarations {
-            if label == &name
+            if label == "root"
+                || label == &name
                 || !local.insert(label.clone())
                 || enums.contains_key(label)
                 || alternatives.contains_key(label)
@@ -840,7 +846,8 @@ impl Analyzer {
                     let name_text = self.source.slice(*name).to_owned();
                     if declared.contains(&name_text)
                         || (kind == BlockKind::TopLevel
-                            && (self.functions.contains_key(&name_text)
+                            && (name_text == "root"
+                                || self.functions.contains_key(&name_text)
                                 || self.enums.contains_key(&name_text)
                                 || self.enum_alternatives.contains_key(&name_text)))
                     {
@@ -1011,6 +1018,15 @@ impl Analyzer {
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Completed,
                     value_type: CompilerType::Completed,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Identifier(name) if self.source.slice(*name) == "root" => {
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Root,
+                    value_type: CompilerType::Scope,
                     int_range: None,
                     rational_value: None,
                     span,
@@ -1191,6 +1207,16 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Some((Expression::Identifier(namespace), remaining)) = items.split_first()
+            && self.source.slice(*namespace) == "root"
+            && let Some(Expression::Identifier(member)) = remaining.first()
+        {
+            let member_name = self.source.slice(*member).to_owned();
+            if self.functions.contains_key(&member_name) {
+                return self.analyze_resolved_call(remaining, span, environment, 0, &member_name);
+            }
+            return Err(unsupported(&self.source, *member, "qualified root member"));
+        }
         if items.len() > 1
             && items
                 .iter()
@@ -3133,9 +3159,20 @@ impl Analyzer {
         let Some((function_index, function_name)) = function else {
             return Err(unsupported(&self.source, span, "application"));
         };
+        self.analyze_resolved_call(items, span, environment, function_index, &function_name)
+    }
+
+    fn analyze_resolved_call(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_index: usize,
+        function_name: &str,
+    ) -> Result<CompilerExpression, Diagnostic> {
         let declarations = self
             .functions
-            .get(&function_name)
+            .get(function_name)
             .expect("selected overload set exists")
             .clone();
         let argument_sources = items
@@ -3188,7 +3225,7 @@ impl Analyzer {
                 let expected = self.parse_classifier(parameter.classifier)?;
                 let Some(argument) = adapt_call_argument(&expected, argument).or_else(|| {
                     self.adapt_proven_recursive_nat_argument(
-                        &function_name,
+                        function_name,
                         declaration,
                         parameter_index,
                         &expected,
@@ -3218,7 +3255,7 @@ impl Analyzer {
                 format!("no overload of `{function_name}` accepts ({actual}) in this context"),
             ));
         };
-        self.finish_selected_call(&function_name, &declaration, arguments, span)
+        self.finish_selected_call(function_name, &declaration, arguments, span)
     }
 
     fn finish_selected_call(
@@ -4467,6 +4504,9 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
 }
 
 fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
+    if value_type == &CompilerType::Scope {
+        return false;
+    }
     if value_type.machine_scalar() {
         return compiler_abi_type_supported(value_type);
     }
@@ -4574,7 +4614,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         CompilerType::Record(fields) => fields
             .iter()
             .all(|(_, value_type)| compiler_equality_supported(value_type)),
-        CompilerType::Error
+        CompilerType::Scope
+        | CompilerType::Error
         | CompilerType::ErrorDomain
         | CompilerType::Range(_)
         | CompilerType::Result(_) => false,
@@ -4640,6 +4681,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Completed
         | CompilerExpressionKind::Effect
         | CompilerExpressionKind::TypeValue(_)
+        | CompilerExpressionKind::Root
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -6296,6 +6338,48 @@ mod tests {
                 .is_ok()
         );
         assert_ne!(CompilerType::Type, CompilerType::Int);
+    }
+
+    #[test]
+    fn models_the_executable_root_namespace_and_qualified_function() {
+        // TOPAL-COMPILER-ROOT-NAMESPACE-001, TOPAL-NAMESPACE-ROOT-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/root-namespace.t"))
+                .unwrap();
+        assert_eq!(program.functions.len(), 1);
+        let CompilerExpressionKind::Tuple(fields) = &program.main.result.kind else {
+            panic!("expected the root namespace observation product")
+        };
+        assert!(matches!(fields[0].kind, CompilerExpressionKind::Root));
+        assert_eq!(fields[0].value_type, CompilerType::Scope);
+        assert!(matches!(
+            fields[1].kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+        assert_eq!(exact_int(&fields[1]), Some(BigInt::from(42)));
+
+        let shadowed = analyze_for_compiler(
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\n{\n  increment is 100\n  root increment 41\n}\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&shadowed.main.result), Some(BigInt::from(42)));
+
+        for (source, expected) in [
+            (
+                "use language (version is v0.1)\nroot is 1\n",
+                "E-DUPLICATE-BINDING",
+            ),
+            (
+                "use language (version is v0.1)\nroot is fn () -> Int\n  1\n",
+                "E-DUPLICATE-BINDING",
+            ),
+            (
+                "use language (version is v0.1)\nKind is Enum (root)\nKind\n",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+        ] {
+            assert_eq!(analyze_for_compiler(source).unwrap_err().code, expected);
+        }
     }
 
     #[test]
