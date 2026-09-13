@@ -201,6 +201,23 @@ or any other LLVM optimization, and the function SHALL NOT be marked
 source parameter. This admission SHALL add no runtime dispatch, foreign
 dependency, standard library, or native ABI revision.
 
+### TOPAL-COMPILER-RECURSION-INT-INCREASING-001 — Proven direct increasing Int recursion
+
+The compiler SHALL admit the increasing dual of
+`TOPAL-COMPILER-RECURSION-INT-001` only when the shared language proof
+establishes `TOPAL-FUNCTION-RECURSION-INT-INCREASING-001`. The complete body
+SHALL use the inclusive upper-bound form, its base SHALL contain no self-call,
+and every recursive edge SHALL add a strict positive literal step satisfying
+`TOPAL-FUNCTION-RECURSION-INT-POSITIVE-STEP-001`. Zero, negative,
+runtime-selected, subtracting, and otherwise unproven steps SHALL remain
+rejected.
+
+The same conservative parameter checking, one-symbol exact private prototype,
+O0 correctness, LLVM attribute, DWARF frame, freestanding-runtime, and native
+ABI obligations of `TOPAL-COMPILER-RECURSION-INT-001` SHALL apply. Positive
+multi-unit steps MAY overshoot the inclusive bound as specified by the shared
+proof and SHALL NOT require a distinct runtime operation or representation.
+
 ### TOPAL-COMPILER-ENUM-001 — Sealed nominal enum lowering
 
 Each admitted payload-free source enum SHALL retain a distinct nominal identity

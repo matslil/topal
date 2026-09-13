@@ -1587,3 +1587,62 @@ fn gdb_retains_recursive_int_frames_and_parameters() {
     assert!(text.matches("topal.fn.sum_2ddown.0").count() >= 2, "{text}");
     assert!(text.contains("topal.main"), "{text}");
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_retains_increasing_recursive_int_frames_and_parameters() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-FUNCTION-RECURSION-INT-INCREASING-001
+    let directory = temporary("gdb-increasing-int-recursion");
+    let source = directory.join("increasing-int-recursion.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/increasing-int-recursion.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break increasing-int-recursion.t:10",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = -5"), "{text}");
+    assert!(text.contains("$2 = -4"), "{text}");
+    assert!(
+        text.matches("topal.fn.distance_2dup.0").count() >= 2,
+        "{text}"
+    );
+    assert!(text.contains("topal.main"), "{text}");
+}
