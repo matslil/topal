@@ -6647,6 +6647,26 @@ mod tests {
     }
 
     #[test]
+    fn specializes_bound_anonymous_int_list_functions_without_dispatch() {
+        // TOPAL-COLLECTION-MAP-001, TOPAL-COLLECTION-SELECT-001,
+        // TOPAL-COLLECTION-FOLD-001, TOPAL-FUNCTION-ANONYMOUS-001,
+        // TOPAL-COMPILER-LIST-INT-BOUND-FUNCTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/bound-anonymous-functions.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "bound-anonymous-functions.t").emit();
+
+        assert!(llvm.contains("list.map.loop"));
+        assert!(llvm.contains("list.select.loop"));
+        assert!(llvm.contains("list.fold.loop"));
+        assert!(llvm.contains("<anonymous fn/1>"));
+        assert!(llvm.contains("<anonymous fn/2>"));
+        assert!(!llvm.contains("topal.fn.anonymous"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn erases_diagnostic_controls_before_llvm_lowering() {
         // TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001, TOPAL-SYN-DIAG-001
         let program = analyze_for_compiler(include_str!(
