@@ -11024,7 +11024,7 @@ pub(super) fn prove_int_recursion(
     (found && valid && preserves_nat).then_some(proof_rule)
 }
 
-fn prove_explicit_parameter_recursion(
+pub(super) fn prove_explicit_parameter_recursion(
     source: &SourceText,
     function_name: &str,
     parameters: &[(String, String)],
@@ -11106,7 +11106,7 @@ fn prove_explicit_parameter_recursion(
     (found && valid && preserves_nat).then_some(proof_rule)
 }
 
-fn explicit_single_measure(effect_bound: &str) -> Option<&str> {
+pub(super) fn explicit_single_measure(effect_bound: &str) -> Option<&str> {
     let measure = effect_bound.trim().strip_prefix("Decreases")?.trim();
     let measure = measure
         .strip_prefix('(')

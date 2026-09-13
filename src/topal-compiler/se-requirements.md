@@ -290,6 +290,26 @@ existing Topal-owned Linux syscall runtime and `topal-native/6` ABI, with no
 C/C++ runtime or other-language standard library. This realizes
 `TOPAL-COMPILER-RECURSION-NAT-001` for increment 3b2-b5e3.
 
+## TOPAL-COMP-DECREASES-001 — Explicit measured recursion
+
+The checked compiler model shall retain a v0.1 `Decreases` effect bound and
+admit its direct recursive edge only when the shared
+`TOPAL-FUNCTION-DECREASES-001` proof verifies the complete overload body. The
+initial closure shall support one directly named `Int` or `Nat` measure among
+multiple scalar parameters, verify the corresponding packaged argument on each
+self-call, and reject mismatched measures and non-progressing steps.
+
+Active proof metadata shall record the exact measured parameter index. A
+proof-backed Nat evidence conversion shall be available only at that position;
+all unmeasured parameters shall retain ordinary checking. The measure shall be
+erased before lowering and add no hidden argument, counter, allocation,
+validation call, or ABI field. The function shall use one exact private
+`fastcc` prototype with `noinline` and no false `norecurse`, preserve every
+source parameter in recursive DWARF/GDB frames, and use only the existing
+Topal-owned Linux syscall runtime. No C/C++ runtime, other-language standard
+library, or `topal-native/6` revision is permitted. This realizes
+`TOPAL-COMPILER-FUNCTION-DECREASES-001` for increment 3b2-b5e4.
+
 ## TOPAL-COMP-RETURN-001 — Direct explicit function return
 
 Within an admitted linear function body, `return expression` shall evaluate and

@@ -238,6 +238,24 @@ The function SHALL otherwise meet the exact private prototype, O0, attribute,
 DWARF, freestanding-runtime, and native ABI obligations of
 `TOPAL-COMPILER-RECURSION-INT-001`.
 
+### TOPAL-COMPILER-FUNCTION-DECREASES-001 — Explicit measured recursion
+
+The compiler SHALL admit an explicitly measured direct recursive function only
+when the shared language proof establishes `TOPAL-FUNCTION-DECREASES-001` for
+the complete selected overload. The initial compiler subset SHALL accept one
+directly named `Int` or `Nat` measure across a scalar multi-parameter state and
+SHALL verify every recursive packaged argument. A missing or mismatched measure,
+an invalid decision shape, or any non-progressing edge SHALL remain rejected;
+the written `Decreases` clause alone SHALL NOT be trusted.
+
+Proof metadata SHALL identify the measured parameter exactly. Only that
+position MAY regain `Nat` evidence without dynamic validation when the shared
+proof also preserves its domain; no other parameter receives that authority.
+The explicit measure SHALL add no hidden machine parameter, runtime counter,
+allocation, validation call, foreign dependency, standard library, or native
+ABI revision. One recursive overload SHALL retain one exact private prototype,
+and DWARF/GDB SHALL expose all source parameters in each non-inlined frame.
+
 ### TOPAL-COMPILER-ENUM-001 — Sealed nominal enum lowering
 
 Each admitted payload-free source enum SHALL retain a distinct nominal identity

@@ -786,6 +786,16 @@
       "cpu_time_ns": 155121,
       "memory_peak_bytes": 18362368,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/explicit-multi-parameter-decreases.t": {
+      "cpu_time_ns": 121793460,
+      "memory_peak_bytes": 41594880,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/explicit-multi-parameter-decreases.t": {
+      "cpu_time_ns": 180568,
+      "memory_peak_bytes": 18620416,
+      "samples_per_test": 500
     }
   }
 }
