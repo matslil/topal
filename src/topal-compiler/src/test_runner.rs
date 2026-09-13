@@ -75,6 +75,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/nat-recursion.t",
     "examples/language/namespace-alias-chain.t",
     "examples/language/namespace-alias.t",
+    "examples/language/namespace-function-parameter.t",
     "examples/language/namespace-overloads.t",
     "examples/language/namespace-snapshot.t",
     "examples/language/ordinary-functions.t",

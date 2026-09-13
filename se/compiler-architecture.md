@@ -140,10 +140,30 @@ while its source spelling remains the DWARF variable name. Qualified data
 selection carries that key into the checked expression, so LLVM reuses the
 already-emitted SSA value even through a caller lexical shadow; it neither
 replays the initializer nor consults a namespace object. Entry-frame SSA is not
-valid in an independently callable function, so function-body root-data access
+valid in an independently callable function, so direct function-body access
 through qualified `root member` remains rejected until root storage receives an
 explicit cross-function representation compatible with compiled-library
 interfaces.
+
+The first general Scope-parameter increment crosses that frame boundary by
+specialization rather than by inventing a public namespace object. At each
+admitted root or root-alias call, the checked function environment receives the
+concrete immutable declaration snapshot. Function members remain frontend
+metadata and still select direct private callees. For each non-discarded Scope
+parameter, every snapshot data member whose value already has a complete
+private representation is appended as an exact hidden `fastcc` parameter; the
+callee rewrites its namespace data map to those parameter storage identities.
+Passing the Scope onward repeats that
+typed environment threading, so forwarded selection never reaches back into a
+caller frame. Unsupported members remain static facts and are rejected if
+selected. The explicit sealed `i32` Scope parameter and material hidden values
+receive DWARF entries, with target-aligned debug shadows where needed. This
+finite closure conversion deliberately over-captures represented immutable data
+to make forwarding correct without analysis-order mutation. LLVM owns physical
+AMD64 parameter classification, and no namespace table, allocation, indirect
+dispatch, foreign runtime, public Scope ABI, or ABI revision results. Scope
+escape/results, function-local live-root formation, nested/non-root namespaces,
+and compiled-library environments remain later representation decisions.
 
 Explicit defining-context selection has a narrower first representation. For a
 root function called from the source entry frame, the frontend finds scalar
@@ -784,7 +804,7 @@ validated semantic interface.
 | LLD | used | deterministic no-default-library static PIE link |
 | `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum, and fallible arithmetic control flow with typed result joins |
 | `insertvalue` and `extractvalue` | used | target-independent construction and decomposition of exact private Tuple, Record, Union, and Variant aggregate signatures |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including native enum/sum alternatives and bundled renderers for private Int, Rational, finite exact Range, and active sum values |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, and bundled renderers for private Int, Rational, finite exact Range, and active sum values |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm.memcpy.inline` | used | target-qualified dynamic String copies while retaining LLVM's guarantee that lowering calls no external function |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |

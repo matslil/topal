@@ -304,11 +304,42 @@ This shall add no runtime namespace lookup/table, Scope allocation, foreign
 dependency, C/C++ runtime, other-language standard library, public data ABI, or
 `topal-native/6` revision. Function-body root-data access, nested qualified Scope
 members, general Scope function boundaries, generators, `use`, packages, and
-source/compiled libraries remain rejected. This realizes
+source/compiled libraries remain rejected by increment 6b2a. This realizes
 `TOPAL-COMPILER-NAMESPACE-DATA-001` for increment 6b2a under
 `TOPAL-NAMESPACE-ROOT-001`, `TOPAL-NAMESPACE-ALIAS-001`,
 `TOPAL-NAMESPACE-SNAPSHOT-001`, `TOPAL-NAMESPACE-CLASSIFIER-001`, and
 `TOPAL-NAMESPACE-ALIAS-CHAIN-001`.
+
+## TOPAL-COMP-NAMESPACE-BOUNDARY-001 — Specialized Scope parameters
+
+For an ordinary function called with the live source `root` Scope, a retained
+root alias, or an already-specialized Scope parameter, the checked model shall
+specialize each `Scope` parameter with the concrete namespace identity,
+source-position declaration snapshot, function overload sets, and represented
+data members. Qualified function calls shall use the existing direct
+specialization path. For each non-discarded Scope parameter, the frontend shall
+carry every data member with an admitted private representation as an exact
+hidden argument, so direct selection and transitive Scope-parameter forwarding
+reference the original already-evaluated value without caller-frame lookup. It
+shall diagnose a missing selected member and a selected member that lacks an
+admitted private representation.
+
+The Linux x86-64 backend shall retain the explicit sealed `i32` Scope value and
+append exact typed hidden parameters under private `fastcc`; definitions and
+calls shall have identical LLVM types, and LLVM shall own physical register,
+stack, and aggregate classification. It shall preserve the explicit Scope
+parameter and material hidden arguments in DWARF/GDB at O0. Tests shall cover
+the shared interpreter regression, data selection, direct qualified functions,
+forwarding, stale alias rejection, single initializer execution, native
+artifacts, source frames, and separate resource baselines.
+
+This shall add no runtime namespace lookup/table, indirect dispatch, Scope or
+environment allocation, foreign dependency, C/C++ runtime, other-language
+standard library, public Scope ABI, or `topal-native/6` revision. Scope results
+or escape, function-local live-root arguments, nested/non-root namespaces,
+generator members, `use`, packages, and compiled-library environments remain
+deferred. This realizes `TOPAL-COMPILER-NAMESPACE-BOUNDARY-001` and
+`TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001` for increment 6b2b1.
 
 ## TOPAL-COMP-NAMED-FUNCTION-VALUE-001 — Retained named function values
 

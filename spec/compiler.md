@@ -250,10 +250,43 @@ storage identities differ. The implementation SHALL require no runtime
 namespace lookup, Scope allocation, foreign dependency, C/C++ runtime,
 other-language standard library, public ABI, or native ABI revision.
 
-Root data access from a compiled function body, nested qualified Scope members,
-general Scope function boundaries, generators, `use`, packages, and source or
-compiled libraries remain outside this increment and SHALL be rejected until a
-storage/interface representation valid beyond the source entry frame exists.
+Direct `root member` data access from a compiled function body, Scope
+results/escape, nested qualified Scope members, generators, `use`, packages,
+and source or compiled libraries remain outside this increment and SHALL be
+rejected until a storage/interface representation valid beyond the source entry
+frame exists.
+
+### TOPAL-COMPILER-NAMESPACE-BOUNDARY-001 — Specialized Scope parameters
+
+When an admitted single-source call supplies the live `root` value, a known
+root alias, or an already-specialized Scope parameter to an ordinary parameter
+classified as `Scope`, checking SHALL specialize the callee with that namespace
+identity and its exact captured declaration snapshot. Qualified function
+selection through the parameter SHALL retain the snapshot overloads and lower
+to direct private calls. Each data member with an admitted private
+representation SHALL retain the original already-evaluated value and
+source-member identity across the call. Forwarding the parameter to another
+admitted Scope boundary SHALL preserve the same facts. A missing member and any
+selected member without a valid private representation SHALL be rejected before
+code generation.
+
+The explicit Scope value MAY remain the sealed compiler-private tag. The
+compiler MAY closure-convert a non-discarded parameter's finite represented data
+snapshot into exact hidden LLVM parameters, including unused members needed to
+make subsequent forwarding independent of caller storage. Definitions and
+calls SHALL agree on one exact private signature and leave physical AMD64
+aggregate and register classification to LLVM. Initializers SHALL NOT be
+re-executed, and LLVM values
+SHALL NOT acquire source-level copy or identity semantics merely by crossing the
+boundary. DWARF/GDB SHALL expose the explicit Scope parameter and any material
+hidden data arguments without presenting a runtime lookup object.
+
+This specialization SHALL NOT define a public Scope or environment ABI and
+SHALL require no namespace table, indirect dispatch, allocation, foreign
+dependency, C/C++ runtime, other-language standard library, or native ABI
+revision. Scope results or escape, a live `root` argument formed inside a
+compiled function, nested or non-root namespaces, generator members, `use`,
+packages, and compiled-library Scope environments remain deferred.
 
 ### TOPAL-COMPILER-NAMED-FUNCTION-VALUE-001 — Retained named function values
 

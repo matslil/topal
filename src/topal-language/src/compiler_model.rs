@@ -522,6 +522,13 @@ struct CompilerContextCapture {
     span: Span,
 }
 
+struct CompilerCallMetadata {
+    callable_arguments: Vec<Option<CompilerCallableFacts>>,
+    scope_arguments: Vec<Option<CompilerNamespaceFacts>>,
+    scope_captures: Vec<CompilerContextCapture>,
+    context_captures: Vec<CompilerContextCapture>,
+}
+
 #[derive(Clone)]
 enum CompilerCallableFacts {
     Named {
@@ -2112,7 +2119,6 @@ impl Analyzer {
                 );
             }
             if remaining.len() == 1
-                && !self.in_function
                 && let Some(facts) = namespace.bindings.get(&member_name)
             {
                 return Ok(data_member_expression(facts, span));
@@ -3173,6 +3179,15 @@ impl Analyzer {
                 "non-root namespace alias binding",
             ));
         }
+        self.resolve_namespace(value, environment, capture_position)
+    }
+
+    fn resolve_namespace(
+        &self,
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+        capture_position: usize,
+    ) -> Result<Option<CompilerNamespaceFacts>, Diagnostic> {
         match &value.kind {
             CompilerExpressionKind::Root => Ok(Some(CompilerNamespaceFacts {
                 name: "root".into(),
@@ -3200,6 +3215,72 @@ impl Analyzer {
                 "computed Scope alias",
             )),
         }
+    }
+
+    fn scope_parameter_arguments(
+        &self,
+        declaration: &FunctionSource,
+        arguments: &[CompilerExpression],
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<
+        (
+            Vec<Option<CompilerNamespaceFacts>>,
+            Vec<CompilerContextCapture>,
+        ),
+        Diagnostic,
+    > {
+        let mut namespaces = Vec::with_capacity(declaration.parameters.len());
+        let mut captures = Vec::new();
+        for (parameter, argument) in declaration.parameters.iter().zip(arguments) {
+            if self.parse_classifier(parameter.classifier)? != CompilerType::Scope {
+                namespaces.push(None);
+                continue;
+            }
+            if self.in_function && matches!(argument.kind, CompilerExpressionKind::Root) {
+                return Err(unsupported(
+                    &self.source,
+                    argument.span,
+                    "function-body live root Scope argument",
+                ));
+            }
+            let mut namespace = self
+                .resolve_namespace(argument, environment, argument.span.start)?
+                .ok_or_else(|| unsupported(&self.source, argument.span, "opaque Scope argument"))?;
+            let parameter_name = self.source.slice(parameter.name);
+            if parameter_name == "_" {
+                namespaces.push(Some(namespace));
+                continue;
+            }
+            let represented_members = namespace
+                .bindings
+                .iter()
+                .map(|(member_name, facts)| (member_name.clone(), facts.clone()))
+                .collect::<Vec<_>>();
+            for (member_name, facts) in represented_members {
+                if !compiler_function_result_supported(&facts.value_type) {
+                    namespace.bindings.remove(&member_name);
+                    continue;
+                }
+                let span = parameter.name;
+                let hidden_name = format!("{parameter_name} {member_name}");
+                namespace
+                    .bindings
+                    .get_mut(&member_name)
+                    .expect("captured namespace data member exists")
+                    .storage_name
+                    .clone_from(&hidden_name);
+                captures.push(CompilerContextCapture {
+                    parameter_name: hidden_name,
+                    value_type: facts.value_type.clone(),
+                    int_range: facts.int_range.clone(),
+                    rational_value: facts.rational_value.clone(),
+                    argument: data_member_expression(&facts, span),
+                    span,
+                });
+            }
+            namespaces.push(Some(namespace));
+        }
+        Ok((namespaces, captures))
     }
 
     fn known_callable(
@@ -3697,7 +3778,9 @@ impl Analyzer {
                     format!("`{name}` is already declared in this parameter pattern"),
                 ));
             }
-            if !compiler_function_parameter_supported(&argument.value_type) {
+            if argument.value_type == CompilerType::Scope
+                || !compiler_function_parameter_supported(&argument.value_type)
+            {
                 return Err(unsupported(
                     &self.source,
                     argument.span,
@@ -4607,6 +4690,8 @@ impl Analyzer {
             .iter()
             .map(|argument| self.known_callable(argument, environment, argument.span.start))
             .collect::<Result<Vec<_>, _>>()?;
+        let (scope_arguments, scope_captures) =
+            self.scope_parameter_arguments(&declaration, &arguments, environment)?;
         let context_captures = self.defining_context_captures(&declaration)?;
         if self.in_function && !context_captures.is_empty() {
             return Err(unsupported(
@@ -4615,20 +4700,26 @@ impl Analyzer {
                 "cross-function defining-context capture forwarding",
             ));
         }
+        let metadata = CompilerCallMetadata {
+            callable_arguments,
+            scope_arguments,
+            scope_captures,
+            context_captures,
+        };
         let mut arguments = arguments;
         arguments.extend(
-            context_captures
+            metadata
+                .scope_captures
                 .iter()
                 .map(|capture| capture.argument.clone()),
         );
-        self.finish_selected_call(
-            function_name,
-            &declaration,
-            arguments,
-            &callable_arguments,
-            &context_captures,
-            span,
-        )
+        arguments.extend(
+            metadata
+                .context_captures
+                .iter()
+                .map(|capture| capture.argument.clone()),
+        );
+        self.finish_selected_call(function_name, &declaration, arguments, &metadata, span)
     }
 
     #[allow(clippy::too_many_lines)] // Every admitted and deferred package shape is checked explicitly.
@@ -4733,7 +4824,10 @@ impl Analyzer {
                 ));
             }
             let expected = self.parse_classifier(field.classifier)?;
-            if !expected.machine_scalar() || !compiler_function_parameter_supported(&expected) {
+            if expected == CompilerType::Scope
+                || !expected.machine_scalar()
+                || !compiler_function_parameter_supported(&expected)
+            {
                 return Err(unsupported(
                     &self.source,
                     field.classifier,
@@ -4835,8 +4929,7 @@ impl Analyzer {
         function_name: &str,
         declaration: &FunctionSource,
         arguments: Vec<CompilerExpression>,
-        callable_arguments: &[Option<CompilerCallableFacts>],
-        context_captures: &[CompilerContextCapture],
+        metadata: &CompilerCallMetadata,
         span: Span,
     ) -> Result<CompilerExpression, Diagnostic> {
         let identity = function_overload_identity(&self.source, function_name, declaration);
@@ -4881,8 +4974,7 @@ impl Analyzer {
             function_name,
             declaration,
             &arguments,
-            callable_arguments,
-            context_captures,
+            metadata,
             reserved_symbol.as_deref(),
             recursion_proof.is_some(),
         );
@@ -4899,17 +4991,22 @@ impl Analyzer {
         })
     }
 
-    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Specialization keeps ABI and checked evidence decisions together.
+    #[allow(clippy::too_many_lines)] // Specialization keeps ABI and checked evidence decisions together.
     fn instantiate_function(
         &mut self,
         function_name: &str,
         declaration: &FunctionSource,
         arguments: &[CompilerExpression],
-        callable_arguments: &[Option<CompilerCallableFacts>],
-        context_captures: &[CompilerContextCapture],
+        metadata: &CompilerCallMetadata,
         reserved_symbol: Option<&str>,
         generalize_parameters: bool,
     ) -> Result<(String, CompilerType, Option<IntRange>, Option<BigRational>), Diagnostic> {
+        let CompilerCallMetadata {
+            callable_arguments,
+            scope_arguments,
+            scope_captures,
+            context_captures,
+        } = metadata;
         let mut environment = BTreeMap::new();
         let mut parameters = Vec::new();
         for (parameter_index, (parameter, argument)) in
@@ -4957,7 +5054,7 @@ impl Analyzer {
                             .then(|| exact_string(argument))
                             .flatten(),
                         record_fields: BTreeMap::new(),
-                        namespace: None,
+                        namespace: scope_arguments[parameter_index].clone(),
                         callable: callable_arguments[parameter_index].clone(),
                     },
                 );
@@ -4972,7 +5069,39 @@ impl Analyzer {
                 span: parameter.name,
             });
         }
-        let context_arguments = &arguments[declaration.parameters.len()..];
+        let scope_arguments_start = declaration.parameters.len();
+        let context_arguments_start = scope_arguments_start + scope_captures.len();
+        let captured_scope_arguments = &arguments[scope_arguments_start..context_arguments_start];
+        debug_assert_eq!(captured_scope_arguments.len(), scope_captures.len());
+        for (capture, argument) in scope_captures.iter().zip(captured_scope_arguments) {
+            require_same_type(
+                &self.source,
+                capture.span,
+                &capture.value_type,
+                &argument.value_type,
+            )?;
+            environment.insert(
+                capture.parameter_name.clone(),
+                BindingFacts {
+                    storage_name: capture.parameter_name.clone(),
+                    value_type: capture.value_type.clone(),
+                    int_range: capture.int_range.clone(),
+                    rational_value: capture.rational_value.clone(),
+                    string_value: exact_string(argument),
+                    record_fields: BTreeMap::new(),
+                    namespace: None,
+                    callable: None,
+                },
+            );
+            parameters.push(CompilerParameter {
+                name: capture.parameter_name.clone(),
+                discarded: false,
+                value_type: capture.value_type.clone(),
+                int_range: capture.int_range.clone(),
+                span: capture.span,
+            });
+        }
+        let context_arguments = &arguments[context_arguments_start..];
         debug_assert_eq!(context_arguments.len(), context_captures.len());
         for (capture, argument) in context_captures.iter().zip(context_arguments) {
             require_same_type(
@@ -6400,7 +6529,8 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
 }
 
 fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
-    value_type == &CompilerType::Function || compiler_function_result_supported(value_type)
+    matches!(value_type, CompilerType::Scope | CompilerType::Function)
+        || compiler_function_result_supported(value_type)
 }
 
 fn data_member_expression(facts: &CompilerDataMemberFacts, span: Span) -> CompilerExpression {
@@ -8658,6 +8788,59 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(rejected.code, "E-COMPILER-UNSUPPORTED");
+    }
+
+    #[test]
+    fn models_scope_parameters_as_specialized_private_environments() {
+        // TOPAL-COMPILER-NAMESPACE-BOUNDARY-001,
+        // TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001
+        let program = analyze_for_compiler(
+            "use language (version is v0.1)\nanswer is 42\nincrement is fn (value : Int) -> Int\n  value + 1\nread-answer is fn (api : Scope) -> Int\n  api answer\napply is fn (api : Scope, value : Int) -> Int\n  api increment value\nforward is fn (api : Scope) -> Int\n  read-answer api\n(read-answer root, apply root 41, forward root)\n",
+        )
+        .unwrap();
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("expected Scope-boundary result product")
+        };
+        assert!(
+            values
+                .iter()
+                .all(|value| exact_int(value) == Some(BigInt::from(42)))
+        );
+        let forward = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "forward")
+            .expect("forwarding Scope specialization exists");
+        assert_eq!(forward.parameters.len(), 2);
+        assert_eq!(forward.parameters[0].value_type, CompilerType::Scope);
+        assert_eq!(forward.parameters[1].name, "api answer");
+        assert_eq!(forward.parameters[1].value_type, CompilerType::Int);
+        let CompilerExpressionKind::Call { arguments, .. } = &forward.body.result.kind else {
+            panic!("forwarding body retains a direct private call")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(name) if name == "api answer"
+        ));
+
+        let stale = analyze_for_compiler(
+            "use language (version is v0.1)\napi is root\nanswer is 42\nread-answer is fn (scope : Scope) -> Int\n  scope answer\nread-answer api\n",
+        )
+        .unwrap_err();
+        assert_eq!(stale.code, "E-COMPILER-UNSUPPORTED");
+
+        let unsupported_member = analyze_for_compiler(
+            "use language (version is v0.1)\nnested is root\nread is fn (api : Scope) -> Int\n  api nested\nread root\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported_member.code, "E-COMPILER-UNSUPPORTED");
+
+        let local_root = analyze_for_compiler(
+            "use language (version is v0.1)\naccept is fn (_ : Scope) -> Int\n  1\nwrapper is fn () -> Int\n  accept root\nwrapper ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(local_root.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

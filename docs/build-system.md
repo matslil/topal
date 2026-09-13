@@ -108,6 +108,11 @@ exact `Rational`, `Range Int`, `Range Rational`, and active nominal
 gdb -ex 'source src/topal-compiler/gdb/topal.py' ./hello
 ```
 
+Specialized `Scope` function parameters remain visible as their source
+namespace value. Any immutable namespace data threaded through the private
+call boundary is also available as a named argument for diagnosis; it is not a
+runtime namespace table or a public environment layout.
+
 Topal executables are freestanding with respect to other language runtimes.
 They do not acquire a C or C++ standard library, process-startup object, or
 dynamic loader dependency merely because the compiler uses LLVM. The Linux

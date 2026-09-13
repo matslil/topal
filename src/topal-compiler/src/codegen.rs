@@ -397,7 +397,8 @@ impl<'a> Generator<'a> {
             let location = self.debug.location(parameter.span, body.subprogram);
             if matches!(
                 parameter.value_type,
-                CompilerType::Function
+                CompilerType::Scope
+                    | CompilerType::Function
                     | CompilerType::Tuple(_)
                     | CompilerType::Record(_)
                     | CompilerType::Sum(_)
@@ -5266,6 +5267,41 @@ mod tests {
             assert!(!llvm.contains("topal.runtime.namespace"));
             assert!(!llvm.contains("topal.runtime.scope"));
         }
+    }
+
+    #[test]
+    fn emits_scope_parameters_with_private_data_environment_arguments() {
+        // TOPAL-COMPILER-NAMESPACE-BOUNDARY-001,
+        // TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001
+        let source = "use language (version is v0.1)\nanswer is 40 + 2\nincrement is fn (value : Int) -> Int\n  value + 1\nread-answer is fn (api : Scope) -> Int\n  api answer\napply is fn (api : Scope, value : Int) -> Int\n  api increment value\nforward is fn (api : Scope) -> Int\n  read-answer api\n(read-answer root, apply root 41, forward root)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let forward = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "forward")
+            .unwrap();
+        let llvm = Generator::new(&program, "scope-parameter.t").emit();
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(i32 %arg0, ptr %arg1)",
+            forward.symbol
+        )));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr") && line.contains("(i32 %arg0, ptr %arg1)")
+        }));
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module defines the source entry point")
+            .1;
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.int.add(").count(),
+            1,
+            "the captured namespace initializer executes once"
+        );
+        assert!(llvm.contains("!DILocalVariable(name: \"api\", arg: 1"));
+        assert!(llvm.contains("!DILocalVariable(name: \"api answer\", arg: 2"));
+        assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("topal.runtime.scope"));
+        assert!(!llvm.contains("call ptr %"));
     }
 
     #[test]

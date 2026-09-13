@@ -4789,6 +4789,21 @@
       "cpu_time_ns": 3762640,
       "memory_peak_bytes": 18399232,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_scope_parameters_with_private_data_environment_arguments": {
+      "cpu_time_ns": 7515260,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::scope_parameter_is_specialized_freestanding_and_debuggable": {
+      "cpu_time_ns": 317105160,
+      "memory_peak_bytes": 57597952,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_scope_parameters_as_specialized_private_environments": {
+      "cpu_time_ns": 4002519,
+      "memory_peak_bytes": 18280448,
+      "samples_per_test": 50
     }
   }
 }
