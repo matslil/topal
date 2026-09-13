@@ -230,6 +230,31 @@ Root and alias data members, generator members, aliases outside source root,
 general Scope function boundaries, `use`, packages, and source or compiled
 libraries remain outside this increment and SHALL be rejected.
 
+### TOPAL-COMPILER-NAMESPACE-DATA-001 — Stable root data snapshots
+
+Within source-root executable blocks, each admitted immutable binding SHALL
+receive a distinct compiler storage identity in addition to its source/debug
+name. After its initializer completes, the binding SHALL become visible as a
+data member of the live `root` namespace. A root alias SHALL capture exactly the
+data members visible at that alias binding, and an alias chain SHALL retain that
+same captured set. A later binding SHALL remain visible through a later live
+`root` selection but SHALL NOT enter an earlier alias. These rules apply equally
+to a source-root binding prefixed by `pub`; publication SHALL NOT imply a native
+export in this single-source increment.
+
+Direct `root member` and `alias member` data selection SHALL reference the
+original immutable storage identity. It SHALL NOT re-evaluate or copy the
+initializer, and a same-named lexical binding SHALL NOT intercept the qualified
+reference. Source names SHALL remain unchanged in DWARF even when internal
+storage identities differ. The implementation SHALL require no runtime
+namespace lookup, Scope allocation, foreign dependency, C/C++ runtime,
+other-language standard library, public ABI, or native ABI revision.
+
+Root data access from a compiled function body, nested qualified Scope members,
+general Scope function boundaries, generators, `use`, packages, and source or
+compiled libraries remain outside this increment and SHALL be rejected until a
+storage/interface representation valid beyond the source entry frame exists.
+
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 
 The compiler SHALL admit a direct unary decreasing `Int` recursion edge only

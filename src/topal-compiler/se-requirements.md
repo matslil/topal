@@ -281,6 +281,35 @@ function-bearing subset of `TOPAL-NAMESPACE-ALIAS-001`,
 `TOPAL-NAMESPACE-CLASSIFIER-001`, and `TOPAL-NAMESPACE-ALIAS-CHAIN-001`, and
 realizes `TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001` for increment 6b1.
 
+## TOPAL-COMP-NAMESPACE-DATA-001 — Stable root data snapshots
+
+The checked compiler model shall assign every admitted source-root binding a
+stable internal storage identity distinct from its source/debug name. A binding
+shall enter the live root data-member set only after its initializer has been
+analyzed, and a root alias shall capture the data-member set visible at that
+statement. Alias chains shall preserve that set, later root bindings shall not
+retroactively enter it, and a published root binding shall have identical
+single-application lookup behavior without becoming a native export.
+
+Direct root and alias data selection in source-root executable blocks shall
+produce a reference to the original binding identity. A lexical binding with
+the same source name shall remain distinct, and code generation shall evaluate
+the original initializer exactly once. DWARF/GDB shall retain source names and
+the observable Scope alias even though LLVM environment keys use the stable
+identities. Native tests shall cover alias chains, earlier snapshots versus the
+live root, typed Scope aliases, publication, lexical shadow exclusion, exact
+output, and freestanding artifact inspection.
+
+This shall add no runtime namespace lookup/table, Scope allocation, foreign
+dependency, C/C++ runtime, other-language standard library, public data ABI, or
+`topal-native/6` revision. Function-body root-data access, nested qualified Scope
+members, general Scope function boundaries, generators, `use`, packages, and
+source/compiled libraries remain rejected. This realizes
+`TOPAL-COMPILER-NAMESPACE-DATA-001` for increment 6b2a under
+`TOPAL-NAMESPACE-ROOT-001`, `TOPAL-NAMESPACE-ALIAS-001`,
+`TOPAL-NAMESPACE-SNAPSHOT-001`, `TOPAL-NAMESPACE-CLASSIFIER-001`, and
+`TOPAL-NAMESPACE-ALIAS-CHAIN-001`.
+
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 
 The checked compiler model shall reuse the shared structural proof for
