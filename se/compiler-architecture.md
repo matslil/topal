@@ -587,6 +587,19 @@ DWARF typedefs and validating GDB rendering recover `Optional List Int` and
 `Optional (Int, List Int)` without making the Optional header, pair, or node a
 public interface. Modules without these checked operations omit this fragment.
 
+Contextual `List Int` map, select, and Int-state fold do not introduce a
+callable runtime representation. The checked frontend binds each anonymous
+parameter to an exact loop value and specializes its body directly into the
+enclosing module. Generated loops advance one source node at a time. Map links
+one fresh result node per entry; select allocates only after its predicate is
+true and links accepted nodes; fold carries its exact state pointer in an LLVM
+phi. Fresh result links may be initialized incrementally because no reference
+escapes before completion, after which the List remains immutable. The source
+head and fold initial value are evaluated once in source order, and every body
+runs once for each reached entry in List order. This deliberately keeps LLVM in
+control of SSA and target instruction lowering while avoiding callback ABI,
+indirect-call, dispatcher, host-recursion, and other-language runtime choices.
+
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
 action in its selected block, and compatible machine-scalar results merge with

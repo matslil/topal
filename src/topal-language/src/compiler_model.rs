@@ -383,6 +383,22 @@ pub enum CompilerExpressionKind {
     ListFirst(Box<CompilerExpression>),
     ListRest(Box<CompilerExpression>),
     ListUncons(Box<CompilerExpression>),
+    ListMap {
+        list: Box<CompilerExpression>,
+        parameters: Vec<CompilerParameter>,
+        body: Box<CompilerBlock>,
+    },
+    ListSelect {
+        list: Box<CompilerExpression>,
+        parameters: Vec<CompilerParameter>,
+        body: Box<CompilerBlock>,
+    },
+    ListFold {
+        list: Box<CompilerExpression>,
+        initial: Box<CompilerExpression>,
+        parameters: Vec<CompilerParameter>,
+        body: Box<CompilerBlock>,
+    },
     ErrorField {
         error: Box<CompilerExpression>,
         field: CompilerErrorField,
@@ -3150,6 +3166,106 @@ impl Analyzer {
                 ));
             }
         }
+        if let [
+            list,
+            Expression::Identifier(operation),
+            Expression::AnonymousFunction {
+                parameters,
+                body,
+                span: function_span,
+            },
+        ] = items
+            && matches!(self.source.slice(*operation), "map" | "select")
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            let list = self.analyze_expression(list, environment)?;
+            require_int_list(&self.source, &list, "collection operation subject")?;
+            let (parameters, body) = self.analyze_collection_function(
+                parameters,
+                body,
+                &[CompilerType::Int],
+                environment,
+                *function_span,
+            )?;
+            let expected = if operation == "map" {
+                CompilerType::Int
+            } else {
+                CompilerType::Boolean
+            };
+            require_type(
+                &self.source,
+                body.result.span,
+                &expected,
+                &body.result.value_type,
+            )?;
+            let kind = if operation == "map" {
+                CompilerExpressionKind::ListMap {
+                    list: Box::new(list),
+                    parameters,
+                    body: Box::new(body),
+                }
+            } else {
+                CompilerExpressionKind::ListSelect {
+                    list: Box::new(list),
+                    parameters,
+                    body: Box::new(body),
+                }
+            };
+            return Ok(CompilerExpression {
+                kind,
+                value_type: CompilerType::List(Box::new(CompilerType::Int)),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [
+            list,
+            Expression::Identifier(operation),
+            initial,
+            Expression::AnonymousFunction {
+                parameters,
+                body,
+                span: function_span,
+            },
+        ] = items
+            && self.source.slice(*operation) == "fold"
+        {
+            let list = self.analyze_expression(list, environment)?;
+            require_int_list(&self.source, &list, "fold subject")?;
+            let initial = self.analyze_expression(initial, environment)?;
+            require_type(
+                &self.source,
+                initial.span,
+                &CompilerType::Int,
+                &initial.value_type,
+            )?;
+            let (parameters, body) = self.analyze_collection_function(
+                parameters,
+                body,
+                &[CompilerType::Int, CompilerType::Int],
+                environment,
+                *function_span,
+            )?;
+            require_type(
+                &self.source,
+                body.result.span,
+                &CompilerType::Int,
+                &body.result.value_type,
+            )?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListFold {
+                    list: Box::new(list),
+                    initial: Box::new(initial),
+                    parameters,
+                    body: Box::new(body),
+                },
+                value_type: CompilerType::Int,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         if let [list, Expression::Identifier(operation), operand] = items
             && matches!(
                 self.source.slice(*operation),
@@ -3954,6 +4070,78 @@ impl Analyzer {
             rational_value: None,
             span,
         })
+    }
+
+    fn analyze_collection_function(
+        &mut self,
+        parameters: &[AnonymousPattern],
+        body: &Expression,
+        parameter_types: &[CompilerType],
+        outer_environment: &BTreeMap<String, BindingFacts>,
+        span: Span,
+    ) -> Result<(Vec<CompilerParameter>, CompilerBlock), Diagnostic> {
+        if parameters.len() != parameter_types.len() {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-ANONYMOUS-FUNCTION-ARITY",
+                span,
+                format!(
+                    "collection function expects {} parameters, found {}",
+                    parameter_types.len(),
+                    parameters.len()
+                ),
+            ));
+        }
+        let mut environment = outer_environment.clone();
+        let mut lowered = Vec::with_capacity(parameters.len());
+        let mut declared = BTreeSet::new();
+        for (parameter, value_type) in parameters.iter().zip(parameter_types) {
+            let AnonymousPattern::Binding(name_span) = parameter else {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "collection anonymous product parameter pattern",
+                ));
+            };
+            let name = self.source.slice(*name_span).to_owned();
+            let discarded = name == "_";
+            if !discarded && !declared.insert(name.clone()) {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-DUPLICATE-BINDING",
+                    *name_span,
+                    format!("`{name}` is already declared in this parameter pattern"),
+                ));
+            }
+            if !discarded {
+                environment = decision_binding_environment(&environment, &name, value_type.clone());
+            }
+            lowered.push(CompilerParameter {
+                name,
+                discarded,
+                value_type: value_type.clone(),
+                int_range: None,
+                span: *name_span,
+            });
+        }
+
+        let previous_static_context = self.static_context;
+        let previous_in_function = self.in_function;
+        self.in_function = true;
+        let analyzed = match body {
+            Expression::Block { statements, .. } => {
+                self.analyze_block(statements, &mut environment, BlockKind::Function, None)
+            }
+            expression => self
+                .analyze_expression(expression, &environment)
+                .map(|result| CompilerBlock {
+                    statements: Vec::new(),
+                    result,
+                }),
+        };
+        self.static_context = previous_static_context;
+        self.in_function = previous_in_function;
+        Ok((lowered, analyzed?))
     }
 
     fn analyze_static_character_at(
@@ -8180,7 +8368,10 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::SumDecision { .. }
         | CompilerExpressionKind::ResultDecision { .. }
         | CompilerExpressionKind::OptionalDecision { .. }
-        | CompilerExpressionKind::ListDecision { .. } => false,
+        | CompilerExpressionKind::ListDecision { .. }
+        | CompilerExpressionKind::ListMap { .. }
+        | CompilerExpressionKind::ListSelect { .. }
+        | CompilerExpressionKind::ListFold { .. } => false,
         CompilerExpressionKind::IntToModular { value, .. }
         | CompilerExpressionKind::ModularReduce { value, .. }
         | CompilerExpressionKind::Negate(value)
@@ -8610,6 +8801,25 @@ fn require_type(
         return Ok(());
     }
     require_same_type(source, span, expected, actual)
+}
+
+fn require_int_list(
+    source: &SourceText,
+    value: &CompilerExpression,
+    operation: &str,
+) -> Result<(), Diagnostic> {
+    let CompilerType::List(element) = &value.value_type else {
+        return Err(unsupported(source, value.span, operation));
+    };
+    if element.as_ref() == &CompilerType::Int {
+        Ok(())
+    } else {
+        Err(unsupported(
+            source,
+            value.span,
+            &format!("{operation} for this List element type"),
+        ))
+    }
 }
 
 fn require_same_type(
@@ -9841,6 +10051,54 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(duplicate_binding).unwrap_err().code,
             "E-DUPLICATE-BINDING"
+        );
+    }
+
+    #[test]
+    fn models_contextual_int_list_map_select_and_fold() {
+        // TOPAL-COLLECTION-MAP-001, TOPAL-COLLECTION-SELECT-001,
+        // TOPAL-COLLECTION-FOLD-001, TOPAL-FUNCTION-ANONYMOUS-001,
+        // TOPAL-COMPILER-LIST-INT-FUNCTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/anonymous-list-functions.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared anonymous List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 3);
+        assert!(matches!(
+            results[0].kind,
+            CompilerExpressionKind::ListMap { .. }
+        ));
+        assert!(matches!(
+            results[1].kind,
+            CompilerExpressionKind::ListSelect { .. }
+        ));
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::ListFold { .. }
+        ));
+        assert_eq!(
+            results[0].value_type,
+            CompilerType::List(Box::new(CompilerType::Int))
+        );
+        assert_eq!(results[2].value_type, CompilerType::Int);
+
+        let wrong_map = "use language (version is v0.1)\nvalues : List Int is one 1\nvalues map { value } value > 0\n";
+        assert_eq!(
+            analyze_for_compiler(wrong_map).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+        let wrong_select = "use language (version is v0.1)\nvalues : List Int is one 1\nvalues select { value } value + 1\n";
+        assert_eq!(
+            analyze_for_compiler(wrong_select).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+        let wrong_fold = "use language (version is v0.1)\nvalues : List Int is one 1\nvalues fold 0 { value } value\n";
+        assert_eq!(
+            analyze_for_compiler(wrong_fold).unwrap_err().code,
+            "E-ANONYMOUS-FUNCTION-ARITY"
         );
     }
 

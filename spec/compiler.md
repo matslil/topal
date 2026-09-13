@@ -916,6 +916,40 @@ pair layout; create a public, foreign, serialized, persistent, or generic List
 ABI; promise reclamation beyond process lifetime; admit another element
 classifier; or imply remaining List algorithms.
 
+### TOPAL-COMPILER-LIST-INT-FUNCTIONS-001 — Contextual Int List functions
+
+For `List Int`, the compiler SHALL admit contextual binding-pattern anonymous
+functions for `map`, `select`, and `fold` when their checked scalar types are
+respectively `Int -> Int`, `Int -> Boolean`, and `(Int, Int) -> Int`. The
+compiler SHALL evaluate the List once, evaluate the fold initial state once
+after the List, and specialize each anonymous body at its collection use. Any
+admitted enclosing lexical value referenced by a body SHALL retain its ordinary
+immutable captured value.
+
+Map and select SHALL invoke their body exactly once for each source entry in
+List order. Map SHALL return every transformed Int in that order. Select SHALL
+return exactly the original Int values whose predicate is true, without
+changing their relative order. Fold SHALL pass the preceding state and current
+entry in that order, return the initial state for Empty, and otherwise return
+the final state. Inputs SHALL remain immutable and every arbitrary-precision
+Int SHALL remain exact.
+
+On Linux x86-64, lowering SHALL use finite in-module LLVM loops over the private
+List node. Map and select MAY initialize and link fresh nodes incrementally
+while the result is inaccessible, but SHALL publish only an immutable List.
+Fold state SHALL remain a private exact Int pointer. No operation SHALL require
+a callback ABI, runtime function value, indirect call, traversal dispatcher,
+host stack recursion, or LLVM optimization for correctness. DWARF and GDB SHALL
+retain source List/Int identities and inspectable result bindings at O0.
+
+This rule SHALL add no foreign allocator, C/C++ runtime, other-language
+standard library, undefined symbol, needed library, relocation, or native ABI
+revision. It SHALL NOT create a public, foreign, serialized, persistent, or
+generic collection/callable ABI; stabilize private node allocation; promise
+reclamation beyond process lifetime; admit another List element or fold-state
+classifier; admit anonymous product patterns; or imply early traversal control
+or remaining collection algorithms.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed

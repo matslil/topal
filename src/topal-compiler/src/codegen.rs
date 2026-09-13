@@ -7,8 +7,9 @@ use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
     CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerFallible, CompilerFunction, CompilerModularType, CompilerProgram, CompilerStatement,
-    CompilerSumRule, CompilerSumType, CompilerType, CompilerValidation, display_string_literal,
+    CompilerFallible, CompilerFunction, CompilerModularType, CompilerParameter, CompilerProgram,
+    CompilerStatement, CompilerSumRule, CompilerSumType, CompilerType, CompilerValidation,
+    display_string_literal,
 };
 use topal_source::Span;
 
@@ -104,6 +105,20 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
                 || replacements
                     .iter()
                     .any(|(_, value)| expression_uses_extended_debug(value))
+        }
+        CompilerExpressionKind::ListMap { list, body, .. }
+        | CompilerExpressionKind::ListSelect { list, body, .. } => {
+            expression_uses_extended_debug(list) || block_uses_extended_debug(body)
+        }
+        CompilerExpressionKind::ListFold {
+            list,
+            initial,
+            body,
+            ..
+        } => {
+            expression_uses_extended_debug(list)
+                || expression_uses_extended_debug(initial)
+                || block_uses_extended_debug(body)
         }
         CompilerExpressionKind::Sum { payload, .. } => payload
             .as_deref()
@@ -1466,6 +1481,37 @@ impl<'a> Generator<'a> {
                     payload: payload.as_ref().clone(),
                 }
             }
+            CompilerExpressionKind::ListMap {
+                list,
+                parameters,
+                body: action,
+            } => self.emit_list_map(list, parameters, action, body, environment, expression.span),
+            CompilerExpressionKind::ListSelect {
+                list,
+                parameters,
+                body: predicate,
+            } => self.emit_list_select(
+                list,
+                parameters,
+                predicate,
+                body,
+                environment,
+                expression.span,
+            ),
+            CompilerExpressionKind::ListFold {
+                list,
+                initial,
+                parameters,
+                body: action,
+            } => self.emit_list_fold(
+                list,
+                initial,
+                parameters,
+                action,
+                body,
+                environment,
+                expression.span,
+            ),
             CompilerExpressionKind::ErrorField { error, field } => {
                 let error_span = error.span;
                 let error = self.emit_expression(error, body, environment);
@@ -2179,6 +2225,423 @@ impl<'a> Generator<'a> {
             body,
             span,
         )
+    }
+
+    fn emit_collection_environment(
+        &mut self,
+        parameters: &[CompilerParameter],
+        values: &[LlValue],
+        body: &mut FunctionBody,
+        outer: &BTreeMap<String, LlValue>,
+    ) -> BTreeMap<String, LlValue> {
+        debug_assert_eq!(parameters.len(), values.len());
+        let mut environment = outer.clone();
+        for (parameter, value) in parameters.iter().zip(values) {
+            if parameter.discarded {
+                continue;
+            }
+            let variable = self.debug.local(
+                &parameter.name,
+                parameter.span,
+                &parameter.value_type,
+                body.subprogram,
+            );
+            let location = self.debug.location(parameter.span, body.subprogram);
+            body.debug_value(value, variable, location);
+            environment.insert(parameter.name.clone(), value.clone());
+        }
+        environment
+    }
+
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // The loop keeps node publication explicit.
+    fn emit_list_map(
+        &mut self,
+        list: &CompilerExpression,
+        parameters: &[CompilerParameter],
+        action: &CompilerBlock,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let source = self
+            .emit_expression(list, body, environment)
+            .list_pointer()
+            .to_owned();
+        let preheader = body.current_block.clone();
+        let loop_label = body.label("list.map.loop");
+        let visit = body.label("list.map.visit");
+        let first = body.label("list.map.first");
+        let link = body.label("list.map.link");
+        let linked = body.label("list.map.linked");
+        let done = body.label("list.map.done");
+        let next = body.reserve_value();
+        let node = body.reserve_value();
+        let next_head = body.reserve_value();
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let current = body.instruction(
+            &format!("phi ptr [{source}, %{preheader}], [{next}, %{linked}]"),
+            span,
+            &mut self.debug,
+        );
+        let head = body.instruction(
+            &format!("phi ptr [null, %{preheader}], [{next_head}, %{linked}]"),
+            span,
+            &mut self.debug,
+        );
+        let previous = body.instruction(
+            &format!("phi ptr [null, %{preheader}], [{node}, %{linked}]"),
+            span,
+            &mut self.debug,
+        );
+        let empty = body.instruction(
+            &format!("icmp eq ptr {current}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {empty}, label %{done}, label %{visit}"),
+            location,
+        );
+
+        body.start_block(&visit);
+        let value = body.instruction(
+            &format!("load ptr, ptr {current}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let next_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.define_reserved(
+            &next,
+            &format!("load ptr, ptr {next_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let mut action_environment =
+            self.emit_collection_environment(parameters, &[LlValue::Int(value)], body, environment);
+        let mapped = self.emit_block(action, body, &mut action_environment);
+        body.define_reserved(
+            &node,
+            "call ptr @topal.platform.allocate(i64 16)",
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr {}, ptr {node}, align 8", mapped.integer()),
+            span,
+            &mut self.debug,
+        );
+        let node_next = body.instruction(
+            &format!("getelementptr i8, ptr {node}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr null, ptr {node_next}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let has_previous = body.instruction(
+            &format!("icmp ne ptr {previous}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {has_previous}, label %{link}, label %{first}"),
+            location,
+        );
+
+        body.start_block(&first);
+        body.terminator(&format!("br label %{linked}"), location);
+        body.start_block(&link);
+        let previous_next = body.instruction(
+            &format!("getelementptr i8, ptr {previous}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr {node}, ptr {previous_next}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{linked}"), location);
+        body.start_block(&linked);
+        body.define_reserved(
+            &next_head,
+            &format!("phi ptr [{node}, %{first}], [{head}, %{link}]"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&done);
+        LlValue::List {
+            value: head,
+            element: CompilerType::Int,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Selection publishes only fresh retained nodes.
+    fn emit_list_select(
+        &mut self,
+        list: &CompilerExpression,
+        parameters: &[CompilerParameter],
+        predicate: &CompilerBlock,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let source = self
+            .emit_expression(list, body, environment)
+            .list_pointer()
+            .to_owned();
+        let preheader = body.current_block.clone();
+        let loop_label = body.label("list.select.loop");
+        let visit = body.label("list.select.visit");
+        let selected = body.label("list.select.selected");
+        let skipped = body.label("list.select.skipped");
+        let first = body.label("list.select.first");
+        let link = body.label("list.select.link");
+        let selected_merge = body.label("list.select.selected.merge");
+        let advance = body.label("list.select.advance");
+        let done = body.label("list.select.done");
+        let next = body.reserve_value();
+        let node = body.reserve_value();
+        let selected_head = body.reserve_value();
+        let next_head = body.reserve_value();
+        let next_previous = body.reserve_value();
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let current = body.instruction(
+            &format!("phi ptr [{source}, %{preheader}], [{next}, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let head = body.instruction(
+            &format!("phi ptr [null, %{preheader}], [{next_head}, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let previous = body.instruction(
+            &format!("phi ptr [null, %{preheader}], [{next_previous}, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let empty = body.instruction(
+            &format!("icmp eq ptr {current}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {empty}, label %{done}, label %{visit}"),
+            location,
+        );
+
+        body.start_block(&visit);
+        let value = body.instruction(
+            &format!("load ptr, ptr {current}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let next_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.define_reserved(
+            &next,
+            &format!("load ptr, ptr {next_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let mut predicate_environment = self.emit_collection_environment(
+            parameters,
+            &[LlValue::Int(value.clone())],
+            body,
+            environment,
+        );
+        let keep = self.emit_block(predicate, body, &mut predicate_environment);
+        body.terminator(
+            &format!(
+                "br i1 {}, label %{selected}, label %{skipped}",
+                keep.boolean()
+            ),
+            location,
+        );
+
+        body.start_block(&skipped);
+        body.terminator(&format!("br label %{advance}"), location);
+        body.start_block(&selected);
+        body.define_reserved(
+            &node,
+            "call ptr @topal.platform.allocate(i64 16)",
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr {value}, ptr {node}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let node_next = body.instruction(
+            &format!("getelementptr i8, ptr {node}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr null, ptr {node_next}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let has_previous = body.instruction(
+            &format!("icmp ne ptr {previous}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {has_previous}, label %{link}, label %{first}"),
+            location,
+        );
+
+        body.start_block(&first);
+        body.terminator(&format!("br label %{selected_merge}"), location);
+        body.start_block(&link);
+        let previous_next = body.instruction(
+            &format!("getelementptr i8, ptr {previous}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr {node}, ptr {previous_next}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{selected_merge}"), location);
+        body.start_block(&selected_merge);
+        body.define_reserved(
+            &selected_head,
+            &format!("phi ptr [{node}, %{first}], [{head}, %{link}]"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{advance}"), location);
+
+        body.start_block(&advance);
+        body.define_reserved(
+            &next_head,
+            &format!("phi ptr [{head}, %{skipped}], [{selected_head}, %{selected_merge}]"),
+            span,
+            &mut self.debug,
+        );
+        body.define_reserved(
+            &next_previous,
+            &format!("phi ptr [{previous}, %{skipped}], [{node}, %{selected_merge}]"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&done);
+        LlValue::List {
+            value: head,
+            element: CompilerType::Int,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)] // Fold state and enclosing LLVM state remain explicit.
+    fn emit_list_fold(
+        &mut self,
+        list: &CompilerExpression,
+        initial: &CompilerExpression,
+        parameters: &[CompilerParameter],
+        action: &CompilerBlock,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let source = self
+            .emit_expression(list, body, environment)
+            .list_pointer()
+            .to_owned();
+        let initial = self
+            .emit_expression(initial, body, environment)
+            .integer()
+            .to_owned();
+        let preheader = body.current_block.clone();
+        let loop_label = body.label("list.fold.loop");
+        let visit = body.label("list.fold.visit");
+        let advance = body.label("list.fold.advance");
+        let done = body.label("list.fold.done");
+        let next = body.reserve_value();
+        let next_state = body.reserve_value();
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let current = body.instruction(
+            &format!("phi ptr [{source}, %{preheader}], [{next}, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let state = body.instruction(
+            &format!("phi ptr [{initial}, %{preheader}], [{next_state}, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let empty = body.instruction(
+            &format!("icmp eq ptr {current}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {empty}, label %{done}, label %{visit}"),
+            location,
+        );
+
+        body.start_block(&visit);
+        let value = body.instruction(
+            &format!("load ptr, ptr {current}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let next_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.define_reserved(
+            &next,
+            &format!("load ptr, ptr {next_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let mut action_environment = self.emit_collection_environment(
+            parameters,
+            &[LlValue::Int(state.clone()), LlValue::Int(value)],
+            body,
+            environment,
+        );
+        let value = self.emit_block(action, body, &mut action_environment);
+        body.define_reserved(
+            &next_state,
+            &format!("freeze ptr {}", value.integer()),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{advance}"), location);
+        body.start_block(&advance);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&done);
+        LlValue::Int(state)
     }
 
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Result alternatives retain bindings and delayed actions explicitly.
@@ -4673,12 +5136,27 @@ impl FunctionBody {
     }
 
     fn instruction(&mut self, instruction: &str, span: Span, debug: &mut DebugInfo) -> String {
+        let value = self.reserve_value();
+        self.define_reserved(&value, instruction, span, debug);
+        value
+    }
+
+    fn reserve_value(&mut self) -> String {
         let value = format!("%v{}", self.next_value);
         self.next_value += 1;
+        value
+    }
+
+    fn define_reserved(
+        &mut self,
+        value: &str,
+        instruction: &str,
+        span: Span,
+        debug: &mut DebugInfo,
+    ) {
         let location = debug.location(span, self.subprogram);
         self.lines
             .push(format!("  {value} = {instruction}, !dbg !{location}"));
-        value
     }
 
     fn effect(&mut self, instruction: &str, span: Span, debug: &mut DebugInfo) {
@@ -6146,6 +6624,26 @@ mod tests {
         assert!(llvm.contains("call ptr @topal.runtime.optional.none"));
         assert!(!llvm.contains("topal.runtime.list.int.contains"));
         assert!(!llvm.contains("topal.runtime.list.int.remove"));
+    }
+
+    #[test]
+    fn emits_contextual_int_list_functions_as_finite_loops() {
+        // TOPAL-COLLECTION-MAP-001, TOPAL-COLLECTION-SELECT-001,
+        // TOPAL-COLLECTION-FOLD-001, TOPAL-FUNCTION-ANONYMOUS-001,
+        // TOPAL-COMPILER-LIST-INT-FUNCTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/anonymous-list-functions.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "anonymous-list-functions.t").emit();
+
+        assert!(llvm.contains("list.map.loop"));
+        assert!(llvm.contains("list.select.loop"));
+        assert!(llvm.contains("list.fold.loop"));
+        assert!(llvm.contains("phi ptr"));
+        assert!(llvm.contains("call ptr @topal.platform.allocate(i64 16)"));
+        assert!(!llvm.contains("topal.fn.anonymous"));
+        assert!(!llvm.contains("topal.runtime.list.int.functions"));
     }
 
     #[test]

@@ -65,7 +65,8 @@ evidence.
 | 4b3d-b | contextual immutable `List Int` construction, exact entry/sequence/subsequence containment, private passage, display, and debugging | complete |
 | 4b3d-c | immutable exact `List Int` remove-first/remove-all with source-order retention, selective sharing/rebuilding, and conditional runtime fragments | complete |
 | 4b3d-d | basic immutable `List Int` empty/singleton construction, insertion/concatenation/reversal, observations, structural equality, total decomposition, Optional projections, and debugging | complete |
-| 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/algorithms/traversal/transformation, and representation-safe reclamation | planned |
+| 4b3d-e | contextual `List Int` map/select/Int-state fold specialized as finite LLVM loops with immutable captures, exact ordering, and debugging | complete |
+| 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal-control algorithms, and representation-safe reclamation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -195,6 +196,9 @@ Increment 4b3d-d adds the remaining basic `List Int` constructors,
 observations, structural equality, total decomposition, and immutable
 composition/reversal while preserving present empty tails through the tagged
 Optional representation.
+Increment 4b3d-e specializes contextual anonymous map, select, and Int-state
+fold bodies into finite source-ordered loops without introducing Function
+objects, callback ABIs, indirect calls, or a collection dispatcher.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

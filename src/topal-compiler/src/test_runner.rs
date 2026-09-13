@@ -8,6 +8,7 @@ use topal_language::Session;
 
 const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/anonymous-function-application.t",
+    "examples/language/anonymous-list-functions.t",
     "examples/language/arithmetic-error-codes.t",
     "examples/language/arbitrary-integer-arithmetic.t",
     "examples/language/bindings-and-discard.t",
