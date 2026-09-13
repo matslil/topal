@@ -4427,6 +4427,31 @@ mod tests {
     }
 
     #[test]
+    fn emits_function_namespace_aliases_as_direct_private_calls() {
+        // TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001,
+        // TOPAL-NAMESPACE-ALIAS-001, TOPAL-NAMESPACE-OVERLOAD-001
+        for source in [
+            include_str!("../../../examples/language/namespace-alias.t"),
+            include_str!("../../../examples/language/namespace-overloads.t"),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            let symbols = program
+                .functions
+                .iter()
+                .map(|function| function.symbol.clone())
+                .collect::<Vec<_>>();
+            let llvm = Generator::new(&program, "namespace-alias.t").emit();
+            for symbol in symbols {
+                assert!(llvm.lines().any(|line| {
+                    line.contains("call fastcc") && line.contains(&format!("@{symbol}("))
+                }));
+            }
+            assert!(!llvm.contains("topal.runtime.namespace"));
+            assert!(!llvm.contains("topal.runtime.scope"));
+        }
+    }
+
+    #[test]
     fn emits_discarded_parameter_without_debug_binding() {
         // TOPAL-TYPE-MATCH-001, TOPAL-COMPILER-PATTERN-001
         let source = "use language (version is v0.1)\nsecond is fn (_ : Int, value : Int) -> Int\n  value\nsecond (0, 42)\n";

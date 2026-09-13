@@ -123,6 +123,16 @@ published interfaces, and compiled libraries require canonical artifact
 metadata, so those remain explicit later representation decisions rather than
 being approximated by this direct-root path.
 
+The first alias increment retains root function declarations as immutable
+checked-model snapshots. An alias therefore carries namespace identity and a
+source-ordered map of already-visible function headers only during compilation;
+the native value remains the same sealed zero-data identity used for observable
+Scope display. Alias chains clone those facts, and qualified selection produces
+the normal direct private call. This deliberately avoids committing namespace
+lookup tables, callable pointers, or public Scope layout before root data
+storage, generators, packages, and compiled-library interfaces have defined
+their distinct representation and artifact requirements.
+
 Recursion identity uses that complete selected input header, not source-name
 spelling alone. A call from an active `String` overload to a same-named `Int`
 overload is therefore an ordinary acyclic edge: it receives a distinct private
