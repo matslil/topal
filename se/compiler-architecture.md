@@ -152,6 +152,14 @@ not a code pointer or dispatch-table index. This preserves a future choice of
 public callable/closure representation without burdening current private calls
 with a provisional runtime ABI.
 
+The initial symbolic Function values use the same separation. `+`, `-`, and
+`<=>` receive deterministic observation tags, while checked application rewrites
+the retained identity to the ordinary arithmetic or comparison expression
+before backend lowering. Binary operands remain a source-level positional
+product and are decomposed by the frontend; LLVM sees only the already-selected
+operation and its normal machine values. The tag consequently cannot introduce
+indirect control flow or constrain a later general callable ABI.
+
 Recursion identity uses that complete selected input header, not source-name
 spelling alone. A call from an active `String` overload to a same-named `Int`
 overload is therefore an ordinary acyclic edge: it receives a distinct private

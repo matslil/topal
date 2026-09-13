@@ -1076,6 +1076,26 @@
       "cpu_time_ns": 145762,
       "memory_peak_bytes": 18616320,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/callable-values.t": {
+      "cpu_time_ns": 121524620,
+      "memory_peak_bytes": 41611264,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/function-classifier.t": {
+      "cpu_time_ns": 120614460,
+      "memory_peak_bytes": 41455616,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/callable-values.t": {
+      "cpu_time_ns": 160727,
+      "memory_peak_bytes": 18395136,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/function-classifier.t": {
+      "cpu_time_ns": 146370,
+      "memory_peak_bytes": 18505728,
+      "samples_per_test": 500
     }
   }
 }
