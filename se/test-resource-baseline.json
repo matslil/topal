@@ -4919,6 +4919,21 @@
       "cpu_time_ns": 5161160,
       "memory_peak_bytes": 18370560,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_private_effect_list_nodes_and_pointer_boundaries": {
+      "cpu_time_ns": 8287540,
+      "memory_peak_bytes": 18374656,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::effect_list_is_freestanding_and_gdb_renders_its_source_shape": {
+      "cpu_time_ns": 319123020,
+      "memory_peak_bytes": 57823232,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_contextual_effect_list_construction": {
+      "cpu_time_ns": 2851100,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
     }
   }
 }

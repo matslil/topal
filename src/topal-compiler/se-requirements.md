@@ -883,10 +883,10 @@ The checked compiler model shall classify `Effects ()` as the canonical empty
 `Effect` value without scheduling or performing an interaction. `Effect` shall
 remain distinct from Unit and `Completed` through classified bindings,
 same-classifier equality, decomposed positional products, scalar function
-parameters and results, and source display. This scalar rule does not admit
-Effect Lists or aggregate results; `TOPAL-COMP-TUPLE-RESULT-001` separately
-admits a qualified Tuple result containing this value. Effect Lists remain
-unsupported until their general representation is admitted.
+parameters and results, and source display. This scalar rule does not itself
+admit Effect Lists or aggregate results; `TOPAL-COMP-TUPLE-RESULT-001`
+separately admits a qualified Tuple result containing this value, and
+`TOPAL-COMP-LIST-EFFECT-001` admits the first immutable List representation.
 
 The backend shall use a sealed zero-data scalar only in Topal-private signatures,
 emit a distinct `Effect` DWARF enumeration for GDB, and require neither
@@ -894,6 +894,31 @@ allocation nor an effect-specific runtime function. Canonical display shall use
 the existing Topal-owned Linux write boundary. No C/C++ runtime, other-language
 standard library, public integer ABI, or `topal-native/6` revision is permitted.
 This realizes `TOPAL-COMPILER-EFFECT-EMPTY-001` for compiler increment 7a.
+
+## TOPAL-COMP-LIST-EFFECT-001 — Immutable Effect List foundation
+
+The checked compiler model shall admit `List Effect` where a classifier gives
+the contextual element type, construct `Empty` and `Entry (value, remaining)`
+with exact homogeneous typing, and retain the List classifier through immutable
+bindings and ordinary function parameters and results. Construction shall
+evaluate the entry value and remaining List in source order. Canonical output
+shall match the shared interpreter's recursive `Entry`/`Empty` spelling.
+
+The Linux x86-64 backend shall represent `Empty` as a null private pointer and
+each `Entry` as an immutable, naturally aligned 16-byte node containing the
+zero-data Effect carrier and the remaining-node pointer. It shall allocate
+nodes only through the existing Topal-owned Linux mapping boundary, retain them
+safely for process lifetime, and express private function passage as an LLVM
+pointer so LLVM owns physical AMD64 calling-convention lowering. DWARF shall
+expose the semantic `List Effect` identity and node shape, and the bundled GDB
+renderer shall validate, bound, and render finite chains without recursive
+host-stack growth.
+
+This first container slice shall add no List equality, decisions, traversal,
+mutation, reclamation contract, other element type, public or serialized node
+layout, C/C++ runtime, other-language standard library, foreign allocator, or
+`topal-native/6` revision. It realizes `TOPAL-COMPILER-LIST-EFFECT-001` and
+`TOPAL-TYPE-LIST-CONSTRUCT-001` for compiler increment 4b3d-a.
 
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
@@ -1380,8 +1405,8 @@ source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
 renderers for private arbitrary-precision Int, Rational, `Range Int`,
 `Range Rational`, `Optional Int`, `Optional String`, `Optional Error`,
 `Optional SourceLocation`, `SourceLocation`, nominal modular-number objects,
-and modular-success Result objects, describe source-declared nominal enums,
-retained Constraint
+modular-success Result objects, and `List Effect`, describe source-declared
+nominal enums, retained Constraint
 identities, and refined Int bindings with their semantic names, distinguish
 selected overload and static-function frames, and pass automated GDB
 breakpoint, value, and backtrace scenarios.

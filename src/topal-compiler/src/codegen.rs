@@ -48,9 +48,9 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::SourceLocation
         | CompilerType::Modular(_)
         | CompilerType::Optional(_) => true,
-        CompilerType::Range(endpoint) | CompilerType::Result(endpoint) => {
-            type_uses_extended_debug(endpoint)
-        }
+        CompilerType::Range(endpoint)
+        | CompilerType::Result(endpoint)
+        | CompilerType::List(endpoint) => type_uses_extended_debug(endpoint),
         CompilerType::Tuple(fields) => fields.iter().any(type_uses_extended_debug),
         CompilerType::Record(fields) => fields
             .iter()
@@ -128,6 +128,10 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Not(value)
         | CompilerExpressionKind::Validate { value, .. } => expression_uses_extended_debug(value),
         CompilerExpressionKind::StringConcat { left, right }
+        | CompilerExpressionKind::ListEntry {
+            value: left,
+            remaining: right,
+        }
         | CompilerExpressionKind::RationalConstruct {
             numerator: left,
             denominator: right,
@@ -206,6 +210,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Rational(_)
         | CompilerExpressionKind::Enum(_)
         | CompilerExpressionKind::OptionalNone
+        | CompilerExpressionKind::ListEmpty
         | CompilerExpressionKind::Local(_) => false,
     }
 }
@@ -312,7 +317,8 @@ impl<'a> Generator<'a> {
             | LlValue::String(value)
             | LlValue::Range { value, .. }
             | LlValue::Result { value, .. }
-            | LlValue::Optional { value, .. } => {
+            | LlValue::Optional { value, .. }
+            | LlValue::List { value, .. } => {
                 body.terminator(&format!("ret ptr {value}"), location);
             }
             LlValue::Comparison(value)
@@ -1136,6 +1142,51 @@ impl<'a> Generator<'a> {
                     payload: payload.as_ref().clone(),
                 }
             }
+            CompilerExpressionKind::ListEmpty => {
+                let CompilerType::List(element) = &expression.value_type else {
+                    unreachable!("checked Empty retains its List classifier")
+                };
+                LlValue::List {
+                    value: "null".into(),
+                    element: element.as_ref().clone(),
+                }
+            }
+            CompilerExpressionKind::ListEntry { value, remaining } => {
+                let value = self.emit_expression(value, body, environment);
+                let remaining = self.emit_expression(remaining, body, environment);
+                let LlValue::List {
+                    value: remaining,
+                    element,
+                } = remaining
+                else {
+                    unreachable!("checked Entry tail retains its List classifier")
+                };
+                debug_assert_eq!(element, CompilerType::Effect);
+                let node = body.instruction(
+                    "call ptr @topal.platform.allocate(i64 16)",
+                    expression.span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store i8 {}, ptr {node}, align 1", value.singleton()),
+                    expression.span,
+                    &mut self.debug,
+                );
+                let next = body.instruction(
+                    &format!("getelementptr i8, ptr {node}, i64 8"),
+                    expression.span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store ptr {remaining}, ptr {next}, align 8"),
+                    expression.span,
+                    &mut self.debug,
+                );
+                LlValue::List {
+                    value: node,
+                    element,
+                }
+            }
             CompilerExpressionKind::ErrorField { error, field } => {
                 let error_span = error.span;
                 let error = self.emit_expression(error, body, environment);
@@ -1458,6 +1509,14 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         payload: payload.as_ref().clone(),
+                    },
+                    CompilerType::List(ref element) => LlValue::List {
+                        value: body.instruction(
+                            &format!("call fastcc ptr @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        element: element.as_ref().clone(),
                     },
                     CompilerType::Tuple(ref field_types) => {
                         let aggregate_type = llvm_value_type(&expression.value_type);
@@ -3075,6 +3134,17 @@ impl<'a> Generator<'a> {
                     payload,
                 }
             }
+            LlValue::List { element, .. } => {
+                let element = element.clone();
+                LlValue::List {
+                    value: body.instruction(
+                        &format!("phi ptr {}", incoming(LlValue::list_pointer)),
+                        span,
+                        &mut self.debug,
+                    ),
+                    element,
+                }
+            }
             LlValue::Sum { sum, .. } => {
                 let sum = sum.clone();
                 let tags = branches
@@ -3285,6 +3355,9 @@ impl<'a> Generator<'a> {
             }
             LlValue::Optional { value, payload } => {
                 self.emit_print_optional(value, payload, body, span);
+            }
+            LlValue::List { value, element } => {
+                self.emit_print_list(value, element, body, span);
             }
             LlValue::String(value) => {
                 body.effect(
@@ -3539,6 +3612,108 @@ impl<'a> Generator<'a> {
         body.start_block(&done);
     }
 
+    fn emit_print_list(
+        &mut self,
+        value: &str,
+        element: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        debug_assert_eq!(element, &CompilerType::Effect);
+        let initial = body.current_block.clone();
+        let loop_label = body.label("print.list.loop");
+        let entry = body.label("print.list.entry");
+        let empty = body.label("print.list.empty");
+        let close_loop = body.label("print.list.close.loop");
+        let close_one = body.label("print.list.close.one");
+        let done = body.label("print.list.done");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let next_name = format!("%{entry}.next");
+        let next_depth_name = format!("%{entry}.depth.next");
+        let current = body.instruction(
+            &format!("phi ptr [{value}, %{initial}], [{next_name}, %{entry}]"),
+            span,
+            &mut self.debug,
+        );
+        let depth = body.instruction(
+            &format!("phi i64 [0, %{initial}], [{next_depth_name}, %{entry}]"),
+            span,
+            &mut self.debug,
+        );
+        let is_empty = body.instruction(
+            &format!("icmp eq ptr {current}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {is_empty}, label %{empty}, label %{entry}"),
+            location,
+        );
+
+        body.start_block(&entry);
+        self.emit_write_literal("Entry ( ", body, span);
+        let payload = body.instruction(
+            &format!("load i8, ptr {current}, align 1"),
+            span,
+            &mut self.debug,
+        );
+        self.emit_print(&LlValue::Effect(payload), body, span);
+        self.emit_write_literal(", ", body, span);
+        let next_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.named_instruction(
+            &next_name,
+            &format!("load ptr, ptr {next_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        body.named_instruction(
+            &next_depth_name,
+            &format!("add i64 {depth}, 1"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&empty);
+        self.emit_write_literal("Empty", body, span);
+        body.terminator(&format!("br label %{close_loop}"), location);
+
+        body.start_block(&close_loop);
+        let close_next_name = format!("%{close_one}.next");
+        let remaining = body.instruction(
+            &format!("phi i64 [{depth}, %{empty}], [{close_next_name}, %{close_one}]"),
+            span,
+            &mut self.debug,
+        );
+        let closed = body.instruction(
+            &format!("icmp eq i64 {remaining}, 0"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {closed}, label %{done}, label %{close_one}"),
+            location,
+        );
+
+        body.start_block(&close_one);
+        self.emit_write_literal(" )", body, span);
+        body.named_instruction(
+            &close_next_name,
+            &format!("sub i64 {remaining}, 1"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{close_loop}"), location);
+        body.start_block(&done);
+    }
+
     fn emit_write_literal(&mut self, text: &str, body: &mut FunctionBody, span: Span) {
         if text.is_empty() {
             return;
@@ -3686,6 +3861,10 @@ enum LlValue {
         value: String,
         payload: CompilerType,
     },
+    List {
+        value: String,
+        element: CompilerType,
+    },
     String(String),
     Tuple(Vec<Self>),
     Record {
@@ -3804,6 +3983,13 @@ impl LlValue {
         value
     }
 
+    fn list_pointer(&self) -> &str {
+        let Self::List { value, .. } = self else {
+            unreachable!("checked value is List")
+        };
+        value
+    }
+
     fn argument(&self) -> String {
         match self {
             Self::Unit => "i8 0".into(),
@@ -3818,7 +4004,8 @@ impl LlValue {
             | Self::String(value)
             | Self::Range { value, .. }
             | Self::Result { value, .. }
-            | Self::Optional { value, .. } => {
+            | Self::Optional { value, .. }
+            | Self::List { value, .. } => {
                 format!("ptr {value}")
             }
             Self::Comparison(value) | Self::ErrorCode(value) | Self::Enum { value, .. } => {
@@ -3863,6 +4050,10 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Optional(payload) => LlValue::Optional {
             value: "null".into(),
             payload: payload.as_ref().clone(),
+        },
+        CompilerType::List(element) => LlValue::List {
+            value: "null".into(),
+            element: element.as_ref().clone(),
         },
         CompilerType::Character | CompilerType::String => LlValue::String("null".into()),
         CompilerType::Refined { base, .. } => zero_machine_value(base),
@@ -4013,6 +4204,18 @@ impl FunctionBody {
             .push(format!("  {instruction}, !dbg !{location}"));
     }
 
+    fn named_instruction(
+        &mut self,
+        name: &str,
+        instruction: &str,
+        span: Span,
+        debug: &mut DebugInfo,
+    ) {
+        let location = debug.location(span, self.subprogram);
+        self.lines
+            .push(format!("  {name} = {instruction}, !dbg !{location}"));
+    }
+
     fn terminator(&mut self, instruction: &str, location: usize) {
         self.lines
             .push(format!("  {instruction}, !dbg !{location}"));
@@ -4032,7 +4235,8 @@ impl FunctionBody {
             | LlValue::String(value)
             | LlValue::Range { value, .. }
             | LlValue::Result { value, .. }
-            | LlValue::Optional { value, .. } => {
+            | LlValue::Optional { value, .. }
+            | LlValue::List { value, .. } => {
                 format!("ptr {value}")
             }
             LlValue::Comparison(value)
@@ -4107,6 +4311,7 @@ struct DebugInfo {
     effect_type: usize,
     enum_types: BTreeMap<String, usize>,
     modular_types: Vec<(CompilerModularType, usize)>,
+    list_types: Vec<(CompilerType, usize)>,
     refined_types: Vec<(CompilerType, usize)>,
     tuple_types: Vec<(CompilerType, usize)>,
     record_types: Vec<(CompilerType, usize)>,
@@ -4116,6 +4321,7 @@ struct DebugInfo {
 }
 
 impl DebugInfo {
+    #[allow(clippy::too_many_lines)] // Initialization keeps the complete emitted DWARF type graph visible.
     fn new(source_name: &str, extended_types: bool) -> Self {
         let path = Path::new(source_name);
         let filename = path.file_name().map_or_else(
@@ -4162,6 +4368,7 @@ impl DebugInfo {
             effect_type: 0,
             enum_types: BTreeMap::new(),
             modular_types: Vec::new(),
+            list_types: Vec::new(),
             refined_types: Vec::new(),
             tuple_types: Vec::new(),
             record_types: Vec::new(),
@@ -4600,6 +4807,7 @@ impl DebugInfo {
             CompilerType::Optional(_) => {
                 unreachable!("unsupported Optional payload type reached codegen")
             }
+            CompilerType::List(element) => self.list_type(element),
             CompilerType::Refined { constraint, base } => self.refined_type(constraint, base),
             CompilerType::Tuple(fields) => self.tuple_type(fields),
             CompilerType::Record(fields) => self.record_type(fields),
@@ -4637,6 +4845,46 @@ impl DebugInfo {
             self.file
         ));
         self.modular_types.push((modular.clone(), type_id));
+        type_id
+    }
+
+    fn list_type(&mut self, element: &CompilerType) -> usize {
+        let value_type = CompilerType::List(Box::new(element.clone()));
+        if let Some((_, type_id)) = self
+            .list_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+        debug_assert_eq!(element, &CompilerType::Effect);
+        let element_type = self.type_id(element);
+        let payload = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"value\", file: !{}, baseType: !{element_type}, size: 8, align: 8, offset: 0)",
+            self.file
+        ));
+        let opaque_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{}, size: 64, align: 64)",
+            self.unsigned64_type
+        ));
+        let next = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"remaining\", file: !{}, baseType: !{opaque_pointer}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let members = self.node(format!("!{{!{payload}, !{next}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalList.Effect\", file: !{}, size: 128, align: 64, elements: !{members})",
+            self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"List {}\", file: !{}, baseType: !{pointer})",
+            llvm_string(&element.name()),
+            self.file
+        ));
+        self.list_types.push((value_type, type_id));
         type_id
     }
 
@@ -5041,6 +5289,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::Range(_)
         | CompilerType::Result(_)
         | CompilerType::Optional(_)
+        | CompilerType::List(_)
         | CompilerType::Character
         | CompilerType::String => TargetValueLayout {
             size: 64,
@@ -5132,7 +5381,8 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::String
         | CompilerType::Range(_)
         | CompilerType::Result(_)
-        | CompilerType::Optional(_) => "ptr".into(),
+        | CompilerType::Optional(_)
+        | CompilerType::List(_) => "ptr".into(),
         CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
@@ -5225,6 +5475,10 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             value,
             payload: payload.as_ref().clone(),
         },
+        CompilerType::List(element) => LlValue::List {
+            value,
+            element: element.as_ref().clone(),
+        },
         CompilerType::Refined { base, .. } => machine_value(base, value),
         CompilerType::Tuple(_) | CompilerType::Record(_) | CompilerType::Sum(_) => {
             unreachable!("aggregate machine values require structural lowering")
@@ -5283,6 +5537,29 @@ mod tests {
         assert!(llvm.contains("\\54\\6F\\70\\61\\6C"));
         assert!(llvm.contains("#dbg_value"));
         assert!(llvm.contains("Dwarf Version"));
+    }
+
+    #[test]
+    fn emits_private_effect_list_nodes_and_pointer_boundaries() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-COMPILER-LIST-EFFECT-001,
+        // TOPAL-COMPILER-ABI-001, TOPAL-COMPILER-DEBUG-001
+        let source = "use language (version is v0.1)\nretain is fn (rows : List Effect) -> List Effect\n  rows\nrows : List Effect is Entry (Effects (), Empty)\nretain rows\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "list-effect-boundary.t").emit();
+
+        assert!(llvm.contains(&format!("define internal fastcc ptr @{symbol}(ptr %arg0)")));
+        assert!(llvm.contains(&format!("call fastcc ptr @{symbol}(ptr")));
+        assert!(llvm.contains("call ptr @topal.platform.allocate(i64 16)"));
+        assert!(llvm.contains("store i8 0, ptr"));
+        assert!(llvm.contains("getelementptr i8, ptr"));
+        assert!(llvm.contains("store ptr null, ptr"));
+        assert!(llvm.contains("print.list.loop"));
+        assert!(llvm.contains("print.list.close.loop"));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"List Effect\""));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalList.Effect\""));
+        assert!(llvm.contains("#dbg_value(ptr"));
+        assert!(!llvm.contains("topal.runtime.list"));
     }
 
     #[test]

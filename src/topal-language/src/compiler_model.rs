@@ -74,6 +74,7 @@ pub enum CompilerType {
     Range(Box<Self>),
     Result(Box<Self>),
     Optional(Box<Self>),
+    List(Box<Self>),
     Refined { constraint: String, base: Box<Self> },
     Character,
     String,
@@ -107,6 +108,7 @@ impl CompilerType {
                 | Self::Range(_)
                 | Self::Result(_)
                 | Self::Optional(_)
+                | Self::List(_)
                 | Self::Character
                 | Self::String
         ) || matches!(self, Self::Refined { base, .. } if base.machine_scalar())
@@ -140,6 +142,7 @@ impl CompilerType {
                 success.name()
             ),
             Self::Optional(payload) => format!("Optional {}", payload.name()),
+            Self::List(element) => format!("List {}", element.name()),
             Self::Refined { constraint, .. } => constraint.clone(),
             Self::Character => "Character".into(),
             Self::String => "String".into(),
@@ -337,6 +340,11 @@ pub enum CompilerExpressionKind {
     ResultProject(Box<CompilerExpression>),
     OptionalSome(Box<CompilerExpression>),
     OptionalNone,
+    ListEmpty,
+    ListEntry {
+        value: Box<CompilerExpression>,
+        remaining: Box<CompilerExpression>,
+    },
     ErrorField {
         error: Box<CompilerExpression>,
         field: CompilerErrorField,
@@ -1373,6 +1381,58 @@ impl Analyzer {
             && let Some(CompilerType::Optional(payload)) = expected
         {
             return self.finish_optional_none(payload.as_ref().clone(), expression.span());
+        }
+        if let Some(CompilerType::List(element)) = expected {
+            if let Expression::Identifier(name) = expression
+                && self.source.slice(*name) == "Empty"
+            {
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::ListEmpty,
+                    value_type: CompilerType::List(element.clone()),
+                    int_range: None,
+                    rational_value: None,
+                    span: expression.span(),
+                });
+            }
+            if let Expression::Application { items, span } = expression
+                && let [
+                    Expression::Identifier(constructor),
+                    Expression::Product { fields, .. },
+                ] = items.as_slice()
+                && self.source.slice(*constructor) == "Entry"
+                && let [value, remaining] = fields.as_slice()
+                && value.label.is_none()
+                && remaining.label.is_none()
+            {
+                let value = self.analyze_expression_with_expected(
+                    &value.value,
+                    environment,
+                    Some(element),
+                )?;
+                require_same_type(&self.source, value.span, element, &value.value_type)?;
+                let list_type = CompilerType::List(element.clone());
+                let remaining = self.analyze_expression_with_expected(
+                    &remaining.value,
+                    environment,
+                    Some(&list_type),
+                )?;
+                require_same_type(
+                    &self.source,
+                    remaining.span,
+                    &list_type,
+                    &remaining.value_type,
+                )?;
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::ListEntry {
+                        value: Box::new(value),
+                        remaining: Box::new(remaining),
+                    },
+                    value_type: list_type,
+                    int_range: None,
+                    rational_value: None,
+                    span: *span,
+                });
+            }
         }
         let value = self.analyze_expression(expression, environment)?;
         match expected {
@@ -7045,6 +7105,9 @@ fn fundamental_type_value(name: &str) -> Option<u32> {
 }
 
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
+    if classifier == "ListEffect" {
+        return Some(CompilerType::List(Box::new(CompilerType::Effect)));
+    }
     if let Some(payload) = classifier.strip_prefix("Optional") {
         return Some(CompilerType::Optional(Box::new(parse_compact_classifier(
             payload,
@@ -7180,6 +7243,7 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
+        CompilerType::List(element) => element.as_ref() == &CompilerType::Effect,
         CompilerType::Optional(payload) => {
             matches!(
                 payload.as_ref(),
@@ -7488,7 +7552,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::SourceLocation
         | CompilerType::Sum(_)
         | CompilerType::Range(_)
-        | CompilerType::Result(_) => false,
+        | CompilerType::Result(_)
+        | CompilerType::List(_) => false,
     }
 }
 
@@ -7568,7 +7633,12 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::StringEmpty
         | CompilerExpressionKind::ErrorCode(_)
         | CompilerExpressionKind::Enum(_)
-        | CompilerExpressionKind::OptionalNone => true,
+        | CompilerExpressionKind::OptionalNone
+        | CompilerExpressionKind::ListEmpty => true,
+        CompilerExpressionKind::ListEntry { value, remaining } => {
+            compiler_expression_is_closed_with(value, bound)
+                && compiler_expression_is_closed_with(remaining, bound)
+        }
         CompilerExpressionKind::Sum { payload, .. } => payload
             .as_deref()
             .is_none_or(|value| compiler_expression_is_closed_with(value, bound)),
@@ -9015,6 +9085,39 @@ mod tests {
             include_str!("../../../examples/language/effect-identity.t"),
         ] {
             assert!(analyze_for_compiler(source).is_ok());
+        }
+    }
+
+    #[test]
+    fn models_contextual_effect_list_construction() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-COMPILER-LIST-EFFECT-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/effect-list.t")).unwrap();
+        let [CompilerStatement::Binding(rows)] = program.main.statements.as_slice() else {
+            panic!("shared regression binds one List value")
+        };
+        assert_eq!(
+            rows.value.value_type,
+            CompilerType::List(Box::new(CompilerType::Effect))
+        );
+        let CompilerExpressionKind::ListEntry { value, remaining } = &rows.value.kind else {
+            panic!("expected contextual Entry construction")
+        };
+        assert!(matches!(value.kind, CompilerExpressionKind::Effect));
+        assert!(matches!(remaining.kind, CompilerExpressionKind::ListEmpty));
+        assert!(matches!(
+            program.main.result.kind,
+            CompilerExpressionKind::Local(ref storage) if storage == &rows.storage_name
+        ));
+
+        for invalid in [
+            "use language (version is v0.1)\nrows : List Effect is Entry (Completed, Empty)\nrows\n",
+            "use language (version is v0.1)\nrows : List Effect is Entry (Effects (), Effects ())\nrows\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(invalid).unwrap_err().code,
+                "E-TYPE-MISMATCH"
+            );
         }
     }
 

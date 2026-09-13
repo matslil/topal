@@ -525,6 +525,22 @@ reuses the existing pointer payload and therefore does not revise
 boundary, and no foreign aggregate convention, allocator, or standard library
 participates.
 
+The first immutable container representation specializes `List Effect` without
+claiming a generic or public List layout. `Empty` is a null pointer. Each
+`Entry` is a naturally aligned 16-byte process-lifetime node with the sealed
+one-byte Effect carrier at offset zero and its remaining-node pointer at offset
+eight; padding is not source state. Construction evaluates the value before the
+remaining List, then allocates through the existing Linux `mmap` boundary.
+Canonical output walks the chain iteratively and emits closing constructors
+without recursion, while the GDB renderer bounds traversal and rejects cycles
+or unreadable nodes. Private `fastcc` signatures carry only the pointer and let
+LLVM select physical AMD64 placement. DWARF describes the semantic
+`List Effect` typedef and private node shape, but neither that description nor
+the storage becomes a foreign ABI, serialized identity, compiled-library
+contract, or layout commitment for other element types. General reachability
+reclamation remains deferred; process-lifetime retention is safe for this
+immutable executable-only slice and does not revise `topal-native/6`.
+
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
 action in its selected block, and compatible machine-scalar results merge with

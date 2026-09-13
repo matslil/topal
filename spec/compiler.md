@@ -807,6 +807,30 @@ call. Display SHALL use only the Topal-owned platform write boundary. This
 increment SHALL add no foreign dependency, other-language standard library, or
 native ABI revision.
 
+### TOPAL-COMPILER-LIST-EFFECT-001 — Immutable Effect List foundation
+
+Within the admitted `List Effect` subset, an immediate classifier context SHALL
+determine the element type of `Empty` and of every nested
+`Entry (value, remaining)` constructor. The compiler SHALL require every value
+to be `Effect`, every remaining value to be `List Effect`, evaluate constructor
+fields in source order, and retain the exact List classifier through immutable
+bindings and ordinary function parameters and results. Display SHALL produce
+the same recursive `Entry`/`Empty` spelling as the interpreter.
+
+On Linux x86-64, `Empty` MAY be a null private pointer and `Entry` MAY be an
+immutable, naturally aligned node containing the sealed Effect carrier and the
+remaining-node pointer. Nodes SHALL be created through the Topal-owned mapping
+boundary and remain valid for their process-lifetime use. Private definitions,
+calls, and returns SHALL use one exact pointer prototype and leave physical
+AMD64 argument and result placement to LLVM. DWARF and the bundled GDB renderer
+SHALL preserve and safely render the source `List Effect` identity.
+
+The node shape SHALL NOT be a public foreign ABI, serialized library identity,
+or promise for another element type. This rule SHALL NOT imply List equality,
+decisions, traversal, mutation, or a final reclamation policy, and SHALL add no
+foreign allocator, C/C++ runtime, other-language standard library, or native
+ABI revision.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed

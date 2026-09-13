@@ -350,6 +350,42 @@ class _TopalOptionalPrinter:
         return f"Some {rendered}"
 
 
+class _TopalListPrinter:
+    """Render an immutable topal-native List through its element type."""
+
+    def __init__(self, value, element_type):
+        self._value = value
+        self._element_type = element_type
+
+    def to_string(self):
+        address = int(self._value)
+        inferior = gdb.selected_inferior()
+        entries = []
+        visited = set()
+        while address:
+            if address in visited:
+                return "<cyclic List>"
+            if len(entries) >= 100_000:
+                return "<List too large to render safely>"
+            visited.add(address)
+            try:
+                node = bytes(inferior.read_memory(address, 16))
+            except gdb.MemoryError:
+                return "<unreadable List node>"
+            if self._element_type == "Effect":
+                payload = node[0]
+                if payload:
+                    return f"<invalid Effect value {payload}>"
+                entries.append("Effects ()")
+            else:
+                return f"<unsupported List element type {self._element_type}>"
+            address = int.from_bytes(node[8:16], "little")
+        rendered = "Empty"
+        for entry in reversed(entries):
+            rendered = f"Entry ( {entry}, {rendered} )"
+        return rendered
+
+
 def _render_topal_value(value):
     printer = _lookup_topal_value(value)
     if printer is not None:
@@ -421,6 +457,11 @@ def _lookup_topal_value(value):
     optional_prefix = "Optional "
     if value_type.startswith(optional_prefix):
         return _TopalOptionalPrinter(value, value_type[len(optional_prefix) :])
+    list_prefix = "List "
+    if value_type.startswith(list_prefix) and storage_type.startswith(
+        "struct TopalList."
+    ):
+        return _TopalListPrinter(value, value_type[len(list_prefix) :])
     prefix = "Result ("
     suffix = ", lang arithmetic ArithmeticErrorCode)"
     if value_type.startswith(prefix) and value_type.endswith(suffix):

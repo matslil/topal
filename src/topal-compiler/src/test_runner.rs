@@ -31,6 +31,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/effect-classifier.t",
     "examples/language/effect-function-boundary.t",
     "examples/language/effect-identity.t",
+    "examples/language/effect-list.t",
     "examples/language/effect-products.t",
     "examples/language/empty-block.t",
     "examples/language/empty-effects.t",

@@ -61,7 +61,8 @@ evidence.
 | 4b3a | closed Character constraint validation, retained function/equality evidence, lossless String forgetting, and debugging | complete |
 | 4b3b | closed Character/entry counting and exact indexing with Optional Character passage, decisions, display, and debugging | complete |
 | 4b3c | closed pinned-Unicode uppercase, lowercase, full case-fold, NFC/NFD normalization, canonical equivalence, and debugging | complete |
-| 4b3d | dynamic Character and Unicode operations, remaining strings, fundamental containers, traversal, and representation-safe allocation | planned |
+| 4b3d-a | contextual immutable `List Effect` construction, private pointer passage, canonical display, process-lifetime allocation, and debugging | complete |
+| 4b3d | dynamic Character and Unicode operations, remaining strings and container types, List observations/traversal, and representation-safe reclamation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -180,7 +181,9 @@ emptiness, and canonical dynamic display. Increment 4b3a retains statically
 proved Character evidence over the same descriptor; 4b3b adds closed
 observations under pinned segmentation; 4b3c adds closed pinned-Unicode
 transformations and canonical equivalence; 4b3d retains dynamic observations
-plus the remaining Unicode and container work. Increment 6a resolves the
+and the remaining Unicode and container work, while 4b3d-a establishes the
+private immutable `List Effect` node and function-boundary foundation without
+claiming a generic, persistent, or public representation. Increment 6a resolves the
 executable root Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
 chains, and overload order without a namespace runtime; 6b2a adds stable
