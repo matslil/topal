@@ -255,6 +255,29 @@ general Scope function boundaries, generators, `use`, packages, and source or
 compiled libraries remain outside this increment and SHALL be rejected until a
 storage/interface representation valid beyond the source entry frame exists.
 
+### TOPAL-COMPILER-NAMED-FUNCTION-VALUE-001 — Retained named function values
+
+Resolving an already-visible ordinary or static root function in value position
+SHALL produce a checked Function value retaining the original source name,
+complete visible declaration set, source overload order, and staticness. Binding
+that value, including through a finite chain of bindings, SHALL preserve those
+facts. Applying the bound name SHALL select only from the retained declarations
+under the ordinary argument, overload, static-context, termination, and result
+rules; it SHALL NOT restart lookup using the binding name or combine candidates
+from a caller lexical scope.
+
+The compiler MAY assign each root function name a deterministic module-private
+integer tag for canonical `<fn name>` display and truthful Function DWARF/GDB
+observation. That tag SHALL NOT determine application: the retained compile-time
+declaration identity SHALL produce a direct private LLVM call to the selected
+specialization. No function-pointer dispatch, closure allocation, Function
+runtime, foreign dependency, C/C++ runtime, other-language standard library,
+public callable ABI, or native ABI revision is permitted.
+
+Symbolic callable values, anonymous functions and captures, Function parameters
+or results, namespace selection of a function-valued data binding, and published
+callable interfaces remain outside this increment and SHALL be rejected.
+
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 
 The compiler SHALL admit a direct unary decreasing `Int` recursion edge only

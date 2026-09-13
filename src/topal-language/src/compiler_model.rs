@@ -36,6 +36,7 @@ pub enum CompilerType {
     Effect,
     Type,
     Scope,
+    Function,
     Boolean,
     Int,
     Nat,
@@ -64,6 +65,7 @@ impl CompilerType {
                 | Self::Effect
                 | Self::Type
                 | Self::Scope
+                | Self::Function
                 | Self::Boolean
                 | Self::Int
                 | Self::Nat
@@ -89,6 +91,7 @@ impl CompilerType {
             Self::Effect => "Effect".into(),
             Self::Type => "Type".into(),
             Self::Scope => "Scope".into(),
+            Self::Function => "Function".into(),
             Self::Boolean => "Boolean".into(),
             Self::Int => "Int".into(),
             Self::Nat => "Nat".into(),
@@ -231,6 +234,7 @@ pub enum CompilerExpressionKind {
     Effect,
     TypeValue(u32),
     Root,
+    FunctionValue(u32),
     Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
@@ -381,6 +385,7 @@ pub struct CompilerProgram {
     pub source: SourceText,
     pub language_version: LanguageVersion,
     pub main: CompilerBlock,
+    pub function_value_names: Vec<String>,
     /// Instances are in callee-before-caller order.
     pub functions: Vec<CompilerFunction>,
 }
@@ -429,6 +434,7 @@ struct BindingFacts {
     string_value: Option<String>,
     record_fields: BTreeMap<String, StaticValueFacts>,
     namespace: Option<CompilerNamespaceFacts>,
+    callable: Option<CompilerCallableFacts>,
 }
 
 #[derive(Clone)]
@@ -444,6 +450,12 @@ struct CompilerDataMemberFacts {
     value_type: CompilerType,
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
+}
+
+#[derive(Clone)]
+struct CompilerCallableFacts {
+    name: String,
+    declarations: Vec<FunctionSource>,
 }
 
 impl From<&BindingFacts> for CompilerDataMemberFacts {
@@ -550,10 +562,12 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         BlockKind::TopLevel,
         None,
     )?;
+    let function_value_names = analyzer.functions.keys().cloned().collect();
     Ok(CompilerProgram {
         source,
         language_version,
         main,
+        function_value_names,
         functions: analyzer.instances,
     })
 }
@@ -947,6 +961,8 @@ impl Analyzer {
                     let record_fields = Self::known_record_fields(&value, environment);
                     let namespace =
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
+                    let callable =
+                        self.known_callable(&value, environment, initializer.span().start)?;
                     let storage_name = if kind == BlockKind::TopLevel {
                         format!("topal.root.{}.{}", name.start, name_text)
                     } else {
@@ -960,6 +976,7 @@ impl Analyzer {
                         string_value,
                         record_fields,
                         namespace,
+                        callable,
                     };
                     environment.insert(name_text.clone(), facts.clone());
                     if kind == BlockKind::TopLevel {
@@ -1082,6 +1099,40 @@ impl Analyzer {
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Root,
                     value_type: CompilerType::Scope,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Identifier(name)
+                if !environment.contains_key(self.source.slice(*name))
+                    && self.functions.contains_key(self.source.slice(*name)) =>
+            {
+                let function_name = self.source.slice(*name);
+                let declarations = self
+                    .functions
+                    .get(function_name)
+                    .expect("guard established a function declaration");
+                if !declarations
+                    .iter()
+                    .any(|declaration| declaration.span.end <= name.start)
+                {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-UNBOUND-NAME",
+                        *name,
+                        format!("function `{function_name}` is not yet a value"),
+                    ));
+                }
+                let value = self
+                    .functions
+                    .keys()
+                    .position(|candidate| candidate == function_name)
+                    .and_then(|value| u32::try_from(value).ok())
+                    .ok_or_else(|| unsupported(&self.source, *name, "native Function value tag"))?;
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::FunctionValue(value),
+                    value_type: CompilerType::Function,
                     int_range: None,
                     rational_value: None,
                     span,
@@ -1310,6 +1361,20 @@ impl Analyzer {
                     namespace.name
                 ),
             ));
+        }
+        if let Some(Expression::Identifier(alias)) = items.first()
+            && let Some(callable) = environment
+                .get(self.source.slice(*alias))
+                .and_then(|facts| facts.callable.as_ref())
+        {
+            return self.analyze_resolved_call_from(
+                items,
+                span,
+                environment,
+                0,
+                &callable.name,
+                &callable.declarations,
+            );
         }
         if items.len() > 1
             && items
@@ -2315,6 +2380,45 @@ impl Analyzer {
                 &self.source,
                 value.span,
                 "computed Scope alias",
+            )),
+        }
+    }
+
+    fn known_callable(
+        &self,
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+        capture_position: usize,
+    ) -> Result<Option<CompilerCallableFacts>, Diagnostic> {
+        if value.value_type != CompilerType::Function {
+            return Ok(None);
+        }
+        match &value.kind {
+            CompilerExpressionKind::FunctionValue(tag) => {
+                let name = self
+                    .functions
+                    .keys()
+                    .nth(usize::try_from(*tag).expect("u32 tag fits usize"))
+                    .expect("checked Function value tag names a declaration")
+                    .clone();
+                let declarations = self
+                    .functions
+                    .get(&name)
+                    .expect("checked Function value retains its declarations")
+                    .iter()
+                    .filter(|declaration| declaration.span.end <= capture_position)
+                    .cloned()
+                    .collect::<Vec<_>>();
+                Ok(Some(CompilerCallableFacts { name, declarations }))
+            }
+            CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
+                .and_then(|facts| facts.callable.clone())
+                .map(Some)
+                .ok_or_else(|| unsupported(&self.source, value.span, "opaque Function value")),
+            _ => Err(unsupported(
+                &self.source,
+                value.span,
+                "computed Function value",
             )),
         }
     }
@@ -3534,6 +3638,7 @@ impl Analyzer {
                             .flatten(),
                         record_fields: BTreeMap::new(),
                         namespace: None,
+                        callable: None,
                     },
                 );
             }
@@ -4568,6 +4673,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "Effect" => Some(CompilerType::Effect),
         "Type" => Some(CompilerType::Type),
         "Scope" => Some(CompilerType::Scope),
+        "Function" => Some(CompilerType::Function),
         "Boolean" => Some(CompilerType::Boolean),
         "Int" => Some(CompilerType::Int),
         "Nat" => Some(CompilerType::Nat),
@@ -4666,7 +4772,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
 }
 
 fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
-    if value_type == &CompilerType::Scope {
+    if matches!(value_type, CompilerType::Scope | CompilerType::Function) {
         return false;
     }
     if value_type.machine_scalar() {
@@ -4724,6 +4830,7 @@ fn decision_binding_environment(
             string_value: None,
             record_fields: BTreeMap::new(),
             namespace: None,
+            callable: None,
         },
     );
     branch
@@ -4798,6 +4905,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
             .iter()
             .all(|(_, value_type)| compiler_equality_supported(value_type)),
         CompilerType::Scope
+        | CompilerType::Function
         | CompilerType::Error
         | CompilerType::ErrorDomain
         | CompilerType::Range(_)
@@ -4865,6 +4973,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Effect
         | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Root
+        | CompilerExpressionKind::FunctionValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -6686,6 +6795,51 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(rejected.code, "E-COMPILER-UNSUPPORTED");
+    }
+
+    #[test]
+    fn models_named_function_values_without_restarting_lookup() {
+        // TOPAL-COMPILER-NAMED-FUNCTION-VALUE-001, TOPAL-FUNCTION-VALUE-001,
+        // TOPAL-FUNCTION-OVERLOAD-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/named-function-values.t"
+        ))
+        .unwrap();
+        assert_eq!(program.function_value_names, ["increment"]);
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::FunctionValue(0),
+                    value_type: CompilerType::Function,
+                    ..
+                },
+                ..
+            })]
+        ));
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+
+        let chained = analyze_for_compiler(
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\noperation : Function is increment\nagain is operation\n{\n  increment is 100\n  again 41\n}\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&chained.main.result), Some(BigInt::from(42)));
+
+        let snapshot = analyze_for_compiler(
+            "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\noperation is identity\nidentity is fn (value : String) -> String\n  value\n(operation 42, identity \"Topal\")\n",
+        )
+        .unwrap();
+        let CompilerExpressionKind::Tuple(values) = &snapshot.main.result.kind else {
+            panic!("expected captured and live function result product")
+        };
+        assert_eq!(values[0].value_type, CompilerType::Int);
+        assert_eq!(values[1].value_type, CompilerType::String);
+
+        let rejected = analyze_for_compiler(
+            "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\noperation is identity\nidentity is fn (value : String) -> String\n  value\noperation \"Topal\"\n",
+        )
+        .unwrap_err();
+        assert_eq!(rejected.code, "E-NO-APPLICABLE-OVERLOAD");
     }
 
     #[test]

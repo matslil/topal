@@ -310,6 +310,31 @@ source/compiled libraries remain rejected. This realizes
 `TOPAL-NAMESPACE-SNAPSHOT-001`, `TOPAL-NAMESPACE-CLASSIFIER-001`, and
 `TOPAL-NAMESPACE-ALIAS-CHAIN-001`.
 
+## TOPAL-COMP-NAMED-FUNCTION-VALUE-001 — Retained named function values
+
+The checked compiler model shall admit an already-visible ordinary or static
+root function in value position, retaining its source identity, visible
+declarations, source-ordered overload set, and staticness. Binding and rebinding
+that Function value shall preserve the retained candidates. Applying an alias
+shall use the original function name for overload, recursion, specialization,
+and diagnostics and shall not restart lookup at the alias or caller scope.
+
+The program model shall expose a deterministic module-local name table so
+expression tags, canonical `<fn name>` display, and Function DWARF enumerators
+agree. LLVM lowering shall nevertheless call the selected private `fastcc`
+symbol directly; neither the tag nor a native pointer shall dispatch the call.
+Native and GDB tests shall cover exact execution, retained value identity,
+typed aliases, binding chains, snapshot overload exclusion, lexical shadowing,
+Function display, argument inspection, and source frames.
+
+The implementation shall introduce no indirect call, closure allocation,
+Function runtime, foreign dependency, C/C++ runtime, other-language standard
+library, public callable ABI, or `topal-native/6` revision. Symbolic callables,
+anonymous functions/captures, Function parameters/results, namespace selection
+of function-valued data, and published callable interfaces remain rejected.
+This realizes `TOPAL-COMPILER-NAMED-FUNCTION-VALUE-001` and the admitted portion
+of `TOPAL-FUNCTION-VALUE-001` for compiler increment 3b2-b5j.
+
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 
 The checked compiler model shall reuse the shared structural proof for

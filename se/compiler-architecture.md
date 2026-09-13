@@ -143,6 +143,15 @@ valid in an independently callable function, so function-body root-data access
 remains rejected until root storage receives an explicit cross-function
 representation compatible with compiled-library interfaces.
 
+Named function values similarly split observable identity from call lowering.
+The checked binding retains the original declaration vector and application
+specializes from that vector, so the backend emits the same direct private call
+as an unaliased source name. A deterministic module-local integer identifies
+the name only when the Function value is displayed or inspected in DWARF. It is
+not a code pointer or dispatch-table index. This preserves a future choice of
+public callable/closure representation without burdening current private calls
+with a provisional runtime ABI.
+
 Recursion identity uses that complete selected input header, not source-name
 spelling alone. A call from an active `String` overload to a same-named `Int`
 overload is therefore an ordinary acyclic edge: it receives a distinct private
