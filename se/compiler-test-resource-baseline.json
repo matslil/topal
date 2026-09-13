@@ -976,6 +976,16 @@
       "cpu_time_ns": 352651,
       "memory_peak_bytes": 18509824,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/tuple-function-parameters.t": {
+      "cpu_time_ns": 136812639,
+      "memory_peak_bytes": 41725952,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/tuple-function-parameters.t": {
+      "cpu_time_ns": 191439,
+      "memory_peak_bytes": 18231296,
+      "samples_per_test": 500
     }
   }
 }

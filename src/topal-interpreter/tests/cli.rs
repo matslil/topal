@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 205);
+    assert_eq!(examples.len(), 206);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1767,6 +1767,21 @@ fn every_mode_executes_comparison_decision_forms() {
 fn every_mode_preserves_tuple_decision_results() {
     let source = include_str!("../../../examples/language/tuple-decision-results.t");
     let expected = b"((42, \"true\"), (0, \"false\"), (-2, \"negative\"), (2, \"nonnegative\"), (-1, \"less\"), (1, \"right\"), (7, \"some\"), (0, \"none\"), (Rational ( 1, 2 ), \"ok\"), (Rational ( 0, 1 ), \"error\"))\n";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(expected));
+    }
+}
+
+#[test]
+fn every_mode_preserves_tuple_function_parameters() {
+    let source = include_str!("../../../examples/language/tuple-function-parameters.t");
+    let expected = b"(((42, true), \"nested\"), (7, \"kept\"), (0, \"fallback\"), \"tuple\", \"fields\", \"discarded\")\n";
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(

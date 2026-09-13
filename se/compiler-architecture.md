@@ -53,8 +53,20 @@ inspectable x86-64 local in this O0 path, so a named Tuple binding also receives
 a debug-only stack shadow and `#dbg_declare`. This shadow changes neither the
 semantic value representation nor call transport, requires no allocator or
 runtime, and is retained deliberately for deterministic GDB inspection.
-Records, aggregate parameters, persistent aggregate storage, and public
-interoperation remain separate representation decisions.
+Records, persistent aggregate storage, and public interoperation remain
+separate representation decisions.
+
+An admitted Tuple parameter uses that same recursive LLVM literal-struct type
+as one exact private `fastcc` argument. The caller constructs the aggregate
+with `insertvalue`; the callee recursively decomposes it with `extractvalue`
+into the existing field-value representation. LLVM owns the x86-64 physical
+register/stack classification under the module triple and data layout, so the
+frontend neither duplicates a target ABI algorithm nor promises this private
+shape at a library or foreign boundary. A named Tuple parameter uses the same
+target-aligned debug-only shadow as a named Tuple local because LLVM 22 does not
+retain the aggregate SSA argument as a reliably inspectable O0 value. A
+discarded Tuple remains in the checked and LLVM signature but requires neither
+decomposition nor a debug binding.
 
 When an admitted decision produces one of these Tuples, lowering keeps the
 existing decomposed representation through the merge: it recursively creates
@@ -385,13 +397,8 @@ product equality evaluates the complete left operand and then the complete
 right operand once, recursively applies each field's admitted canonical
 equality, and joins the Boolean results with LLVM `and i1`. Comparing a product
 therefore adds no allocation, native object header, or foreign aggregate ABI.
-Canonical conversions between differently classified corresponding fields and
-product passage through machine signatures remain separate frontend and ABI
-work rather than being inferred by the backend. Because this increment has no
-single machine product value, it does not yet publish product bindings as DWARF
-locals; their source lines and lowered field operations remain debuggable, while
-a truthful aggregate DWARF representation is retained with general product
-storage and ABI work in increment 3b2-b5e8.
+Canonical conversions between differently classified corresponding fields
+remain separate frontend work rather than being inferred by the backend.
 
 An anonymous labeled Record uses the same decomposed expression-local strategy.
 The checked model evaluates fields in source order, rejects duplicate labels,

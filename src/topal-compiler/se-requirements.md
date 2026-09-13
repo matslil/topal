@@ -437,10 +437,9 @@ This realizes `TOPAL-COMPILER-EFFECT-EMPTY-001` for compiler increment 7a.
 The checked compiler model shall admit an ordinary or static Tuple result when
 every recursively nested leaf has an exact supported private scalar
 representation. It shall retain the source field order and identities and
-reject Record results, aggregate parameters, and unsupported leaves rather than
-inventing a layout or conversion. Function execution and all field evaluation
-shall remain correct at O0 without semantic heap storage, runtime allocation,
-or optimization.
+reject Record results and unsupported leaves rather than inventing a layout or
+conversion. Function execution and all field evaluation shall remain correct
+at O0 without semantic heap storage, runtime allocation, or optimization.
 
 The Linux x86-64 backend shall lower each admitted result to a recursively
 nested, non-packed LLVM literal struct. Definition and calls shall use the same
@@ -475,6 +474,29 @@ dependency, a C/C++ runtime, another-language standard library, or a
 `topal-native/6` revision. Record decisions and unsupported Tuple leaves shall
 remain rejected. This realizes `TOPAL-COMPILER-TUPLE-DECISION-001` for compiler
 increment 3b2-b5g.
+
+## TOPAL-COMP-TUPLE-PARAMETER-001 — Private positional-product parameters
+
+The checked compiler model shall admit ordinary and static Tuple parameters
+when every recursively nested leaf has the exact private representation
+admitted by `TOPAL-COMP-TUPLE-RESULT-001`. It shall evaluate the argument once
+and preserve interpreter-compatible call normalization: a unary candidate
+matches the complete Tuple, a multi-parameter candidate matches its fields in
+declaration order, and otherwise-applicable overloads remain source ordered.
+It shall reject Record parameters and unsupported Tuple leaves.
+
+The Linux x86-64 backend shall pass each Tuple parameter as one recursively
+nested, non-packed LLVM literal struct. Caller `insertvalue` construction,
+callee `extractvalue` decomposition, definition, and calls shall all use the
+same exact private `fastcc` prototype while LLVM performs target-specific
+physical call lowering. Named Tuple parameters shall have target-exact DWARF
+and remain inspectable in GDB at O0 through a target-aligned debug-only stack
+shadow and `#dbg_declare`. A discarded Tuple parameter shall retain its
+signature slot but shall have no generated decomposition, source binding, or
+DWARF variable. This shall add no semantic aggregate storage, heap allocation,
+runtime helper, foreign dependency, C/C++ runtime, other-language standard
+library, public aggregate ABI, or `topal-native/6` revision. This realizes
+`TOPAL-COMPILER-TUPLE-PARAMETER-001` for compiler increment 3b2-b5h.
 
 ## TOPAL-COMP-TYPE-VALUE-001 — Closed fundamental Type values
 

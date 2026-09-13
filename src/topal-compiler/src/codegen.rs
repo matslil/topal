@@ -248,28 +248,13 @@ impl<'a> Generator<'a> {
             .iter()
             .enumerate()
             .map(|(index, parameter)| {
-                format!("{} %arg{index}", llvm_parameter_type(&parameter.value_type))
+                format!("{} %arg{index}", llvm_value_type(&parameter.value_type))
             })
             .collect::<Vec<_>>()
             .join(", ");
         let mut body = FunctionBody::new(subprogram);
         let mut environment = BTreeMap::new();
-        for (index, parameter) in function.parameters.iter().enumerate() {
-            let value = function_parameter_value(&parameter.value_type, index);
-            if parameter.discarded {
-                continue;
-            }
-            let variable = self.debug.parameter(
-                &parameter.name,
-                index + 1,
-                parameter.span,
-                &parameter.value_type,
-                subprogram,
-            );
-            let location = self.debug.location(parameter.span, subprogram);
-            body.debug_value(&value, variable, location);
-            environment.insert(parameter.name.clone(), value);
-        }
+        self.bind_function_parameters(function, &mut body, &mut environment);
         let result = self.emit_block(&function.body, &mut body, &mut environment);
         let location = self.debug.location(function.body.result.span, subprogram);
         match result {
@@ -317,6 +302,46 @@ impl<'a> Generator<'a> {
             function.symbol,
             body.render()
         ));
+    }
+
+    fn bind_function_parameters(
+        &mut self,
+        function: &CompilerFunction,
+        body: &mut FunctionBody,
+        environment: &mut BTreeMap<String, LlValue>,
+    ) {
+        for (index, parameter) in function.parameters.iter().enumerate() {
+            let argument = format!("%arg{index}");
+            if parameter.discarded {
+                continue;
+            }
+            let value = if let CompilerType::Tuple(fields) = &parameter.value_type {
+                self.emit_tuple_extract(&argument, fields, body, parameter.span)
+            } else {
+                function_parameter_value(&parameter.value_type, index)
+            };
+            let variable = self.debug.parameter(
+                &parameter.name,
+                index + 1,
+                parameter.span,
+                &parameter.value_type,
+                body.subprogram,
+            );
+            let location = self.debug.location(parameter.span, body.subprogram);
+            if matches!(parameter.value_type, CompilerType::Tuple(_)) {
+                self.emit_tuple_debug_shadow(
+                    &argument,
+                    &parameter.value_type,
+                    variable,
+                    location,
+                    body,
+                    parameter.span,
+                );
+            } else {
+                body.debug_value(&value, variable, location);
+            }
+            environment.insert(parameter.name.clone(), value);
+        }
     }
 
     fn emit_tuple_aggregate(
@@ -387,6 +412,30 @@ impl<'a> Generator<'a> {
         )
     }
 
+    fn emit_tuple_debug_shadow(
+        &mut self,
+        aggregate: &str,
+        value_type: &CompilerType,
+        variable: usize,
+        location: usize,
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        let llvm_type = llvm_value_type(value_type);
+        let alignment = target_value_layout(value_type).alignment / 8;
+        let address = body.instruction(
+            &format!("alloca {llvm_type}, align {alignment}"),
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store {llvm_type} {aggregate}, ptr {address}, align {alignment}"),
+            span,
+            &mut self.debug,
+        );
+        body.debug_declare(&address, variable, location);
+    }
+
     fn emit_main(&mut self) {
         let parameter_types = Vec::new();
         let subprogram = self.debug.subprogram(
@@ -436,21 +485,6 @@ impl<'a> Generator<'a> {
                     {
                         let aggregate =
                             self.emit_tuple_aggregate(fields, field_types, body, binding.span);
-                        let value_type = llvm_value_type(&binding.value.value_type);
-                        let alignment =
-                            target_value_layout(&binding.value.value_type).alignment / 8;
-                        let address = body.instruction(
-                            &format!("alloca {value_type}, align {alignment}"),
-                            binding.span,
-                            &mut self.debug,
-                        );
-                        body.effect(
-                            &format!(
-                                "store {value_type} {aggregate}, ptr {address}, align {alignment}"
-                            ),
-                            binding.span,
-                            &mut self.debug,
-                        );
                         let variable = self.debug.local(
                             &binding.name,
                             binding.span,
@@ -458,7 +492,14 @@ impl<'a> Generator<'a> {
                             body.subprogram,
                         );
                         let location = self.debug.location(binding.span, body.subprogram);
-                        body.debug_declare(&address, variable, location);
+                        self.emit_tuple_debug_shadow(
+                            &aggregate,
+                            &binding.value.value_type,
+                            variable,
+                            location,
+                            body,
+                            binding.span,
+                        );
                     }
                     environment.insert(binding.name.clone(), value);
                 }
@@ -860,11 +901,27 @@ impl<'a> Generator<'a> {
                     .iter()
                     .map(|argument| self.emit_expression(argument, body, environment))
                     .collect::<Vec<_>>();
-                let arguments = values
+                let parameter_types = self
+                    .program
+                    .functions
                     .iter()
-                    .map(LlValue::argument)
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                    .find(|function| function.symbol == *symbol)
+                    .expect("checked call target has a generated function")
+                    .parameters
+                    .iter()
+                    .map(|parameter| parameter.value_type.clone())
+                    .collect::<Vec<_>>();
+                debug_assert_eq!(values.len(), parameter_types.len());
+                let mut machine_arguments = Vec::with_capacity(values.len());
+                for (value, value_type) in values.iter().zip(&parameter_types) {
+                    machine_arguments.push(self.emit_machine_operand(
+                        value,
+                        value_type,
+                        body,
+                        expression.span,
+                    ));
+                }
+                let arguments = machine_arguments.join(", ");
                 match expression.value_type {
                     CompilerType::Unit => {
                         body.effect(
@@ -3646,30 +3703,6 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
     }
 }
 
-fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
-    match value_type {
-        CompilerType::Unit | CompilerType::Completed | CompilerType::Effect => "i8",
-        CompilerType::Boolean => "i1",
-        CompilerType::Int
-        | CompilerType::Nat
-        | CompilerType::Rational
-        | CompilerType::Character
-        | CompilerType::Error
-        | CompilerType::ErrorDomain
-        | CompilerType::String
-        | CompilerType::Range(_)
-        | CompilerType::Result(_)
-        | CompilerType::Optional(_) => "ptr",
-        CompilerType::Type
-        | CompilerType::Comparison
-        | CompilerType::ErrorCode
-        | CompilerType::Enum(_) => "i32",
-        CompilerType::Tuple(_) | CompilerType::Record(_) => {
-            unreachable!("shared model restricts function ABI types")
-        }
-    }
-}
-
 fn llvm_bytes(bytes: &[u8]) -> String {
     let mut encoded = String::with_capacity(bytes.len() * 3);
     for byte in bytes {
@@ -3871,6 +3904,66 @@ mod tests {
         assert_eq!(definition.matches("phi ptr").count(), 2, "{definition}");
         assert_eq!(definition.matches("phi i1").count(), 1, "{definition}");
         assert!(!definition.contains("phi {"), "{definition}");
+    }
+
+    #[test]
+    fn emits_exact_private_tuple_parameter_prototypes_and_debug_shadows() {
+        // TOPAL-COMPILER-TUPLE-PARAMETER-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/tuple-function-parameters.t"
+        ))
+        .unwrap();
+        let symbol = |name: &str| {
+            program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap()
+                .symbol
+                .as_str()
+        };
+        let llvm = Generator::new(&program, "tuple-function-parameters.t").emit();
+
+        let retain = symbol("retain");
+        assert!(llvm.contains(&format!(
+            "define internal fastcc {{ {{ ptr, i1 }}, ptr }} @{retain}({{ {{ ptr, i1 }}, ptr }} %arg0)"
+        )));
+        assert!(llvm.contains(&format!(
+            "call fastcc {{ {{ ptr, i1 }}, ptr }} @{retain}({{ {{ ptr, i1 }}, ptr }}"
+        )));
+        assert!(llvm.contains("extractvalue { { ptr, i1 }, ptr } %arg0, 0"));
+        assert!(llvm.contains("store { { ptr, i1 }, ptr } %arg0"));
+        assert!(llvm.contains("#dbg_declare(ptr"));
+
+        let choose = symbol("choose");
+        assert!(llvm.contains(&format!(
+            "define internal fastcc {{ ptr, ptr }} @{choose}({{ ptr, ptr }} %arg0, i1 %arg1)"
+        )));
+        assert!(llvm.contains(&format!(
+            "call fastcc {{ ptr, ptr }} @{choose}({{ ptr, ptr }}"
+        )));
+
+        let tuple_first = symbol("tuple-first");
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{tuple_first}({{ ptr, ptr }} %arg0)"
+        )));
+        let fields_first = symbol("fields-first");
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{fields_first}(ptr %arg0, ptr %arg1)"
+        )));
+
+        let discard = symbol("discard-pair");
+        let discard_definition = llvm
+            .split_once(&format!("@{discard}("))
+            .unwrap()
+            .1
+            .split_once("\n}\n")
+            .unwrap()
+            .0;
+        assert!(discard_definition.starts_with("{ i8, i8 } %arg0)"));
+        assert!(!discard_definition.contains("extractvalue"));
+        assert!(!llvm.contains("DILocalVariable(name: \"_\""));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"((Int, Boolean), String)\", file:"));
     }
 
     #[test]
