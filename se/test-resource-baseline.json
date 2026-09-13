@@ -4819,6 +4819,21 @@
       "cpu_time_ns": 3478440,
       "memory_peak_bytes": 18231296,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::erases_diagnostic_controls_before_llvm_lowering": {
+      "cpu_time_ns": 5084060,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::diagnostic_controls_are_validated_erased_and_freestanding": {
+      "cpu_time_ns": 319100440,
+      "memory_peak_bytes": 57335808,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::erases_valid_diagnostic_controls_after_shared_validation": {
+      "cpu_time_ns": 3093360,
+      "memory_peak_bytes": 18481152,
+      "samples_per_test": 50
     }
   }
 }

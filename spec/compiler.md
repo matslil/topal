@@ -30,6 +30,23 @@ accepted program. LLVM verification and correctness-preserving backend lowering
 remain mandatory. The resulting executable's observable value and trace SHALL
 equal the interpreter's for every source in their shared implemented subset.
 
+### TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001 — Static diagnostic controls
+
+The compiler SHALL accept warning-specific and structured diagnostic-control
+statements after the shared syntax layer has validated their identity, lexical
+stack, and next-statement discipline under `TOPAL-SYN-DIAG-001`. A malformed
+control SHALL retain the shared source diagnostic. A valid control SHALL NOT
+alter source evaluation, evidence trust, value representation, or generated
+control flow, and SHALL NOT suppress a language error.
+
+When the compiler emits a configurable warning or severity-neutral diagnostic,
+it SHALL apply the active source identity and lexical extent before publishing
+that diagnostic. When no such diagnostic is emitted, the checked model SHALL
+erase the control before LLVM lowering. This erasure SHALL require no runtime
+diagnostic state, foreign dependency, C/C++ runtime, other-language standard
+library, public ABI, or native ABI revision. LLVM SHALL receive no operation for
+the control itself.
+
 ### TOPAL-COMPILER-INT-001 — Arbitrary finite Int representation
 
 Every admitted finite `Int` SHALL be represented without a fixed machine-word

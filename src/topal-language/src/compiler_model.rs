@@ -1349,6 +1349,11 @@ impl Analyzer {
                 statement => statement,
             };
             match statement {
+                Statement::DiagnosticControl { .. } => {
+                    if last {
+                        result = Some(unit_expression(statement_span(statement)));
+                    }
+                }
                 Statement::Function { .. } if kind == BlockKind::Function => {
                     self.bind_nested_function(statement, environment, &mut declared)?;
                     if last {
@@ -7554,6 +7559,23 @@ mod tests {
         let program = analyze_for_compiler(source).unwrap();
         assert_eq!(program.functions.len(), 2);
         assert_eq!(program.main.result.value_type.name(), "(Int, Int)");
+    }
+
+    #[test]
+    fn erases_valid_diagnostic_controls_after_shared_validation() {
+        // TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001, TOPAL-SYN-DIAG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/diagnostic-controls.t"
+        ))
+        .unwrap();
+        assert_eq!(program.main.statements.len(), 2);
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+
+        let invalid = "use language (version is v0.1)\nlang push-disable-warning unclosed\n()\n";
+        assert_eq!(
+            analyze_for_compiler(invalid).unwrap_err().code,
+            "E-DIAGNOSTIC-CONTROL-UNCLOSED"
+        );
     }
 
     #[test]

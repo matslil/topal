@@ -98,6 +98,11 @@ topalc -O0 -g -o hello hello.t
 `--emit object` stops before linking. These implementation formats do not
 replace Topal's versioned library interface and generic metadata.
 
+Valid `lang disable-warning` and structured `lang disable-diagnostic` controls
+are handled statically. They produce no LLVM instruction or runtime dependency;
+malformed control stacks remain shared source diagnostics, and language errors
+cannot be disabled by these controls.
+
 Unoptimized native output carries DWARF 5 source, function, parameter, and
 local-variable information. Load the bundled GDB value printers before a
 debugging session so private runtime values such as arbitrary-precision `Int`,

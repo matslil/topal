@@ -4835,6 +4835,24 @@ mod tests {
     }
 
     #[test]
+    fn erases_diagnostic_controls_before_llvm_lowering() {
+        // TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001, TOPAL-SYN-DIAG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/diagnostic-controls.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "diagnostic-controls.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module defines the source entry point")
+            .1;
+        assert_eq!(main.matches("call ptr @topal.runtime.int.add(").count(), 1);
+        assert!(!llvm.contains("disable-warning"));
+        assert!(!llvm.contains("disable-diagnostic"));
+        assert!(!llvm.contains("topal.runtime.diagnostic"));
+    }
+
+    #[test]
     fn emits_nat_comparison_with_the_exact_int_representation() {
         // TOPAL-COMPILER-NAT-COMPARISON-001
         let source = include_str!("../../../examples/language/nat-equality-and-ordering.t");

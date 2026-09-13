@@ -45,6 +45,30 @@ This requirement covers `TOPAL-SYN-CONTEXT-001`, `TOPAL-SYN-BIND-001`,
 `TOPAL-NUM-COMPARE-001`, `TOPAL-FUNCTION-ORDINARY-001`, and
 `TOPAL-DECISION-BOOLEAN-001` within the stated incremental boundary.
 
+## TOPAL-COMP-DIAGNOSTIC-CONTROL-001 — Static diagnostic controls
+
+The compiler shall accept legacy warning controls and structured
+diagnostic-identity controls whose stack and next-statement structure the shared
+parser has validated. Shared underflow, mismatch, missing-target, and unclosed-
+stack diagnostics shall reach the compiler caller unchanged. Language errors
+shall remain unsuppressible.
+
+The checked compiler model shall erase valid controls after their static effect
+has been accounted for. Because this increment emits no configurable compiler
+warnings or severity-neutral diagnostics, it has no diagnostic event to filter;
+future such diagnostics shall consult the active source identity and lexical
+extent. LLVM IR and the executable shall contain no operation or state for an
+erased control. Native tests shall cover both control spellings, shared invalid-
+stack validation, exact interpreter/compiler output, absent runtime lowering,
+freestanding artifacts, source debugging, the shared corpus, and separate
+resource baselines.
+
+This shall add no runtime diagnostic table, allocation, foreign dependency,
+C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision. This realizes
+`TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001` and `TOPAL-SYN-DIAG-001` for compiler
+increment 1a.
+
 ## TOPAL-COMP-INT-001 — Arbitrary finite Int runtime
 
 The compiler shall remove the increment-1 signed-64-bit admission boundary and

@@ -709,6 +709,15 @@ Rust. The compiler locates an explicit `--llvm-tools` directory,
 `TOPAL_LLVM_TOOLS`, `LLVM_SYS_220_PREFIX`, or the matching Rust LLVM-tools
 component, and rejects a different major version.
 
+Diagnostic controls remain entirely above the LLVM boundary. The shared parser
+validates warning and structured-identity stack discipline before the checked
+compiler model runs. The current compiler emits no configurable warning stream,
+so a valid control has no event to filter and is erased from the executable
+model; shared syntax errors and all language errors remain unsuppressible. When
+compiler warnings are added, filtering belongs at diagnostic publication using
+the retained source identity and lexical extent, never in generated runtime
+state.
+
 Every compilation assembles and verifies the IR before code generation. `llc`
 owns instruction selection, register allocation, machine scheduling, and ELF
 object emission. LLD owns relocation and executable layout. Topal supplies its
