@@ -45,7 +45,8 @@ evidence.
 | 3b2-b5i | order-preserving private Record parameters, results, nesting, decisions, exact aggregate prototypes, and GDB-visible named fields | complete |
 | 3b2-b5j | retained named Function values, typed aliases, binding chains, captured overload sets, direct specialization calls, canonical display, and debugging | complete |
 | 3b2-b5k | retained `+`, `-`, and `<=>` Function values, classification, binding chains, unary/product application, direct operation lowering, display, and debugging | complete |
-| 3b2-b5e8 | remaining function forms, remaining symbolic/anonymous Function values and boundaries, return-through-block cleanup, remaining recursion/totality evidence, nested declarations, persistent aggregate storage, unions, constraints, capabilities, and decisions | planned |
+| 3b2-b5l | specialized private scalar Function inputs for retained named/symbolic values, exact tag signatures, direct lowering, and GDB-visible parameters | complete |
+| 3b2-b5e8 | remaining function forms, Function results/aggregate boundaries, remaining symbolic/anonymous Function values, return-through-block cleanup, remaining recursion/totality evidence, nested declarations, persistent aggregate storage, unions, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -129,10 +130,11 @@ GDB-visible aggregate arguments; 3b2-b5i gives structural Records a private
 canonical-field carrier plus construction-order permutation across functions,
 decisions, nesting, display, and debug shadows; 3b2-b5j lets named Function
 values retain compile-time overload identity and direct calls; 3b2-b5k retains
-direct symbolic `+`, `-`, and `<=>` identities; and 3b2-b5e8 continues with
-nested declarations, remaining recursive and nested-block exit control flow,
-cleanup-bearing scopes, persistent aggregate storage, and the remaining
-user-defined value representations.
+direct symbolic `+`, `-`, and `<=>` identities; 3b2-b5l specializes scalar
+Function inputs while retaining exact private tags for debugging; and 3b2-b5e8
+continues with nested declarations, remaining recursive and nested-block exit
+control flow, cleanup-bearing scopes, persistent aggregate storage, and the
+remaining user-defined value representations.
 Increment 4a admits the encoding-observation
 byte count without
 attaching an encoding or importing a foreign String runtime; 4b1 adds exact

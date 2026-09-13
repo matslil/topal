@@ -160,6 +160,16 @@ product and are decomposed by the frontend; LLVM sees only the already-selected
 operation and its normal machine values. The tag consequently cannot introduce
 indirect control flow or constrain a later general callable ABI.
 
+Private Function inputs extend the same scheme across one specialization
+boundary. The caller passes the observation tag in the source parameter slot,
+while checked callable metadata is propagated into the specialized callee model
+and determines its direct operations. Different callable identities may create
+different private instances of the same source function. LLVM receives exact
+i32 prototypes and owns physical register/stack placement for the target. When
+specialization erases every computational use of the tag, a debug-only aligned
+stack shadow preserves the source parameter for DWARF/GDB without turning it
+into runtime dispatch or a public callable representation.
+
 Recursion identity uses that complete selected input header, not source-name
 spelling alone. A call from an active `String` overload to a same-named `Int`
 overload is therefore an ordinary acyclic edge: it receives a distinct private

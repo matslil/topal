@@ -360,6 +360,33 @@ callable interfaces remain rejected. This realizes
 `TOPAL-COMPILER-SYMBOLIC-CALLABLE-VALUE-001` and the admitted portion of
 `TOPAL-FUNCTION-CALLABLE-VALUE-001` for compiler increment 3b2-b5k.
 
+## TOPAL-COMP-FUNCTION-PARAMETER-001 — Specialized private Function inputs
+
+The checked compiler model shall admit a scalar `Function` parameter for an
+admitted named or symbolic Function argument. Caller analysis shall attach the
+retained callable facts to that argument, and callee specialization shall bind
+those facts to the source parameter. Applying the parameter shall select the
+retained declaration vector or symbolic operation without restarting lookup.
+Bound arguments shall preserve the same facts, and distinct callable arguments
+may instantiate distinct private versions of one source function.
+
+The LLVM parameter shall be the exact private i32 observation tag used by the
+caller, while the specialized body shall contain the already-selected direct
+call or operation. Since executable computation need not read the tag, full O0
+debugging shall retain it in a target-aligned debug-only stack shadow associated
+with the source parameter and Function DWARF type. Native and GDB tests shall
+cover direct and bound symbolic inputs, retained named inputs, multiple
+specializations, exact signature/calls, parameter value, and nested frame.
+
+This shall add no tag dispatch, function pointer, indirect call, closure
+allocation, Function runtime, foreign dependency, C/C++ runtime, other-language
+standard library, public callable ABI, or `topal-native/6` revision. Function
+results, aggregate Function boundaries, anonymous functions/captures, remaining
+symbolic callables, and published callable interfaces remain rejected. This
+realizes `TOPAL-COMPILER-FUNCTION-PARAMETER-001` and the admitted boundary
+portion of `TOPAL-FUNCTION-CALLABLE-VALUE-001`, `TOPAL-FUNCTION-VALUE-001`, and
+`TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5l.
+
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 
 The checked compiler model shall reuse the shared structural proof for

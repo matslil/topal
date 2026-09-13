@@ -3609,7 +3609,17 @@ impl Analyzer {
                 format!("no overload of `{function_name}` accepts ({actual}) in this context"),
             ));
         };
-        self.finish_selected_call(function_name, &declaration, arguments, span)
+        let callable_arguments = arguments
+            .iter()
+            .map(|argument| self.known_callable(argument, environment, argument.span.start))
+            .collect::<Result<Vec<_>, _>>()?;
+        self.finish_selected_call(
+            function_name,
+            &declaration,
+            arguments,
+            &callable_arguments,
+            span,
+        )
     }
 
     fn finish_selected_call(
@@ -3617,6 +3627,7 @@ impl Analyzer {
         function_name: &str,
         declaration: &FunctionSource,
         arguments: Vec<CompilerExpression>,
+        callable_arguments: &[Option<CompilerCallableFacts>],
         span: Span,
     ) -> Result<CompilerExpression, Diagnostic> {
         let identity = function_overload_identity(&self.source, function_name, declaration);
@@ -3661,6 +3672,7 @@ impl Analyzer {
             function_name,
             declaration,
             &arguments,
+            callable_arguments,
             reserved_symbol.as_deref(),
             recursion_proof.is_some(),
         );
@@ -3683,12 +3695,15 @@ impl Analyzer {
         function_name: &str,
         declaration: &FunctionSource,
         arguments: &[CompilerExpression],
+        callable_arguments: &[Option<CompilerCallableFacts>],
         reserved_symbol: Option<&str>,
         generalize_parameters: bool,
     ) -> Result<(String, CompilerType, Option<IntRange>, Option<BigRational>), Diagnostic> {
         let mut environment = BTreeMap::new();
         let mut parameters = Vec::new();
-        for (parameter, argument) in declaration.parameters.iter().zip(arguments) {
+        for (parameter_index, (parameter, argument)) in
+            declaration.parameters.iter().zip(arguments).enumerate()
+        {
             if !parameter.fields.is_empty()
                 || parameter.default.is_some()
                 || parameter.qualifier.is_some()
@@ -3732,7 +3747,7 @@ impl Analyzer {
                             .flatten(),
                         record_fields: BTreeMap::new(),
                         namespace: None,
-                        callable: None,
+                        callable: callable_arguments[parameter_index].clone(),
                     },
                 );
             }
@@ -4886,7 +4901,7 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
 }
 
 fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
-    compiler_function_result_supported(value_type)
+    value_type == &CompilerType::Function || compiler_function_result_supported(value_type)
 }
 
 fn data_member_expression(facts: &CompilerDataMemberFacts, span: Span) -> CompilerExpression {
@@ -6983,6 +6998,64 @@ mod tests {
         let rejected =
             analyze_for_compiler("use language (version is v0.1)\nadd is +\nadd 1\n").unwrap_err();
         assert_eq!(rejected.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn models_specialized_function_input_boundaries() {
+        // TOPAL-COMPILER-FUNCTION-PARAMETER-001,
+        // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-value-boundary.t"
+        ))
+        .unwrap();
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+        assert_eq!(
+            program.functions[0].parameters[0].value_type,
+            CompilerType::Function
+        );
+        assert!(matches!(
+            program.functions[0].body.result.kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Add,
+                ..
+            }
+        ));
+
+        let aliased = analyze_for_compiler(
+            "use language (version is v0.1)\napply-pair is fn (operation : Function) -> Int\n  operation (20, 22)\nadd is +\napply-pair add\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&aliased.main.result), Some(BigInt::from(42)));
+
+        let named = analyze_for_compiler(
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\napply is fn (operation : Function) -> Int\n  operation 41\napply increment\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&named.main.result), Some(BigInt::from(42)));
+        assert!(
+            named
+                .functions
+                .iter()
+                .any(|function| function.source_name == "increment")
+        );
+
+        let two_specializations = analyze_for_compiler(
+            "use language (version is v0.1)\napply is fn (operation : Function) -> Int\n  operation (9, 4)\nadd is +\nsubtract is -\n(apply add, apply subtract)\n",
+        )
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &two_specializations.main.result.kind else {
+            panic!("expected two Function specializations")
+        };
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(13)));
+        assert_eq!(exact_int(&results[1]), Some(BigInt::from(5)));
+        assert_eq!(
+            two_specializations
+                .functions
+                .iter()
+                .filter(|function| function.source_name == "apply")
+                .count(),
+            2
+        );
     }
 
     #[test]

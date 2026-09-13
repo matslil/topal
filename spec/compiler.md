@@ -300,6 +300,31 @@ Other symbolic callable values, Function parameters/results, anonymous or
 capturing functions, and published callable interfaces remain outside this
 increment and SHALL be rejected.
 
+### TOPAL-COMPILER-FUNCTION-PARAMETER-001 — Specialized private Function inputs
+
+An ordinary or static function parameter classified as `Function` SHALL accept
+an admitted named or symbolic Function value. At each call site, the checked
+compiler SHALL retain the argument's callable metadata while specializing the
+callee body. Application through the parameter SHALL use only that retained
+identity and SHALL lower to the same direct function call or operation as a
+non-parameter application. A bound Function argument SHALL retain its metadata
+when passed; multiple callable identities MAY produce separate private callee
+specializations.
+
+The exact private LLVM signature SHALL carry the deterministic i32 Function
+observation tag in the source parameter position. The tag SHALL preserve value
+and debugging semantics but SHALL NOT dispatch application. Because static
+specialization can otherwise make the machine parameter computationally dead,
+O0 code generation SHALL retain a target-aligned debug-only stack shadow so GDB
+can inspect the source Function parameter and call frame. No function pointer,
+indirect call, closure allocation, Function runtime, foreign dependency, C/C++
+runtime, other-language standard library, public callable ABI, or native ABI
+revision is permitted.
+
+Function results, Function values embedded in aggregate boundaries, anonymous
+functions/captures, remaining symbolic callables, and published callable
+interfaces remain outside this increment and SHALL be rejected.
+
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 
 The compiler SHALL admit a direct unary decreasing `Int` recursion edge only
