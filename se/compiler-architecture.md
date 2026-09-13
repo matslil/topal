@@ -108,8 +108,9 @@ later source declaration. Depth-first instantiation emits the selected callee
 before its caller while retaining source locations for both DWARF frames;
 ordinary initializer bindings remain source-ordered. This increment covers
 statically decidable scalar headers. Dynamic structural classifier dispatch,
-function values, closures, and remaining recursive call graphs remain later
-frontend work and do not leak into the private ABI prematurely.
+Function results, escaping/capturing closures, and remaining recursive call
+graphs remain later frontend work and do not leak into the private ABI
+prematurely.
 
 Within a single compiled source application, the executable `root` namespace
 is also a frontend identity rather than a runtime lookup table. The checked
@@ -169,6 +170,19 @@ i32 prototypes and owns physical register/stack placement for the target. When
 specialization erases every computational use of the tag, a debug-only aligned
 stack shadow preserves the source parameter for DWARF/GDB without turning it
 into runtime dispatch or a public callable representation.
+
+Non-capturing inferred anonymous functions extend specialization without
+choosing a closure ABI. The checked binding retains the parameter patterns,
+body, construction identity, and detected lexical captures. A direct call, or
+use through a specialized private Function parameter, supplies the parameter
+classifiers; the frontend then checks the body and emits one exact private
+`fastcc` function. Multi-parameter calls decompose their positional product in
+source order, and flat mixed symbolic applications are explicitly regrouped
+left-to-right before ordinary operation checking. The observation tag exists
+only for `<anonymous fn/N>` display and DWARF. A detected data capture is
+rejected rather than allowing entry-frame SSA to leak across function frames;
+hidden capture parameters, environments, escape analysis, and a public closure
+representation remain one coordinated later design.
 
 Recursion identity uses that complete selected input header, not source-name
 spelling alone. A call from an active `String` overload to a same-named `Int`

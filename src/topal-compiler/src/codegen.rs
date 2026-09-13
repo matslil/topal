@@ -4591,6 +4591,31 @@ mod tests {
     }
 
     #[test]
+    fn emits_direct_anonymous_functions_without_a_closure_runtime() {
+        // TOPAL-COMPILER-ANONYMOUS-DIRECT-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/anonymous-function-application.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "anonymous-function-application.t").emit();
+        for function in &program.functions {
+            assert!(llvm.contains(&format!("define internal fastcc ptr @{}(", function.symbol)));
+            assert!(llvm.lines().any(|line| {
+                line.contains("call fastcc ptr") && line.contains(&format!("@{}(", function.symbol))
+            }));
+        }
+        assert!(llvm.contains("!DIEnumerator(name: \"<anonymous fn/1>\", value: 3)"));
+        assert!(llvm.contains("!DIEnumerator(name: \"<anonymous fn/2>\", value: 4)"));
+        assert!(llvm.contains("!DILocalVariable(name: \"value\", arg: 1"));
+        assert!(llvm.contains("!DILocalVariable(name: \"left\", arg: 1"));
+        assert!(llvm.contains("!DILocalVariable(name: \"right\", arg: 2"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_discarded_parameter_without_debug_binding() {
         // TOPAL-TYPE-MATCH-001, TOPAL-COMPILER-PATTERN-001
         let source = "use language (version is v0.1)\nsecond is fn (_ : Int, value : Int) -> Int\n  value\nsecond (0, 42)\n";

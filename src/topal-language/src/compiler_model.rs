@@ -14,12 +14,12 @@ use topal_source::{
     lowercase, normalize_nfc, normalize_nfd, uppercase,
 };
 use topal_syntax::{
-    CallableKind, DecisionMatcher, Expression, FunctionClauses, FunctionParameter, ProductField,
-    Statement, lex, parse,
+    AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionClauses,
+    FunctionParameter, ProductField, Statement, lex, parse,
 };
 
 use crate::source::{
-    explicit_single_measure, parse_integer, parse_rational, parse_string,
+    explicit_single_measure, expression_mentions_name, parse_integer, parse_rational, parse_string,
     prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
 };
 
@@ -459,6 +459,13 @@ enum CompilerCallableFacts {
         declarations: Vec<FunctionSource>,
     },
     Symbolic(CallableKind),
+    Anonymous {
+        parameters: Vec<AnonymousPattern>,
+        body: Expression,
+        captures: BTreeMap<String, BindingFacts>,
+        static_context: bool,
+        span: Span,
+    },
 }
 
 impl From<&BindingFacts> for CompilerDataMemberFacts {
@@ -489,6 +496,8 @@ struct Analyzer {
     active_calls: Vec<String>,
     active_recursive_functions: BTreeMap<String, ActiveRecursiveFunction>,
     root_bindings: BTreeMap<String, CompilerDataMemberFacts>,
+    anonymous_callables: BTreeMap<u32, CompilerCallableFacts>,
+    anonymous_function_value_names: Vec<String>,
     in_function: bool,
     function_values_used: bool,
     static_context: bool,
@@ -555,6 +564,8 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         active_calls: Vec::new(),
         active_recursive_functions: BTreeMap::new(),
         root_bindings: BTreeMap::new(),
+        anonymous_callables: BTreeMap::new(),
+        anonymous_function_value_names: Vec::new(),
         in_function: false,
         function_values_used: false,
         static_context: false,
@@ -573,6 +584,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
             .keys()
             .map(|name| format!("<fn {name}>"))
             .chain(["+".into(), "-".into(), "<=>".into()])
+            .chain(analyzer.anonymous_function_value_names)
             .collect()
     } else {
         Vec::new()
@@ -1118,6 +1130,58 @@ impl Analyzer {
                     span,
                 })
             }
+            Expression::AnonymousFunction {
+                parameters,
+                body,
+                span,
+            } => {
+                self.function_values_used = true;
+                let parameter_names = parameters
+                    .iter()
+                    .flat_map(|parameter| match parameter {
+                        AnonymousPattern::Binding(binding) => vec![self.source.slice(*binding)],
+                        AnonymousPattern::Product { bindings, .. } => bindings
+                            .iter()
+                            .map(|binding| self.source.slice(*binding))
+                            .collect(),
+                    })
+                    .collect::<BTreeSet<_>>();
+                let captures = environment
+                    .iter()
+                    .filter(|(name, _)| {
+                        !parameter_names.contains(name.as_str())
+                            && expression_mentions_name(&self.source, body, name)
+                    })
+                    .map(|(name, facts)| (name.clone(), facts.clone()))
+                    .collect();
+                let tag_index = self
+                    .functions
+                    .len()
+                    .checked_add(3)
+                    .and_then(|value| value.checked_add(self.anonymous_function_value_names.len()))
+                    .ok_or_else(|| unsupported(&self.source, *span, "native Function value tag"))?;
+                let tag = u32::try_from(tag_index)
+                    .map_err(|_| unsupported(&self.source, *span, "native Function value tag"))?;
+                let display = format!("<anonymous fn/{}>", parameters.len());
+                self.anonymous_function_value_names.push(display);
+                self.anonymous_callables.insert(
+                    tag,
+                    CompilerCallableFacts::Anonymous {
+                        parameters: parameters.clone(),
+                        body: body.as_ref().clone(),
+                        captures,
+                        static_context: self.static_context,
+                        span: *span,
+                    },
+                );
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::FunctionValue(tag),
+                    value_type: CompilerType::Function,
+                    int_range: None,
+                    rational_value: None,
+                    span: *span,
+                })
+            }
             Expression::Callable { kind, span }
                 if matches!(
                     kind,
@@ -1412,6 +1476,22 @@ impl Analyzer {
                 CompilerCallableFacts::Symbolic(kind) => {
                     self.analyze_bound_symbolic_callable(*kind, items, span, environment)
                 }
+                CompilerCallableFacts::Anonymous {
+                    parameters,
+                    body,
+                    captures,
+                    static_context,
+                    span: declaration_span,
+                } => self.analyze_bound_anonymous_function(
+                    parameters,
+                    body,
+                    captures,
+                    *static_context,
+                    *declaration_span,
+                    items,
+                    span,
+                    environment,
+                ),
             };
         }
         if items.len() > 1
@@ -1789,6 +1869,31 @@ impl Analyzer {
                 rational_value: None,
                 span,
             });
+        }
+        if items.len() >= 5
+            && items.len() % 2 == 1
+            && items
+                .iter()
+                .skip(1)
+                .step_by(2)
+                .all(|item| matches!(item, Expression::Callable { .. }))
+        {
+            let mut grouped = Expression::Application {
+                items: items[..3].to_vec(),
+                span: Span::new(items[0].span().start, items[2].span().end),
+            };
+            for pair in items[3..].chunks_exact(2) {
+                grouped = Expression::Application {
+                    items: vec![grouped, pair[0].clone(), pair[1].clone()],
+                    span: Span::new(items[0].span().start, pair[1].span().end),
+                };
+            }
+            return self
+                .analyze_expression(&grouped, environment)
+                .map(|mut value| {
+                    value.span = span;
+                    value
+                });
         }
         if let [
             record,
@@ -2435,13 +2540,19 @@ impl Analyzer {
             CompilerExpressionKind::FunctionValue(tag) => {
                 let index = usize::try_from(*tag).expect("u32 tag fits usize");
                 if index >= self.functions.len() {
-                    let kind = match index - self.functions.len() {
-                        0 => CallableKind::Plus,
-                        1 => CallableKind::Minus,
-                        2 => CallableKind::Compare,
-                        _ => unreachable!("checked symbolic Function tag is supported"),
+                    return match index - self.functions.len() {
+                        0 => Ok(Some(CompilerCallableFacts::Symbolic(CallableKind::Plus))),
+                        1 => Ok(Some(CompilerCallableFacts::Symbolic(CallableKind::Minus))),
+                        2 => Ok(Some(CompilerCallableFacts::Symbolic(CallableKind::Compare))),
+                        _ => self
+                            .anonymous_callables
+                            .get(tag)
+                            .cloned()
+                            .map(Some)
+                            .ok_or_else(|| {
+                                unsupported(&self.source, value.span, "unknown Function value tag")
+                            }),
                     };
-                    return Ok(Some(CompilerCallableFacts::Symbolic(kind)));
                 }
                 let name = self
                     .functions
@@ -2806,6 +2917,193 @@ impl Analyzer {
             argument.span(),
             "a binary symbolic Function value requires a two-field positional product",
         ))
+    }
+
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Retained source identity and call-site evidence are intentionally explicit.
+    fn analyze_bound_anonymous_function(
+        &mut self,
+        parameters: &[AnonymousPattern],
+        body: &Expression,
+        captures: &BTreeMap<String, BindingFacts>,
+        static_context: bool,
+        declaration_span: Span,
+        items: &[Expression],
+        call_span: Span,
+        call_environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let [_, argument_source] = items else {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-ANONYMOUS-FUNCTION-ARITY",
+                call_span,
+                "an anonymous Function value accepts exactly one direct or product operand",
+            ));
+        };
+        if !captures.is_empty() {
+            return Err(unsupported(
+                &self.source,
+                declaration_span,
+                "lexically capturing anonymous function",
+            ));
+        }
+        if let Some(pattern_span) = parameters.iter().find_map(|parameter| match parameter {
+            AnonymousPattern::Binding(_) => None,
+            AnonymousPattern::Product { span, .. } => Some(*span),
+        }) {
+            return Err(unsupported(
+                &self.source,
+                pattern_span,
+                "anonymous product parameter pattern",
+            ));
+        }
+
+        let argument = self.analyze_expression(argument_source, call_environment)?;
+        let arguments = if parameters.len() == 1 {
+            vec![argument]
+        } else if let CompilerExpressionKind::Tuple(values) = argument.kind {
+            values
+        } else if let CompilerType::Tuple(fields) = &argument.value_type {
+            if fields.len() != parameters.len() {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-ANONYMOUS-FUNCTION-ARITY",
+                    argument_source.span(),
+                    format!(
+                        "anonymous function expects {} arguments, found {}",
+                        parameters.len(),
+                        fields.len()
+                    ),
+                ));
+            }
+            return Err(unsupported(
+                &self.source,
+                argument_source.span(),
+                "opaque anonymous argument product decomposition",
+            ));
+        } else {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-ANONYMOUS-ARGUMENT-PACKAGE",
+                argument_source.span(),
+                format!(
+                    "anonymous function expects {} arguments packaged as a tuple, found `{}`",
+                    parameters.len(),
+                    argument.value_type.name()
+                ),
+            ));
+        };
+        if arguments.len() != parameters.len() {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-ANONYMOUS-FUNCTION-ARITY",
+                argument_source.span(),
+                format!(
+                    "anonymous function expects {} arguments, found {}",
+                    parameters.len(),
+                    arguments.len()
+                ),
+            ));
+        }
+
+        let mut environment = BTreeMap::new();
+        let mut lowered_parameters = Vec::with_capacity(parameters.len());
+        let mut declared = BTreeSet::new();
+        for (parameter, argument) in parameters.iter().zip(&arguments) {
+            let AnonymousPattern::Binding(name_span) = parameter else {
+                unreachable!("anonymous product patterns were rejected above")
+            };
+            let name = self.source.slice(*name_span).to_owned();
+            let discarded = name == "_";
+            if !discarded && !declared.insert(name.clone()) {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-DUPLICATE-BINDING",
+                    *name_span,
+                    format!("`{name}` is already declared in this parameter pattern"),
+                ));
+            }
+            if !compiler_function_parameter_supported(&argument.value_type) {
+                return Err(unsupported(
+                    &self.source,
+                    argument.span,
+                    "unsupported inferred anonymous-function parameter",
+                ));
+            }
+            if !discarded {
+                environment.insert(
+                    name.clone(),
+                    BindingFacts {
+                        storage_name: name.clone(),
+                        value_type: argument.value_type.clone(),
+                        int_range: argument.int_range.clone(),
+                        rational_value: argument.rational_value.clone(),
+                        string_value: exact_string(argument),
+                        record_fields: BTreeMap::new(),
+                        namespace: None,
+                        callable: self.known_callable(
+                            argument,
+                            call_environment,
+                            argument.span.start,
+                        )?,
+                    },
+                );
+            }
+            lowered_parameters.push(CompilerParameter {
+                name,
+                discarded,
+                value_type: argument.value_type.clone(),
+                int_range: argument.int_range.clone(),
+                span: *name_span,
+            });
+        }
+
+        let previous_static_context = self.static_context;
+        let previous_in_function = self.in_function;
+        self.static_context = static_context;
+        self.in_function = true;
+        let analyzed_body = match body {
+            Expression::Block { statements, .. } => {
+                self.analyze_block(statements, &mut environment, BlockKind::Function, None)
+            }
+            expression => self
+                .analyze_expression(expression, &environment)
+                .map(|result| CompilerBlock {
+                    statements: Vec::new(),
+                    result,
+                }),
+        };
+        self.static_context = previous_static_context;
+        self.in_function = previous_in_function;
+        let analyzed_body = analyzed_body?;
+        if !compiler_function_result_supported(&analyzed_body.result.value_type) {
+            return Err(unsupported(
+                &self.source,
+                analyzed_body.result.span,
+                "unsupported inferred anonymous-function result",
+            ));
+        }
+
+        let source_name = format!("<anonymous fn/{}>", parameters.len());
+        let symbol = self.reserve_function_symbol("anonymous");
+        let result_type = analyzed_body.result.value_type.clone();
+        let int_range = analyzed_body.result.int_range.clone();
+        let rational_value = analyzed_body.result.rational_value.clone();
+        self.instances.push(CompilerFunction {
+            source_name,
+            symbol: symbol.clone(),
+            parameters: lowered_parameters,
+            result_type: result_type.clone(),
+            body: analyzed_body,
+            span: declaration_span,
+            is_static: static_context,
+        });
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::Call { symbol, arguments },
+            value_type: result_type,
+            int_range,
+            rational_value,
+            span: call_span,
+        })
     }
 
     #[allow(clippy::too_many_lines)] // Numeric coercion and fail-closed obligations stay in one selection path.
@@ -7056,6 +7354,75 @@ mod tests {
                 .count(),
             2
         );
+    }
+
+    #[test]
+    fn models_direct_non_capturing_anonymous_functions() {
+        // TOPAL-COMPILER-ANONYMOUS-DIRECT-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-SYN-GRAMMAR-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/anonymous-function-application.t"
+        ))
+        .unwrap();
+        assert_eq!(
+            program.function_value_names,
+            ["+", "-", "<=>", "<anonymous fn/1>", "<anonymous fn/2>"]
+        );
+        assert_eq!(program.functions.len(), 2);
+        assert_eq!(program.functions[0].source_name, "<anonymous fn/1>");
+        assert_eq!(program.functions[0].parameters.len(), 1);
+        assert_eq!(program.functions[1].source_name, "<anonymous fn/2>");
+        assert_eq!(program.functions[1].parameters.len(), 2);
+        assert!(
+            program
+                .functions
+                .iter()
+                .flat_map(|function| &function.parameters)
+                .all(|parameter| parameter.value_type == CompilerType::Int)
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected two direct anonymous calls")
+        };
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[1]), Some(BigInt::from(42)));
+        assert!(
+            results
+                .iter()
+                .all(|result| matches!(result.kind, CompilerExpressionKind::Call { .. }))
+        );
+
+        let left_associative = analyze_for_compiler(
+            "use language (version is v0.1)\ncalculate is { value } value + 3 * 4\ncalculate 2\n",
+        )
+        .unwrap();
+        assert_eq!(
+            exact_int(&left_associative.main.result),
+            Some(BigInt::from(20))
+        );
+
+        let contextual = analyze_for_compiler(
+            "use language (version is v0.1)\napply is fn (operation : Function) -> Int\n  operation 41\napply { value } value + 1\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&contextual.main.result), Some(BigInt::from(42)));
+        assert!(
+            contextual
+                .functions
+                .iter()
+                .any(|function| function.source_name == "<anonymous fn/1>")
+        );
+
+        let capture = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 1\nincrement is { value } value + offset\nincrement 41\n",
+        )
+        .unwrap_err();
+        assert_eq!(capture.code, "E-COMPILER-UNSUPPORTED");
+
+        let arity = analyze_for_compiler(
+            "use language (version is v0.1)\ncombine is { left, right } left + right\ncombine 42\n",
+        )
+        .unwrap_err();
+        assert_eq!(arity.code, "E-ANONYMOUS-ARGUMENT-PACKAGE");
     }
 
     #[test]
