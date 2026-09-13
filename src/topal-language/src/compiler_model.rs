@@ -412,7 +412,7 @@ struct Analyzer {
     functions: BTreeMap<String, Vec<FunctionSource>>,
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
-    active_recursive_functions: BTreeMap<String, (String, CompilerType)>,
+    active_recursive_functions: BTreeMap<String, (String, CompilerType, &'static str)>,
     static_context: bool,
     next_instance: usize,
 }
@@ -2599,6 +2599,12 @@ impl Analyzer {
                 right_value = forget_character_evidence(right_value);
             }
         }
+        if self.active_nat_recursion()
+            && matches!(operation, CompilerBinary::Add | CompilerBinary::Subtract)
+        {
+            left_value = forget_nat_evidence(left_value);
+            right_value = forget_nat_evidence(right_value);
+        }
         let numeric =
             is_exact_numeric(&left_value.value_type) && is_exact_numeric(&right_value.value_type);
         if matches!(operation, CompilerBinary::Equal | CompilerBinary::NotEqual) && !numeric {
@@ -3124,7 +3130,14 @@ impl Analyzer {
                     ));
                 }
                 let expected = self.parse_classifier(parameter.classifier)?;
-                let Some(argument) = adapt_call_argument(&expected, argument) else {
+                let Some(argument) = adapt_call_argument(&expected, argument).or_else(|| {
+                    self.adapt_proven_recursive_nat_argument(
+                        &function_name,
+                        declaration,
+                        &expected,
+                        argument,
+                    )
+                }) else {
                     adapted.clear();
                     break;
                 };
@@ -3159,10 +3172,10 @@ impl Analyzer {
         span: Span,
     ) -> Result<CompilerExpression, Diagnostic> {
         let identity = function_overload_identity(&self.source, function_name, declaration);
-        let recursion_rule = self.direct_int_recursion_rule(function_name, declaration);
+        let recursion_rule = self.direct_bounded_recursion_rule(function_name, declaration);
         if self.active_calls.contains(&identity) {
             if self.active_calls.last() == Some(&identity)
-                && let Some((symbol, result_type)) =
+                && let Some((symbol, result_type, _)) =
                     self.active_recursive_functions.get(&identity).cloned()
             {
                 return Ok(CompilerExpression {
@@ -3175,11 +3188,13 @@ impl Analyzer {
             }
             return Err(unsupported(&self.source, span, "recursive function call"));
         }
-        let reserved_symbol = if recursion_rule.is_some() {
+        let reserved_symbol = if let Some(recursion_rule) = recursion_rule {
             let symbol = self.reserve_function_symbol(function_name);
             let result_type = self.parse_classifier(declaration.result)?;
-            self.active_recursive_functions
-                .insert(identity.clone(), (symbol.clone(), result_type));
+            self.active_recursive_functions.insert(
+                identity.clone(),
+                (symbol.clone(), result_type, recursion_rule),
+            );
             Some(symbol)
         } else {
             None
@@ -3333,7 +3348,7 @@ impl Analyzer {
         symbol
     }
 
-    fn direct_int_recursion_rule(
+    fn direct_bounded_recursion_rule(
         &self,
         function_name: &str,
         declaration: &FunctionSource,
@@ -3341,20 +3356,59 @@ impl Analyzer {
         let [parameter] = declaration.parameters.as_slice() else {
             return None;
         };
-        if compact_classifier(self.source.slice(parameter.classifier)) != "Int" {
+        let classifier = compact_classifier(self.source.slice(parameter.classifier));
+        if !matches!(classifier.as_str(), "Int" | "Nat") {
             return None;
         }
-        let parameters = vec![(
-            self.source.slice(parameter.name).to_owned(),
-            "Int".to_owned(),
-        )];
+        let parameters = vec![(self.source.slice(parameter.name).to_owned(), classifier)];
         match prove_int_recursion(&self.source, function_name, &parameters, &declaration.body) {
             Some(
                 rule @ ("TOPAL-FUNCTION-RECURSION-INT-001"
-                | "TOPAL-FUNCTION-RECURSION-INT-INCREASING-001"),
+                | "TOPAL-FUNCTION-RECURSION-INT-INCREASING-001"
+                | "TOPAL-FUNCTION-RECURSION-NAT-001"
+                | "TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001"),
             ) => Some(rule),
             _ => None,
         }
+    }
+
+    fn adapt_proven_recursive_nat_argument(
+        &self,
+        function_name: &str,
+        declaration: &FunctionSource,
+        expected: &CompilerType,
+        argument: &CompilerExpression,
+    ) -> Option<CompilerExpression> {
+        if expected != &CompilerType::Nat || argument.value_type != CompilerType::Int {
+            return None;
+        }
+        let identity = function_overload_identity(&self.source, function_name, declaration);
+        if self.active_calls.last() != Some(&identity)
+            || !self.active_recursive_functions.contains_key(&identity)
+            || !self.active_nat_recursion()
+        {
+            return None;
+        }
+        Some(CompilerExpression {
+            kind: CompilerExpressionKind::IntToNat(Box::new(argument.clone())),
+            value_type: CompilerType::Nat,
+            int_range: argument.int_range.clone(),
+            rational_value: None,
+            span: argument.span,
+        })
+    }
+
+    fn active_nat_recursion(&self) -> bool {
+        self.active_calls
+            .last()
+            .and_then(|identity| self.active_recursive_functions.get(identity))
+            .is_some_and(|(_, _, rule)| {
+                matches!(
+                    *rule,
+                    "TOPAL-FUNCTION-RECURSION-NAT-001"
+                        | "TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001"
+                )
+            })
     }
 
     fn analyze_decision(
@@ -3387,6 +3441,13 @@ impl Analyzer {
             CompilerType::Int | CompilerType::Rational => {
                 self.analyze_ordered_comparison_decision(subject, rules, span, environment)
             }
+            CompilerType::Nat if self.active_nat_recursion() => self
+                .analyze_ordered_comparison_decision(
+                    forget_nat_evidence(subject),
+                    rules,
+                    span,
+                    environment,
+                ),
             _ => Err(unsupported(
                 &self.source,
                 subject.span,
@@ -5771,6 +5832,57 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+    }
+
+    #[test]
+    fn models_only_range_preserving_nat_recursion() {
+        // TOPAL-FUNCTION-RECURSION-NAT-001,
+        // TOPAL-FUNCTION-RECURSION-NAT-INCREASING-001
+        for (source, name, operation) in [
+            (
+                include_str!("../../../examples/language/nat-recursion.t"),
+                "count-down",
+                CompilerBinary::Subtract,
+            ),
+            (
+                include_str!("../../../examples/language/nat-increasing-recursion.t"),
+                "advance",
+                CompilerBinary::Add,
+            ),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            assert_eq!(program.functions.len(), 1);
+            let function = &program.functions[0];
+            assert_eq!(function.source_name, name);
+            assert_eq!(function.parameters[0].value_type, CompilerType::Nat);
+            assert_eq!(function.result_type, CompilerType::Nat);
+            assert!(function.parameters[0].int_range.is_none());
+            let CompilerExpressionKind::OrderedComparisonDecision { otherwise, .. } =
+                &function.body.result.kind
+            else {
+                panic!("expected the structurally proven Nat decision")
+            };
+            let CompilerExpressionKind::Call { symbol, arguments } = &otherwise.kind else {
+                panic!("expected the direct recursive edge")
+            };
+            assert_eq!(symbol, &function.symbol);
+            let [argument] = arguments.as_slice() else {
+                panic!("expected one recursive Nat argument")
+            };
+            let CompilerExpressionKind::IntToNat(argument) = &argument.kind else {
+                panic!("expected proof-backed Nat evidence")
+            };
+            assert!(matches!(
+                argument.kind,
+                CompilerExpressionKind::Binary {
+                    operation: actual,
+                    ..
+                } if actual == operation
+            ));
+        }
+
+        let unsafe_overshoot = "use language (version is v0.1)\nloop is fn (value : Nat) -> Nat\n  value\n    <= 0 then value\n    otherwise loop (value - 2)\nloop 3\n";
+        assert!(analyze_for_compiler(unsafe_overshoot).is_err());
     }
 
     #[test]

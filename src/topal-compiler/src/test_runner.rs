@@ -51,6 +51,8 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/nat-equality-and-ordering.t",
     "examples/language/nat-functions.t",
     "examples/language/nat-checked-construction.t",
+    "examples/language/nat-increasing-recursion.t",
+    "examples/language/nat-recursion.t",
     "examples/language/ordinary-functions.t",
     "examples/language/optional-rational-values.t",
     "examples/language/optional-values.t",
