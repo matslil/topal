@@ -4474,6 +4474,21 @@
       "cpu_time_ns": 5686819,
       "memory_peak_bytes": 18227200,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_proven_mutual_nat_cycles_without_runtime_revalidation": {
+      "cpu_time_ns": 8821079,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_retains_mutual_nat_evidence_and_frames": {
+      "cpu_time_ns": 255420379,
+      "memory_peak_bytes": 57327616,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_only_range_preserving_mutual_nat_cycles": {
+      "cpu_time_ns": 4410140,
+      "memory_peak_bytes": 18427904,
+      "samples_per_test": 50
     }
   }
 }

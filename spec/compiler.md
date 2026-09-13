@@ -292,6 +292,26 @@ retain the distinct source members and recursive frames. This proof SHALL add
 no dispatcher, hidden parameter, foreign dependency, standard library, or
 native ABI revision.
 
+### TOPAL-COMPILER-RECURSION-NAT-MUTUAL-001 — Proven mutual Nat recursion
+
+The compiler SHALL admit a back-edge across two or more unary `Nat` overloads
+only when the shared proofs establish a complete cycle under
+`TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001` or
+`TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-INCREASING-001`. Every active member SHALL
+carry the same direction-specific proof, name the next active member, and close
+the cycle in call order. The decreasing proof SHALL establish that every
+literal decrement remains nonnegative from that member's recursive region.
+Unsafe overshoot, incomplete or mixed-direction cycles, and invalid edges SHALL
+remain rejected.
+
+Only the proven unary next-member argument MAY regain `Nat` evidence after
+arithmetic has exposed the unchanged `Int` carrier. That evidence conversion
+SHALL emit no dynamic Nat validation. Each member SHALL retain one exact private
+prototype, `noinline` behavior at O0, no false `norecurse` attribute, and a
+distinct source-level Nat parameter and frame in DWARF/GDB. The proof SHALL add
+no unsigned representation, dispatcher, hidden state, foreign dependency,
+standard library, or native ABI revision.
+
 ### TOPAL-COMPILER-ENUM-001 — Sealed nominal enum lowering
 
 Each admitted payload-free source enum SHALL retain a distinct nominal identity

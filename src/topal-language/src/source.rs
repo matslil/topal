@@ -7783,7 +7783,9 @@ impl Execution {
         .or_else(|| prove_int_recursion(&self.source, name_text, &parameters, body));
         let mutual_edge = direct_termination_rule
             .is_none()
-            .then(|| prove_mutual_int_recursion_edge(&self.source, name_text, &parameters, body))
+            .then(|| {
+                prove_mutual_bounded_recursion_edge(&self.source, name_text, &parameters, body)
+            })
             .flatten();
         let recursion_target = mutual_edge.as_ref().map(|(target, _)| target.clone());
         let termination_rule =
@@ -11398,7 +11400,7 @@ fn recursive_calls_fit_nat_bound(
     }
 }
 
-pub(super) fn prove_mutual_int_recursion_edge(
+pub(super) fn prove_mutual_bounded_recursion_edge(
     source: &SourceText,
     function_name: &str,
     parameters: &[(String, String)],

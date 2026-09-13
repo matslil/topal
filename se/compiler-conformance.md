@@ -38,7 +38,8 @@ evidence.
 | 3b2-b5e4 | explicit single-parameter Int/Nat `Decreases` evidence over multi-parameter scalar recursion | complete |
 | 3b2-b5e5 | overload-specific recursion identity and same-named acyclic cross-overload calls | complete |
 | 3b2-b5e6 | complete decreasing and increasing mutual Int cycles with multiple proven next-member calls | complete |
-| 3b2-b5e7 | remaining function forms, return-through-block cleanup, remaining recursion/totality evidence, nested declarations, record storage/ABI, unions, constraints, capabilities, and decisions | planned |
+| 3b2-b5e7 | range-preserving decreasing and increasing mutual Nat cycles with proof-backed constraint evidence | complete |
+| 3b2-b5e8 | remaining function forms, return-through-block cleanup, remaining recursion/totality evidence, nested declarations, record storage/ABI, unions, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -106,9 +107,10 @@ multi-unit positive steps in both directions; 3b2-b5e3 adds range-preserving
 direct `Nat` recursion without a distinct numeric representation; 3b2-b5e4
 extends the shared single-parameter `Decreases` proof across a larger scalar
 state; 3b2-b5e5 closes overload-specific recursion identity; 3b2-b5e6 admits
-complete uniform mutual `Int` cycles; and 3b2-b5e7 continues with nested
-declarations, remaining recursive and nested-block exit control flow,
-cleanup-bearing scopes, and the remaining user-defined value representations.
+complete uniform mutual `Int` cycles; 3b2-b5e7 composes that closure with
+range-preserving `Nat` evidence; and 3b2-b5e8 continues with nested declarations,
+remaining recursive and nested-block exit control flow, cleanup-bearing scopes,
+and the remaining user-defined value representations.
 Increment 4a admits the encoding-observation
 byte count without
 attaching an encoding or importing a foreign String runtime; 4b1 adds exact
