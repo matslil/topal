@@ -184,6 +184,19 @@ rejected rather than allowing entry-frame SSA to leak across function frames;
 hidden capture parameters, environments, escape analysis, and a public closure
 representation remain one coordinated later design.
 
+One scalar packaged operand is normalized at the same checked boundary. A full
+positional product already has declaration order; the initial labeled form is
+limited to a declaration-order prefix with trailing closed defaults, so the
+lowered argument sequence exactly preserves source evaluation followed by
+default evaluation. The private callee receives one ordinary LLVM parameter per
+source field. This makes every parameter classifier and DWARF binding explicit
+while LLVM retains responsibility for target register/stack placement. It also
+avoids `byval`, `sret`, `inalloca`, and `preallocated`: those attributes encode
+specific memory/ABI obligations and are reserved for a deliberate public
+aggregate interface rather than being inferred from source packaging syntax.
+Broader labeled-map ordering, invocation-dependent defaults, and multiple or
+mixed packages remain checked-frontend work.
+
 Recursion identity uses that complete selected input header, not source-name
 spelling alone. A call from an active `String` overload to a same-named `Int`
 overload is therefore an ordinary acyclic edge: it receives a distinct private

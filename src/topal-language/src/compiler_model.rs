@@ -3818,6 +3818,7 @@ impl Analyzer {
         )
     }
 
+    #[allow(clippy::too_many_lines)] // Candidate-specific source packages and ordinary parameters remain visibly fail-closed.
     fn analyze_resolved_call_from(
         &mut self,
         items: &[Expression],
@@ -3839,10 +3840,24 @@ impl Analyzer {
         let flattened_arguments = flattened_product_arguments(&argument_sources, &arguments);
 
         let mut selected = None;
+        let static_context = self.static_context;
         for declaration in declarations
             .iter()
-            .filter(|declaration| !self.static_context || declaration.is_static)
+            .filter(|declaration| !static_context || declaration.is_static)
         {
+            if declaration
+                .parameters
+                .iter()
+                .any(|parameter| !parameter.fields.is_empty())
+            {
+                if let Some((normalized, adapted)) =
+                    self.normalize_packaged_call(declaration, &arguments)?
+                {
+                    selected = Some((normalized, adapted));
+                    break;
+                }
+                continue;
+            }
             let candidate_arguments = if declaration.parameters.is_empty()
                 && matches!(argument_sources.as_slice(), [Expression::Unit(_)])
             {
@@ -3918,6 +3933,160 @@ impl Analyzer {
             &callable_arguments,
             span,
         )
+    }
+
+    #[allow(clippy::too_many_lines)] // Every admitted and deferred package shape is checked explicitly.
+    fn normalize_packaged_call(
+        &mut self,
+        declaration: &FunctionSource,
+        arguments: &[CompilerExpression],
+    ) -> Result<Option<(FunctionSource, Vec<CompilerExpression>)>, Diagnostic> {
+        let [package] = declaration.parameters.as_slice() else {
+            return Err(unsupported(
+                &self.source,
+                declaration.span,
+                "multiple packaged function operands",
+            ));
+        };
+        if package.fields.is_empty() {
+            return Ok(None);
+        }
+        if package.qualifier.is_some() || package.default.is_some() {
+            return Err(unsupported(
+                &self.source,
+                package.name,
+                "qualified or defaulted outer package",
+            ));
+        }
+        let mut declared_fields = BTreeSet::new();
+        for field in &package.fields {
+            let name = self.source.slice(field.name);
+            if name != "_" && !declared_fields.insert(name) {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-DUPLICATE-FUNCTION-PARAMETER",
+                    field.name,
+                    format!("parameter `{name}` is already declared in this function"),
+                ));
+            }
+        }
+        let [argument] = arguments else {
+            return Ok(None);
+        };
+
+        let supplied = match &argument.kind {
+            CompilerExpressionKind::Record(values) => {
+                let declared_names = package
+                    .fields
+                    .iter()
+                    .map(|field| self.source.slice(field.name))
+                    .collect::<Vec<_>>();
+                if values
+                    .iter()
+                    .any(|(label, _)| !declared_names.contains(&label.as_str()))
+                    || package.fields.iter().any(|field| {
+                        field.default.is_none()
+                            && !values
+                                .iter()
+                                .any(|(label, _)| label == self.source.slice(field.name))
+                    })
+                {
+                    return Ok(None);
+                }
+                if values.len() > package.fields.len()
+                    || values
+                        .iter()
+                        .zip(&package.fields)
+                        .any(|((label, _), field)| label != self.source.slice(field.name))
+                {
+                    return Err(unsupported(
+                        &self.source,
+                        argument.span,
+                        "non-prefix or reordered labeled function package",
+                    ));
+                }
+                values
+                    .iter()
+                    .map(|(_, value)| value.clone())
+                    .collect::<Vec<_>>()
+            }
+            CompilerExpressionKind::Tuple(values) if values.len() == package.fields.len() => {
+                values.clone()
+            }
+            _ if matches!(
+                argument.value_type,
+                CompilerType::Tuple(_) | CompilerType::Record(_)
+            ) =>
+            {
+                return Err(unsupported(
+                    &self.source,
+                    argument.span,
+                    "opaque packaged function operand",
+                ));
+            }
+            _ => return Ok(None),
+        };
+
+        let mut adapted = Vec::with_capacity(package.fields.len());
+        for (index, field) in package.fields.iter().enumerate() {
+            if field.qualifier.is_some() || !field.fields.is_empty() {
+                return Err(unsupported(
+                    &self.source,
+                    field.name,
+                    "nested or qualified packaged field",
+                ));
+            }
+            let expected = self.parse_classifier(field.classifier)?;
+            if !expected.machine_scalar() || !compiler_function_parameter_supported(&expected) {
+                return Err(unsupported(
+                    &self.source,
+                    field.classifier,
+                    "non-scalar packaged field",
+                ));
+            }
+            let value = if let Some(value) = supplied.get(index) {
+                value.clone()
+            } else {
+                let Some(default) = &field.default else {
+                    return Ok(None);
+                };
+                let value = match self.analyze_expression(default, &BTreeMap::new()) {
+                    Ok(value) => value,
+                    Err(error) if error.code == "E-UNBOUND-NAME" => {
+                        return Err(unsupported(
+                            &self.source,
+                            default.span(),
+                            "non-closed packaged field default",
+                        ));
+                    }
+                    Err(error) => return Err(error),
+                };
+                if !compiler_expression_is_closed(&value) {
+                    return Err(unsupported(
+                        &self.source,
+                        default.span(),
+                        "non-closed packaged field default",
+                    ));
+                }
+                value
+            };
+            let Some(value) = adapt_call_argument(&expected, &value) else {
+                return Ok(None);
+            };
+            adapted.push(value);
+        }
+
+        let mut normalized = declaration.clone();
+        normalized.parameters = package
+            .fields
+            .iter()
+            .cloned()
+            .map(|mut field| {
+                field.default = None;
+                field
+            })
+            .collect();
+        Ok(Some((normalized, adapted)))
     }
 
     fn finish_selected_call(
@@ -7423,6 +7592,58 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(arity.code, "E-ANONYMOUS-ARGUMENT-PACKAGE");
+    }
+
+    #[test]
+    fn models_one_closed_scalar_packaged_function_operand() {
+        // TOPAL-COMPILER-PACKAGED-OPERAND-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/packaged-function-operand.t"
+        ))
+        .unwrap();
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+        let function = &program.functions[0];
+        assert_eq!(function.source_name, "sum");
+        assert_eq!(function.parameters.len(), 2);
+        assert_eq!(function.parameters[0].name, "value");
+        assert_eq!(function.parameters[1].name, "fallback");
+        let CompilerExpressionKind::Call { arguments, .. } = &program.main.result.kind else {
+            panic!("expected a normalized packaged call")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert_eq!(exact_int(&arguments[0]), Some(BigInt::from(40)));
+        assert_eq!(exact_int(&arguments[1]), Some(BigInt::from(2)));
+
+        for (call, expected) in [
+            ("sum (value is 40, fallback is 5)", 45),
+            ("sum (40, 2)", 42),
+        ] {
+            let source = format!(
+                "use language (version is v0.1)\nsum is fn ((value : Int, fallback : Int default 2)) -> Int\n  value + fallback\n{call}\n"
+            );
+            let program = analyze_for_compiler(&source).unwrap();
+            assert_eq!(
+                exact_int(&program.main.result),
+                Some(BigInt::from(expected))
+            );
+        }
+
+        let missing = analyze_for_compiler(
+            "use language (version is v0.1)\nsum is fn ((value : Int, fallback : Int default 2)) -> Int\n  value + fallback\nsum (fallback is 2)\n",
+        )
+        .unwrap_err();
+        assert_eq!(missing.code, "E-NO-APPLICABLE-OVERLOAD");
+
+        for rejected in [
+            "use language (version is v0.1)\nsum is fn ((value : Int, fallback : Int default 2)) -> Int\n  value + fallback\nsum (fallback is 2, value is 40)\n",
+            "use language (version is v0.1)\nsum is fn ((value : Int, fallback : Int default value)) -> Int\n  value + fallback\nsum (value is 40)\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(rejected).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]
