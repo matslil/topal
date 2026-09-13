@@ -272,6 +272,26 @@ an acyclic cross-overload edge. This identity distinction SHALL add no runtime
 dispatch, type tag, foreign dependency, standard library, or native ABI
 revision.
 
+### TOPAL-COMPILER-RECURSION-INT-MUTUAL-001 — Proven mutual Int recursion
+
+The compiler SHALL admit a back-edge across two or more unary `Int` overloads
+only when the shared proofs establish a complete cycle under
+`TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001` or
+`TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001`. Every active member SHALL
+carry the same direction-specific proof, name the next active member, and close
+the cycle in call order. An isolated candidate, a missing or differently typed
+member, a mixed-direction cycle, or any invalid edge SHALL remain rejected.
+Every repeated next-member call SHALL independently satisfy
+`TOPAL-FUNCTION-RECURSION-ALL-CALLS-001`.
+
+Each instantiated member SHALL retain one exact private symbol and prototype;
+the closing edge SHALL target the already reserved active member. Correctness
+at O0 SHALL NOT depend on tail-call conversion, inlining, or another LLVM
+optimization, and no cycle member SHALL be marked `norecurse`. DWARF/GDB SHALL
+retain the distinct source members and recursive frames. This proof SHALL add
+no dispatcher, hidden parameter, foreign dependency, standard library, or
+native ABI revision.
+
 ### TOPAL-COMPILER-ENUM-001 — Sealed nominal enum lowering
 
 Each admitted payload-free source enum SHALL retain a distinct nominal identity

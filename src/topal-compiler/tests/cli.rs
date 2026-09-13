@@ -1842,3 +1842,62 @@ fn gdb_distinguishes_same_named_cross_overload_frames() {
     assert!(text.contains("topal.fn.describe.1"), "{text}");
     assert!(text.contains("topal.main"), "{text}");
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn gdb_retains_distinct_mutual_recursion_frames() {
+    // TOPAL-COMP-DEBUG-001, TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001
+    let directory = temporary("gdb-mutual-int-recursion");
+    let source = directory.join("mutual-int-recursion.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/mutual-int-recursion.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break mutual-int-recursion.t:10",
+            "-ex",
+            "break mutual-int-recursion.t:14",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 6"), "{text}");
+    assert!(text.contains("$2 = 5"), "{text}");
+    assert!(text.contains("topal.fn.even.0"), "{text}");
+    assert!(text.contains("topal.fn.odd.1"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}

@@ -20,7 +20,7 @@ use topal_syntax::{
 
 use crate::source::{
     explicit_single_measure, parse_integer, parse_rational, parse_string,
-    prove_explicit_parameter_recursion, prove_int_recursion,
+    prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_int_recursion_edge,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -387,10 +387,12 @@ struct FunctionSource {
 struct CompilerRecursionProof {
     rule: &'static str,
     nat_step_parameters: BTreeSet<usize>,
+    mutual_target: Option<String>,
 }
 
 #[derive(Clone)]
 struct ActiveRecursiveFunction {
+    source_name: String,
     symbol: String,
     result_type: CompilerType,
     proof: CompilerRecursionProof,
@@ -3199,8 +3201,10 @@ impl Analyzer {
         let identity = function_overload_identity(&self.source, function_name, declaration);
         let recursion_proof = self.recursion_proof(function_name, declaration);
         if self.active_calls.contains(&identity) {
-            if self.active_calls.last() == Some(&identity)
-                && let Some(active) = self.active_recursive_functions.get(&identity).cloned()
+            if let Some(active) = self.active_recursive_functions.get(&identity).cloned()
+                && ((self.active_calls.last() == Some(&identity)
+                    && active.proof.mutual_target.is_none())
+                    || self.closes_proven_mutual_int_cycle(&identity, function_name))
             {
                 return Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Call {
@@ -3221,6 +3225,7 @@ impl Analyzer {
             self.active_recursive_functions.insert(
                 identity.clone(),
                 ActiveRecursiveFunction {
+                    source_name: function_name.to_owned(),
                     symbol: symbol.clone(),
                     result_type,
                     proof,
@@ -3386,6 +3391,7 @@ impl Analyzer {
     ) -> Option<CompilerRecursionProof> {
         self.explicit_measure_recursion_proof(function_name, declaration)
             .or_else(|| self.direct_bounded_recursion_proof(function_name, declaration))
+            .or_else(|| self.mutual_int_recursion_proof(function_name, declaration))
     }
 
     fn direct_bounded_recursion_proof(
@@ -3417,6 +3423,7 @@ impl Analyzer {
         Some(CompilerRecursionProof {
             rule,
             nat_step_parameters,
+            mutual_target: None,
         })
     }
 
@@ -3455,7 +3462,91 @@ impl Analyzer {
         Some(CompilerRecursionProof {
             rule,
             nat_step_parameters,
+            mutual_target: None,
         })
+    }
+
+    fn mutual_int_recursion_proof(
+        &self,
+        function_name: &str,
+        declaration: &FunctionSource,
+    ) -> Option<CompilerRecursionProof> {
+        let parameters = declaration
+            .parameters
+            .iter()
+            .map(|parameter| {
+                (
+                    self.source.slice(parameter.name).to_owned(),
+                    compact_classifier(self.source.slice(parameter.classifier)),
+                )
+            })
+            .collect::<Vec<_>>();
+        let (mutual_target, rule) = prove_mutual_int_recursion_edge(
+            &self.source,
+            function_name,
+            &parameters,
+            &declaration.body,
+        )?;
+        if !matches!(
+            rule,
+            "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001"
+                | "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001"
+        ) {
+            return None;
+        }
+        Some(CompilerRecursionProof {
+            rule,
+            nat_step_parameters: BTreeSet::new(),
+            mutual_target: Some(mutual_target),
+        })
+    }
+
+    fn closes_proven_mutual_int_cycle(&self, target_identity: &str, target_name: &str) -> bool {
+        let Some(cycle_start) = self
+            .active_calls
+            .iter()
+            .position(|identity| identity == target_identity)
+        else {
+            return false;
+        };
+        let cycle = &self.active_calls[cycle_start..];
+        if cycle.len() < 2 {
+            return false;
+        }
+        let Some(target) = self.active_recursive_functions.get(target_identity) else {
+            return false;
+        };
+        let rule = target.proof.rule;
+        if target.source_name != target_name
+            || !matches!(
+                rule,
+                "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001"
+                    | "TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001"
+            )
+            || !cycle.iter().all(|identity| {
+                self.active_recursive_functions
+                    .get(identity)
+                    .is_some_and(|active| active.proof.rule == rule)
+            })
+        {
+            return false;
+        }
+        let internal_edges_close = cycle.windows(2).all(|pair| {
+            let current = self
+                .active_recursive_functions
+                .get(&pair[0])
+                .expect("active cycle member retains proof metadata");
+            let next = self
+                .active_recursive_functions
+                .get(&pair[1])
+                .expect("active cycle member retains proof metadata");
+            current.proof.mutual_target.as_deref() == Some(next.source_name.as_str())
+        });
+        let last = self
+            .active_recursive_functions
+            .get(cycle.last().expect("cycle has at least two members"))
+            .expect("active cycle member retains proof metadata");
+        internal_edges_close && last.proof.mutual_target.as_deref() == Some(target_name)
     }
 
     fn adapt_proven_recursive_nat_argument(
@@ -5841,6 +5932,60 @@ mod tests {
         assert_eq!(symbol, &integer.symbol);
         assert_ne!(symbol, &string.symbol);
         assert_eq!(arguments[0].value_type, CompilerType::Int);
+    }
+
+    #[test]
+    fn models_only_complete_uniform_mutual_int_cycles() {
+        // TOPAL-FUNCTION-RECURSION-INT-MUTUAL-001,
+        // TOPAL-FUNCTION-RECURSION-INT-MUTUAL-INCREASING-001
+        let source = include_str!("../../../examples/language/mutual-int-recursion.t")
+            .replace("(even 6, odd 6)", "even 6");
+        let program = analyze_for_compiler(&source).unwrap();
+        assert_eq!(program.functions.len(), 2);
+        let even = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "even")
+            .unwrap();
+        let odd = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "odd")
+            .unwrap();
+        for (function, target) in [(even, odd), (odd, even)] {
+            assert!(function.parameters[0].int_range.is_none());
+            let CompilerExpressionKind::OrderedComparisonDecision { otherwise, .. } =
+                &function.body.result.kind
+            else {
+                panic!("expected a proven mutual recursion decision")
+            };
+            let CompilerExpressionKind::Call { symbol, .. } = &otherwise.kind else {
+                panic!("expected the next mutual edge")
+            };
+            assert_eq!(symbol, &target.symbol);
+        }
+        assert!(
+            analyze_for_compiler(include_str!(
+                "../../../examples/language/mutual-increasing-int-recursion.t"
+            ))
+            .is_ok()
+        );
+        assert!(
+            analyze_for_compiler(include_str!(
+                "../../../examples/language/mutual-multiple-recursive-calls.t"
+            ))
+            .is_ok()
+        );
+
+        for invalid in [
+            "use language (version is v0.1)\nfirst is fn (value : Int) -> Boolean\n  value\n    <= 0 then true\n    otherwise second (value - 1)\nsecond is fn (value : Int) -> Boolean\n  value\n    >= 0 then false\n    otherwise first (value + 1)\nfirst 2\n",
+            "use language (version is v0.1)\nfirst is fn (value : Int) -> Boolean\n  value\n    <= 0 then true\n    otherwise second (value - 1)\nsecond is fn (value : Int) -> Boolean\n  value\n    <= 0 then false\n    otherwise first (value - 0)\nfirst 2\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(invalid).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]
