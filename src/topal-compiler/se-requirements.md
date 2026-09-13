@@ -450,6 +450,39 @@ interfaces remain rejected. This realizes
 `TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-SYN-GRAMMAR-001`, and
 `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5m.
 
+## TOPAL-COMP-NESTED-FUNCTION-001 — Private direct nested lexical functions
+
+The checked compiler model shall admit an unpublished ordinary nested function
+declared as a direct statement of an ordinary non-static function body. It
+shall bind that function from its declaration point, retain its source
+declaration, and apply it only by direct name within the same invocation scope.
+It shall snapshot every visible immutable lexical data value with an admitted
+private representation, excluding names shadowed by explicit nested
+parameters, and shall reject any attempted value escape. A call shall reuse
+each already-evaluated captured value and shall not access storage in another
+native frame.
+
+Each application shall specialize a compiler-private nested `fastcc` function.
+Its exact signature shall contain source parameters followed by deterministic
+exact typed capture parameters, with the identical prototype at every emitted
+definition and call. LLVM shall own physical x86-64 register, stack, and
+aggregate placement. Full O0 debugging shall expose the nested source frame,
+source parameters, and material captures as named arguments. Native tests shall
+cover the existing interpreter regression, exact execution, capture forwarding,
+value-escape rejection, private direct IR, freestanding artifacts, source
+frames, argument values, the shared corpus, and separate resource baselines.
+
+This shall add no caller-frame reference, environment allocation/runtime,
+function pointer, indirect call, foreign dependency, C/C++ runtime,
+other-language standard library, public closure ABI, or `topal-native/6`
+revision. Declarations inside nested lexical/decision blocks and published,
+static, measured, constrained, or effectful nested functions; nested overloads,
+recursion, sibling calls, visible/active named-callable collisions, anonymous
+captures, Scope/Function/Constraint/refined/defining-context captures, escaping
+closures, and public/library closure metadata remain rejected. This realizes
+`TOPAL-COMPILER-NESTED-FUNCTION-001` and `TOPAL-FUNCTION-NESTED-001` for compiler
+increment 3b2-b5p.
+
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 
 The checked compiler model shall admit exactly one packaged function operand

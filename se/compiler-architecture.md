@@ -214,8 +214,25 @@ source order, and flat mixed symbolic applications are explicitly regrouped
 left-to-right before ordinary operation checking. The observation tag exists
 only for `<anonymous fn/N>` display and DWARF. A detected data capture is
 rejected rather than allowing entry-frame SSA to leak across function frames;
-hidden capture parameters, environments, escape analysis, and a public closure
-representation remain one coordinated later design.
+anonymous capture parameters, environments, escape analysis, and a public
+closure representation remain one coordinated later design.
+
+Named nested lexical functions declared directly in an ordinary function body
+establish the first private capture boundary without choosing that general
+closure design. At the declaration point, the frontend snapshots the finite
+visible immutable environment and retains every value with an admitted private
+representation, except names shadowed by the nested function's explicit
+parameters. Direct application specializes the nested declaration and passes
+source parameters followed by those original SSA values as deterministic exact
+hidden `fastcc` parameters. The nested name has no runtime value and cannot
+escape, so there is no function pointer, indirect dispatch, environment
+allocation, or caller-frame reference. LLVM owns the physical AMD64 parameter
+classification, while DWARF presents the nested source frame and both explicit
+and captured arguments under their source names. Static, effectful, recursive,
+overloaded, sibling-referencing, anonymous, or escaping closures, name
+collisions with visible or active callables, and captures of callable, Scope,
+constraint/evidence, or defining-context state remain deferred to the unified
+closure and library-interface design.
 
 One scalar packaged operand is normalized at the same checked boundary. A full
 positional product already has declaration order; the initial labeled form is

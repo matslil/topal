@@ -487,6 +487,7 @@ struct SumSource {
 #[derive(Clone)]
 struct BindingFacts {
     storage_name: String,
+    runtime_bound: bool,
     value_type: CompilerType,
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
@@ -526,6 +527,7 @@ struct CompilerCallMetadata {
     callable_arguments: Vec<Option<CompilerCallableFacts>>,
     scope_arguments: Vec<Option<CompilerNamespaceFacts>>,
     scope_captures: Vec<CompilerContextCapture>,
+    lexical_captures: Vec<CompilerContextCapture>,
     context_captures: Vec<CompilerContextCapture>,
 }
 
@@ -534,6 +536,7 @@ enum CompilerCallableFacts {
     Named {
         name: String,
         declarations: Vec<FunctionSource>,
+        captures: Vec<CompilerContextCapture>,
     },
     Symbolic(CallableKind),
     Anonymous {
@@ -1187,6 +1190,114 @@ impl Analyzer {
         false
     }
 
+    fn bind_nested_function(
+        &self,
+        statement: &Statement,
+        environment: &mut BTreeMap<String, BindingFacts>,
+        declared: &mut BTreeSet<String>,
+    ) -> Result<(), Diagnostic> {
+        let Statement::Function {
+            name,
+            is_static,
+            parameters,
+            result,
+            effect_bound,
+            clauses,
+            body,
+            span,
+        } = statement
+        else {
+            return Err(unsupported(
+                &self.source,
+                statement_span(statement),
+                "published nested function declaration",
+            ));
+        };
+        if self.static_context
+            || *is_static
+            || effect_bound.is_some()
+            || **clauses != FunctionClauses::default()
+        {
+            return Err(unsupported(
+                &self.source,
+                *span,
+                "static, measured, constrained, or effectful nested function",
+            ));
+        }
+        let name_text = self.source.slice(*name).to_owned();
+        if declared.contains(&name_text)
+            || self.functions.contains_key(&name_text)
+            || self.active_calls.iter().any(|identity| {
+                identity
+                    .split_once(':')
+                    .is_some_and(|(name, _)| name == name_text)
+            })
+        {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-DUPLICATE-BINDING",
+                *name,
+                format!("`{name_text}` is already declared in this invocation scope"),
+            ));
+        }
+        let parameter_names = parameters
+            .iter()
+            .map(|parameter| self.source.slice(parameter.name))
+            .collect::<BTreeSet<_>>();
+        let captures = environment
+            .iter()
+            .filter(|(candidate, facts)| {
+                facts.runtime_bound
+                    && !candidate.starts_with("@ ")
+                    && !parameter_names.contains(candidate.as_str())
+                    && compiler_function_result_supported(&facts.value_type)
+            })
+            .map(|(candidate, facts)| CompilerContextCapture {
+                parameter_name: candidate.clone(),
+                value_type: facts.value_type.clone(),
+                int_range: facts.int_range.clone(),
+                rational_value: facts.rational_value.clone(),
+                argument: CompilerExpression {
+                    kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
+                    value_type: facts.value_type.clone(),
+                    int_range: facts.int_range.clone(),
+                    rational_value: facts.rational_value.clone(),
+                    span: *name,
+                },
+                span: *name,
+            })
+            .collect();
+        let declaration = FunctionSource {
+            name: *name,
+            parameters: parameters.clone(),
+            result: *result,
+            effect_bound: None,
+            body: body.clone(),
+            span: *span,
+            is_static: false,
+        };
+        environment.insert(
+            name_text.clone(),
+            BindingFacts {
+                storage_name: format!("topal.nested.function.{}.{}", name.start, name_text),
+                runtime_bound: false,
+                value_type: CompilerType::Function,
+                int_range: None,
+                rational_value: None,
+                string_value: None,
+                record_fields: BTreeMap::new(),
+                namespace: None,
+                callable: Some(CompilerCallableFacts::Named {
+                    name: name_text.clone(),
+                    declarations: vec![declaration],
+                    captures,
+                }),
+            },
+        );
+        declared.insert(name_text);
+        Ok(())
+    }
+
     #[allow(clippy::too_many_lines)] // Exhaustive statement admission keeps the subset boundary visible.
     fn analyze_block(
         &mut self,
@@ -1215,7 +1326,16 @@ impl Analyzer {
         }
         let executable = statements
             .iter()
-            .filter(|statement| !self.is_declaration(statement))
+            .filter(|statement| {
+                !self.is_declaration(statement)
+                    || (kind == BlockKind::Function
+                        && (matches!(statement, Statement::Function { .. })
+                            || matches!(
+                                statement,
+                                Statement::Published { declaration, .. }
+                                    if matches!(declaration.as_ref(), Statement::Function { .. })
+                            )))
+            })
             .collect::<Vec<_>>();
 
         for (index, statement) in executable.iter().enumerate() {
@@ -1229,6 +1349,21 @@ impl Analyzer {
                 statement => statement,
             };
             match statement {
+                Statement::Function { .. } if kind == BlockKind::Function => {
+                    self.bind_nested_function(statement, environment, &mut declared)?;
+                    if last {
+                        result = Some(unit_expression(statement_span(statement)));
+                    }
+                }
+                Statement::Published { declaration, .. }
+                    if kind == BlockKind::Function
+                        && matches!(declaration.as_ref(), Statement::Function { .. }) =>
+                {
+                    self.bind_nested_function(statement, environment, &mut declared)?;
+                    if last {
+                        result = Some(unit_expression(statement_span(statement)));
+                    }
+                }
                 Statement::Binding {
                     name,
                     classifier,
@@ -1356,6 +1491,7 @@ impl Analyzer {
                     };
                     let facts = BindingFacts {
                         storage_name: storage_name.clone(),
+                        runtime_bound: true,
                         value_type: value.value_type.clone(),
                         int_range: value.int_range.clone(),
                         rational_value: value.rational_value.clone(),
@@ -1816,6 +1952,13 @@ impl Analyzer {
                         format!("name `{name_text}` is not bound"),
                     )
                 })?;
+                if !facts.runtime_bound {
+                    return Err(unsupported(
+                        &self.source,
+                        *name,
+                        "nested Function value outside direct application",
+                    ));
+                }
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
                     value_type: facts.value_type.clone(),
@@ -1881,6 +2024,7 @@ impl Analyzer {
             parameter_name.clone(),
             BindingFacts {
                 storage_name: storage_name.clone(),
+                runtime_bound: true,
                 value_type: base_type.clone(),
                 int_range: None,
                 rational_value: None,
@@ -2116,6 +2260,7 @@ impl Analyzer {
                     0,
                     &member_name,
                     declarations,
+                    &[],
                 );
             }
             if remaining.len() == 1
@@ -2139,9 +2284,19 @@ impl Analyzer {
                 .and_then(|facts| facts.callable.as_ref())
         {
             return match callable {
-                CompilerCallableFacts::Named { name, declarations } => {
-                    self.analyze_resolved_call_from(items, span, environment, 0, name, declarations)
-                }
+                CompilerCallableFacts::Named {
+                    name,
+                    declarations,
+                    captures,
+                } => self.analyze_resolved_call_from(
+                    items,
+                    span,
+                    environment,
+                    0,
+                    name,
+                    declarations,
+                    captures,
+                ),
                 CompilerCallableFacts::Symbolic(kind) => {
                     self.analyze_bound_symbolic_callable(*kind, items, span, environment)
                 }
@@ -3324,7 +3479,11 @@ impl Analyzer {
                     .filter(|declaration| declaration.span.end <= capture_position)
                     .cloned()
                     .collect::<Vec<_>>();
-                Ok(Some(CompilerCallableFacts::Named { name, declarations }))
+                Ok(Some(CompilerCallableFacts::Named {
+                    name,
+                    declarations,
+                    captures: Vec::new(),
+                }))
             }
             CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .and_then(|facts| facts.callable.clone())
@@ -3792,6 +3951,7 @@ impl Analyzer {
                     name.clone(),
                     BindingFacts {
                         storage_name: name.clone(),
+                        runtime_bound: true,
                         value_type: argument.value_type.clone(),
                         int_range: argument.int_range.clone(),
                         rational_value: argument.rational_value.clone(),
@@ -4579,10 +4739,11 @@ impl Analyzer {
             function_index,
             function_name,
             &declarations,
+            &[],
         )
     }
 
-    #[allow(clippy::too_many_lines)] // Candidate-specific source packages and ordinary parameters remain visibly fail-closed.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Candidate-specific source packages and captures remain visibly fail-closed.
     fn analyze_resolved_call_from(
         &mut self,
         items: &[Expression],
@@ -4591,6 +4752,7 @@ impl Analyzer {
         function_index: usize,
         function_name: &str,
         declarations: &[FunctionSource],
+        lexical_captures: &[CompilerContextCapture],
     ) -> Result<CompilerExpression, Diagnostic> {
         let argument_sources = items
             .iter()
@@ -4704,12 +4866,19 @@ impl Analyzer {
             callable_arguments,
             scope_arguments,
             scope_captures,
+            lexical_captures: lexical_captures.to_vec(),
             context_captures,
         };
         let mut arguments = arguments;
         arguments.extend(
             metadata
                 .scope_captures
+                .iter()
+                .map(|capture| capture.argument.clone()),
+        );
+        arguments.extend(
+            metadata
+                .lexical_captures
                 .iter()
                 .map(|capture| capture.argument.clone()),
         );
@@ -5005,6 +5174,7 @@ impl Analyzer {
             callable_arguments,
             scope_arguments,
             scope_captures,
+            lexical_captures,
             context_captures,
         } = metadata;
         let mut environment = BTreeMap::new();
@@ -5043,6 +5213,7 @@ impl Analyzer {
                     name.clone(),
                     BindingFacts {
                         storage_name: name.clone(),
+                        runtime_bound: true,
                         value_type: expected.clone(),
                         int_range: (!generalize_parameters)
                             .then(|| argument.int_range.clone())
@@ -5070,8 +5241,9 @@ impl Analyzer {
             });
         }
         let scope_arguments_start = declaration.parameters.len();
-        let context_arguments_start = scope_arguments_start + scope_captures.len();
-        let captured_scope_arguments = &arguments[scope_arguments_start..context_arguments_start];
+        let lexical_arguments_start = scope_arguments_start + scope_captures.len();
+        let context_arguments_start = lexical_arguments_start + lexical_captures.len();
+        let captured_scope_arguments = &arguments[scope_arguments_start..lexical_arguments_start];
         debug_assert_eq!(captured_scope_arguments.len(), scope_captures.len());
         for (capture, argument) in scope_captures.iter().zip(captured_scope_arguments) {
             require_same_type(
@@ -5084,6 +5256,39 @@ impl Analyzer {
                 capture.parameter_name.clone(),
                 BindingFacts {
                     storage_name: capture.parameter_name.clone(),
+                    runtime_bound: true,
+                    value_type: capture.value_type.clone(),
+                    int_range: capture.int_range.clone(),
+                    rational_value: capture.rational_value.clone(),
+                    string_value: exact_string(argument),
+                    record_fields: BTreeMap::new(),
+                    namespace: None,
+                    callable: None,
+                },
+            );
+            parameters.push(CompilerParameter {
+                name: capture.parameter_name.clone(),
+                discarded: false,
+                value_type: capture.value_type.clone(),
+                int_range: capture.int_range.clone(),
+                span: capture.span,
+            });
+        }
+        let captured_lexical_arguments =
+            &arguments[lexical_arguments_start..context_arguments_start];
+        debug_assert_eq!(captured_lexical_arguments.len(), lexical_captures.len());
+        for (capture, argument) in lexical_captures.iter().zip(captured_lexical_arguments) {
+            require_same_type(
+                &self.source,
+                capture.span,
+                &capture.value_type,
+                &argument.value_type,
+            )?;
+            environment.insert(
+                capture.parameter_name.clone(),
+                BindingFacts {
+                    storage_name: capture.parameter_name.clone(),
+                    runtime_bound: true,
                     value_type: capture.value_type.clone(),
                     int_range: capture.int_range.clone(),
                     rational_value: capture.rational_value.clone(),
@@ -5114,6 +5319,7 @@ impl Analyzer {
                 capture.parameter_name.clone(),
                 BindingFacts {
                     storage_name: capture.parameter_name.clone(),
+                    runtime_bound: true,
                     value_type: capture.value_type.clone(),
                     int_range: capture.int_range.clone(),
                     rational_value: capture.rational_value.clone(),
@@ -6562,6 +6768,7 @@ fn decision_binding_environment(
         name.to_owned(),
         BindingFacts {
             storage_name: name.to_owned(),
+            runtime_bound: true,
             value_type,
             int_range: None,
             rational_value: None,
@@ -9361,6 +9568,62 @@ mod tests {
             analyze_for_compiler(&unsafe_overshoot).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
+    }
+
+    #[test]
+    fn models_non_escaping_nested_functions_with_private_captures() {
+        // TOPAL-COMPILER-NESTED-FUNCTION-001, TOPAL-FUNCTION-NESTED-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/nested-functions.t"
+        ))
+        .unwrap();
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+        let nested = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "add-input")
+            .expect("nested specialization is emitted");
+        assert_eq!(nested.parameters.len(), 2);
+        assert_eq!(nested.parameters[0].name, "value");
+        assert_eq!(nested.parameters[1].name, "input");
+        assert!(
+            nested
+                .parameters
+                .iter()
+                .all(|parameter| parameter.value_type == CompilerType::Int)
+        );
+        let outer = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .expect("outer specialization is emitted");
+        let CompilerExpressionKind::Call { arguments, .. } = &outer.body.result.kind else {
+            panic!("outer body directly calls the nested specialization")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(name) if name == "input"
+        ));
+
+        let escaped = analyze_for_compiler(
+            "use language (version is v0.1)\nconsume is fn (_ : Function) -> Int\n  1\nouter is fn (input : Int) -> Int\n  helper is fn (value : Int) -> Int\n    value + input\n  consume helper\nouter 1\n",
+        )
+        .unwrap_err();
+        assert_eq!(escaped.code, "E-COMPILER-UNSUPPORTED");
+
+        let shadowed = analyze_for_compiler(
+            "use language (version is v0.1)\nouter is fn (value : Int) -> Int\n  helper is fn (value : Int) -> Int\n    value\n  helper 42\nouter 1\n",
+        )
+        .unwrap();
+        let nested = shadowed
+            .functions
+            .iter()
+            .find(|function| function.source_name == "helper")
+            .unwrap();
+        assert_eq!(nested.parameters.len(), 1);
+        assert_eq!(nested.parameters[0].name, "value");
+        assert_eq!(exact_int(&shadowed.main.result), Some(BigInt::from(42)));
     }
 
     #[test]

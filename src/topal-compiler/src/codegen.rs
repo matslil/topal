@@ -5443,6 +5443,44 @@ mod tests {
     }
 
     #[test]
+    fn emits_nested_functions_with_exact_private_capture_parameters() {
+        // TOPAL-COMPILER-NESTED-FUNCTION-001, TOPAL-FUNCTION-NESTED-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/nested-functions.t"
+        ))
+        .unwrap();
+        let symbol = |name: &str| {
+            program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap()
+                .symbol
+                .as_str()
+        };
+        let nested = symbol("add-input");
+        let outer = symbol("answer");
+        let llvm = Generator::new(&program, "nested-functions.t").emit();
+
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{nested}(ptr %arg0, ptr %arg1)"
+        )));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr")
+                && line.contains(&format!("@{nested}(ptr @.topal.int.0, ptr %arg0)"))
+        }));
+        assert!(llvm.contains(&format!("define internal fastcc ptr @{outer}(ptr %arg0)")));
+        assert!(llvm.contains("!DISubprogram(name: \"add-input\""));
+        assert!(llvm.contains("!DISubprogram(name: \"answer\""));
+        assert!(llvm.contains("!DILocalVariable(name: \"value\", arg: 1"));
+        assert!(llvm.contains("!DILocalVariable(name: \"input\", arg: 2"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_packaged_fields_as_an_exact_flat_private_signature() {
         // TOPAL-COMPILER-PACKAGED-OPERAND-001,
         // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-COMPILER-DEBUG-001

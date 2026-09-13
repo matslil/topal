@@ -78,6 +78,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/namespace-function-parameter.t",
     "examples/language/namespace-overloads.t",
     "examples/language/namespace-snapshot.t",
+    "examples/language/nested-functions.t",
     "examples/language/ordinary-functions.t",
     "examples/language/optional-rational-values.t",
     "examples/language/optional-values.t",

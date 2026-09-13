@@ -386,6 +386,44 @@ storage, Function results or aggregate Function boundaries, and published
 callable interfaces remain outside this increment and SHALL be rejected rather
 than referencing storage from another call frame.
 
+### TOPAL-COMPILER-NESTED-FUNCTION-001 — Private direct nested lexical functions
+
+Within the direct statements of an admitted ordinary, non-static function body,
+an unpublished ordinary nested function declaration SHALL become visible at
+its declaration point in that invocation scope. Direct application of its name
+SHALL use its declared parameter and result classifiers and SHALL execute in a
+fresh invocation. Each admitted immutable lexical data binding visible when the
+nested function is declared MAY be retained as capture metadata when it has a
+complete private compiler representation; an explicit nested parameter of the
+same name SHALL shadow that outer binding. The original captured value SHALL be
+passed without re-evaluating its initializer or reading another call frame's
+storage.
+
+Each direct application SHALL lower to a compiler-private specialized function
+and direct `fastcc` call. The exact LLVM signature SHALL list ordinary source
+parameters first and append exact typed capture parameters in a deterministic
+order. Definitions and calls SHALL agree, while LLVM owns physical AMD64
+register, stack, and aggregate classification. The compiler MAY over-capture
+the finite represented lexical environment so long as this does not alter
+source evaluation or identity. DWARF/GDB SHALL expose the nested source frame,
+ordinary parameters, and material capture parameters using their source names,
+classifiers, and values.
+
+The nested function name SHALL remain non-escaping compiler metadata: using it
+as an ordinary Function value, returning it, storing it in an aggregate, or
+passing it through a Function boundary SHALL be rejected. The lowering SHALL
+require no caller-frame reference, environment object, closure allocation or
+runtime, function pointer, indirect call, foreign dependency, C/C++ runtime,
+other-language standard library, public callable ABI, or native ABI revision.
+
+Declarations inside nested lexical/decision blocks and published, static,
+measured, constrained, or effectful nested functions; nested overload sets,
+recursion, sibling calls, collisions with visible or active named callables,
+anonymous captures, Scope, Function, Constraint, refined-evidence, or
+defining-context captures; escaping closures; and public/library closure
+metadata remain outside this increment and SHALL be rejected rather than
+receiving a provisional closure representation.
+
 ### TOPAL-COMPILER-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 
 The compiler SHALL admit a function with exactly one syntactic operand package
