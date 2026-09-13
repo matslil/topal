@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::Path;
 
@@ -184,6 +184,11 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             list: left,
             value: right,
         }
+        | CompilerExpressionKind::ListRangeSelect {
+            list: left,
+            range: right,
+            ..
+        }
         | CompilerExpressionKind::ListConcat { left, right }
         | CompilerExpressionKind::RationalConstruct {
             numerator: left,
@@ -268,15 +273,21 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+enum ListIntRuntimeFragment {
+    Containment,
+    Removal,
+    Core,
+    RangeSelection,
+}
+
 struct Generator<'a> {
     program: &'a CompilerProgram,
     source_name: &'a str,
     globals: Vec<String>,
     functions: Vec<String>,
     next_global: usize,
-    uses_list_int_containment_runtime: bool,
-    uses_list_int_removal_runtime: bool,
-    uses_list_int_core_runtime: bool,
+    list_int_runtime_fragments: BTreeSet<ListIntRuntimeFragment>,
     debug: DebugInfo,
 }
 
@@ -296,9 +307,7 @@ impl<'a> Generator<'a> {
             globals: Vec::new(),
             functions: Vec::new(),
             next_global: 0,
-            uses_list_int_containment_runtime: false,
-            uses_list_int_removal_runtime: false,
-            uses_list_int_core_runtime: false,
+            list_int_runtime_fragments: BTreeSet::new(),
             debug,
         }
     }
@@ -318,23 +327,36 @@ impl<'a> Generator<'a> {
         module.push('\n');
         module.push_str(PLATFORM_RUNTIME);
         module.push('\n');
-        if self.uses_list_int_containment_runtime
-            || self.uses_list_int_removal_runtime
-            || self.uses_list_int_core_runtime
-        {
+        if !self.list_int_runtime_fragments.is_empty() {
             module.push_str(LIST_INT_LAYOUT);
             module.push('\n');
         }
-        if self.uses_list_int_containment_runtime {
+        if self
+            .list_int_runtime_fragments
+            .contains(&ListIntRuntimeFragment::Containment)
+        {
             module.push_str(LIST_INT_CONTAINMENT_RUNTIME);
             module.push('\n');
         }
-        if self.uses_list_int_removal_runtime {
+        if self
+            .list_int_runtime_fragments
+            .contains(&ListIntRuntimeFragment::Removal)
+        {
             module.push_str(LIST_INT_REMOVAL_RUNTIME);
             module.push('\n');
         }
-        if self.uses_list_int_core_runtime {
+        if self
+            .list_int_runtime_fragments
+            .contains(&ListIntRuntimeFragment::Core)
+        {
             module.push_str(LIST_INT_CORE_RUNTIME);
+            module.push('\n');
+        }
+        if self
+            .list_int_runtime_fragments
+            .contains(&ListIntRuntimeFragment::RangeSelection)
+        {
+            module.push_str(LIST_INT_RANGE_SELECTION_RUNTIME);
             module.push('\n');
         }
         for global in &self.globals {
@@ -1270,7 +1292,8 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListContainsEntry { list, value } => {
-                self.uses_list_int_containment_runtime = true;
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Containment);
                 let list = self.emit_expression(list, body, environment);
                 let value = self.emit_expression(value, body, environment);
                 LlValue::Boolean(body.instruction(
@@ -1285,7 +1308,8 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::ListContainsSequence { list, pattern }
             | CompilerExpressionKind::ListContainsSubsequence { list, pattern } => {
-                self.uses_list_int_containment_runtime = true;
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Containment);
                 let operation = if matches!(
                     &expression.kind,
                     CompilerExpressionKind::ListContainsSequence { .. }
@@ -1308,7 +1332,8 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::ListRemoveFirst { list, value }
             | CompilerExpressionKind::ListRemoveAll { list, value } => {
-                self.uses_list_int_removal_runtime = true;
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Removal);
                 let operation = if matches!(
                     &expression.kind,
                     CompilerExpressionKind::ListRemoveFirst { .. }
@@ -1368,7 +1393,8 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListAppend { list, value } => {
-                self.uses_list_int_core_runtime = true;
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
                 let list = self.emit_expression(list, body, environment);
                 let value = self.emit_expression(value, body, environment);
                 let singleton = body.instruction(
@@ -1404,7 +1430,8 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListConcat { left, right } => {
-                self.uses_list_int_core_runtime = true;
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
                 let left = self.emit_expression(left, body, environment);
                 let right = self.emit_expression(right, body, environment);
                 LlValue::List {
@@ -1421,7 +1448,8 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListReverse(value) => {
-                self.uses_list_int_core_runtime = true;
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
                 let value = self.emit_expression(value, body, environment);
                 LlValue::List {
                     value: body.instruction(
@@ -1436,7 +1464,8 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListEntryCount(value) => {
-                self.uses_list_int_core_runtime = true;
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
                 let value = self.emit_expression(value, body, environment);
                 LlValue::Int(body.instruction(
                     &format!(
@@ -1458,7 +1487,8 @@ impl<'a> Generator<'a> {
             CompilerExpressionKind::ListFirst(value)
             | CompilerExpressionKind::ListRest(value)
             | CompilerExpressionKind::ListUncons(value) => {
-                self.uses_list_int_core_runtime = true;
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
                 let operation = match &expression.kind {
                     CompilerExpressionKind::ListFirst(_) => "first",
                     CompilerExpressionKind::ListRest(_) => "rest",
@@ -1498,6 +1528,29 @@ impl<'a> Generator<'a> {
                 environment,
                 expression.span,
             ),
+            CompilerExpressionKind::ListRangeSelect {
+                list,
+                range,
+                indexes,
+            } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::RangeSelection);
+                let list = self.emit_expression(list, body, environment);
+                let range = self.emit_expression(range, body, environment);
+                let operation = if *indexes { "index" } else { "value" };
+                LlValue::List {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.int.select.{operation}.range(ptr {}, ptr {})",
+                            list.list_pointer(),
+                            range.range().0
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    element: CompilerType::Int,
+                }
+            }
             CompilerExpressionKind::ListFold {
                 list,
                 initial,
@@ -3497,7 +3550,8 @@ impl<'a> Generator<'a> {
     ) -> String {
         debug_assert_eq!(element, right_element);
         debug_assert_eq!(element, &CompilerType::Int);
-        self.uses_list_int_core_runtime = true;
+        self.list_int_runtime_fragments
+            .insert(ListIntRuntimeFragment::Core);
         body.instruction(
             &format!("call i1 @topal.runtime.list.int.equal(ptr {left}, ptr {right})"),
             span,
@@ -6487,6 +6541,7 @@ const LIST_INT_LAYOUT: &str = include_str!("runtime/list_int_layout.ll");
 const LIST_INT_CONTAINMENT_RUNTIME: &str = include_str!("runtime/list_int_containment.ll");
 const LIST_INT_REMOVAL_RUNTIME: &str = include_str!("runtime/list_int_removal.ll");
 const LIST_INT_CORE_RUNTIME: &str = include_str!("runtime/list_int_core.ll");
+const LIST_INT_RANGE_SELECTION_RUNTIME: &str = include_str!("runtime/list_int_range_selection.ll");
 
 #[cfg(test)]
 mod tests {
@@ -6664,6 +6719,25 @@ mod tests {
         assert!(llvm.contains("<anonymous fn/2>"));
         assert!(!llvm.contains("topal.fn.anonymous"));
         assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_int_list_range_selection_as_private_finite_loops() {
+        // TOPAL-RANGE-VALUE-SELECTION-001, TOPAL-RANGE-INDEX-SELECTION-001,
+        // TOPAL-COMPILER-RANGE-SELECTION-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/range-selection.t"))
+                .unwrap();
+        let llvm = Generator::new(&program, "range-selection.t").emit();
+
+        assert!(llvm.contains("call ptr @topal.runtime.list.int.select.value.range"));
+        assert!(llvm.contains("call ptr @topal.runtime.list.int.select.index.range"));
+        assert!(llvm.contains("define internal ptr @topal.runtime.list.int.select.range"));
+        assert!(llvm.contains("call i1 @topal.runtime.range.int.contains"));
+        assert!(llvm.contains("call ptr @topal.runtime.int.from.u64"));
+        assert!(llvm.contains("c\"\\6F\\70\\61\""));
+        assert!(!llvm.contains("RangeSelectionOf"));
+        assert!(!llvm.contains("SliceOf"));
     }
 
     #[test]

@@ -1082,6 +1082,36 @@ other element/result/state classifiers remain deferred. It realizes
 `TOPAL-COLLECTION-FOLD-001`, and `TOPAL-FUNCTION-ANONYMOUS-001` for compiler
 increment 4b3d-f.
 
+## TOPAL-COMP-RANGE-SELECTION-001 — Range-selected Lists and Strings
+
+The checked compiler model shall admit `List Int select Range Int` and
+`List Int select-index Range Int`, evaluating the operands once in source
+order. The backend shall use exact arbitrary-precision entry comparisons for
+value selection and exact zero-based positions for index selection, traverse
+the finite source once in order, preserve occurrences, and publish only fully
+initialized fresh immutable nodes. Empty, disjoint, and inverted ranges shall
+produce Empty and the source shall remain unchanged.
+
+For a closed compiler-known String and finite closed compiler-known `Range Int`,
+the checked model shall perform index selection with the shared pinned Unicode
+user-perceived-Character segmentation and lower the selected semantic result as
+an ordinary String. It shall not materialize selection/slice provenance or make
+storage sharing observable. Dynamic String range selection shall retain a
+stable unsupported diagnostic until the compiler has a freestanding Topal
+Unicode segmentation runtime; it shall not depend on a host or foreign Unicode
+library merely to broaden this increment.
+
+The Linux x86-64 backend shall conditionally link the private List selection
+fragment only when used. That fragment may call the existing Topal allocator,
+exact Int conversion/comparison, and Range-membership helpers, but shall add no
+foreign allocator, C/C++ runtime, other-language standard library, undefined
+symbol, needed library, dynamic relocation, public/serialized/persistent/generic
+collection ABI, stabilized private layout, or `topal-native/6` revision. DWARF
+and GDB shall retain the applicable List, Int, Range, String, binding, parameter,
+and frame views. This realizes `TOPAL-COMPILER-RANGE-SELECTION-001`,
+`TOPAL-RANGE-VALUE-SELECTION-001`, and `TOPAL-RANGE-INDEX-SELECTION-001` for
+compiler increment 4b3d-g.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when

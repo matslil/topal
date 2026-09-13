@@ -5009,6 +5009,21 @@
       "cpu_time_ns": 3326920,
       "memory_peak_bytes": 18374656,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_int_list_range_selection_as_private_finite_loops": {
+      "cpu_time_ns": 6522380,
+      "memory_peak_bytes": 18194432,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::range_selection_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 327086840,
+      "memory_peak_bytes": 57909248,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_range_selection_without_exposing_slice_storage": {
+      "cpu_time_ns": 4025200,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
     }
   }
 }

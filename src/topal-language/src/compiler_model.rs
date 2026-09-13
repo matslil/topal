@@ -11,7 +11,7 @@ use num_rational::BigRational;
 use topal_semantics::LanguageVersion;
 use topal_source::{
     Diagnostic, SourceText, Span, canonically_equal, case_fold, character_at, character_count,
-    lowercase, normalize_nfc, normalize_nfd, uppercase,
+    characters, lowercase, normalize_nfc, normalize_nfd, uppercase,
 };
 use topal_syntax::{
     AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionClauses,
@@ -166,6 +166,30 @@ impl CompilerType {
 pub struct IntRange {
     pub lower: BigInt,
     pub upper: BigInt,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ClosedIntRange {
+    lower: BigInt,
+    upper: BigInt,
+    lower_inclusive: bool,
+    upper_inclusive: bool,
+}
+
+impl ClosedIntRange {
+    fn contains(&self, value: &BigInt) -> bool {
+        let above_lower = if self.lower_inclusive {
+            value >= &self.lower
+        } else {
+            value > &self.lower
+        };
+        let below_upper = if self.upper_inclusive {
+            value <= &self.upper
+        } else {
+            value < &self.upper
+        };
+        above_lower && below_upper
+    }
 }
 
 impl IntRange {
@@ -393,6 +417,11 @@ pub enum CompilerExpressionKind {
         parameters: Vec<CompilerParameter>,
         body: Box<CompilerBlock>,
     },
+    ListRangeSelect {
+        list: Box<CompilerExpression>,
+        range: Box<CompilerExpression>,
+        indexes: bool,
+    },
     ListFold {
         list: Box<CompilerExpression>,
         initial: Box<CompilerExpression>,
@@ -598,6 +627,7 @@ struct BindingFacts {
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
     string_value: Option<String>,
+    closed_int_range: Option<ClosedIntRange>,
     record_fields: BTreeMap<String, StaticValueFacts>,
     namespace: Option<CompilerNamespaceFacts>,
     callable: Option<CompilerCallableFacts>,
@@ -1582,6 +1612,7 @@ impl Analyzer {
         false
     }
 
+    #[allow(clippy::too_many_lines)] // Capture validation keeps every nested-function boundary explicit.
     fn bind_nested_function(
         &self,
         statement: &Statement,
@@ -1677,6 +1708,7 @@ impl Analyzer {
                 int_range: None,
                 rational_value: None,
                 string_value: None,
+                closed_int_range: None,
                 record_fields: BTreeMap::new(),
                 namespace: None,
                 callable: Some(CompilerCallableFacts::Named {
@@ -1877,6 +1909,7 @@ impl Analyzer {
                         None
                     };
                     let string_value = Self::known_string_value(&value, environment);
+                    let closed_int_range = Self::known_closed_int_range(&value, environment);
                     let record_fields = Self::known_record_fields(&value, environment);
                     let namespace =
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
@@ -1894,6 +1927,7 @@ impl Analyzer {
                         int_range: value.int_range.clone(),
                         rational_value: value.rational_value.clone(),
                         string_value,
+                        closed_int_range,
                         record_fields,
                         namespace,
                         callable,
@@ -2427,6 +2461,7 @@ impl Analyzer {
                 int_range: None,
                 rational_value: None,
                 string_value: None,
+                closed_int_range: None,
                 record_fields: BTreeMap::new(),
                 namespace: None,
                 callable: None,
@@ -3381,6 +3416,86 @@ impl Analyzer {
                 rational_value: None,
                 span,
             });
+        }
+        if let [collection, Expression::Identifier(operation), selector] = items
+            && matches!(self.source.slice(*operation), "select" | "select-index")
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            let collection = self.analyze_expression(collection, environment)?;
+            let selector = self.analyze_expression(selector, environment)?;
+            require_type(
+                &self.source,
+                selector.span,
+                &CompilerType::Range(Box::new(CompilerType::Int)),
+                &selector.value_type,
+            )?;
+            match collection.value_type.clone() {
+                CompilerType::List(element) if element.as_ref() == &CompilerType::Int => {
+                    return Ok(CompilerExpression {
+                        kind: CompilerExpressionKind::ListRangeSelect {
+                            list: Box::new(collection),
+                            range: Box::new(selector),
+                            indexes: operation == "select-index",
+                        },
+                        value_type: CompilerType::List(Box::new(CompilerType::Int)),
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    });
+                }
+                CompilerType::String if operation == "select-index" => {
+                    let text =
+                        Self::known_string_value(&collection, environment).ok_or_else(|| {
+                            unsupported(
+                                &self.source,
+                                collection.span,
+                                "dynamic String range selection",
+                            )
+                        })?;
+                    let range =
+                        Self::known_closed_int_range(&selector, environment).ok_or_else(|| {
+                            unsupported(
+                                &self.source,
+                                selector.span,
+                                "dynamic String range selector",
+                            )
+                        })?;
+                    let selected = characters(&text)
+                        .enumerate()
+                        .filter_map(|(index, character)| {
+                            range.contains(&BigInt::from(index)).then_some(character)
+                        })
+                        .collect();
+                    return Ok(CompilerExpression {
+                        kind: CompilerExpressionKind::String(selected),
+                        value_type: CompilerType::String,
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    });
+                }
+                CompilerType::List(_) => {
+                    return Err(unsupported(
+                        &self.source,
+                        collection.span,
+                        "range selection for this List element type",
+                    ));
+                }
+                CompilerType::String => {
+                    return Err(unsupported(
+                        &self.source,
+                        collection.span,
+                        "Range Int value selection for String",
+                    ));
+                }
+                _ => {
+                    return Err(unsupported(
+                        &self.source,
+                        collection.span,
+                        "range selection source",
+                    ));
+                }
+            }
         }
         if let [list, Expression::Identifier(operation), operand] = items
             && matches!(
@@ -4437,6 +4552,51 @@ impl Analyzer {
         Self::known_string_expression(value, environment)
     }
 
+    fn known_closed_int_range(
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Option<ClosedIntRange> {
+        match &value.kind {
+            CompilerExpressionKind::Binary {
+                operation,
+                left,
+                right,
+            } if matches!(
+                operation,
+                CompilerBinary::Range
+                    | CompilerBinary::RangeOpen
+                    | CompilerBinary::RangeInclusive
+                    | CompilerBinary::RangeOpenInclusive
+            ) =>
+            {
+                let left = left
+                    .int_range
+                    .as_ref()
+                    .filter(|range| range.lower == range.upper)?;
+                let right = right
+                    .int_range
+                    .as_ref()
+                    .filter(|range| range.lower == range.upper)?;
+                let (lower_inclusive, upper_inclusive) = match operation {
+                    CompilerBinary::Range => (true, false),
+                    CompilerBinary::RangeOpen => (false, false),
+                    CompilerBinary::RangeInclusive => (true, true),
+                    CompilerBinary::RangeOpenInclusive => (false, true),
+                    _ => unreachable!("guard selected a Range constructor"),
+                };
+                Some(ClosedIntRange {
+                    lower: left.lower.clone(),
+                    upper: right.lower.clone(),
+                    lower_inclusive,
+                    upper_inclusive,
+                })
+            }
+            CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
+                .and_then(|facts| facts.closed_int_range.clone()),
+            _ => None,
+        }
+    }
+
     fn known_string_expression(
         value: &CompilerExpression,
         environment: &BTreeMap<String, BindingFacts>,
@@ -5172,6 +5332,7 @@ impl Analyzer {
                         int_range: argument.int_range.clone(),
                         rational_value: argument.rational_value.clone(),
                         string_value: exact_string(argument),
+                        closed_int_range: None,
                         record_fields: BTreeMap::new(),
                         namespace: None,
                         callable: self.known_callable(
@@ -6495,6 +6656,7 @@ impl Analyzer {
                         string_value: (!generalize_parameters)
                             .then(|| exact_string(argument))
                             .flatten(),
+                        closed_int_range: None,
                         record_fields: BTreeMap::new(),
                         namespace: scope_arguments[parameter_index].clone(),
                         callable: callable_arguments[parameter_index].clone(),
@@ -6532,6 +6694,7 @@ impl Analyzer {
                     int_range: capture.int_range.clone(),
                     rational_value: capture.rational_value.clone(),
                     string_value: exact_string(argument),
+                    closed_int_range: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -6564,6 +6727,7 @@ impl Analyzer {
                     int_range: capture.int_range.clone(),
                     rational_value: capture.rational_value.clone(),
                     string_value: exact_string(argument),
+                    closed_int_range: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -6595,6 +6759,7 @@ impl Analyzer {
                     int_range: capture.int_range.clone(),
                     rational_value: capture.rational_value.clone(),
                     string_value: exact_string(argument),
+                    closed_int_range: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -8168,6 +8333,7 @@ fn decision_binding_environment(
             int_range: None,
             rational_value: None,
             string_value: None,
+            closed_int_range: None,
             record_fields: BTreeMap::new(),
             namespace: None,
             callable: None,
@@ -8551,6 +8717,11 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ListAppend {
             list: left,
             value: right,
+        }
+        | CompilerExpressionKind::ListRangeSelect {
+            list: left,
+            range: right,
+            ..
         }
         | CompilerExpressionKind::ListConcat { left, right }
         | CompilerExpressionKind::Binary { left, right, .. } => {
@@ -10262,6 +10433,56 @@ mod tests {
                 }
             ]
         ));
+    }
+
+    #[test]
+    fn models_range_selection_without_exposing_slice_storage() {
+        // TOPAL-RANGE-VALUE-SELECTION-001, TOPAL-RANGE-INDEX-SELECTION-001,
+        // TOPAL-COMPILER-RANGE-SELECTION-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/range-selection.t"))
+                .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared range-selection regression returns a Tuple")
+        };
+        assert!(matches!(
+            results.as_slice(),
+            [
+                CompilerExpression {
+                    kind: CompilerExpressionKind::ListRangeSelect { indexes: false, .. },
+                    ..
+                },
+                CompilerExpression {
+                    kind: CompilerExpressionKind::ListRangeSelect { indexes: true, .. },
+                    ..
+                },
+                CompilerExpression {
+                    kind: CompilerExpressionKind::String(value),
+                    ..
+                }
+            ] if value == "opa"
+        ));
+
+        let unicode = analyze_for_compiler(
+            "use language (version is v0.1)\ntext : String is \"a\u{301}👩‍🔬🇸🇪x\"\ntext select-index (1 ..= 2)\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            unicode.main.result.kind,
+            CompilerExpressionKind::String(ref value) if value == "👩‍🔬🇸🇪"
+        ));
+
+        let wrong_selector = analyze_for_compiler(
+            "use language (version is v0.1)\nvalues : List Int is Entry (1, Empty)\nvalues select 1\n",
+        )
+        .unwrap_err();
+        assert_eq!(wrong_selector.code, "E-TYPE-MISMATCH");
+
+        let unsupported_element = analyze_for_compiler(
+            "use language (version is v0.1)\nvalues : List Effect is Entry (Effects (), Empty)\nvalues select-index (0 .. 1)\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported_element.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

@@ -610,6 +610,18 @@ Consequently this extension preserves lexical snapshots without adding a
 closure object, indirect call, collection dispatcher, callable ABI, or runtime
 dependency.
 
+Range-selected `List Int` values use a separately conditional private LLVM
+fragment. It visits each immutable node once, asks the exact Range runtime about
+either the stored arbitrary-precision value or an exact Int converted from the
+physical zero-based position, and links only freshly initialized result nodes.
+The traversal never mutates or publishes a partial source/result node. Closed
+String index selection instead remains target-independent checked-model
+evaluation using the shared pinned user-perceived-Character segmentation, then
+enters ordinary String lowering. LLVM deliberately does not receive Unicode
+segmentation responsibility, and dynamic String slicing remains rejected until
+a freestanding Topal implementation exists. SelectionOf, RangeSelectionOf, and
+SliceOf are proof facts rather than runtime descriptors in this increment.
+
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
 action in its selected block, and compatible machine-scalar results merge with
