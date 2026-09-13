@@ -4669,6 +4669,21 @@
       "cpu_time_ns": 3242600,
       "memory_peak_bytes": 18358272,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_function_inputs_as_private_tags_with_direct_specialization": {
+      "cpu_time_ns": 5648759,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::function_input_boundary_is_private_direct_freestanding_and_debuggable": {
+      "cpu_time_ns": 315121180,
+      "memory_peak_bytes": 57712640,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_specialized_function_input_boundaries": {
+      "cpu_time_ns": 3852060,
+      "memory_peak_bytes": 18612224,
+      "samples_per_test": 50
     }
   }
 }

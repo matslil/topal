@@ -342,6 +342,10 @@ impl<'a> Generator<'a> {
                 CompilerType::Record(fields) => {
                     self.emit_record_extract(&argument, fields, body, parameter.span)
                 }
+                CompilerType::Function => LlValue::Enum {
+                    value: argument.clone(),
+                    enumeration: function_value_enumeration(self.program),
+                },
                 _ => function_parameter_value(&parameter.value_type, index),
             };
             let variable = self.debug.parameter(
@@ -354,7 +358,7 @@ impl<'a> Generator<'a> {
             let location = self.debug.location(parameter.span, body.subprogram);
             if matches!(
                 parameter.value_type,
-                CompilerType::Tuple(_) | CompilerType::Record(_)
+                CompilerType::Function | CompilerType::Tuple(_) | CompilerType::Record(_)
             ) {
                 self.emit_aggregate_debug_shadow(
                     &argument,
@@ -4564,6 +4568,26 @@ mod tests {
         assert!(llvm.contains(&llvm_bytes(b"+")));
         assert!(llvm.contains(&llvm_bytes(b"-")));
         assert!(llvm.contains(&llvm_bytes(b"<=>")));
+    }
+
+    #[test]
+    fn emits_function_inputs_as_private_tags_with_direct_specialization() {
+        // TOPAL-COMPILER-FUNCTION-PARAMETER-001,
+        // TOPAL-FUNCTION-CALLABLE-VALUE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-value-boundary.t"
+        ))
+        .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "function-value-boundary.t").emit();
+        assert!(llvm.contains(&format!("define internal fastcc ptr @{symbol}(i32 %arg0)")));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr") && line.contains(&format!("@{symbol}(i32"))
+        }));
+        assert!(llvm.contains("call ptr @topal.runtime.int.add("));
+        assert!(llvm.contains("!DILocalVariable(name: \"operation\""));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("call ptr %"));
     }
 
     #[test]
