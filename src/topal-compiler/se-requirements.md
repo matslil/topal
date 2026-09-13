@@ -181,6 +181,40 @@ serialization, and compiled-library metadata remain deferred. This realizes
 `TOPAL-NUM-MODULAR-REDUCE-001`, and `TOPAL-NUM-MODULAR-ARITHMETIC-001` for
 compiler increment 2f.
 
+## TOPAL-COMP-MODULAR-CONSTRUCTION-001 — Named ranges and dynamic construction
+
+The compiler shall accept a root modular declaration whose operand names an
+earlier root binding initialized by a closed finite inclusive `Range Int`.
+Resolution shall follow immutable source order and preserve the same exact
+canonical bounds as direct range syntax; dynamic, cyclic, forward, malformed,
+and non-range operands shall remain rejected.
+
+For checked `Name value`, statically proven in-range inputs shall retain the
+direct nominal value path and closed proven out-of-range inputs shall retain
+the source diagnostic. Every other admitted Int shall be evaluated once and
+compared against both arbitrary-precision inclusive bounds in generated LLVM
+control flow. Success shall wrap the original Int pointer; rejection shall
+produce the existing arithmetic Result/Error representation with code
+`out-of-range`, lexical domain `root.Name(Int)`, and exact operand provenance.
+
+`Result (Name, lang arithmetic ArithmeticErrorCode)` shall be admitted through
+the existing private pointer call, return, projection, decision, display, and
+Error-observation paths. Its DWARF header shall retain a nominally typed Name
+payload so the bundled GDB renderer can validate and print success and failure
+values. Tests shall use one unchanged interpreter/compiler regression, compare
+exact output, inspect checked and LLVM control flow, and verify no undefined
+symbol, needed library, dynamic relocation, or lost GDB type/value/frame.
+
+This increment shall reuse only the existing exact Int comparison, Result,
+Error, Linux syscall allocation, and writer facilities. It adds no C/C++
+runtime, other-language standard library, public ABI, serialization contract,
+or `topal-native/6` revision. Modular absolute value, persistent/public
+representation, serialization, introspection, and compiled-library metadata
+remain deferred. This realizes
+`TOPAL-COMPILER-MODULAR-CONSTRUCTION-001` and completes the named-range and
+dynamic-construction portions of `TOPAL-NUM-MODULAR-TYPE-001` and
+`TOPAL-NUM-MODULAR-CONSTRUCT-001` for compiler increment 2f1.
+
 ## TOPAL-COMP-RESULT-001 — Dynamic arithmetic Results
 
 The compiler shall represent an admitted arithmetic `Result` with an immutable
@@ -1345,8 +1379,9 @@ immutable scalar locals, lexical scopes, and instructions to Topal files and
 source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
 renderers for private arbitrary-precision Int, Rational, `Range Int`,
 `Range Rational`, `Optional Int`, `Optional String`, `Optional Error`,
-`Optional SourceLocation`, `SourceLocation`, and nominal modular-number
-objects, describe source-declared nominal enums, retained Constraint
+`Optional SourceLocation`, `SourceLocation`, nominal modular-number objects,
+and modular-success Result objects, describe source-declared nominal enums,
+retained Constraint
 identities, and refined Int bindings with their semantic names, distinguish
 selected overload and static-function frames, and pass automated GDB
 breakpoint, value, and backtrace scenarios.

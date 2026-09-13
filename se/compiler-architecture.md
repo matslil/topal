@@ -364,6 +364,20 @@ though the runtime layout is shared. This is not a public, foreign,
 serialization, or compiled-library numeric ABI, and it does not revise
 `topal-native/6`.
 
+A modular declaration may resolve an earlier immutable root binding whose
+initializer is a closed finite inclusive Int range; the compiler substitutes
+that source expression while collecting declarations, before ordinary value
+lowering. Checked construction uses static interval evidence when conclusive.
+Otherwise generated control flow compares the once-evaluated arbitrary-
+precision Int with both inclusive bounds and joins either the original Int
+pointer in the existing Result success header or a source-located
+`root.Name(Int)`/`out-of-range` Error. A modular-success Result uses the same
+private two-word runtime header as every arithmetic Result. Its specialized
+DWARF header changes only the debug payload type from opaque pointer to the
+nominal modular typedef, preserving layout while keeping that type reachable
+and renderable in GDB. This extension therefore needs neither a platform ABI
+choice nor a `topal-native/6` revision.
+
 String values use immutable `{data, length, display, display-length}`
 descriptors containing UTF-8 bytes and an optional cached canonical display.
 Only relocation-free byte arrays reside in the static image; descriptors are
@@ -867,9 +881,9 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
-| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum, and fallible arithmetic control flow with typed result joins |
+| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum, modular bound validation, and fallible arithmetic control flow with typed result joins |
 | `insertvalue` and `extractvalue` | used | target-independent construction and decomposition of exact private Tuple, Record, Union, and Variant aggregate signatures |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular values, and bundled renderers for private Int, Rational, finite exact Range, modular, and active sum values |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular and modular-success Result values, and bundled renderers for private Int, Rational, finite exact Range, modular, and active sum values |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm.memcpy.inline` | used | target-qualified dynamic String copies while retaining LLVM's guarantee that lowering calls no external function |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |

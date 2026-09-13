@@ -101,9 +101,10 @@ field evidence under `TOPAL-COMPILER-TUPLE-EQUALITY-001`.
 
 Each admitted root-scope `ModNat` or `ModInt` declaration SHALL retain its
 nominal identity and finite inclusive canonical range. Checked construction
-SHALL admit an `Int` only when compile-time evidence proves it is in range;
-until dynamic Result-producing construction is implemented, an unproved
-construction SHALL be rejected rather than wrapped, truncated, or trapped.
+SHALL directly admit an `Int` when compile-time evidence proves it is in range;
+other admitted inputs SHALL follow
+`TOPAL-COMPILER-MODULAR-CONSTRUCTION-001` rather than being wrapped, truncated,
+or trapped.
 Explicit `value modulo Type` construction SHALL reduce any admitted Int to the
 unique canonical representative.
 
@@ -122,6 +123,31 @@ use one exact opaque-pointer signature and leave physical AMD64 lowering to
 LLVM. This representation SHALL NOT define a foreign or public numeric ABI,
 serialization layout, or compiled-library metadata identity and SHALL add no
 foreign runtime, other-language standard library, or native-ABI revision.
+
+### TOPAL-COMPILER-MODULAR-CONSTRUCTION-001 — Dynamic checked modular construction
+
+An admitted root binding initialized by a closed finite inclusive `Range Int`
+MAY supply a later root modular declaration's range operand. The compiler SHALL
+resolve such bindings in source order, retain the same exact canonical bounds
+as direct range syntax, and reject a range that is dynamic, malformed, cyclic,
+forward-referenced, or otherwise unavailable at the modular declaration.
+
+Checked `Name value` construction SHALL evaluate `value` exactly once. Static
+range evidence wholly inside Name's inclusive bounds SHALL produce the nominal
+value directly. A syntactically closed value proved wholly outside the bounds
+SHALL receive `E-MODULAR-OUT-OF-RANGE`. Otherwise construction SHALL compare
+the exact arbitrary-precision Int against both bounds at run time and produce
+`Result (Name, lang arithmetic ArithmeticErrorCode)`: success retains the
+original canonical Int pointer, while failure contains `out-of-range`, lexical
+domain `root.Name(Int)`, and the operand's source file, line, and column.
+
+The dynamic Result SHALL compose through admitted function parameters,
+returns, projections, decisions, display, and Error field observation using
+the existing private Result/Error headers. DWARF SHALL retain the Result's
+source classifier and connect its success payload to Name's distinct nominal
+modular type so GDB can safely render either alternative. This lowering SHALL
+remain freestanding and SHALL NOT add a foreign runtime, other-language
+standard library, public ABI, serialization contract, or native-ABI revision.
 
 ### TOPAL-COMPILER-RANGE-001 — Finite exact ranges
 

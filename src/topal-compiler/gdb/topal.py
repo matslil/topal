@@ -298,6 +298,14 @@ class _TopalResultPrinter:
                 f"({_TopalIntPrinter(quotient).to_string()}, "
                 f"{_TopalIntPrinter(remainder).to_string()})"
             )
+        try:
+            success_type = gdb.lookup_type(self._success).strip_typedefs()
+        except gdb.error:
+            success_type = None
+        if success_type is not None and str(success_type).startswith(
+            "struct TopalModular."
+        ):
+            return _TopalModularPrinter(payload, self._success).to_string()
         return f"<unsupported Result success type {self._success}>"
 
 

@@ -4884,6 +4884,41 @@
       "cpu_time_ns": 2975799,
       "memory_peak_bytes": 18358272,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_dynamic_modular_validation_as_a_native_result": {
+      "cpu_time_ns": 7435719,
+      "memory_peak_bytes": 18214912,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::dynamic_modular_results_are_freestanding_and_debuggable": {
+      "cpu_time_ns": 323986040,
+      "memory_peak_bytes": 57446400,
+      "samples_per_test": 50
+    },
+    "topal-debugger::test:cli::records_checked_modular_construction_reversibly": {
+      "cpu_time_ns": 8588420,
+      "memory_peak_bytes": 18214912,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_checks_dynamic_modular_construction_from_a_named_range": {
+      "cpu_time_ns": 21990380,
+      "memory_peak_bytes": 18219008,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_named_ranges_and_dynamic_checked_modular_construction": {
+      "cpu_time_ns": 3389380,
+      "memory_peak_bytes": 18345984,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_invalid_modular_construction": {
+      "cpu_time_ns": 2957820,
+      "memory_peak_bytes": 18223104,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::modular_function_boundaries_preserve_nominal_identity": {
+      "cpu_time_ns": 5161160,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
     }
   }
 }

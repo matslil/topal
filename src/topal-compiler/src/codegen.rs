@@ -108,6 +108,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::Block(block) => block_uses_extended_debug(block),
         CompilerExpressionKind::IntToModular { value, .. }
         | CompilerExpressionKind::ModularReduce { value, .. }
+        | CompilerExpressionKind::ModularValidate { value, .. }
         | CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
         | CompilerExpressionKind::IntToRational(value)
@@ -848,6 +849,18 @@ impl<'a> Generator<'a> {
                 let value = self.emit_expression(value, body, environment);
                 self.emit_modular_reduce(value.integer(), modular, body, expression.span)
             }
+            CompilerExpressionKind::ModularValidate {
+                value,
+                modular,
+                error_span,
+            } => self.emit_modular_validation(
+                value,
+                modular,
+                *error_span,
+                body,
+                environment,
+                expression.span,
+            ),
             CompilerExpressionKind::Rational(value) => {
                 self.emit_rational_literal(value, body, expression.span)
             }
@@ -1943,6 +1956,91 @@ impl<'a> Generator<'a> {
         }
     }
 
+    fn emit_modular_validation(
+        &mut self,
+        value: &CompilerExpression,
+        modular: &CompilerModularType,
+        error_span: Span,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let value = self.emit_expression(value, body, environment);
+        let value = value.integer();
+        let lower = self.emit_int_global(&modular.lower);
+        let upper = self.emit_int_global(&modular.upper);
+        let lower_order = body.instruction(
+            &format!("call i32 @topal.runtime.int.compare(ptr {value}, ptr {lower})"),
+            span,
+            &mut self.debug,
+        );
+        let upper_order = body.instruction(
+            &format!("call i32 @topal.runtime.int.compare(ptr {value}, ptr {upper})"),
+            span,
+            &mut self.debug,
+        );
+        let at_or_above = body.instruction(
+            &format!("icmp sge i32 {lower_order}, 0"),
+            span,
+            &mut self.debug,
+        );
+        let at_or_below = body.instruction(
+            &format!("icmp sle i32 {upper_order}, 0"),
+            span,
+            &mut self.debug,
+        );
+        let accepted = body.instruction(
+            &format!("and i1 {at_or_above}, {at_or_below}"),
+            span,
+            &mut self.debug,
+        );
+        let accepted_label = body.label("modular.accepted");
+        let rejected_label = body.label("modular.rejected");
+        let merge = body.label("modular.merge");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {accepted}, label %{accepted_label}, label %{rejected_label}"),
+            location,
+        );
+
+        body.start_block(&accepted_label);
+        let success = body.instruction(
+            &format!("call ptr @topal.runtime.result.success(ptr {value})"),
+            span,
+            &mut self.debug,
+        );
+        let success_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+
+        body.start_block(&rejected_label);
+        let domain = self.emit_string_value(&format!("root.{}(Int)", modular.name), body, span);
+        let source = self.emit_string_value(self.source_name, body, span);
+        let position = self.program.source.position(error_span.start);
+        let failure = body.instruction(
+            &format!(
+                "call ptr @topal.runtime.result.failure(i32 0, ptr {domain}, ptr {source}, i64 {}, i64 {})",
+                position.line, position.column
+            ),
+            span,
+            &mut self.debug,
+        );
+        let failure_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+
+        body.start_block(&merge);
+        let value = body.instruction(
+            &format!(
+                "phi ptr [{success}, %{success_predecessor}], [{failure}, %{failure_predecessor}]"
+            ),
+            span,
+            &mut self.debug,
+        );
+        LlValue::Result {
+            value,
+            success: CompilerType::Modular(modular.clone()),
+        }
+    }
+
     #[allow(clippy::too_many_arguments)] // Fallible ABI arguments keep structured provenance explicit.
     fn emit_fallible(
         &mut self,
@@ -2018,6 +2116,11 @@ impl<'a> Generator<'a> {
     ) -> String {
         match (value, value_type) {
             (LlValue::Unit, CompilerType::Unit) => "null".into(),
+            (LlValue::Modular { value, modular }, CompilerType::Modular(modular_type))
+                if modular == modular_type =>
+            {
+                value.clone()
+            }
             (LlValue::Int(value), CompilerType::Int | CompilerType::Nat)
             | (LlValue::Rational(value), CompilerType::Rational)
             | (LlValue::String(value), CompilerType::String)
@@ -2053,6 +2156,10 @@ impl<'a> Generator<'a> {
         match success {
             CompilerType::Unit => LlValue::Unit,
             CompilerType::Int | CompilerType::Nat => LlValue::Int(payload.into()),
+            CompilerType::Modular(modular) => LlValue::Modular {
+                value: payload.into(),
+                modular: modular.clone(),
+            },
             CompilerType::Rational => LlValue::Rational(payload.into()),
             CompilerType::String => LlValue::String(payload.into()),
             CompilerType::Range(endpoint) => LlValue::Range {
@@ -3986,6 +4093,7 @@ struct DebugInfo {
     result_rational_type: usize,
     result_string_type: usize,
     result_int_pair_type: usize,
+    result_modular_types: Vec<(CompilerModularType, usize)>,
     optional_int_type: usize,
     optional_rational_type: usize,
     optional_character_type: usize,
@@ -4040,6 +4148,7 @@ impl DebugInfo {
             result_rational_type: 0,
             result_string_type: 0,
             result_int_pair_type: 0,
+            result_modular_types: Vec::new(),
             optional_int_type: 0,
             optional_rational_type: 0,
             optional_character_type: 0,
@@ -4457,6 +4566,14 @@ impl DebugInfo {
             {
                 self.result_int_pair_type
             }
+            CompilerType::Result(success)
+                if matches!(success.as_ref(), CompilerType::Modular(_)) =>
+            {
+                let CompilerType::Modular(modular) = success.as_ref() else {
+                    unreachable!()
+                };
+                self.result_modular_type(modular)
+            }
             CompilerType::Result(_) => {
                 unreachable!("unsupported Result success type reached codegen")
             }
@@ -4520,6 +4637,36 @@ impl DebugInfo {
             self.file
         ));
         self.modular_types.push((modular.clone(), type_id));
+        type_id
+    }
+
+    fn result_modular_type(&mut self, modular: &CompilerModularType) -> usize {
+        if let Some((_, type_id)) = self
+            .result_modular_types
+            .iter()
+            .find(|(known, _)| known == modular)
+        {
+            return *type_id;
+        }
+        let modular_type = self.modular_type(modular);
+        let tag = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"is_error\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.unsigned64_type
+        ));
+        let payload = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"payload\", file: !{}, baseType: !{modular_type}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let members = self.node(format!("!{{!{tag}, !{payload}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalResult.Modular.{}\", file: !{}, size: 128, align: 64, elements: !{members})",
+            llvm_string(&modular.name), self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.result_type(&modular.name, pointer);
+        self.result_modular_types.push((modular.clone(), type_id));
         type_id
     }
 
@@ -6430,5 +6577,24 @@ mod tests {
         assert!(llvm.contains("call ptr @topal.runtime.int.modulo("));
         assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalModular.ByteCounter\""));
         assert!(llvm.contains("DW_TAG_typedef, name: \"ByteCounter\""));
+    }
+
+    #[test]
+    fn emits_dynamic_modular_validation_as_a_native_result() {
+        // TOPAL-COMPILER-MODULAR-CONSTRUCTION-001,
+        // TOPAL-NUM-MODULAR-CONSTRUCT-001
+        let source = include_str!("../../../examples/language/modular-checked-construction.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/modular-checked-construction.t").emit();
+        assert!(llvm.contains("modular.accepted"));
+        assert!(llvm.contains("modular.rejected"));
+        assert!(llvm.contains("modular.merge"));
+        assert!(llvm.matches("call i32 @topal.runtime.int.compare").count() >= 2);
+        assert!(llvm.contains("call ptr @topal.runtime.result.success"));
+        assert!(llvm.contains("call ptr @topal.runtime.result.failure(i32 0"));
+        assert!(llvm.contains(&llvm_bytes(b"root.ByteCounter(Int)")));
+        assert!(llvm.contains(
+            "DW_TAG_typedef, name: \"Result (ByteCounter, lang arithmetic ArithmeticErrorCode)\""
+        ));
     }
 }

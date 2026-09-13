@@ -3889,3 +3889,89 @@ fn modular_values_are_private_freestanding_and_debuggable() {
     assert!(text.contains("topal.fn.retain.0"), "{text}");
     assert!(text.contains("topal.main"), "{text}");
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn dynamic_modular_results_are_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-MODULAR-CONSTRUCTION-001,
+    // TOPAL-NUM-MODULAR-CONSTRUCT-001, TOPAL-COMPILER-PLATFORM-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-modular-results");
+    let source = directory.join("modular-checked-construction.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nByteRange is 0 ..= 255\nByteCounter is ModNat ByteRange\nconstruct is fn (value : Int) -> Result (ByteCounter, lang arithmetic ArithmeticErrorCode)\n  ByteCounter value\ninspect is fn (accepted : Result (ByteCounter, lang arithmetic ArithmeticErrorCode), rejected : Result (ByteCounter, lang arithmetic ArithmeticErrorCode)) -> Result (ByteCounter, lang arithmetic ArithmeticErrorCode)\n  rejected\n    Ok value then accepted\n    Error problem then accepted\ninspect (construct 255, construct 256)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"ByteCounter 255\n");
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break modular-checked-construction.t:7",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis accepted",
+            "-ex",
+            "print accepted",
+            "-ex",
+            "print rejected",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(
+        text.contains("type = Result (ByteCounter, lang arithmetic ArithmeticErrorCode)"),
+        "{text}"
+    );
+    assert!(text.contains("$1 = ByteCounter 255"), "{text}");
+    assert!(
+        text.contains("$2 = Error ( domain is root.ByteCounter(Int), code is out-of-range"),
+        "{text}"
+    );
+    assert!(text.contains("topal.main"), "{text}");
+}

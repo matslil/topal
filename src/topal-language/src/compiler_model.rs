@@ -302,6 +302,11 @@ pub enum CompilerExpressionKind {
         value: Box<CompilerExpression>,
         modular: CompilerModularType,
     },
+    ModularValidate {
+        value: Box<CompilerExpression>,
+        modular: CompilerModularType,
+        error_span: Span,
+    },
     Enum(u32),
     Sum {
         value: u32,
@@ -972,7 +977,7 @@ fn collect_modular_sources(
     let mut declarations = Vec::new();
     let mut names = BTreeSet::new();
     for statement in statements {
-        let Some(declaration) = modular_declaration(source, statement) else {
+        let Some(mut declaration) = modular_declaration(source, statement) else {
             continue;
         };
         let name = source.slice(declaration.name);
@@ -990,9 +995,52 @@ fn collect_modular_sources(
                 format!("`{name}` is already declared in this scope"),
             ));
         }
+        declaration.range = resolve_modular_range_source(
+            source,
+            statements,
+            &declaration.range,
+            declaration.name.start,
+        );
         declarations.push(declaration);
     }
     Ok(declarations)
+}
+
+fn resolve_modular_range_source(
+    source: &SourceText,
+    statements: &[Statement],
+    range: &Expression,
+    mut before: usize,
+) -> Expression {
+    let mut range = range.clone();
+    let mut seen = BTreeSet::new();
+    while let Expression::Identifier(name) = &range {
+        let name = source.slice(*name);
+        if !seen.insert(name.to_owned()) {
+            break;
+        }
+        let Some((value, declaration_start)) = statements.iter().rev().find_map(|statement| {
+            let statement = match statement {
+                Statement::Published { declaration, .. } => declaration.as_ref(),
+                statement => statement,
+            };
+            let Statement::Binding {
+                name: candidate,
+                value,
+                ..
+            } = statement
+            else {
+                return None;
+            };
+            (candidate.start < before && source.slice(*candidate) == name)
+                .then_some((value.clone(), candidate.start))
+        }) else {
+            break;
+        };
+        range = value;
+        before = declaration_start;
+    }
+    range
 }
 
 fn collect_sums(
@@ -1354,6 +1402,18 @@ impl Analyzer {
             && declaration.end <= span.start
         {
             return Ok(CompilerType::Modular(modular.clone()));
+        }
+        if let Some((success, codes)) = classifier
+            .strip_prefix("Result(")
+            .and_then(|value| value.strip_suffix(')'))
+            .and_then(split_classifier_once)
+            && codes == "langarithmeticArithmeticErrorCode"
+            && let Some((modular, declaration)) = self.modulars.get(success)
+            && declaration.end <= span.start
+        {
+            return Ok(CompilerType::Result(Box::new(CompilerType::Modular(
+                modular.clone(),
+            ))));
         }
         if let Some(tag) = self.constraint_bindings.get(&classifier)
             && let Some(constraint) = self
@@ -2451,14 +2511,29 @@ impl Analyzer {
             &CompilerType::Int,
             &operand.value_type,
         )?;
-        let Some(value) = exact_int(&operand) else {
-            return Err(unsupported(
-                &self.source,
-                operand.span,
-                "dynamic checked modular construction",
-            ));
-        };
-        if value < modular.lower || value > modular.upper {
+        if operand
+            .int_range
+            .as_ref()
+            .is_some_and(|range| range.lower >= modular.lower && range.upper <= modular.upper)
+        {
+            let int_range = operand.int_range.clone();
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::IntToModular {
+                    value: Box::new(operand),
+                    modular: modular.clone(),
+                },
+                value_type: CompilerType::Modular(modular),
+                int_range,
+                rational_value: None,
+                span,
+            });
+        }
+        if operand
+            .int_range
+            .as_ref()
+            .is_some_and(|range| range.upper < modular.lower || range.lower > modular.upper)
+            && compiler_expression_is_closed(&operand)
+        {
             return Err(source_diagnostic(
                 &self.source,
                 "E-MODULAR-OUT-OF-RANGE",
@@ -2466,13 +2541,15 @@ impl Analyzer {
                 format!("value is outside `{}` canonical range", modular.name),
             ));
         }
+        let error_span = operand.span;
         Ok(CompilerExpression {
-            kind: CompilerExpressionKind::IntToModular {
+            kind: CompilerExpressionKind::ModularValidate {
                 value: Box::new(operand),
                 modular: modular.clone(),
+                error_span,
             },
-            value_type: CompilerType::Modular(modular),
-            int_range: Some(IntRange::exact(value)),
+            value_type: CompilerType::Result(Box::new(CompilerType::Modular(modular))),
+            int_range: None,
             rational_value: None,
             span,
         })
@@ -7121,6 +7198,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Nat
                     | CompilerType::Rational
                     | CompilerType::String
+                    | CompilerType::Modular(_)
             ) || matches!(
                 success.as_ref(),
                 CompilerType::Tuple(fields)
@@ -7511,6 +7589,7 @@ fn compiler_expression_is_closed_with(
         CompilerExpressionKind::Call { .. }
         | CompilerExpressionKind::Fallible { .. }
         | CompilerExpressionKind::Validate { .. }
+        | CompilerExpressionKind::ModularValidate { .. }
         | CompilerExpressionKind::SumDecision { .. }
         | CompilerExpressionKind::ResultDecision { .. }
         | CompilerExpressionKind::OptionalDecision { .. } => false,
@@ -10592,7 +10671,32 @@ mod tests {
     }
 
     #[test]
-    fn rejects_invalid_or_unproven_modular_construction() {
+    fn models_named_ranges_and_dynamic_checked_modular_construction() {
+        // TOPAL-NUM-MODULAR-TYPE-001, TOPAL-NUM-MODULAR-CONSTRUCT-001
+        let source = include_str!("../../../examples/language/modular-checked-construction.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(Result (ByteCounter, lang arithmetic ArithmeticErrorCode), Result (ByteCounter, lang arithmetic ArithmeticErrorCode), lang arithmetic ArithmeticErrorCode, ErrorDomain, Optional SourceLocation)"
+        );
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "construct"
+                && matches!(
+                    function.body.result.kind,
+                    CompilerExpressionKind::ResultSuccess(_)
+                )
+        }));
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "construct"
+                && matches!(
+                    function.body.result.kind,
+                    CompilerExpressionKind::ModularValidate { .. }
+                )
+        }));
+    }
+
+    #[test]
+    fn rejects_invalid_modular_construction() {
         // TOPAL-NUM-MODULAR-TYPE-001, TOPAL-NUM-MODULAR-CONSTRUCT-001
         let invalid_range = "use language (version is v0.1)\nDigit is ModNat (1 ..= 9)\nDigit 1\n";
         assert_eq!(
@@ -10604,12 +10708,6 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(outside).unwrap_err().code,
             "E-MODULAR-OUT-OF-RANGE"
-        );
-
-        let dynamic = "use language (version is v0.1)\nDigit is ModNat (0 ..= 9)\nhalve is fn (value : Int) -> Result (Int, lang arithmetic ArithmeticErrorCode)\n  half : Int is value / 2\n  half\nmake is fn (value : Int) -> Digit\n  Digit value\nchoose is fn () -> Digit\n  outcome is halve 100\n  outcome\n    Ok value then make value\n    Error problem then Digit 0\nchoose ()\n";
-        assert_eq!(
-            analyze_for_compiler(dynamic).unwrap_err().code,
-            "E-COMPILER-UNSUPPORTED"
         );
 
         let nominal_mismatch = "use language (version is v0.1)\nDigit is ModNat (0 ..= 9)\nHour is ModNat (0 ..= 23)\n(Digit 1) + (Hour 1)\n";

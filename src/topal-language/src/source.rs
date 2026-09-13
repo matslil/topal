@@ -7657,23 +7657,36 @@ impl Execution {
                 "the interpreter cannot verify this hard implementation guarantee",
             ));
         }
+        let modular_names = session
+            .bindings
+            .iter()
+            .filter_map(|(name, value)| {
+                matches!(value, Value::ModularType(_)).then_some(name.clone())
+            })
+            .collect::<BTreeSet<_>>();
         let mut generic_names = BTreeSet::new();
         for parameter in parameters {
             collect_generic_names(
                 self.source.slice(parameter.classifier),
                 &session.enum_types,
+                &modular_names,
                 &mut generic_names,
             );
             for field in &parameter.fields {
                 collect_generic_names(
                     self.source.slice(field.classifier),
                     &session.enum_types,
+                    &modular_names,
                     &mut generic_names,
                 );
             }
         }
-        if !supported_generic_classifier(result_text, &generic_names, &session.enum_types)
-            && !session.union_types.contains_key(result_text)
+        if !supported_generic_classifier(
+            result_text,
+            &generic_names,
+            &session.enum_types,
+            &modular_names,
+        ) && !session.union_types.contains_key(result_text)
         {
             return Err(diagnostic(
                 &self.source,
@@ -7699,6 +7712,7 @@ impl Execution {
                                     classifier,
                                     &generic_names,
                                     &session.enum_types,
+                                    &modular_names,
                                 )
                                 && !session.union_types.contains_key(classifier)
                             {
@@ -7735,6 +7749,7 @@ impl Execution {
                         classifier,
                         &generic_names,
                         &session.enum_types,
+                        &modular_names,
                     )
                     && !session.union_types.contains_key(classifier)
                 {
@@ -10488,36 +10503,42 @@ fn supported_generic_classifier(
     classifier: &str,
     generic_names: &BTreeSet<String>,
     enum_types: &BTreeMap<String, BTreeSet<String>>,
+    modular_names: &BTreeSet<String>,
 ) -> bool {
     supported_value_classifier(classifier, enum_types)
+        || modular_names.contains(classifier)
         || generic_capability_classifier(classifier).is_some()
         || generic_names.contains(classifier)
         || applied_classifier(classifier, "Optional").is_some_and(|payload| {
-            supported_generic_classifier(payload, generic_names, enum_types)
+            supported_generic_classifier(payload, generic_names, enum_types, modular_names)
                 || generic_capability_classifier(payload).is_some()
         })
         || applied_classifier(classifier, "List").is_some_and(|element| {
-            supported_generic_classifier(element, generic_names, enum_types)
+            supported_generic_classifier(element, generic_names, enum_types, modular_names)
                 || generic_capability_classifier(element).is_some()
         })
         || applied_classifier(classifier, "Range").is_some_and(|endpoint| {
-            supported_generic_classifier(endpoint, generic_names, enum_types)
+            supported_generic_classifier(endpoint, generic_names, enum_types, modular_names)
                 || generic_capability_classifier(endpoint).is_some()
         })
+        || result_success_classifier(classifier).is_some_and(|success| {
+            supported_generic_classifier(success, generic_names, enum_types, modular_names)
+                || generic_capability_classifier(success).is_some()
+        })
         || result_classifier_parts(classifier).is_some_and(|(success, codes)| {
-            (supported_generic_classifier(success, generic_names, enum_types)
+            (supported_generic_classifier(success, generic_names, enum_types, modular_names)
                 || generic_capability_classifier(success).is_some())
-                && (supported_generic_classifier(codes, generic_names, enum_types)
+                && (supported_generic_classifier(codes, generic_names, enum_types, modular_names)
                     || generic_capability_classifier(codes).is_some())
         })
         || function_classifier_parts(classifier).is_some_and(|(input, result)| {
-            supported_generic_classifier(input, generic_names, enum_types)
-                && supported_generic_classifier(result, generic_names, enum_types)
+            supported_generic_classifier(input, generic_names, enum_types, modular_names)
+                && supported_generic_classifier(result, generic_names, enum_types, modular_names)
         })
         || tuple_classifiers(classifier).is_some_and(|items| {
-            items
-                .into_iter()
-                .all(|item| supported_generic_classifier(item, generic_names, enum_types))
+            items.into_iter().all(|item| {
+                supported_generic_classifier(item, generic_names, enum_types, modular_names)
+            })
         })
 }
 
@@ -10566,6 +10587,7 @@ fn function_classifier_parts(classifier: &str) -> Option<(&str, &str)> {
 fn collect_generic_names(
     classifier: &str,
     enum_types: &BTreeMap<String, BTreeSet<String>>,
+    modular_names: &BTreeSet<String>,
     names: &mut BTreeSet<String>,
 ) {
     if let Some((name, _)) = generic_capability_classifier(classifier) {
@@ -10573,30 +10595,30 @@ fn collect_generic_names(
         return;
     }
     if let Some(payload) = applied_classifier(classifier, "Optional") {
-        collect_generic_names(payload, enum_types, names);
+        collect_generic_names(payload, enum_types, modular_names, names);
         return;
     }
     if let Some(element) = applied_classifier(classifier, "List") {
-        collect_generic_names(element, enum_types, names);
+        collect_generic_names(element, enum_types, modular_names, names);
         return;
     }
     if let Some(endpoint) = applied_classifier(classifier, "Range") {
-        collect_generic_names(endpoint, enum_types, names);
+        collect_generic_names(endpoint, enum_types, modular_names, names);
         return;
     }
     if let Some((success, codes)) = result_classifier_parts(classifier) {
-        collect_generic_names(success, enum_types, names);
-        collect_generic_names(codes, enum_types, names);
+        collect_generic_names(success, enum_types, modular_names, names);
+        collect_generic_names(codes, enum_types, modular_names, names);
         return;
     }
     if let Some((input, result)) = function_classifier_parts(classifier) {
-        collect_generic_names(input, enum_types, names);
-        collect_function_result_generic_names(result, enum_types, names);
+        collect_generic_names(input, enum_types, modular_names, names);
+        collect_function_result_generic_names(result, enum_types, modular_names, names);
         return;
     }
     if let Some(items) = tuple_classifiers(classifier) {
         for item in items {
-            collect_generic_names(item, enum_types, names);
+            collect_generic_names(item, enum_types, modular_names, names);
         }
     }
 }
@@ -10604,22 +10626,24 @@ fn collect_generic_names(
 fn collect_function_result_generic_names(
     classifier: &str,
     enum_types: &BTreeMap<String, BTreeSet<String>>,
+    modular_names: &BTreeSet<String>,
     names: &mut BTreeSet<String>,
 ) {
     if let Some(payload) = applied_classifier(classifier, "Optional") {
-        collect_function_result_generic_names(payload, enum_types, names);
+        collect_function_result_generic_names(payload, enum_types, modular_names, names);
     } else if let Some(element) = applied_classifier(classifier, "List") {
-        collect_function_result_generic_names(element, enum_types, names);
+        collect_function_result_generic_names(element, enum_types, modular_names, names);
     } else if let Some(endpoint) = applied_classifier(classifier, "Range") {
-        collect_function_result_generic_names(endpoint, enum_types, names);
+        collect_function_result_generic_names(endpoint, enum_types, modular_names, names);
     } else if let Some((success, codes)) = result_classifier_parts(classifier) {
-        collect_function_result_generic_names(success, enum_types, names);
-        collect_function_result_generic_names(codes, enum_types, names);
+        collect_function_result_generic_names(success, enum_types, modular_names, names);
+        collect_function_result_generic_names(codes, enum_types, modular_names, names);
     } else if let Some(items) = tuple_classifiers(classifier) {
         for item in items {
-            collect_function_result_generic_names(item, enum_types, names);
+            collect_function_result_generic_names(item, enum_types, modular_names, names);
         }
     } else if !supported_value_classifier(classifier, enum_types)
+        && !modular_names.contains(classifier)
         && classifier.chars().all(char::is_alphanumeric)
     {
         names.insert(classifier.to_owned());

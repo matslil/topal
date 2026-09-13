@@ -1660,13 +1660,16 @@ diagnostics, LSP validation, and reversible scripted-debugger history shall
 cover commented examples.
 ## TOPAL-INTP-SUBSET-193 — Settled modular numeric families
 
-All interpreter modes shall implement nominal ModNat and ModInt ranges, checked
-construction, explicit modular reduction, wrapping arithmetic, equality, and
-canonical ordering under `TOPAL-NUM-MODULAR-*`. Formal traces, Rust-style
-closed-range diagnostics, LSP validation, and reversible scripted-debugger
-history shall cover commented examples. Numeric families lacking approved
-source construction syntax remain documented in the PR rather than receiving
-an implementation-invented spelling.
+All interpreter modes shall implement nominal ModNat and ModInt ranges,
+including an earlier immutable named finite Range operand; checked construction;
+explicit modular reduction; wrapping arithmetic; equality; and canonical
+ordering under `TOPAL-NUM-MODULAR-*`. Function boundaries shall admit
+`Result (Name, lang arithmetic ArithmeticErrorCode)` so open out-of-range
+construction retains its lexical domain and source provenance. Formal traces,
+Rust-style closed-range diagnostics, LSP validation, and reversible
+scripted-debugger history shall cover commented examples. Numeric families
+lacking approved source construction syntax remain documented in the PR rather
+than receiving an implementation-invented spelling.
 ## TOPAL-INTP-SUBSET-194 — Range selection and slicing evidence
 
 All interpreter modes shall use Range Int as a convex value or zero-based index

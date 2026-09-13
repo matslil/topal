@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 207);
+    assert_eq!(examples.len(), 208);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -2943,6 +2943,23 @@ fn records_modular_arithmetic_reversibly() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-NUM-MODULAR-REDUCE-001"));
     assert!(stdout.contains("TOPAL-NUM-MODULAR-ARITHMETIC-001"));
+}
+
+#[test]
+fn records_checked_modular_construction_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}scripts/finish-and-reverse.debug"),
+            &language_example("modular-checked-construction.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-NUM-MODULAR-CONSTRUCT-001"));
+    assert!(stdout.contains("TOPAL-ERROR-FIELD-001"));
 }
 
 #[test]

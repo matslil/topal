@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 207);
+    assert_eq!(examples.len(), 208);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -3884,6 +3884,39 @@ fn every_mode_executes_settled_modular_numbers() {
     ] {
         assert!(trace.contains(rule), "missing {rule}");
     }
+}
+
+#[test]
+fn every_mode_checks_dynamic_modular_construction_from_a_named_range() {
+    let source = include_str!("../../../examples/language/modular-checked-construction.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("ByteCounter 255"));
+        assert!(stdout.contains("domain is root.ByteCounter(Int)"));
+        assert!(stdout.contains("code is out-of-range"));
+        assert!(stdout.contains("Some (line is"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-NUM-MODULAR-TYPE-001"));
+    assert!(trace.contains("TOPAL-NUM-MODULAR-CONSTRUCT-001"));
+    assert!(trace.contains("TOPAL-ERROR-FIELD-001"));
+}
+
+#[test]
+fn modular_function_boundaries_preserve_nominal_identity() {
+    // TOPAL-NUM-MODULAR-TYPE-001, TOPAL-NUM-MODULAR-CONSTRUCT-001
+    let foreign = run(
+        &[],
+        "ByteCounter is ModNat (0 ..= 255)\nHour is ModNat (0 ..= 23)\nretain is fn (value : ByteCounter) -> ByteCounter\n  value\nretain (Hour 1)\n",
+    );
+    assert!(!foreign.status.success());
+    let diagnostic = String::from_utf8(foreign.stderr).unwrap();
+    assert!(
+        diagnostic.contains("E-FUNCTION-ARGUMENT-TYPE"),
+        "{diagnostic}"
+    );
 }
 
 #[test]
