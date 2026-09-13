@@ -4569,6 +4569,31 @@
       "cpu_time_ns": 4231239,
       "memory_peak_bytes": 18235392,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_order_preserving_private_record_boundaries_and_debug_types": {
+      "cpu_time_ns": 20786300,
+      "memory_peak_bytes": 18550784,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::record_boundaries_are_freestanding_and_gdb_exposes_source_fields": {
+      "cpu_time_ns": 350082960,
+      "memory_peak_bytes": 57765888,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_preserves_record_function_boundaries": {
+      "cpu_time_ns": 74339400,
+      "memory_peak_bytes": 18358272,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_order_preserving_private_record_boundaries": {
+      "cpu_time_ns": 8460239,
+      "memory_peak_bytes": 18305024,
+      "samples_per_test": 50
+    },
+    "topal-syntax::lib:topal_syntax::parser::tests::preserves_record_function_boundary_classifiers": {
+      "cpu_time_ns": 1635780,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 50
     }
   }
 }

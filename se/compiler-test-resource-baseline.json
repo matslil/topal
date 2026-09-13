@@ -986,6 +986,16 @@
       "cpu_time_ns": 191439,
       "memory_peak_bytes": 18231296,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/record-function-boundaries.t": {
+      "cpu_time_ns": 154038040,
+      "memory_peak_bytes": 44306432,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/record-function-boundaries.t": {
+      "cpu_time_ns": 407217,
+      "memory_peak_bytes": 18624512,
+      "samples_per_test": 500
     }
   }
 }

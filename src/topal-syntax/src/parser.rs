@@ -1624,7 +1624,7 @@ impl Parser<'_> {
                 result.end.max(closing.span.end),
             ));
         }
-        if self.source.slice(first.span) == "Result" {
+        if matches!(self.source.slice(first.span), "Result" | "Record") {
             if !self
                 .peek_nontrivia()
                 .is_some_and(|token| token.kind == TokenKind::LeftParen)
@@ -3405,6 +3405,31 @@ mod tests {
         assert_eq!(parameters.len(), 2);
         assert_eq!(source.slice(parameters[0].name), "left");
         assert_eq!(source.slice(parameters[1].name), "right");
+    }
+
+    #[test]
+    fn preserves_record_function_boundary_classifiers() {
+        // TOPAL-COMPILER-RECORD-BOUNDARY-001, TOPAL-TYPE-PRODUCT-001
+        let source = SourceText::new(
+            "retain is fn (value : Record (active : Boolean, name : String)) -> Record (active : Boolean, name : String)\n  value\nretain (name is \"Ada\", active is true)",
+        )
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function {
+            parameters, result, ..
+        } = &parsed.statements[0]
+        else {
+            panic!("expected function declaration");
+        };
+        assert_eq!(
+            source.slice(parameters[0].classifier),
+            "Record (active : Boolean, name : String)"
+        );
+        assert_eq!(
+            source.slice(*result),
+            "Record (active : Boolean, name : String)"
+        );
     }
 
     #[test]

@@ -42,7 +42,8 @@ evidence.
 | 3b2-b5f | recursively composed private Tuple function results over admitted scalar leaves, target-derived DWARF layout, and GDB-visible aggregate bindings | complete |
 | 3b2-b5g | field-wise Tuple results for Boolean, ordered-comparison, Comparison, Enum, Optional, and Result decisions | complete |
 | 3b2-b5h | recursively composed private Tuple parameters, candidate-specific product-call normalization, exact aggregate prototypes, and GDB-visible parameters | complete |
-| 3b2-b5e8 | remaining function forms, return-through-block cleanup, remaining recursion/totality evidence, nested declarations, record storage/ABI, unions, constraints, capabilities, and decisions | planned |
+| 3b2-b5i | order-preserving private Record parameters, results, nesting, decisions, exact aggregate prototypes, and GDB-visible named fields | complete |
+| 3b2-b5e8 | remaining function forms, return-through-block cleanup, remaining recursion/totality evidence, nested declarations, persistent aggregate storage, unions, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -119,9 +120,12 @@ locals in target-exact DWARF through debug-only stack shadows; 3b2-b5g extends
 the decomposed representation through every admitted decision family with
 field-wise scalar `phi` joins; 3b2-b5h adds exact private Tuple parameters with
 interpreter-compatible unary-versus-multi-parameter call normalization and
-GDB-visible aggregate arguments; and 3b2-b5e8 continues with Records, nested
-declarations, remaining recursive and nested-block exit control flow,
-cleanup-bearing scopes, and the remaining user-defined value representations.
+GDB-visible aggregate arguments; 3b2-b5i gives structural Records a private
+canonical-field carrier plus construction-order permutation across functions,
+decisions, nesting, display, and debug shadows; and 3b2-b5e8 continues with
+nested declarations, remaining recursive and nested-block exit control flow,
+cleanup-bearing scopes, persistent aggregate storage, and the remaining
+user-defined value representations.
 Increment 4a admits the encoding-observation
 byte count without
 attaching an encoding or importing a foreign String runtime; 4b1 adds exact

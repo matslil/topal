@@ -53,8 +53,8 @@ inspectable x86-64 local in this O0 path, so a named Tuple binding also receives
 a debug-only stack shadow and `#dbg_declare`. This shadow changes neither the
 semantic value representation nor call transport, requires no allocator or
 runtime, and is retained deliberately for deterministic GDB inspection.
-Records, persistent aggregate storage, and public interoperation remain
-separate representation decisions.
+Persistent aggregate storage and public interoperation remain separate
+representation decisions.
 
 An admitted Tuple parameter uses that same recursive LLVM literal-struct type
 as one exact private `fastcc` argument. The caller constructs the aggregate
@@ -76,6 +76,24 @@ avoids both an aggregate `phi` and a temporary materialization. The frontend
 still proves a single complete action type and retains the decision family's
 once-only subject, ordered matching, and single delayed action semantics; LLVM
 only lowers the already explicit control flow and typed leaf joins.
+
+An admitted structural Record uses a related private literal struct without
+conflating type identity and display order. Field values occupy canonical label
+order so independently written but structurally identical classifiers have one
+LLVM type. A trailing `i32` permutation maps each display position to a
+canonical field, preserving the construction order required by the source
+value across calls, returns, nesting, and decision joins. The frontend forms and
+decomposes this semantic carrier with `insertvalue` and `extractvalue`; LLVM
+owns only its target-physical `fastcc` lowering. A Record-valued decision joins
+each canonical field recursively and each permutation entry with a scalar
+`phi`, and dynamic display selects fields through that checked permutation.
+
+Record DWARF exposes only the canonical semantic named fields at their actual
+offsets while the composite size accounts for the trailing private order data.
+A named Record local or parameter uses the same target-aligned debug-only stack
+shadow strategy as a Tuple. The order data is not fabricated as a source member,
+and neither the private carrier nor its debug shadow is a public ABI, persistent
+semantic storage, heap allocation, or runtime object.
 
 The checked frontend resolves each admitted source-ordered overload before IR
 generation and gives every selected input signature a distinct call-graph node
@@ -400,17 +418,16 @@ therefore adds no allocation, native object header, or foreign aggregate ABI.
 Canonical conversions between differently classified corresponding fields
 remain separate frontend work rather than being inferred by the backend.
 
-An anonymous labeled Record uses the same decomposed expression-local strategy.
+An anonymous labeled Record begins with a decomposed expression-local strategy.
 The checked model evaluates fields in source order, rejects duplicate labels,
 keeps that order for display, and separately retains a canonical label-to-type
 map for selection and structural identity. LLVM lowering carries labeled field
 values without allocating a record object; selection chooses the already
 evaluated field and display recursively emits `label is value` through existing
-Topal syscall-backed value printers. This adds no record runtime or ABI. Scalar
-values projected from a record retain ordinary DWARF locals and can be inspected
-in GDB. The record binding itself is deliberately absent from DWARF until
-increment 3b2-b5e8 supplies a truthful aggregate storage and debug representation
-rather than describing a layout that does not exist.
+Topal syscall-backed value printers. When a Record reaches a function,
+control-flow, or debug boundary, the private canonical-values-plus-permutation
+carrier described above preserves both identities. This adds no record runtime,
+foreign dependency, semantic aggregate heap storage, or public ABI.
 
 Structural comparison also remains over decomposed values. The frontend
 recursively selects one common exact numeric representation per Tuple position
@@ -563,9 +580,9 @@ semantics.
 ## Debugging contract
 
 Unoptimized output uses LLVM debug records and DWARF 5. It describes Topal
-source files, source functions, machine-scalar parameters and immutable locals,
-their types, and instruction locations. Structural values acquire debug
-descriptions in the increment that gives them a runtime representation; until
+source files, source functions, admitted scalar and aggregate parameters and
+immutable locals, their types, and instruction locations. Structural values
+acquire debug descriptions only with a truthful private representation; until
 then the compiler omits them rather than describing an unrelated value. Frame
 pointers remain enabled at `-O0`. Tests drive GDB in batch mode to set source
 breakpoints, step, inspect values, and obtain backtraces; an available
