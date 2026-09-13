@@ -224,6 +224,30 @@ class _TopalErrorPrinter:
         return f"Error ( domain is {domain}, code is {code} )"
 
 
+class _TopalSourceLocationPrinter:
+    """Render the source-visible line and column of an Error."""
+
+    def __init__(self, address):
+        self._address = address
+
+    def to_string(self):
+        address = int(self._address)
+        if address == 0:
+            return "<invalid null SourceLocation>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 16))
+        except gdb.MemoryError:
+            return "<unreadable SourceLocation>"
+        line = int.from_bytes(header[0:8], "little")
+        column = int.from_bytes(header[8:16], "little")
+        if not line or not column:
+            return "<invalid SourceLocation field>"
+        line = _TopalIntPrinter(line).to_string()
+        column = _TopalIntPrinter(column).to_string()
+        return f"(line is {line}, column is {column})"
+
+
 class _TopalResultPrinter:
     """Render a topal-native Result through its statically known success type."""
 
@@ -298,6 +322,10 @@ class _TopalOptionalPrinter:
             rendered = _TopalRationalPrinter(payload).to_string()
         elif self._payload_type in ("Character", "String"):
             rendered = _TopalStringPrinter(payload).to_string()
+        elif self._payload_type == "Error":
+            rendered = _TopalErrorPrinter(payload).to_string()
+        elif self._payload_type == "SourceLocation":
+            rendered = _TopalSourceLocationPrinter(payload).to_string()
         else:
             return f"<unsupported Optional payload type {self._payload_type}>"
         return f"Some {rendered}"
@@ -363,6 +391,8 @@ def _lookup_topal_value(value):
         return _TopalErrorCodePrinter(value)
     if value_type == "ErrorDomain":
         return _TopalStringPrinter(value, quoted=False)
+    if value_type == "SourceLocation":
+        return _TopalSourceLocationPrinter(value)
     if value_type == "Range Int":
         return _TopalRangePrinter(value, "Int")
     if value_type == "Range Rational":

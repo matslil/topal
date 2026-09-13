@@ -59,6 +59,7 @@ pub enum CompilerType {
     Error,
     ErrorCode,
     ErrorDomain,
+    SourceLocation,
     Enum(CompilerEnumType),
     Sum(CompilerSumType),
     Range(Box<Self>),
@@ -91,6 +92,7 @@ impl CompilerType {
                 | Self::Error
                 | Self::ErrorCode
                 | Self::ErrorDomain
+                | Self::SourceLocation
                 | Self::Enum(_)
                 | Self::Range(_)
                 | Self::Result(_)
@@ -118,6 +120,7 @@ impl CompilerType {
             Self::Error => "Error".into(),
             Self::ErrorCode => "lang arithmetic ArithmeticErrorCode".into(),
             Self::ErrorDomain => "ErrorDomain".into(),
+            Self::SourceLocation => "SourceLocation".into(),
             Self::Enum(enumeration) => enumeration.name.clone(),
             Self::Sum(sum) => sum.name.clone(),
             Self::Range(endpoint) => format!("Range {}", endpoint.name()),
@@ -232,6 +235,9 @@ pub enum CompilerValidation {
 pub enum CompilerErrorField {
     Code,
     Domain,
+    Detail,
+    Cause,
+    Source,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -2644,7 +2650,10 @@ impl Analyzer {
             return self.analyze_record_field(record, *field, span, environment);
         }
         if let [error, Expression::Identifier(field)] = items
-            && matches!(self.source.slice(*field), "code" | "domain")
+            && matches!(
+                self.source.slice(*field),
+                "code" | "domain" | "detail" | "cause" | "source"
+            )
         {
             return self.analyze_error_field(error, *field, span, environment);
         }
@@ -2947,6 +2956,18 @@ impl Analyzer {
         let (field, value_type) = match self.source.slice(field) {
             "code" => (CompilerErrorField::Code, CompilerType::ErrorCode),
             "domain" => (CompilerErrorField::Domain, CompilerType::ErrorDomain),
+            "detail" => (
+                CompilerErrorField::Detail,
+                CompilerType::Optional(Box::new(CompilerType::String)),
+            ),
+            "cause" => (
+                CompilerErrorField::Cause,
+                CompilerType::Optional(Box::new(CompilerType::Error)),
+            ),
+            "source" => (
+                CompilerErrorField::Source,
+                CompilerType::Optional(Box::new(CompilerType::SourceLocation)),
+            ),
             _ => unreachable!("implemented Error field spelling selected above"),
         };
         Ok(CompilerExpression {
@@ -6638,6 +6659,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "Error" => Some(CompilerType::Error),
         "ErrorCode" | "langarithmeticArithmeticErrorCode" => Some(CompilerType::ErrorCode),
         "ErrorDomain" => Some(CompilerType::ErrorDomain),
+        "SourceLocation" => Some(CompilerType::SourceLocation),
         "Character" => Some(CompilerType::Character),
         "String" => Some(CompilerType::String),
         _ => None,
@@ -6708,6 +6730,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Rational
                     | CompilerType::Character
                     | CompilerType::String
+                    | CompilerType::Error
+                    | CompilerType::SourceLocation
             )
         }
         CompilerType::Result(success) => {
@@ -7002,6 +7026,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Constraint
         | CompilerType::Error
         | CompilerType::ErrorDomain
+        | CompilerType::SourceLocation
         | CompilerType::Sum(_)
         | CompilerType::Range(_)
         | CompilerType::Result(_) => false,
@@ -7023,7 +7048,11 @@ fn require_optional_payload(
 ) -> Result<(), Diagnostic> {
     if matches!(
         value_type,
-        CompilerType::Int | CompilerType::Rational | CompilerType::String
+        CompilerType::Int
+            | CompilerType::Rational
+            | CompilerType::String
+            | CompilerType::Error
+            | CompilerType::SourceLocation
     ) {
         Ok(())
     } else {
@@ -8364,6 +8393,32 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn models_optional_structured_error_fields() {
+        // TOPAL-COMPILER-ERROR-OPTIONAL-FIELDS-001, TOPAL-ERROR-FIELD-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/optional-result-composition.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(fields) = &program.main.result.kind else {
+            panic!("expected top-level tuple")
+        };
+        for (index, field, payload) in [
+            (4, CompilerErrorField::Detail, CompilerType::String),
+            (5, CompilerErrorField::Cause, CompilerType::Error),
+            (6, CompilerErrorField::Source, CompilerType::SourceLocation),
+        ] {
+            assert_eq!(
+                fields[index].value_type,
+                CompilerType::Optional(Box::new(payload))
+            );
+            assert!(matches!(
+                fields[index].kind,
+                CompilerExpressionKind::ErrorField { field: actual, .. } if actual == field
+            ));
+        }
     }
 
     #[test]

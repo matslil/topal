@@ -45,6 +45,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Error
         | CompilerType::ErrorCode
         | CompilerType::ErrorDomain
+        | CompilerType::SourceLocation
         | CompilerType::Optional(_) => true,
         CompilerType::Range(endpoint) | CompilerType::Result(endpoint) => {
             type_uses_extended_debug(endpoint)
@@ -302,6 +303,7 @@ impl<'a> Generator<'a> {
             | LlValue::Rational(value)
             | LlValue::Error(value)
             | LlValue::ErrorDomain(value)
+            | LlValue::SourceLocation(value)
             | LlValue::String(value)
             | LlValue::Range { value, .. }
             | LlValue::Result { value, .. }
@@ -1143,6 +1145,30 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
+                    CompilerErrorField::Detail => LlValue::Optional {
+                        value: body.instruction(
+                            &format!("call ptr @topal.runtime.error.detail(ptr {error})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        payload: CompilerType::String,
+                    },
+                    CompilerErrorField::Cause => LlValue::Optional {
+                        value: body.instruction(
+                            &format!("call ptr @topal.runtime.error.cause(ptr {error})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        payload: CompilerType::Error,
+                    },
+                    CompilerErrorField::Source => LlValue::Optional {
+                        value: body.instruction(
+                            &format!("call ptr @topal.runtime.error.source(ptr {error})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        payload: CompilerType::SourceLocation,
+                    },
                 }
             }
             CompilerExpressionKind::Validate {
@@ -1349,6 +1375,11 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     )),
                     CompilerType::ErrorDomain => LlValue::ErrorDomain(body.instruction(
+                        &format!("call fastcc ptr @{symbol}({arguments})"),
+                        expression.span,
+                        &mut self.debug,
+                    )),
+                    CompilerType::SourceLocation => LlValue::SourceLocation(body.instruction(
                         &format!("call fastcc ptr @{symbol}({arguments})"),
                         expression.span,
                         &mut self.debug,
@@ -2806,6 +2837,11 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             )),
+            LlValue::SourceLocation(_) => LlValue::SourceLocation(body.instruction(
+                &format!("phi ptr {}", incoming(LlValue::source_location)),
+                span,
+                &mut self.debug,
+            )),
             LlValue::Comparison(_) => LlValue::Comparison(body.instruction(
                 &format!("phi i32 {}", incoming(LlValue::comparison)),
                 span,
@@ -3086,6 +3122,31 @@ impl<'a> Generator<'a> {
                     span,
                     &mut self.debug,
                 );
+            }
+            LlValue::SourceLocation(value) => {
+                self.emit_write_literal("(line is ", body, span);
+                let line = body.instruction(
+                    &format!("call ptr @topal.runtime.source.location.line(ptr {value})"),
+                    span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("call void @topal.runtime.int.print(ptr {line})"),
+                    span,
+                    &mut self.debug,
+                );
+                self.emit_write_literal(", column is ", body, span);
+                let column = body.instruction(
+                    &format!("call ptr @topal.runtime.source.location.column(ptr {value})"),
+                    span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("call void @topal.runtime.int.print(ptr {column})"),
+                    span,
+                    &mut self.debug,
+                );
+                self.emit_write_literal(")", body, span);
             }
             LlValue::Tuple(fields) => {
                 self.emit_write_literal("(", body, span);
@@ -3378,6 +3439,7 @@ enum LlValue {
     Error(String),
     ErrorCode(String),
     ErrorDomain(String),
+    SourceLocation(String),
     Enum {
         value: String,
         enumeration: CompilerEnumType,
@@ -3464,6 +3526,13 @@ impl LlValue {
         value
     }
 
+    fn source_location(&self) -> &str {
+        let Self::SourceLocation(value) = self else {
+            unreachable!("checked value is SourceLocation")
+        };
+        value
+    }
+
     fn enumeration(&self) -> &str {
         let Self::Enum { value, .. } = self else {
             unreachable!("checked value is a nominal Enum")
@@ -3512,6 +3581,7 @@ impl LlValue {
             | Self::Rational(value)
             | Self::Error(value)
             | Self::ErrorDomain(value)
+            | Self::SourceLocation(value)
             | Self::String(value)
             | Self::Range { value, .. }
             | Self::Result { value, .. }
@@ -3540,6 +3610,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Error => LlValue::Error("null".into()),
         CompilerType::ErrorCode => LlValue::ErrorCode("0".into()),
         CompilerType::ErrorDomain => LlValue::ErrorDomain("null".into()),
+        CompilerType::SourceLocation => LlValue::SourceLocation("null".into()),
         CompilerType::Enum(enumeration) => LlValue::Enum {
             value: "0".into(),
             enumeration: enumeration.clone(),
@@ -3598,7 +3669,11 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
 
 fn optional_payload_pointer(value: &LlValue) -> &str {
     match value {
-        LlValue::Int(value) | LlValue::Rational(value) | LlValue::String(value) => value,
+        LlValue::Int(value)
+        | LlValue::Rational(value)
+        | LlValue::Error(value)
+        | LlValue::SourceLocation(value)
+        | LlValue::String(value) => value,
         _ => unreachable!("checked Optional payload has a pointer representation"),
     }
 }
@@ -3608,6 +3683,8 @@ fn optional_payload_value(value: String, value_type: &CompilerType) -> LlValue {
         CompilerType::Int => LlValue::Int(value),
         CompilerType::Rational => LlValue::Rational(value),
         CompilerType::Character | CompilerType::String => LlValue::String(value),
+        CompilerType::Error => LlValue::Error(value),
+        CompilerType::SourceLocation => LlValue::SourceLocation(value),
         _ => unreachable!("checked Optional payload type is supported"),
     }
 }
@@ -3713,6 +3790,7 @@ impl FunctionBody {
             | LlValue::Rational(value)
             | LlValue::Error(value)
             | LlValue::ErrorDomain(value)
+            | LlValue::SourceLocation(value)
             | LlValue::String(value)
             | LlValue::Range { value, .. }
             | LlValue::Result { value, .. }
@@ -3768,6 +3846,7 @@ struct DebugInfo {
     error_type: usize,
     error_code_type: usize,
     error_domain_type: usize,
+    source_location_type: usize,
     int_range_type: usize,
     rational_range_type: usize,
     result_int_type: usize,
@@ -3779,6 +3858,8 @@ struct DebugInfo {
     optional_rational_type: usize,
     optional_character_type: usize,
     optional_string_type: usize,
+    optional_error_type: usize,
+    optional_source_location_type: usize,
     comparison_type: usize,
     boolean_type: usize,
     unit_type: usize,
@@ -3817,6 +3898,7 @@ impl DebugInfo {
             error_type: 0,
             error_code_type: 0,
             error_domain_type: 0,
+            source_location_type: 0,
             int_range_type: 0,
             rational_range_type: 0,
             result_int_type: 0,
@@ -3828,6 +3910,8 @@ impl DebugInfo {
             optional_rational_type: 0,
             optional_character_type: 0,
             optional_string_type: 0,
+            optional_error_type: 0,
+            optional_source_location_type: 0,
             comparison_type: 0,
             boolean_type: 0,
             unit_type: 0,
@@ -3994,6 +4078,8 @@ impl DebugInfo {
             self.file
         ));
 
+        self.install_source_location_type();
+
         let enumerators = [
             ("out-of-range", 0),
             ("not-representable", 1),
@@ -4033,6 +4119,29 @@ impl DebugInfo {
         ));
         self.error_type = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_typedef, name: \"Error\", file: !{}, baseType: !{error_pointer})",
+            self.file
+        ));
+    }
+
+    fn install_source_location_type(&mut self) {
+        let line = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"line\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.int_type
+        ));
+        let column = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"column\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 64)",
+            self.file, self.int_type
+        ));
+        let members = self.node(format!("!{{!{line}, !{column}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalSourceLocationHeader\", file: !{}, size: 128, align: 64, elements: !{members})",
+            self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        self.source_location_type = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"SourceLocation\", file: !{}, baseType: !{pointer})",
             self.file
         ));
     }
@@ -4129,6 +4238,8 @@ impl DebugInfo {
         self.optional_rational_type = self.optional_type("Rational", pointer);
         self.optional_character_type = self.optional_type("Character", pointer);
         self.optional_string_type = self.optional_type("String", pointer);
+        self.optional_error_type = self.optional_type("Error", pointer);
+        self.optional_source_location_type = self.optional_type("SourceLocation", pointer);
     }
 
     fn optional_type(&mut self, payload: &str, pointer: usize) -> usize {
@@ -4175,6 +4286,7 @@ impl DebugInfo {
             CompilerType::Error => self.error_type,
             CompilerType::ErrorCode => self.error_code_type,
             CompilerType::ErrorDomain => self.error_domain_type,
+            CompilerType::SourceLocation => self.source_location_type,
             CompilerType::Enum(enumeration) => self.enum_type(enumeration),
             CompilerType::Character => self.character_type,
             CompilerType::String => self.string_type,
@@ -4217,6 +4329,14 @@ impl DebugInfo {
             }
             CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::String => {
                 self.optional_string_type
+            }
+            CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Error => {
+                self.optional_error_type
+            }
+            CompilerType::Optional(payload)
+                if payload.as_ref() == &CompilerType::SourceLocation =>
+            {
+                self.optional_source_location_type
             }
             CompilerType::Optional(_) => {
                 unreachable!("unsupported Optional payload type reached codegen")
@@ -4594,6 +4714,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::Rational
         | CompilerType::Error
         | CompilerType::ErrorDomain
+        | CompilerType::SourceLocation
         | CompilerType::Range(_)
         | CompilerType::Result(_)
         | CompilerType::Optional(_)
@@ -4683,6 +4804,7 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Character
         | CompilerType::Error
         | CompilerType::ErrorDomain
+        | CompilerType::SourceLocation
         | CompilerType::String
         | CompilerType::Range(_)
         | CompilerType::Result(_)
@@ -4757,6 +4879,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::Error => LlValue::Error(value),
         CompilerType::ErrorCode => LlValue::ErrorCode(value),
         CompilerType::ErrorDomain => LlValue::ErrorDomain(value),
+        CompilerType::SourceLocation => LlValue::SourceLocation(value),
         CompilerType::Enum(enumeration) => LlValue::Enum {
             value,
             enumeration: enumeration.clone(),
@@ -5569,6 +5692,26 @@ mod tests {
     }
 
     #[test]
+    fn emits_optional_structured_error_fields_and_source_metadata() {
+        // TOPAL-COMPILER-ERROR-OPTIONAL-FIELDS-001, TOPAL-ERROR-FIELD-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/optional-result-composition.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "/source/optional-result-composition.t").emit();
+        assert!(llvm.contains("%topal.SourceLocationStorage = type { ptr, ptr }"));
+        assert!(llvm.contains("call ptr @topal.runtime.error.detail"));
+        assert!(llvm.contains("call ptr @topal.runtime.error.cause"));
+        assert!(llvm.contains("call ptr @topal.runtime.error.source"));
+        assert!(llvm.contains("call ptr @topal.runtime.source.location.line"));
+        assert!(llvm.contains("call ptr @topal.runtime.source.location.column"));
+        assert!(llvm.contains("name: \"Optional Error\""));
+        assert!(llvm.contains("name: \"Optional SourceLocation\""));
+        assert!(llvm.contains("name: \"SourceLocation\""));
+    }
+
+    #[test]
     fn emits_optional_values_decisions_equality_and_debug_metadata() {
         // TOPAL-COMPILER-OPTIONAL-001
         let source = include_str!("../../../examples/language/optional-values.t");
@@ -5623,13 +5766,19 @@ mod tests {
         let source = include_str!("../../../examples/language/string-character-at.t");
         let program = analyze_for_compiler(source).unwrap();
         let llvm = Generator::new(&program, "/source/string-character-at.t").emit();
+        let generated = llvm
+            .split_once("@topal.fn.")
+            .expect("regression has a generated source function")
+            .1;
         assert_eq!(
-            llvm.matches("call ptr @topal.runtime.optional.some")
+            generated
+                .matches("call ptr @topal.runtime.optional.some")
                 .count(),
             4
         );
         assert_eq!(
-            llvm.matches("call ptr @topal.runtime.optional.none")
+            generated
+                .matches("call ptr @topal.runtime.optional.none")
                 .count(),
             3
         );

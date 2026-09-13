@@ -11,6 +11,7 @@
 %topal.ResultStorage = type { i64, ptr }
 %topal.OptionalStorage = type { i64, ptr }
 %topal.ErrorStorage = type { ptr, i32, i32, ptr, ptr, ptr, i64, i64 }
+%topal.SourceLocationStorage = type { ptr, ptr }
 
 @topal.runtime.int.zero = private constant { i64, i64, [0 x i32] } { i64 0, i64 0, [0 x i32] zeroinitializer }, align 8
 @topal.runtime.int.one = private constant { i64, i64, [1 x i32] } { i64 0, i64 1, [1 x i32] [i32 1] }, align 8
@@ -406,6 +407,18 @@ entry:
   ret ptr %payload
 }
 
+define internal ptr @topal.runtime.optional.from.nullable(ptr %payload) nounwind noinline {
+entry:
+  %present = icmp ne ptr %payload, null
+  br i1 %present, label %some, label %none
+some:
+  %some.value = call ptr @topal.runtime.optional.some(ptr %payload)
+  ret ptr %some.value
+none:
+  %none.value = call ptr @topal.runtime.optional.none()
+  ret ptr %none.value
+}
+
 define internal i1 @topal.runtime.optional.int.equal(ptr %left, ptr %right) nounwind noinline {
 entry:
   %left.some = call i1 @topal.runtime.optional.is.some(ptr %left)
@@ -508,6 +521,61 @@ entry:
   %domain.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 0
   %domain = load ptr, ptr %domain.pointer, align 8
   ret ptr %domain
+}
+
+define internal ptr @topal.runtime.error.detail(ptr %error) nounwind noinline {
+entry:
+  %detail.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 3
+  %detail = load ptr, ptr %detail.pointer, align 8
+  %optional = call ptr @topal.runtime.optional.from.nullable(ptr %detail)
+  ret ptr %optional
+}
+
+define internal ptr @topal.runtime.error.cause(ptr %error) nounwind noinline {
+entry:
+  %cause.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 4
+  %cause = load ptr, ptr %cause.pointer, align 8
+  %optional = call ptr @topal.runtime.optional.from.nullable(ptr %cause)
+  ret ptr %optional
+}
+
+define internal ptr @topal.runtime.error.source(ptr %error) nounwind noinline {
+entry:
+  %source.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 5
+  %source = load ptr, ptr %source.pointer, align 8
+  %present = icmp ne ptr %source, null
+  br i1 %present, label %some, label %none
+some:
+  %line.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 6
+  %column.pointer = getelementptr %topal.ErrorStorage, ptr %error, i32 0, i32 7
+  %line.number = load i64, ptr %line.pointer, align 8
+  %column.number = load i64, ptr %column.pointer, align 8
+  %line = call ptr @topal.runtime.int.from.u64(i64 %line.number)
+  %column = call ptr @topal.runtime.int.from.u64(i64 %column.number)
+  %location = call ptr @topal.platform.allocate(i64 16)
+  %location.line = getelementptr %topal.SourceLocationStorage, ptr %location, i32 0, i32 0
+  %location.column = getelementptr %topal.SourceLocationStorage, ptr %location, i32 0, i32 1
+  store ptr %line, ptr %location.line, align 8
+  store ptr %column, ptr %location.column, align 8
+  %some.value = call ptr @topal.runtime.optional.some(ptr %location)
+  ret ptr %some.value
+none:
+  %none.value = call ptr @topal.runtime.optional.none()
+  ret ptr %none.value
+}
+
+define internal ptr @topal.runtime.source.location.line(ptr %location) nounwind noinline {
+entry:
+  %line.pointer = getelementptr %topal.SourceLocationStorage, ptr %location, i32 0, i32 0
+  %line = load ptr, ptr %line.pointer, align 8
+  ret ptr %line
+}
+
+define internal ptr @topal.runtime.source.location.column(ptr %location) nounwind noinline {
+entry:
+  %column.pointer = getelementptr %topal.SourceLocationStorage, ptr %location, i32 0, i32 1
+  %column = load ptr, ptr %column.pointer, align 8
+  ret ptr %column
 }
 
 define internal ptr @topal.runtime.result.failure(i32 %code, ptr %domain, ptr %source, i64 %line, i64 %column) nounwind noinline {

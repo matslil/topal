@@ -1421,6 +1421,110 @@ fn gdb_renders_string_and_error_fields() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn optional_error_fields_are_freestanding_and_debuggable() {
+    // TOPAL-COMP-ERROR-OPTIONAL-FIELDS-001,
+    // TOPAL-COMPILER-ERROR-OPTIONAL-FIELDS-001, TOPAL-ERROR-FIELD-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-error-optional-fields");
+    let source = directory.join("error-optional-fields.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ndivide is fn (left : Rational, right : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  left / right\nretain-location is fn (candidate : Optional SourceLocation) -> Optional SourceLocation\n  candidate\n    Some value then Some value\n    None then None SourceLocation\nwrap-error is fn (candidate : Result (Rational, lang arithmetic ArithmeticErrorCode)) -> Optional Error\n  candidate\n    Ok value then None Error\n    Error problem then Some problem\ninspect is fn (failed : Result (Rational, lang arithmetic ArithmeticErrorCode)) -> (Optional String, Optional Error, Optional SourceLocation, Optional Error)\n  detail : Optional String is failed detail\n  cause : Optional Error is failed cause\n  location : Optional SourceLocation is retain-location (failed source)\n  retained : Optional Error is wrap-error failed\n  (detail, cause, location, retained)\ninspect (1.0 divide 0.0)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(None, None, Some (line is 3, column is 10), Some Error ( domain is root./(Rational,Rational), code is division-by-zero ))\n"
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let dwarf_tool = tools.directory.join("llvm-dwarfdump");
+    if dwarf_tool.is_file() {
+        let dwarf = run(Command::new(dwarf_tool).arg("--verify").arg(&executable));
+        assert!(
+            dwarf.status.success(),
+            "{}",
+            String::from_utf8_lossy(&dwarf.stderr)
+        );
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break error-optional-fields.t:17",
+            "-ex",
+            "run",
+            "-ex",
+            "print detail",
+            "-ex",
+            "print cause",
+            "-ex",
+            "print location",
+            "-ex",
+            "print retained",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = None"), "{text}");
+    assert!(text.contains("$2 = None"), "{text}");
+    assert!(
+        text.contains("$3 = Some (line is 3, column is 10)"),
+        "{text}"
+    );
+    assert!(
+        text.contains(
+            "$4 = Some Error ( domain is root./(Rational,Rational), code is division-by-zero )"
+        ),
+        "{text}"
+    );
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_renders_dynamically_concatenated_strings() {
     // TOPAL-COMP-STRING-CONSTRUCTION-001, TOPAL-COMPILER-DEBUG-001
     let directory = temporary("gdb-string-concat");

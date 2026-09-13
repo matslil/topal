@@ -4849,6 +4849,21 @@
       "cpu_time_ns": 3783300,
       "memory_peak_bytes": 18239488,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_optional_structured_error_fields_and_source_metadata": {
+      "cpu_time_ns": 7954100,
+      "memory_peak_bytes": 18231296,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::optional_error_fields_are_freestanding_and_debuggable": {
+      "cpu_time_ns": 323335979,
+      "memory_peak_bytes": 57470976,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_optional_structured_error_fields": {
+      "cpu_time_ns": 3889240,
+      "memory_peak_bytes": 18292736,
+      "samples_per_test": 50
     }
   }
 }

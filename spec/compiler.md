@@ -168,6 +168,24 @@ one immutable native String descriptor. A relocation-free executable SHALL
 construct pointer-bearing descriptors at run time and print canonical ordinary
 or conflict-free tagged Topal literal syntax without a foreign runtime.
 
+### TOPAL-COMPILER-ERROR-OPTIONAL-FIELDS-001 — Optional Error provenance fields
+
+Selecting `detail`, `cause`, or `source` from an admitted Error SHALL return,
+respectively, `Optional String`, `Optional Error`, or
+`Optional SourceLocation`. A null stored detail or cause SHALL become the
+corresponding nominal `None`; generated code SHALL NOT synthesize either
+payload. Missing source provenance SHALL likewise become `None`.
+
+Present source provenance SHALL become an immutable SourceLocation containing
+one-based `line` and `column` fields represented as canonical arbitrary-
+precision Int values. Selection SHALL preserve the original Error unchanged,
+and Optional decisions, private function boundaries, canonical display,
+DWARF, and the bundled GDB renderer SHALL retain each precise payload type.
+These semantics are mandatory at `-O0`; LLVM MAY lower private calls and
+branches but SHALL NOT infer Topal field meaning. Runtime storage SHALL use
+only the Topal Linux platform allocator and SHALL introduce no foreign runtime,
+standard library, public ABI, or native-ABI revision.
+
 ### TOPAL-COMPILER-ERROR-CODE-001 — Qualified arithmetic code identity
 
 Each qualified value in the closed `lang arithmetic ArithmeticErrorCode`

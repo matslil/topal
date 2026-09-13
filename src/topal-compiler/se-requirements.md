@@ -201,8 +201,36 @@ conflict-free tagged literal form using only the Topal Linux syscall runtime.
 These additions cover `TOPAL-DECISION-RESULT-001`,
 `TOPAL-DECISION-ERROR-CODE-001`, `TOPAL-ERROR-FIELD-001`, and the admitted
 literal transport and display cases of `TOPAL-SYN-STRING-001`. They complete
-compiler increment 2c-b3; Optional Result composition and the remaining String
-operations retain their later roadmap dispositions.
+compiler increment 2c-b3; generic Result/library composition and the remaining
+String operations retain their later roadmap dispositions.
+
+## TOPAL-COMP-ERROR-OPTIONAL-FIELDS-001 — Optional Error provenance fields
+
+The compiler shall classify `detail`, `cause`, and `source` selection from an
+admitted Error or failed Result as `Optional String`, `Optional Error`, and
+`Optional SourceLocation`. It shall wrap the existing nullable detail and cause
+slots without synthesizing information. A present source descriptor shall
+produce a private immutable SourceLocation containing canonical Int pointers
+for the stored one-based line and column; an absent descriptor shall produce
+`None`. Selection shall not reconstruct or alter the Error.
+
+The existing private Optional header shall carry all three results across
+admitted decisions and private function boundaries. LLVM shall own physical
+x86-64 call lowering while the frontend retains the payload classifier.
+Canonical output shall render a present source as
+`Some (line is N, column is N)`. DWARF shall describe SourceLocation and both
+new Optional payload types, and the bundled GDB renderer shall safely render
+them. Tests shall compile the unchanged interpreter composition regression,
+compare its exact output, inspect the lowering and DWARF, and verify undefined
+symbols, needed libraries, relocations, and GDB values.
+
+SourceLocation and Optional allocations shall use only the existing Topal
+Linux `mmap` boundary. The already reserved Error layout and private opaque-
+pointer Optional layout remain `topal-native/6`; this increment adds no foreign
+allocator, C/C++ runtime, other-language standard library, public ABI, or ABI
+revision. This realizes `TOPAL-COMPILER-ERROR-OPTIONAL-FIELDS-001` and the
+remaining field-selection portion of `TOPAL-ERROR-FIELD-001` for compiler
+increment 2c-b5.
 
 ## TOPAL-COMP-CODE-001 — Qualified arithmetic ErrorCode values
 
@@ -1280,7 +1308,8 @@ Debug-enabled O0 output shall map generated source functions, parameters,
 immutable scalar locals, lexical scopes, and instructions to Topal files and
 source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
 renderers for private arbitrary-precision Int, Rational, `Range Int`,
-`Range Rational`, `Optional Int`, and `Optional String` objects, describe
+`Range Rational`, `Optional Int`, `Optional String`, `Optional Error`,
+`Optional SourceLocation`, and `SourceLocation` objects, describe
 source-declared nominal enums, retained Constraint identities, and refined Int
 bindings with their semantic names, distinguish selected overload and
 static-function frames, and pass automated GDB breakpoint, value, and backtrace

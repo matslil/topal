@@ -467,6 +467,21 @@ identical sealed `i32` tags. Direct equality, function passage, display, DWARF,
 and GDB therefore cannot diverge from codes observed through an Error, and no
 namespace operation or foreign runtime survives into generated code.
 
+The remaining Error observations preserve the already allocated Error object.
+`detail` and `cause` load their reserved nullable pointer slots and translate
+null only into the matching nominal Optional `None`. `source` first checks the
+stored source descriptor; when present, it copies the stored one-based line and
+column into canonical Int objects referenced by a private 16-byte
+SourceLocation header. The existing Optional header then carries the String,
+Error, or SourceLocation pointer with its statically retained classifier.
+SourceLocation display loads the two Int pointers and uses the Topal integer
+writer, while DWARF describes the same two-field layout and GDB validates and
+decodes it. This allocation is semantic representation work required at O0,
+not an optimization. LLVM remains responsible for ordinary branch and private
+calling-convention lowering. Because Error's reserved fields and Optional's
+opaque payload layout do not change, the new previously unavailable private
+type does not revise `topal-native/6` or create a public/foreign interface.
+
 Optional values use their own immutable 16-byte header containing a validated
 `None`/`Some` tag and one opaque payload pointer. This is a distinct native
 semantic representation from Result even though the current private headers

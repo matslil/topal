@@ -17,6 +17,7 @@ evidence.
 | 2c-b2 | exact Rational-to-Int and Nat narrowing/validation plus contextual success projection | complete |
 | 2c-b3 | structured Error observation and exhaustive Result/error-code decisions | complete |
 | 2c-b4 | qualified arithmetic ErrorCode values, equality, function passage, display, and debugging | complete |
+| 2c-b5 | `detail`, `cause`, and `source` Error observations with precise Optional payloads, canonical SourceLocation values, private passage, display, and debugging | complete |
 | 2c-c | normatively completed infinity construction and arithmetic | planned |
 | 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |
 | 2d-b | unbounded range construction and infinity endpoints after their prerequisite normative and runtime work | planned |
@@ -104,8 +105,11 @@ adds finite exact division and Rational values. Increment 2c-a adds the fully
 normative Comparison decision forms; 2c-b1 adds the initial typed arithmetic
 Result ABI and failure paths, while 2c-b2 and 2c-b3 retain narrowing,
 projection, observation, and Result decisions. Increment 2c-b4 exposes the same
-closed nominal arithmetic-code vocabulary as direct qualified values. Increment
-2c-c retains the infinity work that requires normative completion. Increment
+closed nominal arithmetic-code vocabulary as direct qualified values.
+Increment 2c-b5 completes the five structured Error observations by wrapping
+nullable detail/cause fields and materializing present one-based source
+locations through the existing private Optional ABI. Increment 2c-c retains
+the infinity work that requires normative completion. Increment
 2d-a adds the fully normative explicitly bounded finite range subset; 2d-b
 closes unbounded and infinite endpoints after increment 2c-c.
 Range-based collection selection remains grouped with containers. Increment 2e
