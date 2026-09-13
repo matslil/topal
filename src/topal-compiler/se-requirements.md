@@ -145,6 +145,42 @@ This requirement covers `TOPAL-NUM-NAT-001`, `TOPAL-TYPE-CONSTRAINT-001`,
 `TOPAL-NUM-COMPARE-001`, and `TOPAL-NUM-THREE-WAY-COMPARE-001`; it realizes
 `TOPAL-COMPILER-NAT-COMPARISON-001` for compiler increment 2e.
 
+## TOPAL-COMP-MODULAR-001 — Nominal modular numbers
+
+The compiler shall collect admitted root-scope `ModNat` and `ModInt`
+declarations whose modulus is given by a direct finite inclusive Int range,
+retain their nominal identity and canonical bounds, and reject malformed or
+cross-nominal operations. Checked construction shall require statically proven
+in-range input until dynamic Result-producing construction is available.
+Explicit `value modulo Type` shall accept an admitted Int value and reduce it
+to the unique representative.
+
+Wrapping addition, subtraction, multiplication, and negation shall use the
+existing exact arbitrary-precision Int runtime before canonical reduction.
+Equality, ordering, and three-way comparison shall compare canonical
+representatives only for identical modular types. Canonical display shall
+include the source type name. Private function passage, returns, and decision
+joins shall retain the classifier while reusing the existing Int pointer
+carrier; LLVM shall own its physical x86-64 call lowering.
+
+DWARF shall give every modular declaration a distinct semantic typedef and
+storage identity, and the bundled GDB renderer shall safely show both the type
+name and canonical value. Tests shall compile the unchanged interpreter
+modular-number regression, compare exact output, inspect checked and LLVM
+lowering, reject invalid construction and nominal mixing, and verify undefined
+symbols, needed libraries, relocations, and GDB parameter values.
+
+This increment shall use only the existing Topal Linux syscall allocator and
+writer. It adds no machine-width wraparound, LLVM-optimization dependency,
+foreign allocator, C/C++ runtime, other-language standard library, public ABI,
+or `topal-native/6` revision. Named range operands, dynamic checked
+construction, modular absolute value, persistent/public representation,
+serialization, and compiled-library metadata remain deferred. This realizes
+`TOPAL-COMPILER-MODULAR-001` and the admitted portions of
+`TOPAL-NUM-MODULAR-TYPE-001`, `TOPAL-NUM-MODULAR-CONSTRUCT-001`,
+`TOPAL-NUM-MODULAR-REDUCE-001`, and `TOPAL-NUM-MODULAR-ARITHMETIC-001` for
+compiler increment 2f.
+
 ## TOPAL-COMP-RESULT-001 — Dynamic arithmetic Results
 
 The compiler shall represent an admitted arithmetic `Result` with an immutable
@@ -1309,11 +1345,11 @@ immutable scalar locals, lexical scopes, and instructions to Topal files and
 source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
 renderers for private arbitrary-precision Int, Rational, `Range Int`,
 `Range Rational`, `Optional Int`, `Optional String`, `Optional Error`,
-`Optional SourceLocation`, and `SourceLocation` objects, describe
-source-declared nominal enums, retained Constraint identities, and refined Int
-bindings with their semantic names, distinguish selected overload and
-static-function frames, and pass automated GDB breakpoint, value, and backtrace
-scenarios.
+`Optional SourceLocation`, `SourceLocation`, and nominal modular-number
+objects, describe source-declared nominal enums, retained Constraint
+identities, and refined Int bindings with their semantic names, distinguish
+selected overload and static-function frames, and pass automated GDB
+breakpoint, value, and backtrace scenarios.
 
 ## TOPAL-COMP-ENUM-001 — Payload-free nominal enums
 

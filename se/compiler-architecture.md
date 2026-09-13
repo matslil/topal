@@ -351,6 +351,19 @@ for membership, emptiness, and intersection and never enumerates or adjusts an
 open endpoint. Pointer-bearing range objects are also constructed at run time
 to preserve relocation-free no-loader PIE output.
 
+Nominal modular values reuse the canonical arbitrary-precision Int pointer as
+their private carrier rather than acquiring a machine-width representation.
+The checked model retains the declaration identity and canonical inclusive
+bounds; generated wrapping arithmetic performs the exact Int operation and
+then lowers `lower + ((value - lower) modulo modulus)` through existing runtime
+calls. This gives `-O0` the specified result for positive and negative ranges
+without relying on LLVM overflow behavior. Private `fastcc` functions carry the
+pointer directly and leave physical AMD64 lowering to LLVM. Distinct DWARF
+storage identities and typedefs restore the nominal source type for GDB even
+though the runtime layout is shared. This is not a public, foreign,
+serialization, or compiled-library numeric ABI, and it does not revise
+`topal-native/6`.
+
 String values use immutable `{data, length, display, display-length}`
 descriptors containing UTF-8 bytes and an optional cached canonical display.
 Only relocation-free byte arrays reside in the static image; descriptors are
@@ -856,7 +869,7 @@ validated semantic interface.
 | LLD | used | deterministic no-default-library static PIE link |
 | `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum, and fallible arithmetic control flow with typed result joins |
 | `insertvalue` and `extractvalue` | used | target-independent construction and decomposition of exact private Tuple, Record, Union, and Variant aggregate signatures |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, and bundled renderers for private Int, Rational, finite exact Range, and active sum values |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular values, and bundled renderers for private Int, Rational, finite exact Range, modular, and active sum values |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm.memcpy.inline` | used | target-qualified dynamic String copies while retaining LLVM's guarantee that lowering calls no external function |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |

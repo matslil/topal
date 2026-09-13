@@ -59,6 +59,17 @@ class _TopalIntPrinter:
         return magnitude
 
 
+class _TopalModularPrinter:
+    """Render a nominal modular value backed by a canonical Topal Int."""
+
+    def __init__(self, value, name):
+        self._value = value
+        self._name = name
+
+    def to_string(self):
+        return f"{self._name} {_TopalIntPrinter(self._value).to_string()}"
+
+
 def _display_string(value):
     if '"' not in value:
         return f'"{value}"'
@@ -373,6 +384,8 @@ class _TopalSumPrinter:
 def _lookup_topal_value(value):
     value_type = str(value.type)
     storage_type = str(value.type.strip_typedefs())
+    if storage_type.startswith("struct TopalModular."):
+        return _TopalModularPrinter(value, value_type)
     if value_type == "Int":
         return _TopalIntPrinter(value)
     if value_type == "Nat":

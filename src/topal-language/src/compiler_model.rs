@@ -43,6 +43,14 @@ pub struct CompilerSumType {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerModularType {
+    pub name: String,
+    pub signed: bool,
+    pub lower: BigInt,
+    pub upper: BigInt,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerType {
     Unit,
     Completed,
@@ -60,6 +68,7 @@ pub enum CompilerType {
     ErrorCode,
     ErrorDomain,
     SourceLocation,
+    Modular(CompilerModularType),
     Enum(CompilerEnumType),
     Sum(CompilerSumType),
     Range(Box<Self>),
@@ -93,6 +102,7 @@ impl CompilerType {
                 | Self::ErrorCode
                 | Self::ErrorDomain
                 | Self::SourceLocation
+                | Self::Modular(_)
                 | Self::Enum(_)
                 | Self::Range(_)
                 | Self::Result(_)
@@ -121,6 +131,7 @@ impl CompilerType {
             Self::ErrorCode => "lang arithmetic ArithmeticErrorCode".into(),
             Self::ErrorDomain => "ErrorDomain".into(),
             Self::SourceLocation => "SourceLocation".into(),
+            Self::Modular(modular) => modular.name.clone(),
             Self::Enum(enumeration) => enumeration.name.clone(),
             Self::Sum(sum) => sum.name.clone(),
             Self::Range(endpoint) => format!("Range {}", endpoint.name()),
@@ -283,6 +294,14 @@ pub enum CompilerExpressionKind {
     StringEmptyPredicate(Box<CompilerExpression>),
     StringUtf8ByteCount(Box<CompilerExpression>),
     ErrorCode(u32),
+    IntToModular {
+        value: Box<CompilerExpression>,
+        modular: CompilerModularType,
+    },
+    ModularReduce {
+        value: Box<CompilerExpression>,
+        modular: CompilerModularType,
+    },
     Enum(u32),
     Sum {
         value: u32,
@@ -476,6 +495,7 @@ type EnumTypes = BTreeMap<String, (CompilerEnumType, Span)>;
 type EnumAlternativeBindings = BTreeMap<String, (CompilerEnumType, u32, Span)>;
 type SumTypes = BTreeMap<String, (CompilerSumType, Span)>;
 type SumAlternativeBindings = BTreeMap<String, (CompilerSumType, u32, Span)>;
+type ModularTypes = BTreeMap<String, (CompilerModularType, Span)>;
 
 struct EnumSource {
     name: Span,
@@ -487,6 +507,13 @@ struct SumSource {
     name: Span,
     positional: bool,
     alternatives: Vec<(String, Option<Span>, Span)>,
+    span: Span,
+}
+
+struct ModularSource {
+    name: Span,
+    signed: bool,
+    range: Expression,
     span: Span,
 }
 
@@ -580,6 +607,7 @@ struct Analyzer {
     enum_alternatives: EnumAlternativeBindings,
     sums: SumTypes,
     sum_alternatives: SumAlternativeBindings,
+    modulars: ModularTypes,
     functions: BTreeMap<String, Vec<FunctionSource>>,
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
@@ -640,14 +668,22 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     let (enums, enum_alternatives) = collect_enums(&source, &parsed.statements)?;
     let (sums, sum_alternatives) =
         collect_sums(&source, &parsed.statements, &enums, &enum_alternatives)?;
-    let mut reserved_names = enums
-        .keys()
-        .chain(enum_alternatives.keys())
-        .chain(sums.keys())
-        .chain(sum_alternatives.keys())
-        .cloned()
-        .collect::<BTreeSet<_>>();
-    reserved_names.insert("root".to_owned());
+    let modular_sources = collect_modular_sources(
+        &source,
+        &parsed.statements,
+        &enums,
+        &enum_alternatives,
+        &sums,
+        &sum_alternatives,
+    )?;
+    let reserved_names = compiler_reserved_names(
+        &source,
+        &enums,
+        &enum_alternatives,
+        &sums,
+        &sum_alternatives,
+        &modular_sources,
+    );
     let mut functions = BTreeMap::new();
     collect_functions(&source, &parsed.statements, &reserved_names, &mut functions)?;
     let mut analyzer = Analyzer {
@@ -656,6 +692,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         enum_alternatives,
         sums,
         sum_alternatives,
+        modulars: BTreeMap::new(),
         functions,
         instances: Vec::new(),
         active_calls: Vec::new(),
@@ -670,6 +707,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         static_context: false,
         next_instance: 0,
     };
+    analyzer.install_modular_types(&modular_sources)?;
     let mut environment = BTreeMap::new();
     let main = analyzer.analyze_block(
         &parsed.statements,
@@ -677,17 +715,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         BlockKind::TopLevel,
         None,
     )?;
-    let function_value_names = if analyzer.function_values_used {
-        analyzer
-            .functions
-            .keys()
-            .map(|name| format!("<fn {name}>"))
-            .chain(["+".into(), "-".into(), "<=>".into()])
-            .chain(analyzer.anonymous_function_value_names)
-            .collect()
-    } else {
-        Vec::new()
-    };
+    let function_value_names = compiler_function_value_names(&mut analyzer);
     Ok(CompilerProgram {
         source,
         language_version,
@@ -696,6 +724,42 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         constraints: analyzer.constraints,
         functions: analyzer.instances,
     })
+}
+
+fn compiler_function_value_names(analyzer: &mut Analyzer) -> Vec<String> {
+    if !analyzer.function_values_used {
+        return Vec::new();
+    }
+    analyzer
+        .functions
+        .keys()
+        .map(|name| format!("<fn {name}>"))
+        .chain(["+".into(), "-".into(), "<=>".into()])
+        .chain(std::mem::take(&mut analyzer.anonymous_function_value_names))
+        .collect()
+}
+
+fn compiler_reserved_names(
+    source: &SourceText,
+    enums: &EnumTypes,
+    enum_alternatives: &EnumAlternativeBindings,
+    sums: &SumTypes,
+    sum_alternatives: &SumAlternativeBindings,
+    modulars: &[ModularSource],
+) -> BTreeSet<String> {
+    enums
+        .keys()
+        .chain(enum_alternatives.keys())
+        .chain(sums.keys())
+        .chain(sum_alternatives.keys())
+        .cloned()
+        .chain(
+            modulars
+                .iter()
+                .map(|declaration| source.slice(declaration.name).to_owned()),
+        )
+        .chain(["root".to_owned()])
+        .collect()
 }
 
 fn collect_enums(
@@ -866,6 +930,69 @@ fn sum_declaration(source: &SourceText, statement: &Statement) -> Option<SumSour
             .collect(),
         span: Span::new(name.start, span.end),
     })
+}
+
+fn modular_declaration(source: &SourceText, statement: &Statement) -> Option<ModularSource> {
+    let statement = match statement {
+        Statement::Published { declaration, .. } => declaration.as_ref(),
+        statement => statement,
+    };
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return None;
+    };
+    let [Expression::Identifier(kind), range] = items.as_slice() else {
+        return None;
+    };
+    let signed = match source.slice(*kind) {
+        "ModNat" => false,
+        "ModInt" => true,
+        _ => return None,
+    };
+    Some(ModularSource {
+        name: *name,
+        signed,
+        range: range.clone(),
+        span: Span::new(name.start, span.end),
+    })
+}
+
+fn collect_modular_sources(
+    source: &SourceText,
+    statements: &[Statement],
+    enums: &EnumTypes,
+    enum_alternatives: &EnumAlternativeBindings,
+    sums: &SumTypes,
+    sum_alternatives: &SumAlternativeBindings,
+) -> Result<Vec<ModularSource>, Diagnostic> {
+    let mut declarations = Vec::new();
+    let mut names = BTreeSet::new();
+    for statement in statements {
+        let Some(declaration) = modular_declaration(source, statement) else {
+            continue;
+        };
+        let name = source.slice(declaration.name);
+        if name == "root"
+            || enums.contains_key(name)
+            || enum_alternatives.contains_key(name)
+            || sums.contains_key(name)
+            || sum_alternatives.contains_key(name)
+            || !names.insert(name.to_owned())
+        {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-BINDING",
+                declaration.name,
+                format!("`{name}` is already declared in this scope"),
+            ));
+        }
+        declarations.push(declaration);
+    }
+    Ok(declarations)
 }
 
 fn collect_sums(
@@ -1120,6 +1247,73 @@ enum BlockKind {
 }
 
 impl Analyzer {
+    fn install_modular_types(&mut self, declarations: &[ModularSource]) -> Result<(), Diagnostic> {
+        let environment = BTreeMap::new();
+        for declaration in declarations {
+            let range = self.analyze_expression(&declaration.range, &environment)?;
+            let CompilerExpressionKind::Binary {
+                operation: CompilerBinary::RangeInclusive,
+                left,
+                right,
+            } = &range.kind
+            else {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-MODULAR-RANGE",
+                    declaration.range.span(),
+                    "ModNat and ModInt require a finite inclusive Int range",
+                ));
+            };
+            if left.value_type != CompilerType::Int || right.value_type != CompilerType::Int {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-MODULAR-RANGE",
+                    declaration.range.span(),
+                    "ModNat and ModInt require a finite inclusive Int range",
+                ));
+            }
+            let Some(lower) = exact_int(left) else {
+                return Err(unsupported(
+                    &self.source,
+                    left.span,
+                    "dynamic modular lower bound",
+                ));
+            };
+            let Some(upper) = exact_int(right) else {
+                return Err(unsupported(
+                    &self.source,
+                    right.span,
+                    "dynamic modular upper bound",
+                ));
+            };
+            if lower > BigInt::from(0)
+                || upper < BigInt::from(0)
+                || (!declaration.signed && lower != BigInt::from(0))
+            {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-MODULAR-RANGE",
+                    declaration.range.span(),
+                    "modular range must contain zero and ModNat must begin at zero",
+                ));
+            }
+            let name = self.source.slice(declaration.name).to_owned();
+            self.modulars.insert(
+                name.clone(),
+                (
+                    CompilerModularType {
+                        name,
+                        signed: declaration.signed,
+                        lower,
+                        upper,
+                    },
+                    declaration.span,
+                ),
+            );
+        }
+        Ok(())
+    }
+
     fn analyze_expression_with_expected(
         &mut self,
         expression: &Expression,
@@ -1156,6 +1350,11 @@ impl Analyzer {
         {
             return Ok(CompilerType::Sum(sum.clone()));
         }
+        if let Some((modular, declaration)) = self.modulars.get(&classifier)
+            && declaration.end <= span.start
+        {
+            return Ok(CompilerType::Modular(modular.clone()));
+        }
         if let Some(tag) = self.constraint_bindings.get(&classifier)
             && let Some(constraint) = self
                 .constraints
@@ -1190,6 +1389,13 @@ impl Analyzer {
             let name = self.source.slice(declaration.name);
             return self
                 .sums
+                .get(name)
+                .is_some_and(|(_, span)| *span == declaration.span);
+        }
+        if let Some(declaration) = modular_declaration(&self.source, statement) {
+            let name = self.source.slice(declaration.name);
+            return self
+                .modulars
                 .get(name)
                 .is_some_and(|(_, span)| *span == declaration.span);
         }
@@ -1388,7 +1594,8 @@ impl Analyzer {
                                 || self.enums.contains_key(&name_text)
                                 || self.enum_alternatives.contains_key(&name_text)
                                 || self.sums.contains_key(&name_text)
-                                || self.sum_alternatives.contains_key(&name_text)))
+                                || self.sum_alternatives.contains_key(&name_text)
+                                || self.modulars.contains_key(&name_text)))
                     {
                         return Err(source_diagnostic(
                             &self.source,
@@ -2230,6 +2437,76 @@ impl Analyzer {
         }))
     }
 
+    fn analyze_modular_construction(
+        &mut self,
+        modular: CompilerModularType,
+        operand: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let operand = self.analyze_expression(operand, environment)?;
+        require_type(
+            &self.source,
+            operand.span,
+            &CompilerType::Int,
+            &operand.value_type,
+        )?;
+        let Some(value) = exact_int(&operand) else {
+            return Err(unsupported(
+                &self.source,
+                operand.span,
+                "dynamic checked modular construction",
+            ));
+        };
+        if value < modular.lower || value > modular.upper {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-MODULAR-OUT-OF-RANGE",
+                operand.span,
+                format!("value is outside `{}` canonical range", modular.name),
+            ));
+        }
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::IntToModular {
+                value: Box::new(operand),
+                modular: modular.clone(),
+            },
+            value_type: CompilerType::Modular(modular),
+            int_range: Some(IntRange::exact(value)),
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn analyze_modular_reduction(
+        &mut self,
+        modular: CompilerModularType,
+        operand: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let operand = self.analyze_expression(operand, environment)?;
+        require_type(
+            &self.source,
+            operand.span,
+            &CompilerType::Int,
+            &operand.value_type,
+        )?;
+        let int_range = exact_int(&operand)
+            .map(|value| IntRange::exact(reduce_modular(value, &modular)))
+            .or_else(|| Some(modular_range(&modular)));
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::ModularReduce {
+                value: Box::new(operand),
+                modular: modular.clone(),
+            },
+            value_type: CompilerType::Modular(modular),
+            int_range,
+            rational_value: None,
+            span,
+        })
+    }
+
     #[allow(clippy::too_many_lines)] // Root operations are admitted explicitly and in source-selection order.
     fn analyze_application(
         &mut self,
@@ -2239,6 +2516,23 @@ impl Analyzer {
     ) -> Result<CompilerExpression, Diagnostic> {
         if let Some(sum) = self.analyze_sum_construction(items, span, environment)? {
             return Ok(sum);
+        }
+        if let [Expression::Identifier(name), operand] = items
+            && let Some((modular, declaration)) = self.modulars.get(self.source.slice(*name))
+            && declaration.end <= name.start
+        {
+            return self.analyze_modular_construction(modular.clone(), operand, span, environment);
+        }
+        if let [
+            operand,
+            Expression::Identifier(operation),
+            Expression::Identifier(name),
+        ] = items
+            && self.source.slice(*operation) == "modulo"
+            && let Some((modular, declaration)) = self.modulars.get(self.source.slice(*name))
+            && declaration.end <= name.start
+        {
+            return self.analyze_modular_reduction(modular.clone(), operand, span, environment);
         }
         if let [Expression::Identifier(keyword), selected] = items
             && self.source.slice(*keyword) == "use"
@@ -2666,6 +2960,18 @@ impl Analyzer {
         ] = items
         {
             let operand = self.analyze_expression(operand, environment)?;
+            if let CompilerType::Modular(modular) = operand.value_type.clone() {
+                let int_range = exact_int(&operand)
+                    .map(|value| IntRange::exact(reduce_modular(-value, &modular)))
+                    .or_else(|| Some(modular_range(&modular)));
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Negate(Box::new(operand)),
+                    value_type: CompilerType::Modular(modular),
+                    int_range,
+                    rational_value: None,
+                    span,
+                });
+            }
             require_exact_numeric(&self.source, operand.span, &operand.value_type)?;
             let range = (operand.value_type == CompilerType::Int)
                 .then_some(operand.int_range.as_ref())
@@ -2689,6 +2995,25 @@ impl Analyzer {
         {
             let negate = self.source.slice(*operation) == "negate";
             let operand = self.analyze_expression(operand, environment)?;
+            if let CompilerType::Modular(modular) = operand.value_type.clone() {
+                if !negate {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "absolute value over a modular value",
+                    ));
+                }
+                let int_range = exact_int(&operand)
+                    .map(|value| IntRange::exact(reduce_modular(-value, &modular)))
+                    .or_else(|| Some(modular_range(&modular)));
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Negate(Box::new(operand)),
+                    value_type: CompilerType::Modular(modular),
+                    int_range,
+                    rational_value: None,
+                    span,
+                });
+            }
             require_exact_numeric(&self.source, operand.span, &operand.value_type)?;
             let range = (operand.value_type == CompilerType::Int)
                 .then_some(operand.int_range.as_ref())
@@ -4109,6 +4434,12 @@ impl Analyzer {
             right_value = forget_refined_evidence(right_value);
         }
 
+        if matches!(left_value.value_type, CompilerType::Modular(_))
+            || matches!(right_value.value_type, CompilerType::Modular(_))
+        {
+            return self.finish_modular_binary(operation, left_value, right_value, span);
+        }
+
         if is_range_construction(operation) {
             require_exact_numeric(&self.source, left_value.span, &left_value.value_type)?;
             require_exact_numeric(&self.source, right_value.span, &right_value.value_type)?;
@@ -4659,6 +4990,55 @@ impl Analyzer {
             result_type,
             span,
         ))
+    }
+
+    fn finish_modular_binary(
+        &self,
+        operation: CompilerBinary,
+        left: CompilerExpression,
+        right: CompilerExpression,
+        span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        require_same_type(&self.source, span, &left.value_type, &right.value_type)?;
+        let CompilerType::Modular(modular) = &left.value_type else {
+            unreachable!("same-type modular operation has two modular operands")
+        };
+        let (value_type, int_range) = match operation {
+            CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply => {
+                let exact = exact_int(&left)
+                    .zip(exact_int(&right))
+                    .map(|(left, right)| {
+                        let value = match operation {
+                            CompilerBinary::Add => left + right,
+                            CompilerBinary::Subtract => left - right,
+                            CompilerBinary::Multiply => left * right,
+                            _ => unreachable!("selected modular arithmetic operation"),
+                        };
+                        IntRange::exact(reduce_modular(value, modular))
+                    });
+                (
+                    left.value_type.clone(),
+                    exact.or_else(|| Some(modular_range(modular))),
+                )
+            }
+            CompilerBinary::Equal
+            | CompilerBinary::NotEqual
+            | CompilerBinary::Less
+            | CompilerBinary::Greater
+            | CompilerBinary::LessEqual
+            | CompilerBinary::GreaterEqual => (CompilerType::Boolean, None),
+            CompilerBinary::Compare => (CompilerType::Comparison, None),
+            _ => {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "operation over modular values",
+                ));
+            }
+        };
+        let mut result = Self::finish_binary(operation, left, right, value_type, span);
+        result.int_range = int_range;
+        Ok(result)
     }
 
     fn finish_binary(
@@ -7009,6 +7389,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::ErrorCode
         | CompilerType::Character
         | CompilerType::String
+        | CompilerType::Modular(_)
         | CompilerType::Enum(_) => true,
         CompilerType::Optional(payload) => {
             matches!(
@@ -7035,7 +7416,10 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
 
 fn compiler_ordering_supported(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::Int | CompilerType::Nat | CompilerType::Rational => true,
+        CompilerType::Int
+        | CompilerType::Nat
+        | CompilerType::Rational
+        | CompilerType::Modular(_) => true,
         CompilerType::Tuple(fields) => fields.iter().all(compiler_ordering_supported),
         _ => false,
     }
@@ -7130,7 +7514,9 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::SumDecision { .. }
         | CompilerExpressionKind::ResultDecision { .. }
         | CompilerExpressionKind::OptionalDecision { .. } => false,
-        CompilerExpressionKind::Negate(value)
+        CompilerExpressionKind::IntToModular { value, .. }
+        | CompilerExpressionKind::ModularReduce { value, .. }
+        | CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
         | CompilerExpressionKind::IntToRational(value)
         | CompilerExpressionKind::RationalToInt(value)
@@ -7405,6 +7791,22 @@ fn division_by_zero(source: &SourceText, span: Span) -> Diagnostic {
         span,
         "exact division requires a nonzero divisor",
     )
+}
+
+fn modular_range(modular: &CompilerModularType) -> IntRange {
+    IntRange {
+        lower: modular.lower.clone(),
+        upper: modular.upper.clone(),
+    }
+}
+
+fn reduce_modular(value: BigInt, modular: &CompilerModularType) -> BigInt {
+    let modulus = &modular.upper - &modular.lower + BigInt::from(1);
+    let mut residue = (value - &modular.lower) % &modulus;
+    if residue < BigInt::from(0) {
+        residue += &modulus;
+    }
+    &modular.lower + residue
 }
 
 fn modulo_range(dividend: &CompilerExpression, divisor: &CompilerExpression) -> Option<IntRange> {
@@ -10149,6 +10551,71 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(foreign_variant).unwrap_err().code,
             "E-VARIANT-TYPE"
+        );
+    }
+
+    #[test]
+    fn models_nominal_modular_construction_reduction_and_arithmetic() {
+        // TOPAL-NUM-MODULAR-TYPE-001, TOPAL-NUM-MODULAR-CONSTRUCT-001,
+        // TOPAL-NUM-MODULAR-REDUCE-001, TOPAL-NUM-MODULAR-ARITHMETIC-001
+        let source = include_str!("../../../examples/language/modular-numbers.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(ByteCounter, SignedByte, ByteCounter, SignedByte, Boolean, Boolean)"
+        );
+        let CompilerExpressionKind::Tuple(values) = &program.main.result.kind else {
+            panic!("modular regression retains its result product")
+        };
+        assert!(matches!(
+            values[0].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Add,
+                ..
+            }
+        ));
+        let CompilerExpressionKind::Binary { left, .. } = &values[0].kind else {
+            unreachable!("checked above")
+        };
+        assert!(matches!(
+            left.kind,
+            CompilerExpressionKind::IntToModular { .. }
+        ));
+        assert!(matches!(
+            values[2].kind,
+            CompilerExpressionKind::ModularReduce { .. }
+        ));
+        assert_eq!(exact_int(&values[0]), Some(BigInt::from(0)));
+        assert_eq!(exact_int(&values[1]), Some(BigInt::from(-128)));
+        assert_eq!(exact_int(&values[2]), Some(BigInt::from(255)));
+        assert_eq!(exact_int(&values[3]), Some(BigInt::from(-128)));
+    }
+
+    #[test]
+    fn rejects_invalid_or_unproven_modular_construction() {
+        // TOPAL-NUM-MODULAR-TYPE-001, TOPAL-NUM-MODULAR-CONSTRUCT-001
+        let invalid_range = "use language (version is v0.1)\nDigit is ModNat (1 ..= 9)\nDigit 1\n";
+        assert_eq!(
+            analyze_for_compiler(invalid_range).unwrap_err().code,
+            "E-MODULAR-RANGE"
+        );
+
+        let outside = "use language (version is v0.1)\nDigit is ModNat (0 ..= 9)\nDigit 10\n";
+        assert_eq!(
+            analyze_for_compiler(outside).unwrap_err().code,
+            "E-MODULAR-OUT-OF-RANGE"
+        );
+
+        let dynamic = "use language (version is v0.1)\nDigit is ModNat (0 ..= 9)\nhalve is fn (value : Int) -> Result (Int, lang arithmetic ArithmeticErrorCode)\n  half : Int is value / 2\n  half\nmake is fn (value : Int) -> Digit\n  Digit value\nchoose is fn () -> Digit\n  outcome is halve 100\n  outcome\n    Ok value then make value\n    Error problem then Digit 0\nchoose ()\n";
+        assert_eq!(
+            analyze_for_compiler(dynamic).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+
+        let nominal_mismatch = "use language (version is v0.1)\nDigit is ModNat (0 ..= 9)\nHour is ModNat (0 ..= 23)\n(Digit 1) + (Hour 1)\n";
+        assert_eq!(
+            analyze_for_compiler(nominal_mismatch).unwrap_err().code,
+            "E-TYPE-MISMATCH"
         );
     }
 

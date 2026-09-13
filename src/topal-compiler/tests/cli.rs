@@ -3808,3 +3808,84 @@ fn defining_context_capture_is_private_freestanding_and_debuggable() {
     assert!(text.contains("topal.fn.add_2doffset.0"), "{text}");
     assert!(text.contains("topal.main"), "{text}");
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn modular_values_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-MODULAR-001, TOPAL-NUM-MODULAR-TYPE-001,
+    // TOPAL-NUM-MODULAR-REDUCE-001, TOPAL-NUM-MODULAR-ARITHMETIC-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-modular-values");
+    let source = directory.join("modular-values.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nByteCounter is ModNat (0 ..= 255)\nSignedByte is ModInt ((-128) ..= 127)\nretain is fn (value : ByteCounter) -> ByteCounter\n  value\nHuge is ModNat (0 ..= 340282366920938463463374607431768211455)\nstart is retain (ByteCounter 255)\nwrapped is 128 modulo SignedByte\nhuge is (Huge 340282366920938463463374607431768211455) + (Huge 1)\n(start, wrapped, start + (ByteCounter 1), (ByteCounter 0) - (ByteCounter 1), (ByteCounter 16) * (ByteCounter 16), -(SignedByte (-128)), (ByteCounter 2) <=> (ByteCounter 1), huge)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(ByteCounter 255, SignedByte -128, ByteCounter 0, ByteCounter 255, ByteCounter 0, SignedByte -128, Greater, Huge 0)\n"
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break modular-values.t:5",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = ByteCounter"), "{text}");
+    assert!(text.contains("$1 = ByteCounter 255"), "{text}");
+    assert!(text.contains("topal.fn.retain.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}

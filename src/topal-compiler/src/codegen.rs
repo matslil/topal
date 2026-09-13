@@ -7,8 +7,8 @@ use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
     CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerFallible, CompilerFunction, CompilerProgram, CompilerStatement, CompilerSumRule,
-    CompilerSumType, CompilerType, CompilerValidation, display_string_literal,
+    CompilerFallible, CompilerFunction, CompilerModularType, CompilerProgram, CompilerStatement,
+    CompilerSumRule, CompilerSumType, CompilerType, CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -46,6 +46,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::ErrorCode
         | CompilerType::ErrorDomain
         | CompilerType::SourceLocation
+        | CompilerType::Modular(_)
         | CompilerType::Optional(_) => true,
         CompilerType::Range(endpoint) | CompilerType::Result(endpoint) => {
             type_uses_extended_debug(endpoint)
@@ -105,7 +106,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             .as_deref()
             .is_some_and(expression_uses_extended_debug),
         CompilerExpressionKind::Block(block) => block_uses_extended_debug(block),
-        CompilerExpressionKind::Negate(value)
+        CompilerExpressionKind::IntToModular { value, .. }
+        | CompilerExpressionKind::ModularReduce { value, .. }
+        | CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
         | CompilerExpressionKind::IntToRational(value)
         | CompilerExpressionKind::RationalToInt(value)
@@ -300,6 +303,7 @@ impl<'a> Generator<'a> {
             }
             LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
             LlValue::Int(value)
+            | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
             | LlValue::Error(value)
             | LlValue::ErrorDomain(value)
@@ -833,6 +837,17 @@ impl<'a> Generator<'a> {
             },
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
             CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
+            CompilerExpressionKind::IntToModular { value, modular } => {
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Modular {
+                    value: value.integer().to_owned(),
+                    modular: modular.clone(),
+                }
+            }
+            CompilerExpressionKind::ModularReduce { value, modular } => {
+                let value = self.emit_expression(value, body, environment);
+                self.emit_modular_reduce(value.integer(), modular, body, expression.span)
+            }
             CompilerExpressionKind::Rational(value) => {
                 self.emit_rational_literal(value, body, expression.span)
             }
@@ -999,6 +1014,14 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
+                    LlValue::Modular { value, modular } => {
+                        let value = body.instruction(
+                            &format!("call ptr @topal.runtime.int.negate(ptr {value})"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        self.emit_modular_reduce(&value, &modular, body, expression.span)
+                    }
                     _ => unreachable!("checked negate operand is exact numeric"),
                 }
             }
@@ -1346,6 +1369,14 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
+                    CompilerType::Modular(ref modular) => LlValue::Modular {
+                        value: body.instruction(
+                            &format!("call fastcc ptr @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        modular: modular.clone(),
+                    },
                     CompilerType::Rational => LlValue::Rational(body.instruction(
                         &format!("call fastcc ptr @{symbol}({arguments})"),
                         expression.span,
@@ -2111,6 +2142,25 @@ impl<'a> Generator<'a> {
                     CompilerBinary::Multiply => "multiply",
                     _ => unreachable!(),
                 };
+                if let (
+                    LlValue::Modular {
+                        value: left,
+                        modular,
+                    },
+                    LlValue::Modular {
+                        value: right,
+                        modular: right_modular,
+                    },
+                ) = (left, right)
+                {
+                    debug_assert_eq!(modular, right_modular);
+                    let value = body.instruction(
+                        &format!("call ptr @topal.runtime.int.{name}(ptr {left}, ptr {right})"),
+                        span,
+                        &mut self.debug,
+                    );
+                    return self.emit_modular_reduce(&value, modular, body, span);
+                }
                 let (domain, left, right) = match (left, right) {
                     (LlValue::Int(left), LlValue::Int(right)) => ("int", left, right),
                     (LlValue::Rational(left), LlValue::Rational(right)) => {
@@ -2340,7 +2390,9 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 )
             }
-            (LlValue::Int(_), LlValue::Int(_)) | (LlValue::Rational(_), LlValue::Rational(_)) => {
+            (LlValue::Int(_), LlValue::Int(_))
+            | (LlValue::Modular { .. }, LlValue::Modular { .. })
+            | (LlValue::Rational(_), LlValue::Rational(_)) => {
                 let comparison = self.emit_numeric_compare(left, right, body, span);
                 body.instruction(
                     &format!("icmp eq i32 {comparison}, 0"),
@@ -2407,7 +2459,9 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> String {
         match (left, right) {
-            (LlValue::Int(_), LlValue::Int(_)) | (LlValue::Rational(_), LlValue::Rational(_)) => {
+            (LlValue::Int(_), LlValue::Int(_))
+            | (LlValue::Modular { .. }, LlValue::Modular { .. })
+            | (LlValue::Rational(_), LlValue::Rational(_)) => {
                 self.emit_numeric_compare(left, right, body, span)
             }
             (LlValue::Tuple(left), LlValue::Tuple(right)) => {
@@ -2459,6 +2513,19 @@ impl<'a> Generator<'a> {
     ) -> String {
         let (domain, left, right) = match (left, right) {
             (LlValue::Int(left), LlValue::Int(right)) => ("int", left, right),
+            (
+                LlValue::Modular {
+                    value: left,
+                    modular,
+                },
+                LlValue::Modular {
+                    value: right,
+                    modular: right_modular,
+                },
+            ) => {
+                debug_assert_eq!(modular, right_modular);
+                ("int", left, right)
+            }
             (LlValue::Rational(left), LlValue::Rational(right)) => ("rational", left, right),
             _ => unreachable!("checked numeric comparison operands agree"),
         };
@@ -2817,6 +2884,14 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             )),
+            LlValue::Modular { modular, .. } => LlValue::Modular {
+                value: body.instruction(
+                    &format!("phi ptr {}", incoming(LlValue::modular_pointer)),
+                    span,
+                    &mut self.debug,
+                ),
+                modular: modular.clone(),
+            },
             LlValue::Rational(_) => LlValue::Rational(body.instruction(
                 &format!("phi ptr {}", incoming(LlValue::rational)),
                 span,
@@ -3015,6 +3090,15 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             ),
+            LlValue::Modular { value, modular } => {
+                self.emit_write_literal(&modular.name, body, span);
+                self.emit_write_literal(" ", body, span);
+                body.effect(
+                    &format!("call void @topal.runtime.int.print(ptr {value})"),
+                    span,
+                    &mut self.debug,
+                );
+            }
             LlValue::Rational(value) => body.effect(
                 &format!("call void @topal.runtime.rational.print(ptr {value})"),
                 span,
@@ -3411,6 +3495,36 @@ impl<'a> Generator<'a> {
         format!("@{name}")
     }
 
+    fn emit_modular_reduce(
+        &mut self,
+        value: &str,
+        modular: &CompilerModularType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        let lower = self.emit_int_global(&modular.lower);
+        let modulus = self.emit_int_global(&(&modular.upper - &modular.lower + BigInt::from(1)));
+        let shifted = body.instruction(
+            &format!("call ptr @topal.runtime.int.subtract(ptr {value}, ptr {lower})"),
+            span,
+            &mut self.debug,
+        );
+        let residue = body.instruction(
+            &format!("call ptr @topal.runtime.int.modulo(ptr {shifted}, ptr {modulus})"),
+            span,
+            &mut self.debug,
+        );
+        let canonical = body.instruction(
+            &format!("call ptr @topal.runtime.int.add(ptr {residue}, ptr {lower})"),
+            span,
+            &mut self.debug,
+        );
+        LlValue::Modular {
+            value: canonical,
+            modular: modular.clone(),
+        }
+    }
+
     fn emit_rational_literal(
         &mut self,
         value: &BigRational,
@@ -3434,6 +3548,10 @@ enum LlValue {
     Effect(String),
     Boolean(String),
     Int(String),
+    Modular {
+        value: String,
+        modular: CompilerModularType,
+    },
     Rational(String),
     Comparison(String),
     Error(String),
@@ -3478,8 +3596,15 @@ impl LlValue {
     }
 
     fn integer(&self) -> &str {
-        let Self::Int(value) = self else {
-            unreachable!("checked value is Int")
+        match self {
+            Self::Int(value) | Self::Modular { value, .. } => value,
+            _ => unreachable!("checked value has an integer representation"),
+        }
+    }
+
+    fn modular_pointer(&self) -> &str {
+        let Self::Modular { value, .. } = self else {
+            unreachable!("checked value is modular")
         };
         value
     }
@@ -3578,6 +3703,7 @@ impl LlValue {
             Self::Completed(value) | Self::Effect(value) => format!("i8 {value}"),
             Self::Boolean(value) => format!("i1 {value}"),
             Self::Int(value)
+            | Self::Modular { value, .. }
             | Self::Rational(value)
             | Self::Error(value)
             | Self::ErrorDomain(value)
@@ -3605,6 +3731,10 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Effect => LlValue::Effect("0".into()),
         CompilerType::Boolean => LlValue::Boolean("false".into()),
         CompilerType::Int | CompilerType::Nat => LlValue::Int("null".into()),
+        CompilerType::Modular(modular) => LlValue::Modular {
+            value: "null".into(),
+            modular: modular.clone(),
+        },
         CompilerType::Rational => LlValue::Rational("null".into()),
         CompilerType::Comparison => LlValue::Comparison("0".into()),
         CompilerType::Error => LlValue::Error("null".into()),
@@ -3787,6 +3917,7 @@ impl FunctionBody {
             LlValue::Completed(value) | LlValue::Effect(value) => format!("i8 {value}"),
             LlValue::Boolean(value) => format!("i1 {value}"),
             LlValue::Int(value)
+            | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
             | LlValue::Error(value)
             | LlValue::ErrorDomain(value)
@@ -3838,6 +3969,7 @@ struct DebugInfo {
     file: usize,
     compile_unit: usize,
     empty: usize,
+    unsigned64_type: usize,
     int_type: usize,
     nat_type: usize,
     rational_type: usize,
@@ -3866,6 +3998,7 @@ struct DebugInfo {
     completed_type: usize,
     effect_type: usize,
     enum_types: BTreeMap<String, usize>,
+    modular_types: Vec<(CompilerModularType, usize)>,
     refined_types: Vec<(CompilerType, usize)>,
     tuple_types: Vec<(CompilerType, usize)>,
     record_types: Vec<(CompilerType, usize)>,
@@ -3890,6 +4023,7 @@ impl DebugInfo {
             file: 0,
             compile_unit: 0,
             empty: 0,
+            unsigned64_type: 0,
             int_type: 0,
             nat_type: 0,
             rational_type: 0,
@@ -3918,6 +4052,7 @@ impl DebugInfo {
             completed_type: 0,
             effect_type: 0,
             enum_types: BTreeMap::new(),
+            modular_types: Vec::new(),
             refined_types: Vec::new(),
             tuple_types: Vec::new(),
             record_types: Vec::new(),
@@ -3938,9 +4073,7 @@ impl DebugInfo {
             debug.empty,
             debug.empty
         ));
-        let unsigned64 =
-            debug.node("!DIBasicType(name: \"u64\", size: 64, encoding: DW_ATE_unsigned)".into());
-        debug.install_integer_types(unsigned64);
+        let unsigned64 = debug.install_base_integer_types();
         let numerator = debug.node(format!(
             "!DIDerivedType(tag: DW_TAG_member, name: \"numerator\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
             debug.file, debug.int_type
@@ -3975,6 +4108,14 @@ impl DebugInfo {
         ));
         debug.install_zero_data_types();
         debug
+    }
+
+    fn install_base_integer_types(&mut self) -> usize {
+        let unsigned64 =
+            self.node("!DIBasicType(name: \"u64\", size: 64, encoding: DW_ATE_unsigned)".into());
+        self.unsigned64_type = unsigned64;
+        self.install_integer_types(unsigned64);
+        unsigned64
     }
 
     fn install_zero_data_types(&mut self) {
@@ -4287,6 +4428,7 @@ impl DebugInfo {
             CompilerType::ErrorCode => self.error_code_type,
             CompilerType::ErrorDomain => self.error_domain_type,
             CompilerType::SourceLocation => self.source_location_type,
+            CompilerType::Modular(modular) => self.modular_type(modular),
             CompilerType::Enum(enumeration) => self.enum_type(enumeration),
             CompilerType::Character => self.character_type,
             CompilerType::String => self.string_type,
@@ -4346,6 +4488,39 @@ impl DebugInfo {
             CompilerType::Record(fields) => self.record_type(fields),
             CompilerType::Sum(sum) => self.sum_type(sum),
         }
+    }
+
+    fn modular_type(&mut self, modular: &CompilerModularType) -> usize {
+        if let Some((_, type_id)) = self
+            .modular_types
+            .iter()
+            .find(|(known, _)| known == modular)
+        {
+            return *type_id;
+        }
+        let negative = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"negative\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.unsigned64_type
+        ));
+        let length = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"length\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 64)",
+            self.file, self.unsigned64_type
+        ));
+        let members = self.node(format!("!{{!{negative}, !{length}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalModular.{}\", file: !{}, size: 128, align: 64, elements: !{members})",
+            llvm_string(&modular.name), self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"{}\", file: !{}, baseType: !{pointer})",
+            llvm_string(&modular.name),
+            self.file
+        ));
+        self.modular_types.push((modular.clone(), type_id));
+        type_id
     }
 
     fn refined_type(&mut self, constraint: &str, base: &CompilerType) -> usize {
@@ -4711,6 +4886,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         },
         CompilerType::Int
         | CompilerType::Nat
+        | CompilerType::Modular(_)
         | CompilerType::Rational
         | CompilerType::Error
         | CompilerType::ErrorDomain
@@ -4800,6 +4976,7 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         CompilerType::Boolean => "i1".into(),
         CompilerType::Int
         | CompilerType::Nat
+        | CompilerType::Modular(_)
         | CompilerType::Rational
         | CompilerType::Character
         | CompilerType::Error
@@ -4874,6 +5051,10 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         }
         CompilerType::Boolean => LlValue::Boolean(value),
         CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
+        CompilerType::Modular(modular) => LlValue::Modular {
+            value,
+            modular: modular.clone(),
+        },
         CompilerType::Rational => LlValue::Rational(value),
         CompilerType::Comparison => LlValue::Comparison(value),
         CompilerType::Error => LlValue::Error(value),
@@ -6234,5 +6415,20 @@ mod tests {
         assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalVariant.Scalar\""));
         assert!(llvm.contains("DIEnumerator(name: \"Move\", value: 1)"));
         assert!(llvm.contains("DIEnumerator(name: \"at 0\", value: 0)"));
+    }
+
+    #[test]
+    fn emits_modular_values_as_nominal_int_backed_private_values() {
+        // TOPAL-COMPILER-MODULAR-001, TOPAL-NUM-MODULAR-ARITHMETIC-001
+        let source = "use language (version is v0.1)\nByteCounter is ModNat (0 ..= 255)\nretain is fn (value : ByteCounter) -> ByteCounter\n  value\nstart is ByteCounter 255\nresult is (retain start) + (ByteCounter 1)\nresult\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/modular-values.t").emit();
+        assert!(llvm.contains("define internal fastcc ptr @topal.fn.retain"));
+        assert!(llvm.contains("call fastcc ptr @topal.fn.retain"));
+        assert!(llvm.contains("call ptr @topal.runtime.int.add("));
+        assert!(llvm.contains("call ptr @topal.runtime.int.subtract("));
+        assert!(llvm.contains("call ptr @topal.runtime.int.modulo("));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalModular.ByteCounter\""));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"ByteCounter\""));
     }
 }

@@ -97,6 +97,32 @@ change the Nat identity of a source binding in debug information. An admitted
 same-classifier positional product MAY recursively use this Nat equality as
 field evidence under `TOPAL-COMPILER-TUPLE-EQUALITY-001`.
 
+### TOPAL-COMPILER-MODULAR-001 — Nominal modular-number lowering
+
+Each admitted root-scope `ModNat` or `ModInt` declaration SHALL retain its
+nominal identity and finite inclusive canonical range. Checked construction
+SHALL admit an `Int` only when compile-time evidence proves it is in range;
+until dynamic Result-producing construction is implemented, an unproved
+construction SHALL be rejected rather than wrapped, truncated, or trapped.
+Explicit `value modulo Type` construction SHALL reduce any admitted Int to the
+unique canonical representative.
+
+Addition, subtraction, multiplication, and negation over two values of the
+same modular type SHALL perform the corresponding exact unbounded Int
+operation and then reduce the result into that type's canonical range.
+Equality, ordering, and three-way comparison SHALL compare canonical
+representatives and SHALL reject operands of different nominal types. These
+semantics are mandatory at `-O0` and SHALL NOT depend on machine-integer
+overflow or an LLVM optimization.
+
+The private representation MAY reuse the canonical arbitrary-precision Int
+pointer, while checked IR, display, DWARF, and GDB SHALL preserve the modular
+type's nominal identity. Private definitions, calls, returns, and joins SHALL
+use one exact opaque-pointer signature and leave physical AMD64 lowering to
+LLVM. This representation SHALL NOT define a foreign or public numeric ABI,
+serialization layout, or compiled-library metadata identity and SHALL add no
+foreign runtime, other-language standard library, or native-ABI revision.
+
 ### TOPAL-COMPILER-RANGE-001 — Finite exact ranges
 
 Every admitted finite explicitly bounded `Range Int` and `Range Rational`

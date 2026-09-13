@@ -4864,6 +4864,26 @@
       "cpu_time_ns": 3889240,
       "memory_peak_bytes": 18292736,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_modular_values_as_nominal_int_backed_private_values": {
+      "cpu_time_ns": 4501199,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::modular_values_are_private_freestanding_and_debuggable": {
+      "cpu_time_ns": 325832020,
+      "memory_peak_bytes": 57479168,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_nominal_modular_construction_reduction_and_arithmetic": {
+      "cpu_time_ns": 3089639,
+      "memory_peak_bytes": 18378752,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_invalid_or_unproven_modular_construction": {
+      "cpu_time_ns": 2975799,
+      "memory_peak_bytes": 18358272,
+      "samples_per_test": 50
     }
   }
 }
