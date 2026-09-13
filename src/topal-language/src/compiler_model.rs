@@ -426,6 +426,13 @@ struct BindingFacts {
     rational_value: Option<BigRational>,
     string_value: Option<String>,
     record_fields: BTreeMap<String, StaticValueFacts>,
+    namespace: Option<CompilerNamespaceFacts>,
+}
+
+#[derive(Clone)]
+struct CompilerNamespaceFacts {
+    name: String,
+    functions: BTreeMap<String, Vec<FunctionSource>>,
 }
 
 #[derive(Clone, Default)]
@@ -902,6 +909,8 @@ impl Analyzer {
                     }
                     let string_value = Self::known_string_value(&value, environment);
                     let record_fields = Self::known_record_fields(&value, environment);
+                    let namespace =
+                        self.known_namespace(&value, environment, initializer.span().start, kind)?;
                     environment.insert(
                         name_text.clone(),
                         BindingFacts {
@@ -910,6 +919,7 @@ impl Analyzer {
                             rational_value: value.rational_value.clone(),
                             string_value,
                             record_fields,
+                            namespace,
                         },
                     );
                     declared.insert(name_text.clone());
@@ -1216,6 +1226,33 @@ impl Analyzer {
                 return self.analyze_resolved_call(remaining, span, environment, 0, &member_name);
             }
             return Err(unsupported(&self.source, *member, "qualified root member"));
+        }
+        if let Some((Expression::Identifier(alias), remaining)) = items.split_first()
+            && let Some(namespace) = environment
+                .get(self.source.slice(*alias))
+                .and_then(|facts| facts.namespace.as_ref())
+            && let Some(Expression::Identifier(member)) = remaining.first()
+        {
+            let member_name = self.source.slice(*member).to_owned();
+            if let Some(declarations) = namespace.functions.get(&member_name) {
+                return self.analyze_resolved_call_from(
+                    remaining,
+                    span,
+                    environment,
+                    0,
+                    &member_name,
+                    declarations,
+                );
+            }
+            return Err(source_diagnostic(
+                &self.source,
+                "E-COMPILER-UNSUPPORTED",
+                *member,
+                format!(
+                    "compiler increment cannot resolve member `{member_name}` from namespace `{}`",
+                    namespace.name
+                ),
+            ));
         }
         if items.len() > 1
             && items
@@ -2179,6 +2216,52 @@ impl Analyzer {
                     .map_or_else(BTreeMap::new, |facts| facts.record_fields)
             }
             _ => BTreeMap::new(),
+        }
+    }
+
+    fn known_namespace(
+        &self,
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+        capture_position: usize,
+        kind: BlockKind,
+    ) -> Result<Option<CompilerNamespaceFacts>, Diagnostic> {
+        if value.value_type != CompilerType::Scope {
+            return Ok(None);
+        }
+        if kind != BlockKind::TopLevel {
+            return Err(unsupported(
+                &self.source,
+                value.span,
+                "non-root namespace alias binding",
+            ));
+        }
+        match &value.kind {
+            CompilerExpressionKind::Root => Ok(Some(CompilerNamespaceFacts {
+                name: "root".into(),
+                functions: self
+                    .functions
+                    .iter()
+                    .filter_map(|(name, declarations)| {
+                        let visible = declarations
+                            .iter()
+                            .filter(|declaration| declaration.span.end <= capture_position)
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        (!visible.is_empty()).then(|| (name.clone(), visible))
+                    })
+                    .collect(),
+            })),
+            CompilerExpressionKind::Local(name) => environment
+                .get(name)
+                .and_then(|facts| facts.namespace.clone())
+                .map(Some)
+                .ok_or_else(|| unsupported(&self.source, value.span, "opaque Scope alias")),
+            _ => Err(unsupported(
+                &self.source,
+                value.span,
+                "computed Scope alias",
+            )),
         }
     }
 
@@ -3175,6 +3258,25 @@ impl Analyzer {
             .get(function_name)
             .expect("selected overload set exists")
             .clone();
+        self.analyze_resolved_call_from(
+            items,
+            span,
+            environment,
+            function_index,
+            function_name,
+            &declarations,
+        )
+    }
+
+    fn analyze_resolved_call_from(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_index: usize,
+        function_name: &str,
+        declarations: &[FunctionSource],
+    ) -> Result<CompilerExpression, Diagnostic> {
         let argument_sources = items
             .iter()
             .enumerate()
@@ -3376,6 +3478,7 @@ impl Analyzer {
                             .then(|| exact_string(argument))
                             .flatten(),
                         record_fields: BTreeMap::new(),
+                        namespace: None,
                     },
                 );
             }
@@ -4406,6 +4509,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "Completed" => Some(CompilerType::Completed),
         "Effect" => Some(CompilerType::Effect),
         "Type" => Some(CompilerType::Type),
+        "Scope" => Some(CompilerType::Scope),
         "Boolean" => Some(CompilerType::Boolean),
         "Int" => Some(CompilerType::Int),
         "Nat" => Some(CompilerType::Nat),
@@ -4541,6 +4645,7 @@ fn decision_binding_environment(
             rational_value: None,
             string_value: None,
             record_fields: BTreeMap::new(),
+            namespace: None,
         },
     );
     branch
@@ -6380,6 +6485,74 @@ mod tests {
         ] {
             assert_eq!(analyze_for_compiler(source).unwrap_err().code, expected);
         }
+    }
+
+    #[test]
+    fn models_function_namespace_aliases_chains_and_snapshots() {
+        // TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001,
+        // TOPAL-NAMESPACE-ALIAS-001, TOPAL-NAMESPACE-SNAPSHOT-001,
+        // TOPAL-NAMESPACE-OVERLOAD-001, TOPAL-NAMESPACE-CLASSIFIER-001,
+        // TOPAL-NAMESPACE-ALIAS-CHAIN-001
+        let alias =
+            analyze_for_compiler(include_str!("../../../examples/language/namespace-alias.t"))
+                .unwrap();
+        assert!(matches!(
+            alias.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::Root,
+                    value_type: CompilerType::Scope,
+                    ..
+                },
+                ..
+            })]
+        ));
+        assert!(matches!(
+            alias.main.result.kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+
+        let overloads = analyze_for_compiler(include_str!(
+            "../../../examples/language/namespace-overloads.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(values) = &overloads.main.result.kind else {
+            panic!("expected qualified overload result product")
+        };
+        assert_eq!(values.len(), 2);
+        assert!(
+            values
+                .iter()
+                .all(|value| matches!(value.kind, CompilerExpressionKind::Call { .. }))
+        );
+
+        let chained = analyze_for_compiler(
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nfirst is root\nsecond : Scope is first\nsecond increment 41\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&chained.main.result), Some(BigInt::from(42)));
+
+        let shadowed = analyze_for_compiler(
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\napi is root\n{\n  increment is 100\n  api increment 41\n}\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&shadowed.main.result), Some(BigInt::from(42)));
+
+        let snapshot = analyze_for_compiler(
+            "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\napi is root\nidentity is fn (value : String) -> String\n  value\n(api identity 42, root identity \"Topal\")\n",
+        )
+        .unwrap();
+        let CompilerExpressionKind::Tuple(values) = &snapshot.main.result.kind else {
+            panic!("expected snapshot and live-root result product")
+        };
+        assert_eq!(values[0].value_type, CompilerType::Int);
+        assert_eq!(values[1].value_type, CompilerType::String);
+
+        let rejected = analyze_for_compiler(
+            "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\napi is root\nidentity is fn (value : String) -> String\n  value\napi identity \"Topal\"\n",
+        )
+        .unwrap_err();
+        assert_eq!(rejected.code, "E-NO-APPLICABLE-OVERLOAD");
     }
 
     #[test]

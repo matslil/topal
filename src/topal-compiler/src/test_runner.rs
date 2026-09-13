@@ -65,6 +65,8 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/nat-mutual-increasing-recursion.t",
     "examples/language/nat-mutual-recursion.t",
     "examples/language/nat-recursion.t",
+    "examples/language/namespace-alias.t",
+    "examples/language/namespace-overloads.t",
     "examples/language/ordinary-functions.t",
     "examples/language/optional-rational-values.t",
     "examples/language/optional-values.t",

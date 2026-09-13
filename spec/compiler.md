@@ -205,6 +205,31 @@ lookup, `use`, published interfaces, generators, package loading, and
 compiled-library resolution remain outside this increment and SHALL be rejected
 rather than reinterpreted as direct-root function qualification.
 
+### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
+
+At source root, binding the live `root` Scope value or an already admitted
+namespace alias SHALL produce an immutable compiler-known namespace snapshot.
+The snapshot SHALL retain the namespace identity and every ordinary and static
+function declaration visible at the binding statement, including each
+source-ordered overload set. A later declaration SHALL remain visible through a
+later live `root` selection but SHALL NOT enter an earlier alias. A finite alias
+chain SHALL retain the original captured function set, and an explicit `Scope`
+classifier SHALL preserve rather than erase that information.
+
+An application `alias member operands` SHALL resolve `member` only in the
+captured function set before applying the ordinary checked overload rules. A
+same-named caller binding SHALL NOT intercept or join that selection. The
+selected call SHALL lower to the existing private direct LLVM function call.
+The alias value MAY reuse the sealed private root tag for canonical display and
+DWARF/GDB observation; captured declarations SHALL remain frontend metadata and
+SHALL NOT cause a runtime lookup table, function pointer dispatch, Scope object
+allocation, foreign dependency, C/C++ runtime, other-language standard library,
+public ABI, or native ABI revision.
+
+Root and alias data members, generator members, aliases outside source root,
+general Scope function boundaries, `use`, packages, and source or compiled
+libraries remain outside this increment and SHALL be rejected.
+
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 
 The compiler SHALL admit a direct unary decreasing `Int` recursion edge only

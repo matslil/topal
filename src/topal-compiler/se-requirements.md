@@ -253,6 +253,34 @@ covers the direct-value and qualified-function subset of
 `TOPAL-NAMESPACE-ROOT-001` and realizes
 `TOPAL-COMPILER-ROOT-NAMESPACE-001` for compiler increment 6a.
 
+## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
+
+For the admitted source-root subset, the checked compiler model shall retain an
+immutable namespace snapshot when `root` or an existing alias is bound, with or
+without an explicit `Scope` classifier. The snapshot shall preserve the root
+identity, function declarations visible at the binding statement, complete
+source-ordered overload sets, ordinary/static distinction, and the same facts
+through a finite alias chain. Later declarations shall remain absent from an
+earlier snapshot, and same-named caller bindings shall not intercept or combine
+with qualified member selection.
+
+Qualified function applications shall select from those captured declarations
+and lower to the existing direct private LLVM call. The Scope value shall keep
+its canonical display and target-exact DWARF enum identity, while captured
+declarations remain checked frontend facts rather than runtime data. Native and
+GDB tests shall cover alias observation, typed aliases, chaining, overload
+selection, snapshot exclusion, exact output, and retained source call frames.
+
+The implementation shall introduce no runtime namespace lookup, indirect call,
+Scope allocation, foreign dependency, C/C++ runtime, other-language standard
+library, public ABI, or `topal-native/6` revision. Data and generator members,
+non-root alias bindings, general Scope function boundaries, `use`, packages,
+and source/compiled libraries remain rejected. This requirement covers the
+function-bearing subset of `TOPAL-NAMESPACE-ALIAS-001`,
+`TOPAL-NAMESPACE-SNAPSHOT-001`, `TOPAL-NAMESPACE-OVERLOAD-001`,
+`TOPAL-NAMESPACE-CLASSIFIER-001`, and `TOPAL-NAMESPACE-ALIAS-CHAIN-001`, and
+realizes `TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001` for increment 6b1.
+
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 
 The checked compiler model shall reuse the shared structural proof for

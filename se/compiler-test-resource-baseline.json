@@ -1006,6 +1006,26 @@
       "cpu_time_ns": 146588,
       "memory_peak_bytes": 18624512,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/namespace-alias.t": {
+      "cpu_time_ns": 121905580,
+      "memory_peak_bytes": 41684992,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/namespace-overloads.t": {
+      "cpu_time_ns": 122425120,
+      "memory_peak_bytes": 41607168,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/namespace-alias.t": {
+      "cpu_time_ns": 146351,
+      "memory_peak_bytes": 18477056,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/namespace-overloads.t": {
+      "cpu_time_ns": 150254,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 500
     }
   }
 }
