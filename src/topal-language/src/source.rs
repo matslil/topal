@@ -820,7 +820,11 @@ struct GeneratorDeclaration<'a> {
     span: Span,
 }
 
-fn expression_mentions_name(source: &SourceText, expression: &Expression, name: &str) -> bool {
+pub(crate) fn expression_mentions_name(
+    source: &SourceText,
+    expression: &Expression,
+    name: &str,
+) -> bool {
     match expression {
         Expression::Identifier(span) | Expression::ContextIdentifier(span) => {
             source.slice(*span) == name

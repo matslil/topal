@@ -325,6 +325,34 @@ Function results, Function values embedded in aggregate boundaries, anonymous
 functions/captures, remaining symbolic callables, and published callable
 interfaces remain outside this increment and SHALL be rejected.
 
+### TOPAL-COMPILER-ANONYMOUS-DIRECT-001 — Private direct anonymous functions
+
+An inferred anonymous function containing only binding parameter patterns and
+no lexical data captures SHALL be retained as a checked Function value with its
+source body, parameter arity, and construction identity. It MAY be bound before
+application or supplied directly to a private parameter classified as
+`Function`. A unary application SHALL infer its one parameter classifier from
+the direct operand. A multi-parameter application SHALL require one positional
+product of the same arity, evaluate its fields left-to-right, and infer the
+corresponding parameter classifiers in source order. The body result classifier
+SHALL be inferred after those parameter bindings are established. Mixed
+symbolic applications in the body SHALL retain the language's left-to-right,
+no-hidden-precedence grouping.
+
+Each admitted application SHALL produce a private specialized LLVM function
+with an exact `fastcc` signature and a direct call. The compiler MAY use a
+deterministic module-private Function tag for canonical `<anonymous fn/N>`
+display and truthful DWARF/GDB bindings, but the tag SHALL NOT dispatch the
+call. DWARF SHALL expose the anonymous source frame and inferred source
+parameters. No function pointer, indirect call, closure allocation, closure or
+Function runtime, foreign dependency, C/C++ runtime, other-language standard
+library, public callable ABI, or native ABI revision is permitted.
+
+Lexical data captures, anonymous product parameter patterns, escaping closure
+storage, Function results or aggregate Function boundaries, and published
+callable interfaces remain outside this increment and SHALL be rejected rather
+than referencing storage from another call frame.
+
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 
 The compiler SHALL admit a direct unary decreasing `Int` recursion edge only

@@ -387,6 +387,38 @@ realizes `TOPAL-COMPILER-FUNCTION-PARAMETER-001` and the admitted boundary
 portion of `TOPAL-FUNCTION-CALLABLE-VALUE-001`, `TOPAL-FUNCTION-VALUE-001`, and
 `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5l.
 
+## TOPAL-COMP-ANONYMOUS-DIRECT-001 — Private direct anonymous functions
+
+The checked compiler model shall retain an inferred anonymous function with
+binding-only parameter patterns as a Function value carrying its source body,
+arity, construction identity, and the lexical bindings it would capture. A
+non-capturing value shall be applicable after binding or when supplied directly
+to an admitted private `Function` parameter. The call site shall infer a unary
+parameter from its direct operand or multiple parameters from one exact-arity
+positional product, preserving left-to-right evaluation. Body analysis shall
+bind those inferred classifiers before inferring its result and shall preserve
+left-to-right, no-hidden-precedence symbolic application semantics.
+
+Each application shall specialize one private anonymous `fastcc` function and
+emit a direct call. A deterministic module-private Function observation tag
+shall provide canonical `<anonymous fn/N>` display and Function DWARF identity
+without controlling the call. Full O0 debugging shall expose each anonymous
+source frame and inferred parameter names and values. Native tests shall cover
+unary and product invocation, exact output, contextual Function-parameter use,
+left-associative mixed symbolic application, invalid arity, display, source
+frames, private direct IR, and freestanding artifact properties.
+
+The compiler shall reject lexical data captures and anonymous product parameter
+patterns until an explicit cross-frame capture representation exists. This
+increment shall add no function pointer, indirect call, closure allocation,
+closure or Function runtime, foreign dependency, C/C++ runtime, other-language
+standard library, public callable ABI, or `topal-native/6` revision. Escaping
+closures, Function results and aggregate boundaries, and published callable
+interfaces remain rejected. This realizes
+`TOPAL-COMPILER-ANONYMOUS-DIRECT-001` and the admitted portion of
+`TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-SYN-GRAMMAR-001`, and
+`TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5m.
+
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 
 The checked compiler model shall reuse the shared structural proof for
