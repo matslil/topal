@@ -955,11 +955,36 @@ Generated code MAY represent each retained identity with a deterministic
 module-private `i32` tag. Canonical display and DWARF/GDB SHALL use
 `<Constraint Name>`. The tag SHALL NOT dispatch or stand in for the retained
 predicate, and it SHALL NOT be a public ABI or compiled-library metadata key.
-Constraint application/evidence, captured predicates, function or aggregate
-boundaries, and public identities SHALL remain rejected until their semantic
-metadata and environment representation are implemented. This increment SHALL
-introduce no constraint runtime, allocation, foreign dependency, C/C++ runtime,
-other-language standard library, or native ABI revision.
+Constraint application/evidence, captured predicates, function or
+persistent/public aggregate machine boundaries, and public identities SHALL
+remain rejected until their semantic metadata and environment representation
+are implemented. This increment SHALL introduce no constraint runtime,
+allocation, foreign dependency, C/C++ runtime, other-language standard library,
+or native ABI revision.
+
+### TOPAL-COMPILER-CONSTRAINT-VALIDATE-001 — Int constraint validation
+
+Applying an admitted named Int constraint to a closed exact operand SHALL
+evaluate its retained checked predicate during frontend analysis. Acceptance
+SHALL retain a distinct refined classifier over the unchanged Int machine
+value; rejection SHALL diagnose `E-CONSTRAINT-REJECTED`. Equality, ordering,
+and arithmetic over an admitted refined value SHALL explicitly forget the
+evidence and use exactly the canonical Int operations.
+
+Applying the same constraint to an unknown Int SHALL evaluate the predicate
+exactly once in generated code. It SHALL return the existing
+`Result (Int, lang arithmetic ArithmeticErrorCode)` representation: success
+contains the unchanged operand and failure contains `out-of-range` in domain
+`root.Name(Int)` with source provenance. This behavior SHALL remain mandatory
+at O0 and SHALL not depend on an LLVM optimization.
+
+The refined source classifier SHALL be present in DWARF while using the exact
+base pointer representation. Constraint application SHALL introduce no second
+numeric value, predicate dispatcher, constraint runtime, foreign dependency,
+C/C++ runtime, other-language standard library, public evidence ABI, or native
+ABI revision. Other bases, captured or dependent predicates, evidence across
+function or persistent/public aggregate machine boundaries, and dynamically
+selected constraint identities remain outside this increment.
 
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 

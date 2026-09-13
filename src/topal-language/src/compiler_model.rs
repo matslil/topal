@@ -50,6 +50,7 @@ pub enum CompilerType {
     Range(Box<Self>),
     Result(Box<Self>),
     Optional(Box<Self>),
+    Refined { constraint: String, base: Box<Self> },
     Character,
     String,
     Tuple(Vec<Self>),
@@ -82,7 +83,7 @@ impl CompilerType {
                 | Self::Optional(_)
                 | Self::Character
                 | Self::String
-        )
+        ) || matches!(self, Self::Refined { base, .. } if base.machine_scalar())
     }
 
     #[must_use]
@@ -110,6 +111,7 @@ impl CompilerType {
                 success.name()
             ),
             Self::Optional(payload) => format!("Optional {}", payload.name()),
+            Self::Refined { constraint, .. } => constraint.clone(),
             Self::Character => "Character".into(),
             Self::String => "String".into(),
             Self::Tuple(fields) => format!(
@@ -208,6 +210,7 @@ pub enum CompilerFallible {
 pub enum CompilerValidation {
     RationalToInt,
     IntToNat,
+    Constraint(u32),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -389,6 +392,7 @@ pub struct CompilerConstraint {
     pub name: String,
     pub base_type: CompilerType,
     pub parameter: String,
+    pub parameter_storage: String,
     pub predicate: CompilerExpression,
     pub span: Span,
 }
@@ -913,6 +917,17 @@ impl Analyzer {
             && declaration.end <= span.start
         {
             return Ok(CompilerType::Enum(enumeration.clone()));
+        }
+        if let Some(tag) = self.constraint_bindings.get(&classifier)
+            && let Some(constraint) = self
+                .constraints
+                .get(usize::try_from(*tag).expect("u32 tag fits usize"))
+            && constraint.span.end <= span.start
+        {
+            return Ok(CompilerType::Refined {
+                constraint: classifier,
+                base: Box::new(constraint.base_type.clone()),
+            });
         }
         parse_compact_classifier(&classifier)
             .ok_or_else(|| unsupported(&self.source, span, "classifier"))
@@ -1597,7 +1612,7 @@ impl Analyzer {
         predicate_environment.insert(
             parameter_name.clone(),
             BindingFacts {
-                storage_name,
+                storage_name: storage_name.clone(),
                 value_type: base_type.clone(),
                 int_range: None,
                 rational_value: None,
@@ -1624,6 +1639,7 @@ impl Analyzer {
             name: name.to_owned(),
             base_type,
             parameter: parameter_name,
+            parameter_storage: storage_name,
             predicate,
             span,
         });
@@ -1634,6 +1650,69 @@ impl Analyzer {
             rational_value: None,
             span,
         })
+    }
+
+    fn analyze_constraint_application(
+        &mut self,
+        tag: u32,
+        operand: &Expression,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let constraint =
+            self.constraints[usize::try_from(tag).expect("u32 tag fits usize")].clone();
+        if constraint.base_type != CompilerType::Int {
+            return Err(unsupported(
+                &self.source,
+                operand.span(),
+                "native constraint application base classifier",
+            ));
+        }
+        let mut value = self.analyze_expression(operand, environment)?;
+        if matches!(value.value_type, CompilerType::Refined { .. }) {
+            value = forget_refined_evidence(value);
+        }
+        require_same_type(
+            &self.source,
+            operand.span(),
+            &constraint.base_type,
+            &value.value_type,
+        )?;
+        if compiler_expression_is_closed(&value) {
+            let accepted = known_constraint_predicate(
+                &constraint.predicate,
+                &constraint.parameter_storage,
+                &value,
+            )
+            .ok_or_else(|| {
+                unsupported(
+                    &self.source,
+                    constraint.predicate.span,
+                    "closed constraint predicate evaluation",
+                )
+            })?;
+            if !accepted {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-CONSTRAINT-REJECTED",
+                    operand.span(),
+                    format!("value does not satisfy constraint `{}`", constraint.name),
+                ));
+            }
+            value.value_type = CompilerType::Refined {
+                constraint: constraint.name,
+                base: Box::new(constraint.base_type),
+            };
+            value.span = span;
+            return Ok(value);
+        }
+        Ok(Self::finish_validation(
+            CompilerValidation::Constraint(tag),
+            value,
+            constraint.base_type,
+            span,
+            operand.span(),
+        ))
     }
 
     #[allow(clippy::too_many_lines)] // Root operations are admitted explicitly and in source-selection order.
@@ -1721,6 +1800,18 @@ impl Analyzer {
                     environment,
                 ),
             };
+        }
+        if let [Expression::Identifier(name), operand] = items
+            && let Some(tag) = self
+                .constraint_bindings
+                .get(self.source.slice(*name))
+                .copied()
+            && self.constraints[usize::try_from(tag).expect("u32 tag fits usize")]
+                .span
+                .end
+                <= name.start
+        {
+            return self.analyze_constraint_application(tag, operand, span, environment);
         }
         if items.len() > 1
             && items
@@ -3365,6 +3456,12 @@ impl Analyzer {
         };
         let mut left_value = self.analyze_expression(left, environment)?;
         let mut right_value = self.analyze_expression(right, environment)?;
+        if matches!(left_value.value_type, CompilerType::Refined { .. }) {
+            left_value = forget_refined_evidence(left_value);
+        }
+        if matches!(right_value.value_type, CompilerType::Refined { .. }) {
+            right_value = forget_refined_evidence(right_value);
+        }
 
         if is_range_construction(operation) {
             require_exact_numeric(&self.source, left_value.span, &left_value.value_type)?;
@@ -5747,7 +5844,10 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
 fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
     if matches!(
         value_type,
-        CompilerType::Scope | CompilerType::Function | CompilerType::Constraint
+        CompilerType::Scope
+            | CompilerType::Function
+            | CompilerType::Constraint
+            | CompilerType::Refined { .. }
     ) {
         return false;
     }
@@ -5841,6 +5941,127 @@ fn is_exact_numeric(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Int | CompilerType::Rational)
 }
 
+fn forget_refined_evidence(mut expression: CompilerExpression) -> CompilerExpression {
+    let CompilerType::Refined { base, .. } = expression.value_type else {
+        return expression;
+    };
+    expression.value_type = *base;
+    expression
+}
+
+fn known_constraint_predicate(
+    predicate: &CompilerExpression,
+    parameter_storage: &str,
+    argument: &CompilerExpression,
+) -> Option<bool> {
+    match &predicate.kind {
+        CompilerExpressionKind::Boolean(value) => Some(*value),
+        CompilerExpressionKind::Not(value) => Some(!known_constraint_predicate(
+            value,
+            parameter_storage,
+            argument,
+        )?),
+        CompilerExpressionKind::Binary {
+            operation: CompilerBinary::And,
+            left,
+            right,
+        } => Some(
+            known_constraint_predicate(left, parameter_storage, argument)?
+                & known_constraint_predicate(right, parameter_storage, argument)?,
+        ),
+        CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Or,
+            left,
+            right,
+        } => Some(
+            known_constraint_predicate(left, parameter_storage, argument)?
+                | known_constraint_predicate(right, parameter_storage, argument)?,
+        ),
+        CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Xor,
+            left,
+            right,
+        } => Some(
+            known_constraint_predicate(left, parameter_storage, argument)?
+                ^ known_constraint_predicate(right, parameter_storage, argument)?,
+        ),
+        CompilerExpressionKind::Binary {
+            operation,
+            left,
+            right,
+        } if matches!(
+            operation,
+            CompilerBinary::Equal
+                | CompilerBinary::NotEqual
+                | CompilerBinary::Less
+                | CompilerBinary::Greater
+                | CompilerBinary::LessEqual
+                | CompilerBinary::GreaterEqual
+        ) =>
+        {
+            let left = known_constraint_numeric(left, parameter_storage, argument)?;
+            let right = known_constraint_numeric(right, parameter_storage, argument)?;
+            Some(match operation {
+                CompilerBinary::Equal => left == right,
+                CompilerBinary::NotEqual => left != right,
+                CompilerBinary::Less => left < right,
+                CompilerBinary::Greater => left > right,
+                CompilerBinary::LessEqual => left <= right,
+                CompilerBinary::GreaterEqual => left >= right,
+                _ => unreachable!("guard selected a Boolean comparison"),
+            })
+        }
+        _ => None,
+    }
+}
+
+fn known_constraint_numeric(
+    expression: &CompilerExpression,
+    parameter_storage: &str,
+    argument: &CompilerExpression,
+) -> Option<BigRational> {
+    match &expression.kind {
+        CompilerExpressionKind::Local(name) if name == parameter_storage => argument
+            .rational_value
+            .clone()
+            .or_else(|| exact_int(argument).map(BigRational::from_integer)),
+        CompilerExpressionKind::Int(value) => Some(BigRational::from_integer(value.clone())),
+        CompilerExpressionKind::Rational(value) => Some(value.clone()),
+        CompilerExpressionKind::Negate(value) => Some(-known_constraint_numeric(
+            value,
+            parameter_storage,
+            argument,
+        )?),
+        CompilerExpressionKind::Absolute(value) => Some(rational_absolute(
+            &known_constraint_numeric(value, parameter_storage, argument)?,
+        )),
+        CompilerExpressionKind::IntToRational(value)
+        | CompilerExpressionKind::RationalToInt(value)
+        | CompilerExpressionKind::IntToNat(value) => {
+            known_constraint_numeric(value, parameter_storage, argument)
+        }
+        CompilerExpressionKind::Binary {
+            operation,
+            left,
+            right,
+        } if matches!(
+            operation,
+            CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply
+        ) =>
+        {
+            let left = known_constraint_numeric(left, parameter_storage, argument)?;
+            let right = known_constraint_numeric(right, parameter_storage, argument)?;
+            Some(match operation {
+                CompilerBinary::Add => left + right,
+                CompilerBinary::Subtract => left - right,
+                CompilerBinary::Multiply => left * right,
+                _ => unreachable!("guard selected exact arithmetic"),
+            })
+        }
+        _ => None,
+    }
+}
+
 fn is_exact_comparable(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -5880,6 +6101,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         CompilerType::Record(fields) => fields
             .iter()
             .all(|(_, value_type)| compiler_equality_supported(value_type)),
+        CompilerType::Refined { base, .. } => compiler_equality_supported(base),
         CompilerType::Scope
         | CompilerType::Function
         | CompilerType::Constraint
@@ -7677,6 +7899,65 @@ mod tests {
             error
                 .message
                 .contains("captured constraint predicate value")
+        );
+    }
+
+    #[test]
+    fn models_named_constraint_validation_and_refined_base_operations() {
+        // TOPAL-TYPE-CONSTRAINT-001, TOPAL-TYPE-CONSTRAINT-VALIDATE-001,
+        // TOPAL-COMPILER-CONSTRAINT-VALIDATE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/constraints-and-derived-capabilities.t"
+        ))
+        .unwrap();
+        let refined = CompilerType::Refined {
+            constraint: "Positive".into(),
+            base: Box::new(CompilerType::Int),
+        };
+        for statement in &program.main.statements[1..=2] {
+            let CompilerStatement::Binding(binding) = statement else {
+                panic!("expected a refined binding")
+            };
+            assert_eq!(binding.value.value_type, refined);
+            assert!(matches!(binding.value.kind, CompilerExpressionKind::Int(_)));
+        }
+        let validate = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "validate")
+            .unwrap();
+        assert_eq!(
+            validate.result_type,
+            CompilerType::Result(Box::new(CompilerType::Int))
+        );
+        assert!(matches!(
+            validate.body.result.kind,
+            CompilerExpressionKind::Validate {
+                operation: CompilerValidation::Constraint(0),
+                ..
+            }
+        ));
+        let CompilerExpressionKind::Tuple(observations) = &program.main.result.kind else {
+            panic!("expected constraint observations")
+        };
+        assert_eq!(observations[0].value_type, refined);
+        assert_eq!(observations[1].value_type, CompilerType::Boolean);
+        assert_eq!(observations[2].value_type, CompilerType::Boolean);
+        assert_eq!(observations[3].value_type, CompilerType::Int);
+        assert_eq!(
+            observations[4].value_type,
+            CompilerType::Result(Box::new(CompilerType::Int))
+        );
+
+        let rejected = "use language (version is v0.1)\nPositive is Int constraint { value } value > 0\nPositive 0\n";
+        assert_eq!(
+            analyze_for_compiler(rejected).unwrap_err().code,
+            "E-CONSTRAINT-REJECTED"
+        );
+        let wrong_base = "use language (version is v0.1)\nPositive is Int constraint { value } value > 0\nPositive \"one\"\n";
+        assert_eq!(
+            analyze_for_compiler(wrong_base).unwrap_err().code,
+            "E-TYPE-MISMATCH"
         );
     }
 

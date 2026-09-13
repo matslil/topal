@@ -39,6 +39,7 @@ fn block_uses_extended_debug(block: &CompilerBlock) -> bool {
 
 fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
     match value_type {
+        CompilerType::Refined { base, .. } => type_uses_extended_debug(base),
         CompilerType::Character
         | CompilerType::String
         | CompilerType::Error
@@ -593,7 +594,27 @@ impl<'a> Generator<'a> {
             match statement {
                 CompilerStatement::Binding(binding) => {
                     let value = self.emit_expression(&binding.value, body, environment);
-                    if binding.value.value_type.machine_scalar() {
+                    if let CompilerType::Refined { base, .. } = &binding.value.value_type {
+                        let variable = self.debug.local(
+                            &binding.name,
+                            binding.span,
+                            &binding.value.value_type,
+                            body.subprogram,
+                        );
+                        let location = self.debug.location(binding.span, body.subprogram);
+                        let machine_value = match base.as_ref() {
+                            CompilerType::Int => value.integer(),
+                            _ => unreachable!("checked refined debug base is supported"),
+                        };
+                        self.emit_aggregate_debug_shadow(
+                            machine_value,
+                            &binding.value.value_type,
+                            variable,
+                            location,
+                            body,
+                            binding.span,
+                        );
+                    } else if binding.value.value_type.machine_scalar() {
                         let variable = self.debug.local(
                             &binding.name,
                             binding.span,
@@ -1124,7 +1145,9 @@ impl<'a> Generator<'a> {
                         ),
                         enumeration: root_scope_enumeration(),
                     },
-                    CompilerType::Function | CompilerType::Constraint => {
+                    CompilerType::Function
+                    | CompilerType::Constraint
+                    | CompilerType::Refined { .. } => {
                         unreachable!("checked functions do not return this static object kind")
                     }
                     CompilerType::Boolean => LlValue::Boolean(body.instruction(
@@ -1565,6 +1588,16 @@ impl<'a> Generator<'a> {
         environment: &BTreeMap<String, LlValue>,
         span: Span,
     ) -> LlValue {
+        if let CompilerValidation::Constraint(tag) = operation {
+            return self.emit_constraint_validation(
+                tag,
+                value,
+                error_span,
+                body,
+                environment,
+                span,
+            );
+        }
         let value = self.emit_expression(value, body, environment);
         let (runtime, domain, success, value) = match operation {
             CompilerValidation::RationalToInt => (
@@ -1579,6 +1612,9 @@ impl<'a> Generator<'a> {
                 CompilerType::Nat,
                 value.integer(),
             ),
+            CompilerValidation::Constraint(_) => {
+                unreachable!("Constraint validation was lowered above")
+            }
         };
         let domain_global = self.emit_string_value(domain, body, span);
         let source_global = self.emit_string_value(self.source_name, body, span);
@@ -1593,6 +1629,74 @@ impl<'a> Generator<'a> {
                 &mut self.debug,
             ),
             success,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)] // Predicate environment and Error provenance stay explicit.
+    fn emit_constraint_validation(
+        &mut self,
+        tag: u32,
+        value: &CompilerExpression,
+        error_span: Span,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let constraint =
+            self.program.constraints[usize::try_from(tag).expect("u32 tag fits usize")].clone();
+        let value = self.emit_expression(value, body, environment);
+        let mut predicate_environment = environment.clone();
+        predicate_environment.insert(constraint.parameter_storage, value.clone());
+        let accepted = self.emit_expression(&constraint.predicate, body, &predicate_environment);
+        let accepted_label = body.label("constraint.accepted");
+        let rejected_label = body.label("constraint.rejected");
+        let merge = body.label("constraint.merge");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!(
+                "br i1 {}, label %{accepted_label}, label %{rejected_label}",
+                accepted.boolean()
+            ),
+            location,
+        );
+
+        body.start_block(&accepted_label);
+        let payload = self.emit_result_payload(&value, &constraint.base_type, body, error_span);
+        let success = body.instruction(
+            &format!("call ptr @topal.runtime.result.success(ptr {payload})"),
+            span,
+            &mut self.debug,
+        );
+        let success_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+
+        body.start_block(&rejected_label);
+        let domain = format!("root.{}({})", constraint.name, constraint.base_type.name());
+        let domain = self.emit_string_value(&domain, body, span);
+        let source = self.emit_string_value(self.source_name, body, span);
+        let position = self.program.source.position(error_span.start);
+        let failure = body.instruction(
+            &format!(
+                "call ptr @topal.runtime.result.failure(i32 0, ptr {domain}, ptr {source}, i64 {}, i64 {})",
+                position.line, position.column
+            ),
+            span,
+            &mut self.debug,
+        );
+        let failure_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+
+        body.start_block(&merge);
+        let value = body.instruction(
+            &format!(
+                "phi ptr [{success}, %{success_predecessor}], [{failure}, %{failure_predecessor}]"
+            ),
+            span,
+            &mut self.debug,
+        );
+        LlValue::Result {
+            value,
+            success: constraint.base_type,
         }
     }
 
@@ -3243,6 +3347,7 @@ struct DebugInfo {
     completed_type: usize,
     effect_type: usize,
     enum_types: BTreeMap<String, usize>,
+    refined_types: Vec<(CompilerType, usize)>,
     tuple_types: Vec<(CompilerType, usize)>,
     record_types: Vec<(CompilerType, usize)>,
     source: topal_source::SourceText,
@@ -3290,6 +3395,7 @@ impl DebugInfo {
             completed_type: 0,
             effect_type: 0,
             enum_types: BTreeMap::new(),
+            refined_types: Vec::new(),
             tuple_types: Vec::new(),
             record_types: Vec::new(),
             source,
@@ -3675,9 +3781,32 @@ impl DebugInfo {
             CompilerType::Optional(_) => {
                 unreachable!("unsupported Optional payload type reached codegen")
             }
+            CompilerType::Refined { constraint, base } => self.refined_type(constraint, base),
             CompilerType::Tuple(fields) => self.tuple_type(fields),
             CompilerType::Record(fields) => self.record_type(fields),
         }
+    }
+
+    fn refined_type(&mut self, constraint: &str, base: &CompilerType) -> usize {
+        let value_type = CompilerType::Refined {
+            constraint: constraint.to_owned(),
+            base: Box::new(base.clone()),
+        };
+        if let Some((_, type_id)) = self
+            .refined_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+        let base_type = self.type_id(base);
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"{}\", file: !{}, baseType: !{base_type})",
+            llvm_string(constraint),
+            self.file
+        ));
+        self.refined_types.push((value_type, type_id));
+        type_id
     }
 
     fn tuple_type(&mut self, fields: &[CompilerType]) -> usize {
@@ -3954,6 +4083,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
             size: 64,
             alignment: 64,
         },
+        CompilerType::Refined { base, .. } => target_value_layout(base),
         CompilerType::Tuple(fields) => {
             let mut size = 0;
             let mut alignment = 8;
@@ -4022,6 +4152,7 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Comparison
         | CompilerType::ErrorCode
         | CompilerType::Enum(_) => "i32".into(),
+        CompilerType::Refined { base, .. } => llvm_value_type(base),
         CompilerType::Tuple(fields) => format!(
             "{{ {} }}",
             fields
@@ -4089,6 +4220,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             value,
             payload: payload.as_ref().clone(),
         },
+        CompilerType::Refined { base, .. } => machine_value(base, value),
         CompilerType::Tuple(_) | CompilerType::Record(_) => {
             unreachable!("aggregate machine values require structural lowering")
         }
@@ -4489,6 +4621,26 @@ mod tests {
         assert!(llvm.contains("#dbg_value(i32 1"));
         assert!(!llvm.contains("topal.runtime.constraint"));
         assert!(!llvm.contains("define internal fastcc i1 @topal.constraint"));
+    }
+
+    #[test]
+    fn emits_constraint_validation_with_erased_base_storage_and_result_paths() {
+        // TOPAL-TYPE-CONSTRAINT-VALIDATE-001,
+        // TOPAL-COMPILER-CONSTRAINT-VALIDATE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/constraints-and-derived-capabilities.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "constraints-and-derived-capabilities.t").emit();
+        assert!(llvm.contains("DIDerivedType(tag: DW_TAG_typedef, name: \"Positive\""));
+        assert!(llvm.contains("constraint.accepted"));
+        assert!(llvm.contains("constraint.rejected"));
+        assert!(llvm.contains("constraint.merge"));
+        assert!(llvm.contains("call ptr @topal.runtime.result.success"));
+        assert!(llvm.contains("call ptr @topal.runtime.result.failure(i32 0"));
+        assert!(llvm.contains("phi ptr"));
+        assert!(llvm.contains("#dbg_declare(ptr"));
+        assert!(!llvm.contains("topal.runtime.constraint"));
     }
 
     #[test]

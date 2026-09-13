@@ -511,9 +511,25 @@ increment does not apply the predicate. Display and DWARF enumerate the
 canonical `<Constraint name>` spellings, so ordinary output and GDB agree
 without reflection, allocation, lookup, or a constraint runtime. The tag is
 neither predicate dispatch nor a library metadata key. Capturing predicates,
-constraint application/evidence, function boundaries, aggregates, and public
-library identities remain deferred and are rejected rather than assigned a
-premature environment or ABI representation.
+constraint application/evidence, function boundaries, persistent/public
+aggregate machine boundaries, and public library identities remain deferred
+and are rejected rather than assigned a premature environment or ABI
+representation.
+
+For admitted application of a closed Int constraint, the frontend evaluates
+the retained predicate when the operand is structurally closed, rejects a known
+failure, and attaches a distinct refined classifier to an accepted unchanged
+Int pointer. Equality, ordering, and arithmetic explicitly forget only that
+evidence and reuse the base Int operations. An unknown operand causes the
+predicate's checked expression to be emitted once with the operand bound in a
+private LLVM environment; explicit `br` paths construct the existing
+`Result (Int, lang arithmetic ArithmeticErrorCode)` success or the
+`root.Name(Int)`/`out-of-range` Error. No optimizer is needed for either rule.
+DWARF represents a refined binding as a typedef over the same Int pointer, and
+a debug-only stack shadow keeps closed constants inspectable in GDB at O0.
+Other bases, dependent/capturing predicates, evidence across function or
+persistent/public aggregate machine boundaries, existential selection, and
+public constraint metadata remain separate increments.
 
 An ordinary prefix call with one positional product operand is flattened by the
 checked frontend into the declared scalar parameter sequence before overload

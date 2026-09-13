@@ -4744,6 +4744,26 @@
       "cpu_time_ns": 3024280,
       "memory_peak_bytes": 18411520,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_constraint_validation_with_erased_base_storage_and_result_paths": {
+      "cpu_time_ns": 7671140,
+      "memory_peak_bytes": 18341888,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::constraint_validation_executes_dynamic_success_and_failure": {
+      "cpu_time_ns": 126756880,
+      "memory_peak_bytes": 41906176,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::constraint_validation_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 320494319,
+      "memory_peak_bytes": 57466880,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_named_constraint_validation_and_refined_base_operations": {
+      "cpu_time_ns": 3675199,
+      "memory_peak_bytes": 18411520,
+      "samples_per_test": 50
     }
   }
 }

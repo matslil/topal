@@ -305,9 +305,12 @@ class _TopalOptionalPrinter:
 
 def _lookup_topal_value(value):
     value_type = str(value.type)
+    storage_type = str(value.type.strip_typedefs())
     if value_type == "Int":
         return _TopalIntPrinter(value)
     if value_type == "Nat":
+        return _TopalIntPrinter(value)
+    if storage_type == "struct TopalIntHeader *":
         return _TopalIntPrinter(value)
     if value_type == "Rational":
         return _TopalRationalPrinter(value)

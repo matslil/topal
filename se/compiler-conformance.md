@@ -67,6 +67,7 @@ evidence.
 | 7b | nonempty effects and inference, resources, layouts, locations, tasks, deterministic scheduling, transactions, time, static flow, and platform packages | planned |
 | 8a | closed fundamental Type values, canonical identity equality/display, scalar function passage, and debugging | complete |
 | 8a1 | root named Constraint objects over primitive bases, checked closed Boolean predicates, classified-copy identity, private display tags, and debugging | complete |
+| 8a2 | closed Int-constraint proof/rejection, dynamic predicate evaluation, refined base operations, existing Result/Error integration, and debugging | complete |
 | 8b | user-defined Type values, native serialization, introspection, contracts/evidence, implementation plans, information flow, and remaining `v0.2` assurance behavior | planned |
 | 9 | complete cross-tool rule audit, optimized-level admission, LTO/sanitizer/coverage/PGO dispositions, and whole-core parity qualification | planned |
 
@@ -165,6 +166,8 @@ source/compiled-library work. Increment 7a admits the inert
 canonical empty `Effect` as a distinct zero-data value; 7b retains effect
 execution/inference and the remaining platform-semantic work. Increment 8a
 admits the closed fundamental `Type` identities without runtime reflection;
-8a1 adds closed named Constraint-object metadata and private observation tags
-without yet applying predicates; 8b retains open-world type metadata,
-constraint evidence/application, and the remaining assurance work.
+8a1 adds closed named Constraint-object metadata and private observation tags;
+8a2 applies closed Int constraints, retains static evidence over unchanged base
+storage, and reuses the existing Result/Error path for dynamic validation. 8b
+retains open-world type metadata, general constraint evidence/application, and
+the remaining assurance work.

@@ -1124,13 +1124,39 @@ identities, checked Boolean result, exact shared-interpreter output, undefined
 symbols, needed libraries, relocations, local types, values, and source frame.
 The tag shall not dispatch the predicate or become a public ABI/library key.
 
-Constraint application/evidence, capturing predicates, function or aggregate
-boundaries, and public compiled-library constraint identities remain rejected.
-This shall add no allocation, constraint runtime, foreign dependency, C/C++
-runtime, other-language standard library, or `topal-native/6` revision. This
-realizes `TOPAL-COMPILER-CONSTRAINT-VALUE-001`,
+Constraint application/evidence, capturing predicates, function or
+persistent/public aggregate machine boundaries, and public compiled-library
+constraint identities remain rejected. This shall add no allocation, constraint
+runtime, foreign dependency, C/C++ runtime, other-language standard library, or
+`topal-native/6` revision. This realizes `TOPAL-COMPILER-CONSTRAINT-VALUE-001`,
 `TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001`, and the construction-only portion
 of `TOPAL-TYPE-CONSTRAINT-001` for compiler increment 8a1.
+
+## TOPAL-COMP-CONSTRAINT-VALIDATE-001 — Int constraint validation
+
+The checked compiler shall apply an admitted named Int constraint to a closed
+exact operand by evaluating the retained predicate, diagnosing a known failure,
+and giving an accepted unchanged Int value a distinct refined classifier.
+Equality, ordering, and arithmetic shall deliberately forget this evidence and
+reuse the canonical base operations. Unknown Int operands shall evaluate that
+same predicate exactly once in generated code and use the existing Result/Error
+representation with `root.Name(Int)`, `out-of-range`, and source provenance.
+
+LLVM lowering shall bind the unchanged operand into a private predicate
+environment and use explicit branches for success and failure. The success
+payload shall be the original Int pointer. Refined locals shall use a DWARF
+typedef over Int and a debug-only stack shadow so GDB preserves both source type
+and value at O0. Native tests shall cover static success/rejection, base mismatch,
+dynamic success/failure, equality, ordering, arithmetic, exact shared output,
+IR paths, freestanding ELF properties, GDB values/types, and frames.
+
+This shall add no duplicate numeric object, predicate dispatcher, constraint
+runtime, foreign dependency, C/C++ runtime, other-language standard library,
+public evidence ABI, or `topal-native/6` revision. Other bases, captured or
+dependent predicates, evidence across function or persistent/public aggregate
+machine boundaries, and dynamic constraint identities remain rejected. This
+realizes `TOPAL-COMPILER-CONSTRAINT-VALIDATE-001` and
+`TOPAL-TYPE-CONSTRAINT-VALIDATE-001` for compiler increment 8a2.
 
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
@@ -1139,10 +1165,10 @@ immutable scalar locals, lexical scopes, and instructions to Topal files and
 source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
 renderers for private arbitrary-precision Int, Rational, `Range Int`,
 `Range Rational`, `Optional Int`, and `Optional String` objects, describe
-source-declared nominal enums and retained Constraint identities with their
-alternative labels,
-distinguish selected overload and static-function frames, and pass automated
-GDB breakpoint, value, and backtrace scenarios.
+source-declared nominal enums, retained Constraint identities, and refined Int
+bindings with their semantic names, distinguish selected overload and
+static-function frames, and pass automated GDB breakpoint, value, and backtrace
+scenarios.
 
 ## TOPAL-COMP-ENUM-001 — Payload-free nominal enums
 
