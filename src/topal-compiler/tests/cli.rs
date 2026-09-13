@@ -2647,6 +2647,103 @@ fn range_selection_is_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn traversal_control_fold_is_freestanding_short_circuiting_and_debuggable() {
+    // TOPAL-EXEC-TRAVERSAL-CONTROL-001,
+    // TOPAL-COMPILER-TRAVERSAL-CONTROL-001,
+    // TOPAL-COMPILER-ABI-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-traversal-control");
+    let source = directory.join("traversal-control-boundary.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ninspect is fn (value : Int) -> Int\n  value\nvalues : List Int is Entry (1, Entry (2, Entry (100, Empty)))\ncontrols is (Continue 1, Finish 2)\nadvance is { state, value } Continue (state + value)\nstop is { state, value } Finish (state + value)\ncontinued is values fold 0 advance\nstopped is values fold 0 stop\nresult is inspect stopped\n(continued, stopped, controls, result)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(103, 1, (Continue 1, Finish 2), 1)\n");
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break traversal-control-boundary.t:3",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis controls._0",
+            "-ex",
+            "print controls._0",
+            "-ex",
+            "whatis controls._1",
+            "-ex",
+            "print controls._1",
+            "-ex",
+            "whatis stopped",
+            "-ex",
+            "print stopped",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert_eq!(
+        text.matches("type = TraversalControl Int").count(),
+        2,
+        "{text}"
+    );
+    assert!(text.contains("$2 = Continue 1"), "{text}");
+    assert!(text.contains("$3 = Finish 2"), "{text}");
+    assert!(text.contains("type = Int"), "{text}");
+    assert!(text.contains("$4 = 1"), "{text}");
+    assert!(text.contains("topal.fn.inspect.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn contextual_int_list_functions_are_freestanding_and_debuggable() {
     // TOPAL-COLLECTION-MAP-001, TOPAL-COLLECTION-SELECT-001,
     // TOPAL-COLLECTION-FOLD-001, TOPAL-FUNCTION-ANONYMOUS-001,

@@ -5024,6 +5024,21 @@
       "cpu_time_ns": 4025200,
       "memory_peak_bytes": 18370560,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_short_circuiting_int_list_fold_control_inline": {
+      "cpu_time_ns": 7969720,
+      "memory_peak_bytes": 18214912,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::traversal_control_fold_is_freestanding_short_circuiting_and_debuggable": {
+      "cpu_time_ns": 327647599,
+      "memory_peak_bytes": 57966592,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_short_circuiting_int_list_fold_control": {
+      "cpu_time_ns": 3658479,
+      "memory_peak_bytes": 18231296,
+      "samples_per_test": 50
     }
   }
 }

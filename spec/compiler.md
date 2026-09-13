@@ -1005,6 +1005,32 @@ relocation, public/serialized/persistent/generic collection ABI, stabilized
 private layout, or native ABI revision. DWARF and GDB SHALL preserve the source
 List, Range, String, selected values, and user frames.
 
+### TOPAL-COMPILER-TRAVERSAL-CONTROL-001 — Private traversal control
+
+For an admitted `List Int` fold with an `Int` initial state, the compiler SHALL
+admit an action result of either `Int` or `TraversalControl Int`. `Continue
+state` SHALL carry its exact Int payload into the next reached action. `Finish
+result` SHALL return its exact Int payload from the fold immediately, without
+evaluating an action for any later entry. Empty SHALL return the once-evaluated
+initial state. Construction SHALL evaluate each payload exactly once, and the
+ordinary Int-result fold behavior SHALL remain unchanged.
+
+On Linux x86-64, `Continue Int` and `Finish Int` SHALL use a private immutable
+16-byte object with an unsigned tag at offset zero and the canonical Int pointer
+at offset eight. The specialized fold SHALL inspect that object in generated
+LLVM control flow and branch directly to either its state-advance or result
+path. Correctness at O0 SHALL NOT depend on optimization, a traversal runtime
+dispatcher, callback convention, indirect call, or host recursion. DWARF and
+the bundled GDB renderer SHALL expose the semantic `TraversalControl Int`
+identity and safely distinguish both constructors.
+
+This rule SHALL add no foreign allocator, C/C++ runtime, other-language
+standard library, undefined symbol, needed library, relocation, public,
+foreign, serialized, persistent, or generic traversal-control ABI, stabilized
+private layout, or native ABI revision. Other payload and collection
+classifiers, traversal-control function boundaries, generators, and remaining
+traversal algorithms SHALL remain rejected pending later increments.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed
