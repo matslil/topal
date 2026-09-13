@@ -37,6 +37,7 @@ pub enum CompilerType {
     Type,
     Scope,
     Function,
+    Constraint,
     Boolean,
     Int,
     Nat,
@@ -66,6 +67,7 @@ impl CompilerType {
                 | Self::Type
                 | Self::Scope
                 | Self::Function
+                | Self::Constraint
                 | Self::Boolean
                 | Self::Int
                 | Self::Nat
@@ -92,6 +94,7 @@ impl CompilerType {
             Self::Type => "Type".into(),
             Self::Scope => "Scope".into(),
             Self::Function => "Function".into(),
+            Self::Constraint => "Constraint".into(),
             Self::Boolean => "Boolean".into(),
             Self::Int => "Int".into(),
             Self::Nat => "Nat".into(),
@@ -235,6 +238,7 @@ pub enum CompilerExpressionKind {
     TypeValue(u32),
     Root,
     FunctionValue(u32),
+    ConstraintValue(u32),
     Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
@@ -381,11 +385,21 @@ pub struct CompilerFunction {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerConstraint {
+    pub name: String,
+    pub base_type: CompilerType,
+    pub parameter: String,
+    pub predicate: CompilerExpression,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerProgram {
     pub source: SourceText,
     pub language_version: LanguageVersion,
     pub main: CompilerBlock,
     pub function_value_names: Vec<String>,
+    pub constraints: Vec<CompilerConstraint>,
     /// Instances are in callee-before-caller order.
     pub functions: Vec<CompilerFunction>,
 }
@@ -510,6 +524,8 @@ struct Analyzer {
     root_bindings: BTreeMap<String, CompilerDataMemberFacts>,
     anonymous_callables: BTreeMap<u32, CompilerCallableFacts>,
     anonymous_function_value_names: Vec<String>,
+    constraints: Vec<CompilerConstraint>,
+    constraint_bindings: BTreeMap<String, u32>,
     in_function: bool,
     function_values_used: bool,
     static_context: bool,
@@ -578,6 +594,8 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         root_bindings: BTreeMap::new(),
         anonymous_callables: BTreeMap::new(),
         anonymous_function_value_names: Vec::new(),
+        constraints: Vec::new(),
+        constraint_bindings: BTreeMap::new(),
         in_function: false,
         function_values_used: false,
         static_context: false,
@@ -606,6 +624,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         language_version,
         main,
         function_value_names,
+        constraints: analyzer.constraints,
         functions: analyzer.instances,
     })
 }
@@ -715,6 +734,31 @@ fn enum_declaration(source: &SourceText, statement: &Statement) -> Option<EnumSo
         alternatives,
         span: Span::new(name.start, span.end),
     })
+}
+
+fn constraint_definition<'a>(
+    source: &SourceText,
+    expression: &'a Expression,
+) -> Option<(Span, &'a [AnonymousPattern], &'a Expression, Span)> {
+    let Expression::Application { items, span } = expression else {
+        return None;
+    };
+    let [
+        Expression::Identifier(base),
+        Expression::Identifier(operation),
+        Expression::AnonymousFunction {
+            parameters, body, ..
+        },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    (source.slice(*operation) == "constraint").then_some((
+        *base,
+        parameters.as_slice(),
+        body.as_ref(),
+        *span,
+    ))
 }
 
 fn collect_functions(
@@ -956,11 +1000,15 @@ impl Analyzer {
                     let expected = classifier
                         .map(|classifier| self.parse_classifier(classifier))
                         .transpose()?;
-                    let mut value = self.analyze_expression_with_expected(
-                        initializer,
-                        environment,
-                        expected.as_ref(),
-                    )?;
+                    let mut value = if constraint_definition(&self.source, initializer).is_some() {
+                        self.analyze_constraint_definition(&name_text, initializer, environment)?
+                    } else {
+                        self.analyze_expression_with_expected(
+                            initializer,
+                            environment,
+                            expected.as_ref(),
+                        )?
+                    };
                     if let (Some(classifier), Some(expected)) = (classifier, expected) {
                         if expected == CompilerType::Int
                             && value.value_type == CompilerType::Rational
@@ -995,6 +1043,52 @@ impl Analyzer {
                         }
                         require_same_type(&self.source, *classifier, &expected, &value.value_type)?;
                     }
+                    let constraint_tag = if value.value_type == CompilerType::Constraint {
+                        if kind != BlockKind::TopLevel {
+                            return Err(unsupported(
+                                &self.source,
+                                *name,
+                                "non-root Constraint binding",
+                            ));
+                        }
+                        let tag = if constraint_definition(&self.source, initializer).is_some() {
+                            let CompilerExpressionKind::ConstraintValue(tag) = &value.kind else {
+                                unreachable!("checked constraint construction has an identity tag")
+                            };
+                            *tag
+                        } else {
+                            let Expression::Identifier(source_name_span) = initializer else {
+                                return Err(unsupported(
+                                    &self.source,
+                                    initializer.span(),
+                                    "Constraint value expression",
+                                ));
+                            };
+                            let source_name = self.source.slice(*source_name_span);
+                            let source_tag =
+                                *self.constraint_bindings.get(source_name).ok_or_else(|| {
+                                    unsupported(
+                                        &self.source,
+                                        *source_name_span,
+                                        "Constraint value without retained static metadata",
+                                    )
+                                })?;
+                            let mut constraint = self.constraints
+                                [usize::try_from(source_tag).expect("u32 tag fits usize")]
+                            .clone();
+                            constraint.name.clone_from(&name_text);
+                            constraint.span = Span::new(name.start, initializer.span().end);
+                            let tag = u32::try_from(self.constraints.len()).map_err(|_| {
+                                unsupported(&self.source, *name, "native Constraint value tag")
+                            })?;
+                            self.constraints.push(constraint);
+                            value.kind = CompilerExpressionKind::ConstraintValue(tag);
+                            tag
+                        };
+                        Some(tag)
+                    } else {
+                        None
+                    };
                     let string_value = Self::known_string_value(&value, environment);
                     let record_fields = Self::known_record_fields(&value, environment);
                     let namespace =
@@ -1017,6 +1111,9 @@ impl Analyzer {
                         callable,
                     };
                     environment.insert(name_text.clone(), facts.clone());
+                    if let Some(tag) = constraint_tag {
+                        self.constraint_bindings.insert(name_text.clone(), tag);
+                    }
                     if kind == BlockKind::TopLevel {
                         self.root_bindings.insert(
                             name_text.clone(),
@@ -1452,6 +1549,91 @@ impl Analyzer {
             }
             _ => Err(unsupported(&self.source, span, "expression form")),
         }
+    }
+
+    fn analyze_constraint_definition(
+        &mut self,
+        name: &str,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let (base, parameters, predicate, span) =
+            constraint_definition(&self.source, expression).expect("preselected constraint");
+        let base_type = self.parse_classifier(base)?;
+        if !matches!(
+            base_type,
+            CompilerType::Boolean
+                | CompilerType::Int
+                | CompilerType::Nat
+                | CompilerType::Rational
+                | CompilerType::String
+        ) {
+            return Err(unsupported(
+                &self.source,
+                base,
+                "native constraint base classifier",
+            ));
+        }
+        let [AnonymousPattern::Binding(parameter)] = parameters else {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "native constraint predicate pattern",
+            ));
+        };
+        let parameter_name = self.source.slice(*parameter).to_owned();
+        if let Some(capture) = environment.keys().find(|candidate| {
+            candidate.as_str() != parameter_name
+                && expression_mentions_name(&self.source, predicate, candidate)
+        }) {
+            return Err(unsupported(
+                &self.source,
+                predicate.span(),
+                &format!("captured constraint predicate value `{capture}`"),
+            ));
+        }
+        let storage_name = format!("topal.constraint.{}.{}", span.start, parameter_name);
+        let mut predicate_environment = BTreeMap::new();
+        predicate_environment.insert(
+            parameter_name.clone(),
+            BindingFacts {
+                storage_name,
+                value_type: base_type.clone(),
+                int_range: None,
+                rational_value: None,
+                string_value: None,
+                record_fields: BTreeMap::new(),
+                namespace: None,
+                callable: None,
+            },
+        );
+        let previous_in_function = self.in_function;
+        self.in_function = true;
+        let predicate_result = self.analyze_expression(predicate, &predicate_environment);
+        self.in_function = previous_in_function;
+        let predicate = predicate_result?;
+        require_type(
+            &self.source,
+            predicate.span,
+            &CompilerType::Boolean,
+            &predicate.value_type,
+        )?;
+        let tag = u32::try_from(self.constraints.len())
+            .map_err(|_| unsupported(&self.source, span, "native Constraint value tag"))?;
+        self.constraints.push(CompilerConstraint {
+            name: name.to_owned(),
+            base_type,
+            parameter: parameter_name,
+            predicate,
+            span,
+        });
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::ConstraintValue(tag),
+            value_type: CompilerType::Constraint,
+            int_range: None,
+            rational_value: None,
+            span,
+        })
     }
 
     #[allow(clippy::too_many_lines)] // Root operations are admitted explicitly and in source-selection order.
@@ -5464,6 +5646,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "Type" => Some(CompilerType::Type),
         "Scope" => Some(CompilerType::Scope),
         "Function" => Some(CompilerType::Function),
+        "Constraint" => Some(CompilerType::Constraint),
         "Boolean" => Some(CompilerType::Boolean),
         "Int" => Some(CompilerType::Int),
         "Nat" => Some(CompilerType::Nat),
@@ -5562,7 +5745,10 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
 }
 
 fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
-    if matches!(value_type, CompilerType::Scope | CompilerType::Function) {
+    if matches!(
+        value_type,
+        CompilerType::Scope | CompilerType::Function | CompilerType::Constraint
+    ) {
         return false;
     }
     if value_type.machine_scalar() {
@@ -5696,6 +5882,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
             .all(|(_, value_type)| compiler_equality_supported(value_type)),
         CompilerType::Scope
         | CompilerType::Function
+        | CompilerType::Constraint
         | CompilerType::Error
         | CompilerType::ErrorDomain
         | CompilerType::Range(_)
@@ -5764,6 +5951,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Root
         | CompilerExpressionKind::FunctionValue(_)
+        | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -7423,6 +7611,73 @@ mod tests {
                 .is_ok()
         );
         assert_ne!(CompilerType::Type, CompilerType::Int);
+    }
+
+    #[test]
+    fn models_named_constraint_identity_with_a_checked_predicate() {
+        // TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001,
+        // TOPAL-TYPE-CONSTRAINT-001, TOPAL-COMPILER-CONSTRAINT-VALUE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/constraint-classifier.t"
+        ))
+        .unwrap();
+        assert_eq!(program.constraints.len(), 2);
+        let constraint = &program.constraints[0];
+        assert_eq!(constraint.name, "Positive");
+        assert_eq!(constraint.base_type, CompilerType::Int);
+        assert_eq!(constraint.parameter, "value");
+        assert_eq!(constraint.predicate.value_type, CompilerType::Boolean);
+        assert!(matches!(
+            constraint.predicate.kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Greater,
+                ..
+            }
+        ));
+        assert_eq!(program.constraints[1].name, "rule");
+        assert_eq!(program.constraints[1].base_type, CompilerType::Int);
+        assert_eq!(program.constraints[1].predicate, constraint.predicate);
+        assert!(matches!(
+            program.main.statements[1],
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::ConstraintValue(1),
+                    value_type: CompilerType::Constraint,
+                    ..
+                },
+                ..
+            })
+        ));
+        assert!(matches!(
+            program.main.statements[0],
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::ConstraintValue(0),
+                    value_type: CompilerType::Constraint,
+                    ..
+                },
+                ..
+            })
+        ));
+        assert_eq!(program.main.result.value_type, CompilerType::Constraint);
+        assert!(matches!(
+            program.main.result.kind,
+            CompilerExpressionKind::Local(_)
+        ));
+
+        let non_boolean = "use language (version is v0.1)\nBroken is Int constraint { value } value + 1\nBroken\n";
+        assert_eq!(
+            analyze_for_compiler(non_boolean).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+        let captured = "use language (version is v0.1)\nlimit is 0\nPositive is Int constraint { value } value > limit\nPositive\n";
+        let error = analyze_for_compiler(captured).unwrap_err();
+        assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            error
+                .message
+                .contains("captured constraint predicate value")
+        );
     }
 
     #[test]

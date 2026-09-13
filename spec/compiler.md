@@ -941,6 +941,26 @@ Topal-owned freestanding Unicode runtime is admitted; generated code SHALL NOT
 consult host Unicode tables, locale services, C/C++ runtimes, or standard
 libraries, and the native ABI SHALL NOT change for these operations.
 
+### TOPAL-COMPILER-CONSTRAINT-VALUE-001 — Named constraint observation values
+
+For an admitted root declaration `Name is Base constraint { parameter }
+predicate`, the checked program model SHALL retain `Name`, the supported
+primitive `Base`, the predicate parameter, and the checked Boolean predicate.
+The predicate SHALL be checked as a pure closed function of that parameter in
+this increment. A separately named root binding classified as `Constraint`
+SHALL receive that binding's nominal identity while retaining the original base
+and predicate, consistently with the shared interpreter.
+
+Generated code MAY represent each retained identity with a deterministic
+module-private `i32` tag. Canonical display and DWARF/GDB SHALL use
+`<Constraint Name>`. The tag SHALL NOT dispatch or stand in for the retained
+predicate, and it SHALL NOT be a public ABI or compiled-library metadata key.
+Constraint application/evidence, captured predicates, function or aggregate
+boundaries, and public identities SHALL remain rejected until their semantic
+metadata and environment representation are implemented. This increment SHALL
+introduce no constraint runtime, allocation, foreign dependency, C/C++ runtime,
+other-language standard library, or native ABI revision.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate

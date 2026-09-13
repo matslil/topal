@@ -1136,6 +1136,16 @@
       "cpu_time_ns": 149205,
       "memory_peak_bytes": 18444288,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/constraint-classifier.t": {
+      "cpu_time_ns": 121251159,
+      "memory_peak_bytes": 41627648,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/constraint-classifier.t": {
+      "cpu_time_ns": 131946,
+      "memory_peak_bytes": 18530304,
+      "samples_per_test": 500
     }
   }
 }

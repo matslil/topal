@@ -500,6 +500,21 @@ future compiled-library metadata records canonical semantic identities and lets
 each target lowering choose its private representation. No registry, allocation,
 foreign type-information runtime, or standard library is linked.
 
+An admitted named `Constraint` object is likewise split between semantic
+metadata and a private observation value. The checked program model retains
+the root binding identity, primitive base classifier, predicate parameter, and
+fully checked Boolean predicate. A separately named `Constraint`-classified
+binding receives its own nominal identity while reusing the same retained base
+and predicate, matching the shared interpreter observation. Generated code
+carries only a deterministic module-private `i32` identity tag because this
+increment does not apply the predicate. Display and DWARF enumerate the
+canonical `<Constraint name>` spellings, so ordinary output and GDB agree
+without reflection, allocation, lookup, or a constraint runtime. The tag is
+neither predicate dispatch nor a library metadata key. Capturing predicates,
+constraint application/evidence, function boundaries, aggregates, and public
+library identities remain deferred and are rejected rather than assigned a
+premature environment or ABI representation.
+
 An ordinary prefix call with one positional product operand is flattened by the
 checked frontend into the declared scalar parameter sequence before overload
 selection. Evaluation and ABI argument order remain left-to-right. A typed `_`

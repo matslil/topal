@@ -58,6 +58,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
+        | CompilerType::Constraint
         | CompilerType::Boolean
         | CompilerType::Int
         | CompilerType::Nat
@@ -171,6 +172,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Root
         | CompilerExpressionKind::FunctionValue(_)
+        | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -195,6 +197,9 @@ impl<'a> Generator<'a> {
         debug.set_source(program.source.clone());
         if !program.function_value_names.is_empty() {
             debug.enum_type(&function_value_enumeration(program));
+        }
+        if !program.constraints.is_empty() {
+            debug.enum_type(&constraint_value_enumeration(program));
         }
         Self {
             program,
@@ -663,6 +668,10 @@ impl<'a> Generator<'a> {
                 value: value.to_string(),
                 enumeration: function_value_enumeration(self.program),
             },
+            CompilerExpressionKind::ConstraintValue(value) => LlValue::Enum {
+                value: value.to_string(),
+                enumeration: constraint_value_enumeration(self.program),
+            },
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
             CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
             CompilerExpressionKind::Rational(value) => {
@@ -1115,8 +1124,8 @@ impl<'a> Generator<'a> {
                         ),
                         enumeration: root_scope_enumeration(),
                     },
-                    CompilerType::Function => {
-                        unreachable!("checked functions do not return Function values")
+                    CompilerType::Function | CompilerType::Constraint => {
+                        unreachable!("checked functions do not return this static object kind")
                     }
                     CompilerType::Boolean => LlValue::Boolean(body.instruction(
                         &format!("call fastcc i1 @{symbol}({arguments})"),
@@ -3095,6 +3104,17 @@ fn function_value_enumeration(program: &CompilerProgram) -> CompilerEnumType {
     }
 }
 
+fn constraint_value_enumeration(program: &CompilerProgram) -> CompilerEnumType {
+    CompilerEnumType {
+        name: "Constraint".into(),
+        alternatives: program
+            .constraints
+            .iter()
+            .map(|constraint| format!("<Constraint {}>", constraint.name))
+            .collect(),
+    }
+}
+
 fn numeric_domain(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Int => "int",
@@ -3597,6 +3617,10 @@ impl DebugInfo {
                 .enum_types
                 .get("Function")
                 .expect("checked Function values install their debug type"),
+            CompilerType::Constraint => *self
+                .enum_types
+                .get("Constraint")
+                .expect("checked Constraint values install their debug type"),
             CompilerType::Boolean => self.boolean_type,
             CompilerType::Int => self.int_type,
             CompilerType::Nat => self.nat_type,
@@ -3910,6 +3934,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
+        | CompilerType::Constraint
         | CompilerType::Comparison
         | CompilerType::ErrorCode
         | CompilerType::Enum(_) => TargetValueLayout {
@@ -3993,6 +4018,7 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
+        | CompilerType::Constraint
         | CompilerType::Comparison
         | CompilerType::ErrorCode
         | CompilerType::Enum(_) => "i32".into(),
@@ -4035,6 +4061,9 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         },
         CompilerType::Function => {
             unreachable!("Function values are not admitted at machine ABI reconstruction points")
+        }
+        CompilerType::Constraint => {
+            unreachable!("Constraint values are not admitted at machine ABI reconstruction points")
         }
         CompilerType::Boolean => LlValue::Boolean(value),
         CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
@@ -4442,6 +4471,24 @@ mod tests {
         let llvm = Generator::new(&identity, "type-identity.t").emit();
         assert!(llvm.contains("icmp eq i32 1, 1"));
         assert!(llvm.contains("icmp eq i32 1, 4"));
+    }
+
+    #[test]
+    fn emits_named_constraint_values_as_closed_private_tags() {
+        // TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001,
+        // TOPAL-TYPE-CONSTRAINT-001, TOPAL-COMPILER-CONSTRAINT-VALUE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/constraint-classifier.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "constraint-classifier.t").emit();
+        assert!(llvm.contains("DW_TAG_enumeration_type, name: \"Constraint\""));
+        assert!(llvm.contains("DIEnumerator(name: \"<Constraint Positive>\", value: 0)"));
+        assert!(llvm.contains("DIEnumerator(name: \"<Constraint rule>\", value: 1)"));
+        assert!(llvm.contains("#dbg_value(i32 0"));
+        assert!(llvm.contains("#dbg_value(i32 1"));
+        assert!(!llvm.contains("topal.runtime.constraint"));
+        assert!(!llvm.contains("define internal fastcc i1 @topal.constraint"));
     }
 
     #[test]

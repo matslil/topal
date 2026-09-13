@@ -4729,6 +4729,21 @@
       "cpu_time_ns": 4353140,
       "memory_peak_bytes": 18370560,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_named_constraint_values_as_closed_private_tags": {
+      "cpu_time_ns": 5169300,
+      "memory_peak_bytes": 18407424,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::named_constraint_value_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 316145160,
+      "memory_peak_bytes": 56647680,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_named_constraint_identity_with_a_checked_predicate": {
+      "cpu_time_ns": 3024280,
+      "memory_peak_bytes": 18411520,
+      "samples_per_test": 50
     }
   }
 }
