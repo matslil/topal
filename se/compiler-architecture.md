@@ -559,6 +559,20 @@ placement; distinct `List Int` DWARF and GDB decoding restores the semantic
 payload type without turning either List layout into a public or serialized
 contract.
 
+Int List removal is split into another compiler-selected internal fragment so
+containment-only, removal-only, and unrelated modules assemble only the helpers
+they require; the shared private node declaration is emitted once when either
+family is present. Both removal operations scan with finite nonrecursive loops
+and exact Int comparison. `remove-first` returns an unmatched input directly,
+shares the untouched suffix after a match, and reconstructs only the preceding
+entries. `remove-all` first proves whether any match exists and counts retained
+entries, then either returns the original pointer, returns Empty, or fills one
+Topal-allocated contiguous block of logical 16-byte nodes in source order.
+Initialization mutates only fresh inaccessible storage; every published List
+remains immutable. This sharing and batching are private implementation choices,
+not pointer-identity semantics or a persistent/public layout promise. Display,
+DWARF, and GDB continue to observe the same `List Int` source value.
+
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
 action in its selected block, and compatible machine-scalar results merge with

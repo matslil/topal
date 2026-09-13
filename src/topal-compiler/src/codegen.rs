@@ -144,6 +144,14 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             list: left,
             pattern: right,
         }
+        | CompilerExpressionKind::ListRemoveFirst {
+            list: left,
+            value: right,
+        }
+        | CompilerExpressionKind::ListRemoveAll {
+            list: left,
+            value: right,
+        }
         | CompilerExpressionKind::RationalConstruct {
             numerator: left,
             denominator: right,
@@ -233,7 +241,8 @@ struct Generator<'a> {
     globals: Vec<String>,
     functions: Vec<String>,
     next_global: usize,
-    uses_list_int_runtime: bool,
+    uses_list_int_containment_runtime: bool,
+    uses_list_int_removal_runtime: bool,
     debug: DebugInfo,
 }
 
@@ -253,7 +262,8 @@ impl<'a> Generator<'a> {
             globals: Vec::new(),
             functions: Vec::new(),
             next_global: 0,
-            uses_list_int_runtime: false,
+            uses_list_int_containment_runtime: false,
+            uses_list_int_removal_runtime: false,
             debug,
         }
     }
@@ -273,8 +283,16 @@ impl<'a> Generator<'a> {
         module.push('\n');
         module.push_str(PLATFORM_RUNTIME);
         module.push('\n');
-        if self.uses_list_int_runtime {
-            module.push_str(LIST_INT_RUNTIME);
+        if self.uses_list_int_containment_runtime || self.uses_list_int_removal_runtime {
+            module.push_str(LIST_INT_LAYOUT);
+            module.push('\n');
+        }
+        if self.uses_list_int_containment_runtime {
+            module.push_str(LIST_INT_CONTAINMENT_RUNTIME);
+            module.push('\n');
+        }
+        if self.uses_list_int_removal_runtime {
+            module.push_str(LIST_INT_REMOVAL_RUNTIME);
             module.push('\n');
         }
         for global in &self.globals {
@@ -1210,7 +1228,7 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListContainsEntry { list, value } => {
-                self.uses_list_int_runtime = true;
+                self.uses_list_int_containment_runtime = true;
                 let list = self.emit_expression(list, body, environment);
                 let value = self.emit_expression(value, body, environment);
                 LlValue::Boolean(body.instruction(
@@ -1225,7 +1243,7 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::ListContainsSequence { list, pattern }
             | CompilerExpressionKind::ListContainsSubsequence { list, pattern } => {
-                self.uses_list_int_runtime = true;
+                self.uses_list_int_containment_runtime = true;
                 let operation = if matches!(
                     &expression.kind,
                     CompilerExpressionKind::ListContainsSequence { .. }
@@ -1245,6 +1263,39 @@ impl<'a> Generator<'a> {
                     expression.span,
                     &mut self.debug,
                 ))
+            }
+            CompilerExpressionKind::ListRemoveFirst { list, value }
+            | CompilerExpressionKind::ListRemoveAll { list, value } => {
+                self.uses_list_int_removal_runtime = true;
+                let operation = if matches!(
+                    &expression.kind,
+                    CompilerExpressionKind::ListRemoveFirst { .. }
+                ) {
+                    "first"
+                } else {
+                    "all"
+                };
+                let list = self.emit_expression(list, body, environment);
+                let LlValue::List {
+                    value: list,
+                    element,
+                } = list
+                else {
+                    unreachable!("checked removal subject is a List")
+                };
+                let value = self.emit_expression(value, body, environment);
+                LlValue::List {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.int.remove.{operation}(ptr {}, ptr {})",
+                            list,
+                            value.integer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    element,
+                }
             }
             CompilerExpressionKind::ErrorField { error, field } => {
                 let error_span = error.span;
@@ -5571,7 +5622,9 @@ fn llvm_string(value: &str) -> String {
 }
 
 const PLATFORM_RUNTIME: &str = include_str!("runtime/linux_x86_64.ll");
-const LIST_INT_RUNTIME: &str = include_str!("runtime/list_int.ll");
+const LIST_INT_LAYOUT: &str = include_str!("runtime/list_int_layout.ll");
+const LIST_INT_CONTAINMENT_RUNTIME: &str = include_str!("runtime/list_int_containment.ll");
+const LIST_INT_REMOVAL_RUNTIME: &str = include_str!("runtime/list_int_removal.ll");
 
 #[cfg(test)]
 mod tests {
@@ -5654,8 +5707,31 @@ mod tests {
         assert!(llvm.contains("call i1 @topal.runtime.list.int.contains.entry"));
         assert!(llvm.contains("call i1 @topal.runtime.list.int.contains.sequence"));
         assert!(llvm.contains("call i1 @topal.runtime.list.int.contains.subsequence"));
+        assert!(!llvm.contains("topal.runtime.list.int.remove"));
         assert!(llvm.contains("DW_TAG_typedef, name: \"List Int\""));
         assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalList.Int\""));
+    }
+
+    #[test]
+    fn emits_immutable_int_list_removal_loops() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-LIST-REMOVE-FIRST-001,
+        // TOPAL-LIST-REMOVE-ALL-001, TOPAL-COMPILER-LIST-INT-REMOVAL-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/list-removal.t"))
+                .unwrap();
+        let llvm = Generator::new(&program, "list-removal.t").emit();
+
+        assert!(llvm.contains("%topal.ListStorage = type { ptr, ptr }"));
+        assert!(llvm.contains("define internal ptr @topal.runtime.list.int.remove.first"));
+        assert!(llvm.contains("define internal ptr @topal.runtime.list.int.remove.all"));
+        assert!(llvm.contains("call i32 @topal.runtime.int.compare"));
+        assert!(llvm.contains("call ptr @topal.platform.allocate(i64 %allocation.length)"));
+        assert!(llvm.contains("ret ptr %list"));
+        assert!(llvm.contains("ret ptr %remaining"));
+        assert!(llvm.contains("call ptr @topal.runtime.list.int.remove.first"));
+        assert!(llvm.contains("call ptr @topal.runtime.list.int.remove.all"));
+        assert!(!llvm.contains("topal.runtime.list.int.contains"));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"List Int\""));
     }
 
     #[test]

@@ -4949,6 +4949,21 @@
       "cpu_time_ns": 3785659,
       "memory_peak_bytes": 18370560,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_immutable_int_list_removal_loops": {
+      "cpu_time_ns": 7001620,
+      "memory_peak_bytes": 18296832,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::int_list_removal_is_immutable_freestanding_and_debuggable": {
+      "cpu_time_ns": 328232540,
+      "memory_peak_bytes": 57966592,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_immutable_int_list_removal": {
+      "cpu_time_ns": 3320680,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
     }
   }
 }

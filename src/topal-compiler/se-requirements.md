@@ -950,6 +950,33 @@ remain deferred. It realizes `TOPAL-COMPILER-LIST-INT-CONTAINMENT-001`,
 `TOPAL-LIST-CONTAINS-SEQUENCE-001`, and
 `TOPAL-LIST-CONTAINS-SUBSEQUENCE-001` for compiler increment 4b3d-b.
 
+## TOPAL-COMP-LIST-INT-REMOVAL-001 — Immutable Int List removal
+
+The checked compiler model shall accept `remove-first` and `remove-all` only
+for the admitted `List Int` specialization and an exact Int operand. It shall
+evaluate the complete List before the removal value exactly once, preserve the
+List classifier, and leave every input immutable. `remove-first` shall remove
+only the earliest equal entry and preserve an unmatched List unchanged;
+`remove-all` shall remove every equal entry. Both shall retain the order and
+exact arbitrary-precision values of all other entries.
+
+The backend shall implement both operations as finite nonrecursive loops using
+the existing canonical Int comparator. It may share the unchanged input and an
+untouched suffix. Rebuilt prefixes or filtered results shall contain immutable
+logical 16-byte Int-pointer/remaining-pointer nodes allocated only through the
+Topal-owned Linux mapping boundary. The compiler shall keep the common layout,
+containment, and removal LLVM fragments independently conditional so unrelated
+programs do not pay their assembly cost. Behavior at O0 shall not depend on an
+optimization pass.
+
+Canonical output, private pointer passage, List-specific DWARF, and bounded GDB
+rendering shall remain exact. This increment shall add no public, foreign,
+serialized, persistent, or generic List ABI, no foreign allocator, C/C++
+runtime, other-language standard library, undefined symbol, needed library,
+relocation, reclamation contract, or `topal-native/6` revision. It realizes
+`TOPAL-COMPILER-LIST-INT-REMOVAL-001`, `TOPAL-LIST-REMOVE-FIRST-001`, and
+`TOPAL-LIST-REMOVE-ALL-001` for compiler increment 4b3d-c.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when
