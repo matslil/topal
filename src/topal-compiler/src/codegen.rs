@@ -4517,6 +4517,45 @@ mod tests {
     }
 
     #[test]
+    fn emits_defining_context_as_a_private_direct_capture_parameter() {
+        // TOPAL-COMPILER-CONTEXT-CAPTURE-001, TOPAL-CONTEXT-SELECT-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/constructed-context.t"
+        ))
+        .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "constructed-context.t").emit();
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{symbol}(ptr %arg0, ptr %arg1)"
+        )));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr")
+                && line.contains(&format!("@{symbol}(ptr @.topal.int.1, ptr @.topal.int.0)"))
+        }));
+        assert!(llvm.contains("!DILocalVariable(name: \"value\", arg: 1"));
+        assert!(llvm.contains("!DILocalVariable(name: \"@ offset\", arg: 2"));
+        assert!(!llvm.contains("topal.runtime.context"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+
+        let computed = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 20 + 20\nadd-offset is fn (value : Int) -> Int\n  value + @ offset\nadd-offset 2\n",
+        )
+        .unwrap();
+        let llvm = Generator::new(&computed, "computed-context.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module defines the source entry point")
+            .1;
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.int.add(").count(),
+            1,
+            "the defining-context initializer must execute exactly once"
+        );
+    }
+
+    #[test]
     fn emits_named_function_values_with_direct_retained_calls() {
         // TOPAL-COMPILER-NAMED-FUNCTION-VALUE-001, TOPAL-FUNCTION-VALUE-001
         let program = analyze_for_compiler(include_str!(

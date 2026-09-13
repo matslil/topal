@@ -380,6 +380,32 @@ opaque package values, and defaults that depend on invocation or captured
 bindings remain outside this increment and SHALL be rejected rather than
 changing evaluation order or choosing a public memory ABI.
 
+### TOPAL-COMPILER-CONTEXT-CAPTURE-001 — Private defining-context capture
+
+For a root function called directly from the source entry frame, each `@ member`
+reference to an admitted scalar root binding declared before that function SHALL
+resolve only that immutable defining-context binding. A same-named caller or
+lexical binding SHALL NOT intercept the selection, and a member declared after
+the function SHALL remain unavailable. The original root initializer SHALL be
+evaluated once; capture lowering SHALL pass its resulting compiler value rather
+than re-evaluate the initializer or consult process-global state.
+
+The checked frontend SHALL append each referenced member in root declaration
+order as an explicit private capture parameter and direct call argument. Its
+LLVM type SHALL be the existing exact private type for the member classifier,
+and LLVM SHALL own physical target placement under `fastcc`. DWARF/GDB SHALL
+expose the parameter as `@ member`, with its source classifier and value, inside
+the ordinary function frame. No global variable, context table or lookup,
+function pointer, indirect call, closure allocation/runtime, foreign dependency,
+C/C++ runtime, other-language standard library, public closure ABI, or native
+ABI revision is permitted.
+
+Selection outside a function SHALL remain a context-selection error. Aggregate,
+Scope, or Function members, calls requiring capture forwarding between compiled
+functions, anonymous captures, escaping functions, qualified `root member`
+access from functions, and public/library context environments remain outside
+this increment and SHALL be rejected.
+
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 
 The compiler SHALL admit a direct unary decreasing `Int` recursion edge only

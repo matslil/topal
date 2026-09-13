@@ -450,6 +450,17 @@ struct CompilerDataMemberFacts {
     value_type: CompilerType,
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
+    declaration_end: usize,
+}
+
+#[derive(Clone)]
+struct CompilerContextCapture {
+    parameter_name: String,
+    value_type: CompilerType,
+    int_range: Option<IntRange>,
+    rational_value: Option<BigRational>,
+    argument: CompilerExpression,
+    span: Span,
 }
 
 #[derive(Clone)]
@@ -468,13 +479,14 @@ enum CompilerCallableFacts {
     },
 }
 
-impl From<&BindingFacts> for CompilerDataMemberFacts {
-    fn from(facts: &BindingFacts) -> Self {
+impl CompilerDataMemberFacts {
+    fn from_binding(facts: &BindingFacts, declaration_end: usize) -> Self {
         Self {
             storage_name: facts.storage_name.clone(),
             value_type: facts.value_type.clone(),
             int_range: facts.int_range.clone(),
             rational_value: facts.rational_value.clone(),
+            declaration_end,
         }
     }
 }
@@ -1006,8 +1018,13 @@ impl Analyzer {
                     };
                     environment.insert(name_text.clone(), facts.clone());
                     if kind == BlockKind::TopLevel {
-                        self.root_bindings
-                            .insert(name_text.clone(), CompilerDataMemberFacts::from(&facts));
+                        self.root_bindings.insert(
+                            name_text.clone(),
+                            CompilerDataMemberFacts::from_binding(
+                                &facts,
+                                statement_span(statement).end,
+                            ),
+                        );
                     }
                     declared.insert(name_text.clone());
                     lowered.push(CompilerStatement::Binding(CompilerBinding {
@@ -1127,6 +1144,35 @@ impl Analyzer {
                     value_type: CompilerType::Scope,
                     int_range: None,
                     rational_value: None,
+                    span,
+                })
+            }
+            Expression::ContextIdentifier(member) => {
+                if !self.in_function {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-CONTEXT-SELECTION",
+                        *member,
+                        "defining-context selection is available only inside a function body",
+                    ));
+                }
+                let member_name = self.source.slice(*member);
+                let parameter_name = format!("@ {member_name}");
+                let facts = environment.get(&parameter_name).ok_or_else(|| {
+                    source_diagnostic(
+                        &self.source,
+                        "E-COMPILER-UNSUPPORTED",
+                        *member,
+                        format!(
+                            "compiler increment cannot capture defining-context member `{member_name}`"
+                        ),
+                    )
+                })?;
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
+                    value_type: facts.value_type.clone(),
+                    int_range: facts.int_range.clone(),
+                    rational_value: facts.rational_value.clone(),
                     span,
                 })
             }
@@ -3926,11 +3972,26 @@ impl Analyzer {
             .iter()
             .map(|argument| self.known_callable(argument, environment, argument.span.start))
             .collect::<Result<Vec<_>, _>>()?;
+        let context_captures = self.defining_context_captures(&declaration)?;
+        if self.in_function && !context_captures.is_empty() {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "cross-function defining-context capture forwarding",
+            ));
+        }
+        let mut arguments = arguments;
+        arguments.extend(
+            context_captures
+                .iter()
+                .map(|capture| capture.argument.clone()),
+        );
         self.finish_selected_call(
             function_name,
             &declaration,
             arguments,
             &callable_arguments,
+            &context_captures,
             span,
         )
     }
@@ -4089,12 +4150,58 @@ impl Analyzer {
         Ok(Some((normalized, adapted)))
     }
 
+    fn defining_context_captures(
+        &self,
+        declaration: &FunctionSource,
+    ) -> Result<Vec<CompilerContextCapture>, Diagnostic> {
+        let mut captures = self
+            .root_bindings
+            .iter()
+            .filter_map(|(member_name, facts)| {
+                (facts.declaration_end <= declaration.span.start)
+                    .then(|| {
+                        function_body_context_member_span(
+                            &self.source,
+                            &declaration.body,
+                            member_name,
+                        )
+                    })
+                    .flatten()
+                    .map(|span| (member_name, facts, span))
+            })
+            .collect::<Vec<_>>();
+        captures.sort_by_key(|(_, facts, _)| facts.declaration_end);
+        captures
+            .into_iter()
+            .map(|(member_name, facts, span)| {
+                if !facts.value_type.machine_scalar()
+                    || !compiler_function_result_supported(&facts.value_type)
+                {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "non-scalar defining-context capture",
+                    ));
+                }
+                Ok(CompilerContextCapture {
+                    parameter_name: format!("@ {member_name}"),
+                    value_type: facts.value_type.clone(),
+                    int_range: facts.int_range.clone(),
+                    rational_value: facts.rational_value.clone(),
+                    argument: data_member_expression(facts, span),
+                    span,
+                })
+            })
+            .collect()
+    }
+
     fn finish_selected_call(
         &mut self,
         function_name: &str,
         declaration: &FunctionSource,
         arguments: Vec<CompilerExpression>,
         callable_arguments: &[Option<CompilerCallableFacts>],
+        context_captures: &[CompilerContextCapture],
         span: Span,
     ) -> Result<CompilerExpression, Diagnostic> {
         let identity = function_overload_identity(&self.source, function_name, declaration);
@@ -4140,6 +4247,7 @@ impl Analyzer {
             declaration,
             &arguments,
             callable_arguments,
+            context_captures,
             reserved_symbol.as_deref(),
             recursion_proof.is_some(),
         );
@@ -4156,13 +4264,14 @@ impl Analyzer {
         })
     }
 
-    #[allow(clippy::too_many_lines)] // Specialization keeps ABI and checked evidence decisions together.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Specialization keeps ABI and checked evidence decisions together.
     fn instantiate_function(
         &mut self,
         function_name: &str,
         declaration: &FunctionSource,
         arguments: &[CompilerExpression],
         callable_arguments: &[Option<CompilerCallableFacts>],
+        context_captures: &[CompilerContextCapture],
         reserved_symbol: Option<&str>,
         generalize_parameters: bool,
     ) -> Result<(String, CompilerType, Option<IntRange>, Option<BigRational>), Diagnostic> {
@@ -4226,6 +4335,36 @@ impl Analyzer {
                     .then(|| argument.int_range.clone())
                     .flatten(),
                 span: parameter.name,
+            });
+        }
+        let context_arguments = &arguments[declaration.parameters.len()..];
+        debug_assert_eq!(context_arguments.len(), context_captures.len());
+        for (capture, argument) in context_captures.iter().zip(context_arguments) {
+            require_same_type(
+                &self.source,
+                capture.span,
+                &capture.value_type,
+                &argument.value_type,
+            )?;
+            environment.insert(
+                capture.parameter_name.clone(),
+                BindingFacts {
+                    storage_name: capture.parameter_name.clone(),
+                    value_type: capture.value_type.clone(),
+                    int_range: capture.int_range.clone(),
+                    rational_value: capture.rational_value.clone(),
+                    string_value: exact_string(argument),
+                    record_fields: BTreeMap::new(),
+                    namespace: None,
+                    callable: None,
+                },
+            );
+            parameters.push(CompilerParameter {
+                name: capture.parameter_name.clone(),
+                discarded: false,
+                value_type: capture.value_type.clone(),
+                int_range: capture.int_range.clone(),
+                span: capture.span,
             });
         }
         let result_type = self.parse_classifier(declaration.result)?;
@@ -5145,6 +5284,81 @@ impl Analyzer {
                 .all(|branch| branch.rational_value.as_ref() == Some(value))
         });
         Ok((first.value_type.clone(), int_range, rational_value))
+    }
+}
+
+fn function_body_context_member_span(
+    source: &SourceText,
+    statements: &[Statement],
+    member_name: &str,
+) -> Option<Span> {
+    statements
+        .iter()
+        .find_map(|statement| statement_context_member_span(source, statement, member_name))
+}
+
+fn statement_context_member_span(
+    source: &SourceText,
+    statement: &Statement,
+    member_name: &str,
+) -> Option<Span> {
+    match statement {
+        Statement::Published { declaration, .. } => {
+            statement_context_member_span(source, declaration, member_name)
+        }
+        Statement::Binding { value, .. }
+        | Statement::ContextAssignment { value, .. }
+        | Statement::Discard { value, .. }
+        | Statement::Return { value, .. }
+        | Statement::Expression(value) => {
+            expression_context_member_span(source, value, member_name)
+        }
+        _ => None,
+    }
+}
+
+fn expression_context_member_span(
+    source: &SourceText,
+    expression: &Expression,
+    member_name: &str,
+) -> Option<Span> {
+    match expression {
+        Expression::ContextIdentifier(span) if source.slice(*span) == member_name => Some(*span),
+        Expression::Block { statements, .. } => {
+            function_body_context_member_span(source, statements, member_name)
+        }
+        Expression::Product { fields, .. } => fields
+            .iter()
+            .find_map(|field| expression_context_member_span(source, &field.value, member_name)),
+        Expression::DecisionTable { subject, rules, .. } => {
+            expression_context_member_span(source, subject, member_name).or_else(|| {
+                rules.iter().find_map(|rule| {
+                    let matcher = match &rule.matcher {
+                        DecisionMatcher::Comparison { operand, .. } => {
+                            expression_context_member_span(source, operand, member_name)
+                        }
+                        _ => None,
+                    };
+                    matcher.or_else(|| {
+                        expression_context_member_span(source, &rule.action, member_name)
+                    })
+                })
+            })
+        }
+        Expression::Application { items, .. } => items
+            .iter()
+            .find_map(|item| expression_context_member_span(source, item, member_name)),
+        Expression::AnonymousFunction { .. }
+        | Expression::Unit(_)
+        | Expression::Boolean(_)
+        | Expression::Integer(_)
+        | Expression::Measured { .. }
+        | Expression::Rational(_)
+        | Expression::String(_)
+        | Expression::Identifier(_)
+        | Expression::ContextIdentifier(_)
+        | Expression::Discard(_)
+        | Expression::Callable { .. } => None,
     }
 }
 
@@ -7371,6 +7585,56 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(rejected.code, "E-COMPILER-UNSUPPORTED");
+    }
+
+    #[test]
+    fn models_private_scalar_defining_context_capture() {
+        // TOPAL-COMPILER-CONTEXT-CAPTURE-001, TOPAL-CONTEXT-SELECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/constructed-context.t"
+        ))
+        .unwrap();
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+        let function = &program.functions[0];
+        assert_eq!(function.parameters.len(), 2);
+        assert_eq!(function.parameters[0].name, "value");
+        assert_eq!(function.parameters[1].name, "@ offset");
+        let CompilerExpressionKind::Call { arguments, .. } = &program.main.result.kind else {
+            panic!("expected direct context-capturing call")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert_eq!(exact_int(&arguments[0]), Some(BigInt::from(2)));
+        assert_eq!(exact_int(&arguments[1]), Some(BigInt::from(40)));
+        let [CompilerStatement::Binding(root_binding)] = program.main.statements.as_slice() else {
+            panic!("expected one defining-context root binding")
+        };
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(storage) if storage == &root_binding.storage_name
+        ));
+
+        let shadowed = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 40\nadd-offset is fn (value : Int) -> Int\n  value + @ offset\n{\n  offset is 100\n  add-offset 2\n}\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&shadowed.main.result), Some(BigInt::from(42)));
+
+        let later = analyze_for_compiler(
+            "use language (version is v0.1)\nadd-offset is fn (value : Int) -> Int\n  value + @ offset\noffset is 40\nadd-offset 2\n",
+        )
+        .unwrap_err();
+        assert_eq!(later.code, "E-COMPILER-UNSUPPORTED");
+
+        let forwarded = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 40\nadd-offset is fn (value : Int) -> Int\n  value + @ offset\nwrapper is fn (value : Int) -> Int\n  add-offset value\nwrapper 2\n",
+        )
+        .unwrap_err();
+        assert_eq!(forwarded.code, "E-COMPILER-UNSUPPORTED");
+
+        let outside =
+            analyze_for_compiler("use language (version is v0.1)\noffset is 40\n@ offset\n")
+                .unwrap_err();
+        assert_eq!(outside.code, "E-CONTEXT-SELECTION");
     }
 
     #[test]
