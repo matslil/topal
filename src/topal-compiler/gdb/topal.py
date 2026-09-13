@@ -418,6 +418,7 @@ class _TopalListPrinter:
         inferior = gdb.selected_inferior()
         entries = []
         visited = set()
+        node_size = 24 if self._element_type == "(Int, Int)" else 16
         while address:
             if address in visited:
                 return "<cyclic List>"
@@ -425,7 +426,7 @@ class _TopalListPrinter:
                 return "<List too large to render safely>"
             visited.add(address)
             try:
-                node = bytes(inferior.read_memory(address, 16))
+                node = bytes(inferior.read_memory(address, node_size))
             except gdb.MemoryError:
                 return "<unreadable List node>"
             if self._element_type == "Effect":
@@ -441,9 +442,19 @@ class _TopalListPrinter:
                 if rendered.startswith("<"):
                     return f"<invalid List Int entry: {rendered}>"
                 entries.append(rendered)
+            elif self._element_type == "(Int, Int)":
+                left = int.from_bytes(node[0:8], "little")
+                right = int.from_bytes(node[8:16], "little")
+                if not left or not right:
+                    return "<invalid null List (Int, Int) field>"
+                left = _TopalIntPrinter(left).to_string()
+                right = _TopalIntPrinter(right).to_string()
+                if left.startswith("<") or right.startswith("<"):
+                    return f"<invalid List (Int, Int) entry: ({left}, {right})>"
+                entries.append(f"({left}, {right})")
             else:
                 return f"<unsupported List element type {self._element_type}>"
-            address = int.from_bytes(node[8:16], "little")
+            address = int.from_bytes(node[node_size - 8 : node_size], "little")
         rendered = "Empty"
         for entry in reversed(entries):
             rendered = f"Entry ( {entry}, {rendered} )"
@@ -533,6 +544,10 @@ def _lookup_topal_value(value):
         "struct TopalList."
     ):
         return _TopalListPrinter(value, value_type[len(list_prefix) :])
+    if value_type.startswith("List(") and storage_type.startswith(
+        "struct TopalList."
+    ):
+        return _TopalListPrinter(value, value_type[len("List") :])
     prefix = "Result ("
     suffix = ", lang arithmetic ArithmeticErrorCode)"
     if value_type.startswith(prefix) and value_type.endswith(suffix):

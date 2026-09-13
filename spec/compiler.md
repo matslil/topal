@@ -1031,6 +1031,34 @@ private layout, or native ABI revision. Other payload and collection
 classifiers, traversal-control function boundaries, generators, and remaining
 traversal algorithms SHALL remain rejected pending later increments.
 
+### TOPAL-COMPILER-LIST-INT-PAIR-MAP-001 — Int-pair List product map
+
+The compiler SHALL admit contextual construction of `List (Int, Int)` and a
+`map` action whose single two-field anonymous product pattern binds both exact
+Int fields. The action MAY be directly contextual or retained in an immutable
+anonymous Function binding. It SHALL run once for every pair in source order,
+bind the first and second fields in pattern order, and produce an Int for the
+corresponding output entry. Duplicate bindings and a product-pattern arity
+other than two SHALL be diagnosed. Inputs SHALL remain immutable, and every
+arbitrary-precision Int SHALL remain exact.
+
+On Linux x86-64, a private pair-List node SHALL contain the two canonical Int
+pointers inline at offsets zero and eight followed by its remaining-node
+pointer at offset sixteen. Construction SHALL allocate and initialize the
+complete 24-byte node only after evaluating its value and remaining List in
+source order. The specialized generated map loop SHALL load and bind both
+fields directly and SHALL retain the existing immutable `List Int` result
+construction. Canonical output, DWARF, and the bundled GDB renderer SHALL
+preserve `List (Int, Int)` and its source-shaped pair entries at O0.
+
+This rule SHALL add no tuple payload allocation, generic or type-erased List
+runtime, callback ABI, indirect call, foreign allocator, C/C++ runtime,
+other-language standard library, undefined symbol, needed library, relocation,
+public/foreign/serialized/persistent/generic List ABI, stabilized private
+layout, or native ABI revision. Pair-List function boundaries, other product
+shapes and classifiers, pair-returning transformations, and remaining
+operations over pair Lists SHALL remain rejected pending later increments.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed

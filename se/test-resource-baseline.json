@@ -5039,6 +5039,21 @@
       "cpu_time_ns": 3658479,
       "memory_peak_bytes": 18231296,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_int_pair_list_product_map_without_a_generic_runtime": {
+      "cpu_time_ns": 9832540,
+      "memory_peak_bytes": 18329600,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::int_pair_list_product_map_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 328588419,
+      "memory_peak_bytes": 58572800,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_int_pair_list_product_map_pattern": {
+      "cpu_time_ns": 3859979,
+      "memory_peak_bytes": 18419712,
+      "samples_per_test": 50
     }
   }
 }
