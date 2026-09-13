@@ -97,6 +97,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/strings-and-products.t",
     "examples/language/tuple-decision-results.t",
     "examples/language/tuple-equality.t",
+    "examples/language/tuple-function-parameters.t",
     "examples/language/type-classifier.t",
     "examples/language/type-function-boundary.t",
     "examples/language/type-identity.t",

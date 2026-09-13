@@ -3143,18 +3143,11 @@ impl Analyzer {
             .enumerate()
             .filter_map(|(index, item)| (index != function_index).then_some(item))
             .collect::<Vec<_>>();
-        let argument_sources = if let [Expression::Product { fields, .. }] =
-            argument_sources.as_slice()
-            && fields.iter().all(|field| field.label.is_none())
-        {
-            fields.iter().map(|field| &field.value).collect::<Vec<_>>()
-        } else {
-            argument_sources
-        };
         let arguments = argument_sources
             .iter()
             .map(|argument| self.analyze_expression(argument, environment))
             .collect::<Result<Vec<_>, _>>()?;
+        let flattened_arguments = flattened_product_arguments(&argument_sources, &arguments);
 
         let mut selected = None;
         for declaration in declarations
@@ -3165,6 +3158,10 @@ impl Analyzer {
                 && matches!(argument_sources.as_slice(), [Expression::Unit(_)])
             {
                 &[][..]
+            } else if declaration.parameters.len() > 1
+                && let Some(flattened) = &flattened_arguments
+            {
+                flattened.as_slice()
             } else {
                 arguments.as_slice()
             };
@@ -3318,11 +3315,11 @@ impl Analyzer {
                 &expected,
                 &argument.value_type,
             )?;
-            if !expected.machine_scalar() || !compiler_abi_type_supported(&expected) {
+            if !compiler_function_parameter_supported(&expected) {
                 return Err(unsupported(
                     &self.source,
                     parameter.classifier,
-                    "non-scalar function parameter",
+                    "unsupported function parameter",
                 ));
             }
             let name = self.source.slice(parameter.name).to_owned();
@@ -4440,6 +4437,10 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
+    compiler_function_result_supported(value_type)
+}
+
 fn decision_binding_environment(
     environment: &BTreeMap<String, BindingFacts>,
     name: &str,
@@ -4831,6 +4832,28 @@ fn adapt_call_argument(
         }
         _ => None,
     }
+}
+
+fn flattened_product_arguments(
+    sources: &[&Expression],
+    arguments: &[CompilerExpression],
+) -> Option<Vec<CompilerExpression>> {
+    let [Expression::Product { fields, .. }] = sources else {
+        return None;
+    };
+    let [
+        CompilerExpression {
+            kind: CompilerExpressionKind::Tuple(values),
+            ..
+        },
+    ] = arguments
+    else {
+        return None;
+    };
+    fields
+        .iter()
+        .all(|field| field.label.is_none())
+        .then(|| values.clone())
 }
 
 fn rational_absolute(value: &BigRational) -> BigRational {
@@ -6036,6 +6059,91 @@ mod tests {
             };
             assert_eq!(actual, expected);
         }
+    }
+
+    #[test]
+    fn models_private_tuple_parameters_and_candidate_specific_product_calls() {
+        // TOPAL-COMPILER-TUPLE-PARAMETER-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/tuple-function-parameters.t"
+        ))
+        .unwrap();
+
+        let retain = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "retain")
+            .unwrap();
+        assert_eq!(retain.parameters.len(), 1);
+        assert_eq!(
+            retain.parameters[0].value_type,
+            CompilerType::Tuple(vec![
+                CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Boolean]),
+                CompilerType::String,
+            ])
+        );
+
+        for function in program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "choose")
+        {
+            assert!(matches!(
+                function.parameters.as_slice(),
+                [
+                    CompilerParameter {
+                        value_type: CompilerType::Tuple(_),
+                        ..
+                    },
+                    CompilerParameter {
+                        value_type: CompilerType::Boolean,
+                        ..
+                    }
+                ]
+            ));
+        }
+
+        let tuple_first = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "tuple-first")
+            .unwrap();
+        assert!(matches!(
+            tuple_first.parameters.as_slice(),
+            [CompilerParameter {
+                value_type: CompilerType::Tuple(_),
+                ..
+            }]
+        ));
+        let fields_first = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "fields-first")
+            .unwrap();
+        assert!(matches!(
+            fields_first.parameters.as_slice(),
+            [
+                CompilerParameter {
+                    value_type: CompilerType::Int,
+                    ..
+                },
+                CompilerParameter {
+                    value_type: CompilerType::String,
+                    ..
+                }
+            ]
+        ));
+
+        let discard = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "discard-pair")
+            .unwrap();
+        assert!(discard.parameters[0].discarded);
+        assert!(matches!(
+            discard.parameters[0].value_type,
+            CompilerType::Tuple(_)
+        ));
     }
 
     #[test]

@@ -2099,6 +2099,96 @@ fn tuple_result_is_freestanding_and_gdb_exposes_its_source_shape() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn tuple_parameter_is_freestanding_and_gdb_exposes_its_source_shape() {
+    // TOPAL-COMPILER-TUPLE-PARAMETER-001,
+    // TOPAL-COMPILER-ABI-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-tuple-parameter");
+    let source = directory.join("tuple-function-parameters.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/tuple-function-parameters.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(((42, true), \"nested\"), (7, \"kept\"), (0, \"fallback\"), \"tuple\", \"fields\", \"discarded\")\n"
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break tuple-function-parameters.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "ptype 'topal.fn.retain.0'",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(
+        text.contains("type = struct ((Int, Boolean), String)"),
+        "{text}"
+    );
+    assert!(text.contains("struct (Int, Boolean) _0;"), "{text}");
+    assert!(text.contains("String _1;"), "{text}");
+    assert!(
+        text.contains("$1 = {_0 = {_0 = 42, _1 = true}, _1 = \"nested\"}"),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.retain.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_retains_fundamental_type_identity_across_a_function_boundary() {
     // TOPAL-COMP-DEBUG-001, TOPAL-ABSTRACTION-TYPE-BOUNDARY-001
     let directory = temporary("gdb-type-boundary");

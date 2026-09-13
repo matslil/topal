@@ -395,8 +395,8 @@ struct whose fields recursively use those private value types. The definition
 and every call SHALL have one exactly matching private calling convention and
 prototype; LLVM SHALL select the physical register or stack transport under the
 qualified target and data layout. This representation SHALL NOT be exposed as
-a stable compiled-library or foreign ABI. Aggregate parameters, Record results,
-and any Tuple containing an unsupported leaf SHALL remain rejected.
+a stable compiled-library or foreign ABI. Record results and any Tuple
+containing an unsupported leaf SHALL remain rejected.
 
 DWARF SHALL describe the source Tuple, its ordered fields, and its target-exact
 layout. Named Tuple bindings SHALL remain inspectable in GDB at O0; a
@@ -420,6 +420,35 @@ no machine join. It SHALL preserve Tuple nesting and field order without an
 aggregate `phi`, eager action evaluation, semantic aggregate storage, heap
 allocation, runtime helper, foreign dependency, or ABI revision. Record-valued
 decision results and Tuples with unsupported leaves SHALL remain rejected.
+
+### TOPAL-COMPILER-TUPLE-PARAMETER-001 — Private positional-product parameters
+
+An ordinary or static function parameter classified by a recursively composed
+Tuple SHALL preserve every field in source order when every leaf type has an
+admitted exact private scalar representation. The argument expression SHALL be
+evaluated once before selection and entry. A one-parameter candidate SHALL
+match the complete positional product, while a multi-parameter candidate SHALL
+match its fields in declaration order; source-ordered overload selection SHALL
+remain unchanged when both candidate shapes apply.
+
+For Linux x86-64, the backend SHALL pass each admitted Tuple parameter as one
+non-packed LLVM struct whose fields recursively use those private value types.
+The caller SHALL form the aggregate with `insertvalue`, the callee SHALL recover
+its decomposed source value with `extractvalue`, and the definition and every
+call SHALL have one exactly matching private `fastcc` prototype. LLVM SHALL
+select physical register or stack transport for the qualified target and data
+layout. This representation SHALL NOT be a stable compiled-library or foreign
+ABI and SHALL require no semantic aggregate storage, heap allocation, runtime
+helper, foreign dependency, other-language standard library, or native ABI
+revision.
+
+DWARF SHALL describe the complete source Tuple parameter with target-exact
+field layout. A named parameter SHALL remain inspectable in GDB at O0; a
+target-aligned debug-only stack shadow and `#dbg_declare` MAY be used when the
+aggregate SSA argument is not directly inspectable. A discarded Tuple
+parameter SHALL retain its checked and LLVM signature position but SHALL NOT be
+unpacked or receive a source or DWARF binding. Record parameters and Tuples
+with unsupported leaves SHALL remain rejected.
 
 ### TOPAL-COMPILER-TYPE-VALUE-001 — Closed fundamental Type values
 
