@@ -1108,6 +1108,30 @@ This requirement covers `TOPAL-DECISION-COMPARISON-001`,
 case of `TOPAL-DECISION-ENUM-001`. It realizes
 `TOPAL-COMPILER-DECISION-001` for compiler increment 2c-a.
 
+## TOPAL-COMP-CONSTRAINT-VALUE-001 — Named constraint observation values
+
+The checked compiler model shall admit root named constraints over supported
+primitive bases and retain the name, base classifier, predicate parameter, and
+checked Boolean predicate as semantic metadata. A separately named root binding
+classified as `Constraint` shall receive its binding identity while retaining
+the source constraint's base and predicate. Captures shall be diagnosed as
+unsupported rather than silently erased.
+
+LLVM lowering shall carry only a deterministic module-private i32 identity tag,
+with matching canonical `<Constraint name>` output and `Constraint` DWARF
+enumerators. Native and GDB tests shall cover constructed and classified-copy
+identities, checked Boolean result, exact shared-interpreter output, undefined
+symbols, needed libraries, relocations, local types, values, and source frame.
+The tag shall not dispatch the predicate or become a public ABI/library key.
+
+Constraint application/evidence, capturing predicates, function or aggregate
+boundaries, and public compiled-library constraint identities remain rejected.
+This shall add no allocation, constraint runtime, foreign dependency, C/C++
+runtime, other-language standard library, or `topal-native/6` revision. This
+realizes `TOPAL-COMPILER-CONSTRAINT-VALUE-001`,
+`TOPAL-ABSTRACTION-CONSTRAINT-CLASSIFIER-001`, and the construction-only portion
+of `TOPAL-TYPE-CONSTRAINT-001` for compiler increment 8a1.
+
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
 Debug-enabled O0 output shall map generated source functions, parameters,
@@ -1115,7 +1139,8 @@ immutable scalar locals, lexical scopes, and instructions to Topal files and
 source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
 renderers for private arbitrary-precision Int, Rational, `Range Int`,
 `Range Rational`, `Optional Int`, and `Optional String` objects, describe
-source-declared nominal enums with their alternative labels,
+source-declared nominal enums and retained Constraint identities with their
+alternative labels,
 distinguish selected overload and static-function frames, and pass automated
 GDB breakpoint, value, and backtrace scenarios.
 
