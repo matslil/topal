@@ -58,6 +58,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/mutual-increasing-int-recursion.t",
     "examples/language/mutual-int-recursion.t",
     "examples/language/mutual-multiple-recursive-calls.t",
+    "examples/language/named-function-values.t",
     "examples/language/nat-equality-and-ordering.t",
     "examples/language/nat-functions.t",
     "examples/language/nat-checked-construction.t",

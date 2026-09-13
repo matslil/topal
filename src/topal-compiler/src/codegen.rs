@@ -57,6 +57,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Effect
         | CompilerType::Type
         | CompilerType::Scope
+        | CompilerType::Function
         | CompilerType::Boolean
         | CompilerType::Int
         | CompilerType::Nat
@@ -169,6 +170,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Effect
         | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Root
+        | CompilerExpressionKind::FunctionValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -191,6 +193,9 @@ impl<'a> Generator<'a> {
     fn new(program: &'a CompilerProgram, source_name: &'a str) -> Self {
         let mut debug = DebugInfo::new(source_name, program_uses_extended_debug(program));
         debug.set_source(program.source.clone());
+        if !program.function_value_names.is_empty() {
+            debug.enum_type(&function_value_enumeration(program));
+        }
         Self {
             program,
             source_name,
@@ -650,6 +655,10 @@ impl<'a> Generator<'a> {
                 value: "0".into(),
                 enumeration: root_scope_enumeration(),
             },
+            CompilerExpressionKind::FunctionValue(value) => LlValue::Enum {
+                value: value.to_string(),
+                enumeration: function_value_enumeration(self.program),
+            },
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
             CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
             CompilerExpressionKind::Rational(value) => {
@@ -1102,6 +1111,9 @@ impl<'a> Generator<'a> {
                         ),
                         enumeration: root_scope_enumeration(),
                     },
+                    CompilerType::Function => {
+                        unreachable!("checked functions do not return Function values")
+                    }
                     CompilerType::Boolean => LlValue::Boolean(body.instruction(
                         &format!("call fastcc i1 @{symbol}({arguments})"),
                         expression.span,
@@ -3072,6 +3084,17 @@ fn root_scope_enumeration() -> CompilerEnumType {
     }
 }
 
+fn function_value_enumeration(program: &CompilerProgram) -> CompilerEnumType {
+    CompilerEnumType {
+        name: "Function".into(),
+        alternatives: program
+            .function_value_names
+            .iter()
+            .map(|name| format!("<fn {name}>"))
+            .collect(),
+    }
+}
+
 fn numeric_domain(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Int => "int",
@@ -3570,6 +3593,10 @@ impl DebugInfo {
             CompilerType::Effect => self.effect_type,
             CompilerType::Type => self.enum_type(&fundamental_type_enumeration()),
             CompilerType::Scope => self.enum_type(&root_scope_enumeration()),
+            CompilerType::Function => *self
+                .enum_types
+                .get("Function")
+                .expect("checked Function values install their debug type"),
             CompilerType::Boolean => self.boolean_type,
             CompilerType::Int => self.int_type,
             CompilerType::Nat => self.nat_type,
@@ -3882,6 +3909,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         },
         CompilerType::Type
         | CompilerType::Scope
+        | CompilerType::Function
         | CompilerType::Comparison
         | CompilerType::ErrorCode
         | CompilerType::Enum(_) => TargetValueLayout {
@@ -3964,6 +3992,7 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Optional(_) => "ptr".into(),
         CompilerType::Type
         | CompilerType::Scope
+        | CompilerType::Function
         | CompilerType::Comparison
         | CompilerType::ErrorCode
         | CompilerType::Enum(_) => "i32".into(),
@@ -4004,6 +4033,9 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             value,
             enumeration: root_scope_enumeration(),
         },
+        CompilerType::Function => {
+            unreachable!("Function values are not admitted at machine ABI reconstruction points")
+        }
         CompilerType::Boolean => LlValue::Boolean(value),
         CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
         CompilerType::Rational => LlValue::Rational(value),
@@ -4482,6 +4514,33 @@ mod tests {
             assert!(!llvm.contains("topal.runtime.namespace"));
             assert!(!llvm.contains("topal.runtime.scope"));
         }
+    }
+
+    #[test]
+    fn emits_named_function_values_with_direct_retained_calls() {
+        // TOPAL-COMPILER-NAMED-FUNCTION-VALUE-001, TOPAL-FUNCTION-VALUE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/named-function-values.t"
+        ))
+        .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "named-function-values.t").emit();
+        assert!(
+            llvm.lines().any(|line| {
+                line.contains("call fastcc") && line.contains(&format!("@{symbol}("))
+            })
+        );
+        assert!(llvm.contains("!DIEnumerator(name: \"<fn increment>\", value: 0)"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("call ptr %"));
+
+        let displayed = analyze_for_compiler(
+            "use language (version is v0.1)\nfirst is fn (value : Int) -> Int\n  value\nsecond is fn (value : Int) -> Int\n  value\n(first, second)\n",
+        )
+        .unwrap();
+        let llvm = Generator::new(&displayed, "function-display.t").emit();
+        assert!(llvm.contains(&llvm_bytes(b"<fn first>")));
+        assert!(llvm.contains(&llvm_bytes(b"<fn second>")));
     }
 
     #[test]
