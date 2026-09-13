@@ -4934,6 +4934,21 @@
       "cpu_time_ns": 2851100,
       "memory_peak_bytes": 18370560,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_exact_int_list_containment_loops": {
+      "cpu_time_ns": 5690860,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::int_list_containment_is_freestanding_and_gdb_renders_exact_entries": {
+      "cpu_time_ns": 326961700,
+      "memory_peak_bytes": 57966592,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_int_list_containment_without_erasing_list_identity": {
+      "cpu_time_ns": 3785659,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
     }
   }
 }

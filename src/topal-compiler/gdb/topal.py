@@ -377,6 +377,14 @@ class _TopalListPrinter:
                 if payload:
                     return f"<invalid Effect value {payload}>"
                 entries.append("Effects ()")
+            elif self._element_type == "Int":
+                payload = int.from_bytes(node[0:8], "little")
+                if not payload:
+                    return "<invalid null List Int entry>"
+                rendered = _TopalIntPrinter(payload).to_string()
+                if rendered.startswith("<"):
+                    return f"<invalid List Int entry: {rendered}>"
+                entries.append(rendered)
             else:
                 return f"<unsupported List element type {self._element_type}>"
             address = int.from_bytes(node[8:16], "little")

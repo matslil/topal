@@ -541,6 +541,24 @@ contract, or layout commitment for other element types. General reachability
 reclamation remains deferred; process-lifetime retention is safe for this
 immutable executable-only slice and does not revise `topal-native/6`.
 
+`List Int` reuses only that node's private size and next-pointer position: its
+first word is the existing canonical arbitrary-precision Int pointer rather
+than an Effect byte. This is a statically selected node interpretation, not a
+type-erased generic layout or runtime tag. Generated construction and display
+select the exact payload load/store from the checked element classifier. The
+three Int containment observations use finite, allocation-free runtime loops:
+one compares each entry, one applies a consecutive-prefix check at successive
+source positions, and one advances the pattern only after an equal entry.
+Empty sequence and subsequence patterns return true before reading a source
+node. All comparison delegates to the existing exact Int comparator, leaving
+inputs unchanged and semantics independent of LLVM optimization. The compiler
+adds this specialized internal runtime fragment only when checked containment
+expressions require it, so unrelated modules do not pay its LLVM assembly
+cost. Private calls still carry an opaque List pointer with LLVM-owned physical
+placement; distinct `List Int` DWARF and GDB decoding restores the semantic
+payload type without turning either List layout into a public or serialized
+contract.
+
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
 action in its selected block, and compatible machine-scalar results merge with

@@ -345,6 +345,18 @@ pub enum CompilerExpressionKind {
         value: Box<CompilerExpression>,
         remaining: Box<CompilerExpression>,
     },
+    ListContainsEntry {
+        list: Box<CompilerExpression>,
+        value: Box<CompilerExpression>,
+    },
+    ListContainsSequence {
+        list: Box<CompilerExpression>,
+        pattern: Box<CompilerExpression>,
+    },
+    ListContainsSubsequence {
+        list: Box<CompilerExpression>,
+        pattern: Box<CompilerExpression>,
+    },
     ErrorField {
         error: Box<CompilerExpression>,
         field: CompilerErrorField,
@@ -2881,6 +2893,63 @@ impl Analyzer {
             }
             result.span = span;
             return Ok(result);
+        }
+        if let [list, Expression::Identifier(operation), operand] = items
+            && matches!(
+                self.source.slice(*operation),
+                "contains-entry" | "contains-sequence" | "contains-subsequence"
+            )
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            let list = self.analyze_expression(list, environment)?;
+            let CompilerType::List(element) = &list.value_type else {
+                return Err(unsupported(
+                    &self.source,
+                    list.span,
+                    "List containment subject",
+                ));
+            };
+            let element = element.as_ref().clone();
+            let list_type = list.value_type.clone();
+            if element != CompilerType::Int {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "containment for this List element type",
+                ));
+            }
+            let operand = self.analyze_expression(operand, environment)?;
+            let kind = match operation.as_str() {
+                "contains-entry" => {
+                    require_same_type(&self.source, operand.span, &element, &operand.value_type)?;
+                    CompilerExpressionKind::ListContainsEntry {
+                        list: Box::new(list),
+                        value: Box::new(operand),
+                    }
+                }
+                "contains-sequence" => {
+                    require_same_type(&self.source, operand.span, &list_type, &operand.value_type)?;
+                    CompilerExpressionKind::ListContainsSequence {
+                        list: Box::new(list),
+                        pattern: Box::new(operand),
+                    }
+                }
+                "contains-subsequence" => {
+                    require_same_type(&self.source, operand.span, &list_type, &operand.value_type)?;
+                    CompilerExpressionKind::ListContainsSubsequence {
+                        list: Box::new(list),
+                        pattern: Box::new(operand),
+                    }
+                }
+                _ => unreachable!(),
+            };
+            return Ok(CompilerExpression {
+                kind,
+                value_type: CompilerType::Boolean,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
         }
         if let [Expression::Identifier(constructor), value] = items
             && self.source.slice(*constructor) == "Some"
@@ -7105,8 +7174,12 @@ fn fundamental_type_value(name: &str) -> Option<u32> {
 }
 
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
-    if classifier == "ListEffect" {
-        return Some(CompilerType::List(Box::new(CompilerType::Effect)));
+    if let Some(element) = classifier.strip_prefix("List")
+        && matches!(element, "Effect" | "Int")
+    {
+        return Some(CompilerType::List(Box::new(parse_compact_classifier(
+            element,
+        )?)));
     }
     if let Some(payload) = classifier.strip_prefix("Optional") {
         return Some(CompilerType::Optional(Box::new(parse_compact_classifier(
@@ -7243,7 +7316,9 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::List(element) => element.as_ref() == &CompilerType::Effect,
+        CompilerType::List(element) => {
+            matches!(element.as_ref(), CompilerType::Effect | CompilerType::Int)
+        }
         CompilerType::Optional(payload) => {
             matches!(
                 payload.as_ref(),
@@ -7691,6 +7766,18 @@ fn compiler_expression_is_closed_with(
                 && compiler_expression_is_closed_with(denominator, bound)
         }
         CompilerExpressionKind::StringConcat { left, right }
+        | CompilerExpressionKind::ListContainsEntry {
+            list: left,
+            value: right,
+        }
+        | CompilerExpressionKind::ListContainsSequence {
+            list: left,
+            pattern: right,
+        }
+        | CompilerExpressionKind::ListContainsSubsequence {
+            list: left,
+            pattern: right,
+        }
         | CompilerExpressionKind::Binary { left, right, .. } => {
             compiler_expression_is_closed_with(left, bound)
                 && compiler_expression_is_closed_with(right, bound)
@@ -9119,6 +9206,58 @@ mod tests {
                 "E-TYPE-MISMATCH"
             );
         }
+    }
+
+    #[test]
+    fn models_int_list_containment_without_erasing_list_identity() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-LIST-CONTAINS-ENTRY-001,
+        // TOPAL-LIST-CONTAINS-SEQUENCE-001, TOPAL-LIST-CONTAINS-SUBSEQUENCE-001,
+        // TOPAL-COMPILER-LIST-INT-CONTAINMENT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-containment.t"
+        ))
+        .unwrap();
+        for statement in &program.main.statements {
+            let CompilerStatement::Binding(binding) = statement else {
+                continue;
+            };
+            assert_eq!(
+                binding.value.value_type,
+                CompilerType::List(Box::new(CompilerType::Int))
+            );
+        }
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared containment regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 6);
+        assert!(matches!(
+            results[0].kind,
+            CompilerExpressionKind::ListContainsEntry { .. }
+        ));
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::ListContainsSequence { .. }
+        ));
+        assert!(matches!(
+            results[3].kind,
+            CompilerExpressionKind::ListContainsSubsequence { .. }
+        ));
+        assert!(
+            results
+                .iter()
+                .all(|result| result.value_type == CompilerType::Boolean)
+        );
+
+        let mismatch = "use language (version is v0.1)\nvalues : List Int is Empty\nvalues contains-entry \"no\"\n";
+        assert_eq!(
+            analyze_for_compiler(mismatch).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+        let unavailable = "use language (version is v0.1)\nvalues : List Effect is Empty\nvalues contains-entry Effects ()\n";
+        assert_eq!(
+            analyze_for_compiler(unavailable).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 
     #[test]
