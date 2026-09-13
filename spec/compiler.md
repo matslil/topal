@@ -884,6 +884,38 @@ List equality, decisions, another transformation, or another element
 classifier. DWARF and GDB SHALL continue to describe and render the complete
 semantic `List Int` value.
 
+### TOPAL-COMPILER-LIST-INT-CORE-001 — Basic immutable Int List operations
+
+For the admitted `List Int` specialization, the compiler SHALL implement
+explicit empty and singleton construction, prepend, append, concatenation,
+reverse, entry count, emptiness, structural equality, total first/rest/uncons
+projections, and complete `Empty`/`Entry (first, rest)` decisions according to
+their container rules. Every operand SHALL be evaluated exactly once in source
+order. Every result SHALL preserve exact arbitrary-precision Int values and
+the `List Int` classifier, and no operation SHALL mutate an input List.
+
+The Linux x86-64 lowering SHALL use the existing private Int-pointer/remaining-
+pointer node. Concatenation MAY share its right operand but SHALL copy the left
+operand before linking it; append and reverse SHALL publish newly constructed
+immutable nodes. Observations and decisions SHALL traverse or project finite
+nodes without recursion. Equality SHALL use canonical Int comparison and
+terminate only after observing a mismatch or both ends. Correctness at O0 SHALL
+NOT depend on LLVM optimization.
+
+`first`, `rest`, and `uncons` SHALL use the existing private Optional header;
+their admitted payloads SHALL respectively preserve `Int`, `List Int`, and
+`(Int, List Int)`, including `Some Empty` without confusing it with `None`.
+DWARF and the bundled GDB renderer SHALL expose those semantic Optional types
+and render their complete values safely.
+
+Specialized core helpers SHALL be included only when a checked expression
+requires them. This rule SHALL add no foreign allocator, C/C++ runtime,
+other-language standard library, undefined symbol, needed library, relocation,
+or native ABI revision. It SHALL NOT stabilize the private node, Optional, or
+pair layout; create a public, foreign, serialized, persistent, or generic List
+ABI; promise reclamation beyond process lifetime; admit another element
+classifier; or imply remaining List algorithms.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed

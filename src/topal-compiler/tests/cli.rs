@@ -2452,6 +2452,116 @@ fn int_list_removal_is_immutable_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn basic_int_list_operations_are_freestanding_and_debuggable() {
+    // TOPAL-DECISION-LIST-001, TOPAL-TYPE-LIST-EQUALITY-001,
+    // TOPAL-LIST-PREPEND-001, TOPAL-LIST-APPEND-001, TOPAL-LIST-CONCAT-001,
+    // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-LIST-EMPTY-PREDICATE-001,
+    // TOPAL-LIST-EMPTY-001, TOPAL-LIST-ONE-001, TOPAL-LIST-UNCONS-001,
+    // TOPAL-LIST-FIRST-001, TOPAL-LIST-REST-001, TOPAL-LIST-REVERSE-001,
+    // TOPAL-COMPILER-LIST-INT-CORE-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-int-list-core");
+    let source = directory.join("int-list-core-boundary.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ninspect is fn (values : List Int) -> Optional Int\n  values\n    Empty then None Int\n    Entry (value, rest) then Some value\nvalues : List Int is Entry (-170141183460469231731687303715884105728, Entry (340282366920938463463374607431768211456, Empty))\nempty-values is empty List Int\nsingleton is one 9\nprepended is values prepend 0\nappended is values append 9\ncombined is prepended concat singleton\nreversed is combined reverse\nfirst-value is first combined\nrest-value is rest combined\nparts is uncons combined\nempty-first is first empty-values\nempty-rest is rest empty-values\nempty-parts is uncons empty-values\nempty-plus-values is empty-values concat values\nvalues-plus-empty is values concat empty-values\nempty-reversed is empty-values reverse\nlonger is values append 9\ndecision is inspect values\n(decision, first-value, rest-value, parts, empty-first, empty-rest, empty-parts, entry-count combined, empty? combined, empty? empty-values, reversed reverse = combined, empty-plus-values, values-plus-empty, empty-reversed, empty-values = empty-reversed, values = values-plus-empty, values = longer, reversed)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(Some -170141183460469231731687303715884105728, Some 0, Some Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Entry ( 9, Empty ) ) ), Some (0, Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Entry ( 9, Empty ) ) )), None, None, None, 4, false, true, true, Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Empty ) ), Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Empty ) ), Empty, true, true, false, Entry ( 9, Entry ( 340282366920938463463374607431768211456, Entry ( -170141183460469231731687303715884105728, Entry ( 0, Empty ) ) ) ))\n"
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break int-list-core-boundary.t:3",
+            "-ex",
+            "run",
+            "-ex",
+            "print values",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis 'rest-value'",
+            "-ex",
+            "print 'rest-value'",
+            "-ex",
+            "whatis parts",
+            "-ex",
+            "print parts",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(
+        text.contains(
+            "$1 = Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Empty ) )"
+        ),
+        "{text}"
+    );
+    assert!(text.contains("type = Optional List Int"), "{text}");
+    assert!(
+        text.contains(
+            "$2 = Some Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Entry ( 9, Empty ) ) )"
+        ),
+        "{text}"
+    );
+    assert!(text.contains("type = Optional (Int, List Int)"), "{text}");
+    assert!(
+        text.contains(
+            "$3 = Some (0, Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Entry ( 9, Empty ) ) ))"
+        ),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.inspect.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn tuple_result_is_freestanding_and_gdb_exposes_its_source_shape() {
     // TOPAL-COMPILER-TUPLE-RESULT-001,
     // TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001,

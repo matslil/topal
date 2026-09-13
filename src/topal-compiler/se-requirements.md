@@ -977,6 +977,45 @@ relocation, reclamation contract, or `topal-native/6` revision. It realizes
 `TOPAL-COMPILER-LIST-INT-REMOVAL-001`, `TOPAL-LIST-REMOVE-FIRST-001`, and
 `TOPAL-LIST-REMOVE-ALL-001` for compiler increment 4b3d-c.
 
+## TOPAL-COMP-LIST-INT-CORE-001 — Basic immutable Int List operations
+
+The checked compiler model shall admit the existing basic List surface for
+`List Int`: explicit `empty List Int`, `one value`, prepend, append, concat,
+reverse, entry count, emptiness, structural equality, first, rest, uncons, and
+a complete `Empty`/`Entry (first, rest)` decision. Operands shall be evaluated
+exactly once in source order. The model shall preserve arbitrary-precision Int
+entries, retain exact result classifiers, scope decision bindings only within
+the selected Entry action, and reject unsupported element classifiers rather
+than applying a type-erased implementation.
+
+The Linux x86-64 backend shall reuse the private immutable 16-byte
+Int-pointer/remaining-pointer node. Concatenation shall copy its left operand
+into one Topal-owned contiguous allocation and may share the right operand;
+append and reverse shall publish only newly initialized immutable nodes.
+Counting, emptiness, projections, decisions, and equality shall use finite
+nonrecursive control flow. Equality shall call the canonical exact Int
+comparator. Behavior at O0 shall not depend on an optimization pass.
+
+`first`, `rest`, and `uncons` shall retain the existing private Optional header
+while preserving semantic payload classifiers `Int`, `List Int`, and
+`(Int, List Int)`. A present empty tail shall remain distinct from absence.
+DWARF and the bundled GDB renderer shall name, validate, and render
+`Optional List Int` and `Optional (Int, List Int)` values. The compiler shall
+include the core LLVM fragment only for checked expressions that require it.
+
+This increment shall add no public, foreign, serialized, persistent, or
+generic List/Optional/pair ABI, foreign allocator, C/C++ runtime,
+other-language standard library, undefined symbol, needed library, relocation,
+reclamation contract, or `topal-native/6` revision. It realizes
+`TOPAL-COMPILER-LIST-INT-CORE-001`, `TOPAL-TYPE-LIST-CONSTRUCT-001`,
+`TOPAL-DECISION-LIST-001`, `TOPAL-TYPE-LIST-EQUALITY-001`,
+`TOPAL-LIST-PREPEND-001`, `TOPAL-LIST-APPEND-001`,
+`TOPAL-LIST-CONCAT-001`, `TOPAL-LIST-ENTRY-COUNT-001`,
+`TOPAL-LIST-EMPTY-PREDICATE-001`, `TOPAL-LIST-EMPTY-001`,
+`TOPAL-LIST-ONE-001`, `TOPAL-LIST-UNCONS-001`, `TOPAL-LIST-FIRST-001`,
+`TOPAL-LIST-REST-001`, and `TOPAL-LIST-REVERSE-001` for compiler increment
+4b3d-d.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when
@@ -1460,7 +1499,8 @@ Debug-enabled O0 output shall map generated source functions, parameters,
 immutable scalar locals, lexical scopes, and instructions to Topal files and
 source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
 renderers for private arbitrary-precision Int, Rational, `Range Int`,
-`Range Rational`, `Optional Int`, `Optional String`, `Optional Error`,
+`Range Rational`, `Optional Int`, `Optional String`, `Optional List Int`,
+`Optional (Int, List Int)`, `Optional Error`,
 `Optional SourceLocation`, `SourceLocation`, nominal modular-number objects,
 modular-success Result objects, `List Effect`, and `List Int`, describe
 source-declared nominal enums, retained Constraint

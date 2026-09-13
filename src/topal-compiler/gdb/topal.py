@@ -333,6 +333,14 @@ class _TopalOptionalPrinter:
             return "None"
         if tag != 1:
             return f"<invalid Optional tag {tag}>"
+        list_prefix = "List "
+        if self._payload_type.startswith(list_prefix):
+            rendered = _TopalListPrinter(
+                payload, self._payload_type[len(list_prefix) :]
+            ).to_string()
+            if rendered.startswith("<"):
+                return f"<invalid Optional List payload: {rendered}>"
+            return f"Some {rendered}"
         if not payload:
             return "<invalid null Some payload>"
         if self._payload_type == "Int":
@@ -345,6 +353,20 @@ class _TopalOptionalPrinter:
             rendered = _TopalErrorPrinter(payload).to_string()
         elif self._payload_type == "SourceLocation":
             rendered = _TopalSourceLocationPrinter(payload).to_string()
+        elif self._payload_type == "(Int, List Int)":
+            try:
+                pair = bytes(inferior.read_memory(payload, 16))
+            except gdb.MemoryError:
+                return "<unreadable Optional List decomposition>"
+            first = int.from_bytes(pair[0:8], "little")
+            if not first:
+                return "<invalid null List decomposition entry>"
+            rest = int.from_bytes(pair[8:16], "little")
+            first = _TopalIntPrinter(first).to_string()
+            rest = _TopalListPrinter(rest, "Int").to_string()
+            if first.startswith("<") or rest.startswith("<"):
+                return f"<invalid Optional List decomposition: ({first}, {rest})>"
+            rendered = f"({first}, {rest})"
         else:
             return f"<unsupported Optional payload type {self._payload_type}>"
         return f"Some {rendered}"

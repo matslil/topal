@@ -365,6 +365,24 @@ pub enum CompilerExpressionKind {
         list: Box<CompilerExpression>,
         value: Box<CompilerExpression>,
     },
+    ListPrepend {
+        list: Box<CompilerExpression>,
+        value: Box<CompilerExpression>,
+    },
+    ListAppend {
+        list: Box<CompilerExpression>,
+        value: Box<CompilerExpression>,
+    },
+    ListConcat {
+        left: Box<CompilerExpression>,
+        right: Box<CompilerExpression>,
+    },
+    ListReverse(Box<CompilerExpression>),
+    ListEntryCount(Box<CompilerExpression>),
+    ListEmptyPredicate(Box<CompilerExpression>),
+    ListFirst(Box<CompilerExpression>),
+    ListRest(Box<CompilerExpression>),
+    ListUncons(Box<CompilerExpression>),
     ErrorField {
         error: Box<CompilerExpression>,
         field: CompilerErrorField,
@@ -434,6 +452,12 @@ pub enum CompilerExpressionKind {
         some_binding: Option<(String, Span)>,
         some_action: Box<CompilerExpression>,
         none_action: Box<CompilerExpression>,
+    },
+    ListDecision {
+        subject: Box<CompilerExpression>,
+        entry_bindings: Option<((String, Span), (String, Span))>,
+        entry_action: Box<CompilerExpression>,
+        empty_action: Box<CompilerExpression>,
     },
 }
 
@@ -2873,34 +2897,258 @@ impl Analyzer {
             )
         {
             let mut result = self.analyze_expression(&items[0], environment)?;
+            if result.value_type == CompilerType::String {
+                for operand in items.iter().skip(2).step_by(2) {
+                    let right = self.analyze_expression(operand, environment)?;
+                    require_type(
+                        &self.source,
+                        right.span,
+                        &CompilerType::String,
+                        &right.value_type,
+                    )?;
+                    let expression_span = Span::new(result.span.start, right.span.end);
+                    result = CompilerExpression {
+                        kind: CompilerExpressionKind::StringConcat {
+                            left: Box::new(result),
+                            right: Box::new(right),
+                        },
+                        value_type: CompilerType::String,
+                        int_range: None,
+                        rational_value: None,
+                        span: expression_span,
+                    };
+                }
+                result.span = span;
+                return Ok(result);
+            }
+        }
+        if let [
+            Expression::Identifier(empty),
+            Expression::Identifier(list),
+            element,
+        ] = items
+            && self.source.slice(*empty) == "empty"
+            && self.source.slice(*list) == "List"
+        {
+            let element_type = self.parse_classifier(element.span())?;
+            if element_type != CompilerType::Int {
+                return Err(unsupported(
+                    &self.source,
+                    element.span(),
+                    "explicit empty List element classifier",
+                ));
+            }
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListEmpty,
+                value_type: CompilerType::List(Box::new(element_type)),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [Expression::Identifier(constructor), value] = items
+            && self.source.slice(*constructor) == "one"
+            && !matches!(value, Expression::Identifier(domain) if matches!(self.source.slice(*domain), "Int" | "Nat" | "Rational"))
+        {
+            let value = self.analyze_expression(value, environment)?;
             require_type(
                 &self.source,
-                result.span,
-                &CompilerType::String,
-                &result.value_type,
+                value.span,
+                &CompilerType::Int,
+                &value.value_type,
             )?;
-            for operand in items.iter().skip(2).step_by(2) {
-                let right = self.analyze_expression(operand, environment)?;
-                require_type(
+            let list_type = CompilerType::List(Box::new(CompilerType::Int));
+            let empty = CompilerExpression {
+                kind: CompilerExpressionKind::ListEmpty,
+                value_type: list_type.clone(),
+                int_range: None,
+                rational_value: None,
+                span,
+            };
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListEntry {
+                    value: Box::new(value),
+                    remaining: Box::new(empty),
+                },
+                value_type: list_type,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [
+            operand,
+            Expression::Identifier(reverse),
+            Expression::Callable { kind, .. },
+            right,
+        ] = items
+            && self.source.slice(*reverse) == "reverse"
+            && matches!(kind, CallableKind::Equal | CallableKind::NotEqual)
+        {
+            let operand = self.analyze_expression(operand, environment)?;
+            let CompilerType::List(element) = &operand.value_type else {
+                return Err(unsupported(
                     &self.source,
-                    right.span,
-                    &CompilerType::String,
-                    &right.value_type,
-                )?;
-                let expression_span = Span::new(result.span.start, right.span.end);
-                result = CompilerExpression {
-                    kind: CompilerExpressionKind::StringConcat {
-                        left: Box::new(result),
-                        right: Box::new(right),
-                    },
-                    value_type: CompilerType::String,
+                    operand.span,
+                    "reverse for this value type",
+                ));
+            };
+            if element.as_ref() != &CompilerType::Int {
+                return Err(unsupported(
+                    &self.source,
+                    operand.span,
+                    "reverse for this List element type",
+                ));
+            }
+            let list_type = operand.value_type.clone();
+            let reversed = CompilerExpression {
+                kind: CompilerExpressionKind::ListReverse(Box::new(operand)),
+                value_type: list_type.clone(),
+                int_range: None,
+                rational_value: None,
+                span: Span::new(items[0].span().start, items[1].span().end),
+            };
+            let right = self.analyze_expression(right, environment)?;
+            require_same_type(&self.source, right.span, &list_type, &right.value_type)?;
+            return Ok(Self::finish_binary(
+                if kind == &CallableKind::Equal {
+                    CompilerBinary::Equal
+                } else {
+                    CompilerBinary::NotEqual
+                },
+                reversed,
+                right,
+                CompilerType::Boolean,
+                span,
+            ));
+        }
+        if let [operand, Expression::Identifier(operation)] = items
+            && self.source.slice(*operation) == "reverse"
+        {
+            let operand = self.analyze_expression(operand, environment)?;
+            let CompilerType::List(element) = &operand.value_type else {
+                return Err(unsupported(
+                    &self.source,
+                    operand.span,
+                    "reverse for this value type",
+                ));
+            };
+            if element.as_ref() != &CompilerType::Int {
+                return Err(unsupported(
+                    &self.source,
+                    operand.span,
+                    "reverse for this List element type",
+                ));
+            }
+            let value_type = operand.value_type.clone();
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListReverse(Box::new(operand)),
+                value_type,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [Expression::Identifier(operation), operand] = items
+            && matches!(self.source.slice(*operation), "first" | "rest" | "uncons")
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            let operand = self.analyze_expression(operand, environment)?;
+            let CompilerType::List(element) = &operand.value_type else {
+                return Err(unsupported(
+                    &self.source,
+                    operand.span,
+                    "List projection operand",
+                ));
+            };
+            if element.as_ref() != &CompilerType::Int {
+                return Err(unsupported(
+                    &self.source,
+                    operand.span,
+                    "projection for this List element type",
+                ));
+            }
+            let list_type = operand.value_type.clone();
+            let (kind, payload_type) = match operation.as_str() {
+                "first" => (
+                    CompilerExpressionKind::ListFirst(Box::new(operand)),
+                    CompilerType::Int,
+                ),
+                "rest" => (
+                    CompilerExpressionKind::ListRest(Box::new(operand)),
+                    list_type.clone(),
+                ),
+                "uncons" => (
+                    CompilerExpressionKind::ListUncons(Box::new(operand)),
+                    CompilerType::Tuple(vec![CompilerType::Int, list_type]),
+                ),
+                _ => unreachable!(),
+            };
+            return Ok(CompilerExpression {
+                kind,
+                value_type: CompilerType::Optional(Box::new(payload_type)),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [list, Expression::Identifier(operation), right] = items
+            && matches!(
+                self.source.slice(*operation),
+                "prepend" | "append" | "concat"
+            )
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            let list = self.analyze_expression(list, environment)?;
+            if let CompilerType::List(element) = &list.value_type {
+                if element.as_ref() != &CompilerType::Int {
+                    return Err(unsupported(
+                        &self.source,
+                        list.span,
+                        "operation for this List element type",
+                    ));
+                }
+                let list_type = list.value_type.clone();
+                let right = self.analyze_expression(right, environment)?;
+                let kind = match operation.as_str() {
+                    "prepend" => {
+                        require_same_type(&self.source, right.span, element, &right.value_type)?;
+                        CompilerExpressionKind::ListPrepend {
+                            list: Box::new(list),
+                            value: Box::new(right),
+                        }
+                    }
+                    "append" => {
+                        require_same_type(&self.source, right.span, element, &right.value_type)?;
+                        CompilerExpressionKind::ListAppend {
+                            list: Box::new(list),
+                            value: Box::new(right),
+                        }
+                    }
+                    "concat" => {
+                        require_same_type(&self.source, right.span, &list_type, &right.value_type)?;
+                        CompilerExpressionKind::ListConcat {
+                            left: Box::new(list),
+                            right: Box::new(right),
+                        }
+                    }
+                    _ => unreachable!(),
+                };
+                return Ok(CompilerExpression {
+                    kind,
+                    value_type: list_type,
                     int_range: None,
                     rational_value: None,
-                    span: expression_span,
-                };
+                    span,
+                });
             }
-            result.span = span;
-            return Ok(result);
+            if operation != "concat" {
+                return Err(unsupported(
+                    &self.source,
+                    list.span,
+                    "List insertion subject",
+                ));
+            }
         }
         if let [list, Expression::Identifier(operation), operand] = items
             && matches!(
@@ -3016,7 +3264,8 @@ impl Analyzer {
                 "character-count" | "entry-count"
             )
         {
-            return self.analyze_static_character_count(operand, span, environment);
+            let operation = self.source.slice(*operation).to_owned();
+            return self.analyze_static_character_count(&operation, operand, span, environment);
         }
         if let [Expression::Identifier(operation), operand] = items
             && matches!(
@@ -3664,11 +3913,30 @@ impl Analyzer {
 
     fn analyze_static_character_count(
         &mut self,
+        operation: &str,
         operand: &Expression,
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
         let operand_value = self.analyze_expression(operand, environment)?;
+        if operation == "entry-count"
+            && let CompilerType::List(element) = &operand_value.value_type
+        {
+            if element.as_ref() != &CompilerType::Int {
+                return Err(unsupported(
+                    &self.source,
+                    operand_value.span,
+                    "entry-count for this List element type",
+                ));
+            }
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListEntryCount(Box::new(operand_value)),
+                value_type: CompilerType::Int,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         require_type(
             &self.source,
             operand_value.span,
@@ -4286,6 +4554,24 @@ impl Analyzer {
         if operation == "empty?" && operand.value_type == CompilerType::String {
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::StringEmptyPredicate(Box::new(operand)),
+                value_type: CompilerType::Boolean,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if operation == "empty?"
+            && let CompilerType::List(element) = &operand.value_type
+        {
+            if element.as_ref() != &CompilerType::Int {
+                return Err(unsupported(
+                    &self.source,
+                    operand.span,
+                    "empty? for this List element type",
+                ));
+            }
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListEmptyPredicate(Box::new(operand)),
                 value_type: CompilerType::Boolean,
                 int_range: None,
                 rational_value: None,
@@ -6338,6 +6624,14 @@ impl Analyzer {
                 let payload = payload.as_ref().clone();
                 self.analyze_optional_decision(subject, &payload, rules, span, environment)
             }
+            CompilerType::List(element) if element.as_ref() == &CompilerType::Int => {
+                self.analyze_list_decision(subject, rules, span, environment)
+            }
+            CompilerType::List(_) => Err(unsupported(
+                &self.source,
+                subject.span,
+                "decision for this List element type",
+            )),
             CompilerType::Int | CompilerType::Rational => {
                 self.analyze_ordered_comparison_decision(subject, rules, span, environment)
             }
@@ -6446,6 +6740,108 @@ impl Analyzer {
                 some_binding,
                 some_action: Box::new(some_action),
                 none_action: Box::new(none_action),
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        })
+    }
+
+    fn analyze_list_decision(
+        &mut self,
+        subject: CompilerExpression,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let mut entry = None;
+        let mut empty = None;
+        let mut otherwise = None;
+        for rule in rules {
+            if otherwise.is_some() {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-UNREACHABLE-DECISION-RULE",
+                    rule.span,
+                    "a List rule cannot follow otherwise",
+                ));
+            }
+            match rule.matcher {
+                DecisionMatcher::ListEmpty(_) if empty.is_none() => {
+                    empty = Some(self.analyze_expression(&rule.action, environment)?);
+                }
+                DecisionMatcher::ListEntry { first, rest, .. } if entry.is_none() => {
+                    let first_name = self.source.slice(first).to_owned();
+                    let rest_name = self.source.slice(rest).to_owned();
+                    if first_name == rest_name {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-DUPLICATE-BINDING",
+                            rest,
+                            "the List entry and remaining List bindings must be distinct",
+                        ));
+                    }
+                    let branch =
+                        decision_binding_environment(environment, &first_name, CompilerType::Int);
+                    let branch = decision_binding_environment(
+                        &branch,
+                        &rest_name,
+                        CompilerType::List(Box::new(CompilerType::Int)),
+                    );
+                    entry = Some((
+                        ((first_name, first), (rest_name, rest)),
+                        self.analyze_expression(&rule.action, &branch)?,
+                    ));
+                }
+                DecisionMatcher::Otherwise(_) => {
+                    otherwise = Some(self.analyze_expression(&rule.action, environment)?);
+                }
+                DecisionMatcher::ListEmpty(_) | DecisionMatcher::ListEntry { .. } => {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-DUPLICATE-DECISION-RULE",
+                        rule.span,
+                        "a List alternative appears more than once",
+                    ));
+                }
+                _ => {
+                    return Err(unsupported(
+                        &self.source,
+                        rule.span,
+                        "List decision matcher",
+                    ));
+                }
+            }
+        }
+        let (entry_bindings, entry_action) = if let Some((bindings, action)) = entry {
+            (Some(bindings), action)
+        } else if let Some(action) = otherwise.clone() {
+            (None, action)
+        } else {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "List decision does not cover Entry",
+            ));
+        };
+        let empty_action = empty.or(otherwise).ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "List decision does not cover Empty",
+            )
+        })?;
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&entry_action, &empty_action], span)?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::ListDecision {
+                subject: Box::new(subject),
+                entry_bindings,
+                entry_action: Box::new(entry_action),
+                empty_action: Box::new(empty_action),
             },
             value_type,
             int_range,
@@ -7660,6 +8056,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
                 CompilerType::Int | CompilerType::Rational | CompilerType::String
             )
         }
+        CompilerType::List(element) => element.as_ref() == &CompilerType::Int,
         CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
         CompilerType::Record(fields) => fields
             .iter()
@@ -7673,8 +8070,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::SourceLocation
         | CompilerType::Sum(_)
         | CompilerType::Range(_)
-        | CompilerType::Result(_)
-        | CompilerType::List(_) => false,
+        | CompilerType::Result(_) => false,
     }
 }
 
@@ -7783,7 +8179,8 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ModularValidate { .. }
         | CompilerExpressionKind::SumDecision { .. }
         | CompilerExpressionKind::ResultDecision { .. }
-        | CompilerExpressionKind::OptionalDecision { .. } => false,
+        | CompilerExpressionKind::OptionalDecision { .. }
+        | CompilerExpressionKind::ListDecision { .. } => false,
         CompilerExpressionKind::IntToModular { value, .. }
         | CompilerExpressionKind::ModularReduce { value, .. }
         | CompilerExpressionKind::Negate(value)
@@ -7794,6 +8191,12 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::OptionalSome(value)
+        | CompilerExpressionKind::ListReverse(value)
+        | CompilerExpressionKind::ListEntryCount(value)
+        | CompilerExpressionKind::ListEmptyPredicate(value)
+        | CompilerExpressionKind::ListFirst(value)
+        | CompilerExpressionKind::ListRest(value)
+        | CompilerExpressionKind::ListUncons(value)
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::RecordField { record: value, .. }
@@ -7832,6 +8235,15 @@ fn compiler_expression_is_closed_with(
             list: left,
             value: right,
         }
+        | CompilerExpressionKind::ListPrepend {
+            list: left,
+            value: right,
+        }
+        | CompilerExpressionKind::ListAppend {
+            list: left,
+            value: right,
+        }
+        | CompilerExpressionKind::ListConcat { left, right }
         | CompilerExpressionKind::Binary { left, right, .. } => {
             compiler_expression_is_closed_with(left, bound)
                 && compiler_expression_is_closed_with(right, bound)
@@ -9350,6 +9762,85 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(unavailable).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_basic_int_list_operations_and_total_decomposition() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-DECISION-LIST-001,
+        // TOPAL-TYPE-LIST-EQUALITY-001, TOPAL-LIST-PREPEND-001,
+        // TOPAL-LIST-APPEND-001, TOPAL-LIST-CONCAT-001,
+        // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-LIST-EMPTY-PREDICATE-001,
+        // TOPAL-LIST-EMPTY-001, TOPAL-LIST-ONE-001, TOPAL-LIST-UNCONS-001,
+        // TOPAL-LIST-FIRST-001, TOPAL-LIST-REST-001, TOPAL-LIST-REVERSE-001,
+        // TOPAL-COMPILER-LIST-INT-CORE-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/lists.t")).unwrap();
+        let list_int = CompilerType::List(Box::new(CompilerType::Int));
+        assert_eq!(program.functions.len(), 1);
+        assert_eq!(program.functions[0].parameters[0].value_type, list_int);
+        assert_eq!(
+            program.functions[0].result_type,
+            CompilerType::Optional(Box::new(CompilerType::Int))
+        );
+        assert!(matches!(
+            program.functions[0].body.result.kind,
+            CompilerExpressionKind::ListDecision { .. }
+        ));
+        assert_eq!(program.main.statements.len(), 8);
+        assert!(program.main.statements.iter().all(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding { value, .. }) if value.value_type == list_int
+        )));
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 12);
+        assert!(matches!(
+            results[1].kind,
+            CompilerExpressionKind::ListFirst(_)
+        ));
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::ListRest(_)
+        ));
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[6].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert!(matches!(
+            results[8].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[9].kind,
+            CompilerExpressionKind::ListUncons(_)
+        ));
+
+        let mismatch =
+            "use language (version is v0.1)\nvalues : List Int is Empty\nvalues append \"no\"\n";
+        assert_eq!(
+            analyze_for_compiler(mismatch).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+
+        let incomplete = "use language (version is v0.1)\ninspect is fn (values : List Int) -> Int\n  values\n    Empty then 0\ninspect Empty\n";
+        assert_eq!(
+            analyze_for_compiler(incomplete).unwrap_err().code,
+            "E-UNSUPPORTED-INCOMPLETE-DECISION"
+        );
+
+        let duplicate_binding = "use language (version is v0.1)\ninspect is fn (values : List Int) -> Int\n  values\n    Empty then 0\n    Entry (value, value) then value\nvalues : List Int is Entry (1, Empty)\ninspect values\n";
+        assert_eq!(
+            analyze_for_compiler(duplicate_binding).unwrap_err().code,
+            "E-DUPLICATE-BINDING"
         );
     }
 
