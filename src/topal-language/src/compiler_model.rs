@@ -30,6 +30,19 @@ pub struct CompilerEnumType {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerSumAlternative {
+    pub name: String,
+    pub payload: Option<CompilerType>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerSumType {
+    pub name: String,
+    pub positional: bool,
+    pub alternatives: Vec<CompilerSumAlternative>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerType {
     Unit,
     Completed,
@@ -47,6 +60,7 @@ pub enum CompilerType {
     ErrorCode,
     ErrorDomain,
     Enum(CompilerEnumType),
+    Sum(CompilerSumType),
     Range(Box<Self>),
     Result(Box<Self>),
     Optional(Box<Self>),
@@ -105,6 +119,7 @@ impl CompilerType {
             Self::ErrorCode => "lang arithmetic ArithmeticErrorCode".into(),
             Self::ErrorDomain => "ErrorDomain".into(),
             Self::Enum(enumeration) => enumeration.name.clone(),
+            Self::Sum(sum) => sum.name.clone(),
             Self::Range(endpoint) => format!("Range {}", endpoint.name()),
             Self::Result(success) => format!(
                 "Result ({}, lang arithmetic ArithmeticErrorCode)",
@@ -234,6 +249,14 @@ pub struct CompilerEnumRule {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerSumRule {
+    pub value: u32,
+    pub binding: Option<(String, Span)>,
+    pub action: CompilerExpression,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerExpressionKind {
     Unit,
     Completed,
@@ -255,6 +278,10 @@ pub enum CompilerExpressionKind {
     StringUtf8ByteCount(Box<CompilerExpression>),
     ErrorCode(u32),
     Enum(u32),
+    Sum {
+        value: u32,
+        payload: Option<Box<CompilerExpression>>,
+    },
     Tuple(Vec<CompilerExpression>),
     Record(Vec<(String, CompilerExpression)>),
     RecordReconstruct {
@@ -329,6 +356,11 @@ pub enum CompilerExpressionKind {
     EnumDecision {
         subject: Box<CompilerExpression>,
         rules: Vec<CompilerEnumRule>,
+        otherwise: Option<Box<CompilerExpression>>,
+    },
+    SumDecision {
+        subject: Box<CompilerExpression>,
+        rules: Vec<CompilerSumRule>,
         otherwise: Option<Box<CompilerExpression>>,
     },
     ResultDecision {
@@ -436,10 +468,19 @@ struct ActiveRecursiveFunction {
 
 type EnumTypes = BTreeMap<String, (CompilerEnumType, Span)>;
 type EnumAlternativeBindings = BTreeMap<String, (CompilerEnumType, u32, Span)>;
+type SumTypes = BTreeMap<String, (CompilerSumType, Span)>;
+type SumAlternativeBindings = BTreeMap<String, (CompilerSumType, u32, Span)>;
 
 struct EnumSource {
     name: Span,
     alternatives: Vec<(String, Span)>,
+    span: Span,
+}
+
+struct SumSource {
+    name: Span,
+    positional: bool,
+    alternatives: Vec<(String, Option<Span>, Span)>,
     span: Span,
 }
 
@@ -521,6 +562,8 @@ struct Analyzer {
     source: SourceText,
     enums: EnumTypes,
     enum_alternatives: EnumAlternativeBindings,
+    sums: SumTypes,
+    sum_alternatives: SumAlternativeBindings,
     functions: BTreeMap<String, Vec<FunctionSource>>,
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
@@ -579,9 +622,13 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     }
 
     let (enums, enum_alternatives) = collect_enums(&source, &parsed.statements)?;
+    let (sums, sum_alternatives) =
+        collect_sums(&source, &parsed.statements, &enums, &enum_alternatives)?;
     let mut reserved_names = enums
         .keys()
         .chain(enum_alternatives.keys())
+        .chain(sums.keys())
+        .chain(sum_alternatives.keys())
         .cloned()
         .collect::<BTreeSet<_>>();
     reserved_names.insert("root".to_owned());
@@ -591,6 +638,8 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         source: source.clone(),
         enums,
         enum_alternatives,
+        sums,
+        sum_alternatives,
         functions,
         instances: Vec::new(),
         active_calls: Vec::new(),
@@ -740,6 +789,173 @@ fn enum_declaration(source: &SourceText, statement: &Statement) -> Option<EnumSo
     })
 }
 
+fn sum_declaration(source: &SourceText, statement: &Statement) -> Option<SumSource> {
+    let statement = match statement {
+        Statement::Published { declaration, .. } => declaration.as_ref(),
+        statement => statement,
+    };
+    if let Statement::Union {
+        name,
+        alternatives,
+        span,
+    } = statement
+    {
+        return Some(SumSource {
+            name: *name,
+            positional: false,
+            alternatives: alternatives
+                .iter()
+                .map(|alternative| {
+                    (
+                        source.slice(alternative.name).to_owned(),
+                        alternative.classifier,
+                        alternative.name,
+                    )
+                })
+                .collect(),
+            span: *span,
+        });
+    }
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return None;
+    };
+    let [
+        Expression::Identifier(constructor),
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    if source.slice(*constructor) != "Variant" || fields.iter().any(|field| field.label.is_some()) {
+        return None;
+    }
+    Some(SumSource {
+        name: *name,
+        positional: true,
+        alternatives: fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| {
+                (
+                    format!("at {index}"),
+                    Some(field.value.span()),
+                    field.value.span(),
+                )
+            })
+            .collect(),
+        span: Span::new(name.start, span.end),
+    })
+}
+
+fn collect_sums(
+    source: &SourceText,
+    statements: &[Statement],
+    enums: &EnumTypes,
+    enum_alternatives: &EnumAlternativeBindings,
+) -> Result<(SumTypes, SumAlternativeBindings), Diagnostic> {
+    let mut sums: SumTypes = BTreeMap::new();
+    let mut alternatives: SumAlternativeBindings = BTreeMap::new();
+    for statement in statements {
+        let Some(declaration) = sum_declaration(source, statement) else {
+            continue;
+        };
+        let name = source.slice(declaration.name).to_owned();
+        if name == "root"
+            || enums.contains_key(&name)
+            || enum_alternatives.contains_key(&name)
+            || sums.contains_key(&name)
+            || alternatives.contains_key(&name)
+        {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-UNION",
+                declaration.name,
+                format!("`{name}` is already declared in this scope"),
+            ));
+        }
+        let mut local = BTreeSet::new();
+        let mut lowered = Vec::with_capacity(declaration.alternatives.len());
+        for (label, classifier, alternative_span) in &declaration.alternatives {
+            if !local.insert(label.clone()) {
+                return Err(source_diagnostic(
+                    source,
+                    "E-DUPLICATE-UNION-ALTERNATIVE",
+                    *alternative_span,
+                    format!("sum alternative `{label}` occurs more than once"),
+                ));
+            }
+            if !declaration.positional
+                && (label == "root"
+                    || label == &name
+                    || enums.contains_key(label)
+                    || enum_alternatives.contains_key(label)
+                    || sums.contains_key(label)
+                    || alternatives.contains_key(label))
+            {
+                return Err(source_diagnostic(
+                    source,
+                    "E-DUPLICATE-UNION-ALTERNATIVE",
+                    *alternative_span,
+                    format!("sum alternative `{label}` is already declared in this scope"),
+                ));
+            }
+            let payload = classifier
+                .map(|classifier| {
+                    let classifier_text = compact_classifier(source.slice(classifier));
+                    enums
+                        .get(&classifier_text)
+                        .filter(|(_, declaration)| declaration.end <= classifier.start)
+                        .map(|(enumeration, _)| CompilerType::Enum(enumeration.clone()))
+                        .or_else(|| {
+                            sums.get(&classifier_text)
+                                .filter(|(_, declaration)| declaration.end <= classifier.start)
+                                .map(|(sum, _)| CompilerType::Sum(sum.clone()))
+                        })
+                        .or_else(|| parse_compact_classifier(&classifier_text))
+                        .ok_or_else(|| unsupported(source, classifier, "sum payload classifier"))
+                })
+                .transpose()?;
+            if payload
+                .as_ref()
+                .is_some_and(|payload| !compiler_function_result_supported(payload))
+            {
+                return Err(unsupported(
+                    source,
+                    classifier.expect("unsupported payload has a classifier"),
+                    "sum payload without an admitted private representation",
+                ));
+            }
+            lowered.push(CompilerSumAlternative {
+                name: label.clone(),
+                payload,
+            });
+        }
+        let sum = CompilerSumType {
+            name: name.clone(),
+            positional: declaration.positional,
+            alternatives: lowered,
+        };
+        if !sum.positional {
+            for (index, alternative) in sum.alternatives.iter().enumerate() {
+                let index = u32::try_from(index).map_err(|_| {
+                    unsupported(source, declaration.span, "native Union alternative tag")
+                })?;
+                alternatives.insert(
+                    alternative.name.clone(),
+                    (sum.clone(), index, declaration.span),
+                );
+            }
+        }
+        sums.insert(name, (sum, declaration.span));
+    }
+    Ok((sums, alternatives))
+}
+
 fn constraint_definition<'a>(
     source: &SourceText,
     expression: &'a Expression,
@@ -814,6 +1030,7 @@ fn collect_functions(
                         is_static: *is_static,
                     })
                 } else if enum_declaration(source, statement).is_some()
+                    || sum_declaration(source, statement).is_some()
                     || matches!(declaration.as_ref(), Statement::Binding { .. })
                 {
                     None
@@ -918,6 +1135,11 @@ impl Analyzer {
         {
             return Ok(CompilerType::Enum(enumeration.clone()));
         }
+        if let Some((sum, declaration)) = self.sums.get(&classifier)
+            && declaration.end <= span.start
+        {
+            return Ok(CompilerType::Sum(sum.clone()));
+        }
         if let Some(tag) = self.constraint_bindings.get(&classifier)
             && let Some(constraint) = self
                 .constraints
@@ -941,13 +1163,21 @@ impl Analyzer {
         {
             return true;
         }
-        let Some(declaration) = enum_declaration(&self.source, statement) else {
-            return false;
-        };
-        let name = self.source.slice(declaration.name);
-        self.enums
-            .get(name)
-            .is_some_and(|(_, span)| *span == declaration.span)
+        if let Some(declaration) = enum_declaration(&self.source, statement) {
+            let name = self.source.slice(declaration.name);
+            return self
+                .enums
+                .get(name)
+                .is_some_and(|(_, span)| *span == declaration.span);
+        }
+        if let Some(declaration) = sum_declaration(&self.source, statement) {
+            let name = self.source.slice(declaration.name);
+            return self
+                .sums
+                .get(name)
+                .is_some_and(|(_, span)| *span == declaration.span);
+        }
+        false
     }
 
     #[allow(clippy::too_many_lines)] // Exhaustive statement admission keeps the subset boundary visible.
@@ -1003,7 +1233,9 @@ impl Analyzer {
                             && (name_text == "root"
                                 || self.functions.contains_key(&name_text)
                                 || self.enums.contains_key(&name_text)
-                                || self.enum_alternatives.contains_key(&name_text)))
+                                || self.enum_alternatives.contains_key(&name_text)
+                                || self.sums.contains_key(&name_text)
+                                || self.sum_alternatives.contains_key(&name_text)))
                     {
                         return Err(source_diagnostic(
                             &self.source,
@@ -1490,6 +1722,35 @@ impl Analyzer {
                     span,
                 })
             }
+            Expression::Identifier(name)
+                if !environment.contains_key(self.source.slice(*name))
+                    && self
+                        .sum_alternatives
+                        .get(self.source.slice(*name))
+                        .is_some_and(|(sum, value, declaration)| {
+                            declaration.end <= name.start
+                                && sum.alternatives
+                                    [usize::try_from(*value).expect("u32 sum tag fits usize")]
+                                .payload
+                                .is_none()
+                        }) =>
+            {
+                let (sum, value, _) = self
+                    .sum_alternatives
+                    .get(self.source.slice(*name))
+                    .expect("checked payload-free Union alternative exists")
+                    .clone();
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Sum {
+                        value,
+                        payload: None,
+                    },
+                    value_type: CompilerType::Sum(sum),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
             Expression::Product { fields, .. } => {
                 if !fields.is_empty() && fields.iter().all(|field| field.label.is_some()) {
                     let mut values = Vec::with_capacity(fields.len());
@@ -1715,6 +1976,98 @@ impl Analyzer {
         ))
     }
 
+    fn analyze_sum_construction(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let selected = if let [Expression::Identifier(constructor), payload] = items {
+            let Some((sum, value, declaration)) = self
+                .sum_alternatives
+                .get(self.source.slice(*constructor))
+                .cloned()
+            else {
+                return Ok(None);
+            };
+            if declaration.end > constructor.start {
+                return Ok(None);
+            }
+            let expected = sum.alternatives
+                [usize::try_from(value).expect("u32 sum tag fits usize")]
+            .payload
+            .clone();
+            let Some(expected) = expected else {
+                return Ok(None);
+            };
+            (sum, value, expected, payload)
+        } else if let [
+            Expression::Identifier(type_name),
+            Expression::Identifier(at),
+            Expression::Integer(index),
+            payload,
+        ] = items
+            && self.source.slice(*at) == "at"
+            && let Some((sum, declaration)) = self.sums.get(self.source.slice(*type_name)).cloned()
+            && sum.positional
+            && declaration.end <= type_name.start
+        {
+            let value = parse_integer(self.source.slice(*index))
+                .and_then(|value| value.to_string().parse::<usize>().ok())
+                .filter(|value| *value < sum.alternatives.len())
+                .ok_or_else(|| {
+                    source_diagnostic(
+                        &self.source,
+                        "E-VARIANT-INDEX",
+                        *index,
+                        "Variant alternative index is outside its declared bounds",
+                    )
+                })?;
+            let expected = sum.alternatives[value]
+                .payload
+                .clone()
+                .expect("positional Variant alternatives carry payloads");
+            (
+                sum,
+                u32::try_from(value).expect("validated native sum tag"),
+                expected,
+                payload,
+            )
+        } else {
+            return Ok(None);
+        };
+        let (sum, value, expected, payload) = selected;
+        let payload_value =
+            self.analyze_expression_with_expected(payload, environment, Some(&expected))?;
+        let payload_value = adapt_call_argument(&expected, &payload_value).ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                if sum.positional {
+                    "E-VARIANT-PAYLOAD-CLASSIFIER"
+                } else {
+                    "E-UNION-PAYLOAD-CLASSIFIER"
+                },
+                payload.span(),
+                format!(
+                    "sum alternative `{}` requires {}, found {}",
+                    sum.alternatives[usize::try_from(value).expect("u32 sum tag fits usize")].name,
+                    expected.name(),
+                    payload_value.value_type.name()
+                ),
+            )
+        })?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::Sum {
+                value,
+                payload: Some(Box::new(payload_value)),
+            },
+            value_type: CompilerType::Sum(sum),
+            int_range: None,
+            rational_value: None,
+            span,
+        }))
+    }
+
     #[allow(clippy::too_many_lines)] // Root operations are admitted explicitly and in source-selection order.
     fn analyze_application(
         &mut self,
@@ -1722,6 +2075,9 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Some(sum) = self.analyze_sum_construction(items, span, environment)? {
+            return Ok(sum);
+        }
         if let Some((Expression::Identifier(namespace), remaining)) = items.split_first()
             && self.source.slice(*namespace) == "root"
             && let Some(Expression::Identifier(member)) = remaining.first()
@@ -4956,6 +5312,10 @@ impl Analyzer {
                 let enumeration = enumeration.clone();
                 self.analyze_enum_decision(subject, &enumeration, rules, span, environment)
             }
+            CompilerType::Sum(sum) => {
+                let sum = sum.clone();
+                self.analyze_sum_decision(subject, &sum, rules, span, environment)
+            }
             CompilerType::Result(success) => {
                 let success = success.as_ref().clone();
                 self.analyze_result_decision(subject, &success, rules, span, environment)
@@ -5160,6 +5520,171 @@ impl Analyzer {
         let (value_type, int_range, rational_value) = self.decision_facts(&actions, span)?;
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::EnumDecision {
+                subject: Box::new(subject),
+                rules: lowered,
+                otherwise,
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        })
+    }
+
+    #[allow(clippy::too_many_lines)] // Nominal and positional matcher validation stays adjacent to completeness checks.
+    fn analyze_sum_decision(
+        &mut self,
+        subject: CompilerExpression,
+        sum: &CompilerSumType,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let mut lowered = Vec::new();
+        let mut seen = BTreeSet::new();
+        let mut otherwise = None;
+        for rule in rules {
+            if otherwise.is_some() {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-UNREACHABLE-DECISION-RULE",
+                    rule.span,
+                    "a sum rule cannot follow otherwise",
+                ));
+            }
+            if matches!(rule.matcher, DecisionMatcher::Otherwise(_)) {
+                otherwise = Some(Box::new(
+                    self.analyze_expression(&rule.action, environment)?,
+                ));
+                continue;
+            }
+            let (value, binding) = match rule.matcher {
+                DecisionMatcher::Identifier(matcher) if !sum.positional => {
+                    let label = self.source.slice(matcher);
+                    let value = sum
+                        .alternatives
+                        .iter()
+                        .position(|alternative| alternative.name == label)
+                        .ok_or_else(|| {
+                            source_diagnostic(
+                                &self.source,
+                                "E-UNKNOWN-UNION-ALTERNATIVE",
+                                matcher,
+                                format!("`{label}` is not an alternative of `{}`", sum.name),
+                            )
+                        })?;
+                    if sum.alternatives[value].payload.is_some() {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-UNION-PAYLOAD-BINDING",
+                            matcher,
+                            format!("Union alternative `{label}` requires a payload binding"),
+                        ));
+                    }
+                    (value, None)
+                }
+                DecisionMatcher::Union {
+                    alternative,
+                    binding,
+                    ..
+                } if !sum.positional => {
+                    let label = self.source.slice(alternative);
+                    let value = sum
+                        .alternatives
+                        .iter()
+                        .position(|candidate| candidate.name == label)
+                        .ok_or_else(|| {
+                            source_diagnostic(
+                                &self.source,
+                                "E-UNKNOWN-UNION-ALTERNATIVE",
+                                alternative,
+                                format!("`{label}` is not an alternative of `{}`", sum.name),
+                            )
+                        })?;
+                    if sum.alternatives[value].payload.is_none() {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-UNION-PAYLOAD-BINDING",
+                            binding,
+                            format!("Union alternative `{label}` has no payload"),
+                        ));
+                    }
+                    (value, Some(binding))
+                }
+                DecisionMatcher::Variant {
+                    type_name,
+                    index,
+                    binding,
+                    ..
+                } if sum.positional => {
+                    let matcher_type = self.source.slice(type_name);
+                    if matcher_type != sum.name {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-VARIANT-TYPE",
+                            type_name,
+                            format!(
+                                "Variant matcher `{matcher_type}` does not match `{}`",
+                                sum.name
+                            ),
+                        ));
+                    }
+                    let value = parse_integer(self.source.slice(index))
+                        .and_then(|value| value.to_string().parse::<usize>().ok())
+                        .filter(|value| *value < sum.alternatives.len())
+                        .ok_or_else(|| {
+                            source_diagnostic(
+                                &self.source,
+                                "E-VARIANT-INDEX",
+                                index,
+                                "Variant alternative index is outside its declared bounds",
+                            )
+                        })?;
+                    (value, Some(binding))
+                }
+                _ => {
+                    return Err(unsupported(&self.source, rule.span, "sum decision matcher"));
+                }
+            };
+            let value = u32::try_from(value).expect("sum alternative fits native tag");
+            if !seen.insert(value) {
+                continue;
+            }
+            let binding = binding.map(|binding| (self.source.slice(binding).to_owned(), binding));
+            let branch = if let Some((name, _)) = &binding {
+                decision_binding_environment(
+                    environment,
+                    name,
+                    sum.alternatives[usize::try_from(value).expect("u32 sum tag fits usize")]
+                        .payload
+                        .clone()
+                        .expect("payload matcher selected a payload alternative"),
+                )
+            } else {
+                environment.clone()
+            };
+            lowered.push(CompilerSumRule {
+                value,
+                binding,
+                action: self.analyze_expression(&rule.action, &branch)?,
+                span: rule.span,
+            });
+        }
+        if otherwise.is_none() && seen.len() != sum.alternatives.len() {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                format!("decision does not cover every `{}` alternative", sum.name),
+            ));
+        }
+        let mut actions = lowered.iter().map(|rule| &rule.action).collect::<Vec<_>>();
+        if let Some(action) = &otherwise {
+            actions.push(action);
+        }
+        let (value_type, int_range, rational_value) = self.decision_facts(&actions, span)?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::SumDecision {
                 subject: Box::new(subject),
                 rules: lowered,
                 otherwise,
@@ -5864,6 +6389,13 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
             if fields
                 .iter()
                 .all(|(_, field)| compiler_function_result_supported(field))
+    ) || matches!(
+        value_type,
+        CompilerType::Sum(sum)
+            if sum.alternatives.iter().all(|alternative| alternative
+                .payload
+                .as_ref()
+                .is_none_or(compiler_function_result_supported))
     )
 }
 
@@ -6107,6 +6639,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Constraint
         | CompilerType::Error
         | CompilerType::ErrorDomain
+        | CompilerType::Sum(_)
         | CompilerType::Range(_)
         | CompilerType::Result(_) => false,
     }
@@ -6182,6 +6715,9 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ErrorCode(_)
         | CompilerExpressionKind::Enum(_)
         | CompilerExpressionKind::OptionalNone => true,
+        CompilerExpressionKind::Sum { payload, .. } => payload
+            .as_deref()
+            .is_none_or(|value| compiler_expression_is_closed_with(value, bound)),
         CompilerExpressionKind::Tuple(values) => values
             .iter()
             .all(|value| compiler_expression_is_closed_with(value, bound)),
@@ -6199,6 +6735,7 @@ fn compiler_expression_is_closed_with(
         CompilerExpressionKind::Call { .. }
         | CompilerExpressionKind::Fallible { .. }
         | CompilerExpressionKind::Validate { .. }
+        | CompilerExpressionKind::SumDecision { .. }
         | CompilerExpressionKind::ResultDecision { .. }
         | CompilerExpressionKind::OptionalDecision { .. } => false,
         CompilerExpressionKind::Negate(value)
@@ -8949,6 +9486,77 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_nominal_union_and_variant_payload_decisions() {
+        // TOPAL-TYPE-UNION-001, TOPAL-TYPE-VARIANT-001,
+        // TOPAL-DECISION-UNION-001
+        let source = include_str!("../../../examples/language/unions-and-recursive-products.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "((Int, (Int, Int)), (Int, (Int, Int)), String, String)"
+        );
+        let describe = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "describe")
+            .expect("shared regression instantiates describe");
+        let CompilerType::Sum(message) = &describe.parameters[0].value_type else {
+            panic!("describe retains the nominal Message type")
+        };
+        assert!(!message.positional);
+        assert_eq!(message.alternatives.len(), 2);
+        assert!(message.alternatives[0].payload.is_none());
+        let CompilerExpressionKind::SumDecision { rules, .. } = &describe.body.result.kind else {
+            panic!("describe lowers a sum decision")
+        };
+        assert_eq!(rules.len(), 2);
+        assert!(rules.iter().any(|rule| rule.binding.is_some()));
+
+        let show = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "show-scalar")
+            .expect("shared regression instantiates show-scalar");
+        let CompilerType::Sum(scalar) = &show.parameters[0].value_type else {
+            panic!("show-scalar retains the nominal Scalar type")
+        };
+        assert!(scalar.positional);
+        assert!(
+            scalar
+                .alternatives
+                .iter()
+                .all(|alternative| alternative.payload.is_some())
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_nominal_sum_construction_and_matching() {
+        // TOPAL-TYPE-UNION-001, TOPAL-TYPE-VARIANT-001,
+        // TOPAL-DECISION-UNION-001
+        let wrong_payload = "use language (version is v0.1)\nMessage is Union\n  Move : Int\n\nvalue is Move true\nvalue\n";
+        assert_eq!(
+            analyze_for_compiler(wrong_payload).unwrap_err().code,
+            "E-UNION-PAYLOAD-CLASSIFIER"
+        );
+        let invalid_index =
+            "use language (version is v0.1)\nScalar is Variant (String, Int)\nScalar at 2 42\n";
+        assert_eq!(
+            analyze_for_compiler(invalid_index).unwrap_err().code,
+            "E-VARIANT-INDEX"
+        );
+        let incomplete = "use language (version is v0.1)\nMessage is Union\n  Stop\n  Move : Int\n\nread is fn (message : Message) -> Int\n  message\n    Stop then 0\nread Stop\n";
+        assert_eq!(
+            analyze_for_compiler(incomplete).unwrap_err().code,
+            "E-INCOMPLETE-DECISION"
+        );
+        let foreign_variant = "use language (version is v0.1)\nScalar is Variant (String, Int)\nOther is Variant (String, Int)\nread is fn (scalar : Scalar) -> String\n  scalar\n    Other at 0 text then text\n    otherwise \"number\"\nread (Scalar at 0 \"text\")\n";
+        assert_eq!(
+            analyze_for_compiler(foreign_variant).unwrap_err().code,
+            "E-VARIANT-TYPE"
         );
     }
 

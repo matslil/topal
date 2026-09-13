@@ -48,7 +48,8 @@ evidence.
 | 3b2-b5l | specialized private scalar Function inputs for retained named/symbolic values, exact tag signatures, direct lowering, and GDB-visible parameters | complete |
 | 3b2-b5m | inferred non-capturing anonymous Function values, direct and private-parameter application, call-site classifier inference, left-to-right symbolic chains, private direct lowering, display, and debugging | complete |
 | 3b2-b5n | one scalar packaged operand, full positional or declaration-order labeled-prefix supply, trailing closed defaults, exact flat private signatures, and field-level debugging | complete |
-| 3b2-b5e8 | remaining function forms, Function results/aggregate boundaries, remaining symbolic and capturing/escaping anonymous Function values, anonymous product patterns, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, nested declarations, persistent aggregate storage, unions, constraints, capabilities, and decisions | planned |
+| 3b2-b5o | root-scope nominal labeled Union and positional Variant construction, private aggregate function passage, exhaustive payload decisions, canonical display, and active-payload debugging | complete |
+| 3b2-b5e8 | remaining function forms, Function results/aggregate boundaries, remaining symbolic and capturing/escaping anonymous Function values, anonymous product patterns, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, nested declarations, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -140,7 +141,10 @@ direct symbolic `+`, `-`, and `<=>` identities; 3b2-b5l specializes scalar
 Function inputs while retaining exact private tags for debugging; 3b2-b5m
 specializes inferred non-capturing anonymous functions at their private call
 sites without choosing a closure ABI; 3b2-b5n normalizes one closed scalar
-operand package to an exact flat private call boundary; and 3b2-b5e8
+operand package to an exact flat private call boundary; 3b2-b5o adds nominal
+labeled and positional sums with statically typed private aggregate payload
+slots, LLVM-owned physical call lowering, exact active-alternative decisions,
+and active-only debugging; and 3b2-b5e8
 continues with nested declarations, remaining recursive and nested-block exit
 control flow, cleanup-bearing scopes, persistent aggregate storage, and the
 remaining user-defined value representations.

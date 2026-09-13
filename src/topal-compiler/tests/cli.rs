@@ -2532,6 +2532,129 @@ fn constraint_validation_executes_dynamic_success_and_failure() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn nominal_sums_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-SUM-001, TOPAL-TYPE-UNION-001,
+    // TOPAL-TYPE-VARIANT-001, TOPAL-DECISION-UNION-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-nominal-sums");
+    let source = directory.join("unions-and-recursive-products.t");
+    let executable = directory.join("application");
+    let source_text = include_str!("../../../examples/language/unions-and-recursive-products.t");
+    fs::write(&source, source_text).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+
+    let metadata =
+        NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
+    assert_eq!(metadata.native_abi, NATIVE_ABI);
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break unions-and-recursive-products.t:15",
+            "-ex",
+            "break unions-and-recursive-products.t:20",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis message",
+            "-ex",
+            "print message",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis scalar",
+            "-ex",
+            "print scalar",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = Message"), "{text}");
+    assert!(text.contains("= Move (10, (20, 30))"), "{text}");
+    assert!(text.contains("type = Scalar"), "{text}");
+    assert!(text.contains("= at 0 \"text\""), "{text}");
+    assert!(text.contains("topal.fn.describe"), "{text}");
+    assert!(text.contains("topal.fn.show_2dscalar"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn nominal_sum_display_matches_the_interpreter() {
+    // TOPAL-COMPILER-SUM-001, TOPAL-TYPE-UNION-001,
+    // TOPAL-TYPE-VARIANT-001
+    let directory = temporary("nominal-sum-display");
+    let source = directory.join("sum-display.t");
+    let executable = directory.join("application");
+    let source_text = "use language (version is v0.1)\nMessage is Union\n  Stop\n  Move : (Int, (Int, Int))\n\nScalar is Variant (String, Int)\n\n(Stop, Move (10, (20, 30)), Scalar at 0 \"text\", Scalar at 1 42)\n";
+    fs::write(&source, source_text).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn root_namespace_is_freestanding_and_qualified_calls_keep_debug_frames() {
     // TOPAL-COMPILER-ROOT-NAMESPACE-001,
     // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001

@@ -1156,6 +1156,16 @@
       "cpu_time_ns": 171362,
       "memory_peak_bytes": 18538496,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/unions-and-recursive-products.t": {
+      "cpu_time_ns": 127382239,
+      "memory_peak_bytes": 42414080,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/unions-and-recursive-products.t": {
+      "cpu_time_ns": 176130,
+      "memory_peak_bytes": 18669568,
+      "samples_per_test": 500
     }
   }
 }

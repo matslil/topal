@@ -4764,6 +4764,31 @@
       "cpu_time_ns": 3675199,
       "memory_peak_bytes": 18411520,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_nominal_sums_as_private_tagged_aggregates_with_dwarf": {
+      "cpu_time_ns": 9315220,
+      "memory_peak_bytes": 18403328,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::nominal_sum_display_matches_the_interpreter": {
+      "cpu_time_ns": 128098859,
+      "memory_peak_bytes": 41086976,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::nominal_sums_are_private_freestanding_and_debuggable": {
+      "cpu_time_ns": 327757560,
+      "memory_peak_bytes": 57753600,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_nominal_union_and_variant_payload_decisions": {
+      "cpu_time_ns": 4221760,
+      "memory_peak_bytes": 18407424,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::rejects_invalid_nominal_sum_construction_and_matching": {
+      "cpu_time_ns": 3762640,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
     }
   }
 }

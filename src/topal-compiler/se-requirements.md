@@ -1194,6 +1194,40 @@ of `TOPAL-DECISION-ENUM-001`. It realizes `TOPAL-COMPILER-ENUM-001` for
 compiler increment 3b1; nested enum declarations and general unions remain in
 increment 3b2.
 
+## TOPAL-COMP-SUM-001 — Private nominal Union and Variant values
+
+The checked compiler shall collect root-scope `Name is Union` declarations and
+`Name is Variant (...)` bindings, retain one nominal identity and the ordered
+payload classifier of every alternative, and admit payload types that already
+have recursively complete private representations. Payload-free Union
+alternatives shall carry Unit without a payload slot. Construction shall
+evaluate and classify the selected complete payload exactly once. Complete
+decisions shall evaluate their subject once, select by the retained tag, bind a
+payload only in its selected action, and diagnose unknown, foreign, duplicate
+declaration, or missing alternatives at the checked boundary.
+
+The Linux x86-64 backend shall use one non-packed LLVM literal struct containing
+a declaration-ordered `i32` tag followed by one statically typed slot for every
+payload-bearing alternative. It shall initialize all machine slots, observe
+only the active one, and use the same exact type in private `fastcc`
+definitions, calls, and returns. LLVM shall own physical register/stack
+classification. Invalid tags shall take the compiler-runtime corruption exit.
+Source display shall match the interpreter's labeled or positional alternative
+spelling through the Topal writer.
+
+DWARF shall expose the nominal source typedef, an enumerated source-alternative
+tag, and correctly laid-out payload members. Named values and aggregate payload
+bindings shall use target-aligned debug-only shadows where LLVM 22 cannot retain
+an inspectable SSA aggregate. The bundled GDB renderer shall show only the
+active alternative and payload. This shall add no semantic heap allocation,
+sum runtime helper, foreign dependency, C/C++ runtime, other-language standard
+library, public aggregate ABI, or `topal-native/6` revision. Recursive nominal
+sums, nested declarations, derived equality/ordering, persistent/public
+storage, serialization, introspection, and library metadata remain deferred.
+This realizes `TOPAL-COMPILER-SUM-001`, `TOPAL-TYPE-UNION-001`,
+`TOPAL-TYPE-VARIANT-001`, and `TOPAL-DECISION-UNION-001` for compiler increment
+3b2-b5o.
+
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 
 Every requested output shall receive a canonical

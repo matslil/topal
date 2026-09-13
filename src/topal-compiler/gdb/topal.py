@@ -303,6 +303,45 @@ class _TopalOptionalPrinter:
         return f"Some {rendered}"
 
 
+def _render_topal_value(value):
+    printer = _lookup_topal_value(value)
+    if printer is not None:
+        return printer.to_string()
+    value_type = value.type.strip_typedefs()
+    try:
+        fields = value_type.fields()
+    except gdb.error:
+        fields = ()
+    if fields and all(field.name and field.name.startswith("_") for field in fields):
+        rendered = [_render_topal_value(value[field.name]) for field in fields]
+        suffix = "," if len(rendered) == 1 else ""
+        return "(" + ", ".join(rendered) + suffix + ")"
+    return str(value)
+
+
+class _TopalSumPrinter:
+    """Render a private aggregate while observing only its active sum payload."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def to_string(self):
+        tag = self._value["tag"]
+        index = int(tag)
+        alternative = str(tag)
+        valid_tags = {
+            field.enumval for field in tag.type.strip_typedefs().fields()
+        }
+        if index not in valid_tags:
+            return f"<invalid sum tag {index}>"
+        prefix = alternative
+        try:
+            payload = self._value[f"payload_{index}"]
+        except gdb.error:
+            return prefix
+        return f"{prefix} {_render_topal_value(payload)}"
+
+
 def _lookup_topal_value(value):
     value_type = str(value.type)
     storage_type = str(value.type.strip_typedefs())
@@ -335,6 +374,10 @@ def _lookup_topal_value(value):
     suffix = ", lang arithmetic ArithmeticErrorCode)"
     if value_type.startswith(prefix) and value_type.endswith(suffix):
         return _TopalResultPrinter(value, value_type[len(prefix) : -len(suffix)])
+    if storage_type.startswith("struct TopalUnion."):
+        return _TopalSumPrinter(value)
+    if storage_type.startswith("struct TopalVariant."):
+        return _TopalSumPrinter(value)
     return None
 
 

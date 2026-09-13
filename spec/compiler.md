@@ -551,6 +551,26 @@ and matcher-validity rules of `TOPAL-DECISION-ENUM-001`. LLVM `switch` and
 SHALL fail closed rather than select a source alternative. DWARF SHALL describe
 the nominal enum and its source labels truthfully for GDB inspection.
 
+### TOPAL-COMPILER-SUM-001 — Sealed nominal sum lowering
+
+Each admitted root-scope labeled `Union` or positional `Variant` SHALL retain
+its distinct nominal identity, declaration-ordered alternatives, and exact
+payload classifiers through checking. Construction SHALL evaluate and classify
+the selected complete payload once. A sum decision SHALL evaluate its subject
+once, select only the active alternative, bind its complete payload only in the
+selected action, and enforce `TOPAL-DECISION-UNION-001` completeness and
+matcher validity. Display SHALL agree with the shared interpreter.
+
+The private native representation MAY contain a declaration-ordered `i32` tag
+and statically typed payload slots for the admitted alternatives. Inactive slots
+SHALL never be observed as Topal values, and an invalid tag SHALL fail closed.
+Definitions, calls, and returns SHALL use one exact private LLVM type and leave
+target-physical aggregate lowering to LLVM. This representation SHALL NOT be a
+public or foreign sum ABI, a serialization identity, or a compiled-library
+metadata key. DWARF and the bundled GDB renderer SHALL preserve the nominal
+type, active alternative, and active payload without presenting inactive
+storage as a source value.
+
 ### TOPAL-COMPILER-RETURN-001 — Mandatory direct-return lowering
 
 For every admitted direct `return` in a linear function body, the checked

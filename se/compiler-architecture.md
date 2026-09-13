@@ -451,8 +451,34 @@ decisions lower to LLVM `switch` plus typed `phi` joins. An impossible invalid
 tag takes the compiler-runtime corruption exit rather than selecting an
 arbitrary source alternative. Display switches to the declared label bytes
 through the Topal syscall boundary, while DWARF describes a genuine enumeration
-so stock GDB shows source labels. General `Union` layout and nested enum
-declarations remain separate representation and scope increments.
+so stock GDB shows source labels. Nested enum declarations remain a separate
+scope increment.
+
+An admitted root-scope labeled `Union` or positional `Variant` retains its
+nominal identity and declaration-ordered payload classifiers in the checked
+model. Its private LLVM carrier is one non-packed literal struct containing an
+`i32` tag followed by one statically typed field for every payload-bearing
+alternative. Construction initializes every field with either the active
+payload or an inert zero bit pattern; generated control flow never observes an
+inactive field as a Topal value. This deliberately larger SSA carrier avoids a
+type-erased payload, allocation, and target-specific union coercion in the
+frontend. The same exact aggregate type appears at every private `fastcc`
+definition, call, and return, leaving x86-64 register/stack classification to
+LLVM under the qualified triple and data layout.
+
+A sum decision emits its subject once, switches on the tag, and introduces the
+complete active payload only in the selected branch environment. Invalid tags
+take the compiler-runtime corruption exit. Compatible action results use the
+existing typed leaf `phi` machinery. Display switches to the interpreter's
+source spelling and prints only the active payload through existing Topal value
+printers. DWARF describes a nominal typedef over the exact aggregate, an enum
+tag carrying source alternative names, and the real payload offsets. A
+target-aligned debug-only shadow compensates for LLVM 22's O0 SSA-aggregate
+visibility limits, while the bundled GDB renderer hides inactive storage and
+recursively renders the active payload. This carrier is neither a public or C
+sum ABI nor a serialization or library-metadata identity. Recursive nominal
+sums, persistent/public storage, and foreign adapters remain separate
+representation increments.
 
 A direct explicit `return` in an admitted linear function body is resolved by
 the checked frontend as a control-flow boundary, not an optional optimization.
@@ -756,8 +782,9 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
-| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum, and fallible arithmetic control flow with typed result joins |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including native enum labels and bundled renderers for private Int, Rational, and finite exact Range objects |
+| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum, and fallible arithmetic control flow with typed result joins |
+| `insertvalue` and `extractvalue` | used | target-independent construction and decomposition of exact private Tuple, Record, Union, and Variant aggregate signatures |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including native enum/sum alternatives and bundled renderers for private Int, Rational, finite exact Range, and active sum values |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm.memcpy.inline` | used | target-qualified dynamic String copies while retaining LLVM's guarantee that lowering calls no external function |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |

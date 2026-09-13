@@ -7,8 +7,8 @@ use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
     CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerFallible, CompilerFunction, CompilerProgram, CompilerStatement, CompilerType,
-    CompilerValidation, display_string_literal,
+    CompilerFallible, CompilerFunction, CompilerProgram, CompilerStatement, CompilerSumRule,
+    CompilerSumType, CompilerType, CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -53,6 +53,12 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         CompilerType::Record(fields) => fields
             .iter()
             .any(|(_, value_type)| type_uses_extended_debug(value_type)),
+        CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_some_and(type_uses_extended_debug)
+        }),
         CompilerType::Unit
         | CompilerType::Completed
         | CompilerType::Effect
@@ -94,6 +100,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
                     .iter()
                     .any(|(_, value)| expression_uses_extended_debug(value))
         }
+        CompilerExpressionKind::Sum { payload, .. } => payload
+            .as_deref()
+            .is_some_and(expression_uses_extended_debug),
         CompilerExpressionKind::Block(block) => block_uses_extended_debug(block),
         CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
@@ -155,6 +164,19 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
                 || expression_uses_extended_debug(when_greater)
         }
         CompilerExpressionKind::EnumDecision {
+            subject,
+            rules,
+            otherwise,
+        } => {
+            expression_uses_extended_debug(subject)
+                || rules
+                    .iter()
+                    .any(|rule| expression_uses_extended_debug(&rule.action))
+                || otherwise
+                    .as_deref()
+                    .is_some_and(expression_uses_extended_debug)
+        }
+        CompilerExpressionKind::SumDecision {
             subject,
             rules,
             otherwise,
@@ -322,6 +344,14 @@ impl<'a> Generator<'a> {
                     location,
                 );
             }
+            LlValue::Sum { .. } => {
+                let aggregate =
+                    self.emit_sum_aggregate(&result, &mut body, function.body.result.span);
+                body.terminator(
+                    &format!("ret {} {aggregate}", llvm_value_type(&function.result_type)),
+                    location,
+                );
+            }
         }
         self.functions.push(format!(
             "define internal fastcc {return_type} @{}({parameters}) nounwind noinline !dbg !{subprogram} {{\n{}\n}}\n",
@@ -348,6 +378,9 @@ impl<'a> Generator<'a> {
                 CompilerType::Record(fields) => {
                     self.emit_record_extract(&argument, fields, body, parameter.span)
                 }
+                CompilerType::Sum(sum) => {
+                    self.emit_sum_extract(&argument, sum, body, parameter.span)
+                }
                 CompilerType::Function => LlValue::Enum {
                     value: argument.clone(),
                     enumeration: function_value_enumeration(self.program),
@@ -364,7 +397,10 @@ impl<'a> Generator<'a> {
             let location = self.debug.location(parameter.span, body.subprogram);
             if matches!(
                 parameter.value_type,
-                CompilerType::Function | CompilerType::Tuple(_) | CompilerType::Record(_)
+                CompilerType::Function
+                    | CompilerType::Tuple(_)
+                    | CompilerType::Record(_)
+                    | CompilerType::Sum(_)
             ) {
                 self.emit_aggregate_debug_shadow(
                     &argument,
@@ -418,6 +454,10 @@ impl<'a> Generator<'a> {
                 let aggregate = self.emit_record_aggregate(fields, order, field_types, body, span);
                 format!("{} {aggregate}", llvm_value_type(value_type))
             }
+            (LlValue::Sum { .. }, CompilerType::Sum(_)) => {
+                let aggregate = self.emit_sum_aggregate(value, body, span);
+                format!("{} {aggregate}", llvm_value_type(value_type))
+            }
             _ => value.argument(),
         }
     }
@@ -447,6 +487,7 @@ impl<'a> Generator<'a> {
                         CompilerType::Record(nested_types) => {
                             self.emit_record_extract(&field, nested_types, body, span)
                         }
+                        CompilerType::Sum(sum) => self.emit_sum_extract(&field, sum, body, span),
                         _ => machine_value(field_type, field),
                     }
                 })
@@ -516,6 +557,7 @@ impl<'a> Generator<'a> {
                     CompilerType::Record(nested_types) => {
                         self.emit_record_extract(&field, nested_types, body, span)
                     }
+                    CompilerType::Sum(sum) => self.emit_sum_extract(&field, sum, body, span),
                     _ => machine_value(field_type, field),
                 };
                 (label.clone(), field)
@@ -534,6 +576,96 @@ impl<'a> Generator<'a> {
             })
             .collect();
         LlValue::Record { fields, order }
+    }
+
+    fn emit_sum_aggregate(
+        &mut self,
+        value: &LlValue,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        let LlValue::Sum { tag, payloads, sum } = value else {
+            unreachable!("checked sum aggregate retains its sum value")
+        };
+        let value_type = CompilerType::Sum(sum.clone());
+        let aggregate_type = llvm_value_type(&value_type);
+        let mut aggregate = body.instruction(
+            &format!("insertvalue {aggregate_type} poison, i32 {tag}, 0"),
+            span,
+            &mut self.debug,
+        );
+        let mut field_index = 1;
+        for (alternative, payload) in sum.alternatives.iter().zip(payloads) {
+            if let Some(payload_type) = &alternative.payload {
+                let payload = payload
+                    .as_deref()
+                    .expect("every represented sum payload has a checked machine value");
+                let operand = self.emit_machine_operand(payload, payload_type, body, span);
+                aggregate = body.instruction(
+                    &format!("insertvalue {aggregate_type} {aggregate}, {operand}, {field_index}"),
+                    span,
+                    &mut self.debug,
+                );
+                field_index += 1;
+            }
+        }
+        aggregate
+    }
+
+    fn emit_sum_extract(
+        &mut self,
+        aggregate: &str,
+        sum: &CompilerSumType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        let aggregate_type = llvm_value_type(&CompilerType::Sum(sum.clone()));
+        let tag = body.instruction(
+            &format!("extractvalue {aggregate_type} {aggregate}, 0"),
+            span,
+            &mut self.debug,
+        );
+        let mut field_index = 1;
+        let mut payloads = Vec::with_capacity(sum.alternatives.len());
+        for alternative in &sum.alternatives {
+            let payload = if let Some(payload_type) = &alternative.payload {
+                let field = body.instruction(
+                    &format!("extractvalue {aggregate_type} {aggregate}, {field_index}"),
+                    span,
+                    &mut self.debug,
+                );
+                field_index += 1;
+                Some(Box::new(self.machine_or_aggregate_value(
+                    payload_type,
+                    field,
+                    body,
+                    span,
+                )))
+            } else {
+                None
+            };
+            payloads.push(payload);
+        }
+        LlValue::Sum {
+            tag,
+            payloads,
+            sum: sum.clone(),
+        }
+    }
+
+    fn machine_or_aggregate_value(
+        &mut self,
+        value_type: &CompilerType,
+        value: String,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        match value_type {
+            CompilerType::Tuple(fields) => self.emit_tuple_extract(&value, fields, body, span),
+            CompilerType::Record(fields) => self.emit_record_extract(&value, fields, body, span),
+            CompilerType::Sum(sum) => self.emit_sum_extract(&value, sum, body, span),
+            _ => machine_value(value_type, value),
+        }
     }
 
     fn emit_aggregate_debug_shadow(
@@ -638,6 +770,9 @@ impl<'a> Generator<'a> {
                                 body,
                                 binding.span,
                             ),
+                            (LlValue::Sum { .. }, CompilerType::Sum(_)) => {
+                                self.emit_sum_aggregate(&value, body, binding.span)
+                            }
                             _ => unreachable!("checked aggregate binding retains its type"),
                         };
                         let variable = self.debug.local(
@@ -747,6 +882,30 @@ impl<'a> Generator<'a> {
                 LlValue::Enum {
                     value: value.to_string(),
                     enumeration: enumeration.clone(),
+                }
+            }
+            CompilerExpressionKind::Sum { value, payload } => {
+                let CompilerType::Sum(sum) = &expression.value_type else {
+                    unreachable!("checked sum value retains its nominal type")
+                };
+                let mut payloads = sum
+                    .alternatives
+                    .iter()
+                    .map(|alternative| {
+                        alternative
+                            .payload
+                            .as_ref()
+                            .map(|payload_type| Box::new(zero_machine_value(payload_type)))
+                    })
+                    .collect::<Vec<_>>();
+                if let Some(payload) = payload {
+                    payloads[usize::try_from(*value).expect("u32 sum tag fits usize")] =
+                        Some(Box::new(self.emit_expression(payload, body, environment)));
+                }
+                LlValue::Sum {
+                    tag: value.to_string(),
+                    payloads,
+                    sum: sum.clone(),
                 }
             }
             CompilerExpressionKind::Tuple(values) => LlValue::Tuple(
@@ -1242,6 +1401,15 @@ impl<'a> Generator<'a> {
                         );
                         self.emit_record_extract(&aggregate, field_types, body, expression.span)
                     }
+                    CompilerType::Sum(ref sum) => {
+                        let aggregate_type = llvm_value_type(&expression.value_type);
+                        let aggregate = body.instruction(
+                            &format!("call fastcc {aggregate_type} @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        self.emit_sum_extract(&aggregate, sum, body, expression.span)
+                    }
                 }
             }
             CompilerExpressionKind::BooleanDecision {
@@ -1287,6 +1455,18 @@ impl<'a> Generator<'a> {
                 rules,
                 otherwise,
             } => self.emit_enum_decision(
+                subject,
+                rules,
+                otherwise.as_deref(),
+                body,
+                environment,
+                expression.span,
+            ),
+            CompilerExpressionKind::SumDecision {
+                subject,
+                rules,
+                otherwise,
+            } => self.emit_sum_decision(
                 subject,
                 rules,
                 otherwise.as_deref(),
@@ -2461,6 +2641,111 @@ impl<'a> Generator<'a> {
         self.emit_decision_phi(&branches, body, span)
     }
 
+    fn emit_sum_decision(
+        &mut self,
+        subject: &CompilerExpression,
+        rules: &[CompilerSumRule],
+        otherwise: Option<&CompilerExpression>,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let emitted_subject = self.emit_expression(subject, body, environment);
+        let LlValue::Sum { tag, payloads, sum } = emitted_subject else {
+            unreachable!("checked decision subject is a nominal sum")
+        };
+        let labels = rules
+            .iter()
+            .map(|_| body.label("sum.decision.alternative"))
+            .collect::<Vec<_>>();
+        let default = body.label("sum.decision.default");
+        let merge = body.label("sum.decision.merge");
+        let cases = rules
+            .iter()
+            .zip(&labels)
+            .map(|(rule, label)| format!("i32 {}, label %{label}", rule.value))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("switch i32 {tag}, label %{default} [ {cases} ]"),
+            location,
+        );
+        let mut branches = Vec::with_capacity(rules.len() + usize::from(otherwise.is_some()));
+        for (rule, label) in rules.iter().zip(labels) {
+            body.start_block(&label);
+            let mut branch_environment = environment.clone();
+            if let Some((name, binding_span)) = &rule.binding {
+                let index = usize::try_from(rule.value).expect("u32 sum tag fits usize");
+                let payload_type = sum.alternatives[index]
+                    .payload
+                    .as_ref()
+                    .expect("checked payload matcher retains its payload type");
+                let payload = payloads[index]
+                    .as_deref()
+                    .expect("checked payload matcher retains its payload value")
+                    .clone();
+                let variable = self
+                    .debug
+                    .local(name, *binding_span, payload_type, body.subprogram);
+                let binding_location = self.debug.location(*binding_span, body.subprogram);
+                if payload_type.machine_scalar() {
+                    body.debug_value(&payload, variable, binding_location);
+                } else if private_aggregate_value_supported(payload_type) {
+                    let aggregate = match (&payload, payload_type) {
+                        (LlValue::Tuple(fields), CompilerType::Tuple(field_types)) => {
+                            self.emit_tuple_aggregate(fields, field_types, body, *binding_span)
+                        }
+                        (LlValue::Record { fields, order }, CompilerType::Record(field_types)) => {
+                            self.emit_record_aggregate(
+                                fields,
+                                order,
+                                field_types,
+                                body,
+                                *binding_span,
+                            )
+                        }
+                        (LlValue::Sum { .. }, CompilerType::Sum(_)) => {
+                            self.emit_sum_aggregate(&payload, body, *binding_span)
+                        }
+                        _ => unreachable!("checked sum payload retains its aggregate type"),
+                    };
+                    self.emit_aggregate_debug_shadow(
+                        &aggregate,
+                        payload_type,
+                        variable,
+                        binding_location,
+                        body,
+                        *binding_span,
+                    );
+                }
+                branch_environment.insert(name.clone(), payload);
+            }
+            let value = self.emit_expression(&rule.action, body, &branch_environment);
+            let predecessor = body.current_block.clone();
+            let action_location = self.debug.location(rule.action.span, body.subprogram);
+            body.terminator(&format!("br label %{merge}"), action_location);
+            branches.push((value, predecessor));
+        }
+        body.start_block(&default);
+        if let Some(otherwise) = otherwise {
+            let value = self.emit_expression(otherwise, body, environment);
+            let predecessor = body.current_block.clone();
+            let action_location = self.debug.location(otherwise.span, body.subprogram);
+            body.terminator(&format!("br label %{merge}"), action_location);
+            branches.push((value, predecessor));
+        } else {
+            body.effect(
+                "call void @topal.platform.exit(i64 70)",
+                span,
+                &mut self.debug,
+            );
+            body.terminator("unreachable", location);
+        }
+        body.start_block(&merge);
+        self.emit_decision_phi(&branches, body, span)
+    }
+
     #[allow(clippy::too_many_lines)] // Exhaustive joins preserve checked representation identity.
     fn emit_decision_phi(
         &mut self,
@@ -2571,6 +2856,46 @@ impl<'a> Generator<'a> {
                     payload,
                 }
             }
+            LlValue::Sum { sum, .. } => {
+                let sum = sum.clone();
+                let tags = branches
+                    .iter()
+                    .map(|(branch, predecessor)| {
+                        let LlValue::Sum { tag, .. } = branch else {
+                            unreachable!("checked decision branches share a sum type")
+                        };
+                        format!("[{tag}, %{predecessor}]")
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let tag = body.instruction(&format!("phi i32 {tags}"), span, &mut self.debug);
+                let payloads = sum
+                    .alternatives
+                    .iter()
+                    .enumerate()
+                    .map(|(index, alternative)| {
+                        alternative.payload.as_ref().map(|_| {
+                            let payload_branches = branches
+                                .iter()
+                                .map(|(branch, predecessor)| {
+                                    let LlValue::Sum { payloads, .. } = branch else {
+                                        unreachable!("checked decision branches share a sum type")
+                                    };
+                                    (
+                                        payloads[index]
+                                            .as_deref()
+                                            .expect("sum payload slot retains a machine value")
+                                            .clone(),
+                                        predecessor.clone(),
+                                    )
+                                })
+                                .collect::<Vec<_>>();
+                            Box::new(self.emit_decision_phi(&payload_branches, body, span))
+                        })
+                    })
+                    .collect();
+                LlValue::Sum { tag, payloads, sum }
+            }
             LlValue::Tuple(fields) => LlValue::Tuple(
                 (0..fields.len())
                     .map(|index| {
@@ -2679,6 +3004,45 @@ impl<'a> Generator<'a> {
             }
             LlValue::Enum { value, enumeration } => {
                 self.emit_print_enum(value, enumeration, body, span);
+            }
+            LlValue::Sum { tag, payloads, sum } => {
+                let labels = sum
+                    .alternatives
+                    .iter()
+                    .map(|_| body.label("print.sum.alternative"))
+                    .collect::<Vec<_>>();
+                let invalid = body.label("print.sum.invalid");
+                let done = body.label("print.sum.done");
+                let cases = labels
+                    .iter()
+                    .enumerate()
+                    .map(|(index, label)| format!("i32 {index}, label %{label}"))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                let location = self.debug.location(span, body.subprogram);
+                body.terminator(
+                    &format!("switch i32 {tag}, label %{invalid} [ {cases} ]"),
+                    location,
+                );
+                for (index, (label, alternative)) in
+                    labels.iter().zip(&sum.alternatives).enumerate()
+                {
+                    body.start_block(label);
+                    self.emit_write_literal(&alternative.name, body, span);
+                    if let Some(payload) = payloads[index].as_deref() {
+                        self.emit_write_literal(" ", body, span);
+                        self.emit_print(payload, body, span);
+                    }
+                    body.terminator(&format!("br label %{done}"), location);
+                }
+                body.start_block(&invalid);
+                body.effect(
+                    "call void @topal.platform.exit(i64 70)",
+                    span,
+                    &mut self.debug,
+                );
+                body.terminator("unreachable", location);
+                body.start_block(&done);
             }
             LlValue::Range { value, endpoint } => body.effect(
                 &format!(
@@ -3017,6 +3381,11 @@ enum LlValue {
         value: String,
         enumeration: CompilerEnumType,
     },
+    Sum {
+        tag: String,
+        payloads: Vec<Option<Box<Self>>>,
+        sum: CompilerSumType,
+    },
     Range {
         value: String,
         endpoint: CompilerType,
@@ -3151,9 +3520,77 @@ impl LlValue {
             Self::Comparison(value) | Self::ErrorCode(value) | Self::Enum { value, .. } => {
                 format!("i32 {value}")
             }
-            Self::Tuple(_) | Self::Record { .. } => {
+            Self::Tuple(_) | Self::Record { .. } | Self::Sum { .. } => {
                 unreachable!("checked call arguments are scalar")
             }
+        }
+    }
+}
+
+fn zero_machine_value(value_type: &CompilerType) -> LlValue {
+    match value_type {
+        CompilerType::Unit => LlValue::Unit,
+        CompilerType::Completed => LlValue::Completed("0".into()),
+        CompilerType::Effect => LlValue::Effect("0".into()),
+        CompilerType::Boolean => LlValue::Boolean("false".into()),
+        CompilerType::Int | CompilerType::Nat => LlValue::Int("null".into()),
+        CompilerType::Rational => LlValue::Rational("null".into()),
+        CompilerType::Comparison => LlValue::Comparison("0".into()),
+        CompilerType::Error => LlValue::Error("null".into()),
+        CompilerType::ErrorCode => LlValue::ErrorCode("0".into()),
+        CompilerType::ErrorDomain => LlValue::ErrorDomain("null".into()),
+        CompilerType::Enum(enumeration) => LlValue::Enum {
+            value: "0".into(),
+            enumeration: enumeration.clone(),
+        },
+        CompilerType::Range(endpoint) => LlValue::Range {
+            value: "null".into(),
+            endpoint: endpoint.as_ref().clone(),
+        },
+        CompilerType::Result(success) => LlValue::Result {
+            value: "null".into(),
+            success: success.as_ref().clone(),
+        },
+        CompilerType::Optional(payload) => LlValue::Optional {
+            value: "null".into(),
+            payload: payload.as_ref().clone(),
+        },
+        CompilerType::Character | CompilerType::String => LlValue::String("null".into()),
+        CompilerType::Refined { base, .. } => zero_machine_value(base),
+        CompilerType::Tuple(fields) => {
+            LlValue::Tuple(fields.iter().map(zero_machine_value).collect())
+        }
+        CompilerType::Record(fields) => LlValue::Record {
+            fields: fields
+                .iter()
+                .map(|(label, field)| (label.clone(), zero_machine_value(field)))
+                .collect(),
+            order: (0..fields.len()).map(|index| index.to_string()).collect(),
+        },
+        CompilerType::Sum(sum) => LlValue::Sum {
+            tag: "0".into(),
+            payloads: sum
+                .alternatives
+                .iter()
+                .map(|alternative| {
+                    alternative
+                        .payload
+                        .as_ref()
+                        .map(|payload| Box::new(zero_machine_value(payload)))
+                })
+                .collect(),
+            sum: sum.clone(),
+        },
+        CompilerType::Type | CompilerType::Scope => LlValue::Enum {
+            value: "0".into(),
+            enumeration: if value_type == &CompilerType::Type {
+                fundamental_type_enumeration()
+            } else {
+                root_scope_enumeration()
+            },
+        },
+        CompilerType::Function | CompilerType::Constraint => {
+            unreachable!("static object values are not admitted in sum payloads")
         }
     }
 }
@@ -3284,7 +3721,7 @@ impl FunctionBody {
             LlValue::Comparison(value)
             | LlValue::ErrorCode(value)
             | LlValue::Enum { value, .. } => format!("i32 {value}"),
-            LlValue::Tuple(_) | LlValue::Record { .. } => return,
+            LlValue::Tuple(_) | LlValue::Record { .. } | LlValue::Sum { .. } => return,
         };
         self.debug_value_operand(&value, variable, location);
     }
@@ -3350,6 +3787,7 @@ struct DebugInfo {
     refined_types: Vec<(CompilerType, usize)>,
     tuple_types: Vec<(CompilerType, usize)>,
     record_types: Vec<(CompilerType, usize)>,
+    sum_types: Vec<(CompilerType, usize)>,
     source: topal_source::SourceText,
     filename: String,
 }
@@ -3398,6 +3836,7 @@ impl DebugInfo {
             refined_types: Vec::new(),
             tuple_types: Vec::new(),
             record_types: Vec::new(),
+            sum_types: Vec::new(),
             source,
             filename,
         };
@@ -3784,6 +4223,7 @@ impl DebugInfo {
             CompilerType::Refined { constraint, base } => self.refined_type(constraint, base),
             CompilerType::Tuple(fields) => self.tuple_type(fields),
             CompilerType::Record(fields) => self.record_type(fields),
+            CompilerType::Sum(sum) => self.sum_type(sum),
         }
     }
 
@@ -3895,6 +4335,84 @@ impl DebugInfo {
             self.file
         ));
         self.record_types.push((value_type, type_id));
+        type_id
+    }
+
+    fn sum_type(&mut self, sum: &CompilerSumType) -> usize {
+        let value_type = CompilerType::Sum(sum.clone());
+        if let Some((_, type_id)) = self
+            .sum_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+        let enumerators = sum
+            .alternatives
+            .iter()
+            .enumerate()
+            .map(|(value, alternative)| {
+                self.node(format!(
+                    "!DIEnumerator(name: \"{}\", value: {value})",
+                    llvm_string(&alternative.name)
+                ))
+            })
+            .collect::<Vec<_>>();
+        let tag_values = self.node(format!(
+            "!{{{}}}",
+            enumerators
+                .iter()
+                .map(|value| format!("!{value}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let tag_type = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_enumeration_type, name: \"{}.alternative\", file: !{}, size: 32, align: 32, elements: !{tag_values})",
+            llvm_string(&sum.name),
+            self.file
+        ));
+        let mut members = vec![self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"tag\", file: !{}, baseType: !{tag_type}, size: 32, align: 32, offset: 0)",
+            self.file
+        ))];
+        let mut offset = 32;
+        let mut alignment = 32;
+        for (index, alternative) in sum.alternatives.iter().enumerate() {
+            let Some(payload) = &alternative.payload else {
+                continue;
+            };
+            let layout = target_value_layout(payload);
+            offset = align_bits(offset, layout.alignment);
+            alignment = alignment.max(layout.alignment);
+            let payload_type = self.type_id(payload);
+            members.push(self.node(format!(
+                "!DIDerivedType(tag: DW_TAG_member, name: \"payload_{index}\", file: !{}, baseType: !{payload_type}, size: {}, align: {}, offset: {offset})",
+                self.file, layout.size, layout.alignment
+            )));
+            offset += layout.size;
+        }
+        let size = align_bits(offset, alignment);
+        debug_assert_eq!(size, target_value_layout(&value_type).size);
+        let elements = self.node(format!(
+            "!{{{}}}",
+            members
+                .iter()
+                .map(|member| format!("!{member}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let kind = if sum.positional { "Variant" } else { "Union" };
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"Topal{kind}.{}\", file: !{}, size: {size}, align: {alignment}, elements: !{elements})",
+            llvm_string(&sum.name),
+            self.file
+        ));
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"{}\", file: !{}, baseType: !{storage})",
+            llvm_string(&sum.name),
+            self.file
+        ));
+        self.sum_types.push((value_type, type_id));
         type_id
     }
 
@@ -4114,6 +4632,23 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
                 alignment,
             }
         }
+        CompilerType::Sum(sum) => {
+            let mut size = 32;
+            let mut alignment = 32;
+            for payload in sum
+                .alternatives
+                .iter()
+                .filter_map(|alternative| alternative.payload.as_ref())
+            {
+                let payload = target_value_layout(payload);
+                size = align_bits(size, payload.alignment) + payload.size;
+                alignment = alignment.max(payload.alignment);
+            }
+            TargetValueLayout {
+                size: align_bits(size, alignment),
+                alignment,
+            }
+        }
     }
 }
 
@@ -4127,6 +4662,12 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
         CompilerType::Record(fields) => fields
             .iter()
             .all(|(_, field)| private_aggregate_value_supported(field)),
+        CompilerType::Sum(sum) => sum.alternatives.iter().all(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_none_or(private_aggregate_value_supported)
+        }),
         _ => true,
     }
 }
@@ -4167,6 +4708,18 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
                 .iter()
                 .map(|(_, value_type)| llvm_value_type(value_type))
                 .chain(fields.iter().map(|_| "i32".to_owned()))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        CompilerType::Sum(sum) => format!(
+            "{{ {} }}",
+            std::iter::once("i32".to_owned())
+                .chain(
+                    sum.alternatives
+                        .iter()
+                        .filter_map(|alternative| alternative.payload.as_ref())
+                        .map(llvm_value_type)
+                )
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
@@ -4221,7 +4774,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             payload: payload.as_ref().clone(),
         },
         CompilerType::Refined { base, .. } => machine_value(base, value),
-        CompilerType::Tuple(_) | CompilerType::Record(_) => {
+        CompilerType::Tuple(_) | CompilerType::Record(_) | CompilerType::Sum(_) => {
             unreachable!("aggregate machine values require structural lowering")
         }
     }
@@ -5404,5 +5957,25 @@ mod tests {
         assert!(llvm.contains("DIEnumerator(name: \"Red\", value: 0)"));
         assert!(llvm.contains("DIEnumerator(name: \"Green\", value: 1)"));
         assert!(llvm.contains("DIEnumerator(name: \"Blue\", value: 2)"));
+    }
+
+    #[test]
+    fn emits_nominal_sums_as_private_tagged_aggregates_with_dwarf() {
+        // TOPAL-COMPILER-SUM-001, TOPAL-TYPE-UNION-001,
+        // TOPAL-TYPE-VARIANT-001, TOPAL-DECISION-UNION-001
+        let source = include_str!("../../../examples/language/unions-and-recursive-products.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/unions-and-recursive-products.t").emit();
+        assert!(llvm.contains("define internal fastcc { ptr, { ptr, ptr } } @topal.fn.describe"));
+        assert!(llvm.contains("({ i32, { ptr, { ptr, ptr } } } %arg0)"));
+        assert!(llvm.contains("({ i32, ptr, ptr } %arg0)"));
+        assert!(llvm.contains("insertvalue { i32, { ptr, { ptr, ptr } } }"));
+        assert!(llvm.contains("extractvalue { i32, { ptr, { ptr, ptr } } } %arg0, 0"));
+        assert!(llvm.contains("sum.decision.alternative"));
+        assert!(llvm.contains("switch i32"));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalUnion.Message\""));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalVariant.Scalar\""));
+        assert!(llvm.contains("DIEnumerator(name: \"Move\", value: 1)"));
+        assert!(llvm.contains("DIEnumerator(name: \"at 0\", value: 0)"));
     }
 }
