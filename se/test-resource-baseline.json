@@ -4504,6 +4504,21 @@
       "cpu_time_ns": 3096759,
       "memory_peak_bytes": 18235392,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_fundamental_type_values_as_closed_private_tags": {
+      "cpu_time_ns": 9838239,
+      "memory_peak_bytes": 18231296,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::gdb_retains_fundamental_type_identity_across_a_function_boundary": {
+      "cpu_time_ns": 244774860,
+      "memory_peak_bytes": 56827904,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_closed_fundamental_type_values_and_identity": {
+      "cpu_time_ns": 2877020,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
     }
   }
 }

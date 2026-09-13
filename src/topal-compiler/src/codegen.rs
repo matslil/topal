@@ -55,6 +55,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         CompilerType::Unit
         | CompilerType::Completed
         | CompilerType::Effect
+        | CompilerType::Type
         | CompilerType::Boolean
         | CompilerType::Int
         | CompilerType::Nat
@@ -165,6 +166,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::Unit
         | CompilerExpressionKind::Completed
         | CompilerExpressionKind::Effect
+        | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -367,6 +369,10 @@ impl<'a> Generator<'a> {
             CompilerExpressionKind::Unit => LlValue::Unit,
             CompilerExpressionKind::Completed => LlValue::Completed("0".into()),
             CompilerExpressionKind::Effect => LlValue::Effect("0".into()),
+            CompilerExpressionKind::TypeValue(value) => LlValue::Enum {
+                value: value.to_string(),
+                enumeration: fundamental_type_enumeration(),
+            },
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
             CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
             CompilerExpressionKind::Rational(value) => {
@@ -766,6 +772,14 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
+                    CompilerType::Type => LlValue::Enum {
+                        value: body.instruction(
+                            &format!("call fastcc i32 @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        enumeration: fundamental_type_enumeration(),
+                    },
                     CompilerType::Boolean => LlValue::Boolean(body.instruction(
                         &format!("call fastcc i1 @{symbol}({arguments})"),
                         expression.span,
@@ -2594,6 +2608,18 @@ fn numeric_pointer(value: &LlValue) -> (&str, CompilerType) {
     }
 }
 
+fn fundamental_type_enumeration() -> CompilerEnumType {
+    CompilerEnumType {
+        name: "Type".into(),
+        alternatives: [
+            "Boolean", "Int", "Nat", "Rational", "String", "Unit", "Scope",
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .collect(),
+    }
+}
+
 fn numeric_domain(value_type: &CompilerType) -> &'static str {
     match value_type {
         CompilerType::Int => "int",
@@ -3076,6 +3102,7 @@ impl DebugInfo {
             CompilerType::Unit => self.unit_type,
             CompilerType::Completed => self.completed_type,
             CompilerType::Effect => self.effect_type,
+            CompilerType::Type => self.enum_type(&fundamental_type_enumeration()),
             CompilerType::Boolean => self.boolean_type,
             CompilerType::Int => self.int_type,
             CompilerType::Nat => self.nat_type,
@@ -3291,7 +3318,10 @@ fn llvm_type(value_type: &CompilerType) -> &'static str {
         | CompilerType::Range(_)
         | CompilerType::Result(_)
         | CompilerType::Optional(_) => "ptr",
-        CompilerType::Comparison | CompilerType::ErrorCode | CompilerType::Enum(_) => "i32",
+        CompilerType::Type
+        | CompilerType::Comparison
+        | CompilerType::ErrorCode
+        | CompilerType::Enum(_) => "i32",
         CompilerType::Tuple(_) | CompilerType::Record(_) => {
             unreachable!("shared model restricts function ABI types")
         }
@@ -3304,6 +3334,10 @@ fn function_parameter_value(value_type: &CompilerType, index: usize) -> LlValue 
         CompilerType::Unit => LlValue::Unit,
         CompilerType::Completed => LlValue::Completed(value),
         CompilerType::Effect => LlValue::Effect(value),
+        CompilerType::Type => LlValue::Enum {
+            value,
+            enumeration: fundamental_type_enumeration(),
+        },
         CompilerType::Boolean => LlValue::Boolean(value),
         CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
         CompilerType::Rational => LlValue::Rational(value),
@@ -3348,7 +3382,10 @@ fn llvm_parameter_type(value_type: &CompilerType) -> &'static str {
         | CompilerType::Range(_)
         | CompilerType::Result(_)
         | CompilerType::Optional(_) => "ptr",
-        CompilerType::Comparison | CompilerType::ErrorCode | CompilerType::Enum(_) => "i32",
+        CompilerType::Type
+        | CompilerType::Comparison
+        | CompilerType::ErrorCode
+        | CompilerType::Enum(_) => "i32",
         CompilerType::Tuple(_) | CompilerType::Record(_) => {
             unreachable!("shared model restricts function ABI types")
         }
@@ -3483,6 +3520,55 @@ mod tests {
                 .unwrap();
         let llvm = Generator::new(&equality, "effect-identity.t").emit();
         assert!(llvm.contains("icmp eq i8 0, 0"));
+    }
+
+    #[test]
+    fn emits_fundamental_type_values_as_closed_private_tags() {
+        // TOPAL-ABSTRACTION-TYPE-VALUE-001,
+        // TOPAL-ABSTRACTION-TYPE-IDENTITY-001,
+        // TOPAL-ABSTRACTION-TYPE-BOUNDARY-001
+        for source in [
+            include_str!("../../../examples/language/type-values.t"),
+            include_str!("../../../examples/language/type-classifier.t"),
+            include_str!("../../../examples/language/type-identity.t"),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            let llvm = Generator::new(&program, "type-values.t").emit();
+            assert!(!llvm.contains("topal.runtime.type"));
+        }
+
+        let classified =
+            analyze_for_compiler(include_str!("../../../examples/language/type-classifier.t"))
+                .unwrap();
+        let llvm = Generator::new(&classified, "type-classifier.t").emit();
+        assert!(llvm.contains("DW_TAG_enumeration_type, name: \"Type\""));
+        for (name, value) in [
+            ("Boolean", 0),
+            ("Int", 1),
+            ("Nat", 2),
+            ("Rational", 3),
+            ("String", 4),
+            ("Unit", 5),
+            ("Scope", 6),
+        ] {
+            assert!(llvm.contains(&format!("DIEnumerator(name: \"{name}\", value: {value})")));
+        }
+
+        let boundary = analyze_for_compiler(include_str!(
+            "../../../examples/language/type-function-boundary.t"
+        ))
+        .unwrap();
+        let symbol = &boundary.functions[0].symbol;
+        let llvm = Generator::new(&boundary, "type-function-boundary.t").emit();
+        assert!(llvm.contains(&format!("define internal fastcc i32 @{symbol}(i32 %arg0)")));
+        assert!(llvm.contains(&format!("call fastcc i32 @{symbol}(i32 1)")));
+
+        let identity =
+            analyze_for_compiler(include_str!("../../../examples/language/type-identity.t"))
+                .unwrap();
+        let llvm = Generator::new(&identity, "type-identity.t").emit();
+        assert!(llvm.contains("icmp eq i32 1, 1"));
+        assert!(llvm.contains("icmp eq i32 1, 4"));
     }
 
     #[test]

@@ -34,6 +34,7 @@ pub enum CompilerType {
     Unit,
     Completed,
     Effect,
+    Type,
     Boolean,
     Int,
     Nat,
@@ -60,6 +61,7 @@ impl CompilerType {
             Self::Unit
                 | Self::Completed
                 | Self::Effect
+                | Self::Type
                 | Self::Boolean
                 | Self::Int
                 | Self::Nat
@@ -83,6 +85,7 @@ impl CompilerType {
             Self::Unit => "Unit".into(),
             Self::Completed => "Completed".into(),
             Self::Effect => "Effect".into(),
+            Self::Type => "Type".into(),
             Self::Boolean => "Boolean".into(),
             Self::Int => "Int".into(),
             Self::Nat => "Nat".into(),
@@ -223,6 +226,7 @@ pub enum CompilerExpressionKind {
     Unit,
     Completed,
     Effect,
+    TypeValue(u32),
     Boolean(bool),
     Int(BigInt),
     Rational(BigRational),
@@ -1007,6 +1011,20 @@ impl Analyzer {
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Completed,
                     value_type: CompilerType::Completed,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Identifier(name)
+                if fundamental_type_value(self.source.slice(*name)).is_some() =>
+            {
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::TypeValue(
+                        fundamental_type_value(self.source.slice(*name))
+                            .expect("guard established a fundamental Type value"),
+                    ),
+                    value_type: CompilerType::Type,
                     int_range: None,
                     rational_value: None,
                     span,
@@ -4280,6 +4298,19 @@ fn function_overload_identity(
     format!("{name}:{staticness}({inputs})")
 }
 
+fn fundamental_type_value(name: &str) -> Option<u32> {
+    match name {
+        "Boolean" => Some(0),
+        "Int" => Some(1),
+        "Nat" => Some(2),
+        "Rational" => Some(3),
+        "String" => Some(4),
+        "Unit" => Some(5),
+        "Scope" => Some(6),
+        _ => None,
+    }
+}
+
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
     if let Some(payload) = classifier.strip_prefix("Optional") {
         return Some(CompilerType::Optional(Box::new(parse_compact_classifier(
@@ -4318,6 +4349,7 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         "Unit" => Some(CompilerType::Unit),
         "Completed" => Some(CompilerType::Completed),
         "Effect" => Some(CompilerType::Effect),
+        "Type" => Some(CompilerType::Type),
         "Boolean" => Some(CompilerType::Boolean),
         "Int" => Some(CompilerType::Int),
         "Nat" => Some(CompilerType::Nat),
@@ -4464,6 +4496,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         CompilerType::Unit
         | CompilerType::Completed
         | CompilerType::Effect
+        | CompilerType::Type
         | CompilerType::Boolean
         | CompilerType::Int
         | CompilerType::Nat
@@ -4548,6 +4581,7 @@ fn compiler_expression_is_closed_with(
         CompilerExpressionKind::Unit
         | CompilerExpressionKind::Completed
         | CompilerExpressionKind::Effect
+        | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
@@ -5915,6 +5949,53 @@ mod tests {
         ] {
             assert!(analyze_for_compiler(source).is_ok());
         }
+    }
+
+    #[test]
+    fn models_closed_fundamental_type_values_and_identity() {
+        // TOPAL-ABSTRACTION-TYPE-VALUE-001,
+        // TOPAL-ABSTRACTION-TYPE-IDENTITY-001,
+        // TOPAL-ABSTRACTION-TYPE-BOUNDARY-001
+        let values =
+            analyze_for_compiler(include_str!("../../../examples/language/type-values.t")).unwrap();
+        assert_eq!(
+            values.main.result.value_type,
+            CompilerType::Tuple(vec![CompilerType::Type; 7])
+        );
+        let CompilerExpressionKind::Tuple(fields) = &values.main.result.kind else {
+            panic!("expected fundamental Type-value product")
+        };
+        assert_eq!(
+            fields
+                .iter()
+                .map(|field| match field.kind {
+                    CompilerExpressionKind::TypeValue(value) => value,
+                    _ => panic!("expected a fundamental Type value"),
+                })
+                .collect::<Vec<_>>(),
+            [0, 1, 2, 3, 4, 5, 6]
+        );
+
+        let boundary = analyze_for_compiler(include_str!(
+            "../../../examples/language/type-function-boundary.t"
+        ))
+        .unwrap();
+        let function = &boundary.functions[0];
+        assert_eq!(function.parameters[0].value_type, CompilerType::Type);
+        assert_eq!(function.result_type, CompilerType::Type);
+        assert!(matches!(
+            boundary.main.result.kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+        assert!(
+            analyze_for_compiler(include_str!("../../../examples/language/type-identity.t"))
+                .is_ok()
+        );
+        assert!(
+            analyze_for_compiler(include_str!("../../../examples/language/type-classifier.t"))
+                .is_ok()
+        );
+        assert_ne!(CompilerType::Type, CompilerType::Int);
     }
 
     #[test]

@@ -379,6 +379,22 @@ call. Display SHALL use only the Topal-owned platform write boundary. This
 increment SHALL add no foreign dependency, other-language standard library, or
 native ABI revision.
 
+### TOPAL-COMPILER-TYPE-VALUE-001 — Closed fundamental Type values
+
+The compiler SHALL admit the fundamental `Boolean`, `Int`, `Nat`, `Rational`,
+`String`, `Unit`, and `Scope` names in expression position as distinct immutable
+values classified by `Type`. It SHALL preserve their canonical identities
+through bindings, same-kind equality, decomposed products, scalar function
+parameters and results, canonical display, DWARF, and GDB. This closed subset
+SHALL NOT imply runtime reflection or admission of user-defined Type values.
+
+A target lowering MAY use private tags for the closed set, but tag numbers SHALL
+NOT be exposed as a public foreign ABI or serialized library-metadata identity.
+Future library metadata SHALL identify types canonically and independently of
+the private machine representation. This increment SHALL require no registry,
+allocation, foreign type-information runtime, other-language standard library,
+or native ABI revision.
+
 ### TOPAL-COMPILER-OPTIONAL-001 — Native Optional values
 
 Within the admitted `Int` and `String` payload subset, `Optional T` SHALL retain
