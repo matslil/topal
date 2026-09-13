@@ -453,9 +453,12 @@ struct CompilerDataMemberFacts {
 }
 
 #[derive(Clone)]
-struct CompilerCallableFacts {
-    name: String,
-    declarations: Vec<FunctionSource>,
+enum CompilerCallableFacts {
+    Named {
+        name: String,
+        declarations: Vec<FunctionSource>,
+    },
+    Symbolic(CallableKind),
 }
 
 impl From<&BindingFacts> for CompilerDataMemberFacts {
@@ -487,6 +490,7 @@ struct Analyzer {
     active_recursive_functions: BTreeMap<String, ActiveRecursiveFunction>,
     root_bindings: BTreeMap<String, CompilerDataMemberFacts>,
     in_function: bool,
+    function_values_used: bool,
     static_context: bool,
     next_instance: usize,
 }
@@ -552,6 +556,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         active_recursive_functions: BTreeMap::new(),
         root_bindings: BTreeMap::new(),
         in_function: false,
+        function_values_used: false,
         static_context: false,
         next_instance: 0,
     };
@@ -562,7 +567,16 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         BlockKind::TopLevel,
         None,
     )?;
-    let function_value_names = analyzer.functions.keys().cloned().collect();
+    let function_value_names = if analyzer.function_values_used {
+        analyzer
+            .functions
+            .keys()
+            .map(|name| format!("<fn {name}>"))
+            .chain(["+".into(), "-".into(), "<=>".into()])
+            .collect()
+    } else {
+        Vec::new()
+    };
     Ok(CompilerProgram {
         source,
         language_version,
@@ -1104,10 +1118,34 @@ impl Analyzer {
                     span,
                 })
             }
+            Expression::Callable { kind, span }
+                if matches!(
+                    kind,
+                    CallableKind::Plus | CallableKind::Minus | CallableKind::Compare
+                ) =>
+            {
+                self.function_values_used = true;
+                let offset = match kind {
+                    CallableKind::Plus => 0,
+                    CallableKind::Minus => 1,
+                    CallableKind::Compare => 2,
+                    _ => unreachable!("guard selected the symbolic Function subset"),
+                };
+                let value = u32::try_from(self.functions.len() + offset)
+                    .map_err(|_| unsupported(&self.source, *span, "native Function value tag"))?;
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::FunctionValue(value),
+                    value_type: CompilerType::Function,
+                    int_range: None,
+                    rational_value: None,
+                    span: *span,
+                })
+            }
             Expression::Identifier(name)
                 if !environment.contains_key(self.source.slice(*name))
                     && self.functions.contains_key(self.source.slice(*name)) =>
             {
+                self.function_values_used = true;
                 let function_name = self.source.slice(*name);
                 let declarations = self
                     .functions
@@ -1367,14 +1405,14 @@ impl Analyzer {
                 .get(self.source.slice(*alias))
                 .and_then(|facts| facts.callable.as_ref())
         {
-            return self.analyze_resolved_call_from(
-                items,
-                span,
-                environment,
-                0,
-                &callable.name,
-                &callable.declarations,
-            );
+            return match callable {
+                CompilerCallableFacts::Named { name, declarations } => {
+                    self.analyze_resolved_call_from(items, span, environment, 0, name, declarations)
+                }
+                CompilerCallableFacts::Symbolic(kind) => {
+                    self.analyze_bound_symbolic_callable(*kind, items, span, environment)
+                }
+            };
         }
         if items.len() > 1
             && items
@@ -2395,10 +2433,20 @@ impl Analyzer {
         }
         match &value.kind {
             CompilerExpressionKind::FunctionValue(tag) => {
+                let index = usize::try_from(*tag).expect("u32 tag fits usize");
+                if index >= self.functions.len() {
+                    let kind = match index - self.functions.len() {
+                        0 => CallableKind::Plus,
+                        1 => CallableKind::Minus,
+                        2 => CallableKind::Compare,
+                        _ => unreachable!("checked symbolic Function tag is supported"),
+                    };
+                    return Ok(Some(CompilerCallableFacts::Symbolic(kind)));
+                }
                 let name = self
                     .functions
                     .keys()
-                    .nth(usize::try_from(*tag).expect("u32 tag fits usize"))
+                    .nth(index)
                     .expect("checked Function value tag names a declaration")
                     .clone();
                 let declarations = self
@@ -2409,7 +2457,7 @@ impl Analyzer {
                     .filter(|declaration| declaration.span.end <= capture_position)
                     .cloned()
                     .collect::<Vec<_>>();
-                Ok(Some(CompilerCallableFacts { name, declarations }))
+                Ok(Some(CompilerCallableFacts::Named { name, declarations }))
             }
             CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .and_then(|facts| facts.callable.clone())
@@ -2711,6 +2759,52 @@ impl Analyzer {
             right,
             CompilerType::Boolean,
             span,
+        ))
+    }
+
+    fn analyze_bound_symbolic_callable(
+        &mut self,
+        kind: CallableKind,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let [alias, argument] = items else {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                "a symbolic Function value accepts one direct or product operand",
+            ));
+        };
+        if let Expression::Product { fields, .. } = argument
+            && let [left, right] = fields.as_slice()
+            && left.label.is_none()
+            && right.label.is_none()
+        {
+            return self.analyze_symbolic_binary(
+                kind,
+                &left.value,
+                &right.value,
+                span,
+                environment,
+            );
+        }
+        if kind == CallableKind::Minus {
+            let application = [
+                Expression::Callable {
+                    kind,
+                    span: alias.span(),
+                },
+                argument.clone(),
+            ];
+            return self.analyze_application(&application, span, environment);
+        }
+        Err(source_diagnostic(
+            &self.source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            argument.span(),
+            "a binary symbolic Function value requires a two-field positional product",
         ))
     }
 
@@ -6805,7 +6899,10 @@ mod tests {
             "../../../examples/language/named-function-values.t"
         ))
         .unwrap();
-        assert_eq!(program.function_value_names, ["increment"]);
+        assert_eq!(
+            program.function_value_names,
+            ["<fn increment>", "+", "-", "<=>"]
+        );
         assert!(matches!(
             program.main.statements.as_slice(),
             [CompilerStatement::Binding(CompilerBinding {
@@ -6839,6 +6936,52 @@ mod tests {
             "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\noperation is identity\nidentity is fn (value : String) -> String\n  value\noperation \"Topal\"\n",
         )
         .unwrap_err();
+        assert_eq!(rejected.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn models_symbolic_callable_values_and_function_classification() {
+        // TOPAL-COMPILER-SYMBOLIC-CALLABLE-VALUE-001,
+        // TOPAL-FUNCTION-CALLABLE-VALUE-001
+        let values =
+            analyze_for_compiler(include_str!("../../../examples/language/callable-values.t"))
+                .unwrap();
+        assert_eq!(values.function_value_names, ["+", "-", "<=>"]);
+        let CompilerExpressionKind::Tuple(results) = &values.main.result.kind else {
+            panic!("expected callable result product")
+        };
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[1]), Some(BigInt::from(-5)));
+        assert_eq!(results[2].value_type, CompilerType::Comparison);
+
+        let classified = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-classifier.t"
+        ))
+        .unwrap();
+        assert_eq!(exact_int(&classified.main.result), Some(BigInt::from(42)));
+
+        let chained = analyze_for_compiler(
+            "use language (version is v0.1)\nadd : Function is +\noperation is add\n(operation (20, 22), operation (1, 2))\n",
+        )
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &chained.main.result.kind else {
+            panic!("expected chained symbolic results")
+        };
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[1]), Some(BigInt::from(3)));
+
+        let binary_minus = analyze_for_compiler(
+            "use language (version is v0.1)\nsubtract is -\n(subtract (9, 4), subtract 5)\n",
+        )
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &binary_minus.main.result.kind else {
+            panic!("expected unary and binary minus results")
+        };
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(5)));
+        assert_eq!(exact_int(&results[1]), Some(BigInt::from(-5)));
+
+        let rejected =
+            analyze_for_compiler("use language (version is v0.1)\nadd is +\nadd 1\n").unwrap_err();
         assert_eq!(rejected.code, "E-NO-APPLICABLE-OVERLOAD");
     }
 

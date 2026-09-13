@@ -335,6 +335,31 @@ of function-valued data, and published callable interfaces remain rejected.
 This realizes `TOPAL-COMPILER-NAMED-FUNCTION-VALUE-001` and the admitted portion
 of `TOPAL-FUNCTION-VALUE-001` for compiler increment 3b2-b5j.
 
+## TOPAL-COMP-SYMBOLIC-CALLABLE-VALUE-001 — Direct symbolic Function values
+
+The checked compiler model shall admit `+`, `-`, and `<=>` in value position,
+retain the exact symbolic identity through unclassified or `Function`-classified
+bindings and binding chains, and reject invalid application arity with the
+ordinary no-applicable-overload diagnostic. Bound binary application shall
+unpack one two-field positional product before using the existing numeric and
+comparison checks; bound `-` shall additionally retain unary negation.
+
+The module-local Function observation table shall include `+`, `-`, and `<=>`
+in deterministic order after named functions whenever Function values are
+used. Canonical output and DWARF/GDB shall retain those spellings. Code generation
+shall lower the selected callable directly to the existing LLVM operation or
+Topal-owned numeric primitive and shall not dispatch through the observation
+tag. Native tests shall cover exact add, unary/binary subtraction, three-way
+comparison, Function classification, binding chains, display, and debugging.
+
+This shall add no function pointer, indirect call, Function runtime, closure
+allocation, foreign dependency, C/C++ runtime, other-language standard library,
+public callable ABI, or `topal-native/6` revision. Other symbolic callables,
+Function parameters/results, anonymous functions/captures, and published
+callable interfaces remain rejected. This realizes
+`TOPAL-COMPILER-SYMBOLIC-CALLABLE-VALUE-001` and the admitted portion of
+`TOPAL-FUNCTION-CALLABLE-VALUE-001` for compiler increment 3b2-b5k.
+
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 
 The checked compiler model shall reuse the shared structural proof for

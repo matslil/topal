@@ -278,6 +278,28 @@ Symbolic callable values, anonymous functions and captures, Function parameters
 or results, namespace selection of a function-valued data binding, and published
 callable interfaces remain outside this increment and SHALL be rejected.
 
+### TOPAL-COMPILER-SYMBOLIC-CALLABLE-VALUE-001 — Direct symbolic Function values
+
+The symbolic callables `+`, `-`, and `<=>` in value position SHALL produce
+Function values retaining their exact callable identity. A binding or finite
+binding chain MAY classify that value as `Function` without erasing the
+identity. Applying bound `+` or `<=>` SHALL require one two-field positional
+product and apply the existing checked binary-operation rules. Bound `-` SHALL
+accept either that product for subtraction or one direct exact-numeric operand
+for negation. Invalid arity SHALL produce a no-applicable-overload diagnostic.
+
+The deterministic private Function observation table SHALL include the three
+canonical spellings, and display/DWARF/GDB SHALL report those spellings. Each
+application SHALL lower directly to the corresponding existing LLVM operation
+or Topal-owned runtime primitive; the Function tag SHALL NOT dispatch it. No
+function pointer, indirect call, Function runtime, closure allocation, foreign
+dependency, C/C++ runtime, other-language standard library, public callable ABI,
+or native ABI revision is permitted.
+
+Other symbolic callable values, Function parameters/results, anonymous or
+capturing functions, and published callable interfaces remain outside this
+increment and SHALL be rejected.
+
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 
 The compiler SHALL admit a direct unary decreasing `Int` recursion edge only

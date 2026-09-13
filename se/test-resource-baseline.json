@@ -4654,6 +4654,21 @@
       "cpu_time_ns": 4184620,
       "memory_peak_bytes": 18358272,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_symbolic_callable_values_as_direct_operations": {
+      "cpu_time_ns": 8082099,
+      "memory_peak_bytes": 18305024,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::symbolic_callable_values_are_direct_freestanding_and_debuggable": {
+      "cpu_time_ns": 317264260,
+      "memory_peak_bytes": 57323520,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_symbolic_callable_values_and_function_classification": {
+      "cpu_time_ns": 3242600,
+      "memory_peak_bytes": 18358272,
+      "samples_per_test": 50
     }
   }
 }

@@ -3087,11 +3087,7 @@ fn root_scope_enumeration() -> CompilerEnumType {
 fn function_value_enumeration(program: &CompilerProgram) -> CompilerEnumType {
     CompilerEnumType {
         name: "Function".into(),
-        alternatives: program
-            .function_value_names
-            .iter()
-            .map(|name| format!("<fn {name}>"))
-            .collect(),
+        alternatives: program.function_value_names.clone(),
     }
 }
 
@@ -4541,6 +4537,33 @@ mod tests {
         let llvm = Generator::new(&displayed, "function-display.t").emit();
         assert!(llvm.contains(&llvm_bytes(b"<fn first>")));
         assert!(llvm.contains(&llvm_bytes(b"<fn second>")));
+    }
+
+    #[test]
+    fn emits_symbolic_callable_values_as_direct_operations() {
+        // TOPAL-COMPILER-SYMBOLIC-CALLABLE-VALUE-001,
+        // TOPAL-FUNCTION-CALLABLE-VALUE-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/callable-values.t"))
+                .unwrap();
+        let llvm = Generator::new(&program, "callable-values.t").emit();
+        assert!(llvm.contains("call ptr @topal.runtime.int.add("));
+        assert!(llvm.contains("call ptr @topal.runtime.int.negate("));
+        assert!(llvm.contains("call i32 @topal.runtime.int.compare("));
+        assert!(llvm.contains("!DIEnumerator(name: \"+\", value: 0)"));
+        assert!(llvm.contains("!DIEnumerator(name: \"-\", value: 1)"));
+        assert!(llvm.contains("!DIEnumerator(name: \"<=>\", value: 2)"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("call ptr %"));
+
+        let displayed = analyze_for_compiler(
+            "use language (version is v0.1)\nadd is +\nnegate is -\ncompare-values is <=>\n(add, negate, compare-values)\n",
+        )
+        .unwrap();
+        let llvm = Generator::new(&displayed, "callable-display.t").emit();
+        assert!(llvm.contains(&llvm_bytes(b"+")));
+        assert!(llvm.contains(&llvm_bytes(b"-")));
+        assert!(llvm.contains(&llvm_bytes(b"<=>")));
     }
 
     #[test]
