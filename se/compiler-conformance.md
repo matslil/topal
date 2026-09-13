@@ -39,7 +39,8 @@ evidence.
 | 3b2-b5e5 | overload-specific recursion identity and same-named acyclic cross-overload calls | complete |
 | 3b2-b5e6 | complete decreasing and increasing mutual Int cycles with multiple proven next-member calls | complete |
 | 3b2-b5e7 | range-preserving decreasing and increasing mutual Nat cycles with proof-backed constraint evidence | complete |
-| 3b2-b5f | decision-free recursively composed private Tuple function results over admitted scalar leaves, target-derived DWARF layout, and GDB-visible aggregate bindings | complete |
+| 3b2-b5f | recursively composed private Tuple function results over admitted scalar leaves, target-derived DWARF layout, and GDB-visible aggregate bindings | complete |
+| 3b2-b5g | field-wise Tuple results for Boolean, ordered-comparison, Comparison, Enum, Optional, and Result decisions | complete |
 | 3b2-b5e8 | remaining function forms, aggregate parameters, return-through-block cleanup, remaining recursion/totality evidence, nested declarations, record storage/ABI, unions, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
@@ -113,10 +114,12 @@ state; 3b2-b5e5 closes overload-specific recursion identity; 3b2-b5e6 admits
 complete uniform mutual `Int` cycles; 3b2-b5e7 composes that closure with
 range-preserving `Nat` evidence; 3b2-b5f adds recursively composed private
 Tuple results, delegates physical call lowering to LLVM, and retains aggregate
-locals in target-exact DWARF through debug-only stack shadows; and 3b2-b5e8
-continues with aggregate parameters and Records, nested declarations, remaining
-recursive and nested-block exit control flow, cleanup-bearing scopes, and the
-remaining user-defined value representations.
+locals in target-exact DWARF through debug-only stack shadows; 3b2-b5g extends
+the decomposed representation through every admitted decision family with
+field-wise scalar `phi` joins; and 3b2-b5e8 continues with aggregate parameters
+and Records, nested declarations, remaining recursive and nested-block exit
+control flow, cleanup-bearing scopes, and the remaining user-defined value
+representations.
 Increment 4a admits the encoding-observation
 byte count without
 attaching an encoding or importing a foreign String runtime; 4b1 adds exact

@@ -4534,6 +4534,21 @@
       "cpu_time_ns": 2914060,
       "memory_peak_bytes": 18423808,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_fieldwise_phi_nodes_for_tuple_decision_results": {
+      "cpu_time_ns": 10571780,
+      "memory_peak_bytes": 18362368,
+      "samples_per_test": 50
+    },
+    "topal-interpreter::test:cli::every_mode_preserves_tuple_decision_results": {
+      "cpu_time_ns": 44790399,
+      "memory_peak_bytes": 18292736,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_tuple_results_for_every_admitted_decision_family": {
+      "cpu_time_ns": 5763140,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
     }
   }
 }

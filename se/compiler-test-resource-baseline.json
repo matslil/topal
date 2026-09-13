@@ -966,6 +966,16 @@
       "cpu_time_ns": 130013,
       "memory_peak_bytes": 18362368,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/tuple-decision-results.t": {
+      "cpu_time_ns": 132869959,
+      "memory_peak_bytes": 42508288,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/tuple-decision-results.t": {
+      "cpu_time_ns": 352651,
+      "memory_peak_bytes": 18509824,
+      "samples_per_test": 500
     }
   }
 }

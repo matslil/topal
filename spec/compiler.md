@@ -383,13 +383,12 @@ native ABI revision.
 
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
-In the admitted decision-free subset, an ordinary or static function result
-classified by a recursively composed Tuple SHALL preserve every field in source
-order when every leaf type has an admitted exact private scalar representation.
-The function body SHALL evaluate once according to the existing block and
-return rules, and its caller SHALL receive the same complete Tuple without
-field erasure, integer substitution, semantic heap storage, runtime allocation,
-or dependence on optimization.
+An ordinary or static function result classified by a recursively composed
+Tuple SHALL preserve every field in source order when every leaf type has an
+admitted exact private scalar representation. The function body SHALL evaluate
+once according to the existing block and return rules, and its caller SHALL
+receive the same complete Tuple without field erasure, integer substitution,
+semantic heap storage, runtime allocation, or dependence on optimization.
 
 For Linux x86-64, the backend SHALL express this result as a non-packed LLVM
 struct whose fields recursively use those private value types. The definition
@@ -397,8 +396,7 @@ and every call SHALL have one exactly matching private calling convention and
 prototype; LLVM SHALL select the physical register or stack transport under the
 qualified target and data layout. This representation SHALL NOT be exposed as
 a stable compiled-library or foreign ABI. Aggregate parameters, Record results,
-Tuple-valued control-flow joins, and any Tuple containing an unsupported leaf
-SHALL remain rejected.
+and any Tuple containing an unsupported leaf SHALL remain rejected.
 
 DWARF SHALL describe the source Tuple, its ordered fields, and its target-exact
 layout. Named Tuple bindings SHALL remain inspectable in GDB at O0; a
@@ -406,6 +404,22 @@ debug-only stack shadow MAY be used when LLVM cannot preserve a direct SSA
 aggregate location. Such a shadow SHALL NOT become the semantic representation
 or require a runtime, foreign allocator, C/C++ library, other-language standard
 library, or native ABI revision.
+
+### TOPAL-COMPILER-TUPLE-DECISION-001 — Field-wise Tuple control-flow joins
+
+Every otherwise-admitted complete decision family MAY produce a common
+recursively composed Tuple type supported by
+`TOPAL-COMPILER-TUPLE-RESULT-001`. The checked compiler model SHALL require the
+complete structural type of every action to be identical after its existing
+canonical conversions. Subject evaluation, rule order, matcher evaluation, and
+selection of exactly one delayed action SHALL remain unchanged at O0.
+
+The backend SHALL join the selected decomposed value independently at each
+machine-represented leaf with a correctly typed LLVM `phi`; Unit leaves require
+no machine join. It SHALL preserve Tuple nesting and field order without an
+aggregate `phi`, eager action evaluation, semantic aggregate storage, heap
+allocation, runtime helper, foreign dependency, or ABI revision. Record-valued
+decision results and Tuples with unsupported leaves SHALL remain rejected.
 
 ### TOPAL-COMPILER-TYPE-VALUE-001 — Closed fundamental Type values
 

@@ -4246,11 +4246,11 @@ impl Analyzer {
         for branch in &branches[1..] {
             require_same_type(&self.source, span, &first.value_type, &branch.value_type)?;
         }
-        if !first.value_type.machine_scalar() {
+        if !compiler_function_result_supported(&first.value_type) {
             return Err(unsupported(
                 &self.source,
                 span,
-                "decision actions with non-scalar results",
+                "decision actions with unsupported machine results",
             ));
         }
         let int_range = branches
@@ -5996,6 +5996,46 @@ mod tests {
                 CompilerType::String,
             ])
         );
+    }
+
+    #[test]
+    fn models_tuple_results_for_every_admitted_decision_family() {
+        // TOPAL-COMPILER-TUPLE-DECISION-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/tuple-decision-results.t"
+        ))
+        .unwrap();
+        for function in program
+            .functions
+            .iter()
+            .filter(|function| function.source_name.starts_with("choose-"))
+        {
+            assert!(matches!(function.result_type, CompilerType::Tuple(_)));
+        }
+        for (name, expected) in [
+            ("choose-boolean", "boolean"),
+            ("choose-ordered", "ordered"),
+            ("choose-comparison", "comparison"),
+            ("choose-enum", "enum"),
+            ("choose-optional", "optional"),
+            ("choose-result", "result"),
+        ] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            let actual = match function.body.result.kind {
+                CompilerExpressionKind::BooleanDecision { .. } => "boolean",
+                CompilerExpressionKind::OrderedComparisonDecision { .. } => "ordered",
+                CompilerExpressionKind::ComparisonValueDecision { .. } => "comparison",
+                CompilerExpressionKind::EnumDecision { .. } => "enum",
+                CompilerExpressionKind::OptionalDecision { .. } => "optional",
+                CompilerExpressionKind::ResultDecision { .. } => "result",
+                _ => panic!("expected a checked decision result for {name}"),
+            };
+            assert_eq!(actual, expected);
+        }
     }
 
     #[test]

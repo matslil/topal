@@ -95,6 +95,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/string-uppercase.t",
     "examples/language/string-utf8-byte-count.t",
     "examples/language/strings-and-products.t",
+    "examples/language/tuple-decision-results.t",
     "examples/language/tuple-equality.t",
     "examples/language/type-classifier.t",
     "examples/language/type-function-boundary.t",
