@@ -621,7 +621,7 @@ impl<'a> Generator<'a> {
                             binding.span,
                         );
                     }
-                    environment.insert(binding.name.clone(), value);
+                    environment.insert(binding.storage_name.clone(), value);
                 }
                 CompilerStatement::Discard(expression) => {
                     let _ = self.emit_expression(expression, body, environment);
@@ -4446,6 +4446,39 @@ mod tests {
                     line.contains("call fastcc") && line.contains(&format!("@{symbol}("))
                 }));
             }
+            assert!(!llvm.contains("topal.runtime.namespace"));
+            assert!(!llvm.contains("topal.runtime.scope"));
+        }
+    }
+
+    #[test]
+    fn emits_namespace_data_members_as_stable_ssa_references() {
+        // TOPAL-COMPILER-NAMESPACE-DATA-001, TOPAL-NAMESPACE-SNAPSHOT-001
+        let program = analyze_for_compiler(
+            "use language (version is v0.1)\nanswer is 40 + 2\napi is root\n{\n  answer is 0\n  (api answer, root answer, answer)\n}\n",
+        )
+        .unwrap();
+        let llvm = Generator::new(&program, "namespace-data.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module defines the source entry point")
+            .1;
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.int.add(").count(),
+            1,
+            "the captured initializer must execute exactly once"
+        );
+        assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("topal.runtime.scope"));
+
+        for source in [
+            include_str!("../../../examples/language/namespace-alias-chain.t"),
+            include_str!("../../../examples/language/namespace-snapshot.t"),
+            include_str!("../../../examples/language/scope-classifier.t"),
+            include_str!("../../../examples/language/published-root-member.t"),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            let llvm = Generator::new(&program, "namespace-data.t").emit();
             assert!(!llvm.contains("topal.runtime.namespace"));
             assert!(!llvm.contains("topal.runtime.scope"));
         }

@@ -339,6 +339,7 @@ pub enum CompilerExpressionKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerBinding {
     pub name: String,
+    pub storage_name: String,
     pub value: CompilerExpression,
     pub span: Span,
 }
@@ -421,6 +422,7 @@ struct EnumSource {
 
 #[derive(Clone)]
 struct BindingFacts {
+    storage_name: String,
     value_type: CompilerType,
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
@@ -433,6 +435,26 @@ struct BindingFacts {
 struct CompilerNamespaceFacts {
     name: String,
     functions: BTreeMap<String, Vec<FunctionSource>>,
+    bindings: BTreeMap<String, CompilerDataMemberFacts>,
+}
+
+#[derive(Clone)]
+struct CompilerDataMemberFacts {
+    storage_name: String,
+    value_type: CompilerType,
+    int_range: Option<IntRange>,
+    rational_value: Option<BigRational>,
+}
+
+impl From<&BindingFacts> for CompilerDataMemberFacts {
+    fn from(facts: &BindingFacts) -> Self {
+        Self {
+            storage_name: facts.storage_name.clone(),
+            value_type: facts.value_type.clone(),
+            int_range: facts.int_range.clone(),
+            rational_value: facts.rational_value.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Default)]
@@ -451,6 +473,8 @@ struct Analyzer {
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
     active_recursive_functions: BTreeMap<String, ActiveRecursiveFunction>,
+    root_bindings: BTreeMap<String, CompilerDataMemberFacts>,
+    in_function: bool,
     static_context: bool,
     next_instance: usize,
 }
@@ -514,6 +538,8 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         instances: Vec::new(),
         active_calls: Vec::new(),
         active_recursive_functions: BTreeMap::new(),
+        root_bindings: BTreeMap::new(),
+        in_function: false,
         static_context: false,
         next_instance: 0,
     };
@@ -687,7 +713,9 @@ fn collect_functions(
                         span: *span,
                         is_static: *is_static,
                     })
-                } else if enum_declaration(source, statement).is_some() {
+                } else if enum_declaration(source, statement).is_some()
+                    || matches!(declaration.as_ref(), Statement::Binding { .. })
+                {
                     None
                 } else {
                     return Err(unsupported(
@@ -844,6 +872,14 @@ impl Analyzer {
 
         for (index, statement) in executable.iter().enumerate() {
             let last = index + 1 == executable.len();
+            let statement = match *statement {
+                Statement::Published { declaration, .. }
+                    if matches!(declaration.as_ref(), Statement::Binding { .. }) =>
+                {
+                    declaration.as_ref()
+                }
+                statement => statement,
+            };
             match statement {
                 Statement::Binding {
                     name,
@@ -911,20 +947,29 @@ impl Analyzer {
                     let record_fields = Self::known_record_fields(&value, environment);
                     let namespace =
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
-                    environment.insert(
-                        name_text.clone(),
-                        BindingFacts {
-                            value_type: value.value_type.clone(),
-                            int_range: value.int_range.clone(),
-                            rational_value: value.rational_value.clone(),
-                            string_value,
-                            record_fields,
-                            namespace,
-                        },
-                    );
+                    let storage_name = if kind == BlockKind::TopLevel {
+                        format!("topal.root.{}.{}", name.start, name_text)
+                    } else {
+                        name_text.clone()
+                    };
+                    let facts = BindingFacts {
+                        storage_name: storage_name.clone(),
+                        value_type: value.value_type.clone(),
+                        int_range: value.int_range.clone(),
+                        rational_value: value.rational_value.clone(),
+                        string_value,
+                        record_fields,
+                        namespace,
+                    };
+                    environment.insert(name_text.clone(), facts.clone());
+                    if kind == BlockKind::TopLevel {
+                        self.root_bindings
+                            .insert(name_text.clone(), CompilerDataMemberFacts::from(&facts));
+                    }
                     declared.insert(name_text.clone());
                     lowered.push(CompilerStatement::Binding(CompilerBinding {
                         name: name_text,
+                        storage_name,
                         span: *name,
                         value,
                     }));
@@ -1193,7 +1238,7 @@ impl Analyzer {
                     )
                 })?;
                 Ok(CompilerExpression {
-                    kind: CompilerExpressionKind::Local(name_text.to_owned()),
+                    kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
                     value_type: facts.value_type.clone(),
                     int_range: facts.int_range.clone(),
                     rational_value: facts.rational_value.clone(),
@@ -1225,6 +1270,12 @@ impl Analyzer {
             if self.functions.contains_key(&member_name) {
                 return self.analyze_resolved_call(remaining, span, environment, 0, &member_name);
             }
+            if remaining.len() == 1
+                && !self.in_function
+                && let Some(facts) = self.root_bindings.get(&member_name)
+            {
+                return Ok(data_member_expression(facts, span));
+            }
             return Err(unsupported(&self.source, *member, "qualified root member"));
         }
         if let Some((Expression::Identifier(alias), remaining)) = items.split_first()
@@ -1243,6 +1294,12 @@ impl Analyzer {
                     &member_name,
                     declarations,
                 );
+            }
+            if remaining.len() == 1
+                && !self.in_function
+                && let Some(facts) = namespace.bindings.get(&member_name)
+            {
+                return Ok(data_member_expression(facts, span));
             }
             return Err(source_diagnostic(
                 &self.source,
@@ -2150,8 +2207,7 @@ impl Analyzer {
                 value.push_str(&Self::known_string_expression(right, environment)?);
                 Some(value)
             }
-            CompilerExpressionKind::Local(name) => environment
-                .get(name)
+            CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .and_then(|facts| facts.string_value.clone()),
             CompilerExpressionKind::RecordField { record, label } => {
                 Self::known_record_string(record, label, environment)
@@ -2178,8 +2234,7 @@ impl Analyzer {
                 .iter()
                 .find_map(|(name, value)| (name == label).then_some(value))
                 .map(|value| Self::known_value_facts(value, environment)),
-            CompilerExpressionKind::Local(name) => environment
-                .get(name)
+            CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .and_then(|facts| facts.record_fields.get(label).cloned()),
             CompilerExpressionKind::RecordField {
                 record,
@@ -2208,8 +2263,7 @@ impl Analyzer {
                 }
                 fields
             }
-            CompilerExpressionKind::Local(name) => environment
-                .get(name)
+            CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .map_or_else(BTreeMap::new, |facts| facts.record_fields.clone()),
             CompilerExpressionKind::RecordField { record, label } => {
                 Self::known_record_field_facts(record, label, environment)
@@ -2239,6 +2293,7 @@ impl Analyzer {
         match &value.kind {
             CompilerExpressionKind::Root => Ok(Some(CompilerNamespaceFacts {
                 name: "root".into(),
+                bindings: self.root_bindings.clone(),
                 functions: self
                     .functions
                     .iter()
@@ -2252,8 +2307,7 @@ impl Analyzer {
                     })
                     .collect(),
             })),
-            CompilerExpressionKind::Local(name) => environment
-                .get(name)
+            CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .and_then(|facts| facts.namespace.clone())
                 .map(Some)
                 .ok_or_else(|| unsupported(&self.source, value.span, "opaque Scope alias")),
@@ -3467,6 +3521,7 @@ impl Analyzer {
                 environment.insert(
                     name.clone(),
                     BindingFacts {
+                        storage_name: name.clone(),
                         value_type: expected.clone(),
                         int_range: (!generalize_parameters)
                             .then(|| argument.int_range.clone())
@@ -3501,7 +3556,9 @@ impl Analyzer {
             ));
         }
         let previous_static_context = self.static_context;
+        let previous_in_function = self.in_function;
         self.static_context = declaration.is_static;
+        self.in_function = true;
         let body = self.analyze_block(
             &declaration.body,
             &mut environment,
@@ -3509,6 +3566,7 @@ impl Analyzer {
             Some(&result_type),
         );
         self.static_context = previous_static_context;
+        self.in_function = previous_in_function;
         let mut body = body?;
         if let CompilerType::Result(success_type) = &result_type
             && body.result.value_type == **success_type
@@ -4631,6 +4689,25 @@ fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
     compiler_function_result_supported(value_type)
 }
 
+fn data_member_expression(facts: &CompilerDataMemberFacts, span: Span) -> CompilerExpression {
+    CompilerExpression {
+        kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
+        value_type: facts.value_type.clone(),
+        int_range: facts.int_range.clone(),
+        rational_value: facts.rational_value.clone(),
+        span,
+    }
+}
+
+fn binding_facts_by_storage<'a>(
+    environment: &'a BTreeMap<String, BindingFacts>,
+    storage_name: &str,
+) -> Option<&'a BindingFacts> {
+    environment
+        .values()
+        .find(|facts| facts.storage_name == storage_name)
+}
+
 fn decision_binding_environment(
     environment: &BTreeMap<String, BindingFacts>,
     name: &str,
@@ -4640,6 +4717,7 @@ fn decision_binding_environment(
     branch.insert(
         name.to_owned(),
         BindingFacts {
+            storage_name: name.to_owned(),
             value_type,
             int_range: None,
             rational_value: None,
@@ -4900,7 +4978,7 @@ fn compiler_block_is_closed(block: &CompilerBlock, outer: &BTreeSet<String>) -> 
                 if !compiler_expression_is_closed_with(&binding.value, &bound) {
                     return false;
                 }
-                bound.insert(binding.name.clone());
+                bound.insert(binding.storage_name.clone());
             }
             CompilerStatement::Discard(expression) => {
                 if !compiler_expression_is_closed_with(expression, &bound) {
@@ -6191,14 +6269,17 @@ mod tests {
             completion.functions[0].result_type,
             CompilerType::Tuple(vec![CompilerType::Completed, CompilerType::Effect])
         );
+        let [CompilerStatement::Binding(binding)] = completion.main.statements.as_slice() else {
+            panic!("expected one result binding")
+        };
+        assert_eq!(binding.name, "result");
         assert!(matches!(
-            completion.main.statements.as_slice(),
-            [CompilerStatement::Binding(binding)]
-                if matches!(binding.value.kind, CompilerExpressionKind::Call { .. })
+            binding.value.kind,
+            CompilerExpressionKind::Call { .. }
         ));
         assert!(matches!(
             completion.main.result.kind,
-            CompilerExpressionKind::Local(ref name) if name == "result"
+            CompilerExpressionKind::Local(ref storage) if storage == &binding.storage_name
         ));
 
         let nested = analyze_for_compiler(
@@ -6553,6 +6634,58 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(rejected.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn models_root_and_alias_data_member_snapshots() {
+        // TOPAL-COMPILER-NAMESPACE-DATA-001, TOPAL-NAMESPACE-ROOT-001,
+        // TOPAL-NAMESPACE-ALIAS-001, TOPAL-NAMESPACE-SNAPSHOT-001,
+        // TOPAL-NAMESPACE-CLASSIFIER-001, TOPAL-NAMESPACE-ALIAS-CHAIN-001
+        for source in [
+            include_str!("../../../examples/language/namespace-alias-chain.t"),
+            include_str!("../../../examples/language/namespace-snapshot.t"),
+            include_str!("../../../examples/language/scope-classifier.t"),
+            include_str!("../../../examples/language/published-root-member.t"),
+        ] {
+            analyze_for_compiler(source).unwrap();
+        }
+
+        let snapshot = analyze_for_compiler(include_str!(
+            "../../../examples/language/namespace-snapshot.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(values) = &snapshot.main.result.kind else {
+            panic!("expected earlier-alias and live-root data product")
+        };
+        assert_eq!(exact_int(&values[0]), Some(BigInt::from(41)));
+        assert_eq!(exact_int(&values[1]), Some(BigInt::from(42)));
+
+        let shadowed = analyze_for_compiler(
+            "use language (version is v0.1)\nanswer is 42\napi is root\n{\n  answer is 0\n  (root answer, api answer, answer)\n}\n",
+        )
+        .unwrap();
+        let CompilerExpressionKind::Block(block) = &shadowed.main.result.kind else {
+            panic!("expected lexical shadow block")
+        };
+        let CompilerExpressionKind::Tuple(values) = &block.result.kind else {
+            panic!("expected qualified and lexical result product")
+        };
+        assert_eq!(exact_int(&values[0]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&values[1]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&values[2]), Some(BigInt::from(0)));
+        let CompilerExpressionKind::Local(root_storage) = &values[0].kind else {
+            panic!("expected stable root storage reference")
+        };
+        let CompilerExpressionKind::Local(local_storage) = &values[2].kind else {
+            panic!("expected lexical storage reference")
+        };
+        assert_ne!(root_storage, local_storage);
+
+        let rejected = analyze_for_compiler(
+            "use language (version is v0.1)\nanswer is 42\nread is fn () -> Int\n  root answer\nread ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(rejected.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

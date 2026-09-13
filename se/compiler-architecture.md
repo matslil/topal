@@ -133,6 +133,16 @@ lookup tables, callable pointers, or public Scope layout before root data
 storage, generators, packages, and compiled-library interfaces have defined
 their distinct representation and artifact requirements.
 
+Source-root data members use a parallel immutable snapshot map. Each checked
+binding receives an internal storage key derived from its declaration location,
+while its source spelling remains the DWARF variable name. Qualified data
+selection carries that key into the checked expression, so LLVM reuses the
+already-emitted SSA value even through a caller lexical shadow; it neither
+replays the initializer nor consults a namespace object. Entry-frame SSA is not
+valid in an independently callable function, so function-body root-data access
+remains rejected until root storage receives an explicit cross-function
+representation compatible with compiled-library interfaces.
+
 Recursion identity uses that complete selected input header, not source-name
 spelling alone. A call from an active `String` overload to a same-named `Int`
 overload is therefore an ordinary acyclic edge: it receives a distinct private
