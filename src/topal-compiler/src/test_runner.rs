@@ -74,6 +74,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/rational-exponentiation.t",
     "examples/language/rational-negative-exponent.t",
     "examples/language/rational-ranges.t",
+    "examples/language/record-function-boundaries.t",
     "examples/language/record-reconstruction.t",
     "examples/language/result-division-error.t",
     "examples/language/result-error-propagation.t",

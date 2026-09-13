@@ -9835,6 +9835,9 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         return matches!(value, Value::Error { code, .. } if is_arithmetic_error_code(code))
             || value_has_classifier(value, success);
     }
+    if let Some(matches) = record_value_has_classifier(value, classifier) {
+        return matches;
+    }
     if let (Value::Tuple(values), Some(classifiers)) = (value, tuple_classifiers(classifier)) {
         return values.len() == classifiers.len()
             && values
@@ -9842,16 +9845,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
                 .zip(classifiers)
                 .all(|(value, classifier)| value_has_classifier(value, classifier));
     }
-    let requested_kind = match classifier {
-        "Type" => Some(ObjectKind::Type),
-        "Function" => Some(ObjectKind::Function),
-        "Constraint" => Some(ObjectKind::Constraint),
-        "Capability" => Some(ObjectKind::Capability),
-        "Effect" => Some(ObjectKind::Effect),
-        "Scope" => Some(ObjectKind::Scope),
-        _ => None,
-    };
-    if let Some(requested_kind) = requested_kind {
+    if let Some(requested_kind) = classifier_object_kind(classifier) {
         return value.object_kind().satisfies(requested_kind);
     }
     match (value, classifier) {
@@ -9875,6 +9869,34 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         (Value::Union(union), classifier) => union.type_name == classifier,
         _ => false,
     }
+}
+
+fn classifier_object_kind(classifier: &str) -> Option<ObjectKind> {
+    match classifier {
+        "Type" => Some(ObjectKind::Type),
+        "Function" => Some(ObjectKind::Function),
+        "Constraint" => Some(ObjectKind::Constraint),
+        "Capability" => Some(ObjectKind::Capability),
+        "Effect" => Some(ObjectKind::Effect),
+        "Scope" => Some(ObjectKind::Scope),
+        _ => None,
+    }
+}
+
+fn record_value_has_classifier(value: &Value, classifier: &str) -> Option<bool> {
+    let Value::Record(values) = value else {
+        return None;
+    };
+    let fields = record_classifiers(classifier)?;
+    Some(
+        values.len() == fields.len()
+            && fields.iter().all(|(label, classifier)| {
+                values
+                    .iter()
+                    .find_map(|(candidate, value)| (candidate == label).then_some(value))
+                    .is_some_and(|value| value_has_classifier(value, classifier))
+            }),
+    )
 }
 
 fn supported_generator_value_classifier(
@@ -11739,8 +11761,71 @@ fn supported_value_classifier(
                 .into_iter()
                 .all(|item| supported_value_classifier(item, enum_types))
         })
+        || record_classifiers(classifier).is_some_and(|fields| {
+            fields
+                .into_iter()
+                .all(|(_, field)| supported_value_classifier(field, enum_types))
+        })
         || result_success_classifier(classifier)
             .is_some_and(|success| supported_value_classifier(success, enum_types))
+}
+
+fn record_classifiers(classifier: &str) -> Option<Vec<(&str, &str)>> {
+    let contents = classifier
+        .trim()
+        .strip_prefix("Record")?
+        .trim()
+        .strip_prefix('(')?
+        .strip_suffix(')')?;
+    let fields = split_top_level_classifier_items(contents)?;
+    let mut labels = BTreeSet::new();
+    fields
+        .into_iter()
+        .map(|field| {
+            let (label, classifier) = split_top_level_classifier_field(field)?;
+            labels.insert(label).then_some((label, classifier))
+        })
+        .collect()
+}
+
+fn split_top_level_classifier_items(contents: &str) -> Option<Vec<&str>> {
+    let mut items = Vec::new();
+    let mut depth = 0_usize;
+    let mut start = 0_usize;
+    for (offset, character) in contents.char_indices() {
+        match character {
+            '(' => depth += 1,
+            ')' => depth = depth.checked_sub(1)?,
+            ',' if depth == 0 => {
+                items.push(contents[start..offset].trim());
+                start = offset + character.len_utf8();
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return None;
+    }
+    items.push(contents[start..].trim());
+    items.iter().all(|item| !item.is_empty()).then_some(items)
+}
+
+fn split_top_level_classifier_field(field: &str) -> Option<(&str, &str)> {
+    let mut depth = 0_usize;
+    for (offset, character) in field.char_indices() {
+        match character {
+            '(' => depth += 1,
+            ')' => depth = depth.checked_sub(1)?,
+            ':' if depth == 0 => {
+                let label = field[..offset].trim();
+                let classifier = field[offset + character.len_utf8()..].trim();
+                return (!label.is_empty() && !classifier.is_empty())
+                    .then_some((label, classifier));
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn generator_classifiers(classifier: &str) -> Option<(&str, &str, &str)> {

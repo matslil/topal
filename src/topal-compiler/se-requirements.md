@@ -435,10 +435,11 @@ This realizes `TOPAL-COMPILER-EFFECT-EMPTY-001` for compiler increment 7a.
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when
-every recursively nested leaf has an exact supported private scalar
-representation. It shall retain the source field order and identities and
-reject Record results and unsupported leaves rather than inventing a layout or
-conversion. Function execution and all field evaluation shall remain correct
+every recursively nested leaf has an exact supported private representation.
+It shall retain the source field order and identities and reject unsupported
+leaves rather than inventing a layout or conversion. Record fields admitted by
+`TOPAL-COMP-RECORD-BOUNDARY-001` may occur recursively. Function execution and
+all field evaluation shall remain correct
 at O0 without semantic heap storage, runtime allocation, or optimization.
 
 The Linux x86-64 backend shall lower each admitted result to a recursively
@@ -471,9 +472,10 @@ correctly typed LLVM `phi`, omitting a machine join only for Unit leaves. It
 shall not construct an aggregate `phi`, evaluate an unselected action, or add
 semantic aggregate storage, heap allocation, a runtime helper, a foreign
 dependency, a C/C++ runtime, another-language standard library, or a
-`topal-native/6` revision. Record decisions and unsupported Tuple leaves shall
-remain rejected. This realizes `TOPAL-COMPILER-TUPLE-DECISION-001` for compiler
-increment 3b2-b5g.
+`topal-native/6` revision. Records admitted by
+`TOPAL-COMP-RECORD-BOUNDARY-001` may occur recursively; unsupported Tuple leaves
+shall remain rejected. This realizes `TOPAL-COMPILER-TUPLE-DECISION-001` for
+compiler increment 3b2-b5g.
 
 ## TOPAL-COMP-TUPLE-PARAMETER-001 — Private positional-product parameters
 
@@ -483,7 +485,8 @@ admitted by `TOPAL-COMP-TUPLE-RESULT-001`. It shall evaluate the argument once
 and preserve interpreter-compatible call normalization: a unary candidate
 matches the complete Tuple, a multi-parameter candidate matches its fields in
 declaration order, and otherwise-applicable overloads remain source ordered.
-It shall reject Record parameters and unsupported Tuple leaves.
+It shall admit recursively nested Record fields covered by
+`TOPAL-COMP-RECORD-BOUNDARY-001` and reject other unsupported Tuple leaves.
 
 The Linux x86-64 backend shall pass each Tuple parameter as one recursively
 nested, non-packed LLVM literal struct. Caller `insertvalue` construction,
@@ -610,11 +613,38 @@ shall diagnose an absent label with `E-NO-SUCH-RECORD-FIELD` at that label.
 
 Expression-local Records shall lower as decomposed LLVM values without an
 allocation, native header, generated record runtime, C/C++ runtime, standard
-library, or ABI revision. Aggregate function passage and storage remain
-rejected. Projected scalar bindings and field source locations shall use the
-existing DWARF/GDB paths; the compiler shall defer the record binding itself
-rather than claim a false aggregate debug layout. This requirement realizes
-`TOPAL-COMPILER-RECORD-001` for compiler increment 3b2-b5b.
+library, or ABI revision. `TOPAL-COMP-RECORD-BOUNDARY-001` separately admits
+private aggregate function passage, control-flow joins, and truthful debug-only
+storage. Persistent semantic Record storage remains rejected. This requirement
+realizes `TOPAL-COMPILER-RECORD-001` for compiler increment 3b2-b5b.
+
+## TOPAL-COMP-RECORD-BOUNDARY-001 — Order-preserving private Record boundaries
+
+The checked compiler model shall parse and retain closed structural Record
+classifiers on ordinary and static parameters and results. It shall compare
+classifiers by canonical label-to-type maps, recursively admit Tuple and Record
+fields with exact private representations, preserve each value's independent
+construction order, evaluate an argument once, and retain source-ordered
+candidate selection.
+
+The Linux x86-64 backend shall lower each admitted Record boundary to one
+non-packed LLVM literal struct. Values shall appear in canonical label order,
+followed by one `i32` canonical-field index per source display position. Caller
+`insertvalue`, callee `extractvalue`, results, definitions, and calls shall use
+the same exact private `fastcc` type while LLVM performs target-specific
+physical call lowering. Every admitted decision family shall join canonical
+fields recursively and order indexes individually with LLVM `phi` nodes, with
+no aggregate `phi` or eager action execution.
+
+DWARF shall expose semantic named fields at target-derived offsets and account
+for the private order suffix in the complete size without inventing source
+members. Named Record bindings and parameters shall remain inspectable in GDB
+at O0 through a target-aligned debug-only stack shadow and `#dbg_declare` where
+needed. This shall add no persistent semantic aggregate storage, heap
+allocation, Record runtime helper, foreign dependency, C/C++ runtime,
+other-language standard library, public aggregate ABI, or `topal-native/6`
+revision. This realizes `TOPAL-COMPILER-RECORD-BOUNDARY-001` for compiler
+increment 3b2-b5i.
 
 ## TOPAL-COMP-STRUCTURAL-COMPARISON-001 — Derived structural comparison
 

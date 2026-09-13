@@ -293,8 +293,21 @@ impl<'a> Generator<'a> {
                     location,
                 );
             }
-            LlValue::Record(_) => {
-                unreachable!("shared model restricts Record machine results")
+            LlValue::Record { fields, order } => {
+                let CompilerType::Record(field_types) = &function.result_type else {
+                    unreachable!("checked Record result retains its Record type")
+                };
+                let aggregate = self.emit_record_aggregate(
+                    &fields,
+                    &order,
+                    field_types,
+                    &mut body,
+                    function.body.result.span,
+                );
+                body.terminator(
+                    &format!("ret {} {aggregate}", llvm_value_type(&function.result_type)),
+                    location,
+                );
             }
         }
         self.functions.push(format!(
@@ -315,10 +328,14 @@ impl<'a> Generator<'a> {
             if parameter.discarded {
                 continue;
             }
-            let value = if let CompilerType::Tuple(fields) = &parameter.value_type {
-                self.emit_tuple_extract(&argument, fields, body, parameter.span)
-            } else {
-                function_parameter_value(&parameter.value_type, index)
+            let value = match &parameter.value_type {
+                CompilerType::Tuple(fields) => {
+                    self.emit_tuple_extract(&argument, fields, body, parameter.span)
+                }
+                CompilerType::Record(fields) => {
+                    self.emit_record_extract(&argument, fields, body, parameter.span)
+                }
+                _ => function_parameter_value(&parameter.value_type, index),
             };
             let variable = self.debug.parameter(
                 &parameter.name,
@@ -328,8 +345,11 @@ impl<'a> Generator<'a> {
                 body.subprogram,
             );
             let location = self.debug.location(parameter.span, body.subprogram);
-            if matches!(parameter.value_type, CompilerType::Tuple(_)) {
-                self.emit_tuple_debug_shadow(
+            if matches!(
+                parameter.value_type,
+                CompilerType::Tuple(_) | CompilerType::Record(_)
+            ) {
+                self.emit_aggregate_debug_shadow(
                     &argument,
                     &parameter.value_type,
                     variable,
@@ -377,8 +397,9 @@ impl<'a> Generator<'a> {
                 let aggregate = self.emit_tuple_aggregate(fields, field_types, body, span);
                 format!("{} {aggregate}", llvm_value_type(value_type))
             }
-            (LlValue::Record(_), CompilerType::Record(_)) => {
-                unreachable!("shared model restricts Record machine values")
+            (LlValue::Record { fields, order }, CompilerType::Record(field_types)) => {
+                let aggregate = self.emit_record_aggregate(fields, order, field_types, body, span);
+                format!("{} {aggregate}", llvm_value_type(value_type))
             }
             _ => value.argument(),
         }
@@ -402,17 +423,103 @@ impl<'a> Generator<'a> {
                         span,
                         &mut self.debug,
                     );
-                    if let CompilerType::Tuple(nested_types) = field_type {
-                        self.emit_tuple_extract(&field, nested_types, body, span)
-                    } else {
-                        machine_value(field_type, field)
+                    match field_type {
+                        CompilerType::Tuple(nested_types) => {
+                            self.emit_tuple_extract(&field, nested_types, body, span)
+                        }
+                        CompilerType::Record(nested_types) => {
+                            self.emit_record_extract(&field, nested_types, body, span)
+                        }
+                        _ => machine_value(field_type, field),
                     }
                 })
                 .collect(),
         )
     }
 
-    fn emit_tuple_debug_shadow(
+    fn emit_record_aggregate(
+        &mut self,
+        fields: &[(String, LlValue)],
+        order: &[String],
+        field_types: &[(String, CompilerType)],
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        debug_assert_eq!(fields.len(), field_types.len());
+        debug_assert_eq!(order.len(), field_types.len());
+        let value_type = CompilerType::Record(field_types.to_vec());
+        let aggregate_type = llvm_value_type(&value_type);
+        let mut aggregate = "poison".to_owned();
+        for (index, (label, field_type)) in field_types.iter().enumerate() {
+            let field = fields
+                .iter()
+                .find_map(|(candidate, value)| (candidate == label).then_some(value))
+                .unwrap_or_else(|| panic!("checked Record value retains field `{label}`"));
+            let field = self.emit_machine_operand(field, field_type, body, span);
+            aggregate = body.instruction(
+                &format!("insertvalue {aggregate_type} {aggregate}, {field}, {index}"),
+                span,
+                &mut self.debug,
+            );
+        }
+        for (position, selector) in order.iter().enumerate() {
+            aggregate = body.instruction(
+                &format!(
+                    "insertvalue {aggregate_type} {aggregate}, i32 {selector}, {}",
+                    field_types.len() + position
+                ),
+                span,
+                &mut self.debug,
+            );
+        }
+        aggregate
+    }
+
+    fn emit_record_extract(
+        &mut self,
+        aggregate: &str,
+        field_types: &[(String, CompilerType)],
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        let aggregate_type = llvm_value_type(&CompilerType::Record(field_types.to_vec()));
+        let fields = field_types
+            .iter()
+            .enumerate()
+            .map(|(index, (label, field_type))| {
+                let field = body.instruction(
+                    &format!("extractvalue {aggregate_type} {aggregate}, {index}"),
+                    span,
+                    &mut self.debug,
+                );
+                let field = match field_type {
+                    CompilerType::Tuple(nested_types) => {
+                        self.emit_tuple_extract(&field, nested_types, body, span)
+                    }
+                    CompilerType::Record(nested_types) => {
+                        self.emit_record_extract(&field, nested_types, body, span)
+                    }
+                    _ => machine_value(field_type, field),
+                };
+                (label.clone(), field)
+            })
+            .collect();
+        let order = (0..field_types.len())
+            .map(|position| {
+                body.instruction(
+                    &format!(
+                        "extractvalue {aggregate_type} {aggregate}, {}",
+                        field_types.len() + position
+                    ),
+                    span,
+                    &mut self.debug,
+                )
+            })
+            .collect();
+        LlValue::Record { fields, order }
+    }
+
+    fn emit_aggregate_debug_shadow(
         &mut self,
         aggregate: &str,
         value_type: &CompilerType,
@@ -479,12 +586,23 @@ impl<'a> Generator<'a> {
                         );
                         let location = self.debug.location(binding.span, body.subprogram);
                         body.debug_value(&value, variable, location);
-                    } else if let (LlValue::Tuple(fields), CompilerType::Tuple(field_types)) =
-                        (&value, &binding.value.value_type)
-                        && private_tuple_value_supported(&binding.value.value_type)
-                    {
-                        let aggregate =
-                            self.emit_tuple_aggregate(fields, field_types, body, binding.span);
+                    } else if private_aggregate_value_supported(&binding.value.value_type) {
+                        let aggregate = match (&value, &binding.value.value_type) {
+                            (LlValue::Tuple(fields), CompilerType::Tuple(field_types)) => {
+                                self.emit_tuple_aggregate(fields, field_types, body, binding.span)
+                            }
+                            (
+                                LlValue::Record { fields, order },
+                                CompilerType::Record(field_types),
+                            ) => self.emit_record_aggregate(
+                                fields,
+                                order,
+                                field_types,
+                                body,
+                                binding.span,
+                            ),
+                            _ => unreachable!("checked aggregate binding retains its type"),
+                        };
                         let variable = self.debug.local(
                             &binding.name,
                             binding.span,
@@ -492,7 +610,7 @@ impl<'a> Generator<'a> {
                             body.subprogram,
                         );
                         let location = self.debug.location(binding.span, body.subprogram);
-                        self.emit_tuple_debug_shadow(
+                        self.emit_aggregate_debug_shadow(
                             &aggregate,
                             &binding.value.value_type,
                             variable,
@@ -588,8 +706,8 @@ impl<'a> Generator<'a> {
                     .map(|value| self.emit_expression(value, body, environment))
                     .collect(),
             ),
-            CompilerExpressionKind::Record(fields) => LlValue::Record(
-                fields
+            CompilerExpressionKind::Record(fields) => {
+                let mut fields = fields
                     .iter()
                     .map(|(label, value)| {
                         (
@@ -597,10 +715,30 @@ impl<'a> Generator<'a> {
                             self.emit_expression(value, body, environment),
                         )
                     })
-                    .collect(),
-            ),
+                    .collect::<Vec<_>>();
+                let canonical_labels = match &expression.value_type {
+                    CompilerType::Record(field_types) => field_types
+                        .iter()
+                        .map(|(label, _)| label.as_str())
+                        .collect::<Vec<_>>(),
+                    _ => unreachable!("checked Record expression retains its Record type"),
+                };
+                let order = fields
+                    .iter()
+                    .map(|(label, _)| {
+                        canonical_labels
+                            .iter()
+                            .position(|candidate| candidate == label)
+                            .expect("checked Record type retains every value label")
+                            .to_string()
+                    })
+                    .collect();
+                fields.sort_by(|left, right| left.0.cmp(&right.0));
+                LlValue::Record { fields, order }
+            }
             CompilerExpressionKind::RecordReconstruct { base, replacements } => {
-                let LlValue::Record(mut fields) = self.emit_expression(base, body, environment)
+                let LlValue::Record { mut fields, order } =
+                    self.emit_expression(base, body, environment)
                 else {
                     unreachable!("checked reconstruction base has a Record type")
                 };
@@ -612,10 +750,11 @@ impl<'a> Generator<'a> {
                         .unwrap_or_else(|| panic!("checked Record retains field `{label}`"));
                     *value = replacement;
                 }
-                LlValue::Record(fields)
+                LlValue::Record { fields, order }
             }
             CompilerExpressionKind::RecordField { record, label } => {
-                let LlValue::Record(fields) = self.emit_expression(record, body, environment)
+                let LlValue::Record { fields, .. } =
+                    self.emit_expression(record, body, environment)
                 else {
                     unreachable!("checked field selection has a Record receiver")
                 };
@@ -1032,8 +1171,14 @@ impl<'a> Generator<'a> {
                         );
                         self.emit_tuple_extract(&aggregate, field_types, body, expression.span)
                     }
-                    CompilerType::Record(_) => {
-                        unreachable!("shared model restricts Record call result types")
+                    CompilerType::Record(ref field_types) => {
+                        let aggregate_type = llvm_value_type(&expression.value_type);
+                        let aggregate = body.instruction(
+                            &format!("call fastcc {aggregate_type} @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        self.emit_record_extract(&aggregate, field_types, body, expression.span)
                     }
                 }
             }
@@ -1865,7 +2010,7 @@ impl<'a> Generator<'a> {
                 }
                 equal
             }
-            (LlValue::Record(left), LlValue::Record(right)) => {
+            (LlValue::Record { fields: left, .. }, LlValue::Record { fields: right, .. }) => {
                 self.emit_record_equal(left, right, body, span)
             }
             _ => unreachable!("checked equality values agree"),
@@ -2299,8 +2444,40 @@ impl<'a> Generator<'a> {
                     })
                     .collect(),
             ),
-            LlValue::Record(_) => {
-                unreachable!("checked decision result has no Record representation")
+            LlValue::Record { fields, order } => {
+                let fields = (0..fields.len())
+                    .map(|index| {
+                        let field_branches = branches
+                            .iter()
+                            .map(|(branch, predecessor)| {
+                                let LlValue::Record { fields, .. } = branch else {
+                                    unreachable!("checked decision branches share a Record type")
+                                };
+                                (fields[index].1.clone(), predecessor.clone())
+                            })
+                            .collect::<Vec<_>>();
+                        (
+                            fields[index].0.clone(),
+                            self.emit_decision_phi(&field_branches, body, span),
+                        )
+                    })
+                    .collect();
+                let order = (0..order.len())
+                    .map(|index| {
+                        let incoming = branches
+                            .iter()
+                            .map(|(branch, predecessor)| {
+                                let LlValue::Record { order, .. } = branch else {
+                                    unreachable!("checked decision branches share a Record type")
+                                };
+                                format!("[{}, %{predecessor}]", order[index])
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        body.instruction(&format!("phi i32 {incoming}"), span, &mut self.debug)
+                    })
+                    .collect();
+                LlValue::Record { fields, order }
             }
         }
     }
@@ -2415,19 +2592,76 @@ impl<'a> Generator<'a> {
                 }
                 self.emit_write_literal(")", body, span);
             }
-            LlValue::Record(fields) => {
-                self.emit_write_literal("(", body, span);
-                for (index, (label, field)) in fields.iter().enumerate() {
-                    if index != 0 {
-                        self.emit_write_literal(", ", body, span);
-                    }
-                    self.emit_write_literal(label, body, span);
-                    self.emit_write_literal(" is ", body, span);
-                    self.emit_print(field, body, span);
-                }
-                self.emit_write_literal(")", body, span);
+            LlValue::Record { fields, order } => {
+                self.emit_print_record(fields, order, body, span);
             }
         }
+    }
+
+    fn emit_print_record(
+        &mut self,
+        fields: &[(String, LlValue)],
+        order: &[String],
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        debug_assert_eq!(fields.len(), order.len());
+        self.emit_write_literal("(", body, span);
+        for (position, selector) in order.iter().enumerate() {
+            if position != 0 {
+                self.emit_write_literal(", ", body, span);
+            }
+            if let Ok(index) = selector.parse::<usize>() {
+                let (label, field) = &fields[index];
+                self.emit_write_literal(label, body, span);
+                self.emit_write_literal(" is ", body, span);
+                self.emit_print(field, body, span);
+            } else {
+                self.emit_print_dynamic_record_field(selector, fields, body, span);
+            }
+        }
+        self.emit_write_literal(")", body, span);
+    }
+
+    fn emit_print_dynamic_record_field(
+        &mut self,
+        selector: &str,
+        fields: &[(String, LlValue)],
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        let labels = fields
+            .iter()
+            .map(|_| body.label("print.record.field"))
+            .collect::<Vec<_>>();
+        let invalid = body.label("print.record.invalid");
+        let done = body.label("print.record.done");
+        let cases = labels
+            .iter()
+            .enumerate()
+            .map(|(index, label)| format!("i32 {index}, label %{label}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("switch i32 {selector}, label %{invalid} [ {cases} ]"),
+            location,
+        );
+        for (branch, (label, field)) in labels.iter().zip(fields) {
+            body.start_block(branch);
+            self.emit_write_literal(label, body, span);
+            self.emit_write_literal(" is ", body, span);
+            self.emit_print(field, body, span);
+            body.terminator(&format!("br label %{done}"), location);
+        }
+        body.start_block(&invalid);
+        body.effect(
+            "call void @topal.platform.exit(i64 70)",
+            span,
+            &mut self.debug,
+        );
+        body.terminator("unreachable", location);
+        body.start_block(&done);
     }
 
     fn emit_print_enum(
@@ -2654,7 +2888,10 @@ enum LlValue {
     },
     String(String),
     Tuple(Vec<Self>),
-    Record(Vec<(String, Self)>),
+    Record {
+        fields: Vec<(String, Self)>,
+        order: Vec<String>,
+    },
 }
 
 impl LlValue {
@@ -2771,7 +3008,7 @@ impl LlValue {
             Self::Comparison(value) | Self::ErrorCode(value) | Self::Enum { value, .. } => {
                 format!("i32 {value}")
             }
-            Self::Tuple(_) | Self::Record(_) => {
+            Self::Tuple(_) | Self::Record { .. } => {
                 unreachable!("checked call arguments are scalar")
             }
         }
@@ -2879,7 +3116,7 @@ impl FunctionBody {
             LlValue::Comparison(value)
             | LlValue::ErrorCode(value)
             | LlValue::Enum { value, .. } => format!("i32 {value}"),
-            LlValue::Tuple(_) | LlValue::Record(_) => return,
+            LlValue::Tuple(_) | LlValue::Record { .. } => return,
         };
         self.debug_value_operand(&value, variable, location);
     }
@@ -2943,6 +3180,7 @@ struct DebugInfo {
     effect_type: usize,
     enum_types: BTreeMap<String, usize>,
     tuple_types: Vec<(CompilerType, usize)>,
+    record_types: Vec<(CompilerType, usize)>,
     source: topal_source::SourceText,
     filename: String,
 }
@@ -2989,6 +3227,7 @@ impl DebugInfo {
             effect_type: 0,
             enum_types: BTreeMap::new(),
             tuple_types: Vec::new(),
+            record_types: Vec::new(),
             source,
             filename,
         };
@@ -3364,9 +3603,7 @@ impl DebugInfo {
                 unreachable!("unsupported Optional payload type reached codegen")
             }
             CompilerType::Tuple(fields) => self.tuple_type(fields),
-            CompilerType::Record(_) => {
-                unreachable!("Record values have no native debug representation yet")
-            }
+            CompilerType::Record(fields) => self.record_type(fields),
         }
     }
 
@@ -3409,6 +3646,53 @@ impl DebugInfo {
             self.file
         ));
         self.tuple_types.push((value_type, type_id));
+        type_id
+    }
+
+    fn record_type(&mut self, fields: &[(String, CompilerType)]) -> usize {
+        let value_type = CompilerType::Record(fields.to_vec());
+        if let Some((_, type_id)) = self
+            .record_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+
+        let mut offset = 0;
+        let mut aggregate_alignment = 8;
+        let mut members = Vec::with_capacity(fields.len());
+        for (label, field) in fields {
+            let layout = target_value_layout(field);
+            offset = align_bits(offset, layout.alignment);
+            aggregate_alignment = aggregate_alignment.max(layout.alignment);
+            let field_type = self.type_id(field);
+            members.push(self.node(format!(
+                "!DIDerivedType(tag: DW_TAG_member, name: \"{}\", file: !{}, baseType: !{field_type}, size: {}, align: {}, offset: {offset})",
+                llvm_string(label), self.file, layout.size, layout.alignment
+            )));
+            offset += layout.size;
+        }
+        for _ in fields {
+            offset = align_bits(offset, 32) + 32;
+            aggregate_alignment = aggregate_alignment.max(32);
+        }
+        let size = align_bits(offset, aggregate_alignment);
+        debug_assert_eq!(size, target_value_layout(&value_type).size);
+        let elements = self.node(format!(
+            "!{{{}}}",
+            members
+                .iter()
+                .map(|member| format!("!{member}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let type_id = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"{}\", file: !{}, size: {size}, align: {aggregate_alignment}, elements: !{elements})",
+            llvm_string(&value_type.name()),
+            self.file
+        ));
+        self.record_types.push((value_type, type_id));
         type_id
     }
 
@@ -3555,9 +3839,6 @@ impl DebugInfo {
 fn llvm_type(value_type: &CompilerType) -> String {
     match value_type {
         CompilerType::Unit => "void".into(),
-        CompilerType::Record(_) => {
-            unreachable!("shared model restricts Record function ABI types")
-        }
         _ => llvm_value_type(value_type),
     }
 }
@@ -3610,8 +3891,22 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
                 alignment,
             }
         }
-        CompilerType::Record(_) => {
-            unreachable!("shared model restricts Record machine layouts")
+        CompilerType::Record(fields) => {
+            let mut size = 0;
+            let mut alignment = 8;
+            for (_, field) in fields {
+                let field = target_value_layout(field);
+                size = align_bits(size, field.alignment) + field.size;
+                alignment = alignment.max(field.alignment);
+            }
+            for _ in fields {
+                size = align_bits(size, 32) + 32;
+                alignment = alignment.max(32);
+            }
+            TargetValueLayout {
+                size: align_bits(size, alignment),
+                alignment,
+            }
         }
     }
 }
@@ -3620,10 +3915,12 @@ fn align_bits(value: u64, alignment: u64) -> u64 {
     value.div_ceil(alignment) * alignment
 }
 
-fn private_tuple_value_supported(value_type: &CompilerType) -> bool {
+fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::Tuple(fields) => fields.iter().all(private_tuple_value_supported),
-        CompilerType::Record(_) => false,
+        CompilerType::Tuple(fields) => fields.iter().all(private_aggregate_value_supported),
+        CompilerType::Record(fields) => fields
+            .iter()
+            .all(|(_, field)| private_aggregate_value_supported(field)),
         _ => true,
     }
 }
@@ -3654,9 +3951,15 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        CompilerType::Record(_) => {
-            unreachable!("shared model restricts Record machine value types")
-        }
+        CompilerType::Record(fields) => format!(
+            "{{ {} }}",
+            fields
+                .iter()
+                .map(|(_, value_type)| llvm_value_type(value_type))
+                .chain(fields.iter().map(|_| "i32".to_owned()))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
     }
 }
 
@@ -3964,6 +4267,72 @@ mod tests {
         assert!(!discard_definition.contains("extractvalue"));
         assert!(!llvm.contains("DILocalVariable(name: \"_\""));
         assert!(llvm.contains("DW_TAG_structure_type, name: \"((Int, Boolean), String)\", file:"));
+    }
+
+    #[test]
+    fn emits_order_preserving_private_record_boundaries_and_debug_types() {
+        // TOPAL-COMPILER-RECORD-BOUNDARY-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/record-function-boundaries.t"
+        ))
+        .unwrap();
+        let symbol = |name: &str| {
+            program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap()
+                .symbol
+                .as_str()
+        };
+        let llvm = Generator::new(&program, "record-function-boundaries.t").emit();
+        let person_type = "{ i1, ptr, i32, i32 }";
+
+        let retain = symbol("retain-person");
+        assert!(llvm.contains(&format!(
+            "define internal fastcc {person_type} @{retain}({person_type} %arg0)"
+        )));
+        assert!(llvm.contains(&format!(
+            "call fastcc {person_type} @{retain}({person_type}"
+        )));
+        assert!(llvm.contains(&format!("extractvalue {person_type} %arg0, 0")));
+        assert!(llvm.contains(&format!("extractvalue {person_type} %arg0, 3")));
+        assert!(llvm.contains(&format!("store {person_type} %arg0")));
+
+        for name in [
+            "choose-person",
+            "choose-ordered",
+            "choose-comparison",
+            "choose-enum",
+            "choose-optional",
+            "choose-result",
+        ] {
+            let choice_definition = llvm
+                .split_once(&format!("@{}(", symbol(name)))
+                .unwrap()
+                .1
+                .split_once("\n}\n")
+                .unwrap()
+                .0;
+            assert_eq!(
+                choice_definition.matches("phi i32").count(),
+                2,
+                "{name}: {choice_definition}"
+            );
+            assert!(!choice_definition.contains("phi {"), "{name}");
+        }
+        assert!(llvm.contains("switch i32"));
+
+        assert!(llvm.contains("{ { i1, ptr, i32, i32 }, ptr, i32, i32 }"));
+        assert!(
+            llvm.contains(
+                "DW_TAG_structure_type, name: \"(active : Boolean, name : String)\", file:"
+            )
+        );
+        assert!(llvm.contains("name: \"active\""));
+        assert!(llvm.contains("name: \"name\""));
+        assert!(llvm.contains("#dbg_declare(ptr"));
+        assert!(!llvm.contains("topal.runtime.record"));
     }
 
     #[test]

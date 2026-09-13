@@ -385,7 +385,7 @@ native ABI revision.
 
 An ordinary or static function result classified by a recursively composed
 Tuple SHALL preserve every field in source order when every leaf type has an
-admitted exact private scalar representation. The function body SHALL evaluate
+admitted exact private representation. The function body SHALL evaluate
 once according to the existing block and return rules, and its caller SHALL
 receive the same complete Tuple without field erasure, integer substitution,
 semantic heap storage, runtime allocation, or dependence on optimization.
@@ -395,8 +395,9 @@ struct whose fields recursively use those private value types. The definition
 and every call SHALL have one exactly matching private calling convention and
 prototype; LLVM SHALL select the physical register or stack transport under the
 qualified target and data layout. This representation SHALL NOT be exposed as
-a stable compiled-library or foreign ABI. Record results and any Tuple
-containing an unsupported leaf SHALL remain rejected.
+a stable compiled-library or foreign ABI. Record fields admitted by
+`TOPAL-COMPILER-RECORD-BOUNDARY-001` MAY occur recursively; any Tuple containing
+another unsupported leaf SHALL remain rejected.
 
 DWARF SHALL describe the source Tuple, its ordered fields, and its target-exact
 layout. Named Tuple bindings SHALL remain inspectable in GDB at O0; a
@@ -418,14 +419,15 @@ The backend SHALL join the selected decomposed value independently at each
 machine-represented leaf with a correctly typed LLVM `phi`; Unit leaves require
 no machine join. It SHALL preserve Tuple nesting and field order without an
 aggregate `phi`, eager action evaluation, semantic aggregate storage, heap
-allocation, runtime helper, foreign dependency, or ABI revision. Record-valued
-decision results and Tuples with unsupported leaves SHALL remain rejected.
+allocation, runtime helper, foreign dependency, or ABI revision. Record values
+admitted by `TOPAL-COMPILER-RECORD-BOUNDARY-001` MAY occur recursively; Tuples
+with other unsupported leaves SHALL remain rejected.
 
 ### TOPAL-COMPILER-TUPLE-PARAMETER-001 — Private positional-product parameters
 
 An ordinary or static function parameter classified by a recursively composed
 Tuple SHALL preserve every field in source order when every leaf type has an
-admitted exact private scalar representation. The argument expression SHALL be
+admitted exact private representation. The argument expression SHALL be
 evaluated once before selection and entry. A one-parameter candidate SHALL
 match the complete positional product, while a multi-parameter candidate SHALL
 match its fields in declaration order; source-ordered overload selection SHALL
@@ -447,8 +449,9 @@ field layout. A named parameter SHALL remain inspectable in GDB at O0; a
 target-aligned debug-only stack shadow and `#dbg_declare` MAY be used when the
 aggregate SSA argument is not directly inspectable. A discarded Tuple
 parameter SHALL retain its checked and LLVM signature position but SHALL NOT be
-unpacked or receive a source or DWARF binding. Record parameters and Tuples
-with unsupported leaves SHALL remain rejected.
+unpacked or receive a source or DWARF binding. Record fields admitted by
+`TOPAL-COMPILER-RECORD-BOUNDARY-001` MAY occur recursively; Tuples with other
+unsupported leaves SHALL remain rejected.
 
 ### TOPAL-COMPILER-TYPE-VALUE-001 — Closed fundamental Type values
 
@@ -535,10 +538,44 @@ absent label SHALL be rejected at the label source range.
 
 The admitted expression-local Record MAY remain a decomposed compiler aggregate
 and SHALL require no allocation, native object header, generated runtime, or
-foreign aggregate ABI. Record passage through machine signatures and aggregate
-storage remain unsupported. Until that storage exists, the compiler SHALL
-expose source locations and projected scalar bindings through DWARF/GDB but
-SHALL NOT publish a misleading aggregate-local debug representation.
+foreign aggregate ABI. `TOPAL-COMPILER-RECORD-BOUNDARY-001` separately admits a
+private aggregate carrier at function and control-flow boundaries and a
+truthful debug-only stack shadow; persistent semantic Record storage remains
+unsupported.
+
+### TOPAL-COMPILER-RECORD-BOUNDARY-001 — Order-preserving private Record boundaries
+
+An ordinary or static function parameter or result classified by a closed
+structural Record SHALL preserve every field value, exact classifier, and the
+value's construction order when every recursively nested Tuple or Record leaf
+has an admitted private representation. Record classifier identity and
+matching SHALL use the canonical label set independently of declaration or
+construction order. A candidate argument SHALL be evaluated once and ordinary
+source-ordered overload selection SHALL remain unchanged.
+
+For Linux x86-64, the backend SHALL represent an admitted Record boundary as a
+non-packed LLVM struct containing values in canonical label order followed by
+one `i32` canonical-field index for each display position. The indexes SHALL
+form a permutation of the complete canonical field set. Caller construction,
+callee decomposition, results, and calls SHALL use one exactly matching private
+`fastcc` prototype, with LLVM selecting the physical register or stack
+transport under the qualified target and data layout. This carrier SHALL NOT
+be exposed as a stable compiled-library, public Topal, or foreign ABI.
+
+Every otherwise-admitted decision family MAY produce such a Record. The backend
+SHALL join each canonical field recursively and each display-order index with a
+correctly typed LLVM `phi`, then use the selected permutation for canonical
+display. It SHALL NOT use an aggregate `phi`, eagerly evaluate an unselected
+action, allocate semantic storage, or require a Record runtime helper.
+
+DWARF SHALL expose the Record's semantic named fields at their target-exact
+offsets and SHALL account for the private order suffix in the complete type
+size without presenting those implementation fields as source members. Named
+Record bindings and parameters SHALL remain inspectable in GDB at O0; a
+target-aligned debug-only stack shadow MAY be used when the SSA aggregate is not
+directly inspectable. The carrier and shadow SHALL require no heap allocation,
+foreign dependency, C/C++ runtime, other-language standard library, or native
+ABI revision.
 
 ### TOPAL-COMPILER-STRUCTURAL-COMPARISON-001 — Derived structural comparison
 

@@ -4327,19 +4327,41 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         )?)));
     }
     if let Some(fields) = classifier
+        .strip_prefix("Record(")
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        let mut parsed = split_classifier_fields(fields)?
+            .into_iter()
+            .map(|field| {
+                let (label, classifier) = split_record_classifier_field(field)?;
+                Some((label.to_owned(), parse_compact_classifier(classifier)?))
+            })
+            .collect::<Option<Vec<_>>>()?;
+        parsed.sort_by(|left, right| left.0.cmp(&right.0));
+        return parsed
+            .windows(2)
+            .all(|fields| fields[0].0 != fields[1].0)
+            .then_some(CompilerType::Record(parsed));
+    }
+    if let Some(fields) = classifier
         .strip_prefix('(')
         .and_then(|value| value.strip_suffix(')'))
     {
         let fields = split_classifier_fields(fields)?;
-        if fields.len() > 1 {
-            return Some(CompilerType::Tuple(
-                fields
-                    .into_iter()
-                    .map(parse_compact_classifier)
-                    .collect::<Option<Vec<_>>>()?,
-            ));
+        if fields.len() <= 1 {
+            return None;
         }
+        return Some(CompilerType::Tuple(
+            fields
+                .into_iter()
+                .map(parse_compact_classifier)
+                .collect::<Option<Vec<_>>>()?,
+        ));
     }
+    parse_compact_scalar_classifier(classifier)
+}
+
+fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
     match classifier {
         "RangeInt" => Some(CompilerType::Range(Box::new(CompilerType::Int))),
         "RangeRational" => Some(CompilerType::Range(Box::new(CompilerType::Rational))),
@@ -4359,6 +4381,24 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         "String" => Some(CompilerType::String),
         _ => None,
     }
+}
+
+fn split_record_classifier_field(field: &str) -> Option<(&str, &str)> {
+    let mut depth = 0_u32;
+    for (index, byte) in field.bytes().enumerate() {
+        match byte {
+            b'(' => depth += 1,
+            b')' => depth = depth.checked_sub(1)?,
+            b':' if depth == 0 => {
+                let label = &field[..index];
+                let classifier = &field[index + 1..];
+                return (!label.is_empty() && !classifier.is_empty())
+                    .then_some((label, classifier));
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn split_classifier_once(classifier: &str) -> Option<(&str, &str)> {
@@ -4434,6 +4474,12 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
         value_type,
         CompilerType::Tuple(fields)
             if fields.iter().all(compiler_function_result_supported)
+    ) || matches!(
+        value_type,
+        CompilerType::Record(fields)
+            if fields
+                .iter()
+                .all(|(_, field)| compiler_function_result_supported(field))
     )
 }
 
@@ -6143,6 +6189,65 @@ mod tests {
         assert!(matches!(
             discard.parameters[0].value_type,
             CompilerType::Tuple(_)
+        ));
+    }
+
+    #[test]
+    fn models_order_preserving_private_record_boundaries() {
+        // TOPAL-COMPILER-RECORD-BOUNDARY-001, TOPAL-TYPE-PRODUCT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/record-function-boundaries.t"
+        ))
+        .unwrap();
+        let person_type = CompilerType::Record(vec![
+            ("active".to_owned(), CompilerType::Boolean),
+            ("name".to_owned(), CompilerType::String),
+        ]);
+
+        let function = |name: &str| {
+            program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap()
+        };
+        let make = function("make-person");
+        assert_eq!(make.result_type, person_type);
+        let retain = function("retain-person");
+        assert_eq!(retain.parameters[0].value_type, person_type);
+        assert_eq!(retain.result_type, person_type);
+        for (name, expected) in [
+            ("choose-person", "boolean"),
+            ("choose-ordered", "ordered"),
+            ("choose-comparison", "comparison"),
+            ("choose-enum", "enum"),
+            ("choose-optional", "optional"),
+            ("choose-result", "result"),
+        ] {
+            let actual = match function(name).body.result.kind {
+                CompilerExpressionKind::BooleanDecision { .. } => "boolean",
+                CompilerExpressionKind::OrderedComparisonDecision { .. } => "ordered",
+                CompilerExpressionKind::ComparisonValueDecision { .. } => "comparison",
+                CompilerExpressionKind::EnumDecision { .. } => "enum",
+                CompilerExpressionKind::OptionalDecision { .. } => "optional",
+                CompilerExpressionKind::ResultDecision { .. } => "result",
+                _ => panic!("expected a checked Record decision result for {name}"),
+            };
+            assert_eq!(actual, expected);
+        }
+
+        let wrapper = function("retain-wrapper");
+        assert_eq!(
+            wrapper.result_type,
+            CompilerType::Record(vec![
+                ("person".to_owned(), person_type),
+                ("score".to_owned(), CompilerType::Int),
+            ])
+        );
+        assert_eq!(wrapper.parameters[0].value_type, wrapper.result_type);
+        assert!(matches!(
+            program.main.result.kind,
+            CompilerExpressionKind::Tuple(_)
         ));
     }
 
