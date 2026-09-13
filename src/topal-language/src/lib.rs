@@ -12,9 +12,10 @@ pub use compiler_model::{
     CompilerBinary, CompilerBinding, CompilerBlock, CompilerComparisonRule, CompilerConstraint,
     CompilerEffectRow, CompilerEnumRule, CompilerEnumType, CompilerErrorCodeRule,
     CompilerErrorField, CompilerExpression, CompilerExpressionKind, CompilerFallible,
-    CompilerFunction, CompilerFunctionView, CompilerModularType, CompilerParameter,
-    CompilerProgram, CompilerStatement, CompilerSumAlternative, CompilerSumRule, CompilerSumType,
-    CompilerType, CompilerValidation, IntRange, analyze_for_compiler,
+    CompilerFunction, CompilerFunctionView, CompilerIdentity, CompilerLanguageContext,
+    CompilerModularType, CompilerParameter, CompilerProgram, CompilerStatement,
+    CompilerSumAlternative, CompilerSumRule, CompilerSumType, CompilerType, CompilerTypeView,
+    CompilerTypeViewForm, CompilerValidation, IntRange, analyze_for_compiler,
 };
 pub use concurrency::{
     Admission, DependencyGraph, DependencyKind, Interaction, InteractionForm, Protocol,

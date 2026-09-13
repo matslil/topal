@@ -5069,6 +5069,21 @@
       "cpu_time_ns": 3303300,
       "memory_peak_bytes": 18472960,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::erases_static_introspection_and_lowers_numeric_version": {
+      "cpu_time_ns": 11587060,
+      "memory_peak_bytes": 18403328,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::static_introspection_is_erased_and_version_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 450134780,
+      "memory_peak_bytes": 58580992,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_closed_static_introspection_and_runtime_version": {
+      "cpu_time_ns": 3464220,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
     }
   }
 }
