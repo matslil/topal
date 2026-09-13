@@ -353,6 +353,33 @@ storage, Function results or aggregate Function boundaries, and published
 callable interfaces remain outside this increment and SHALL be rejected rather
 than referencing storage from another call frame.
 
+### TOPAL-COMPILER-PACKAGED-OPERAND-001 — Closed scalar packaged operand
+
+The compiler SHALL admit a function with exactly one syntactic operand package
+whose fields all use admitted scalar classifiers. A positional product SHALL
+supply every field in declaration order. A labeled product SHALL supply a
+declaration-order prefix containing every nondefaulted field; omitted trailing
+fields SHALL each have a default expression that the checked model proves
+closed. Supplied expressions SHALL be evaluated once in source/declaration
+order, followed by each omitted default once in declaration order, and every
+value SHALL undergo the field's ordinary classifier adaptation before entry.
+Unknown labels, missing required fields, and classifier mismatches SHALL remain
+ordinary no-applicable-overload failures.
+
+The checked frontend SHALL normalize the package to its source fields and emit
+an exact flattened private `fastcc` signature and direct call. LLVM SHALL own
+the physical register/stack lowering of that signature. DWARF/GDB SHALL expose
+the source field names, classifiers, values, and call frame. The lowering SHALL
+NOT use `byval`, `sret`, `inalloca`, or `preallocated`, and SHALL require no
+package runtime, allocation, foreign dependency, C/C++ runtime, other-language
+standard library, public aggregate ABI, or native ABI revision.
+
+Multiple packaged operands, packages mixed with unpackaged operands,
+non-scalar or nested package fields, non-prefix/reordered labeled packages,
+opaque package values, and defaults that depend on invocation or captured
+bindings remain outside this increment and SHALL be rejected rather than
+changing evaluation order or choosing a public memory ABI.
+
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 
 The compiler SHALL admit a direct unary decreasing `Int` recursion edge only

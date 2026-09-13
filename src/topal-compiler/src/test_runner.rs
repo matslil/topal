@@ -78,6 +78,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/optional-rational-values.t",
     "examples/language/optional-values.t",
     "examples/language/overload-recursion-identity.t",
+    "examples/language/packaged-function-operand.t",
     "examples/language/positive-recursion-steps.t",
     "examples/language/published-root-member.t",
     "examples/language/rational-exact-construction.t",

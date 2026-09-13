@@ -419,6 +419,36 @@ interfaces remain rejected. This realizes
 `TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-SYN-GRAMMAR-001`, and
 `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5m.
 
+## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
+
+The checked compiler model shall admit exactly one packaged function operand
+whose fields have admitted scalar classifiers. A full positional product shall
+map to fields in declaration order. A labeled product shall be a
+declaration-order prefix containing every required field, and omitted trailing
+fields shall have closed defaults. The frontend shall preserve one-time
+evaluation by retaining supplied declaration/source order followed by omitted
+default order, adapt every field to its declared classifier, and distinguish
+semantic missing/unknown/type failures from compiler-unsupported package
+shapes.
+
+The frontend shall normalize an admitted package into its source field list.
+LLVM definitions and calls shall use the same exact flattened private `fastcc`
+prototype, leaving physical x86-64 placement to LLVM. Full O0 DWARF/GDB shall
+show each field as a source-named parameter with its value and the ordinary
+function frame. Native tests shall cover the existing interpreter regression,
+default and explicit/positional field supply, invalid and unsupported shapes,
+exact IR, execution, artifact independence, and debugger observation.
+
+The emitted IR shall use no `byval`, `sret`, `inalloca`, or `preallocated`
+attribute and no package runtime or allocation. Multiple or mixed packages,
+non-scalar/nested fields, opaque or non-prefix/reordered labeled values, and
+invocation-dependent defaults remain rejected until their complete evaluation,
+storage, and public ABI rules are implemented. This shall add no foreign
+dependency, C/C++ runtime, other-language standard library, public aggregate
+ABI, or `topal-native/6` revision. This realizes
+`TOPAL-COMPILER-PACKAGED-OPERAND-001`, `TOPAL-FUNCTION-PACKAGED-OPERAND-001`,
+and `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5n.
+
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 
 The checked compiler model shall reuse the shared structural proof for

@@ -4616,6 +4616,29 @@ mod tests {
     }
 
     #[test]
+    fn emits_packaged_fields_as_an_exact_flat_private_signature() {
+        // TOPAL-COMPILER-PACKAGED-OPERAND-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/packaged-function-operand.t"
+        ))
+        .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "packaged-function-operand.t").emit();
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{symbol}(ptr %arg0, ptr %arg1)"
+        )));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr") && line.contains(&format!("@{symbol}(ptr"))
+        }));
+        assert!(llvm.contains("!DILocalVariable(name: \"value\", arg: 1"));
+        assert!(llvm.contains("!DILocalVariable(name: \"fallback\", arg: 2"));
+        assert!(!llvm.contains(" byval("));
+        assert!(!llvm.contains(" sret("));
+        assert!(!llvm.contains("topal.runtime.package"));
+    }
+
+    #[test]
     fn emits_discarded_parameter_without_debug_binding() {
         // TOPAL-TYPE-MATCH-001, TOPAL-COMPILER-PATTERN-001
         let source = "use language (version is v0.1)\nsecond is fn (_ : Int, value : Int) -> Int\n  value\nsecond (0, 42)\n";
