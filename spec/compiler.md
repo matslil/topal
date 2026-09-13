@@ -222,6 +222,30 @@ lookup, `use`, published interfaces, generators, package loading, and
 compiled-library resolution remain outside this increment and SHALL be rejected
 rather than reinterpreted as direct-root function qualification.
 
+### TOPAL-COMPILER-NAMESPACE-USE-001 — Static root namespace use
+
+At source root, `use` applied to the live `root` Scope or an already retained
+root-namespace alias SHALL produce that same namespace value for optional
+binding. The binding SHALL retain the declaration snapshot visible at that
+statement under the existing namespace function, data, overload, classifier,
+and alias-chain rules. It SHALL NOT flatten members into the current lexical
+scope. Applying `use` to a non-Scope value SHALL produce
+`E-USE-NON-NAMESPACE` before code generation.
+
+Qualified application through the resulting value SHALL reuse the existing
+checked namespace snapshot and direct private function/data lowering. The
+`use` operation itself SHALL have no LLVM instruction or runtime state; an
+observed binding MAY use the existing sealed private Scope tag and SHALL retain
+its source name and Scope type in DWARF/GDB. No namespace lookup table,
+allocation, indirect dispatch, foreign dependency, C/C++ runtime,
+other-language standard library, public Scope ABI, or native ABI revision is
+permitted.
+
+Multi-component and non-root published paths, nested/non-root namespaces,
+generator members, function-body `use`, packages, source or compiled libraries,
+and public interface metadata remain outside this increment and SHALL be
+rejected rather than resolved from process state or the host filesystem.
+
 ### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 At source root, binding the live `root` Scope value or an already admitted

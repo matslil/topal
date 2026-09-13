@@ -277,6 +277,34 @@ covers the direct-value and qualified-function subset of
 `TOPAL-NAMESPACE-ROOT-001` and realizes
 `TOPAL-COMPILER-ROOT-NAMESPACE-001` for compiler increment 6a.
 
+## TOPAL-COMP-NAMESPACE-USE-001 — Static root namespace use
+
+At source root, the checked compiler model shall accept `use root` and `use`
+of an already retained root alias. It shall require the operand to be Scope,
+preserve the same concrete root identity and source-position declaration
+snapshot for optional binding, and diagnose a non-Scope operand with the shared
+`E-USE-NON-NAMESPACE`. Subsequent qualified function or data selection shall
+use the existing retained namespace facts without flattening them into lexical
+lookup.
+
+The backend shall erase the `use` operation itself. An observed binding shall
+reuse the existing private Scope tag, display, and DWARF/GDB type, while
+qualified functions remain direct private calls and qualified data retain their
+original already-evaluated storage identity. Native tests shall cover the
+existing interpreter regression, root and alias operands, non-Scope rejection,
+exact output, checked snapshots, absent use/namespace runtime IR, freestanding
+artifacts, source frames, Scope/value debugging, the shared corpus, and separate
+resource baselines.
+
+This shall add no lookup table, allocation, indirect dispatch, filesystem or
+process-global resolution, foreign dependency, C/C++ runtime, other-language
+standard library, public Scope ABI, or `topal-native/6` revision.
+Multi-component or non-root published paths, nested namespaces, generator
+members, function-body `use`, packages, source/compiled libraries, and public
+interface metadata remain rejected. This realizes
+`TOPAL-COMPILER-NAMESPACE-USE-001` and `TOPAL-NAMESPACE-USE-001` for compiler
+increment 6b3a.
+
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 For the admitted source-root subset, the checked compiler model shall retain an

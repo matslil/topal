@@ -2234,6 +2234,27 @@ impl Analyzer {
         if let Some(sum) = self.analyze_sum_construction(items, span, environment)? {
             return Ok(sum);
         }
+        if let [Expression::Identifier(keyword), selected] = items
+            && self.source.slice(*keyword) == "use"
+        {
+            if self.in_function {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "function-body namespace use",
+                ));
+            }
+            let selected = self.analyze_expression(selected, environment)?;
+            if selected.value_type != CompilerType::Scope {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-USE-NON-NAMESPACE",
+                    selected.span,
+                    "use requires a published namespace path",
+                ));
+            }
+            return Ok(selected);
+        }
         if let Some((Expression::Identifier(namespace), remaining)) = items.split_first()
             && self.source.slice(*namespace) == "root"
             && let Some(Expression::Identifier(member)) = remaining.first()
@@ -8897,6 +8918,54 @@ mod tests {
         ] {
             assert_eq!(analyze_for_compiler(source).unwrap_err().code, expected);
         }
+    }
+
+    #[test]
+    fn models_use_of_root_and_root_alias_namespaces() {
+        // TOPAL-COMPILER-NAMESPACE-USE-001, TOPAL-NAMESPACE-USE-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/use-namespace.t"))
+                .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::Root,
+                    value_type: CompilerType::Scope,
+                    ..
+                },
+                ..
+            })]
+        ));
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+
+        let alias = analyze_for_compiler(
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\napi is root\ncurrent is use api\ncurrent increment 41\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&alias.main.result), Some(BigInt::from(42)));
+
+        let data = analyze_for_compiler(
+            "use language (version is v0.1)\nanswer is 42\ncurrent is use root\ncurrent answer\n",
+        )
+        .unwrap();
+        assert_eq!(exact_int(&data.main.result), Some(BigInt::from(42)));
+
+        let stale = analyze_for_compiler(
+            "use language (version is v0.1)\ncurrent is use root\nlater is 42\ncurrent later\n",
+        )
+        .unwrap_err();
+        assert_eq!(stale.code, "E-COMPILER-UNSUPPORTED");
+
+        let non_namespace =
+            analyze_for_compiler("use language (version is v0.1)\nuse 42\n").unwrap_err();
+        assert_eq!(non_namespace.code, "E-USE-NON-NAMESPACE");
+
+        let function_body = analyze_for_compiler(
+            "use language (version is v0.1)\nprobe is fn () -> Scope\n  use root\nprobe ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(function_body.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

@@ -64,7 +64,8 @@ evidence.
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
 | 6b2a | stable source-root and alias data members, alias-chain declaration snapshots, typed Scope lookup, and published root bindings within one application | complete |
 | 6b2b1 | root/root-alias Scope parameters specialized with captured overload metadata and typed private data-environment forwarding | complete |
-| 6b2b2 | direct function-body root data, Scope results/escape, nested qualified Scope members, generator members, non-root aliases, `use`, published module/package/application interfaces, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
+| 6b2b2 | direct function-body root data, Scope results/escape, nested qualified Scope members, generator members, non-root aliases, multi-component/external `use`, published module/package/application interfaces, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
+| 6b3a | source-root `use` of the live root or a retained root alias, immutable snapshot preservation, direct qualified members, runtime erasure, and debugging | complete |
 | 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
 | 6c2 | cross-function capture forwarding, aggregate/callable environments, anonymous and escaping closures, qualified root access, and public/library context ABI | planned |
 | 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
@@ -172,10 +173,13 @@ chains, and overload order without a namespace runtime; 6b2a adds stable
 entry-frame data identities and exact alias snapshots without initializer
 re-execution; 6b2b1 specializes a root/root-alias Scope argument into retained
 overload facts plus a typed private data environment that can be forwarded
-without caller-frame lookup; 6c1 closure-converts direct-entry scalar `@ member`
+without caller-frame lookup; 6b3a makes the live root or a retained root alias
+available without flattening by returning the same static snapshot and erasing
+`use` before LLVM; 6c1 closure-converts direct-entry scalar `@ member`
 selections to explicit private capture parameters; and 6b2b2/6c2 retain direct
 cross-function root storage, Scope escape, nested Scope and generator members,
-package construction, published interfaces, and source/compiled-library work.
+external path resolution, package construction, published interfaces, and
+source/compiled-library work.
 Increment 7a admits the inert
 canonical empty `Effect` as a distinct zero-data value; 7b retains effect
 execution/inference and the remaining platform-semantic work. Increment 8a

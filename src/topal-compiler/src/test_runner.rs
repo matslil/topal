@@ -125,6 +125,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/unicode-identifiers.t",
     "examples/language/unions-and-recursive-products.t",
     "examples/language/unit-effect-value.t",
+    "examples/language/use-namespace.t",
 ];
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> Result<(), String> {

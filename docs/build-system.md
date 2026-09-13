@@ -118,6 +118,12 @@ namespace value. Any immutable namespace data threaded through the private
 call boundary is also available as a named argument for diagnosis; it is not a
 runtime namespace table or a public environment layout.
 
+Within a single-source application, `use root` (or `use` of a retained root
+alias) is resolved statically and preserves the namespace snapshot at an
+optional binding. It neither flattens members nor performs a runtime filesystem
+lookup. External package and library paths remain tied to the future versioned
+interface-metadata pipeline rather than ambient host discovery.
+
 A directly applied nested lexical function appears as its own source frame.
 Represented immutable values captured from its enclosing invocation appear as
 named arguments after the declared parameters, so GDB can inspect both without

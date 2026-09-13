@@ -5230,6 +5230,22 @@ mod tests {
     }
 
     #[test]
+    fn emits_use_namespace_as_the_existing_private_scope_identity() {
+        // TOPAL-COMPILER-NAMESPACE-USE-001, TOPAL-NAMESPACE-USE-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/use-namespace.t"))
+                .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "use-namespace.t").emit();
+        assert!(llvm.contains(&format!("call fastcc ptr @{symbol}(ptr")));
+        assert!(llvm.contains("!DILocalVariable(name: \"current\""));
+        assert!(!llvm.contains("topal.runtime.use"));
+        assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("topal.runtime.scope"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_function_namespace_aliases_as_direct_private_calls() {
         // TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001,
         // TOPAL-NAMESPACE-ALIAS-001, TOPAL-NAMESPACE-OVERLOAD-001

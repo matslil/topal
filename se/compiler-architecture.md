@@ -134,6 +134,17 @@ lookup tables, callable pointers, or public Scope layout before root data
 storage, generators, packages, and compiled-library interfaces have defined
 their distinct representation and artifact requirements.
 
+Source-root `use` composes with that snapshot representation rather than adding
+a second namespace mechanism. The frontend requires the single operand to be
+the live root Scope or an already retained root alias and returns the same
+checked namespace facts; an optional binding captures them at its ordinary
+source position. Member resolution therefore continues through the existing
+direct private function calls and stable data storage identities. `use` itself
+is erased before LLVM, while an observed binding retains only the existing
+sealed Scope tag and DWARF identity. Multi-component published paths and
+package/library lookup wait for canonical interface metadata and never consult
+ambient host filesystem or process state as a substitute.
+
 Source-root data members use a parallel immutable snapshot map. Each checked
 binding receives an internal storage key derived from its declaration location,
 while its source spelling remains the DWARF variable name. Qualified data

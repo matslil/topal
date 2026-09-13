@@ -4834,6 +4834,21 @@
       "cpu_time_ns": 3093360,
       "memory_peak_bytes": 18481152,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_use_namespace_as_the_existing_private_scope_identity": {
+      "cpu_time_ns": 6187020,
+      "memory_peak_bytes": 18227200,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::use_root_namespace_is_static_freestanding_and_debuggable": {
+      "cpu_time_ns": 320703400,
+      "memory_peak_bytes": 57655296,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_use_of_root_and_root_alias_namespaces": {
+      "cpu_time_ns": 3783300,
+      "memory_peak_bytes": 18239488,
+      "samples_per_test": 50
     }
   }
 }
