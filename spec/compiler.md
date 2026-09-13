@@ -807,6 +807,33 @@ call. Display SHALL use only the Topal-owned platform write boundary. This
 increment SHALL add no foreign dependency, other-language standard library, or
 native ABI revision.
 
+### TOPAL-COMPILER-FUNCTION-EMPTY-EFFECT-001 — Explicit empty function effect bound
+
+For an otherwise admitted v0.1 ordinary function, the compiler SHALL accept an
+explicit post-result `: Effects ()` upper bound, infer the exact empty effect row
+for its admitted implementation, verify containment before code generation,
+and retain the distinction between an absent bound and an explicitly declared
+empty bound in the checked function metadata. A nonempty, alternative,
+polymorphic, or otherwise unsupported effect bound SHALL be rejected rather
+than erased or assumed empty. Existing `Decreases` proof annotations SHALL
+remain governed by their separate compiler rule.
+
+For an exact single visible overload carrying that explicit empty bound, the
+compiler SHALL admit `lang view function` as a typed static `lang FunctionView`
+which retains the root identity, input classifiers, result classifier,
+staticness, and canonical declared empty row. The view MAY be bound or
+discarded during compilation, but SHALL be erased before LLVM lowering. A
+runtime observation, function/aggregate boundary, root data export, zero- or
+multi-overload view, and every other introspection form SHALL remain rejected
+until a rule admits its complete static-to-runtime behavior.
+
+The generated function SHALL use the same direct private signature, code, and
+runtime debug information as an equivalent inferred-empty function. LLVM IR,
+DWARF, and the linked executable SHALL contain no FunctionView object, effect
+descriptor, reflection registry, dispatch, hidden effect argument, foreign
+runtime, C/C++ standard library, undefined symbol, needed library, relocation,
+public/serialized/library effect ABI, or native ABI revision.
+
 ### TOPAL-COMPILER-LIST-EFFECT-001 — Immutable Effect List foundation
 
 Within the admitted `List Effect` subset, an immediate classifier context SHALL

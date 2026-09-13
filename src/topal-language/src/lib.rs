@@ -10,11 +10,11 @@ mod trace;
 
 pub use compiler_model::{
     CompilerBinary, CompilerBinding, CompilerBlock, CompilerComparisonRule, CompilerConstraint,
-    CompilerEnumRule, CompilerEnumType, CompilerErrorCodeRule, CompilerErrorField,
-    CompilerExpression, CompilerExpressionKind, CompilerFallible, CompilerFunction,
-    CompilerModularType, CompilerParameter, CompilerProgram, CompilerStatement,
-    CompilerSumAlternative, CompilerSumRule, CompilerSumType, CompilerType, CompilerValidation,
-    IntRange, analyze_for_compiler,
+    CompilerEffectRow, CompilerEnumRule, CompilerEnumType, CompilerErrorCodeRule,
+    CompilerErrorField, CompilerExpression, CompilerExpressionKind, CompilerFallible,
+    CompilerFunction, CompilerFunctionView, CompilerModularType, CompilerParameter,
+    CompilerProgram, CompilerStatement, CompilerSumAlternative, CompilerSumRule, CompilerSumType,
+    CompilerType, CompilerValidation, IntRange, analyze_for_compiler,
 };
 pub use concurrency::{
     Admission, DependencyGraph, DependencyKind, Interaction, InteractionForm, Protocol,

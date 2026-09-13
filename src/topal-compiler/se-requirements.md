@@ -895,6 +895,38 @@ the existing Topal-owned Linux write boundary. No C/C++ runtime, other-language
 standard library, public integer ABI, or `topal-native/6` revision is permitted.
 This realizes `TOPAL-COMPILER-EFFECT-EMPTY-001` for compiler increment 7a.
 
+## TOPAL-COMP-FUNCTION-EMPTY-EFFECT-001 — Explicit empty function effect bound
+
+The checked compiler model shall admit the v0.1 post-result
+`: Effects ()` upper bound on an otherwise admitted ordinary function. Because
+the native subset rejects every source operation with a nonempty inferred
+effect, it shall prove the implementation row exactly empty, check containment,
+and retain a canonical explicit-empty row on the checked declaration and every
+selected function instance. Unsupported nonempty, alternative, or polymorphic
+rows shall receive a stable checked diagnostic instead of being erased or
+treated as empty. Existing `Decreases` proof annotations shall retain their
+separate behavior.
+
+For one exact visible overload carrying the explicit empty bound,
+`lang view function` shall produce a static-only typed Function view retaining
+root identity, input and result classifiers, staticness, and the declared row.
+The view may initialize a binding or be discarded, but it shall not enter the
+runtime binding environment. Runtime observation, aggregate or function
+passage, root data publication, zero- or multi-overload views, and other
+introspection shall remain `E-COMPILER-UNSUPPORTED`.
+
+Code generation shall erase the view and lower the called function exactly as
+an inferred-empty direct private function. No view local or effect descriptor
+shall enter LLVM IR, DWARF, or the executable; the ordinary function frame and
+parameters shall remain fully debuggable. This shall add no reflection runtime,
+descriptor registry, dispatch, hidden effect argument, allocation, foreign
+runtime, C/C++ standard library, undefined symbol, needed library, relocation,
+public/serialized/library effect ABI, or `topal-native/6` revision. It realizes
+`TOPAL-COMPILER-FUNCTION-EMPTY-EFFECT-001`,
+`TOPAL-FUNCTION-EFFECT-BOUND-001`, `TOPAL-EFFECT-CONTAIN-001`,
+`TOPAL-INTRO-STATIC-001`, and `TOPAL-INTRO-VIEW-001` for compiler increment
+7a1.
+
 ## TOPAL-COMP-LIST-EFFECT-001 — Immutable Effect List foundation
 
 The checked compiler model shall admit `List Effect` where a classifier gives

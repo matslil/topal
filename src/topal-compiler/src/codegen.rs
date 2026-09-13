@@ -71,6 +71,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
+        | CompilerType::FunctionView
         | CompilerType::Constraint
         | CompilerType::Boolean
         | CompilerType::Int
@@ -264,6 +265,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Root
         | CompilerExpressionKind::FunctionValue(_)
+        | CompilerExpressionKind::FunctionView(_)
         | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
@@ -926,7 +928,7 @@ impl<'a> Generator<'a> {
         environment: &BTreeMap<String, LlValue>,
     ) -> LlValue {
         match &expression.kind {
-            CompilerExpressionKind::Unit => LlValue::Unit,
+            CompilerExpressionKind::Unit | CompilerExpressionKind::FunctionView(_) => LlValue::Unit,
             CompilerExpressionKind::Completed => LlValue::Completed("0".into()),
             CompilerExpressionKind::Effect => LlValue::Effect("0".into()),
             CompilerExpressionKind::TypeValue(value) => LlValue::Enum {
@@ -1867,6 +1869,7 @@ impl<'a> Generator<'a> {
                         enumeration: root_scope_enumeration(),
                     },
                     CompilerType::Function
+                    | CompilerType::FunctionView
                     | CompilerType::Constraint
                     | CompilerType::Refined { .. }
                     | CompilerType::TraversalControl(_) => {
@@ -5350,7 +5353,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
                 root_scope_enumeration()
             },
         },
-        CompilerType::Function | CompilerType::Constraint => {
+        CompilerType::Function | CompilerType::FunctionView | CompilerType::Constraint => {
             unreachable!("static object values are not admitted in sum payloads")
         }
     }
@@ -6016,6 +6019,9 @@ impl DebugInfo {
                 .enum_types
                 .get("Function")
                 .expect("checked Function values install their debug type"),
+            CompilerType::FunctionView => {
+                unreachable!("static-only Function views have no runtime debug type")
+            }
             CompilerType::Constraint => *self
                 .enum_types
                 .get("Constraint")
@@ -6612,6 +6618,9 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
             size: 32,
             alignment: 32,
         },
+        CompilerType::FunctionView => {
+            unreachable!("static-only Function views have no target value layout")
+        }
         CompilerType::Int
         | CompilerType::Nat
         | CompilerType::Modular(_)
@@ -6686,6 +6695,7 @@ fn align_bits(value: u64, alignment: u64) -> u64 {
 
 fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
     match value_type {
+        CompilerType::FunctionView => false,
         CompilerType::Tuple(fields) => fields.iter().all(private_aggregate_value_supported),
         CompilerType::Record(fields) => fields
             .iter()
@@ -6702,6 +6712,9 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
 
 fn llvm_value_type(value_type: &CompilerType) -> String {
     match value_type {
+        CompilerType::FunctionView => {
+            unreachable!("static-only Function views have no LLVM value type")
+        }
         CompilerType::Unit | CompilerType::Completed | CompilerType::Effect => "i8".into(),
         CompilerType::Boolean => "i1".into(),
         CompilerType::Int
@@ -6777,6 +6790,9 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         },
         CompilerType::Function => {
             unreachable!("Function values are not admitted at machine ABI reconstruction points")
+        }
+        CompilerType::FunctionView => {
+            unreachable!("static-only Function views have no machine representation")
         }
         CompilerType::Constraint => {
             unreachable!("Constraint values are not admitted at machine ABI reconstruction points")
@@ -7639,6 +7655,27 @@ mod tests {
             1,
             "the defining-context initializer must execute exactly once"
         );
+    }
+
+    #[test]
+    fn erases_static_empty_effect_view_before_llvm_lowering() {
+        // TOPAL-FUNCTION-EFFECT-BOUND-001, TOPAL-EFFECT-CONTAIN-001,
+        // TOPAL-INTRO-STATIC-001, TOPAL-INTRO-VIEW-001,
+        // TOPAL-COMPILER-FUNCTION-EMPTY-EFFECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-effect-bound.t"
+        ))
+        .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "function-effect-bound.t").emit();
+        assert!(llvm.contains(&format!("define internal fastcc ptr @{symbol}(ptr %arg0)")));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr") && line.contains(&format!("@{symbol}("))
+        }));
+        assert!(!llvm.contains("FunctionView"));
+        assert!(!llvm.contains("signature"));
+        assert!(!llvm.contains("topal.runtime.introspection"));
+        assert!(!llvm.contains("call ptr %"));
     }
 
     #[test]

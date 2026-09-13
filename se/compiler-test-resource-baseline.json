@@ -1326,6 +1326,16 @@
       "cpu_time_ns": 176206,
       "memory_peak_bytes": 18481152,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/function-effect-bound.t": {
+      "cpu_time_ns": 121576560,
+      "memory_peak_bytes": 41680896,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/function-effect-bound.t": {
+      "cpu_time_ns": 146118,
+      "memory_peak_bytes": 18538496,
+      "samples_per_test": 500
     }
   }
 }

@@ -51,6 +51,20 @@ pub struct CompilerModularType {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerEffectRow {
+    pub identities: Vec<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerFunctionView {
+    pub identity: String,
+    pub inputs: Vec<String>,
+    pub output: String,
+    pub is_static: bool,
+    pub declared_effects: Option<CompilerEffectRow>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilerType {
     Unit,
     Completed,
@@ -58,6 +72,7 @@ pub enum CompilerType {
     Type,
     Scope,
     Function,
+    FunctionView,
     Constraint,
     Boolean,
     Int,
@@ -125,6 +140,7 @@ impl CompilerType {
             Self::Type => "Type".into(),
             Self::Scope => "Scope".into(),
             Self::Function => "Function".into(),
+            Self::FunctionView => "lang FunctionView".into(),
             Self::Constraint => "Constraint".into(),
             Self::Boolean => "Boolean".into(),
             Self::Int => "Int".into(),
@@ -311,6 +327,7 @@ pub enum CompilerExpressionKind {
     TypeValue(u32),
     Root,
     FunctionValue(u32),
+    FunctionView(CompilerFunctionView),
     ConstraintValue(u32),
     Boolean(bool),
     Int(BigInt),
@@ -551,6 +568,7 @@ pub struct CompilerFunction {
     pub body: CompilerBlock,
     pub span: Span,
     pub is_static: bool,
+    pub declared_effects: Option<CompilerEffectRow>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -580,6 +598,7 @@ struct FunctionSource {
     parameters: Vec<FunctionParameter>,
     result: Span,
     effect_bound: Option<Span>,
+    declared_effects: Option<CompilerEffectRow>,
     body: Vec<Statement>,
     span: Span,
     is_static: bool,
@@ -825,6 +844,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         BlockKind::TopLevel,
         None,
     )?;
+    require_runtime_main_result(&source, &main)?;
     let function_value_names = compiler_function_value_names(&mut analyzer);
     Ok(CompilerProgram {
         source,
@@ -834,6 +854,21 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         constraints: analyzer.constraints,
         functions: analyzer.instances,
     })
+}
+
+fn require_runtime_main_result(
+    source: &SourceText,
+    main: &CompilerBlock,
+) -> Result<(), Diagnostic> {
+    if compiler_type_contains_static_only(&main.result.value_type) {
+        Err(unsupported(
+            source,
+            main.result.span,
+            "runtime observation of a static introspection value",
+        ))
+    } else {
+        Ok(())
+    }
 }
 
 fn compiler_function_value_names(analyzer: &mut Analyzer) -> Vec<String> {
@@ -1299,6 +1334,7 @@ fn collect_functions(
                 parameters: parameters.clone(),
                 result: *result,
                 effect_bound: *effect_bound,
+                declared_effects: None,
                 body: body.clone(),
                 span: *span,
                 is_static: *is_static,
@@ -1321,6 +1357,7 @@ fn collect_functions(
                         parameters: parameters.clone(),
                         result: *result,
                         effect_bound: *effect_bound,
+                        declared_effects: None,
                         body: body.clone(),
                         span: *span,
                         is_static: *is_static,
@@ -1347,7 +1384,9 @@ fn collect_functions(
             }
             _ => None,
         };
-        if let Some(function) = declaration {
+        if let Some(mut function) = declaration {
+            function.declared_effects =
+                compiler_declared_effect_row(source, function.effect_bound)?;
             let name = source.slice(function.name).to_owned();
             if reserved_names.contains(&name) {
                 return Err(source_diagnostic(
@@ -1373,6 +1412,29 @@ fn collect_functions(
         }
     }
     Ok(())
+}
+
+fn compiler_declared_effect_row(
+    source: &SourceText,
+    effect_bound: Option<Span>,
+) -> Result<Option<CompilerEffectRow>, Diagnostic> {
+    let Some(effect_bound) = effect_bound else {
+        return Ok(None);
+    };
+    let text = source.slice(effect_bound);
+    if compact_classifier(text) == "Effects()" {
+        return Ok(Some(CompilerEffectRow {
+            identities: Vec::new(),
+        }));
+    }
+    if explicit_single_measure(text).is_some() {
+        return Ok(None);
+    }
+    Err(unsupported(
+        source,
+        effect_bound,
+        "nonempty or polymorphic function effect bound",
+    ))
 }
 
 fn same_function_input_header(
@@ -1702,6 +1764,7 @@ impl Analyzer {
             parameters: parameters.clone(),
             result: *result,
             effect_bound: None,
+            declared_effects: None,
             body: body.clone(),
             span: *span,
             is_static: false,
@@ -1929,7 +1992,7 @@ impl Analyzer {
                     };
                     let facts = BindingFacts {
                         storage_name: storage_name.clone(),
-                        runtime_bound: true,
+                        runtime_bound: !compiler_type_is_static_only(&value.value_type),
                         value_type: value.value_type.clone(),
                         int_range: value.int_range.clone(),
                         rational_value: value.rational_value.clone(),
@@ -1943,7 +2006,7 @@ impl Analyzer {
                     if let Some(tag) = constraint_tag {
                         self.constraint_bindings.insert(name_text.clone(), tag);
                     }
-                    if kind == BlockKind::TopLevel {
+                    if kind == BlockKind::TopLevel && facts.runtime_bound {
                         self.root_bindings.insert(
                             name_text.clone(),
                             CompilerDataMemberFacts::from_binding(
@@ -2392,11 +2455,12 @@ impl Analyzer {
                     )
                 })?;
                 if !facts.runtime_bound {
-                    return Err(unsupported(
-                        &self.source,
-                        *name,
-                        "nested Function value outside direct application",
-                    ));
+                    let feature = if facts.value_type == CompilerType::FunctionView {
+                        "runtime use of a static Function view"
+                    } else {
+                        "nested Function value outside direct application"
+                    };
+                    return Err(unsupported(&self.source, *name, feature));
                 }
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
@@ -2502,6 +2566,74 @@ impl Analyzer {
             rational_value: None,
             span,
         })
+    }
+
+    fn analyze_function_view(
+        &self,
+        items: &[Expression],
+        span: Span,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let [
+            Expression::Identifier(namespace),
+            Expression::Identifier(operation),
+            subject,
+        ] = items
+        else {
+            return Ok(None);
+        };
+        if self.source.slice(*namespace) != "lang" || self.source.slice(*operation) != "view" {
+            return Ok(None);
+        }
+        let Expression::Identifier(name_span) = subject else {
+            return Err(unsupported(
+                &self.source,
+                subject.span(),
+                "lang view for this static object",
+            ));
+        };
+        let name = self.source.slice(*name_span);
+        let Some(declarations) = self.functions.get(name) else {
+            return Err(unsupported(
+                &self.source,
+                *name_span,
+                "lang view for this static object",
+            ));
+        };
+        let visible = declarations
+            .iter()
+            .filter(|declaration| declaration.span.end <= name_span.start)
+            .collect::<Vec<_>>();
+        let [declaration] = visible.as_slice() else {
+            return Err(unsupported(
+                &self.source,
+                *name_span,
+                "zero- or multi-overload Function view",
+            ));
+        };
+        if declaration.declared_effects.is_none() {
+            return Err(unsupported(
+                &self.source,
+                declaration.effect_bound.unwrap_or(declaration.span),
+                "Function view without an admitted explicit empty effect bound",
+            ));
+        }
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::FunctionView(CompilerFunctionView {
+                identity: format!("root.{name}"),
+                inputs: declaration
+                    .parameters
+                    .iter()
+                    .map(|parameter| compact_classifier(self.source.slice(parameter.classifier)))
+                    .collect(),
+                output: compact_classifier(self.source.slice(declaration.result)),
+                is_static: declaration.is_static,
+                declared_effects: declaration.declared_effects.clone(),
+            }),
+            value_type: CompilerType::FunctionView,
+            int_range: None,
+            rational_value: None,
+            span,
+        }))
     }
 
     fn analyze_constraint_application(
@@ -2753,6 +2885,9 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Some(view) = self.analyze_function_view(items, span)? {
+            return Ok(view);
+        }
         if let Some(sum) = self.analyze_sum_construction(items, span, environment)? {
             return Ok(sum);
         }
@@ -5456,6 +5591,7 @@ impl Analyzer {
             body: analyzed_body,
             span: declaration_span,
             is_static: static_context,
+            declared_effects: None,
         });
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::Call { symbol, arguments },
@@ -6893,6 +7029,7 @@ impl Analyzer {
             body,
             span: declaration.span,
             is_static: declaration.is_static,
+            declared_effects: declaration.declared_effects.clone(),
         });
         Ok((symbol, result_type, int_range, rational_value))
     }
@@ -8333,6 +8470,21 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     }
 }
 
+fn compiler_type_is_static_only(value_type: &CompilerType) -> bool {
+    matches!(value_type, CompilerType::FunctionView)
+}
+
+fn compiler_type_contains_static_only(value_type: &CompilerType) -> bool {
+    compiler_type_is_static_only(value_type)
+        || match value_type {
+            CompilerType::Tuple(fields) => fields.iter().any(compiler_type_contains_static_only),
+            CompilerType::Record(fields) => fields
+                .iter()
+                .any(|(_, field)| compiler_type_contains_static_only(field)),
+            _ => false,
+        }
+}
+
 fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
     if matches!(
         value_type,
@@ -8608,6 +8760,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         CompilerType::Refined { base, .. } => compiler_equality_supported(base),
         CompilerType::Scope
         | CompilerType::Function
+        | CompilerType::FunctionView
         | CompilerType::Constraint
         | CompilerType::Error
         | CompilerType::ErrorDomain
@@ -8687,6 +8840,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Root
         | CompilerExpressionKind::FunctionValue(_)
+        | CompilerExpressionKind::FunctionView(_)
         | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Int(_)
@@ -11425,6 +11579,47 @@ mod tests {
             analyze_for_compiler("use language (version is v0.1)\noffset is 40\n@ offset\n")
                 .unwrap_err();
         assert_eq!(outside.code, "E-CONTEXT-SELECTION");
+    }
+
+    #[test]
+    fn models_explicit_empty_function_effect_bound_and_static_view() {
+        // TOPAL-FUNCTION-EFFECT-BOUND-001, TOPAL-EFFECT-CONTAIN-001,
+        // TOPAL-INTRO-STATIC-001, TOPAL-INTRO-VIEW-001,
+        // TOPAL-COMPILER-FUNCTION-EMPTY-EFFECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-effect-bound.t"
+        ))
+        .unwrap();
+        let empty = CompilerEffectRow {
+            identities: Vec::new(),
+        };
+        assert_eq!(program.functions.len(), 1);
+        assert_eq!(program.functions[0].declared_effects, Some(empty.clone()));
+        let [CompilerStatement::Binding(signature)] = program.main.statements.as_slice() else {
+            panic!("the static Function view is the only lowered root binding")
+        };
+        assert_eq!(signature.value.value_type, CompilerType::FunctionView);
+        let CompilerExpressionKind::FunctionView(view) = &signature.value.kind else {
+            panic!("the static Function view retains checked metadata")
+        };
+        assert_eq!(view.identity, "root.identity");
+        assert_eq!(view.inputs, ["Int"]);
+        assert_eq!(view.output, "Int");
+        assert!(!view.is_static);
+        assert_eq!(view.declared_effects, Some(empty));
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+
+        let nonempty = analyze_for_compiler(
+            "use language (version is v0.1)\nread is fn (value : Int) -> Int : Read value\n  value\n1\n",
+        )
+        .unwrap_err();
+        assert_eq!(nonempty.code, "E-COMPILER-UNSUPPORTED");
+
+        let runtime_view = analyze_for_compiler(
+            "use language (version is v0.1)\nidentity is fn (value : Int) -> Int : Effects ()\n  value\nsignature is lang view identity\nsignature\n",
+        )
+        .unwrap_err();
+        assert_eq!(runtime_view.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]
