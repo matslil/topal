@@ -455,6 +455,38 @@ specialization. This realizes
 `TOPAL-GENERATOR-ITERATE-001`, `TOPAL-GENERATOR-TAKE-WHILE-001`, and
 `TOPAL-GENERATOR-COLLECT-001` for compiler increment 5c.
 
+## TOPAL-COMP-GENERATOR-ITERATE-FOREACH-001 — Bounded iterate traversal
+
+The checked compiler shall admit a root `foreach` statement that consumes an
+exact `Generator Int Unit Unit` retained from an Int-literal `iterate` with
+capture-free unary `Int -> Int` next and `Int -> Boolean` `take-while`
+operations. Its capture-free body shall bind the accepted Int and produce Unit.
+The statement may bind its Unit result, optionally classified as Unit, or leave
+that result unnamed.
+
+Every candidate shall be tested once before visitation. Each accepted candidate
+shall execute the body once and only then invoke next once. The first rejected
+candidate shall execute neither body nor next, and traversal shall return Unit.
+The source Generator shall be consumed through the existing local linearity
+boundary. Dynamic initial values, unbounded or differently constructed
+Generators, and captures in next, predicate, or body shall be rejected before
+LLVM.
+
+The Linux x86-64 backend shall carry the current arbitrary-precision Int as
+explicit LLVM SSA loop state and emit direct predicate, body, and next blocks.
+This required O0 semantic lowering shall expose the current body binding and
+Unit result through DWARF/GDB, allocate no traversal collection or Generator
+object, use no construction token as state, host recursion, callback, indirect
+call, or generic Generator runtime, and introduce no foreign dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library Generator ABI, or `topal-native/6` revision. Future
+library metadata shall identify canonical Generator, operation/predicate/body,
+evidence, capture-layout, ownership, and target-adapter identities rather than
+this specialization. This realizes
+`TOPAL-COMPILER-GENERATOR-ITERATE-FOREACH-001`,
+`TOPAL-GENERATOR-ITERATE-001`, `TOPAL-GENERATOR-TAKE-WHILE-001`, and
+`TOPAL-GENERATOR-ITERATE-FOREACH-001` for compiler increment 5f.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted

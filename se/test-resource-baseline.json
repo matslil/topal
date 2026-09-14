@@ -5219,6 +5219,21 @@
       "cpu_time_ns": 326299560,
       "memory_peak_bytes": 57962496,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_bounded_iterate_foreach_as_an_ordered_unit_loop": {
+      "cpu_time_ns": 3967999,
+      "memory_peak_bytes": 18280448,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::bounded_iterate_foreach_is_freestanding_ordered_and_debuggable": {
+      "cpu_time_ns": 326603280,
+      "memory_peak_bytes": 57597952,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_capture_free_bounded_int_iterate_foreach": {
+      "cpu_time_ns": 4793039,
+      "memory_peak_bytes": 18223104,
+      "samples_per_test": 50
     }
   }
 }

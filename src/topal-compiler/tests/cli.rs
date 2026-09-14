@@ -1030,6 +1030,83 @@ fn bounded_iterate_collection_is_freestanding_ordered_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn bounded_iterate_foreach_is_freestanding_ordered_and_debuggable() {
+    // TOPAL-GENERATOR-ITERATE-001, TOPAL-GENERATOR-TAKE-WHILE-001,
+    // TOPAL-GENERATOR-ITERATE-FOREACH-001,
+    // TOPAL-COMPILER-GENERATOR-ITERATE-FOREACH-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-bounded-iterate-foreach");
+    let executable = directory.join("application");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/generated-foreach.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"()\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break topal.runtime.int.add",
+            "-ex",
+            "run",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis digit",
+            "-ex",
+            "print digit",
+            "-ex",
+            "disable 1",
+            "-ex",
+            "break topal.platform.write_all",
+            "-ex",
+            "continue",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis completed",
+            "-ex",
+            "print completed",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = Int",
+        "$1 = 0",
+        "type = Unit",
+        "$2 = 0 '\\000'",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn lazy_unfold_value_is_freestanding_and_debuggable_without_step_execution() {
     // TOPAL-GENERATOR-UNFOLD-001,
     // TOPAL-COMPILER-GENERATOR-UNFOLD-CONSTRUCT-001,

@@ -598,6 +598,11 @@ pub enum CompilerExpressionKind {
         parameters: Vec<CompilerParameter>,
         step: Box<CompilerBlock>,
     },
+    IterateGeneratorForeach {
+        generator: Box<CompilerExpression>,
+        parameter: CompilerParameter,
+        body: Box<CompilerBlock>,
+    },
     GeneratorCollect(Box<CompilerExpression>),
     ErrorField {
         error: Box<CompilerExpression>,
@@ -2612,6 +2617,81 @@ impl Analyzer {
                         result = Some(unit_expression(statement_span(statement)));
                     }
                 }
+                Statement::Foreach {
+                    result: foreach_result,
+                    source,
+                    binding,
+                    body,
+                    span,
+                } if kind == BlockKind::TopLevel => {
+                    let value = self.analyze_bounded_int_iterate_foreach(
+                        source,
+                        *binding,
+                        body,
+                        *span,
+                        environment,
+                    )?;
+                    if let Some((name, classifier)) = foreach_result {
+                        let name_text = self.source.slice(*name).to_owned();
+                        if declared.contains(&name_text)
+                            || name_text == "root"
+                            || self.functions.contains_key(&name_text)
+                            || self.enums.contains_key(&name_text)
+                            || self.enum_alternatives.contains_key(&name_text)
+                            || self.sums.contains_key(&name_text)
+                            || self.sum_alternatives.contains_key(&name_text)
+                            || self.modulars.contains_key(&name_text)
+                            || self.interfaces.contains_key(&name_text)
+                        {
+                            return Err(source_diagnostic(
+                                &self.source,
+                                "E-DUPLICATE-BINDING",
+                                *name,
+                                format!("`{name_text}` is already declared in this scope"),
+                            ));
+                        }
+                        if let Some(classifier) = classifier {
+                            let expected = self.parse_classifier(*classifier)?;
+                            require_same_type(
+                                &self.source,
+                                *classifier,
+                                &expected,
+                                &CompilerType::Unit,
+                            )?;
+                        }
+                        let storage_name = format!("topal.root.{}.{}", name.start, name_text);
+                        let facts = BindingFacts {
+                            storage_name: storage_name.clone(),
+                            runtime_bound: true,
+                            value_type: CompilerType::Unit,
+                            int_range: None,
+                            rational_value: None,
+                            string_value: None,
+                            closed_int_range: None,
+                            record_fields: BTreeMap::new(),
+                            namespace: None,
+                            callable: None,
+                            static_capability: None,
+                        };
+                        environment.insert(name_text.clone(), facts.clone());
+                        self.root_bindings.insert(
+                            name_text.clone(),
+                            CompilerDataMemberFacts::from_binding(&facts, span.end),
+                        );
+                        declared.insert(name_text.clone());
+                        lowered.push(CompilerStatement::Binding(CompilerBinding {
+                            name: name_text,
+                            storage_name,
+                            value,
+                            span: *name,
+                        }));
+                    } else {
+                        lowered.push(CompilerStatement::Discard(value));
+                    }
+                    if last {
+                        result = Some(unit_expression(*span));
+                    }
+                }
                 Statement::Discard { value, .. } => {
                     let value = self.analyze_expression(value, environment)?;
                     if matches!(value.value_type, CompilerType::Generator(_)) {
@@ -2691,6 +2771,119 @@ impl Analyzer {
         Ok(CompilerBlock {
             statements: lowered,
             result: result.unwrap_or_else(|| unit_expression(Span::new(0, 0))),
+        })
+    }
+
+    #[allow(clippy::too_many_lines)] // Keep the exact admitted traversal boundary in one audit-friendly check.
+    fn analyze_bounded_int_iterate_foreach(
+        &mut self,
+        source: &Expression,
+        binding: Span,
+        statements: &[Statement],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let retained_generator = if let Expression::Identifier(name) = source {
+            environment
+                .get(self.source.slice(*name))
+                .and_then(|facts| self.generator_values.get(&facts.storage_name))
+                .cloned()
+        } else {
+            None
+        };
+        let source_value = self.analyze_expression(source, environment)?;
+        require_type(
+            &self.source,
+            source_value.span,
+            &int_unit_generator_type(),
+            &source_value.value_type,
+        )?;
+        let generator = retained_generator.as_ref().unwrap_or(&source_value);
+        let CompilerExpressionKind::GeneratorTakeWhile {
+            generator: iterate,
+            parameters: predicate_parameters,
+            predicate,
+        } = &generator.kind
+        else {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-UNBOUNDED-GENERATOR-TRAVERSAL",
+                source.span(),
+                "foreach requires a statically finite generated traversal",
+            ));
+        };
+        let CompilerExpressionKind::IterateGenerator {
+            initial,
+            parameters: next_parameters,
+            next,
+        } = &iterate.kind
+        else {
+            return Err(unsupported(
+                &self.source,
+                source.span(),
+                "foreach through this Generator construction",
+            ));
+        };
+        if !matches!(initial.kind, CompilerExpressionKind::Int(_))
+            || !compiler_block_is_closed_over_parameters(next_parameters, next)
+            || !compiler_block_is_closed_over_parameters(predicate_parameters, predicate)
+        {
+            return Err(unsupported(
+                &self.source,
+                source.span(),
+                "captured or dynamically initialized iterate foreach",
+            ));
+        }
+
+        let parameter_name = self.source.slice(binding).to_owned();
+        let parameter = CompilerParameter {
+            name: parameter_name.clone(),
+            discarded: parameter_name == "_",
+            value_type: CompilerType::Int,
+            int_range: None,
+            span: binding,
+        };
+        let mut body_environment = BTreeMap::new();
+        if !parameter.discarded {
+            body_environment.insert(
+                parameter_name,
+                BindingFacts {
+                    storage_name: parameter.name.clone(),
+                    runtime_bound: true,
+                    value_type: CompilerType::Int,
+                    int_range: None,
+                    rational_value: None,
+                    string_value: None,
+                    closed_int_range: None,
+                    record_fields: BTreeMap::new(),
+                    namespace: None,
+                    callable: None,
+                    static_capability: None,
+                },
+            );
+        }
+        let body = self.analyze_block(
+            statements,
+            &mut body_environment,
+            BlockKind::Lexical,
+            Some(&CompilerType::Unit),
+        )?;
+        require_type(
+            &self.source,
+            body.result.span,
+            &CompilerType::Unit,
+            &body.result.value_type,
+        )?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::IterateGeneratorForeach {
+                generator: Box::new(generator.clone()),
+                parameter,
+                body: Box::new(body),
+            },
+            value_type: CompilerType::Unit,
+            int_range: None,
+            rational_value: None,
+            span,
         })
     }
 
@@ -10391,6 +10584,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::IterateGenerator { .. }
         | CompilerExpressionKind::GeneratorTakeWhile { .. }
         | CompilerExpressionKind::UnfoldGenerator { .. }
+        | CompilerExpressionKind::IterateGeneratorForeach { .. }
         | CompilerExpressionKind::GeneratorCollect(_) => false,
         CompilerExpressionKind::IntToModular { value, .. }
         | CompilerExpressionKind::ModularReduce { value, .. }
@@ -10531,6 +10725,18 @@ fn compiler_block_is_closed(block: &CompilerBlock, outer: &BTreeSet<String>) -> 
         }
     }
     compiler_expression_is_closed_with(&block.result, &bound)
+}
+
+fn compiler_block_is_closed_over_parameters(
+    parameters: &[CompilerParameter],
+    block: &CompilerBlock,
+) -> bool {
+    let bound = parameters
+        .iter()
+        .filter(|parameter| !parameter.discarded)
+        .map(|parameter| parameter.name.clone())
+        .collect();
+    compiler_block_is_closed(block, &bound)
 }
 
 fn into_rational(expression: CompilerExpression) -> CompilerExpression {
@@ -12009,6 +12215,57 @@ mod tests {
                 analyze_for_compiler(captured).unwrap_err().code,
                 "E-COMPILER-UNSUPPORTED"
             );
+        }
+    }
+
+    #[test]
+    fn models_capture_free_bounded_int_iterate_foreach() {
+        // TOPAL-GENERATOR-ITERATE-001, TOPAL-GENERATOR-TAKE-WHILE-001,
+        // TOPAL-GENERATOR-ITERATE-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-ITERATE-FOREACH-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/generated-foreach.t"
+        ))
+        .unwrap();
+        assert_eq!(program.main.result.value_type, CompilerType::Unit);
+        assert!(program.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::IterateGeneratorForeach {
+                        generator,
+                        parameter,
+                        body,
+                    },
+                    ..
+                },
+                ..
+            }) if name == "completed"
+                && parameter.name == "digit"
+                && body.result.value_type == CompilerType::Unit
+                && matches!(generator.kind, CompilerExpressionKind::GeneratorTakeWhile { .. })
+        )));
+
+        for (source, code) in [
+            (
+                "use language (version is v0.1)\nnumbers is 0 iterate ({ value } value + 1)\ncompleted is numbers foreach { digit }\n  _ is digit\ncompleted\n",
+                "E-UNBOUNDED-GENERATOR-TRAVERSAL",
+            ),
+            (
+                "use language (version is v0.1)\nstart is 0\ndigits is start iterate ({ value } value + 1) take-while ({ value } value < 2)\ncompleted is digits foreach { digit }\n  _ is digit\ncompleted\n",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\nstep is 1\ndigits is 0 iterate ({ value } value + step) take-while ({ value } value < 2)\ncompleted is digits foreach { digit }\n  _ is digit\ncompleted\n",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\nlimit is 1\ndigits is 0 iterate ({ value } value + 1) take-while ({ value } value < 2)\ncompleted is digits foreach { digit }\n  _ is digit + limit\ncompleted\n",
+                "E-UNBOUND-NAME",
+            ),
+        ] {
+            assert_eq!(analyze_for_compiler(source).unwrap_err().code, code);
         }
     }
 

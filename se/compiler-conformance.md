@@ -77,6 +77,7 @@ evidence.
 | 5c | direct bounded Int iterate collection through an ordered generated SSA/List loop, with exact stopping behavior and result debugging but no Generator object or generic runtime | complete |
 | 5d | lazy `Generator Int Unit Unit` construction from a `List Int` seed and an exact `unfold` step, preserving distinct seed/yield types, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |
 | 5e | finite collection of a locally retained `List Int`/`uncons` unfold through an ordered seed/List SSA loop, with no Optional or Generator object/runtime | complete |
+| 5f | root bounded Int `iterate` foreach with exact predicate/body/next order, Unit result, iteration debugging, and no allocation or Generator object/runtime | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -259,7 +260,13 @@ the seed is an already evaluated immutable `List Int` binding and the step is
 exactly parameter `uncons`. A direct LLVM seed/List loop copies yielded heads
 in order and terminates at `Empty` without Optional materialization, callback,
 Generator object, or generic runtime; arbitrary unfold steps and general
-resumable state remain in increment 5.
+resumable state remain in increment 5. Increment 5f specializes root
+`foreach` over a locally retained bounded Int iterate whose literal initial
+value, next, predicate, and Unit action need no captures. The explicit LLVM loop
+tests before visiting, advances only after the Unit action, returns Unit at the
+first rejection, and allocates no collection or Generator object. Dynamic
+initials, captures, other classifiers, and general traversal remain in
+increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

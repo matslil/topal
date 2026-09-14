@@ -133,6 +133,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::UnfoldGenerator { seed, step, .. } => {
             expression_uses_extended_debug(seed) || block_uses_extended_debug(step)
         }
+        CompilerExpressionKind::IterateGeneratorForeach {
+            generator, body, ..
+        } => expression_uses_extended_debug(generator) || block_uses_extended_debug(body),
         CompilerExpressionKind::GeneratorCollect(generator) => {
             expression_uses_extended_debug(generator)
         }
@@ -1113,6 +1116,18 @@ impl<'a> Generator<'a> {
                     generator: generator.clone(),
                 }
             }
+            CompilerExpressionKind::IterateGeneratorForeach {
+                generator,
+                parameter,
+                body: action,
+            } => self.emit_iterate_foreach(
+                generator,
+                parameter,
+                action,
+                body,
+                environment,
+                expression.span,
+            ),
             CompilerExpressionKind::GeneratorCollect(generator) => {
                 if matches!(
                     generator.kind,
@@ -2836,6 +2851,107 @@ impl<'a> Generator<'a> {
             value: head,
             element: CompilerType::Int,
         }
+    }
+
+    fn emit_iterate_foreach(
+        &mut self,
+        generator: &CompilerExpression,
+        parameter: &CompilerParameter,
+        action: &CompilerBlock,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let CompilerExpressionKind::GeneratorTakeWhile {
+            generator,
+            parameters: predicate_parameters,
+            predicate,
+        } = &generator.kind
+        else {
+            unreachable!("checked foreach retains a bounded iterate generator")
+        };
+        let CompilerExpressionKind::IterateGenerator {
+            initial,
+            parameters: next_parameters,
+            next,
+        } = &generator.kind
+        else {
+            unreachable!("checked foreach retains its iterate construction")
+        };
+        let initial = self
+            .emit_expression(initial, body, environment)
+            .integer()
+            .to_owned();
+        let preheader = body.current_block.clone();
+        let loop_label = body.label("generator.foreach.loop");
+        let accepted = body.label("generator.foreach.accepted");
+        let resumed = body.label("generator.foreach.resumed");
+        let done = body.label("generator.foreach.done");
+        let next_current = body.reserve_value();
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let current = body.instruction(
+            &format!("phi ptr [{initial}, %{preheader}], [{next_current}, %{resumed}]"),
+            span,
+            &mut self.debug,
+        );
+        let mut predicate_environment = self.emit_collection_environment(
+            predicate_parameters,
+            &[LlValue::Int(current.clone())],
+            body,
+            environment,
+        );
+        let accepted_value = self
+            .emit_block(predicate, body, &mut predicate_environment)
+            .boolean()
+            .to_owned();
+        body.terminator(
+            &format!("br i1 {accepted_value}, label %{accepted}, label %{done}"),
+            location,
+        );
+
+        body.start_block(&accepted);
+        let mut action_environment = environment.clone();
+        if !parameter.discarded {
+            let variable = self.debug.local(
+                &parameter.name,
+                parameter.span,
+                &CompilerType::Int,
+                body.subprogram,
+            );
+            let binding_location = self.debug.location(parameter.span, body.subprogram);
+            let value = LlValue::Int(current.clone());
+            body.debug_value(&value, variable, binding_location);
+            action_environment.insert(parameter.name.clone(), value);
+        }
+        let action_value = self.emit_block(action, body, &mut action_environment);
+        debug_assert!(matches!(action_value, LlValue::Unit));
+        let mut next_environment = self.emit_collection_environment(
+            next_parameters,
+            &[LlValue::Int(current)],
+            body,
+            environment,
+        );
+        let next_value = self
+            .emit_block(next, body, &mut next_environment)
+            .integer()
+            .to_owned();
+        let next_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{resumed}"), location);
+
+        body.start_block(&resumed);
+        body.define_reserved(
+            &next_current,
+            &format!("phi ptr [{next_value}, %{next_predecessor}]"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&done);
+        LlValue::Unit
     }
 
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // The loop keeps node publication explicit.
@@ -9297,6 +9413,40 @@ mod tests {
         }
         assert!(!llvm.contains("topal.runtime.generator"));
         assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_bounded_iterate_foreach_as_an_ordered_unit_loop() {
+        // TOPAL-GENERATOR-ITERATE-001, TOPAL-GENERATOR-TAKE-WHILE-001,
+        // TOPAL-GENERATOR-ITERATE-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-ITERATE-FOREACH-001
+        let source = include_str!("../../../examples/language/generated-foreach.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "generated-foreach.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        for expected in [
+            "generator.foreach.loop",
+            "phi ptr",
+            "call i32 @topal.runtime.int.compare",
+            "generator.foreach.accepted",
+            "call ptr @topal.runtime.int.add",
+            "generator.foreach.resumed",
+            "generator.foreach.done",
+            "#dbg_value(i8 0",
+        ] {
+            assert!(main.contains(expected), "missing {expected:?}: {main}");
+        }
+        let predicate = main.find("call i32 @topal.runtime.int.compare").unwrap();
+        let action = main.find("generator.foreach.accepted").unwrap();
+        let next = main.find("call ptr @topal.runtime.int.add").unwrap();
+        assert!(predicate < action && action < next);
+        assert!(!main.contains("topal.platform.allocate"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
     }
 
     #[test]
