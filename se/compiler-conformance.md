@@ -71,6 +71,7 @@ evidence.
 | 4b3d-h | `Continue Int`/`Finish Int` construction and short-circuiting `List Int` fold control through direct LLVM branches, private storage, and semantic debugging | complete |
 | 4b3d-i | contextual `List (Int, Int)` construction and anonymous product-pattern map to `List Int` with inline pair nodes and direct field binding | complete |
 | 4b3d-j | exact `List (Int, String)` and `List List (Int, String)` construction, private outer passage, first/count/equality, nested display, and debugging | complete |
+| 4b3d-k | closed direct String Character foreach through pinned segmentation and ordered inline Unit actions, with Character debugging and no Generator runtime | complete |
 | 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal algorithms and callable forms, traversal-control generalization, and representation-safe reclamation | planned |
 | 5a | qualified `lang generator generator-closed` as a closed nominal value with equality, display, and debugging but no continuation behavior | complete |
 | 5b | lazy `Generator Int Unit Unit` construction from `iterate` and direct `take-while`, with checked dormant bodies, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |
@@ -237,6 +238,13 @@ Increment 4b3d-j composes exact private two-word outer nodes with three-word
 count, equality, canonical nested output, and semantic debugging through
 shape-specific nonrecursive loops, while leaving inner boundaries and a
 generic or compiled-library List ABI closed.
+Increment 4b3d-k evaluates a closed direct `characters` source with the pinned
+segmentation already used by Character observations and expands its
+capture-free Character-to-Unit action in preserved order. Existing String
+descriptors and a debug-only pointer shadow preserve Character inspection
+without a Generator object, continuation token, callback, indirect call, or
+foreign Unicode/runtime dependency. Dynamic Strings, retained generators, and
+captured actions remain in the planned Unicode and generator closures.
 Increment 5a admits only the qualified `generator-closed` vocabulary value as a
 private nominal enum. It deliberately creates no continuation, generator state,
 close result, Error domain, or provenance; all generator execution remains in

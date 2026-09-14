@@ -1904,6 +1904,35 @@ realizes `TOPAL-COMPILER-CHARACTER-OBSERVATION-001` for compiler increment
 4b3b without a C/C++ runtime, standard library, host locale or Unicode table,
 or `topal-native/6` revision.
 
+## TOPAL-COMP-STRING-CHARACTERS-FOREACH-001 — Closed Character traversal
+
+The checked compiler shall admit a root `foreach` directly over `characters
+text` when the complete plain String is known during checking and the action is
+capture-free, binds Character, and produces Unit. It shall evaluate the source
+String exactly once, use the selected language context's pinned extended-
+grapheme segmentation, invoke the action once per complete Character in
+preserved order, resume with Unit after each
+action, and return Unit without invoking the action for empty input. The source
+String shall remain immutable. The statement may bind its Unit result with an
+optional exact Unit classifier or leave the result unnamed.
+
+The Linux x86-64 backend shall expand the statically known Character sequence
+through existing immutable String descriptors and inline the checked action in
+order. This is mandatory O0 source-semantic lowering, not an optimization-pass
+result. DWARF/GDB shall preserve the Character action binding, including a
+debug-only pointer shadow for an otherwise instruction-free action. The
+lowering shall create no semantic traversal collection, Generator object or
+token, generic Generator runtime, callback, indirect call, host Unicode or
+locale dependency, C/C++ runtime, other-language standard library, needed
+library, dynamic relocation, public/library Generator ABI, or
+`topal-native/6` revision. Dynamic Strings, retained named Character
+generators, and captures remain rejected. Future library metadata shall carry
+canonical Generator, pinned-segmentation, action-evidence, ownership, and
+target-adapter identities rather than this specialization. This realizes
+`TOPAL-COMPILER-STRING-CHARACTERS-FOREACH-001`,
+`TOPAL-STRING-CHARACTERS-COLLECT-001`, and
+`TOPAL-STRING-CHARACTERS-FOREACH-001` for compiler increment 4b3d-k.
+
 ## TOPAL-COMP-UNICODE-FOLD-001 — Closed pinned-Unicode operations
 
 When the checked model knows a String's complete preserved sequence, the

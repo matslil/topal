@@ -133,6 +133,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::UnfoldGenerator { seed, step, .. } => {
             expression_uses_extended_debug(seed) || block_uses_extended_debug(step)
         }
+        CompilerExpressionKind::StringCharactersForeach { text, body, .. } => {
+            expression_uses_extended_debug(text) || block_uses_extended_debug(body)
+        }
         CompilerExpressionKind::IterateGeneratorForeach {
             generator, body, ..
         } => expression_uses_extended_debug(generator) || block_uses_extended_debug(body),
@@ -1075,6 +1078,9 @@ impl<'a> Generator<'a> {
                     expression.span,
                     &mut self.debug,
                 ))
+            }
+            CompilerExpressionKind::StringCharactersForeach { .. } => {
+                self.emit_string_characters_foreach(expression, body, environment)
             }
             CompilerExpressionKind::ErrorCode(value) => LlValue::ErrorCode(value.to_string()),
             CompilerExpressionKind::Enum(value) => {
@@ -5627,6 +5633,54 @@ impl<'a> Generator<'a> {
         )
     }
 
+    fn emit_string_characters_foreach(
+        &mut self,
+        traversal: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+    ) -> LlValue {
+        let CompilerExpressionKind::StringCharactersForeach {
+            text,
+            characters,
+            parameter,
+            body: action,
+        } = &traversal.kind
+        else {
+            unreachable!("checked Character foreach retains its traversal")
+        };
+        let span = traversal.span;
+        let _ = self.emit_expression(text, body, environment);
+        let debug_address = (!parameter.discarded).then(|| {
+            let variable = self.debug.local(
+                &parameter.name,
+                parameter.span,
+                &parameter.value_type,
+                body.subprogram,
+            );
+            let address = body.instruction("alloca ptr, align 8", span, &mut self.debug);
+            let location = self.debug.location(parameter.span, body.subprogram);
+            body.debug_declare(&address, variable, location);
+            address
+        });
+        for character in characters {
+            let value = LlValue::String(self.emit_string_value(character, body, span));
+            let mut action_environment = environment.clone();
+            if let Some(address) = &debug_address {
+                body.effect(
+                    &format!("store ptr {}, ptr {address}, align 8", value.string()),
+                    parameter.span,
+                    &mut self.debug,
+                );
+            }
+            if !parameter.discarded {
+                action_environment.insert(parameter.name.clone(), value);
+            }
+            let action_value = self.emit_block(action, body, &mut action_environment);
+            debug_assert!(matches!(action_value, LlValue::Unit));
+        }
+        LlValue::Unit
+    }
+
     fn emit_int_literal(&mut self, value: &BigInt) -> LlValue {
         LlValue::Int(self.emit_int_global(value))
     }
@@ -9447,6 +9501,58 @@ mod tests {
         assert!(!main.contains("topal.platform.allocate"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_closed_string_character_foreach_in_preserved_order() {
+        // TOPAL-STRING-CHARACTERS-COLLECT-001,
+        // TOPAL-STRING-CHARACTERS-FOREACH-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-FOREACH-001
+        let source = include_str!("../../../examples/language/string-character-foreach.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "string-character-foreach.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            4
+        );
+        let mut previous = 0;
+        for character in ["a\u{301}", "👩‍🔬", "🇸🇪"] {
+            let encoded = format!("c\"{}\"", llvm_bytes(character.as_bytes()));
+            let position = llvm[previous..].find(&encoded).map_or_else(
+                || panic!("missing {character:?} bytes: {llvm}"),
+                |position| previous + position,
+            );
+            assert!(position >= previous);
+            previous = position + encoded.len();
+        }
+        assert!(main.contains("alloca ptr, align 8"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert_eq!(main.matches("store ptr").count(), 3);
+        assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+
+        let empty = analyze_for_compiler(
+            "use language (version is v0.1)\ncharacters \"\" foreach { character }\n  _ is String character\n",
+        )
+        .unwrap();
+        let empty_llvm = Generator::new(&empty, "empty-string-character-foreach.t").emit();
+        let empty_main = empty_llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        assert_eq!(
+            empty_main
+                .matches("call ptr @topal.runtime.string.make")
+                .count(),
+            1
+        );
     }
 
     #[test]

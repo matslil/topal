@@ -456,6 +456,22 @@ payload extraction, display, DWARF, and GDB therefore reuse existing carriers
 without a new ABI. Unknown text or index values fail at the checked boundary
 until generated Topal Unicode tables and segmentation code exist.
 
+Closed direct `characters` foreach keeps that segmentation decision in the
+checked frontend. For a compile-time-known preserved String, the model retains
+the ordered complete grapheme clusters and a capture-free Character-to-Unit
+action. The backend materializes each Character through the existing immutable
+String descriptor, evaluates the source expression once, and emits the action
+inline in preserved order; empty input emits no action. This is required O0
+semantic expansion rather than LLVM loop
+discovery or Unicode interpretation. A debug-only pointer stack shadow keeps
+the current Character inspectable even when its action is otherwise erased.
+There is no semantic traversal allocation, Generator object/token, dispatcher,
+callback, indirect call, foreign Unicode table, or other-language runtime.
+Dynamic traversal stays closed until Topal owns the generated pinned-Unicode
+path, while compiled-library boundaries additionally require canonical
+Generator, segmentation, action-evidence, ownership, and target-adapter
+metadata.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by

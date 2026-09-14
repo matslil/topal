@@ -1737,6 +1737,34 @@ rejected until a Topal-owned freestanding Unicode runtime path is admitted;
 the compiler SHALL NOT substitute bytes, scalar values, host Unicode tables,
 locale services, or another language's runtime.
 
+### TOPAL-COMPILER-STRING-CHARACTERS-FOREACH-001 — Closed Character traversal
+
+A root `foreach` whose source is the direct `characters text` application SHALL
+admit a plain String whose complete preserved sequence is known during checking
+and a capture-free action that binds Character and produces Unit. It SHALL
+evaluate the source String exactly once, segment it with the selected language
+context's pinned extended-grapheme rules, invoke the action exactly once for
+each complete Character in preserved order, resume with Unit after each action,
+and return Unit after the
+last action. Empty input SHALL invoke no action and return Unit. The immutable
+source String SHALL remain unchanged. The statement MAY bind its Unit result,
+with an optional exact Unit classifier, or discard that result.
+
+This sequence SHALL be mandatory frontend semantics at `-O0`, not an LLVM
+optimization. On Linux x86-64, the backend SHALL lower each statically known
+Character through the existing immutable String descriptor and inline the
+checked action in source order. DWARF SHALL expose the action binding as
+Character, using a debug-only pointer shadow when the action otherwise emits no
+machine use. The lowering SHALL create no semantic traversal collection,
+Generator object or token, generic Generator runtime, callback, indirect call,
+host Unicode dependency, locale dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library Generator
+ABI, or `topal-native/6` revision. Dynamic Strings, retained named Character
+generators, and captured actions remain outside this specialization. Future
+compiled-library metadata SHALL identify the canonical Generator classifier,
+pinned segmentation identity, action evidence, linear ownership, and target
+adapter rather than publish this executable-local expansion.
+
 ### TOPAL-COMPILER-UNICODE-FOLD-001 — Closed pinned-Unicode operations
 
 For a closed String expression whose complete preserved sequence is known
