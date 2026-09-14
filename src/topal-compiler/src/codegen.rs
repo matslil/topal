@@ -14,6 +14,8 @@ use topal_source::Span;
 
 use crate::{DATA_LAYOUT, TARGET_TRIPLE};
 
+type ListEntryBindings = ((String, Span), (String, Span));
+
 pub fn emit_llvm(program: &CompilerProgram, source_name: &str) -> String {
     Generator::new(program, source_name).emit()
 }
@@ -88,6 +90,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::ErrorField { .. }
         | CompilerExpressionKind::ResultDecision { .. }
         | CompilerExpressionKind::OptionalDecision { .. }
+        | CompilerExpressionKind::ListDecision { .. }
         | CompilerExpressionKind::ErrorCode(_) => true,
         CompilerExpressionKind::Tuple(fields)
         | CompilerExpressionKind::Call {
@@ -117,6 +120,12 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::OptionalSome(value)
+        | CompilerExpressionKind::ListReverse(value)
+        | CompilerExpressionKind::ListEntryCount(value)
+        | CompilerExpressionKind::ListEmptyPredicate(value)
+        | CompilerExpressionKind::ListFirst(value)
+        | CompilerExpressionKind::ListRest(value)
+        | CompilerExpressionKind::ListUncons(value)
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::RecordField { record: value, .. }
@@ -152,6 +161,15 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             list: left,
             value: right,
         }
+        | CompilerExpressionKind::ListPrepend {
+            list: left,
+            value: right,
+        }
+        | CompilerExpressionKind::ListAppend {
+            list: left,
+            value: right,
+        }
+        | CompilerExpressionKind::ListConcat { left, right }
         | CompilerExpressionKind::RationalConstruct {
             numerator: left,
             denominator: right,
@@ -243,6 +261,7 @@ struct Generator<'a> {
     next_global: usize,
     uses_list_int_containment_runtime: bool,
     uses_list_int_removal_runtime: bool,
+    uses_list_int_core_runtime: bool,
     debug: DebugInfo,
 }
 
@@ -264,6 +283,7 @@ impl<'a> Generator<'a> {
             next_global: 0,
             uses_list_int_containment_runtime: false,
             uses_list_int_removal_runtime: false,
+            uses_list_int_core_runtime: false,
             debug,
         }
     }
@@ -283,7 +303,10 @@ impl<'a> Generator<'a> {
         module.push('\n');
         module.push_str(PLATFORM_RUNTIME);
         module.push('\n');
-        if self.uses_list_int_containment_runtime || self.uses_list_int_removal_runtime {
+        if self.uses_list_int_containment_runtime
+            || self.uses_list_int_removal_runtime
+            || self.uses_list_int_core_runtime
+        {
             module.push_str(LIST_INT_LAYOUT);
             module.push('\n');
         }
@@ -293,6 +316,10 @@ impl<'a> Generator<'a> {
         }
         if self.uses_list_int_removal_runtime {
             module.push_str(LIST_INT_REMOVAL_RUNTIME);
+            module.push('\n');
+        }
+        if self.uses_list_int_core_runtime {
+            module.push_str(LIST_INT_CORE_RUNTIME);
             module.push('\n');
         }
         for global in &self.globals {
@@ -1297,6 +1324,148 @@ impl<'a> Generator<'a> {
                     element,
                 }
             }
+            CompilerExpressionKind::ListPrepend { list, value } => {
+                let list = self.emit_expression(list, body, environment);
+                let value = self.emit_expression(value, body, environment);
+                let node = body.instruction(
+                    "call ptr @topal.platform.allocate(i64 16)",
+                    expression.span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store ptr {}, ptr {node}, align 8", value.integer()),
+                    expression.span,
+                    &mut self.debug,
+                );
+                let next = body.instruction(
+                    &format!("getelementptr i8, ptr {node}, i64 8"),
+                    expression.span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store ptr {}, ptr {next}, align 8", list.list_pointer()),
+                    expression.span,
+                    &mut self.debug,
+                );
+                LlValue::List {
+                    value: node,
+                    element: CompilerType::Int,
+                }
+            }
+            CompilerExpressionKind::ListAppend { list, value } => {
+                self.uses_list_int_core_runtime = true;
+                let list = self.emit_expression(list, body, environment);
+                let value = self.emit_expression(value, body, environment);
+                let singleton = body.instruction(
+                    "call ptr @topal.platform.allocate(i64 16)",
+                    expression.span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store ptr {}, ptr {singleton}, align 8", value.integer()),
+                    expression.span,
+                    &mut self.debug,
+                );
+                let next = body.instruction(
+                    &format!("getelementptr i8, ptr {singleton}, i64 8"),
+                    expression.span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store ptr null, ptr {next}, align 8"),
+                    expression.span,
+                    &mut self.debug,
+                );
+                LlValue::List {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.int.concat(ptr {}, ptr {singleton})",
+                            list.list_pointer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    element: CompilerType::Int,
+                }
+            }
+            CompilerExpressionKind::ListConcat { left, right } => {
+                self.uses_list_int_core_runtime = true;
+                let left = self.emit_expression(left, body, environment);
+                let right = self.emit_expression(right, body, environment);
+                LlValue::List {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.int.concat(ptr {}, ptr {})",
+                            left.list_pointer(),
+                            right.list_pointer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    element: CompilerType::Int,
+                }
+            }
+            CompilerExpressionKind::ListReverse(value) => {
+                self.uses_list_int_core_runtime = true;
+                let value = self.emit_expression(value, body, environment);
+                LlValue::List {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.int.reverse(ptr {})",
+                            value.list_pointer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    element: CompilerType::Int,
+                }
+            }
+            CompilerExpressionKind::ListEntryCount(value) => {
+                self.uses_list_int_core_runtime = true;
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Int(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.list.int.entry.count(ptr {})",
+                        value.list_pointer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::ListEmptyPredicate(value) => {
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Boolean(body.instruction(
+                    &format!("icmp eq ptr {}, null", value.list_pointer()),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::ListFirst(value)
+            | CompilerExpressionKind::ListRest(value)
+            | CompilerExpressionKind::ListUncons(value) => {
+                self.uses_list_int_core_runtime = true;
+                let operation = match &expression.kind {
+                    CompilerExpressionKind::ListFirst(_) => "first",
+                    CompilerExpressionKind::ListRest(_) => "rest",
+                    CompilerExpressionKind::ListUncons(_) => "uncons",
+                    _ => unreachable!(),
+                };
+                let value = self.emit_expression(value, body, environment);
+                let CompilerType::Optional(payload) = &expression.value_type else {
+                    unreachable!("checked List projection returns Optional")
+                };
+                LlValue::Optional {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.int.{operation}(ptr {})",
+                            value.list_pointer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    payload: payload.as_ref().clone(),
+                }
+            }
             CompilerExpressionKind::ErrorField { error, field } => {
                 let error_span = error.span;
                 let error = self.emit_expression(error, body, environment);
@@ -1751,6 +1920,20 @@ impl<'a> Generator<'a> {
                 environment,
                 expression.span,
             ),
+            CompilerExpressionKind::ListDecision {
+                subject,
+                entry_bindings,
+                entry_action,
+                empty_action,
+            } => self.emit_list_decision(
+                subject,
+                entry_bindings.as_ref(),
+                entry_action,
+                empty_action,
+                body,
+                environment,
+                expression.span,
+            ),
         }
     }
 
@@ -1825,7 +2008,12 @@ impl<'a> Generator<'a> {
                 *some_binding_span,
                 &mut self.debug,
             );
-            let payload_value = optional_payload_value(payload_pointer, &payload);
+            let payload_value = self.emit_optional_payload_value(
+                payload_pointer,
+                &payload,
+                body,
+                *some_binding_span,
+            );
             let variable =
                 self.debug
                     .local(some_binding, *some_binding_span, &payload, body.subprogram);
@@ -1849,6 +2037,144 @@ impl<'a> Generator<'a> {
             &[
                 (some_value, some_predecessor),
                 (none_value, none_predecessor),
+            ],
+            body,
+            span,
+        )
+    }
+
+    fn emit_optional_payload_value(
+        &mut self,
+        value: String,
+        value_type: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        match value_type {
+            CompilerType::List(element) => LlValue::List {
+                value,
+                element: element.as_ref().clone(),
+            },
+            CompilerType::Tuple(fields)
+                if matches!(
+                    fields.as_slice(),
+                    [CompilerType::Int, CompilerType::List(element)]
+                        if element.as_ref() == &CompilerType::Int
+                ) =>
+            {
+                let first = body.instruction(
+                    &format!("load ptr, ptr {value}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let rest_address = body.instruction(
+                    &format!("getelementptr i8, ptr {value}, i64 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let rest = body.instruction(
+                    &format!("load ptr, ptr {rest_address}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                LlValue::Tuple(vec![
+                    LlValue::Int(first),
+                    LlValue::List {
+                        value: rest,
+                        element: CompilerType::Int,
+                    },
+                ])
+            }
+            _ => optional_payload_value(value, value_type),
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)] // Mirrors both source List alternatives and their scoped bindings.
+    fn emit_list_decision(
+        &mut self,
+        subject: &CompilerExpression,
+        entry_bindings: Option<&ListEntryBindings>,
+        entry_action: &CompilerExpression,
+        empty_action: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let list = self.emit_expression(subject, body, environment);
+        let LlValue::List {
+            value: list,
+            element,
+        } = list
+        else {
+            unreachable!("checked List decision subject is a List")
+        };
+        let is_empty = body.instruction(
+            &format!("icmp eq ptr {list}, null"),
+            subject.span,
+            &mut self.debug,
+        );
+        let entry_label = body.label("list.decision.entry");
+        let empty_label = body.label("list.decision.empty");
+        let merge = body.label("list.decision.merge");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {is_empty}, label %{empty_label}, label %{entry_label}"),
+            location,
+        );
+
+        body.start_block(&entry_label);
+        let mut entry_environment = environment.clone();
+        if let Some(((first_name, first_span), (rest_name, rest_span))) = entry_bindings {
+            let first = body.instruction(
+                &format!("load ptr, ptr {list}, align 8"),
+                *first_span,
+                &mut self.debug,
+            );
+            let rest_address = body.instruction(
+                &format!("getelementptr i8, ptr {list}, i64 8"),
+                *rest_span,
+                &mut self.debug,
+            );
+            let rest = body.instruction(
+                &format!("load ptr, ptr {rest_address}, align 8"),
+                *rest_span,
+                &mut self.debug,
+            );
+            let first_value = LlValue::Int(first);
+            let rest_value = LlValue::List {
+                value: rest,
+                element: element.clone(),
+            };
+            let first_variable =
+                self.debug
+                    .local(first_name, *first_span, &element, body.subprogram);
+            let rest_type = CompilerType::List(Box::new(element.clone()));
+            let rest_variable =
+                self.debug
+                    .local(rest_name, *rest_span, &rest_type, body.subprogram);
+            let first_location = self.debug.location(*first_span, body.subprogram);
+            let rest_location = self.debug.location(*rest_span, body.subprogram);
+            body.debug_value(&first_value, first_variable, first_location);
+            body.debug_value(&rest_value, rest_variable, rest_location);
+            entry_environment.insert(first_name.clone(), first_value);
+            entry_environment.insert(rest_name.clone(), rest_value);
+        }
+        let entry_value = self.emit_expression(entry_action, body, &entry_environment);
+        let entry_predecessor = body.current_block.clone();
+        let entry_location = self.debug.location(entry_action.span, body.subprogram);
+        body.terminator(&format!("br label %{merge}"), entry_location);
+
+        body.start_block(&empty_label);
+        let empty_value = self.emit_expression(empty_action, body, environment);
+        let empty_predecessor = body.current_block.clone();
+        let empty_location = self.debug.location(empty_action.span, body.subprogram);
+        body.terminator(&format!("br label %{merge}"), empty_location);
+
+        body.start_block(&merge);
+        self.emit_decision_phi(
+            &[
+                (entry_value, entry_predecessor),
+                (empty_value, empty_predecessor),
             ],
             body,
             span,
@@ -2644,6 +2970,16 @@ impl<'a> Generator<'a> {
                 &mut self.debug,
             ),
             (
+                LlValue::List {
+                    value: left,
+                    element,
+                },
+                LlValue::List {
+                    value: right,
+                    element: right_element,
+                },
+            ) => self.emit_list_equal(left, right, element, right_element, body, span),
+            (
                 LlValue::Optional {
                     value: left,
                     payload,
@@ -2652,20 +2988,7 @@ impl<'a> Generator<'a> {
                     value: right,
                     payload: right_payload,
                 },
-            ) => {
-                debug_assert_eq!(payload, right_payload);
-                let runtime = match payload {
-                    CompilerType::Int => "optional.int.equal",
-                    CompilerType::Rational => "optional.rational.equal",
-                    CompilerType::String => "optional.string.equal",
-                    _ => unreachable!("checked Optional equality has canonical evidence"),
-                };
-                body.instruction(
-                    &format!("call i1 @topal.runtime.{runtime}(ptr {left}, ptr {right})"),
-                    span,
-                    &mut self.debug,
-                )
-            }
+            ) => self.emit_optional_equal(left, right, payload, right_payload, body, span),
             (LlValue::Int(_), LlValue::Int(_))
             | (LlValue::Modular { .. }, LlValue::Modular { .. })
             | (LlValue::Rational(_), LlValue::Rational(_)) => {
@@ -2698,6 +3021,48 @@ impl<'a> Generator<'a> {
             }
             _ => unreachable!("checked equality values agree"),
         }
+    }
+
+    fn emit_list_equal(
+        &mut self,
+        left: &str,
+        right: &str,
+        element: &CompilerType,
+        right_element: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        debug_assert_eq!(element, right_element);
+        debug_assert_eq!(element, &CompilerType::Int);
+        self.uses_list_int_core_runtime = true;
+        body.instruction(
+            &format!("call i1 @topal.runtime.list.int.equal(ptr {left}, ptr {right})"),
+            span,
+            &mut self.debug,
+        )
+    }
+
+    fn emit_optional_equal(
+        &mut self,
+        left: &str,
+        right: &str,
+        payload: &CompilerType,
+        right_payload: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        debug_assert_eq!(payload, right_payload);
+        let runtime = match payload {
+            CompilerType::Int => "optional.int.equal",
+            CompilerType::Rational => "optional.rational.equal",
+            CompilerType::String => "optional.string.equal",
+            _ => unreachable!("checked Optional equality has canonical evidence"),
+        };
+        body.instruction(
+            &format!("call i1 @topal.runtime.{runtime}(ptr {left}, ptr {right})"),
+            span,
+            &mut self.debug,
+        )
     }
 
     fn emit_record_equal(
@@ -3713,7 +4078,7 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
-        let payload = optional_payload_value(payload, payload_type);
+        let payload = self.emit_optional_payload_value(payload, payload_type, body, span);
         self.emit_print(&payload, body, span);
         body.terminator(&format!("br label %{done}"), location);
         body.start_block(&none);
@@ -4218,6 +4583,7 @@ fn optional_payload_pointer(value: &LlValue) -> &str {
         | LlValue::Rational(value)
         | LlValue::Error(value)
         | LlValue::SourceLocation(value)
+        | LlValue::List { value, .. }
         | LlValue::String(value) => value,
         _ => unreachable!("checked Optional payload has a pointer representation"),
     }
@@ -4421,6 +4787,8 @@ struct DebugInfo {
     optional_string_type: usize,
     optional_error_type: usize,
     optional_source_location_type: usize,
+    optional_header_pointer_type: usize,
+    optional_types: Vec<(CompilerType, usize)>,
     comparison_type: usize,
     boolean_type: usize,
     unit_type: usize,
@@ -4478,6 +4846,8 @@ impl DebugInfo {
             optional_string_type: 0,
             optional_error_type: 0,
             optional_source_location_type: 0,
+            optional_header_pointer_type: 0,
+            optional_types: Vec::new(),
             comparison_type: 0,
             boolean_type: 0,
             unit_type: 0,
@@ -4808,6 +5178,7 @@ impl DebugInfo {
         let pointer = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
         ));
+        self.optional_header_pointer_type = pointer;
         self.optional_int_type = self.optional_type("Int", pointer);
         self.optional_rational_type = self.optional_type("Rational", pointer);
         self.optional_character_type = self.optional_type("Character", pointer);
@@ -4921,9 +5292,7 @@ impl DebugInfo {
             {
                 self.optional_source_location_type
             }
-            CompilerType::Optional(_) => {
-                unreachable!("unsupported Optional payload type reached codegen")
-            }
+            CompilerType::Optional(payload) => self.dynamic_optional_type(payload),
             CompilerType::List(element) => self.list_type(element),
             CompilerType::Refined { constraint, base } => self.refined_type(constraint, base),
             CompilerType::Tuple(fields) => self.tuple_type(fields),
@@ -4962,6 +5331,20 @@ impl DebugInfo {
             self.file
         ));
         self.modular_types.push((modular.clone(), type_id));
+        type_id
+    }
+
+    fn dynamic_optional_type(&mut self, payload: &CompilerType) -> usize {
+        let value_type = CompilerType::Optional(Box::new(payload.clone()));
+        if let Some((_, type_id)) = self
+            .optional_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+        let type_id = self.optional_type(&payload.name(), self.optional_header_pointer_type);
+        self.optional_types.push((value_type, type_id));
         type_id
     }
 
@@ -5625,6 +6008,7 @@ const PLATFORM_RUNTIME: &str = include_str!("runtime/linux_x86_64.ll");
 const LIST_INT_LAYOUT: &str = include_str!("runtime/list_int_layout.ll");
 const LIST_INT_CONTAINMENT_RUNTIME: &str = include_str!("runtime/list_int_containment.ll");
 const LIST_INT_REMOVAL_RUNTIME: &str = include_str!("runtime/list_int_removal.ll");
+const LIST_INT_CORE_RUNTIME: &str = include_str!("runtime/list_int_core.ll");
 
 #[cfg(test)]
 mod tests {
@@ -5732,6 +6116,36 @@ mod tests {
         assert!(llvm.contains("call ptr @topal.runtime.list.int.remove.all"));
         assert!(!llvm.contains("topal.runtime.list.int.contains"));
         assert!(llvm.contains("DW_TAG_typedef, name: \"List Int\""));
+    }
+
+    #[test]
+    fn emits_basic_int_list_operations_and_total_decision() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-DECISION-LIST-001,
+        // TOPAL-TYPE-LIST-EQUALITY-001, TOPAL-LIST-PREPEND-001,
+        // TOPAL-LIST-APPEND-001, TOPAL-LIST-CONCAT-001,
+        // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-LIST-EMPTY-PREDICATE-001,
+        // TOPAL-LIST-EMPTY-001, TOPAL-LIST-ONE-001, TOPAL-LIST-UNCONS-001,
+        // TOPAL-LIST-FIRST-001, TOPAL-LIST-REST-001, TOPAL-LIST-REVERSE-001,
+        // TOPAL-COMPILER-LIST-INT-CORE-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/lists.t")).unwrap();
+        let llvm = Generator::new(&program, "lists.t").emit();
+
+        assert_eq!(llvm.matches("%topal.ListStorage = type").count(), 1);
+        assert!(llvm.contains("%topal.ListUnconsStorage = type { ptr, ptr }"));
+        assert!(llvm.contains("define internal ptr @topal.runtime.list.int.concat"));
+        assert!(llvm.contains("define internal ptr @topal.runtime.list.int.reverse"));
+        assert!(llvm.contains("define internal i1 @topal.runtime.list.int.equal"));
+        assert!(llvm.contains("define internal ptr @topal.runtime.list.int.entry.count"));
+        assert!(llvm.contains("define internal ptr @topal.runtime.list.int.first"));
+        assert!(llvm.contains("define internal ptr @topal.runtime.list.int.rest"));
+        assert!(llvm.contains("define internal ptr @topal.runtime.list.int.uncons"));
+        assert!(llvm.contains("list.decision.entry"));
+        assert!(llvm.contains("list.decision.empty"));
+        assert!(llvm.contains("call ptr @topal.runtime.optional.some"));
+        assert!(llvm.contains("call ptr @topal.runtime.optional.none"));
+        assert!(!llvm.contains("topal.runtime.list.int.contains"));
+        assert!(!llvm.contains("topal.runtime.list.int.remove"));
     }
 
     #[test]

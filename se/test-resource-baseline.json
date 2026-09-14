@@ -4964,6 +4964,21 @@
       "cpu_time_ns": 3320680,
       "memory_peak_bytes": 18382848,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_basic_int_list_operations_and_total_decision": {
+      "cpu_time_ns": 10680540,
+      "memory_peak_bytes": 18223104,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::basic_int_list_operations_are_freestanding_and_debuggable": {
+      "cpu_time_ns": 334866140,
+      "memory_peak_bytes": 57962496,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_basic_int_list_operations_and_total_decomposition": {
+      "cpu_time_ns": 4902840,
+      "memory_peak_bytes": 18358272,
+      "samples_per_test": 50
     }
   }
 }

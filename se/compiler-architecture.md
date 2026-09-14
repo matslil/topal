@@ -573,6 +573,20 @@ remains immutable. This sharing and batching are private implementation choices,
 not pointer-identity semantics or a persistent/public layout promise. Display,
 DWARF, and GDB continue to observe the same `List Int` source value.
 
+The basic Int List core is a third independently selected fragment over that
+same private node declaration. Prepend directly links a fresh head, while
+concat counts and copies only its left input into one contiguous Topal-owned
+mapping before linking the unchanged right input. Append composes a fresh
+singleton with concat, and reverse fills one contiguous mapping in reverse
+index order. Count, emptiness, first/rest/uncons, structural equality, and
+List-decision decomposition use finite generated or runtime control flow and
+canonical Int comparison; none relies on an optimization pass. The Optional
+tag, rather than payload nullness, distinguishes `Some Empty` from `None`.
+`uncons` stores its private two-pointer payload in Topal-owned memory. Semantic
+DWARF typedefs and validating GDB rendering recover `Optional List Int` and
+`Optional (Int, List Int)` without making the Optional header, pair, or node a
+public interface. Modules without these checked operations omit this fragment.
+
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
 action in its selected block, and compatible machine-scalar results merge with
