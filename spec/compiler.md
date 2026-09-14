@@ -950,6 +950,32 @@ reclamation beyond process lifetime; admit another List element or fold-state
 classifier; admit anonymous product patterns; or imply early traversal control
 or remaining collection algorithms.
 
+### TOPAL-COMPILER-LIST-INT-BOUND-FUNCTIONS-001 — Bound anonymous List functions
+
+The compiler SHALL extend the admitted `List Int` map/select/Int-state fold
+operations to an anonymous Function value first bound to an immutable name.
+The binding SHALL retain its anonymous parameter pattern, body, defining static
+context, and immutable lexical-capture snapshot. Each collection use SHALL
+infer and enforce the same exact scalar signature as a directly contextual
+body while preserving the bound Function's distinct source value and display
+identity.
+
+The Linux x86-64 backend SHALL specialize the retained body into the same
+finite source-ordered LLVM loops as the contextual form. Evaluating the
+Function binding MAY retain its private debug/display identity tag, but
+collection execution SHALL NOT dispatch on that tag or require a function
+pointer, callback convention, indirect call, closure allocation, or callable
+runtime. Behavior and rejection SHALL remain exact at O0 without optimization.
+DWARF and GDB SHALL preserve both bound Function identities and resulting
+List/Int values.
+
+This rule SHALL NOT create a public, foreign, serialized, persistent, or
+generic callable/collection ABI; stabilize a Function tag or List layout;
+admit named, symbolic, product-pattern, escaping, or dynamically selected
+collection functions; admit other element/result/state classifiers; or add a
+foreign allocator, C/C++ runtime, other-language standard library, undefined
+symbol, needed library, relocation, or native ABI revision.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed

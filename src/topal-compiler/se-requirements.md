@@ -1051,6 +1051,37 @@ remaining collection algorithms stay deferred. It realizes
 `TOPAL-COLLECTION-SELECT-001`, `TOPAL-COLLECTION-FOLD-001`, and
 `TOPAL-FUNCTION-ANONYMOUS-001` for compiler increment 4b3d-e.
 
+## TOPAL-COMP-LIST-INT-BOUND-FUNCTIONS-001 — Bound anonymous List functions
+
+The checked compiler model shall allow a binding-pattern anonymous Function to
+be bound immutably and later supplied to the admitted `List Int` map, select,
+or Int-state fold. The Function binding shall retain its parameter pattern,
+body, static context, and defining lexical-capture facts. At each collection
+use the compiler shall infer and require `Int -> Int`, `Int -> Boolean`, or
+`(Int, Int) -> Int` as appropriate, preserving the definition-time snapshot
+rather than resolving shadowing use-site bindings.
+
+The backend shall keep the bound Function's existing private identity tag for
+source display and debugging, but specialize the retained body directly into
+the finite loop introduced by `TOPAL-COMP-LIST-INT-FUNCTIONS-001`. Execution
+shall not inspect the tag or create a Function object, callback ABI, function
+pointer, indirect call, closure allocation, or traversal dispatcher. Once-only
+operand evaluation, per-entry source order, exact Int behavior, fresh immutable
+result publication, empty identities, and O0 correctness shall remain
+unchanged.
+
+DWARF and GDB shall expose each bound anonymous Function identity alongside
+the resulting List and Int bindings. This increment shall add no public,
+foreign, serialized, persistent, or generic callable/collection ABI, foreign
+allocator, C/C++ runtime, other-language standard library, undefined symbol,
+needed library, relocation, or `topal-native/6` revision. Named, symbolic,
+product-pattern, escaping, and dynamically selected collection functions and
+other element/result/state classifiers remain deferred. It realizes
+`TOPAL-COMPILER-LIST-INT-BOUND-FUNCTIONS-001`,
+`TOPAL-COLLECTION-MAP-001`, `TOPAL-COLLECTION-SELECT-001`,
+`TOPAL-COLLECTION-FOLD-001`, and `TOPAL-FUNCTION-ANONYMOUS-001` for compiler
+increment 4b3d-f.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when

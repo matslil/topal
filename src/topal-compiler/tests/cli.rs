@@ -2452,6 +2452,104 @@ fn int_list_removal_is_immutable_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn bound_anonymous_int_list_functions_are_specialized_and_debuggable() {
+    // TOPAL-COLLECTION-MAP-001, TOPAL-COLLECTION-SELECT-001,
+    // TOPAL-COLLECTION-FOLD-001, TOPAL-FUNCTION-ANONYMOUS-001,
+    // TOPAL-COMPILER-LIST-INT-BOUND-FUNCTIONS-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-bound-int-list-functions");
+    let source = directory.join("bound-int-list-functions.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ninspect is fn (values : List Int) -> Int\n  entry-count values\nvalues : List Int is Entry (1, Entry (2, Entry (3, Empty)))\nfactor is 2\ntwice is { value } value * factor\npositive is { value } value > 0\nsum is { state, value } state + value\nmapped is values map twice\nselected is values select positive\nfolded is values fold 0 sum\nresult is inspect mapped\n(mapped, selected, folded)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(Entry ( 2, Entry ( 4, Entry ( 6, Empty ) ) ), Entry ( 1, Entry ( 2, Entry ( 3, Empty ) ) ), 6)\n"
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break bound-int-list-functions.t:3",
+            "-ex",
+            "run",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis twice",
+            "-ex",
+            "print twice",
+            "-ex",
+            "whatis positive",
+            "-ex",
+            "print positive",
+            "-ex",
+            "whatis sum",
+            "-ex",
+            "print sum",
+            "-ex",
+            "print mapped",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert_eq!(text.matches("type = enum Function").count(), 3, "{text}");
+    assert_eq!(text.matches("<anonymous fn/1>").count(), 2, "{text}");
+    assert!(text.contains("<anonymous fn/2>"), "{text}");
+    assert!(
+        text.contains("$4 = Entry ( 2, Entry ( 4, Entry ( 6, Empty ) ) )"),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.inspect.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn contextual_int_list_functions_are_freestanding_and_debuggable() {
     // TOPAL-COLLECTION-MAP-001, TOPAL-COLLECTION-SELECT-001,
     // TOPAL-COLLECTION-FOLD-001, TOPAL-FUNCTION-ANONYMOUS-001,

@@ -4994,6 +4994,21 @@
       "cpu_time_ns": 3859420,
       "memory_peak_bytes": 18366464,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::specializes_bound_anonymous_int_list_functions_without_dispatch": {
+      "cpu_time_ns": 8643799,
+      "memory_peak_bytes": 18276352,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::bound_anonymous_int_list_functions_are_specialized_and_debuggable": {
+      "cpu_time_ns": 330594660,
+      "memory_peak_bytes": 57962496,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_bound_anonymous_int_list_functions": {
+      "cpu_time_ns": 3326920,
+      "memory_peak_bytes": 18374656,
+      "samples_per_test": 50
     }
   }
 }

@@ -600,6 +600,16 @@ runs once for each reached entry in List order. This deliberately keeps LLVM in
 control of SSA and target instruction lowering while avoiding callback ABI,
 indirect-call, dispatcher, host-recursion, and other-language runtime choices.
 
+An anonymous Function bound before a collection use keeps the existing private
+Function tag for source identity, display, DWARF, and GDB, but its callable
+meaning stays in checked compiler metadata: parameter pattern, body, static
+context, and definition-time capture facts. Map, select, or fold resolves that
+metadata and instantiates the same direct loop body as the contextual form.
+The tag never becomes an execution key, address, callback, or published symbol.
+Consequently this extension preserves lexical snapshots without adding a
+closure object, indirect call, collection dispatcher, callable ABI, or runtime
+dependency.
+
 Ordered comparison decisions lower directly to LLVM conditional branches in
 source order. Each matcher operand is emitted in its reached test block, each
 action in its selected block, and compatible machine-scalar results merge with

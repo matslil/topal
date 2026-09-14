@@ -14,6 +14,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/bindings-and-discard.t",
     "examples/language/boolean-decisions.t",
     "examples/language/boolean-logic.t",
+    "examples/language/bound-anonymous-functions.t",
     "examples/language/callable-values.t",
     "examples/language/character-classification.t",
     "examples/language/comparison-decision-forms.t",
