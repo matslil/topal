@@ -479,10 +479,11 @@ Generator token for observation and DWARF; that token never carries a cursor or
 drives traversal. Consuming the local binding transfers its retained evidence
 to the direct expansion, then the checked model rejects every later source use.
 This establishes local linearity without a copyable continuation object.
-Root abandonment, function results, and nonspecialized parameter traversal
-remain closed until a general owned state and close path exist. Canonical
-library metadata must identify the Generator classifier, pinned segmentation,
-evidence, ownership, and target adapter independently of the private token.
+Root abandonment, general/dynamic function results, and nonspecialized
+parameter traversal remain closed until a general owned state and close path
+exist. Canonical library metadata must identify the Generator classifier,
+pinned segmentation, evidence, ownership, and target adapter independently of
+the private token.
 
 Closed unchanged Character collection also keeps segmentation in the checked
 frontend, but needs no runtime traversal representation. The checked model
@@ -516,6 +517,19 @@ callee expands the exact Characters and action inline, exhausts the traversal,
 and returns without close. Nested calls stay closed. This is compile-session
 specialization, not serialized state or a public ABI, and adds no callback,
 indirect call, or Generator runtime.
+
+Fresh function results use the same private representation only for a
+statement-free ordinary function specialized from one exact top-level String
+argument. The checked body must be exactly `characters` of its String
+parameter. Each private symbol keys a compiler-session side table containing
+that call's pinned Character sequence; binding the call result transfers the
+entry into the caller's ordinary linear Generator tracking. Generated code
+passes the existing immutable String descriptor to the private function with
+LLVM `fastcc`, returns the `i32` token without close, then expands traversal in
+the caller. A debug-only source-parameter shadow preserves GDB inspection even
+though no runtime segmentation occurs. Dynamic, recursive, nested, static,
+anonymous, unbound, or compound result paths remain closed, and the side table
+is neither artifact metadata nor a public Generator ABI.
 
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked

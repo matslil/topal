@@ -931,6 +931,7 @@ struct Analyzer {
     function_values_used: bool,
     consumed_generators: BTreeSet<String>,
     generator_values: BTreeMap<String, CompilerExpression>,
+    returned_generator_values: BTreeMap<String, CompilerExpression>,
     static_context: bool,
     next_instance: usize,
 }
@@ -968,6 +969,7 @@ impl Analyzer {
             function_values_used: false,
             consumed_generators: BTreeSet::new(),
             generator_values: BTreeMap::new(),
+            returned_generator_values: BTreeMap::new(),
             static_context: false,
             next_instance: 0,
         }
@@ -2580,6 +2582,9 @@ impl Analyzer {
                             CompilerExpressionKind::Local(storage_name) => {
                                 self.generator_values.get(storage_name).cloned()
                             }
+                            CompilerExpressionKind::Call { symbol, .. } => {
+                                self.returned_generator_values.get(symbol).cloned()
+                            }
                             CompilerExpressionKind::IterateGenerator { .. }
                             | CompilerExpressionKind::GeneratorTakeWhile { .. }
                             | CompilerExpressionKind::UnfoldGenerator { .. }
@@ -2788,9 +2793,20 @@ impl Analyzer {
             let feature = format!("unconsumed generator `{name}` and close delivery");
             return Err(unsupported(&self.source, *span, &feature));
         }
+        let result = result.unwrap_or_else(|| unit_expression(Span::new(0, 0)));
+        if kind == BlockKind::TopLevel
+            && matches!(result.value_type, CompilerType::Generator(_))
+            && matches!(result.kind, CompilerExpressionKind::Call { .. })
+        {
+            return Err(unsupported(
+                &self.source,
+                result.span,
+                "unbound returned Generator and close delivery",
+            ));
+        }
         Ok(CompilerBlock {
             statements: lowered,
-            result: result.unwrap_or_else(|| unit_expression(Span::new(0, 0))),
+            result,
         })
     }
 
@@ -8576,11 +8592,31 @@ impl Analyzer {
             });
         }
         let result_type = self.parse_classifier(declaration.result)?;
-        if !compiler_function_result_supported(&result_type) {
+        let returns_character_generator = is_character_unit_generator_type(&result_type);
+        if !compiler_function_result_supported(&result_type) && !returns_character_generator {
             return Err(unsupported(
                 &self.source,
                 declaration.result,
                 "non-scalar function result",
+            ));
+        }
+        if returns_character_generator
+            && (self.in_function
+                || generalize_parameters
+                || declaration.is_static
+                || !matches!(
+                    parameters.as_slice(),
+                    [CompilerParameter {
+                        discarded: false,
+                        value_type: CompilerType::String,
+                        ..
+                    }]
+                ))
+        {
+            return Err(unsupported(
+                &self.source,
+                declaration.result,
+                "Character Generator result beyond one specialized ordinary String function",
             ));
         }
         let generator_parameters = parameters
@@ -8724,12 +8760,38 @@ impl Analyzer {
                 &body.result.value_type,
             )?;
         }
+        let returned_generator_value = if returns_character_generator {
+            let [parameter] = parameters.as_slice() else {
+                unreachable!("checked Character Generator result has one String parameter")
+            };
+            if !body.statements.is_empty()
+                || !matches!(
+                    body.result.kind,
+                    CompilerExpressionKind::StringCharactersGenerator { ref text, .. }
+                        if matches!(text.kind, CompilerExpressionKind::Local(ref name)
+                            if name == &parameter.name)
+                )
+            {
+                return Err(unsupported(
+                    &self.source,
+                    body.result.span,
+                    "Character Generator result beyond fresh parameter traversal",
+                ));
+            }
+            Some(body.result.clone())
+        } else {
+            None
+        };
         let symbol = reserved_symbol.map_or_else(
             || self.reserve_function_symbol(function_name),
             str::to_owned,
         );
         let int_range = body.result.int_range.clone();
         let rational_value = body.result.rational_value.clone();
+        if let Some(generator) = returned_generator_value {
+            self.returned_generator_values
+                .insert(symbol.clone(), generator);
+        }
         self.instances.push(CompilerFunction {
             source_name: function_name.to_owned(),
             symbol: symbol.clone(),
@@ -12878,6 +12940,113 @@ mod tests {
             nested_transfer
                 .message
                 .contains("nested Character Generator parameter transfer")
+        );
+    }
+
+    #[test]
+    fn models_specialized_string_character_generator_result_transfer() {
+        // TOPAL-STRING-CHARACTERS-FOREACH-001,
+        // TOPAL-STRING-CHARACTERS-GENERATOR-001,
+        // TOPAL-STRING-CHARACTERS-RESULT-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-RESULT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/string-character-generator-result.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "generate")
+            .expect("called generator factory is instantiated");
+        assert!(matches!(
+            function.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type: CompilerType::String,
+                ..
+            }] if name == "text"
+        ));
+        assert!(is_character_unit_generator_type(&function.result_type));
+        assert!(function.body.statements.is_empty());
+        assert!(matches!(
+            &function.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::StringCharactersGenerator {
+                    text,
+                    characters,
+                },
+                ..
+            } if matches!(text.kind, CompilerExpressionKind::Local(ref name) if name == "text")
+                && characters == &["a\u{301}", "👩‍🔬", "🇸🇪"]
+        ));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [
+                CompilerStatement::Binding(CompilerBinding {
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::Call { .. },
+                        value_type,
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::StringCharactersForeach { characters, .. },
+                    ..
+                })
+            ] if is_character_unit_generator_type(value_type)
+                && characters == &["a\u{301}", "👩‍🔬", "🇸🇪"]
+        ));
+
+        let distinct = analyze_for_compiler(
+            "use language (version is v0.1)\ngenerate is fn (text : String) -> Generator Character Unit Unit\n  characters text\nfirst is generate \"a\"\nfirst foreach { character }\n  _ is String character\nsecond is generate \"🇸🇪\"\nsecond foreach { character }\n  _ is String character\n",
+        )
+        .unwrap();
+        let traversals = distinct
+            .main
+            .statements
+            .iter()
+            .filter_map(|statement| match statement {
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::StringCharactersForeach { characters, .. },
+                    ..
+                }) => Some(characters.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            traversals,
+            [vec![String::from("a")], vec![String::from("🇸🇪")]]
+        );
+        let factory_symbols = distinct
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "generate")
+            .map(|function| function.symbol.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(factory_symbols.len(), 2);
+        assert_ne!(factory_symbols[0], factory_symbols[1]);
+
+        for source in [
+            "use language (version is v0.1)\ngenerate is fn (text : String) -> Generator Character Unit Unit\n  _ is 1\n  characters text\ngenerated is generate \"a\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\ngenerate is fn (text : String, ignored : Int) -> Generator Character Unit Unit\n  characters text\ngenerated is generate (\"a\", 0)\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\ngenerate is fn (text : String) -> Generator Character Unit Unit\n  characters text\nouter is fn (text : String) -> Generator Character Unit Unit\n  generate text\ngenerated is outer \"a\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nidentity is fn (text : String) -> String\n  text\ngenerate is fn (text : String) -> Generator Character Unit Unit\n  characters text\ngenerated is generate (identity \"a\")\ngenerated foreach { character }\n  _ is String character\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+        let unbound_result = analyze_for_compiler(
+            "use language (version is v0.1)\ngenerate is fn (text : String) -> Generator Character Unit Unit\n  characters text\ngenerate \"a\"\n",
+        )
+        .unwrap_err();
+        assert_eq!(unbound_result.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            unbound_result
+                .message
+                .contains("unbound returned Generator and close delivery")
         );
     }
 
