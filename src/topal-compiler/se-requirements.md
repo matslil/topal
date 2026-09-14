@@ -316,6 +316,29 @@ arithmetic code.
 This requirement covers `TOPAL-NUM-ARITHMETIC-ERROR-001` and realizes
 `TOPAL-COMPILER-ERROR-CODE-001` for compiler increment 2c-b4.
 
+## TOPAL-COMP-GENERATOR-ERROR-CODE-001 — Qualified generator code value
+
+The checked compiler shall resolve only `lang generator generator-closed` as
+the sole initial alternative of the nominal
+`lang generator GeneratorErrorCode` enum. It shall retain the exact nominal
+identity through immutable bindings, same-type equality, decomposed products,
+canonical output, DWARF, and GDB. Unknown, incomplete, and arithmetic-code names
+shall not be accepted as this vocabulary.
+
+The Linux x86-64 backend may reuse its private enum lowering with tag zero.
+Constructing or observing the value shall not allocate or control a generator,
+deliver a close signal, choose an `Error.domain`, or fabricate generator/yield
+provenance. The tag shall remain compiler-private rather than a public,
+foreign, persistent, serialized, or compiled-library identity; future library
+metadata shall carry canonical vocabulary and alternative identities instead.
+This increment shall admit no Generator classifier or function boundary,
+generator state/storage, suspension/resumption, close delivery/handling, or
+Error carrier. It shall require no generator runtime, allocator, foreign
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, or `topal-native/6` revision. This realizes
+`TOPAL-COMPILER-GENERATOR-ERROR-CODE-001` and
+`TOPAL-GENERATOR-ERROR-CODE-001` for compiler increment 5a.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted

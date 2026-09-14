@@ -247,6 +247,29 @@ values SHALL support same-type equality and admitted scalar function passage.
 Generated code SHALL NOT perform a runtime namespace lookup or introduce a
 foreign runtime dependency for a statically qualified code.
 
+### TOPAL-COMPILER-GENERATOR-ERROR-CODE-001 — Qualified generator code value
+
+The compiler SHALL resolve exactly `lang generator generator-closed` as the
+sole initial alternative of the nominal enum type
+`lang generator GeneratorErrorCode`. It SHALL preserve that identity through
+immutable bindings, same-type equality, decomposed products, canonical display,
+DWARF, and GDB. An unknown or incompletely qualified name SHALL NOT be
+reinterpreted as a generator error code or as the distinct arithmetic
+`ErrorCode` vocabulary.
+
+On Linux x86-64, the backend MAY lower the closed value to private enum tag
+zero. Ordinary construction and observation of this value SHALL NOT allocate,
+construct, suspend, resume, close, or otherwise control a generator; supply an
+intrinsic close result; choose an `Error.domain`; or fabricate generator or
+yield provenance. The private tag SHALL NOT become a public, foreign,
+persistent, serialized, or compiled-library identity. Future library metadata
+SHALL identify the vocabulary and alternative canonically and independently of
+the target tag. Generator classifiers and function boundaries, generator
+execution and storage, close delivery and handling, and Error integration
+remain unsupported. This increment SHALL require no generator runtime,
+allocator, foreign dependency, C/C++ runtime, other-language standard library,
+needed library, dynamic relocation, or native ABI revision.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve

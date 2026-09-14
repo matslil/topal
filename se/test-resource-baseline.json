@@ -5144,6 +5144,21 @@
       "cpu_time_ns": 3429700,
       "memory_peak_bytes": 18407424,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_generator_error_code_as_a_closed_nominal_tag_without_a_generator_runtime": {
+      "cpu_time_ns": 4667000,
+      "memory_peak_bytes": 18354176,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::generator_error_code_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 312714119,
+      "memory_peak_bytes": 56889344,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_qualified_generator_error_code_as_a_nominal_value": {
+      "cpu_time_ns": 3095160,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
     }
   }
 }

@@ -8792,6 +8792,29 @@ mod tests {
     }
 
     #[test]
+    fn emits_generator_error_code_as_a_closed_nominal_tag_without_a_generator_runtime() {
+        // TOPAL-GENERATOR-ERROR-CODE-001,
+        // TOPAL-COMPILER-GENERATOR-ERROR-CODE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/generator-error-codes.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "generator-error-codes.t").emit();
+
+        assert!(
+            llvm.contains("DW_TAG_enumeration_type, name: \"lang generator GeneratorErrorCode\"")
+        );
+        assert!(llvm.contains("DIEnumerator(name: \"generator-closed\", value: 0)"));
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("topal.platform.allocate"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_nominal_enums_as_checked_i32_tags_with_dwarf_enumerators() {
         // TOPAL-COMPILER-ENUM-001
         let source = "use language (version is v0.1)\nColor is Enum (Red, Green, Blue)\nnext is fn (value : Color) -> Color\n  value\n    Red then Green\n    Green then Blue\n    Blue then Red\n(next Red, next Green)\n";
