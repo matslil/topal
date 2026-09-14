@@ -82,6 +82,7 @@ evidence.
 | 5f | root bounded Int `iterate` foreach with exact predicate/body/next order, Unit result, iteration debugging, and no allocation or Generator object/runtime | complete |
 | 5g | root single-yield custom `Generator Character Unit Unit` declaration, application, suspension, local foreach consumption, and debugging through ordered inline lowering | complete |
 | 5h | consecutive custom Character yields with exact action/resume ordering, finite inline expansion, and no continuation object or runtime | complete |
+| 5i | one exact generator-local Character alias retained across admitted yields, caller non-escape, and lexical DWARF inspection without semantic state storage | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -327,8 +328,13 @@ The checked model retains the ordered finite suspension sequence, while the
 backend emits one direct action block and erased Unit resumption per yield
 before final Unit.
 This ordering is mandatory at O0 and does not depend on LLVM unrolling. Ordinary
-inter-yield statements, distinct or dynamic yielded values, captures, close
-handling, and general continuation state remain in increment 5.
+inter-yield statements and distinct or dynamic yielded values remained in
+increment 5. Increment 5i admits one explicitly classified Character alias of
+the initial parameter before those yields. Its checked identity never enters
+the caller environment, and a generator lexical DWARF shadow makes the exact
+preserved value inspectable during traversal without becoming semantic
+continuation storage. Other local computation, captures, close handling, and
+general continuation state remain in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

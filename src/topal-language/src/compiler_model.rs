@@ -491,10 +491,13 @@ pub enum CompilerExpressionKind {
         declaration_span: Span,
         initial: Box<CompilerExpression>,
         characters: Vec<String>,
+        locals: Vec<CompilerParameter>,
     },
     CustomCharacterForeach {
         source: Box<CompilerExpression>,
+        declaration_span: Span,
         characters: Vec<String>,
+        locals: Vec<CompilerParameter>,
         parameter: CompilerParameter,
         body: Box<CompilerBlock>,
     },
@@ -790,6 +793,7 @@ struct GeneratorSource {
     name: Span,
     span: Span,
     yield_count: usize,
+    local: Option<Span>,
 }
 
 #[derive(Clone)]
@@ -1857,6 +1861,34 @@ fn collect_character_generators(
                 "custom generator body without a yield",
             ));
         }
+        let (local, yielded_name, yields) = if let Some(Statement::Binding {
+            name: local_name,
+            classifier,
+            value: Expression::Identifier(local_value),
+        }) = yields.first()
+        {
+            if classifier.is_none_or(|classifier| source.slice(classifier) != "Character")
+                || source.slice(*local_value) != source.slice(parameter.name)
+                || source.slice(*local_name) == "_"
+                || source.slice(*local_name) == source.slice(parameter.name)
+            {
+                return Err(unsupported(
+                    source,
+                    *span,
+                    "custom generator local binding outside a distinct Character alias of its initial parameter",
+                ));
+            }
+            (Some(*local_name), *local_name, &yields[1..])
+        } else {
+            (None, parameter.name, yields)
+        };
+        if yields.is_empty() {
+            return Err(unsupported(
+                source,
+                *span,
+                "custom generator local binding without a following yield",
+            ));
+        }
         for yield_statement in yields {
             let Statement::Discard {
                 value:
@@ -1884,7 +1916,7 @@ fn collect_character_generators(
                 ));
             };
             if source.slice(*yield_operation) != "yield"
-                || source.slice(*yielded_value) != source.slice(parameter.name)
+                || source.slice(*yielded_value) != source.slice(yielded_name)
             {
                 return Err(unsupported(
                     source,
@@ -1899,6 +1931,7 @@ fn collect_character_generators(
                 name: *name,
                 span: *span,
                 yield_count: yields.len(),
+                local,
             },
         );
     }
@@ -3018,7 +3051,13 @@ impl Analyzer {
             );
         }
         if let Some(CompilerExpression {
-            kind: CompilerExpressionKind::CustomCharacterGenerator { characters, .. },
+            kind:
+                CompilerExpressionKind::CustomCharacterGenerator {
+                    declaration_span,
+                    characters,
+                    locals,
+                    ..
+                },
             ..
         }) = retained_generator
         {
@@ -3034,7 +3073,9 @@ impl Analyzer {
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::CustomCharacterForeach {
                     source: Box::new(source_value),
+                    declaration_span,
                     characters,
+                    locals,
                     parameter,
                     body: Box::new(body),
                 },
@@ -8208,12 +8249,24 @@ impl Analyzer {
             )
         })?;
         let characters = vec![character; declaration.yield_count];
+        let locals = declaration
+            .local
+            .into_iter()
+            .map(|span| CompilerParameter {
+                name: self.source.slice(span).to_owned(),
+                discarded: false,
+                value_type: CompilerType::Character,
+                int_range: None,
+                span,
+            })
+            .collect();
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::CustomCharacterGenerator {
                 declaration: self.source.slice(declaration.name).to_owned(),
                 declaration_span: declaration.span,
                 initial: Box::new(initial),
                 characters,
+                locals,
             },
             value_type: character_unit_generator_type(),
             int_range: None,
@@ -13198,6 +13251,67 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+    }
+
+    #[test]
+    fn models_custom_generator_local_character_alias() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-LOCAL-BINDING-001,
+        // TOPAL-GENERATOR-SUSPEND-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-LOCAL-BINDING-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-local-binding.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [
+                CompilerStatement::Binding(CompilerBinding {
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::CustomCharacterGenerator {
+                            declaration,
+                            characters,
+                            locals,
+                            ..
+                        },
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterForeach {
+                        characters: yielded,
+                        locals: traversal_locals,
+                        parameter,
+                        ..
+                    },
+                    value_type: CompilerType::Unit,
+                    ..
+                })
+            ] if declaration == "copy-once"
+                && characters == &[String::from("T")]
+                && locals.len() == 1
+                && locals[0].name == "copy"
+                && locals[0].value_type == CompilerType::Character
+                && traversal_locals == locals
+                && yielded == &[String::from("T")]
+                && parameter.value_type == CompilerType::Character
+        ));
+
+        for source in [
+            "use language (version is v0.1)\ncopy-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  copy : Int is initial\n  _ is yield copy\n  ()\ngenerated is copy-once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\ncopy-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  copy : Character is initial\n  _ is 1\n  _ is yield copy\n  ()\ngenerated is copy-once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+
+        let escaped = "use language (version is v0.1)\ncopy-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  copy : Character is initial\n  _ is yield copy\n  ()\ngenerated is copy-once \"T\"\ngenerated foreach { character }\n  _ is String character\n_ is String copy\n";
+        assert_eq!(
+            analyze_for_compiler(escaped).unwrap_err().code,
+            "E-UNBOUND-NAME"
+        );
     }
 
     #[test]
