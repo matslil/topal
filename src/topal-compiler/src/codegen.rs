@@ -1128,18 +1128,29 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::CustomCharacterForeach {
                 source,
+                declaration_span,
                 characters,
+                locals,
                 parameter,
                 body: action,
-            } => self.emit_character_sequence_foreach(
-                source,
-                characters,
-                parameter,
-                action,
-                body,
-                environment,
-                expression.span,
-            ),
+            } => {
+                let parent_scope = body.subprogram;
+                if !locals.is_empty() {
+                    body.subprogram = self.debug.lexical_block(*declaration_span, parent_scope);
+                }
+                let result = self.emit_character_sequence_foreach(
+                    source,
+                    characters,
+                    locals.first(),
+                    parameter,
+                    action,
+                    body,
+                    environment,
+                    expression.span,
+                );
+                body.subprogram = parent_scope;
+                result
+            }
             CompilerExpressionKind::ErrorCode(value) => LlValue::ErrorCode(value.to_string()),
             CompilerExpressionKind::Enum(value) => {
                 let CompilerType::Enum(enumeration) = &expression.value_type else {
@@ -5716,6 +5727,7 @@ impl<'a> Generator<'a> {
         self.emit_character_sequence_foreach(
             source,
             characters,
+            None,
             parameter,
             action,
             body,
@@ -5729,6 +5741,7 @@ impl<'a> Generator<'a> {
         &mut self,
         source: &CompilerExpression,
         characters: &[String],
+        generator_local: Option<&CompilerParameter>,
         parameter: &CompilerParameter,
         action: &CompilerBlock,
         body: &mut FunctionBody,
@@ -5736,6 +5749,15 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> LlValue {
         let _ = self.emit_expression(source, body, environment);
+        let generator_local_address = generator_local.map(|local| {
+            let variable =
+                self.debug
+                    .local(&local.name, local.span, &local.value_type, body.subprogram);
+            let address = body.instruction("alloca ptr, align 8", local.span, &mut self.debug);
+            let location = self.debug.location(local.span, body.subprogram);
+            body.debug_declare(&address, variable, location);
+            address
+        });
         let debug_address = (!parameter.discarded).then(|| {
             let variable = self.debug.local(
                 &parameter.name,
@@ -5748,9 +5770,18 @@ impl<'a> Generator<'a> {
             body.debug_declare(&address, variable, location);
             address
         });
-        for character in characters {
+        for (index, character) in characters.iter().enumerate() {
             let value = LlValue::String(self.emit_string_value(character, body, span));
             let mut action_environment = environment.clone();
+            if index == 0
+                && let (Some(local), Some(address)) = (generator_local, &generator_local_address)
+            {
+                body.effect(
+                    &format!("store ptr {}, ptr {address}, align 8", value.string()),
+                    local.span,
+                    &mut self.debug,
+                );
+            }
             if let Some(address) = &debug_address {
                 body.effect(
                     &format!("store ptr {}, ptr {address}, align 8", value.string()),
@@ -9739,6 +9770,35 @@ mod tests {
         assert_eq!(main.matches("store ptr").count(), 2);
         assert!(main.contains("#dbg_value(i32 0"));
         assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_custom_generator_local_binding_in_lexical_debug_scope() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-LOCAL-BINDING-001,
+        // TOPAL-GENERATOR-SUSPEND-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-LOCAL-BINDING-001
+        let source = include_str!("../../../examples/language/custom-generator-local-binding.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-local-binding.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert_eq!(main.matches("store ptr").count(), 2);
+        assert!(main.contains("#dbg_value(i32 0"));
+        assert_eq!(main.matches("#dbg_declare(ptr").count(), 2);
+        assert!(llvm.contains("DILocalVariable(name: \"copy\""));
+        assert!(llvm.contains("DILexicalBlock("));
         assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
         assert!(llvm.contains("name: \"Character\""));
         assert!(!main.contains("generator.foreach.loop"));

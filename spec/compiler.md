@@ -474,6 +474,36 @@ metadata SHALL identify the ordered suspension graph and its canonical
 declaration/direction, capture/effect, ownership/close, and target-adapter
 evidence.
 
+### TOPAL-COMPILER-GENERATOR-LOCAL-BINDING-001 — Exact local state retention
+
+The compiler SHALL admit the existing custom Character-generator subset when
+the body begins with exactly one explicitly classified immutable Character
+binding initialized from the sole initial Character parameter, followed by one
+or more consecutive discarded yields of that local and final Unit. Application
+SHALL evaluate the initial operand once, evaluate the alias in generator scope
+before the first suspension, and retain its identity and exact Character value
+as compile-session provenance. Every retained yield SHALL observe that local,
+and the binding SHALL NOT become visible in the caller's checked environment.
+
+Root `foreach` SHALL preserve linear consumption and the existing ordered
+action, Unit-resumption, and final-Unit behavior. On Linux x86-64, lowering
+SHALL materialize the proven immutable Character value and create a debug-only
+pointer shadow for the local in a generator lexical DWARF scope before the
+first action. The shadow MAY remain live across the admitted yields but SHALL
+be out of scope after traversal. This O0 semantic lowering SHALL NOT depend on
+an optimization pass or introduce a Generator object, semantic state
+allocation, dispatcher, callback, indirect call, foreign runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or native-ABI revision.
+
+Other local classifiers or initializers, additional or inter-yield statements,
+dynamic Character provenance, captures, resume bindings, close handling, and
+function or library boundaries SHALL remain unsupported. Future
+compiled-library metadata SHALL identify local state canonically with the
+declaration, directions, ordered suspension graph, capture/effect evidence,
+ownership/close behavior, and target adapters rather than expose the
+executable-local debug shadow.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve

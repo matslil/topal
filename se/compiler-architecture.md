@@ -888,6 +888,21 @@ close handling, and external boundaries still require the canonical suspension
 graph, environment/effect, ownership/close, and target-adapter metadata planned
 for general generators.
 
+The first local-state slice admits one leading explicitly classified Character
+alias of the generator's sole initial Character and requires every retained
+yield to observe that alias. Because the admitted initializer is an immutable
+identity, construction still evaluates the source operand once; the checked
+model records the local name, type, source span, and exact descriptor alongside
+the suspension sequence without inserting the name into the caller
+environment. During root traversal, lowering materializes the proven immutable
+value and gives the local a debug-only pointer shadow inside a generator
+lexical DWARF block before the first action. The shadow remains available
+across admitted yields and leaves scope with the traversal. It is not semantic
+continuation storage and establishes no public or library layout. General
+initializer computation, additional state, mutation, resume values, captures,
+and external boundaries still require canonical state identities and types in
+the suspension graph and compiled-library metadata.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an
