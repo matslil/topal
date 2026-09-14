@@ -1208,6 +1208,36 @@ other introspection subjects and relations, later context changes, deliberate
 static-to-runtime conversion, and Version operations or function boundaries
 remain unsupported.
 
+### TOPAL-COMPILER-CAPABILITY-COMPOSE-001 — Closed static Capability composition
+
+For a v0.1 source context without optional features, the compiler SHALL admit
+the atomic `Equality`, `Ordering`, `Foldable`, `Membership`, `Indexed`, and
+`Keyed` Capability values and root bindings formed from them with `and` and
+`or`. An explicit `Capability` classifier SHALL be checked without changing the
+value. `and` SHALL form the cross-product of alternatives and retain every
+atomic promise in each resulting conjunction. `or` SHALL retain the alternatives
+from both operands. Within this closed subset, conjunction members and
+alternatives SHALL be canonical, order-independent, and idempotent, in
+conformance with `TOPAL-CAPABILITY-COMPOSE-001`.
+
+Each Capability SHALL remain static checked metadata and SHALL create no
+runtime method namespace, evidence object, table, tag, descriptor, allocation,
+symbol, or DWARF variable or type. Root bindings and discarded values SHALL
+lower to no LLVM instruction. When the complete source-entry result is exactly
+one admitted Capability, the compiler MAY produce its canonical textual
+observation as a constant output literal; this SHALL NOT materialize the
+Capability as a runtime value. Capability containment in another value,
+non-root binding, function or other machine boundary, unsupported atom,
+application, evidence claim, or operator SHALL remain rejected.
+
+The generated Linux x86-64 executable SHALL remain free of undefined symbols,
+needed libraries, and load-time relocations and SHALL use only the existing
+Topal-owned syscall writer for the final observation. It SHALL introduce no
+foreign runtime, C/C++ standard library, public or foreign Capability ABI,
+serialized representation, compiled-library metadata format, or native-ABI
+revision. Future library metadata SHALL encode canonical semantic Capability
+identities in a separately versioned schema rather than reuse a target lowering.
+
 ### TOPAL-COMPILER-OPTIONAL-001 — Native Optional values
 
 Within the admitted `Int` and `String` payload subset, `Optional T` SHALL retain

@@ -76,6 +76,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::TypeView
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
+        | CompilerType::Capability
         | CompilerType::Constraint
         | CompilerType::Boolean
         | CompilerType::Int
@@ -273,6 +274,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::TypeView(_)
         | CompilerExpressionKind::FunctionView(_)
         | CompilerExpressionKind::LanguageContext(_)
+        | CompilerExpressionKind::Capability(_)
         | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Version(_)
@@ -416,6 +418,7 @@ impl<'a> Generator<'a> {
         let location = self.debug.location(function.body.result.span, subprogram);
         match result {
             LlValue::Unit => body.terminator("ret void", location),
+            LlValue::StaticDisplay(_) => unreachable!("static Capability function result"),
             LlValue::Completed(value) | LlValue::Effect(value) => {
                 body.terminator(&format!("ret i8 {value}"), location);
             }
@@ -942,6 +945,9 @@ impl<'a> Generator<'a> {
             | CompilerExpressionKind::TypeView(_)
             | CompilerExpressionKind::FunctionView(_)
             | CompilerExpressionKind::LanguageContext(_) => LlValue::Unit,
+            CompilerExpressionKind::Capability(capability) => {
+                LlValue::StaticDisplay(capability.display())
+            }
             CompilerExpressionKind::Completed => LlValue::Completed("0".into()),
             CompilerExpressionKind::Effect => LlValue::Effect("0".into()),
             CompilerExpressionKind::TypeValue(value) => LlValue::Enum {
@@ -1892,6 +1898,7 @@ impl<'a> Generator<'a> {
                     | CompilerType::TypeView
                     | CompilerType::FunctionView
                     | CompilerType::LanguageContext
+                    | CompilerType::Capability
                     | CompilerType::Constraint
                     | CompilerType::Refined { .. }
                     | CompilerType::TraversalControl(_) => {
@@ -4200,6 +4207,9 @@ impl<'a> Generator<'a> {
         };
         match first {
             LlValue::Unit => LlValue::Unit,
+            LlValue::StaticDisplay(_) => {
+                unreachable!("static Capability decision results are not admitted")
+            }
             LlValue::Completed(_) | LlValue::Effect(_) => {
                 let value = body.instruction(
                     &format!("phi i8 {}", incoming(LlValue::singleton)),
@@ -4448,7 +4458,9 @@ impl<'a> Generator<'a> {
                 body.terminator(&format!("br label %{done_label}"), location);
                 body.start_block(&done_label);
             }
-            LlValue::Version { display, .. } => self.emit_write_literal(display, body, span),
+            LlValue::Version { display, .. } | LlValue::StaticDisplay(display) => {
+                self.emit_write_literal(display, body, span);
+            }
             LlValue::Int(value) => body.effect(
                 &format!("call void @topal.runtime.int.print(ptr {value})"),
                 span,
@@ -5131,6 +5143,7 @@ impl<'a> Generator<'a> {
 #[derive(Clone)]
 enum LlValue {
     Unit,
+    StaticDisplay(String),
     Completed(String),
     Effect(String),
     Boolean(String),
@@ -5317,6 +5330,9 @@ impl LlValue {
     fn argument(&self) -> String {
         match self {
             Self::Unit => "i8 0".into(),
+            Self::StaticDisplay(_) => {
+                unreachable!("static Capability values are not call arguments")
+            }
             Self::Completed(value) | Self::Effect(value) => format!("i8 {value}"),
             Self::Boolean(value) => format!("i1 {value}"),
             Self::Version { value, .. }
@@ -5427,6 +5443,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         | CompilerType::TypeView
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
+        | CompilerType::Capability
         | CompilerType::Constraint => {
             unreachable!("static object values are not admitted in sum payloads")
         }
@@ -5598,7 +5615,10 @@ impl FunctionBody {
             LlValue::Comparison(value)
             | LlValue::ErrorCode(value)
             | LlValue::Enum { value, .. } => format!("i32 {value}"),
-            LlValue::Tuple(_) | LlValue::Record { .. } | LlValue::Sum { .. } => return,
+            LlValue::StaticDisplay(_)
+            | LlValue::Tuple(_)
+            | LlValue::Record { .. }
+            | LlValue::Sum { .. } => return,
         };
         self.debug_value_operand(&value, variable, location);
     }
@@ -6131,11 +6151,12 @@ impl DebugInfo {
                 .enum_types
                 .get("Function")
                 .expect("checked Function values install their debug type"),
-            CompilerType::Identity | CompilerType::TypeView | CompilerType::LanguageContext => {
-                unreachable!("static-only introspection values have no runtime debug type")
-            }
-            CompilerType::FunctionView => {
-                unreachable!("static-only Function views have no runtime debug type")
+            CompilerType::Identity
+            | CompilerType::TypeView
+            | CompilerType::FunctionView
+            | CompilerType::LanguageContext
+            | CompilerType::Capability => {
+                unreachable!("static-only compiler values have no runtime debug type")
             }
             CompilerType::Constraint => *self
                 .enum_types
@@ -6737,8 +6758,9 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         CompilerType::Identity
         | CompilerType::TypeView
         | CompilerType::FunctionView
-        | CompilerType::LanguageContext => {
-            unreachable!("static-only introspection values have no target value layout")
+        | CompilerType::LanguageContext
+        | CompilerType::Capability => {
+            unreachable!("static-only compiler values have no target value layout")
         }
         CompilerType::Version
         | CompilerType::Int
@@ -6818,7 +6840,8 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
         CompilerType::Identity
         | CompilerType::TypeView
         | CompilerType::FunctionView
-        | CompilerType::LanguageContext => false,
+        | CompilerType::LanguageContext
+        | CompilerType::Capability => false,
         CompilerType::Tuple(fields) => fields.iter().all(private_aggregate_value_supported),
         CompilerType::Record(fields) => fields
             .iter()
@@ -6838,8 +6861,9 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         CompilerType::Identity
         | CompilerType::TypeView
         | CompilerType::FunctionView
-        | CompilerType::LanguageContext => {
-            unreachable!("static-only introspection values have no LLVM value type")
+        | CompilerType::LanguageContext
+        | CompilerType::Capability => {
+            unreachable!("static-only compiler values have no LLVM value type")
         }
         CompilerType::Unit | CompilerType::Completed | CompilerType::Effect => "i8".into(),
         CompilerType::Boolean => "i1".into(),
@@ -6921,8 +6945,9 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::Identity
         | CompilerType::TypeView
         | CompilerType::FunctionView
-        | CompilerType::LanguageContext => {
-            unreachable!("static-only introspection values have no machine representation")
+        | CompilerType::LanguageContext
+        | CompilerType::Capability => {
+            unreachable!("static-only compiler values have no machine representation")
         }
         CompilerType::Version => {
             unreachable!("Version function boundaries are not admitted")
@@ -7832,6 +7857,26 @@ mod tests {
         assert!(!llvm.contains("current-context"));
         assert!(!llvm.contains("topal.runtime.introspection"));
         assert!(!llvm.contains("topal.runtime.version"));
+    }
+
+    #[test]
+    fn folds_and_erases_static_capability_composition() {
+        // TOPAL-CAPABILITY-EVIDENCE-001, TOPAL-CAPABILITY-COHERENCE-001,
+        // TOPAL-CAPABILITY-COMPOSE-001, TOPAL-COMPILER-CAPABILITY-COMPOSE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/capability-composition.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "capability-composition.t").emit();
+        assert!(llvm.contains(&llvm_bytes(
+            b"Equality and Ordering or Foldable and Membership"
+        )));
+        assert!(!llvm.contains("Comparable"));
+        assert!(!llvm.contains("Searchable"));
+        assert!(!llvm.contains("ComparableOrSearchable"));
+        assert!(!llvm.contains("Capability"));
+        assert!(!llvm.contains("topal.runtime.capability"));
+        assert!(!llvm.contains("topal.runtime.evidence"));
     }
 
     #[test]

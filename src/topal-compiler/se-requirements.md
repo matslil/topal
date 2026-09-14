@@ -1325,6 +1325,36 @@ realizes `TOPAL-COMPILER-STATIC-INTROSPECTION-001`,
 `TOPAL-INTRO-VIEW-001`, `TOPAL-INTRO-CONTEXT-001`, and
 `TOPAL-INTRO-RELATION-001` for compiler increment 8a3.
 
+## TOPAL-COMP-CAPABILITY-COMPOSE-001 — Closed static Capability composition
+
+The checked compiler model shall recognize the six v0.1 atomic Capability
+values `Equality`, `Ordering`, `Foldable`, `Membership`, `Indexed`, and `Keyed`.
+It shall retain canonical alternatives of canonical atomic-promise
+conjunctions, fold root-scope `and` as their cross-product, fold `or` as their
+alternative union, remove duplicates, and validate the explicit `Capability`
+classifier. These values shall be static-only. Root binding chains shall retain the
+checked metadata, while non-root bindings, aggregate containment, functions and
+other machine boundaries, unknown atoms, application, claims, and other
+operators shall receive stable checked diagnostics.
+
+Code generation shall erase every Capability binding and discard before LLVM,
+including its source name, type, metadata, and debug entry. An exact
+source-entry Capability result may emit only its canonical interpreter-matching
+text through the existing Topal syscall writer; no Capability machine value may
+be formed. LLVM IR and the executable shall contain no capability/evidence
+runtime helper, dispatch, table, tag, descriptor, registry, allocation, or
+DWARF Capability type. Native artifact tests shall retain zero undefined
+symbols, needed libraries, and load-time relocations.
+
+This increment shall add no foreign runtime, C/C++ runtime, other-language
+standard library, public/foreign/serialized/library Capability ABI,
+compiled-library metadata format, or `topal-native/6` revision. Future library
+metadata shall use separately versioned canonical semantic identities rather
+than any target representation. This realizes
+`TOPAL-COMPILER-CAPABILITY-COMPOSE-001`,
+`TOPAL-CAPABILITY-EVIDENCE-001`, `TOPAL-CAPABILITY-COHERENCE-001`, and
+`TOPAL-CAPABILITY-COMPOSE-001` for compiler increment 8a4.
+
 ## TOPAL-COMP-PATTERN-001 — Positional product and discard inputs
 
 For an admitted ordinary function with multiple scalar parameters, a prefix

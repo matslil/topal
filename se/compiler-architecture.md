@@ -774,6 +774,25 @@ language-context values through a separately versioned schema rather than copy
 this target representation. No reflection table, Version runtime helper,
 foreign runtime, or other-language standard library is introduced.
 
+Closed v0.1 Capability composition follows the same semantic/machine split even
+more strictly. The checked model stores an alternative set whose members are
+canonical sets of atomic Capability identities. It computes `and` as an
+alternative cross-product and `or` as a set union, sorting and deduplicating at
+the frontend boundary so neither source order nor LLVM optimization can affect
+identity. Root Capability bindings carry only that compiler metadata. They emit no
+instruction, symbol, descriptor, debug type, or debug variable. If the complete
+application result is the Capability itself, the backend sends its already
+canonical spelling through the existing syscall writer as a literal; there is
+still no Capability runtime value or evidence namespace.
+
+This representation intentionally stops before capability claims, operation
+roles, generic evidence, function passage, or compiled-library exchange. Those
+features require canonical subject and declaration identities plus a versioned
+metadata schema, not a target tag or method table. The current executable thus
+adds no runtime helper, dispatch, allocation, ABI surface, foreign dependency,
+or other-language standard library, while future library consumers can validate
+semantic identities independently of the Linux x86-64 lowering.
+
 An admitted named `Constraint` object is likewise split between semantic
 metadata and a private observation value. The checked program model retains
 the root binding identity, primitive base classifier, predicate parameter, and

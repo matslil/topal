@@ -3629,6 +3629,8 @@ impl Session {
                         (left.clone(), right.clone())
                     {
                         left.extend(right);
+                        left.sort();
+                        left.dedup();
                         trace.record(TraceEvent {
                             event: "capability.composed",
                             rule: "TOPAL-CAPABILITY-EVIDENCE-001",
@@ -13466,7 +13468,7 @@ fn apply_and(
         return Ok(Value::Boolean(*left && *right));
     }
     if let (Value::Capability(left), Value::Capability(right)) = (&left, &right) {
-        let alternatives = left
+        let mut alternatives: Vec<BTreeSet<String>> = left
             .iter()
             .flat_map(|left| {
                 right.iter().map(move |right| {
@@ -13476,6 +13478,8 @@ fn apply_and(
                 })
             })
             .collect();
+        alternatives.sort();
+        alternatives.dedup();
         trace.record(TraceEvent {
             event: "capability.composed",
             rule: "TOPAL-CAPABILITY-EVIDENCE-001",
