@@ -125,6 +125,7 @@ pub enum Value {
     UnfoldGenerator {
         seed: Box<Self>,
         step: Box<Self>,
+        yield_classifier: String,
     },
     SuspendedGenerator {
         source: Box<SourceText>,
@@ -483,7 +484,9 @@ impl fmt::Display for Value {
             Self::IterateGenerator { classifier, .. } => {
                 write!(formatter, "<Generator {classifier} Unit Unit>")
             }
-            Self::UnfoldGenerator { .. } => formatter.write_str("<Generator Value Unit Unit>"),
+            Self::UnfoldGenerator {
+                yield_classifier, ..
+            } => write!(formatter, "<Generator {yield_classifier} Unit Unit>"),
             Self::SuspendedGenerator {
                 yield_classifier,
                 return_classifier,
@@ -5469,9 +5472,11 @@ impl Session {
             rule: "TOPAL-GENERATOR-UNFOLD-001",
             detail: &structural_value_classifier(&seed),
         });
+        let yield_classifier = infer_unfold_yield_classifier(&seed, &step);
         let value = Value::UnfoldGenerator {
             seed: Box::new(seed),
             step: Box::new(step),
+            yield_classifier,
         };
         self.checkpoint(trace, Some(&value), Some(span));
         Ok(value)
@@ -6813,11 +6818,16 @@ impl Session {
         result_span: Span,
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
-        let Value::UnfoldGenerator { mut seed, step } = generator else {
+        let Value::UnfoldGenerator {
+            mut seed,
+            step,
+            yield_classifier,
+        } = generator
+        else {
             unreachable!("unfold collection requires unfold generator")
         };
         let seed_classifier = structural_value_classifier(&seed);
-        let mut element_classifier = None;
+        let mut element_classifier = (yield_classifier != "Value").then_some(yield_classifier);
         let mut entries = Vec::new();
         loop {
             let result = self.invoke_anonymous_function(&step, vec![*seed], result_span, trace)?;
@@ -6891,6 +6901,38 @@ impl Session {
         };
         self.checkpoint(trace, Some(&value), Some(result_span));
         Ok(value)
+    }
+}
+
+fn infer_unfold_yield_classifier(seed: &Value, step: &Value) -> String {
+    let Value::List {
+        element_classifier, ..
+    } = seed
+    else {
+        return "Value".into();
+    };
+    let Value::AnonymousFunction(function) = step else {
+        return "Value".into();
+    };
+    let [CapturedPattern::Binding(parameter)] = function.parameters.as_slice() else {
+        return "Value".into();
+    };
+    let Expression::Application { items, .. } = function.body.as_ref() else {
+        return "Value".into();
+    };
+    let [
+        Expression::Identifier(operation),
+        Expression::Identifier(argument),
+    ] = items.as_slice()
+    else {
+        return "Value".into();
+    };
+    if function.source.slice(*operation) == "uncons"
+        && function.source.slice(*argument) == parameter
+    {
+        element_classifier.clone()
+    } else {
+        "Value".into()
     }
 }
 
@@ -9831,8 +9873,11 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
     {
         return classifier == format!("Generator {yielded} Unit Unit");
     }
-    if matches!(value, Value::UnfoldGenerator { .. }) {
-        return classifier == "Generator Value Unit Unit";
+    if let Value::UnfoldGenerator {
+        yield_classifier, ..
+    } = value
+    {
+        return classifier == format!("Generator {yield_classifier} Unit Unit");
     }
     if let Value::Optional {
         payload_classifier, ..
@@ -12330,7 +12375,9 @@ fn structural_value_classifier(value: &Value) -> String {
         Value::IterateGenerator { classifier, .. } => {
             format!("Generator {classifier} Unit Unit")
         }
-        Value::UnfoldGenerator { .. } => "Generator Value Unit Unit".into(),
+        Value::UnfoldGenerator {
+            yield_classifier, ..
+        } => format!("Generator {yield_classifier} Unit Unit"),
         Value::Enum { type_name, .. } | Value::Modular { type_name, .. } => type_name.clone(),
         Value::Union(union) => union.type_name.clone(),
         Value::Constraint(constraint) => format!("Constraint {}", constraint.base_classifier),

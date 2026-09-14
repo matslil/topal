@@ -4148,7 +4148,7 @@ fn every_mode_constructs_lazy_unfold_generators() {
         assert!(
             String::from_utf8(output.stdout)
                 .unwrap()
-                .contains("<Generator Value Unit Unit>")
+                .contains("<Generator Int Unit Unit>")
         );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();

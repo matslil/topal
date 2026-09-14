@@ -298,6 +298,34 @@ SHALL NOT traverse, yield, resume, suspend, close, allocate generator storage,
 emit an indirect call or generator runtime, introduce a foreign dependency or
 other-language standard library, or revise `topal-native/6`.
 
+### TOPAL-COMPILER-GENERATOR-UNFOLD-CONSTRUCT-001 — Lazy unfold construction
+
+The compiler SHALL admit construction of an exact `Generator Int Unit Unit`
+from a `List Int` seed and a unary anonymous
+`List Int -> Optional (Int, List Int)` step operation. Seed and yielded
+classifiers SHALL remain distinct. Construction SHALL evaluate the seed
+expression exactly once, retain the checked seed, parameter, and step structure
+for later generator lowering, and SHALL NOT invoke the step. Final observation
+SHALL use the canonical `<Generator Int Unit Unit>` display.
+
+The construction SHALL obey the same one-consumption local linearity boundary
+as admitted `iterate` values. In particular, a second read, abandonment,
+explicit discard, product containment, qualified access, equality, decision
+join, and function or library boundary SHALL be rejected before LLVM lowering.
+An anonymous step that captures a Generator SHALL also be rejected.
+
+On Linux x86-64, the backend MAY use the construction-only private `i32`
+observation token and semantic `Generator Int Unit Unit` DWARF already defined
+for `iterate`. The token SHALL NOT encode the seed, the step, captures,
+continuation state, ownership, or a stable ABI. Future compiled-library
+metadata SHALL identify the Generator classifier, distinct seed and yield
+classifiers, step signature, captured operations, and evidence canonically,
+with a target-specific representation adapter. This increment SHALL NOT
+traverse, collect, yield, resume, suspend, close, allocate Generator storage,
+emit an indirect call or Generator runtime, introduce a foreign dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library Generator ABI, or `topal-native/6` revision.
+
 ### TOPAL-COMPILER-GENERATOR-ITERATE-COLLECT-001 — Finite iterate collection
 
 Unary `collect` SHALL consume a syntactically direct

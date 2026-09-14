@@ -738,6 +738,21 @@ dispatcher, callback, indirect call, or host recursion. The specialized loop
 is executable-local and leaves Generator function/library representation and
 canonical captured-operation metadata to a later versioned boundary.
 
+The first `unfold` slice likewise stops at lazy construction. The checked model
+retains a `List Int` seed, unary
+`List Int -> Optional (Int, List Int)` step, and exact
+`Generator Int Unit Unit` result, preserving that the seed and yielded
+classifiers differ. Generated code evaluates the seed once but emits neither
+the step nor executable generator state; final observation reuses the private
+`i32` Generator token and semantic DWARF. The interpreter's matching lazy value
+records the Int yield classifier for the recognized List/`uncons` step without
+invoking it, so shared differential execution observes the design-specified
+classifier. Generator captures and all local escape routes remain checked out.
+Traversal will require an owned seed/capture/state representation and cleanup;
+compiled-library metadata must carry the canonical Generator classifier, seed
+and yield classifiers, step signature, captured operation/evidence identities,
+and target adapter rather than exporting this construction token.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an
