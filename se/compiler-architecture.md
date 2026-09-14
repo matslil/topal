@@ -484,6 +484,17 @@ and close path exist, and canonical library metadata can identify the
 Generator classifier, pinned segmentation, evidence, ownership, and target
 adapter independently of the private token.
 
+Closed unchanged Character collection also keeps segmentation in the checked
+frontend, but needs no runtime traversal representation. The checked model
+retains the ordered clusters as proof that `characters text collect String`
+has the exact preserved source sequence. The backend evaluates `text` once and
+forwards that immutable String descriptor as the result. This is explicit O0
+semantic lowering, not LLVM identity discovery, and does not generalize to a
+selected, mapped, stored, or otherwise transformed traversal. It therefore
+adds no intermediate List, concatenation loop, Generator state, Unicode
+runtime, foreign dependency, or ABI surface; library use remains gated on
+canonical traversal evidence and target-adapter metadata.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by

@@ -1792,6 +1792,30 @@ or result transfer, persistent or serialized identity, and external library
 boundaries remain rejected until canonical Generator, segmentation,
 operation/evidence, ownership, close, and target-adapter metadata are defined.
 
+### TOPAL-COMPILER-STRING-CHARACTERS-COLLECT-001 — Closed String reconstruction
+
+The compiler SHALL admit direct `characters text collect String` when the
+complete plain String is known during checking. It SHALL evaluate `text`
+exactly once, retain the selected language context's pinned ordered Character
+segmentation as checking evidence, consume the fresh traversal, and return a
+plain String with exactly the source's preserved scalar sequence. Empty input
+SHALL return `empty String`.
+
+Because the unchanged finite traversal reconstructs the immutable source
+exactly, the Linux x86-64 backend MAY forward the existing source String
+descriptor as the result. This SHALL be mandatory O0 semantic lowering, not an
+LLVM optimization or an assumption that applies to transformed traversals.
+DWARF and GDB SHALL expose the result as String.
+
+The lowering SHALL allocate no intermediate List or Generator object and SHALL
+invoke no concatenation loop, generic traversal runtime, callback, indirect
+call, host Unicode or locale dependency, C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, public/library Generator ABI, or
+`topal-native/6` revision. Dynamic Strings, transformed traversals, stored
+Generator collection, and external library boundaries remain rejected pending
+generated Topal Unicode support and canonical traversal, operation/evidence,
+ownership, and target-adapter metadata.
+
 ### TOPAL-COMPILER-UNICODE-FOLD-001 — Closed pinned-Unicode operations
 
 For a closed String expression whose complete preserved sequence is known

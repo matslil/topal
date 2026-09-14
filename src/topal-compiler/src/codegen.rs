@@ -133,7 +133,8 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::UnfoldGenerator { seed, step, .. } => {
             expression_uses_extended_debug(seed) || block_uses_extended_debug(step)
         }
-        CompilerExpressionKind::StringCharactersGenerator { text, .. } => {
+        CompilerExpressionKind::StringCharactersGenerator { text, .. }
+        | CompilerExpressionKind::StringCharactersCollect { text, .. } => {
             expression_uses_extended_debug(text)
         }
         CompilerExpressionKind::StringCharactersForeach { source, body, .. } => {
@@ -1091,6 +1092,9 @@ impl<'a> Generator<'a> {
                     value: "0".into(),
                     generator: generator.clone(),
                 }
+            }
+            CompilerExpressionKind::StringCharactersCollect { text, .. } => {
+                self.emit_expression(text, body, environment)
             }
             CompilerExpressionKind::StringCharactersForeach { .. } => {
                 self.emit_string_characters_foreach(expression, body, environment)
@@ -9512,6 +9516,30 @@ mod tests {
         let next = main.find("call ptr @topal.runtime.int.add").unwrap();
         assert!(predicate < action && action < next);
         assert!(!main.contains("topal.platform.allocate"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_closed_string_character_collection_as_exact_source_identity() {
+        // TOPAL-STRING-CHARACTERS-COLLECT-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-COLLECT-001
+        let source = include_str!("../../../examples/language/string-character-traversal.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "string-character-traversal.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            1
+        );
+        assert!(llvm.contains(&format!("c\"{}\"", llvm_bytes("a\u{301}👩‍🔬🇸🇪".as_bytes()))));
+        assert!(llvm.contains("name: \"String\""));
+        assert!(!main.contains("topal.runtime.string.concat"));
+        assert!(!main.contains("topal.runtime.list"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }

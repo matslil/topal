@@ -1964,6 +1964,31 @@ realizes `TOPAL-COMPILER-STRING-CHARACTERS-GENERATOR-001`,
 `TOPAL-STRING-CHARACTERS-CLASSIFIER-001`, and
 `TOPAL-STRING-CHARACTERS-LINEAR-001` for compiler increment 4b3d-l.
 
+## TOPAL-COMP-STRING-CHARACTERS-COLLECT-001 — Closed String reconstruction
+
+The checked compiler shall admit direct `characters text collect String` when
+the complete plain String is known. It shall evaluate `text` exactly once,
+retain the selected language context's pinned ordered Character segmentation
+as checking evidence, consume the fresh traversal, and return a plain String
+with exactly the source's preserved scalar sequence. Empty input shall return
+`empty String`.
+
+The Linux x86-64 backend may forward the existing immutable source String
+descriptor because this exact unchanged traversal reconstructs that source.
+This shall be mandatory O0 semantic lowering, not an LLVM optimization or a
+rule for transformed traversals. DWARF/GDB shall expose the result as String.
+
+The lowering shall create no intermediate List or Generator object,
+concatenation loop, generic traversal runtime, callback, indirect call, host
+Unicode/locale dependency, C/C++ runtime, other-language standard library,
+needed library, dynamic relocation, public/library Generator ABI, or
+`topal-native/6` revision. Dynamic Strings, transformed traversals, stored
+Generator collection, and external boundaries remain rejected pending
+generated Topal Unicode support and canonical traversal, operation/evidence,
+ownership, and target-adapter metadata. This realizes
+`TOPAL-COMPILER-STRING-CHARACTERS-COLLECT-001` and
+`TOPAL-STRING-CHARACTERS-COLLECT-001` for compiler increment 4b3d-m.
+
 ## TOPAL-COMP-UNICODE-FOLD-001 — Closed pinned-Unicode operations
 
 When the checked model knows a String's complete preserved sequence, the
