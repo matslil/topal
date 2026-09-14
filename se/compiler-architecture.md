@@ -942,6 +942,18 @@ locals, captures, close paths, and external boundaries still require canonical
 suspension-graph transitions, environment ownership, cleanup, and target
 adapters in compiled-library metadata.
 
+The exact resume-binding slice uses the same activation evidence for an erased
+Unit local. Its checked stage follows the sole yielded Character's successful
+action/resumption edge; construction therefore has no binding yet, and root
+traversal introduces the name only after the action returns Unit. Because the
+final expression is that immutable Unit, no semantic value storage is needed.
+The backend emits a debug-only `i8` shadow at the activation point so GDB can
+observe source lifetime while the generated behavior remains direct O0 control
+flow. This success edge stays distinct from the `generator-closed` abandonment
+edge. A compiled-library form must encode both edge kinds and resume-local
+activation canonically rather than expose the debug shadow or a target-specific
+continuation layout.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an

@@ -5775,6 +5775,7 @@ impl<'a> Generator<'a> {
         });
         for (index, character) in characters.iter().enumerate() {
             if let Some(local) = generator_local
+                && local.parameter.value_type == CompilerType::Character
                 && local.activation_after_resumptions == index
             {
                 let parameter = &local.parameter;
@@ -5793,6 +5794,7 @@ impl<'a> Generator<'a> {
             let value = LlValue::String(self.emit_string_value(character, body, span));
             let mut action_environment = environment.clone();
             if let Some(local) = generator_local
+                && local.parameter.value_type == CompilerType::Character
                 && local.activation_after_resumptions == index
                 && let Some(address) = &generator_local_address
             {
@@ -5814,6 +5816,27 @@ impl<'a> Generator<'a> {
             }
             let action_value = self.emit_block(action, body, &mut action_environment);
             debug_assert!(matches!(action_value, LlValue::Unit));
+            if let Some(local) = generator_local
+                && local.parameter.value_type == CompilerType::Unit
+                && local.activation_after_resumptions == index + 1
+            {
+                let parameter = &local.parameter;
+                let variable = self.debug.local(
+                    &parameter.name,
+                    parameter.span,
+                    &parameter.value_type,
+                    body.subprogram,
+                );
+                let address =
+                    body.instruction("alloca i8, align 1", parameter.span, &mut self.debug);
+                let location = self.debug.location(parameter.span, body.subprogram);
+                body.debug_declare(&address, variable, location);
+                body.effect(
+                    &format!("store i8 0, ptr {address}, align 1"),
+                    parameter.span,
+                    &mut self.debug,
+                );
+            }
         }
         LlValue::Unit
     }
@@ -9919,6 +9942,39 @@ mod tests {
         assert!(llvm.contains("DILocalVariable(name: \"copy\""));
         assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
         assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_unit_resume_binding_after_the_custom_action() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-RESUME-BINDING-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-RESUME-BINDING-001
+        let source = include_str!("../../../examples/language/custom-generator-resume-binding.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-resume-binding.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let action_store = main.find("store ptr").expect("yield action is invoked");
+        let resumed_store = main
+            .find("store i8 0")
+            .expect("successful Unit resume has debug storage");
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert!(action_store < resumed_store);
+        assert_eq!(main.matches("#dbg_declare(ptr").count(), 2);
+        assert_eq!(main.matches("store ptr").count(), 1);
+        assert_eq!(main.matches("store i8 0").count(), 1);
+        assert!(llvm.contains("DILocalVariable(name: \"resumed\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(llvm.contains("name: \"Unit\""));
         assert!(!main.contains("generator.foreach.loop"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));

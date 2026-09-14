@@ -500,8 +500,9 @@ public/library Generator ABI, or native-ABI revision.
 
 Other local classifiers or initializers, additional statements not admitted by
 `TOPAL-COMPILER-GENERATOR-SUSPENSION-001`, dynamic Character provenance,
-captures, resume bindings, close handling, and function or library boundaries
-SHALL remain unsupported. Future
+captures, resume bindings other than the exact Unit success binding admitted by
+`TOPAL-COMPILER-GENERATOR-RESUME-BINDING-001`, close handling, and function or
+library boundaries SHALL remain unsupported. Future
 compiled-library metadata SHALL identify local state canonically with the
 declaration, directions, ordered suspension graph, capture/effect evidence,
 ownership/close behavior, and target adapters rather than expose the
@@ -586,8 +587,9 @@ prefix resumption, and then observe the remaining local yields in source order
 before final Unit. The local SHALL remain absent from the caller environment.
 A local without a later yield, a second local, a non-identity initializer,
 yields of the wrong active value, other ordinary statements, dynamic Character
-provenance, captures, resume bindings, close handling, and function or library
-boundaries SHALL remain unsupported.
+provenance, captures, resume bindings other than the exact Unit success binding
+admitted by `TOPAL-COMPILER-GENERATOR-RESUME-BINDING-001`, close handling, and
+function or library boundaries SHALL remain unsupported.
 
 On Linux x86-64, O0 lowering SHALL emit the completed prefix action and erased
 Unit resumption before the local materialization and its lexical DWARF
@@ -601,6 +603,38 @@ ABI, or native-ABI revision. Future compiled-library metadata SHALL identify
 each local activation transition canonically with the declaration, directions,
 ordered suspension graph, capture/effect evidence, ownership/close behavior,
 and target adapters.
+
+### TOPAL-COMPILER-GENERATOR-RESUME-BINDING-001 — Exact Unit resumption
+
+The compiler SHALL admit the root custom `Generator Character Unit Unit`
+subset when its body is exactly one named, optionally Unit-classified binding
+of `yield` applied to the sole initial Character, followed by that binding as
+the final Unit expression. The checked plan SHALL retain the yielded Character
+and a distinct Unit local whose activation follows one successful resumption.
+Starting the generator SHALL stop at the yield without introducing or
+evaluating the resume binding.
+
+Direct root `foreach` over one locally bound admitted instance SHALL consume
+the Generator, invoke its Character-to-Unit action once, resume with Unit, make
+that Unit available under the generator-local name, and only then use it as the
+final result. The name SHALL remain absent from the caller environment. A wrong
+or discarded binding name, non-Unit classifier, different yielded value,
+additional yield or body statement, different final expression, dynamic
+Character provenance, captures, close handling, and function or library
+boundaries SHALL remain unsupported.
+
+On Linux x86-64, O0 lowering SHALL emit the action before a debug-only `i8`
+shadow for the successfully resumed Unit and SHALL expose that binding as Unit
+to GDB at its source line. The erased success value SHALL NOT create semantic
+continuation state or conflate ordinary Unit resumption with the distinct
+`generator-closed` close edge. The lowering SHALL NOT depend on optimization
+or introduce a Generator object, state machine, dispatcher, callback, indirect
+call, foreign runtime, other-language standard library, needed library,
+dynamic relocation, public/library Generator ABI, or native-ABI revision.
+Future compiled-library metadata SHALL encode success and close edges,
+resume-local activation, the declaration and directions, suspension identity,
+capture/effect evidence, ownership/close behavior, and target adapters
+canonically.
 
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
