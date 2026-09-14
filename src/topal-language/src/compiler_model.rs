@@ -910,6 +910,7 @@ struct Analyzer {
     in_function: bool,
     function_values_used: bool,
     consumed_generators: BTreeSet<String>,
+    generator_values: BTreeMap<String, CompilerExpression>,
     static_context: bool,
     next_instance: usize,
 }
@@ -946,6 +947,7 @@ impl Analyzer {
             in_function: false,
             function_values_used: false,
             consumed_generators: BTreeSet::new(),
+            generator_values: BTreeMap::new(),
             static_context: false,
             next_instance: 0,
         }
@@ -2552,6 +2554,20 @@ impl Analyzer {
                     } else {
                         name_text.clone()
                     };
+                    let generator_value = if matches!(value.value_type, CompilerType::Generator(_))
+                    {
+                        match &value.kind {
+                            CompilerExpressionKind::Local(storage_name) => {
+                                self.generator_values.get(storage_name).cloned()
+                            }
+                            CompilerExpressionKind::IterateGenerator { .. }
+                            | CompilerExpressionKind::GeneratorTakeWhile { .. }
+                            | CompilerExpressionKind::UnfoldGenerator { .. } => Some(value.clone()),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    };
                     let facts = BindingFacts {
                         storage_name: storage_name.clone(),
                         runtime_bound: !compiler_type_contains_static_only(&value.value_type),
@@ -2566,6 +2582,10 @@ impl Analyzer {
                         static_capability,
                     };
                     if matches!(facts.value_type, CompilerType::Generator(_)) {
+                        if let Some(generator_value) = generator_value {
+                            self.generator_values
+                                .insert(storage_name.clone(), generator_value);
+                        }
                         generator_bindings.push((storage_name.clone(), name_text.clone(), *name));
                     }
                     environment.insert(name_text.clone(), facts.clone());
@@ -4248,6 +4268,14 @@ impl Analyzer {
         if let [Expression::Identifier(operation), generator] = items
             && self.source.slice(*operation) == "collect"
         {
+            let retained_generator = if let Expression::Identifier(name) = generator {
+                environment
+                    .get(self.source.slice(*name))
+                    .and_then(|facts| self.generator_values.get(&facts.storage_name))
+                    .cloned()
+            } else {
+                None
+            };
             let direct_bounded = direct_bounded_iterate_functions(&self.source, generator);
             if let Some((next, predicate)) = direct_bounded {
                 for (parameters, body, function_span, role) in [
@@ -4277,7 +4305,8 @@ impl Analyzer {
                 &int_unit_generator_type(),
                 &generator.value_type,
             )?;
-            match &generator.kind {
+            let collection_generator = retained_generator.as_ref().unwrap_or(&generator);
+            match &collection_generator.kind {
                 CompilerExpressionKind::GeneratorTakeWhile {
                     generator: source, ..
                 } if direct_bounded.is_some()
@@ -4285,6 +4314,22 @@ impl Analyzer {
                 {
                     return Ok(CompilerExpression {
                         kind: CompilerExpressionKind::GeneratorCollect(Box::new(generator)),
+                        value_type: CompilerType::List(Box::new(CompilerType::Int)),
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    });
+                }
+                CompilerExpressionKind::UnfoldGenerator { .. }
+                    if directly_collectable_list_uncons_unfold(
+                        collection_generator,
+                        environment,
+                    ) =>
+                {
+                    return Ok(CompilerExpression {
+                        kind: CompilerExpressionKind::GeneratorCollect(Box::new(
+                            collection_generator.clone(),
+                        )),
                         value_type: CompilerType::List(Box::new(CompilerType::Int)),
                         int_range: None,
                         rational_value: None,
@@ -9796,6 +9841,32 @@ fn anonymous_body_capture(
         .cloned()
 }
 
+fn directly_collectable_list_uncons_unfold(
+    generator: &CompilerExpression,
+    environment: &BTreeMap<String, BindingFacts>,
+) -> bool {
+    let CompilerExpressionKind::UnfoldGenerator {
+        seed,
+        parameters,
+        step,
+    } = &generator.kind
+    else {
+        return false;
+    };
+    let [parameter] = parameters.as_slice() else {
+        return false;
+    };
+    let CompilerExpressionKind::ListUncons(argument) = &step.result.kind else {
+        return false;
+    };
+    let CompilerExpressionKind::Local(seed) = &seed.kind else {
+        return false;
+    };
+    step.statements.is_empty()
+        && binding_facts_by_storage(environment, seed).is_some()
+        && matches!(&argument.kind, CompilerExpressionKind::Local(name) if name == &parameter.name)
+}
+
 type AnonymousBodyRef<'a> = (&'a [AnonymousPattern], &'a Expression, Span);
 
 fn direct_bounded_iterate_functions<'a>(
@@ -11989,6 +12060,39 @@ mod tests {
         ] {
             assert_eq!(analyze_for_compiler(invalid).unwrap_err().code, code);
         }
+    }
+
+    #[test]
+    fn models_direct_finite_list_uncons_unfold_collection() {
+        // TOPAL-GENERATOR-UNFOLD-001, TOPAL-GENERATOR-UNFOLD-COLLECT-001,
+        // TOPAL-COMPILER-GENERATOR-UNFOLD-COLLECT-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/unfold-collect.t"))
+                .unwrap();
+        assert_eq!(
+            program.main.result.value_type,
+            CompilerType::List(Box::new(CompilerType::Int))
+        );
+        assert!(matches!(
+            program.main.result.kind,
+            CompilerExpressionKind::GeneratorCollect(ref generator)
+                if matches!(generator.kind, CompilerExpressionKind::UnfoldGenerator { .. })
+        ));
+
+        let moved = analyze_for_compiler(
+            "use language (version is v0.1)\nvalues : List Int is Entry (1, Entry (2, Empty))\ngenerated is values unfold ({ remaining } uncons remaining)\nmoved is generated\ncollect moved\n",
+        )
+        .unwrap();
+        assert_eq!(
+            moved.main.result.value_type,
+            CompilerType::List(Box::new(CompilerType::Int))
+        );
+
+        let non_finite = analyze_for_compiler(
+            "use language (version is v0.1)\nvalues : List Int is Entry (1, Empty)\ncollect (values unfold ({ remaining } Some (1, remaining)))\n",
+        )
+        .unwrap_err();
+        assert_eq!(non_finite.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

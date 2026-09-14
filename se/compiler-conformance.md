@@ -76,6 +76,7 @@ evidence.
 | 5b | lazy `Generator Int Unit Unit` construction from `iterate` and direct `take-while`, with checked dormant bodies, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |
 | 5c | direct bounded Int iterate collection through an ordered generated SSA/List loop, with exact stopping behavior and result debugging but no Generator object or generic runtime | complete |
 | 5d | lazy `Generator Int Unit Unit` construction from a `List Int` seed and an exact `unfold` step, preserving distinct seed/yield types, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |
+| 5e | finite collection of a locally retained `List Int`/`uncons` unfold through an ordered seed/List SSA loop, with no Optional or Generator object/runtime | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -252,7 +253,13 @@ library representation in increment 5. Increment 5d admits exact lazy `unfold`
 construction whose `List Int` seed and Int yield types are deliberately
 distinct. It checks and retains the unary step without invoking it, evaluates
 the seed once, reuses the construction-only debug token and local linearity
-boundary, and leaves traversal plus executable state to increment 5.
+boundary, and leaves traversal plus executable state to increment 5. Increment
+5e specializes consumption of that value, including linear local moves, when
+the seed is an already evaluated immutable `List Int` binding and the step is
+exactly parameter `uncons`. A direct LLVM seed/List loop copies yielded heads
+in order and terminates at `Empty` without Optional materialization, callback,
+Generator object, or generic runtime; arbitrary unfold steps and general
+resumable state remain in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

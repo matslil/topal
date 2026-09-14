@@ -753,6 +753,22 @@ compiled-library metadata must carry the canonical Generator classifier, seed
 and yield classifiers, step signature, captured operation/evidence identities,
 and target adapter rather than exporting this construction token.
 
+Finite List/`uncons` unfold collection uses compiler-held provenance rather
+than expanding that token into a runtime object. Linear bindings and local
+moves retain the checked construction only inside the compilation session. At
+the consuming `collect`, the frontend proves an already evaluated immutable
+`List Int` seed identity and a statement-free unary step that is exactly
+`uncons` of its parameter. The backend then carries the current seed, output
+head, and previous output node as explicit LLVM SSA values. A null current seed
+implements `None`; otherwise direct head/tail loads implement the proven
+`Some (yield, next-seed)` result before a fresh output node is allocated and
+linked. This is required semantic lowering at O0, not an optimization-pass
+assumption. It leaves the source List unchanged and needs no Optional object,
+uncons helper, Generator allocation, callback, indirect call, or generic
+runtime. General steps, captures, resumable state, and library boundaries stay
+closed until canonical Generator/seed/yield/operation/evidence metadata and an
+owned target representation exist.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an

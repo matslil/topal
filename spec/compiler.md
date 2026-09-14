@@ -326,6 +326,39 @@ emit an indirect call or Generator runtime, introduce a foreign dependency,
 C/C++ runtime, other-language standard library, needed library, dynamic
 relocation, public/library Generator ABI, or `topal-native/6` revision.
 
+### TOPAL-COMPILER-GENERATOR-UNFOLD-COLLECT-001 — Finite unfold collection
+
+Unary `collect` SHALL consume an exact `Generator Int Unit Unit` whose retained
+construction has an immutable `List Int` seed binding and whose unary step is
+exactly `uncons` of its `List Int` parameter. The Generator MAY be consumed
+directly or through a chain of linear local bindings. The seed expression SHALL
+have been evaluated exactly once at construction. Collection SHALL test the
+current seed for `Empty`, append every nonempty seed head to a fresh `List Int`
+in order, continue with that seed tail, and terminate without an entry at
+`Empty`. It SHALL leave the immutable source List unchanged.
+
+The checked boundary SHALL reject an arbitrary unfold step, step statements or
+captures, a seed expression whose already-evaluated identity cannot be retained
+by this specialization, and a Generator whose construction provenance is not
+available locally. Retained provenance SHALL remain compiler-private and SHALL
+NOT be emitted as a persistent, serialized, public, foreign, or library
+identity.
+
+On Linux x86-64, the backend SHALL lower the accepted composition as explicit
+LLVM control flow over current-seed and result-head/tail SSA values. It MAY
+allocate fresh immutable List nodes through the Topal-owned Linux platform
+allocator. This lowering is required source-semantic lowering at `-O0`; it
+SHALL NOT depend on an LLVM optimization pass. It SHALL NOT materialize an
+Optional result, call a List `uncons` helper, use the construction token as
+state, allocate a Generator object, emit a callback, indirect call, or generic
+Generator runtime, or introduce a foreign dependency, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or `topal-native/6` revision. Future
+compiled-library metadata SHALL identify the Generator classifier, distinct
+seed/yield classifiers, exact step operation and evidence, linear ownership,
+and target adapter canonically rather than publish this executable-local
+specialization.
+
 ### TOPAL-COMPILER-GENERATOR-ITERATE-COLLECT-001 — Finite iterate collection
 
 Unary `collect` SHALL consume a syntactically direct
