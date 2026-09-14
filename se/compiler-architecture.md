@@ -698,6 +698,15 @@ syscall used for final output, this slice introduces no platform or layout
 runtime. A future library interface must publish canonical semantic policy
 identities independently of these private target tags.
 
+The qualified `lang generator generator-closed` value follows the same private
+nominal-enum path as a single-alternative
+`lang generator GeneratorErrorCode`. This is an ordinary immutable value only:
+the frontend does not create a continuation or attach `Error.domain`, generator
+identity, or yield provenance, and the backend introduces no generator storage,
+state machine, allocation, or runtime call. Canonical library metadata must
+identify the qualified vocabulary and alternative rather than treating private
+tag zero as an interchange identity.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an

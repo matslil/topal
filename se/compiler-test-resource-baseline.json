@@ -1446,6 +1446,16 @@
       "cpu_time_ns": 130285,
       "memory_peak_bytes": 18415616,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/generator-error-codes.t": {
+      "cpu_time_ns": 122533320,
+      "memory_peak_bytes": 41857024,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/generator-error-codes.t": {
+      "cpu_time_ns": 131203,
+      "memory_peak_bytes": 18665472,
+      "samples_per_test": 500
     }
   }
 }

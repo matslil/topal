@@ -4601,6 +4601,25 @@ impl Analyzer {
             });
         }
         if let [
+            Expression::Identifier(namespace),
+            Expression::Identifier(vocabulary),
+            Expression::Identifier(code),
+        ] = items
+            && let Some((enumeration, value)) = generator_error_code(
+                self.source.slice(*namespace),
+                self.source.slice(*vocabulary),
+                self.source.slice(*code),
+            )
+        {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::Enum(value),
+                value_type: CompilerType::Enum(enumeration),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [
             Expression::Identifier(operation),
             Expression::Identifier(domain),
         ] = items
@@ -9436,6 +9455,23 @@ fn arithmetic_error_code(namespace: &str, vocabulary: &str, code: &str) -> Optio
     }
 }
 
+fn generator_error_code(
+    namespace: &str,
+    vocabulary: &str,
+    code: &str,
+) -> Option<(CompilerEnumType, u32)> {
+    if namespace != "lang" || vocabulary != "generator" || code != "generator-closed" {
+        return None;
+    }
+    Some((
+        CompilerEnumType {
+            name: "lang generator GeneratorErrorCode".to_owned(),
+            alternatives: vec!["generator-closed".to_owned()],
+        },
+        0,
+    ))
+}
+
 fn comparison_binary(kind: CallableKind) -> Option<CompilerBinary> {
     match kind {
         CallableKind::Equal => Some(CompilerBinary::Equal),
@@ -11184,6 +11220,43 @@ mod tests {
             values[1].kind,
             CompilerExpressionKind::ErrorCode(3)
         ));
+    }
+
+    #[test]
+    fn models_qualified_generator_error_code_as_a_nominal_value() {
+        // TOPAL-GENERATOR-ERROR-CODE-001,
+        // TOPAL-COMPILER-GENERATOR-ERROR-CODE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/generator-error-codes.t"
+        ))
+        .unwrap();
+        assert_eq!(
+            program.main.result.value_type.name(),
+            "(lang generator GeneratorErrorCode, Boolean)"
+        );
+        assert!(program.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::Enum(0),
+                    value_type: CompilerType::Enum(enumeration),
+                    ..
+                },
+                ..
+            }) if enumeration.name == "lang generator GeneratorErrorCode"
+                && enumeration.alternatives == ["generator-closed"]
+        )));
+
+        let unknown = "use language (version is v0.1)\nlang generator generator-reopened\n";
+        assert_eq!(
+            analyze_for_compiler(unknown).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let arithmetic_mismatch = "use language (version is v0.1)\n(lang generator generator-closed) = (lang arithmetic division-by-zero)\n";
+        assert_eq!(
+            analyze_for_compiler(arithmetic_mismatch).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
     }
 
     #[test]
