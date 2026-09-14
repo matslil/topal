@@ -732,6 +732,20 @@ alternative to GDB. No effect-specific runtime entry point, allocation, public
 integer ABI, or foreign standard library is introduced; nonempty rows, effect
 inference, collections, and aggregate function results remain later work.
 
+An explicit v0.1 `: Effects ()` function bound is represented in the checked
+model as `Some(empty semantic row)`, distinct from an absent inferred bound.
+All currently admitted function expressions have the exact empty language
+effect row; internal allocation and the executable entry point's final display
+do not become source-level function interactions. The frontend therefore checks
+empty-row containment before instantiation and rejects every other effect-row
+form outside the separate `Decreases` proof syntax. A narrowly admitted
+single-overload `lang view` materializes identity, signature, staticness, and
+the declared row only in checked compiler memory. Its binding is marked
+static-only and lowers to no instruction, local, descriptor, or DWARF type.
+This models the metadata needed by future compiled-library interfaces without
+stabilizing its serialization or machine representation; runtime use and every
+public boundary remain closed.
+
 The closed v0.1 fundamental `Type` values use one compiler-private `i32` tag set
 for `Boolean`, `Int`, `Nat`, `Rational`, `String`, `Unit`, and `Scope`. The
 checked model retains the enclosing `Type` kind and exact constant identity;

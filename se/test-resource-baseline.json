@@ -5054,6 +5054,21 @@
       "cpu_time_ns": 3859979,
       "memory_peak_bytes": 18419712,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::erases_static_empty_effect_view_before_llvm_lowering": {
+      "cpu_time_ns": 6557940,
+      "memory_peak_bytes": 18395136,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::empty_function_effect_bound_is_static_freestanding_and_debuggable": {
+      "cpu_time_ns": 319514540,
+      "memory_peak_bytes": 58310656,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_explicit_empty_function_effect_bound_and_static_view": {
+      "cpu_time_ns": 3303300,
+      "memory_peak_bytes": 18472960,
+      "samples_per_test": 50
     }
   }
 }

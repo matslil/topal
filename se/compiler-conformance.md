@@ -81,6 +81,7 @@ evidence.
 | 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
 | 6c2 | cross-function capture forwarding, aggregate/callable environments, anonymous and escaping closures, qualified root access, and public/library context ABI | planned |
 | 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
+| 7a1 | explicit empty ordinary-function effect bounds with checked containment, retained static Function-view metadata, and pre-LLVM erasure | complete |
 | 7b | nonempty effects and inference, resources, layouts, locations, tasks, deterministic scheduling, transactions, time, static flow, and platform packages | planned |
 | 8a | closed fundamental Type values, canonical identity equality/display, scalar function passage, and debugging | complete |
 | 8a1 | root named Constraint objects over primitive bases, checked closed Boolean predicates, classified-copy identity, private display tags, and debugging | complete |
@@ -235,8 +236,11 @@ cross-function root storage, Scope escape, nested Scope and generator members,
 external path resolution, package construction, published interfaces, and
 source/compiled-library work.
 Increment 7a admits the inert
-canonical empty `Effect` as a distinct zero-data value; 7b retains effect
-execution/inference and the remaining platform-semantic work. Increment 8a
+canonical empty `Effect` as a distinct zero-data value; 7a1 admits the same
+empty row as an explicit ordinary-function upper bound and retains its narrow
+Function view only in compiler memory before erasing it ahead of LLVM. 7b
+retains nonempty effect execution/inference and the remaining platform-semantic
+work. Increment 8a
 admits the closed fundamental `Type` identities without runtime reflection;
 8a1 adds closed named Constraint-object metadata and private observation tags;
 8a2 applies closed Int constraints, retains static evidence over unchanged base
