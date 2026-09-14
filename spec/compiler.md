@@ -384,6 +384,37 @@ relocation, public/library Generator ABI, or `topal-native/6` revision. Future
 compiled-library metadata SHALL identify the generator operations and evidence
 canonically rather than describe this executable-local specialization.
 
+### TOPAL-COMPILER-GENERATOR-ITERATE-FOREACH-001 — Bounded iterate traversal
+
+A root `foreach` statement SHALL consume an exact `Generator Int Unit Unit`
+whose retained construction is an `Int` literal followed by a capture-free
+unary `Int -> Int` iterate operation and capture-free unary
+`Int -> Boolean` `take-while` predicate. The statement body SHALL bind the
+accepted Int to its iteration name, SHALL be capture-free, and SHALL produce
+Unit. The statement MAY bind its Unit result, with an optional exact Unit
+classifier, or discard that result.
+
+The compiler SHALL test each candidate exactly once before visiting it, execute
+the body exactly once for every accepted value in order, and invoke the next
+operation exactly once after the body produces Unit. The first rejected
+candidate SHALL neither execute the body nor invoke the next operation, and
+the traversal SHALL return Unit. The Generator SHALL remain subject to the
+one-consumption local linearity boundary.
+
+On Linux x86-64, the backend SHALL lower this behavior as direct LLVM control
+flow with the current arbitrary-precision Int as SSA loop state and direct
+predicate, body, and next blocks. This is required source-semantic lowering at
+`-O0` and SHALL NOT depend on an optimization pass. Generated DWARF SHALL make
+the current body binding and Unit result inspectable by GDB. The lowering SHALL
+allocate no traversal collection or Generator object, use no construction
+token as state, host recursion, callback, indirect call, or generic Generator
+runtime, and introduce no foreign dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library Generator
+ABI, or `topal-native/6` revision. Future compiled-library metadata SHALL
+identify the Generator classifier, operation/predicate/body identities and
+evidence, capture layout, linear ownership, and target adapter canonically
+rather than publish this executable-local specialization.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve

@@ -769,6 +769,22 @@ runtime. General steps, captures, resumable state, and library boundaries stay
 closed until canonical Generator/seed/yield/operation/evidence metadata and an
 owned target representation exist.
 
+Bounded Int iterate `foreach` reuses compiler-held construction provenance to
+avoid treating the observation token as continuation state. This first root
+statement specialization requires an Int-literal initial value and
+capture-free checked next, predicate, and Unit action blocks. The backend
+carries the current immutable arbitrary-precision Int in an LLVM `phi`, emits
+the predicate before the accepted edge, binds the accepted value directly into
+the action, and emits next only after that action completes with Unit. The
+rejected edge returns Unit immediately. This ordering is frontend-owned O0
+semantics; LLVM retains responsibility for target instruction selection and
+register/stack placement but is not asked to discover the traversal. The loop
+allocates no collection and needs no Generator object, runtime dispatcher,
+callback, indirect call, or host recursion. DWARF describes the iteration Int
+and final Unit binding. General captures and traversal need canonical
+operation/predicate/body evidence, an owned continuation layout, cleanup, and
+target-adapted compiled-library metadata.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an
