@@ -1925,13 +1925,44 @@ lowering shall create no semantic traversal collection, Generator object or
 token, generic Generator runtime, callback, indirect call, host Unicode or
 locale dependency, C/C++ runtime, other-language standard library, needed
 library, dynamic relocation, public/library Generator ABI, or
-`topal-native/6` revision. Dynamic Strings, retained named Character
+`topal-native/6` revision. Dynamic Strings, function-transferred Character
 generators, and captures remain rejected. Future library metadata shall carry
 canonical Generator, pinned-segmentation, action-evidence, ownership, and
 target-adapter identities rather than this specialization. This realizes
 `TOPAL-COMPILER-STRING-CHARACTERS-FOREACH-001`,
 `TOPAL-STRING-CHARACTERS-COLLECT-001`, and
 `TOPAL-STRING-CHARACTERS-FOREACH-001` for compiler increment 4b3d-k.
+
+## TOPAL-COMP-STRING-CHARACTERS-GENERATOR-001 — Named closed traversal
+
+The checked compiler shall admit `characters text` as an exact
+`Generator Character Unit Unit` when the complete plain String is known. A root
+binding may state that classifier and shall evaluate the source String exactly
+once while creating a fresh linear value. The checked model may retain the
+pinned ordered Character sequence as compile-session provenance, but
+construction shall invoke no action and the generated observation token shall
+not serve as continuation state.
+
+Root foreach shall transfer one locally bound value into the existing closed
+Character traversal, preserve its action order and Unit result, and mark the
+source consumed. Later source use shall report `E-GENERATOR-CONSUMED` rather
+than copy or restart the traversal. Abandonment shall remain rejected until
+owned close delivery exists. DWARF/GDB shall describe the local binding as
+`Generator Character Unit Unit` through a compiler-private token.
+
+The token and compiler-held provenance shall require no Generator object,
+continuation-state allocation, generic Generator runtime, callback, indirect
+call, host Unicode/locale dependency, C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, public/library Generator ABI, or
+`topal-native/6` revision. Function parameter/result transfer and external
+boundaries remain rejected pending canonical Generator, segmentation,
+operation/evidence, ownership, close, and target-adapter metadata. This
+realizes `TOPAL-COMPILER-STRING-CHARACTERS-GENERATOR-001`,
+`TOPAL-STRING-CHARACTERS-COLLECT-001`,
+`TOPAL-STRING-CHARACTERS-FOREACH-001`,
+`TOPAL-STRING-CHARACTERS-GENERATOR-001`,
+`TOPAL-STRING-CHARACTERS-CLASSIFIER-001`, and
+`TOPAL-STRING-CHARACTERS-LINEAR-001` for compiler increment 4b3d-l.
 
 ## TOPAL-COMP-UNICODE-FOLD-001 — Closed pinned-Unicode operations
 

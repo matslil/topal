@@ -5249,6 +5249,21 @@
       "cpu_time_ns": 4098360,
       "memory_peak_bytes": 18391040,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_named_string_character_generator_as_a_private_linear_token": {
+      "cpu_time_ns": 5185519,
+      "memory_peak_bytes": 18456576,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::named_string_character_generator_is_linear_freestanding_and_debuggable": {
+      "cpu_time_ns": 327672320,
+      "memory_peak_bytes": 58114048,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_named_linear_string_character_generator": {
+      "cpu_time_ns": 3979760,
+      "memory_peak_bytes": 18391040,
+      "samples_per_test": 50
     }
   }
 }

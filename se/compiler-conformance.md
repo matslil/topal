@@ -72,6 +72,7 @@ evidence.
 | 4b3d-i | contextual `List (Int, Int)` construction and anonymous product-pattern map to `List Int` with inline pair nodes and direct field binding | complete |
 | 4b3d-j | exact `List (Int, String)` and `List List (Int, String)` construction, private outer passage, first/count/equality, nested display, and debugging | complete |
 | 4b3d-k | closed direct String Character foreach through pinned segmentation and ordered inline Unit actions, with Character debugging and no Generator runtime | complete |
+| 4b3d-l | exact named `Generator Character Unit Unit` construction, explicit classification, compiler-held sequence provenance, one local foreach transfer, consumed-use rejection, and Generator debugging | complete |
 | 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal algorithms and callable forms, traversal-control generalization, and representation-safe reclamation | planned |
 | 5a | qualified `lang generator generator-closed` as a closed nominal value with equality, display, and debugging but no continuation behavior | complete |
 | 5b | lazy `Generator Int Unit Unit` construction from `iterate` and direct `take-while`, with checked dormant bodies, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |
@@ -243,8 +244,16 @@ segmentation already used by Character observations and expands its
 capture-free Character-to-Unit action in preserved order. Existing String
 descriptors and a debug-only pointer shadow preserve Character inspection
 without a Generator object, continuation token, callback, indirect call, or
-foreign Unicode/runtime dependency. Dynamic Strings, retained generators, and
-captured actions remain in the planned Unicode and generator closures.
+foreign Unicode/runtime dependency. Dynamic Strings, function-transferred
+generators, and captured actions remain in the planned Unicode and generator
+closures.
+Increment 4b3d-l retains the same closed Character sequence beside an exact
+classified root Generator binding, evaluates its String once at construction,
+and transfers the provenance into one foreach before rejecting later source
+use. A compiler-private semantic token supports observation and Generator
+DWARF without becoming cursor state or a copyable continuation. Abandonment,
+function transfer, owned close behavior, and library representation remain in
+the planned generator closure.
 Increment 5a admits only the qualified `generator-closed` vocabulary value as a
 private nominal enum. It deliberately creates no continuation, generator state,
 close result, Error domain, or provenance; all generator execution remains in

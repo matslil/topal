@@ -1759,11 +1759,38 @@ machine use. The lowering SHALL create no semantic traversal collection,
 Generator object or token, generic Generator runtime, callback, indirect call,
 host Unicode dependency, locale dependency, C/C++ runtime, other-language
 standard library, needed library, dynamic relocation, public/library Generator
-ABI, or `topal-native/6` revision. Dynamic Strings, retained named Character
-generators, and captured actions remain outside this specialization. Future
-compiled-library metadata SHALL identify the canonical Generator classifier,
-pinned segmentation identity, action evidence, linear ownership, and target
-adapter rather than publish this executable-local expansion.
+ABI, or `topal-native/6` revision. Dynamic Strings, function-transferred
+Character generators, and captured actions remain outside this specialization.
+Future compiled-library metadata SHALL identify the canonical Generator
+classifier, pinned segmentation identity, action evidence, linear ownership,
+and target adapter rather than publish this executable-local expansion.
+
+### TOPAL-COMPILER-STRING-CHARACTERS-GENERATOR-001 — Named closed traversal
+
+The compiler SHALL admit `characters text` as an exact
+`Generator Character Unit Unit` when the complete plain String is known during
+checking. A root binding MAY state that exact classifier and SHALL evaluate the
+source String exactly once while constructing a fresh linear value. Checking
+MAY retain the pinned ordered Character sequence as compilation-session
+provenance, but construction SHALL invoke no foreach action and generated code
+SHALL NOT mistake its observation value for executable continuation state.
+
+Root foreach SHALL transfer one such locally bound Generator into the closed
+Character traversal of `TOPAL-COMPILER-STRING-CHARACTERS-FOREACH-001`, preserve
+the same action order and Unit result, and mark the source binding consumed.
+Any later source use SHALL diagnose the consumed Generator rather than restart
+or copy it. An unconsumed binding SHALL remain rejected until owned close
+delivery exists. Generated DWARF and GDB SHALL expose the binding as
+`Generator Character Unit Unit` through a compiler-private observation token.
+
+This executable-local token and retained provenance SHALL introduce no
+Generator object, continuation-state allocation, generic Generator runtime,
+callback, indirect call, host Unicode or locale dependency, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or `topal-native/6` revision. Function parameter
+or result transfer, persistent or serialized identity, and external library
+boundaries remain rejected until canonical Generator, segmentation,
+operation/evidence, ownership, close, and target-adapter metadata are defined.
 
 ### TOPAL-COMPILER-UNICODE-FOLD-001 — Closed pinned-Unicode operations
 
