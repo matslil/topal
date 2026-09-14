@@ -2845,6 +2845,19 @@ impl Analyzer {
                     span,
                 })
             }
+            Expression::Identifier(name)
+                if compiler_layout_policy(self.source.slice(*name)).is_some() =>
+            {
+                let (enumeration, value) = compiler_layout_policy(self.source.slice(*name))
+                    .expect("guard established a fundamental layout policy");
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Enum(value),
+                    value_type: CompilerType::Enum(enumeration),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
             Expression::Boolean(value) => Ok(CompilerExpression {
                 kind: CompilerExpressionKind::Boolean(self.source.slice(*value) == "true"),
                 value_type: CompilerType::Boolean,
@@ -9037,6 +9050,38 @@ fn fundamental_capability(name: &str) -> bool {
     )
 }
 
+fn compiler_layout_policy(name: &str) -> Option<(CompilerEnumType, u32)> {
+    let (type_name, alternatives): (&str, &[&str]) = match name {
+        "Little" | "Big" => ("Endian", &["Little", "Big"]),
+        "ReadWrite" | "ReadOnly" | "WriteOnly" | "Reserved" => (
+            "Access",
+            &["ReadWrite", "ReadOnly", "WriteOnly", "Reserved"],
+        ),
+        "MostSignificantFirst" | "LeastSignificantFirst" => (
+            "BitOrder",
+            &["MostSignificantFirst", "LeastSignificantFirst"],
+        ),
+        "Natural" | "Packed" => ("Packing", &["Natural", "Packed"]),
+        "Declared" => ("FieldOrder", &["Declared"]),
+        "AfterTag" | "Overlay" => ("PayloadPlacement", &["AfterTag", "Overlay"]),
+        "NoLength" | "NoTerminator" => ("LayoutPolicy", &["NoLength", "NoTerminator"]),
+        _ => return None,
+    };
+    let value = alternatives
+        .iter()
+        .position(|candidate| *candidate == name)?;
+    Some((
+        CompilerEnumType {
+            name: type_name.to_owned(),
+            alternatives: alternatives
+                .iter()
+                .map(|value| (*value).to_owned())
+                .collect(),
+        },
+        u32::try_from(value).expect("fundamental layout policy count fits u32"),
+    ))
+}
+
 fn compiler_int_string_pair(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -13516,6 +13561,82 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(outside).unwrap_err().code,
             "E-RETURN-OUTSIDE-FUNCTION"
+        );
+    }
+
+    #[test]
+    fn models_fundamental_layout_policy_values_as_distinct_nominal_enums() {
+        // TOPAL-LAYOUT-ENDIAN-001, TOPAL-LAYOUT-ACCESS-001,
+        // TOPAL-LAYOUT-BIT-ORDER-001, TOPAL-LAYOUT-PACKING-001,
+        // TOPAL-LAYOUT-FIELD-ORDER-001, TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001,
+        // TOPAL-LAYOUT-ABSENCE-POLICY-001,
+        // TOPAL-COMPILER-LAYOUT-POLICY-001
+        let cases = [
+            (
+                include_str!("../../../examples/language/layout-endian.t"),
+                "Endian",
+                vec![0, 1],
+            ),
+            (
+                include_str!("../../../examples/language/layout-access.t"),
+                "Access",
+                vec![0, 1, 2, 3],
+            ),
+            (
+                include_str!("../../../examples/language/layout-bit-order.t"),
+                "BitOrder",
+                vec![0, 1],
+            ),
+            (
+                include_str!("../../../examples/language/layout-packing.t"),
+                "Packing",
+                vec![0, 1],
+            ),
+            (
+                include_str!("../../../examples/language/layout-field-order.t"),
+                "FieldOrder",
+                vec![0],
+            ),
+            (
+                include_str!("../../../examples/language/layout-payload-placement.t"),
+                "PayloadPlacement",
+                vec![0, 1],
+            ),
+            (
+                include_str!("../../../examples/language/layout-absence-policies.t"),
+                "LayoutPolicy",
+                vec![0, 1],
+            ),
+        ];
+        for (source, expected_type, expected_values) in cases {
+            let program = analyze_for_compiler(source).unwrap();
+            let values = match &program.main.result.kind {
+                CompilerExpressionKind::Enum(value) => vec![(&program.main.result, *value)],
+                CompilerExpressionKind::Tuple(fields) => fields
+                    .iter()
+                    .map(|field| {
+                        let CompilerExpressionKind::Enum(value) = field.kind else {
+                            panic!("layout policy example contains only enum values")
+                        };
+                        (field, value)
+                    })
+                    .collect(),
+                _ => panic!("layout policy example returns one enum or a Tuple"),
+            };
+            assert_eq!(
+                values.iter().map(|(_, value)| *value).collect::<Vec<_>>(),
+                expected_values
+            );
+            assert!(values.iter().all(|(expression, _)| matches!(
+                &expression.value_type,
+                CompilerType::Enum(enumeration) if enumeration.name == expected_type
+            )));
+        }
+
+        let mismatch = "use language (version is v0.1)\nLittle = Natural\n";
+        assert_eq!(
+            analyze_for_compiler(mismatch).unwrap_err().code,
+            "E-TYPE-MISMATCH"
         );
     }
 

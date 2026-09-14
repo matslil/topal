@@ -8750,6 +8750,48 @@ mod tests {
     }
 
     #[test]
+    fn emits_layout_policies_as_closed_nominal_tags_without_a_layout_runtime() {
+        // TOPAL-LAYOUT-ENDIAN-001, TOPAL-LAYOUT-ACCESS-001,
+        // TOPAL-LAYOUT-BIT-ORDER-001, TOPAL-LAYOUT-PACKING-001,
+        // TOPAL-LAYOUT-FIELD-ORDER-001, TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001,
+        // TOPAL-LAYOUT-ABSENCE-POLICY-001,
+        // TOPAL-COMPILER-LAYOUT-POLICY-001
+        let source = "use language (version is v0.1)\nendian is Big\naccess is Reserved\nbits is LeastSignificantFirst\npacking is Packed\nfields is Declared\npayload is Overlay\nabsence is NoTerminator\n(endian, access, bits, packing, fields, payload, absence)\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "layout-policy-values.t").emit();
+
+        for type_name in [
+            "Endian",
+            "Access",
+            "BitOrder",
+            "Packing",
+            "FieldOrder",
+            "PayloadPlacement",
+            "LayoutPolicy",
+        ] {
+            assert!(llvm.contains(&format!("DW_TAG_enumeration_type, name: \"{type_name}\"")));
+        }
+        for alternative in [
+            "Big",
+            "Reserved",
+            "LeastSignificantFirst",
+            "Packed",
+            "Declared",
+            "Overlay",
+            "NoTerminator",
+        ] {
+            assert!(llvm.contains(&format!("DIEnumerator(name: \"{alternative}\"")));
+        }
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        assert!(!main.contains("topal.platform.allocate"));
+        assert!(!main.contains("topal.runtime.layout"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_nominal_enums_as_checked_i32_tags_with_dwarf_enumerators() {
         // TOPAL-COMPILER-ENUM-001
         let source = "use language (version is v0.1)\nColor is Enum (Red, Green, Blue)\nnext is fn (value : Color) -> Color\n  value\n    Red then Green\n    Green then Blue\n    Blue then Red\n(next Red, next Green)\n";

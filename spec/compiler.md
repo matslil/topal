@@ -1211,6 +1211,35 @@ the private machine representation. This increment SHALL require no registry,
 allocation, foreign type-information runtime, other-language standard library,
 or native ABI revision.
 
+### TOPAL-COMPILER-LAYOUT-POLICY-001 — Closed external-layout policy values
+
+The compiler SHALL resolve the closed external-layout policy spellings as
+seven distinct nominal enum types with these declaration orders:
+
+- `Endian`: `Little`, `Big`;
+- `Access`: `ReadWrite`, `ReadOnly`, `WriteOnly`, `Reserved`;
+- `BitOrder`: `MostSignificantFirst`, `LeastSignificantFirst`;
+- `Packing`: `Natural`, `Packed`;
+- `FieldOrder`: `Declared`;
+- `PayloadPlacement`: `AfterTag`, `Overlay`; and
+- `LayoutPolicy`: `NoLength`, `NoTerminator`.
+
+Bindings, decomposed products, same-type equality, canonical display, DWARF,
+and GDB SHALL preserve those exact nominal identities and source labels.
+`NoLength` and `NoTerminator` SHALL remain distinct values of the same nominal
+type. Values from different families SHALL remain nominally distinct, and
+cross-family equality SHALL be rejected.
+
+On Linux x86-64, the backend MAY reuse the private declaration-ordered `i32`
+tag lowering for closed nominal enums. Those tags SHALL be compiler-selected
+machine representation only: they SHALL NOT construct or inspect an external
+layout, encode or serialize data, designate a location or address, grant access
+authority, or become a public, foreign, persistent, or compiled-library ABI.
+Future library metadata SHALL identify every policy and value canonically and
+independently of its private tag. This increment SHALL require no layout
+runtime, allocator, foreign dependency, C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, or native ABI revision.
+
 ### TOPAL-COMPILER-STATIC-INTROSPECTION-001 — Closed static introspection foundation
 
 For a v0.1 source context without optional features, the compiler SHALL admit

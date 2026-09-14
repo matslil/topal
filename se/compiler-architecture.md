@@ -688,6 +688,16 @@ through the Topal syscall boundary, while DWARF describes a genuine enumeration
 so stock GDB shows source labels. Nested enum declarations remain a separate
 scope increment.
 
+The initial external-layout policy names reuse this checked nominal-enum and
+DWARF path as seven fixed language-owned families. Their private `i32` tags
+exist only to preserve exact values through the admitted executable boundary;
+they are not external representation tags or compiled-library identities.
+Resolving or displaying one constructs no layout, touches no external memory,
+and grants no access authority. Apart from the existing Topal-owned Linux write
+syscall used for final output, this slice introduces no platform or layout
+runtime. A future library interface must publish canonical semantic policy
+identities independently of these private target tags.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an
