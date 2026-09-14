@@ -623,6 +623,43 @@ behavior, and target adapters canonically. This realizes
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-EARLY-RETURN-001`, and
 `TOPAL-GENERATOR-FOREACH-001` for compiler increment 5j.
 
+## TOPAL-COMP-GENERATOR-FINAL-CHARACTER-001 — Distinct final Character
+
+The checked compiler shall admit one root custom generator with a Character
+input, Character yield, Unit resume, and Character final result when its body
+is exactly one discarded yield of the initial parameter followed by an exact
+closed Character literal. Application shall evaluate the initial Character
+once, retain the yielded value and separate final value as compile-session
+provenance, and stop at the yield without evaluating the final expression.
+
+Direct root foreach over one locally bound admitted instance shall consume the
+Generator, invoke its checked Character-to-Unit action exactly once with the
+yielded Character, resume with Unit, then evaluate and produce the distinct
+final Character. The final expression shall not be emitted before the action
+and resumption. Existing repeated-use and abandonment rejection shall continue
+to apply. Binding the non-Unit foreach result, zero or multiple yields, a local
+alias, dynamic or non-Character final expressions, other directions, overloads,
+captures, close handling, and function or library boundaries shall remain
+rejected before LLVM.
+
+On Linux x86-64, the backend shall lower the yield/action/resume sequence and
+final Character materialization in that explicit order at O0. It may retain
+the compiler-private Generator observation token and existing debug-only
+yielded-Character shadow, but neither shall carry the final value or act as
+continuation state. Generated DWARF shall expose the full
+`Generator Character Unit Character` direction identity and yielded Character
+to GDB. The lowering shall introduce no Generator object, state allocation,
+dispatcher, callback, indirect call, unwind support, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall encode the result classifier and final-value
+node alongside canonical declaration, direction, suspension, effect,
+ownership/close, and target-adapter evidence. This realizes
+`TOPAL-COMPILER-GENERATOR-FINAL-CHARACTER-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-FINAL-RETURN-001`,
+`TOPAL-GENERATOR-SUSPEND-001`, and `TOPAL-GENERATOR-FOREACH-001` for compiler
+increment 5k.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted

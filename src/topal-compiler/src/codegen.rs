@@ -141,12 +141,21 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::GeneratorCollect(generator) => {
             expression_uses_extended_debug(generator)
         }
-        CompilerExpressionKind::CustomCharacterGenerator { initial, .. } => {
-            expression_uses_extended_debug(initial)
-        }
-        CompilerExpressionKind::StringCharactersForeach { source, body, .. }
-        | CompilerExpressionKind::CustomCharacterForeach { source, body, .. } => {
+        CompilerExpressionKind::CustomCharacterGenerator {
+            initial, result, ..
+        } => expression_uses_extended_debug(initial) || expression_uses_extended_debug(result),
+        CompilerExpressionKind::StringCharactersForeach { source, body, .. } => {
             expression_uses_extended_debug(source) || block_uses_extended_debug(body)
+        }
+        CompilerExpressionKind::CustomCharacterForeach {
+            source,
+            body,
+            result,
+            ..
+        } => {
+            expression_uses_extended_debug(source)
+                || block_uses_extended_debug(body)
+                || expression_uses_extended_debug(result)
         }
         CompilerExpressionKind::IterateGeneratorForeach {
             generator, body, ..
@@ -1133,12 +1142,13 @@ impl<'a> Generator<'a> {
                 locals,
                 parameter,
                 body: action,
+                result,
             } => {
                 let parent_scope = body.subprogram;
                 if !locals.is_empty() {
                     body.subprogram = self.debug.lexical_block(*declaration_span, parent_scope);
                 }
-                let result = self.emit_character_sequence_foreach(
+                let _ = self.emit_character_sequence_foreach(
                     source,
                     characters,
                     locals.first(),
@@ -1148,8 +1158,9 @@ impl<'a> Generator<'a> {
                     environment,
                     expression.span,
                 );
+                let value = self.emit_expression(result, body, environment);
                 body.subprogram = parent_scope;
-                result
+                value
             }
             CompilerExpressionKind::ErrorCode(value) => LlValue::ErrorCode(value.to_string()),
             CompilerExpressionKind::Enum(value) => {
@@ -9799,6 +9810,38 @@ mod tests {
         assert!(!main.contains("store ptr"));
         assert!(!llvm.contains("DILocalVariable(name: \"character\""));
         assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_distinct_custom_generator_final_character_after_action() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-FINAL-RETURN-001,
+        // TOPAL-GENERATOR-SUSPEND-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-FINAL-CHARACTER-001
+        let source = include_str!("../../../examples/language/custom-generator-final-character.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-final-character.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            3
+        );
+        let action_store = main.find("store ptr").expect("yield action is invoked");
+        let final_value = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("final Character is materialized");
+        assert!(action_store < final_value);
+        assert!(main.contains("#dbg_value(i32 0"));
+        assert_eq!(main.matches("#dbg_declare(ptr").count(), 1);
+        assert_eq!(main.matches("store ptr").count(), 1);
+        assert!(llvm.contains("name: \"Generator Character Unit Character\""));
+        assert!(llvm.contains("name: \"Character\""));
         assert!(!main.contains("generator.foreach.loop"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));

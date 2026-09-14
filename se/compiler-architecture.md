@@ -914,6 +914,20 @@ storage is needed; a compiled-library form will nevertheless need a canonical
 terminal-before-suspension graph and final-value metadata so another compiler
 can distinguish completion from a suspended state safely.
 
+The first distinct-result slice keeps suspension provenance and final-value
+provenance separate for an exact `Generator Character Unit Character`. The
+checked plan records the initial Character as the single yielded value and a
+closed Character literal as the final result. Construction evaluates only the
+initial value and stops at the yield. Root foreach expands the action and erased
+Unit resumption before materializing the final Character, then returns that
+value through the ordinary native Character descriptor path. This sequencing
+is frontend-owned at O0; LLVM handles instruction selection and physical
+placement but is not asked to infer coroutine control flow. The private
+ownership token and yielded-value debug shadow remain independent of the final
+value, and no continuation or public Generator layout is introduced. A future
+compiled-library form must identify result classifiers and final-value graph
+nodes canonically alongside suspension and ownership metadata.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an

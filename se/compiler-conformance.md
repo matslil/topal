@@ -84,6 +84,7 @@ evidence.
 | 5h | consecutive custom Character yields with exact action/resume ordering, finite inline expansion, and no continuation object or runtime | complete |
 | 5i | one exact generator-local Character alias retained across admitted yields, caller non-escape, and lexical DWARF inspection without semantic state storage | complete |
 | 5j | exact custom Character generator completion before its first yield, zero action invocations, and direct final Unit without continuation state | complete |
+| 5k | one yielded Character followed by a distinct exact final Character, ordered result materialization, direct root observation, and full-direction debugging | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -339,8 +340,12 @@ general continuation state remained in increment 5. Increment 5j admits the
 empty suspension sequence whose exact body returns Unit immediately. The
 checked action is invoked zero times, and O0 lowering produces final Unit
 directly without action code or debug storage. Non-Unit final results, explicit
-early returns, captures, close handling, and general continuation state remain
-in increment 5.
+early returns, captures, close handling, and general continuation state remained
+in increment 5. Increment 5k admits one distinct closed Character final after
+one yielded Character. The frontend retains separate yield and result
+provenance and emits the final descriptor only after the direct action and Unit
+resumption. Dynamic finals, result binding, other directions, captures, close
+handling, and general continuation state remain in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
