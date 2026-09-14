@@ -252,9 +252,9 @@ classified root Generator binding, evaluates its String once at construction,
 and transfers the provenance into one foreach before rejecting later source
 use. A compiler-private semantic token supports observation and Generator
 DWARF without becoming cursor state or a copyable continuation. Root
-abandonment, function results, nonspecialized parameter traversal, general
-close behavior, and library representation remain in the planned generator
-closure.
+abandonment, general/dynamic function results, nonspecialized parameter
+traversal, general close behavior, and library representation remain in the
+planned generator closure.
 Increment 4b3d-m consumes a direct closed `characters` traversal into String by
 retaining its pinned cluster sequence as checking evidence and forwarding the
 once-evaluated immutable source descriptor. This required O0 identity lowering
@@ -275,6 +275,13 @@ and LLVM `fastcc` transfers the private ownership token; the callee expands the
 exact ordered Characters, exhausts the continuation, and returns Unit.
 Compile-session provenance is restored after checking, nested calls remain
 closed, and no Generator runtime or public ABI is introduced.
+Increment 4b3d-p retains the pinned Character sequence from a statement-free
+`characters` result beside each distinct private function symbol. A top-level
+exact String call passes the existing descriptor with LLVM `fastcc`; the callee
+returns the private `i32` token, and the caller binds and consumes it once. GDB
+observes the String parameter and semantic Generator return, while the
+compile-session side table creates no runtime state, serialized metadata, or
+public ABI.
 Increment 5a admits only the qualified `generator-closed` vocabulary value as a
 private nominal enum. It deliberately creates no continuation, generator state,
 close result, Error domain, or provenance; all generator execution remains in
