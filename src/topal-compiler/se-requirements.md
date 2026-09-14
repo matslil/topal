@@ -1355,6 +1355,43 @@ than any target representation. This realizes
 `TOPAL-CAPABILITY-EVIDENCE-001`, `TOPAL-CAPABILITY-COHERENCE-001`, and
 `TOPAL-CAPABILITY-COMPOSE-001` for compiler increment 8a4.
 
+## TOPAL-COMP-FUNCTION-INTERFACE-001 — Closed direct function-interface conformance
+
+For source-root v0.1 interfaces containing only uniquely named ordinary
+function shapes over already admitted private native parameter and result
+classifiers, the checked compiler shall retain the nominal `root.Name`
+identity and canonical operation name/input/result metadata. A following
+direct construction shall be validated before function collection and shall
+provide exactly one ordinary function declaration for each role, with no
+missing, additional, duplicate, or mismatched operation. Successful evidence
+shall map each canonical role to its overload-qualified root declaration
+identity and its optional explicit empty declared effect bound. An absent bound
+shall remain absent rather than being mislabeled as inferred evidence for an
+unchecked body.
+
+Only the selected ordinary declarations shall enter LLVM, using the existing
+direct module-private `fastcc` calls and LLVM-owned target argument lowering.
+Interface shapes and evidence shall produce no instruction, value, namespace,
+vtable, function pointer, indirect call, dispatcher, tag, descriptor,
+allocation, symbol, relocation, DWARF type, or DWARF variable. DWARF/GDB shall
+still expose the implementation subprogram, String parameter, source line,
+direct caller frame, and canonical value. Native tests shall cover the shared
+interpreter regression, exact model evidence, unknown/missing/additional/
+duplicate/mismatched rejection, direct IR, exact output, undefined symbols,
+needed libraries, relocations, metadata erasure, DWARF erasure, and GDB.
+
+This increment shall add no foreign runtime, C/C++ runtime, other-language
+standard library, public/foreign/serialized interface ABI, native-artifact
+export/evidence claim, compiled-library metadata format, or `topal-native/6`
+revision. Future compiled libraries shall publish these semantic identities,
+shapes, effects, and declaration mappings through a separately versioned and
+validated schema rather than reuse `fastcc`, LLVM types, private symbols, or
+target layouts. Packaged/dynamic implementations, generators, non-root/message
+contexts, v0.2 contracts, and cross-library consumption remain rejected. This
+realizes `TOPAL-COMPILER-FUNCTION-INTERFACE-001`,
+`TOPAL-INTERFACE-SHAPE-001`, and `TOPAL-INTERFACE-IMPLEMENTATION-001` for
+compiler increment 8a5.
+
 ## TOPAL-COMP-PATTERN-001 — Positional product and discard inputs
 
 For an admitted ordinary function with multiple scalar parameters, a prefix

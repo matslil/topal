@@ -124,6 +124,14 @@ optional binding. It neither flattens members nor performs a runtime filesystem
 lookup. External package and library paths remain tied to the future versioned
 interface-metadata pipeline rather than ambient host discovery.
 
+A source-root v0.1 function `Interface` and its direct implementation are also
+checked statically. `topalc` retains the nominal operation shapes and the exact
+implementing declaration identities during checking, then emits ordinary
+direct private calls. The interface itself has no runtime object, vtable, or
+debug value; GDB shows the implementation function and its values. Source
+visibility does not yet publish a compiled-library interface: that remains part
+of the separately versioned interface-metadata pipeline.
+
 A directly applied nested lexical function appears as its own source frame.
 Represented immutable values captured from its enclosing invocation appear as
 named arguments after the declared parameters, so GDB can inspect both without

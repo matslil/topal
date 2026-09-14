@@ -793,6 +793,36 @@ adds no runtime helper, dispatch, allocation, ABI surface, foreign dependency,
 or other-language standard library, while future library consumers can validate
 semantic identities independently of the Linux x86-64 lowering.
 
+The first function-interface slice applies that separation to intentional call
+surface conformance. The frontend constructs a nominal `root.Name` record with
+a canonical set of operation names and exact parameter/result classifiers. A
+direct source-root implementation is accepted only when it supplies each role
+once and no other declaration. Its checked evidence maps every role to the
+overload-qualified root declaration identity and any explicit empty declared
+effect bound. An absent bound remains absent until the selected function body
+is checked; it is never mislabeled as inferred evidence. Shape validation occurs
+before the implementation declarations are
+collected for ordinary call analysis, so malformed evidence cannot influence
+overload selection or code generation.
+
+After checking, only the selected ordinary functions remain on the LLVM path.
+They keep the existing module-private `fastcc` definitions and direct calls;
+LLVM owns their target-specific physical argument lowering. The interface and
+evidence records create no machine value, vtable, function pointer, dispatch,
+descriptor, allocation, symbol, relocation, or debug entry. GDB consequently
+shows the truthful implementation function, parameter, line, and caller frame,
+but no invented interface object. This is mandatory frontend erasure at O0,
+not dead-code elimination delegated to LLVM.
+
+The current native artifact continues to describe a closed executable and does
+not claim that its empty interface/export/evidence fields serialize these
+records. A future compiled-library layer must define a separately versioned,
+validated schema carrying nominal interface identities, canonical operation
+shapes, semantic declaration identities, effects, dependencies, and trust
+information. It must then adapt those semantics to each target ABI rather than
+publishing private `fastcc` signatures, LLVM types, symbols, or Linux x86-64
+layouts as the language boundary.
+
 An admitted named `Constraint` object is likewise split between semantic
 metadata and a private observation value. The checked program model retains
 the root binding identity, primitive base classifier, predicate parameter, and

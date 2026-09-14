@@ -4555,6 +4555,103 @@ fn capability_composition_is_static_freestanding_and_absent_from_dwarf() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn function_interface_is_direct_freestanding_debuggable_and_statically_erased() {
+    // TOPAL-INTERFACE-SHAPE-001, TOPAL-INTERFACE-IMPLEMENTATION-001,
+    // TOPAL-COMPILER-FUNCTION-INTERFACE-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("function-interface");
+    let source = directory.join("function-interface.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-interface.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"true\n");
+
+    let metadata_bytes = fs::read(metadata_path(&executable)).unwrap();
+    let metadata = NativeArtifactMetadata::decode(&metadata_bytes).unwrap();
+    assert!(metadata.exports.is_empty());
+    assert!(metadata.evidence.is_empty());
+    assert!(!String::from_utf8_lossy(&metadata_bytes).contains("root.Parser"));
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let dwarf_tool = tools.directory.join("llvm-dwarfdump");
+    if dwarf_tool.is_file() {
+        let dwarf = run(Command::new(dwarf_tool)
+            .arg("--debug-info")
+            .arg(&executable));
+        assert!(dwarf.status.success());
+        let dwarf = String::from_utf8_lossy(&dwarf.stdout);
+        assert!(dwarf.contains("topal.fn.parse.0"), "{dwarf}");
+        assert!(!dwarf.contains("root.Parser"), "{dwarf}");
+        assert!(!dwarf.contains("Parser"), "{dwarf}");
+        assert!(!dwarf.contains("TopalInterface"), "{dwarf}");
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-interface.t:10",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis source",
+            "-ex",
+            "print source",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = String"), "{text}");
+    assert!(text.contains("$1 = \"ok\""), "{text}");
+    assert!(text.contains("topal.fn.parse.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn function_input_boundary_is_private_direct_freestanding_and_debuggable() {
     // TOPAL-COMPILER-FUNCTION-PARAMETER-001,
     // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
