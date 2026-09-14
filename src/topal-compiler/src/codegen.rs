@@ -7,9 +7,9 @@ use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
     CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerFallible, CompilerFunction, CompilerModularType, CompilerParameter, CompilerProgram,
-    CompilerStatement, CompilerSumRule, CompilerSumType, CompilerType, CompilerValidation,
-    display_string_literal,
+    CompilerFallible, CompilerFunction, CompilerGeneratorType, CompilerModularType,
+    CompilerParameter, CompilerProgram, CompilerStatement, CompilerSumRule, CompilerSumType,
+    CompilerType, CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -56,6 +56,11 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         CompilerType::Range(endpoint)
         | CompilerType::Result(endpoint)
         | CompilerType::List(endpoint) => type_uses_extended_debug(endpoint),
+        CompilerType::Generator(generator) => {
+            type_uses_extended_debug(&generator.yield_type)
+                || type_uses_extended_debug(&generator.resume_type)
+                || type_uses_extended_debug(&generator.result_type)
+        }
         CompilerType::Tuple(fields) => fields.iter().any(type_uses_extended_debug),
         CompilerType::Record(fields) => fields
             .iter()
@@ -117,6 +122,14 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::ListSelect { list, body, .. } => {
             expression_uses_extended_debug(list) || block_uses_extended_debug(body)
         }
+        CompilerExpressionKind::IterateGenerator { initial, next, .. } => {
+            expression_uses_extended_debug(initial) || block_uses_extended_debug(next)
+        }
+        CompilerExpressionKind::GeneratorTakeWhile {
+            generator,
+            predicate,
+            ..
+        } => expression_uses_extended_debug(generator) || block_uses_extended_debug(predicate),
         CompilerExpressionKind::ListFold {
             list,
             initial,
@@ -452,7 +465,8 @@ impl<'a> Generator<'a> {
             }
             LlValue::Comparison(value)
             | LlValue::ErrorCode(value)
-            | LlValue::Enum { value, .. } => {
+            | LlValue::Enum { value, .. }
+            | LlValue::Generator { value, .. } => {
                 body.terminator(&format!("ret i32 {value}"), location);
             }
             LlValue::Tuple(fields) => {
@@ -1061,6 +1075,26 @@ impl<'a> Generator<'a> {
                 LlValue::Enum {
                     value: value.to_string(),
                     enumeration: enumeration.clone(),
+                }
+            }
+            CompilerExpressionKind::IterateGenerator { initial, .. } => {
+                let _ = self.emit_expression(initial, body, environment);
+                let CompilerType::Generator(generator) = &expression.value_type else {
+                    unreachable!("checked iterate construction retains its Generator type")
+                };
+                LlValue::Generator {
+                    value: "0".into(),
+                    generator: generator.clone(),
+                }
+            }
+            CompilerExpressionKind::GeneratorTakeWhile { generator, .. } => {
+                let _ = self.emit_expression(generator, body, environment);
+                let CompilerType::Generator(generator) = &expression.value_type else {
+                    unreachable!("checked take-while retains its Generator type")
+                };
+                LlValue::Generator {
+                    value: "0".into(),
+                    generator: generator.clone(),
                 }
             }
             CompilerExpressionKind::Sum { value, payload } => {
@@ -1965,7 +1999,8 @@ impl<'a> Generator<'a> {
                     | CompilerType::Capability
                     | CompilerType::Constraint
                     | CompilerType::Refined { .. }
-                    | CompilerType::TraversalControl(_) => {
+                    | CompilerType::TraversalControl(_)
+                    | CompilerType::Generator(_) => {
                         unreachable!("checked functions do not return this static object kind")
                     }
                     CompilerType::Version => {
@@ -4357,6 +4392,14 @@ impl<'a> Generator<'a> {
                 ),
                 enumeration: enumeration.clone(),
             },
+            LlValue::Generator { generator, .. } => LlValue::Generator {
+                value: body.instruction(
+                    &format!("phi i32 {}", incoming(LlValue::generator_token)),
+                    span,
+                    &mut self.debug,
+                ),
+                generator: generator.clone(),
+            },
             LlValue::Range { endpoint, .. } => {
                 let endpoint = endpoint.clone();
                 LlValue::Range {
@@ -4572,6 +4615,13 @@ impl<'a> Generator<'a> {
             }
             LlValue::Enum { value, enumeration } => {
                 self.emit_print_enum(value, enumeration, body, span);
+            }
+            LlValue::Generator { generator, .. } => {
+                self.emit_write_literal(
+                    &format!("<{}>", CompilerType::Generator(generator.clone()).name()),
+                    body,
+                    span,
+                );
             }
             LlValue::Sum { tag, payloads, sum } => {
                 let labels = sum
@@ -5261,6 +5311,10 @@ enum LlValue {
         value: String,
         enumeration: CompilerEnumType,
     },
+    Generator {
+        value: String,
+        generator: CompilerGeneratorType,
+    },
     Sum {
         tag: String,
         payloads: Vec<Option<Box<Self>>>,
@@ -5372,6 +5426,13 @@ impl LlValue {
         value
     }
 
+    fn generator_token(&self) -> &str {
+        let Self::Generator { value, .. } = self else {
+            unreachable!("checked value is a construction-only Generator")
+        };
+        value
+    }
+
     fn string(&self) -> &str {
         let Self::String(value) = self else {
             unreachable!("checked value is String")
@@ -5445,7 +5506,10 @@ impl LlValue {
             | Self::List { value, .. } => {
                 format!("ptr {value}")
             }
-            Self::Comparison(value) | Self::ErrorCode(value) | Self::Enum { value, .. } => {
+            Self::Comparison(value)
+            | Self::ErrorCode(value)
+            | Self::Enum { value, .. }
+            | Self::Generator { value, .. } => {
                 format!("i32 {value}")
             }
             Self::Tuple(_) | Self::Record { .. } | Self::Sum { .. } => {
@@ -5478,6 +5542,10 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Enum(enumeration) => LlValue::Enum {
             value: "0".into(),
             enumeration: enumeration.clone(),
+        },
+        CompilerType::Generator(generator) => LlValue::Generator {
+            value: "0".into(),
+            generator: generator.clone(),
         },
         CompilerType::Range(endpoint) => LlValue::Range {
             value: "null".into(),
@@ -5595,6 +5663,14 @@ fn root_scope_enumeration() -> CompilerEnumType {
     }
 }
 
+fn generator_debug_enumeration(generator: &CompilerGeneratorType) -> CompilerEnumType {
+    let name = CompilerType::Generator(generator.clone()).name();
+    CompilerEnumType {
+        alternatives: vec![format!("<{name}>")],
+        name,
+    }
+}
+
 fn function_value_enumeration(program: &CompilerProgram) -> CompilerEnumType {
     CompilerEnumType {
         name: "Function".into(),
@@ -5709,7 +5785,8 @@ impl FunctionBody {
             }
             LlValue::Comparison(value)
             | LlValue::ErrorCode(value)
-            | LlValue::Enum { value, .. } => format!("i32 {value}"),
+            | LlValue::Enum { value, .. }
+            | LlValue::Generator { value, .. } => format!("i32 {value}"),
             LlValue::StaticDisplay(_)
             | LlValue::Tuple(_)
             | LlValue::Record { .. }
@@ -6269,6 +6346,7 @@ impl DebugInfo {
             CompilerType::SourceLocation => self.source_location_type,
             CompilerType::Modular(modular) => self.modular_type(modular),
             CompilerType::Enum(enumeration) => self.enum_type(enumeration),
+            CompilerType::Generator(generator) => self.generator_type(generator),
             CompilerType::Character => self.character_type,
             CompilerType::String => self.string_type,
             CompilerType::Range(endpoint) if endpoint.as_ref() == &CompilerType::Int => {
@@ -6710,6 +6788,10 @@ impl DebugInfo {
         value_type
     }
 
+    fn generator_type(&mut self, generator: &CompilerGeneratorType) -> usize {
+        self.enum_type(&generator_debug_enumeration(generator))
+    }
+
     fn subprogram(
         &mut self,
         name: &str,
@@ -6846,7 +6928,8 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::Constraint
         | CompilerType::Comparison
         | CompilerType::ErrorCode
-        | CompilerType::Enum(_) => TargetValueLayout {
+        | CompilerType::Enum(_)
+        | CompilerType::Generator(_) => TargetValueLayout {
             size: 32,
             alignment: 32,
         },
@@ -6951,7 +7034,8 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
         | CompilerType::TypeView
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
-        | CompilerType::Capability => false,
+        | CompilerType::Capability
+        | CompilerType::Generator(_) => false,
         CompilerType::Tuple(fields) => fields.iter().all(private_aggregate_value_supported),
         CompilerType::Record(fields) => fields
             .iter()
@@ -6998,7 +7082,8 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Constraint
         | CompilerType::Comparison
         | CompilerType::ErrorCode
-        | CompilerType::Enum(_) => "i32".into(),
+        | CompilerType::Enum(_)
+        | CompilerType::Generator(_) => "i32".into(),
         CompilerType::Refined { base, .. } => llvm_value_type(base),
         CompilerType::Tuple(fields) => format!(
             "{{ {} }}",
@@ -7080,6 +7165,10 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::Enum(enumeration) => LlValue::Enum {
             value,
             enumeration: enumeration.clone(),
+        },
+        CompilerType::Generator(generator) => LlValue::Generator {
+            value,
+            generator: generator.clone(),
         },
         CompilerType::Character | CompilerType::String => LlValue::String(value),
         CompilerType::Range(endpoint) => LlValue::Range {
@@ -8812,6 +8901,51 @@ mod tests {
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("topal.platform.allocate"));
         assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_lazy_iterate_construction_as_a_private_debug_token_without_invoking_functions() {
+        // TOPAL-GENERATOR-ITERATE-001, TOPAL-GENERATOR-TAKE-WHILE-001,
+        // TOPAL-COMPILER-GENERATOR-ITERATE-CONSTRUCT-001
+        for (source, name) in [
+            (
+                include_str!("../../../examples/language/iterate-generator.t"),
+                "iterate-generator.t",
+            ),
+            (
+                include_str!("../../../examples/language/iterate-take-while.t"),
+                "iterate-take-while.t",
+            ),
+        ] {
+            let program = analyze_for_compiler(source).unwrap();
+            let llvm = Generator::new(&program, name).emit();
+
+            assert!(llvm.contains("DW_TAG_enumeration_type, name: \"Generator Int Unit Unit\""));
+            assert!(llvm.contains("DIEnumerator(name: \"<Generator Int Unit Unit>\", value: 0)"));
+            let main = llvm
+                .split_once("define internal void @topal.main")
+                .expect("module contains generated source entry")
+                .1;
+            assert!(!main.contains("topal.runtime.generator"));
+            assert!(!main.contains("topal.platform.allocate"));
+            assert!(!main.contains("topal.runtime.int.add"));
+            assert!(!main.contains("icmp"));
+            assert!(!main.contains("call ptr %"));
+        }
+
+        let once = analyze_for_compiler(
+            "use language (version is v0.1)\ninitial is fn () -> Int\n  0\nnumbers is (initial ()) iterate ({ value } value + 1)\nnumbers\n",
+        )
+        .unwrap();
+        let llvm = Generator::new(&once, "iterate-initial-once.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        assert_eq!(
+            main.matches("call fastcc ptr @topal.fn.initial.").count(),
+            1
+        );
     }
 
     #[test]

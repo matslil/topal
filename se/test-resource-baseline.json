@@ -5159,6 +5159,21 @@
       "cpu_time_ns": 3095160,
       "memory_peak_bytes": 18399232,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_lazy_iterate_construction_as_a_private_debug_token_without_invoking_functions": {
+      "cpu_time_ns": 5066119,
+      "memory_peak_bytes": 18489344,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::lazy_iterate_values_are_freestanding_linear_and_debuggable": {
+      "cpu_time_ns": 629386760,
+      "memory_peak_bytes": 57044992,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_lazy_int_iterate_construction_without_invoking_captured_functions": {
+      "cpu_time_ns": 4763139,
+      "memory_peak_bytes": 18411520,
+      "samples_per_test": 50
     }
   }
 }

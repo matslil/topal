@@ -1456,6 +1456,26 @@
       "cpu_time_ns": 131203,
       "memory_peak_bytes": 18665472,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/iterate-generator.t": {
+      "cpu_time_ns": 124070480,
+      "memory_peak_bytes": 41598976,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/iterate-take-while.t": {
+      "cpu_time_ns": 124104180,
+      "memory_peak_bytes": 41623552,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/iterate-generator.t": {
+      "cpu_time_ns": 130718,
+      "memory_peak_bytes": 18661376,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/iterate-take-while.t": {
+      "cpu_time_ns": 131196,
+      "memory_peak_bytes": 18608128,
+      "samples_per_test": 500
     }
   }
 }

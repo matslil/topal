@@ -270,6 +270,34 @@ remain unsupported. This increment SHALL require no generator runtime,
 allocator, foreign dependency, C/C++ runtime, other-language standard library,
 needed library, dynamic relocation, or native ABI revision.
 
+### TOPAL-COMPILER-GENERATOR-ITERATE-CONSTRUCT-001 — Lazy iterate construction
+
+The compiler SHALL admit construction of an exact `Generator Int Unit Unit`
+from an `Int` initial value and a unary anonymous `Int -> Int` next operation.
+It SHALL also admit a directly chained `take-while` with a unary anonymous
+`Int -> Boolean` predicate. Construction SHALL evaluate the initial expression
+exactly once, retain checked initial, parameter, next-operation, and predicate
+structure for later generator lowering, and invoke neither anonymous body.
+Final observation SHALL use the canonical `<Generator Int Unit Unit>` display.
+
+This construction-only increment SHALL preserve Generator linearity by
+allowing an immutable local Generator binding to be consumed at most once.
+Until close delivery and cleanup exist, the compiler SHALL reject a second
+read, an unconsumed or explicitly discarded binding, product containment,
+qualified member access, equality, decision joins, and function or library
+boundaries before LLVM lowering.
+
+On Linux x86-64, the backend MAY represent the admitted live binding as a
+private `i32` observation token and SHALL describe that value to DWARF and GDB
+as `Generator Int Unit Unit`. The token has no source-level identity and SHALL
+NOT encode the initial value, captures, operation identities, continuation
+state, ownership, or a stable ABI. Future compiled-library metadata SHALL
+instead identify the Generator classifier and captured operations and evidence
+canonically, with target-specific representation adapters. This increment
+SHALL NOT traverse, yield, resume, suspend, close, allocate generator storage,
+emit an indirect call or generator runtime, introduce a foreign dependency or
+other-language standard library, or revise `topal-native/6`.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve

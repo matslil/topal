@@ -56,6 +56,13 @@ pub struct CompilerEffectRow {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerGeneratorType {
+    pub yield_type: Box<CompilerType>,
+    pub resume_type: Box<CompilerType>,
+    pub result_type: Box<CompilerType>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerIdentity {
     pub kind: ObjectKind,
     pub canonical: String,
@@ -196,6 +203,7 @@ pub enum CompilerType {
     Optional(Box<Self>),
     List(Box<Self>),
     TraversalControl(Box<Self>),
+    Generator(CompilerGeneratorType),
     Refined { constraint: String, base: Box<Self> },
     Character,
     String,
@@ -232,6 +240,7 @@ impl CompilerType {
                 | Self::Optional(_)
                 | Self::List(_)
                 | Self::TraversalControl(_)
+                | Self::Generator(_)
                 | Self::Character
                 | Self::String
         ) || matches!(self, Self::Refined { base, .. } if base.machine_scalar())
@@ -273,6 +282,12 @@ impl CompilerType {
             Self::Optional(payload) => format!("Optional {}", payload.name()),
             Self::List(element) => format!("List {}", element.name()),
             Self::TraversalControl(payload) => format!("TraversalControl {}", payload.name()),
+            Self::Generator(generator) => format!(
+                "Generator {} {} {}",
+                generator.yield_type.name(),
+                generator.resume_type.name(),
+                generator.result_type.name()
+            ),
             Self::Refined { constraint, .. } => constraint.clone(),
             Self::Character => "Character".into(),
             Self::String => "String".into(),
@@ -567,6 +582,16 @@ pub enum CompilerExpressionKind {
         initial: Box<CompilerExpression>,
         parameters: Vec<CompilerParameter>,
         body: Box<CompilerBlock>,
+    },
+    IterateGenerator {
+        initial: Box<CompilerExpression>,
+        parameters: Vec<CompilerParameter>,
+        next: Box<CompilerBlock>,
+    },
+    GeneratorTakeWhile {
+        generator: Box<CompilerExpression>,
+        parameters: Vec<CompilerParameter>,
+        predicate: Box<CompilerBlock>,
     },
     ErrorField {
         error: Box<CompilerExpression>,
@@ -878,6 +903,7 @@ struct Analyzer {
     constraint_bindings: BTreeMap<String, u32>,
     in_function: bool,
     function_values_used: bool,
+    consumed_generators: BTreeSet<String>,
     static_context: bool,
     next_instance: usize,
 }
@@ -913,6 +939,7 @@ impl Analyzer {
             constraint_bindings: BTreeMap::new(),
             in_function: false,
             function_values_used: false,
+            consumed_generators: BTreeSet::new(),
             static_context: false,
             next_instance: 0,
         }
@@ -2302,6 +2329,7 @@ impl Analyzer {
         enclosing_result: Option<&CompilerType>,
     ) -> Result<CompilerBlock, Diagnostic> {
         let mut lowered = Vec::new();
+        let mut generator_bindings = Vec::new();
         let mut result = None;
         let mut declared = if kind == BlockKind::Lexical {
             BTreeSet::new()
@@ -2513,6 +2541,8 @@ impl Analyzer {
                     }
                     let storage_name = if kind == BlockKind::TopLevel {
                         format!("topal.root.{}.{}", name.start, name_text)
+                    } else if matches!(value.value_type, CompilerType::Generator(_)) {
+                        format!("topal.generator.{}.{}", name.start, name_text)
                     } else {
                         name_text.clone()
                     };
@@ -2529,6 +2559,9 @@ impl Analyzer {
                         callable,
                         static_capability,
                     };
+                    if matches!(facts.value_type, CompilerType::Generator(_)) {
+                        generator_bindings.push((storage_name.clone(), name_text.clone(), *name));
+                    }
                     environment.insert(name_text.clone(), facts.clone());
                     if let Some(tag) = constraint_tag {
                         self.constraint_bindings.insert(name_text.clone(), tag);
@@ -2555,6 +2588,13 @@ impl Analyzer {
                 }
                 Statement::Discard { value, .. } => {
                     let value = self.analyze_expression(value, environment)?;
+                    if matches!(value.value_type, CompilerType::Generator(_)) {
+                        return Err(unsupported(
+                            &self.source,
+                            value.span,
+                            "generator abandonment and close delivery",
+                        ));
+                    }
                     reject_static_value_containment(&self.source, &value)?;
                     lowered.push(CompilerStatement::Discard(value));
                     if last {
@@ -2614,6 +2654,13 @@ impl Analyzer {
                     ));
                 }
             }
+        }
+        if let Some((_, name, span)) = generator_bindings
+            .iter()
+            .find(|(storage, _, _)| !self.consumed_generators.contains(storage))
+        {
+            let feature = format!("unconsumed generator `{name}` and close delivery");
+            return Err(unsupported(&self.source, *span, &feature));
         }
         Ok(CompilerBlock {
             statements: lowered,
@@ -2987,6 +3034,16 @@ impl Analyzer {
                         value_types.push((label.clone(), value.value_type.clone()));
                         values.push((label, value));
                     }
+                    if value_types
+                        .iter()
+                        .any(|(_, value_type)| compiler_type_contains_generator(value_type))
+                    {
+                        return Err(unsupported(
+                            &self.source,
+                            span,
+                            "generator containment in a product",
+                        ));
+                    }
                     value_types.sort_by(|left, right| left.0.cmp(&right.0));
                     return Ok(CompilerExpression {
                         value_type: CompilerType::Record(value_types),
@@ -3000,6 +3057,16 @@ impl Analyzer {
                     .iter()
                     .map(|field| self.analyze_expression(&field.value, environment))
                     .collect::<Result<Vec<_>, _>>()?;
+                if values
+                    .iter()
+                    .any(|value| compiler_type_contains_generator(&value.value_type))
+                {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "generator containment in a product",
+                    ));
+                }
                 Ok(CompilerExpression {
                     value_type: CompilerType::Tuple(
                         values
@@ -3030,6 +3097,16 @@ impl Analyzer {
                         "nested Function value outside direct application"
                     };
                     return Err(unsupported(&self.source, *name, feature));
+                }
+                if matches!(facts.value_type, CompilerType::Generator(_))
+                    && !self.consumed_generators.insert(facts.storage_name.clone())
+                {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-GENERATOR-CONSUMED",
+                        *name,
+                        format!("generator `{name_text}` was already consumed"),
+                    ));
                 }
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
@@ -3661,6 +3738,13 @@ impl Analyzer {
                 && !self.in_function
                 && let Some(facts) = self.root_bindings.get(&member_name)
             {
+                if compiler_type_contains_generator(&facts.value_type) {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "qualified generator access",
+                    ));
+                }
                 return Ok(data_member_expression(facts, span));
             }
             return Err(unsupported(&self.source, *member, "qualified root member"));
@@ -3686,6 +3770,13 @@ impl Analyzer {
             if remaining.len() == 1
                 && let Some(facts) = namespace.bindings.get(&member_name)
             {
+                if compiler_type_contains_generator(&facts.value_type) {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "qualified generator access",
+                    ));
+                }
                 return Ok(data_member_expression(facts, span));
             }
             return Err(source_diagnostic(
@@ -4147,6 +4238,82 @@ impl Analyzer {
                 rational_value: None,
                 span,
             });
+        }
+        if let [
+            initial,
+            Expression::Identifier(iterate),
+            Expression::AnonymousFunction {
+                parameters: next_parameters,
+                body: next_body,
+                span: next_span,
+            },
+            Expression::Identifier(take_while),
+            Expression::AnonymousFunction {
+                parameters: predicate_parameters,
+                body: predicate_body,
+                span: predicate_span,
+            },
+        ] = items
+            && self.source.slice(*iterate) == "iterate"
+            && self.source.slice(*take_while) == "take-while"
+        {
+            let generator = self.analyze_int_iterate_generator(
+                initial,
+                next_parameters,
+                next_body,
+                *next_span,
+                span,
+                environment,
+            )?;
+            return self.analyze_int_generator_take_while(
+                generator,
+                predicate_parameters,
+                predicate_body,
+                *predicate_span,
+                span,
+                environment,
+            );
+        }
+        if let [
+            initial,
+            Expression::Identifier(operation),
+            Expression::AnonymousFunction {
+                parameters,
+                body,
+                span: function_span,
+            },
+        ] = items
+            && self.source.slice(*operation) == "iterate"
+        {
+            return self.analyze_int_iterate_generator(
+                initial,
+                parameters,
+                body,
+                *function_span,
+                span,
+                environment,
+            );
+        }
+        if let [
+            generator,
+            Expression::Identifier(operation),
+            Expression::AnonymousFunction {
+                parameters,
+                body,
+                span: function_span,
+            },
+        ] = items
+            && self.source.slice(*operation) == "take-while"
+        {
+            let generator = self.analyze_expression(generator, environment)?;
+            return self.analyze_int_generator_take_while(
+                generator,
+                parameters,
+                body,
+                *function_span,
+                span,
+                environment,
+            );
         }
         if let [
             list,
@@ -5320,6 +5487,107 @@ impl Analyzer {
         self.static_context = previous_static_context;
         self.in_function = previous_in_function;
         Ok((lowered, analyzed?))
+    }
+
+    fn analyze_int_iterate_generator(
+        &mut self,
+        initial: &Expression,
+        parameters: &[AnonymousPattern],
+        next_body: &Expression,
+        function_span: Span,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let initial = self.analyze_expression(initial, environment)?;
+        require_type(
+            &self.source,
+            initial.span,
+            &CompilerType::Int,
+            &initial.value_type,
+        )?;
+        let consumed_before_body = self.consumed_generators.clone();
+        let (parameters, next) = self.analyze_collection_function(
+            parameters,
+            next_body,
+            &[CompilerType::Int],
+            environment,
+            self.static_context,
+            function_span,
+        )?;
+        if self.consumed_generators != consumed_before_body {
+            return Err(unsupported(
+                &self.source,
+                function_span,
+                "generator capture in an iterate operation",
+            ));
+        }
+        require_type(
+            &self.source,
+            next.result.span,
+            &CompilerType::Int,
+            &next.result.value_type,
+        )?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::IterateGenerator {
+                initial: Box::new(initial),
+                parameters,
+                next: Box::new(next),
+            },
+            value_type: int_unit_generator_type(),
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn analyze_int_generator_take_while(
+        &mut self,
+        generator: CompilerExpression,
+        parameters: &[AnonymousPattern],
+        predicate_body: &Expression,
+        function_span: Span,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        require_type(
+            &self.source,
+            generator.span,
+            &int_unit_generator_type(),
+            &generator.value_type,
+        )?;
+        let consumed_before_body = self.consumed_generators.clone();
+        let (parameters, predicate) = self.analyze_collection_function(
+            parameters,
+            predicate_body,
+            &[CompilerType::Int],
+            environment,
+            self.static_context,
+            function_span,
+        )?;
+        if self.consumed_generators != consumed_before_body {
+            return Err(unsupported(
+                &self.source,
+                function_span,
+                "generator capture in a take-while predicate",
+            ));
+        }
+        require_type(
+            &self.source,
+            predicate.result.span,
+            &CompilerType::Boolean,
+            &predicate.result.value_type,
+        )?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::GeneratorTakeWhile {
+                generator: Box::new(generator),
+                parameters,
+                predicate: Box::new(predicate),
+            },
+            value_type: int_unit_generator_type(),
+            int_range: None,
+            rational_value: None,
+            span,
+        })
     }
 
     fn analyze_static_character_at(
@@ -9271,7 +9539,7 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::TraversalControl(_) => false,
+        CompilerType::TraversalControl(_) | CompilerType::Generator(_) => false,
         CompilerType::List(element) => {
             matches!(element.as_ref(), CompilerType::Effect | CompilerType::Int)
                 || compiler_nested_int_string_list_element(element.as_ref())
@@ -9339,6 +9607,29 @@ fn compiler_type_contains_static_only(value_type: &CompilerType) -> bool {
             }),
             _ => false,
         }
+}
+
+fn compiler_type_contains_generator(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Generator(_) => true,
+        CompilerType::Range(value)
+        | CompilerType::Result(value)
+        | CompilerType::Optional(value)
+        | CompilerType::List(value)
+        | CompilerType::TraversalControl(value)
+        | CompilerType::Refined { base: value, .. } => compiler_type_contains_generator(value),
+        CompilerType::Tuple(fields) => fields.iter().any(compiler_type_contains_generator),
+        CompilerType::Record(fields) => fields
+            .iter()
+            .any(|(_, field)| compiler_type_contains_generator(field)),
+        CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_some_and(compiler_type_contains_generator)
+        }),
+        _ => false,
+    }
 }
 
 fn reject_static_value_containment(
@@ -9470,6 +9761,14 @@ fn generator_error_code(
         },
         0,
     ))
+}
+
+fn int_unit_generator_type() -> CompilerType {
+    CompilerType::Generator(CompilerGeneratorType {
+        yield_type: Box::new(CompilerType::Int),
+        resume_type: Box::new(CompilerType::Unit),
+        result_type: Box::new(CompilerType::Unit),
+    })
 }
 
 fn comparison_binary(kind: CallableKind) -> Option<CompilerBinary> {
@@ -9669,7 +9968,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Sum(_)
         | CompilerType::Range(_)
         | CompilerType::Result(_)
-        | CompilerType::TraversalControl(_) => false,
+        | CompilerType::TraversalControl(_)
+        | CompilerType::Generator(_) => false,
     }
 }
 
@@ -9788,7 +10088,9 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ListDecision { .. }
         | CompilerExpressionKind::ListMap { .. }
         | CompilerExpressionKind::ListSelect { .. }
-        | CompilerExpressionKind::ListFold { .. } => false,
+        | CompilerExpressionKind::ListFold { .. }
+        | CompilerExpressionKind::IterateGenerator { .. }
+        | CompilerExpressionKind::GeneratorTakeWhile { .. } => false,
         CompilerExpressionKind::IntToModular { value, .. }
         | CompilerExpressionKind::ModularReduce { value, .. }
         | CompilerExpressionKind::Negate(value)
@@ -11257,6 +11559,100 @@ mod tests {
             analyze_for_compiler(arithmetic_mismatch).unwrap_err().code,
             "E-TYPE-MISMATCH"
         );
+    }
+
+    #[test]
+    fn models_lazy_int_iterate_construction_without_invoking_captured_functions() {
+        // TOPAL-GENERATOR-ITERATE-001, TOPAL-GENERATOR-TAKE-WHILE-001,
+        // TOPAL-COMPILER-GENERATOR-ITERATE-CONSTRUCT-001
+        let unbounded = analyze_for_compiler(include_str!(
+            "../../../examples/language/iterate-generator.t"
+        ))
+        .unwrap();
+        assert_eq!(unbounded.main.result.value_type, int_unit_generator_type());
+        assert!(unbounded.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::IterateGenerator {
+                        initial,
+                        parameters,
+                        next,
+                    },
+                    ..
+                },
+                ..
+            }) if matches!(initial.kind, CompilerExpressionKind::Int(ref value) if value == &BigInt::from(0))
+                && parameters.len() == 1
+                && matches!(next.result.kind, CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Add,
+                    ..
+                })
+        )));
+
+        let bounded = analyze_for_compiler(include_str!(
+            "../../../examples/language/iterate-take-while.t"
+        ))
+        .unwrap();
+        assert_eq!(bounded.main.result.value_type, int_unit_generator_type());
+        assert!(bounded.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::GeneratorTakeWhile {
+                        generator,
+                        parameters,
+                        predicate,
+                    },
+                    ..
+                },
+                ..
+            }) if matches!(generator.kind, CompilerExpressionKind::IterateGenerator { .. })
+                && parameters.len() == 1
+                && matches!(predicate.result.kind, CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Less,
+                    ..
+                })
+        )));
+
+        let moved = analyze_for_compiler(
+            "use language (version is v0.1)\nnumbers is 0 iterate ({ value } value + 1)\nmoved is numbers\nmoved\n",
+        )
+        .unwrap();
+        assert_eq!(moved.main.result.value_type, int_unit_generator_type());
+
+        for (source, code) in [
+            (
+                "use language (version is v0.1)\n0 iterate ({ value } value < 1)\n",
+                "E-TYPE-MISMATCH",
+            ),
+            (
+                "use language (version is v0.1)\n0 iterate ({ value } value + 1) take-while ({ value } value + 1)\n",
+                "E-TYPE-MISMATCH",
+            ),
+            (
+                "use language (version is v0.1)\nnumbers is 0 iterate ({ value } value + 1)\n(numbers, numbers)\n",
+                "E-GENERATOR-CONSUMED",
+            ),
+            (
+                "use language (version is v0.1)\nnumbers is 0 iterate ({ value } value + 1)\n()\n",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\nnumbers is 0 iterate ({ value } value + 1)\n(numbers,)\n",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\nnumbers is 0 iterate ({ value } value + 1)\nroot numbers\n",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\n(0 iterate ({ value } value + 1)) = (1 iterate ({ value } value + 1))\n",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+        ] {
+            assert_eq!(analyze_for_compiler(source).unwrap_err().code, code);
+        }
     }
 
     #[test]
