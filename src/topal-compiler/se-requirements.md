@@ -920,6 +920,36 @@ layout, C/C++ runtime, other-language standard library, foreign allocator, or
 `topal-native/6` revision. It realizes `TOPAL-COMPILER-LIST-EFFECT-001` and
 `TOPAL-TYPE-LIST-CONSTRUCT-001` for compiler increment 4b3d-a.
 
+## TOPAL-COMP-LIST-INT-CONTAINMENT-001 — Exact Int List containment
+
+The checked compiler model shall extend contextual homogeneous List
+construction and private function passage to `List Int` without changing Int
+semantics. It shall evaluate the complete List operand before the entry or List
+pattern operand exactly once. `contains-entry` shall search for any equal Int;
+`contains-sequence` shall search for a consecutive equal pattern; and
+`contains-subsequence` shall search for the ordered equal pattern while
+permitting gaps. An empty sequence or subsequence pattern shall match every
+List. Every input shall remain immutable.
+
+The backend shall retain the private 16-byte node size while using an exact Int
+pointer in the first word and the remaining-node pointer in the second word.
+Containment shall use allocation-free loops and the existing canonical
+arbitrary-precision Int comparator; correctness at O0 shall not depend on LLVM
+optimization. The compiler shall include these specialized runtime helpers
+only when a checked expression requires them. Canonical display, opaque-pointer
+private calls and returns, DWARF, and the bounded GDB renderer shall preserve
+every Int value and the `List Int` classifier. LLVM shall continue to own
+physical AMD64 pointer placement.
+
+This increment shall add no public, foreign, serialized, or generic List ABI,
+no mutation or reclamation contract, no C/C++ runtime, other-language standard
+library, foreign allocator, or `topal-native/6` revision. List equality,
+decisions, other observations and transformations, and other element types
+remain deferred. It realizes `TOPAL-COMPILER-LIST-INT-CONTAINMENT-001`,
+`TOPAL-TYPE-LIST-CONSTRUCT-001`, `TOPAL-LIST-CONTAINS-ENTRY-001`,
+`TOPAL-LIST-CONTAINS-SEQUENCE-001`, and
+`TOPAL-LIST-CONTAINS-SUBSEQUENCE-001` for compiler increment 4b3d-b.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when
@@ -1405,8 +1435,8 @@ source locations, emit DWARF 5 through LLVM, retain frame pointers, provide GDB
 renderers for private arbitrary-precision Int, Rational, `Range Int`,
 `Range Rational`, `Optional Int`, `Optional String`, `Optional Error`,
 `Optional SourceLocation`, `SourceLocation`, nominal modular-number objects,
-modular-success Result objects, and `List Effect`, describe source-declared
-nominal enums, retained Constraint
+modular-success Result objects, `List Effect`, and `List Int`, describe
+source-declared nominal enums, retained Constraint
 identities, and refined Int bindings with their semantic names, distinguish
 selected overload and static-function frames, and pass automated GDB
 breakpoint, value, and backtrace scenarios.

@@ -2275,6 +2275,92 @@ fn effect_list_is_freestanding_and_gdb_renders_its_source_shape() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn int_list_containment_is_freestanding_and_gdb_renders_exact_entries() {
+    // TOPAL-LIST-CONTAINS-ENTRY-001, TOPAL-LIST-CONTAINS-SEQUENCE-001,
+    // TOPAL-LIST-CONTAINS-SUBSEQUENCE-001,
+    // TOPAL-COMPILER-LIST-INT-CONTAINMENT-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-int-list");
+    let source = directory.join("int-list-boundary.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nretain is fn (values : List Int) -> List Int\n  values\nvalues : List Int is Entry (-170141183460469231731687303715884105728, Entry (340282366920938463463374607431768211456, Empty))\nempty-values : List Int is Empty\nkept is retain values\n(kept, empty-values contains-sequence empty-values, values contains-sequence empty-values, empty-values contains-subsequence empty-values, values contains-subsequence empty-values, empty-values contains-entry 0)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Empty ) ), true, true, true, true, false)\n"
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break int-list-boundary.t:3",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis values",
+            "-ex",
+            "print values",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = List Int"), "{text}");
+    assert!(
+        text.contains(
+            "$1 = Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Empty ) )"
+        ),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.retain"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn tuple_result_is_freestanding_and_gdb_exposes_its_source_shape() {
     // TOPAL-COMPILER-TUPLE-RESULT-001,
     // TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001,

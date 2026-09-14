@@ -132,6 +132,18 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             value: left,
             remaining: right,
         }
+        | CompilerExpressionKind::ListContainsEntry {
+            list: left,
+            value: right,
+        }
+        | CompilerExpressionKind::ListContainsSequence {
+            list: left,
+            pattern: right,
+        }
+        | CompilerExpressionKind::ListContainsSubsequence {
+            list: left,
+            pattern: right,
+        }
         | CompilerExpressionKind::RationalConstruct {
             numerator: left,
             denominator: right,
@@ -221,6 +233,7 @@ struct Generator<'a> {
     globals: Vec<String>,
     functions: Vec<String>,
     next_global: usize,
+    uses_list_int_runtime: bool,
     debug: DebugInfo,
 }
 
@@ -240,6 +253,7 @@ impl<'a> Generator<'a> {
             globals: Vec::new(),
             functions: Vec::new(),
             next_global: 0,
+            uses_list_int_runtime: false,
             debug,
         }
     }
@@ -259,6 +273,10 @@ impl<'a> Generator<'a> {
         module.push('\n');
         module.push_str(PLATFORM_RUNTIME);
         module.push('\n');
+        if self.uses_list_int_runtime {
+            module.push_str(LIST_INT_RUNTIME);
+            module.push('\n');
+        }
         for global in &self.globals {
             let _ = writeln!(module, "{global}");
         }
@@ -1161,14 +1179,18 @@ impl<'a> Generator<'a> {
                 else {
                     unreachable!("checked Entry tail retains its List classifier")
                 };
-                debug_assert_eq!(element, CompilerType::Effect);
                 let node = body.instruction(
                     "call ptr @topal.platform.allocate(i64 16)",
                     expression.span,
                     &mut self.debug,
                 );
+                let (value_type, value, alignment) = match element {
+                    CompilerType::Effect => ("i8", value.singleton(), 1),
+                    CompilerType::Int => ("ptr", value.integer(), 8),
+                    _ => unreachable!("checked List element has an admitted node layout"),
+                };
                 body.effect(
-                    &format!("store i8 {}, ptr {node}, align 1", value.singleton()),
+                    &format!("store {value_type} {value}, ptr {node}, align {alignment}"),
                     expression.span,
                     &mut self.debug,
                 );
@@ -1186,6 +1208,43 @@ impl<'a> Generator<'a> {
                     value: node,
                     element,
                 }
+            }
+            CompilerExpressionKind::ListContainsEntry { list, value } => {
+                self.uses_list_int_runtime = true;
+                let list = self.emit_expression(list, body, environment);
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Boolean(body.instruction(
+                    &format!(
+                        "call i1 @topal.runtime.list.int.contains.entry(ptr {}, ptr {})",
+                        list.list_pointer(),
+                        value.integer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::ListContainsSequence { list, pattern }
+            | CompilerExpressionKind::ListContainsSubsequence { list, pattern } => {
+                self.uses_list_int_runtime = true;
+                let operation = if matches!(
+                    &expression.kind,
+                    CompilerExpressionKind::ListContainsSequence { .. }
+                ) {
+                    "sequence"
+                } else {
+                    "subsequence"
+                };
+                let list = self.emit_expression(list, body, environment);
+                let pattern = self.emit_expression(pattern, body, environment);
+                LlValue::Boolean(body.instruction(
+                    &format!(
+                        "call i1 @topal.runtime.list.int.contains.{operation}(ptr {}, ptr {})",
+                        list.list_pointer(),
+                        pattern.list_pointer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
             }
             CompilerExpressionKind::ErrorField { error, field } => {
                 let error_span = error.span;
@@ -3619,7 +3678,6 @@ impl<'a> Generator<'a> {
         body: &mut FunctionBody,
         span: Span,
     ) {
-        debug_assert_eq!(element, &CompilerType::Effect);
         let initial = body.current_block.clone();
         let loop_label = body.label("print.list.loop");
         let entry = body.label("print.list.entry");
@@ -3655,12 +3713,20 @@ impl<'a> Generator<'a> {
 
         body.start_block(&entry);
         self.emit_write_literal("Entry ( ", body, span);
-        let payload = body.instruction(
-            &format!("load i8, ptr {current}, align 1"),
-            span,
-            &mut self.debug,
-        );
-        self.emit_print(&LlValue::Effect(payload), body, span);
+        let payload = match element {
+            CompilerType::Effect => LlValue::Effect(body.instruction(
+                &format!("load i8, ptr {current}, align 1"),
+                span,
+                &mut self.debug,
+            )),
+            CompilerType::Int => LlValue::Int(body.instruction(
+                &format!("load ptr, ptr {current}, align 8"),
+                span,
+                &mut self.debug,
+            )),
+            _ => unreachable!("checked List element has an admitted printer"),
+        };
+        self.emit_print(&payload, body, span);
         self.emit_write_literal(", ", body, span);
         let next_address = body.instruction(
             &format!("getelementptr i8, ptr {current}, i64 8"),
@@ -4857,11 +4923,11 @@ impl DebugInfo {
         {
             return *type_id;
         }
-        debug_assert_eq!(element, &CompilerType::Effect);
         let element_type = self.type_id(element);
+        let element_layout = target_value_layout(element);
         let payload = self.node(format!(
-            "!DIDerivedType(tag: DW_TAG_member, name: \"value\", file: !{}, baseType: !{element_type}, size: 8, align: 8, offset: 0)",
-            self.file
+            "!DIDerivedType(tag: DW_TAG_member, name: \"value\", file: !{}, baseType: !{element_type}, size: {}, align: {}, offset: 0)",
+            self.file, element_layout.size, element_layout.alignment
         ));
         let opaque_pointer = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{}, size: 64, align: 64)",
@@ -4873,8 +4939,8 @@ impl DebugInfo {
         ));
         let members = self.node(format!("!{{!{payload}, !{next}}}"));
         let storage = self.node(format!(
-            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalList.Effect\", file: !{}, size: 128, align: 64, elements: !{members})",
-            self.file
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalList.{}\", file: !{}, size: 128, align: 64, elements: !{members})",
+            llvm_string(&element.name()), self.file
         ));
         let pointer = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
@@ -5505,6 +5571,7 @@ fn llvm_string(value: &str) -> String {
 }
 
 const PLATFORM_RUNTIME: &str = include_str!("runtime/linux_x86_64.ll");
+const LIST_INT_RUNTIME: &str = include_str!("runtime/list_int.ll");
 
 #[cfg(test)]
 mod tests {
@@ -5559,7 +5626,36 @@ mod tests {
         assert!(llvm.contains("DW_TAG_typedef, name: \"List Effect\""));
         assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalList.Effect\""));
         assert!(llvm.contains("#dbg_value(ptr"));
-        assert!(!llvm.contains("topal.runtime.list"));
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains the generated source entry")
+            .1;
+        assert!(!main.contains("topal.runtime.list.int"));
+        assert!(!llvm.contains("%topal.ListStorage"));
+    }
+
+    #[test]
+    fn emits_exact_int_list_containment_loops() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-LIST-CONTAINS-ENTRY-001,
+        // TOPAL-LIST-CONTAINS-SEQUENCE-001, TOPAL-LIST-CONTAINS-SUBSEQUENCE-001,
+        // TOPAL-COMPILER-LIST-INT-CONTAINMENT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-containment.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "list-containment.t").emit();
+
+        assert!(llvm.contains("%topal.ListStorage = type { ptr, ptr }"));
+        assert!(llvm.contains("store ptr "));
+        assert!(llvm.contains("define internal i1 @topal.runtime.list.int.contains.entry"));
+        assert!(llvm.contains("define internal i1 @topal.runtime.list.int.contains.sequence"));
+        assert!(llvm.contains("define internal i1 @topal.runtime.list.int.contains.subsequence"));
+        assert!(llvm.contains("call i32 @topal.runtime.int.compare"));
+        assert!(llvm.contains("call i1 @topal.runtime.list.int.contains.entry"));
+        assert!(llvm.contains("call i1 @topal.runtime.list.int.contains.sequence"));
+        assert!(llvm.contains("call i1 @topal.runtime.list.int.contains.subsequence"));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"List Int\""));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalList.Int\""));
     }
 
     #[test]

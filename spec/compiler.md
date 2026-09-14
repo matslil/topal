@@ -831,6 +831,35 @@ decisions, traversal, mutation, or a final reclamation policy, and SHALL add no
 foreign allocator, C/C++ runtime, other-language standard library, or native
 ABI revision.
 
+### TOPAL-COMPILER-LIST-INT-CONTAINMENT-001 — Exact Int List containment
+
+The compiler SHALL extend contextual homogeneous construction, immutable
+bindings, canonical display, and ordinary private function parameters and
+results to `List Int`. It SHALL preserve every arbitrary-precision Int exactly.
+For each admitted containment expression, it SHALL evaluate the complete List
+operand and then the entry or List pattern operand exactly once.
+
+`contains-entry` SHALL return true exactly when an equal Int entry occurs.
+`contains-sequence` SHALL return true exactly when the pattern occurs as a
+consecutive sequence. `contains-subsequence` SHALL return true exactly when the
+pattern occurs in order while permitting gaps. Empty sequence and subsequence
+patterns SHALL match every List. Equality of entries SHALL use canonical Int
+equality, and no operation SHALL mutate an input.
+
+On Linux x86-64, an Int List node MAY use the same private 16-byte size as the
+Effect List node, with an exact Int pointer and remaining-node pointer in its
+two words. Containment SHALL use allocation-free finite loops and SHALL NOT
+depend on LLVM optimization for correctness. Private calls and returns SHALL
+use one exact pointer prototype with physical placement selected by LLVM.
+DWARF and the bundled GDB renderer SHALL preserve and safely render the
+`List Int` identity and arbitrary-precision entries.
+
+This rule SHALL NOT create a public, foreign, serialized, or generic List ABI;
+promise a final reclamation policy; or add a foreign allocator, C/C++ runtime,
+other-language standard library, or native ABI revision. It SHALL NOT imply
+List equality, decisions, other observations or transformations, or another
+element classifier.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed
