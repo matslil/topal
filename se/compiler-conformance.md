@@ -252,8 +252,9 @@ classified root Generator binding, evaluates its String once at construction,
 and transfers the provenance into one foreach before rejecting later source
 use. A compiler-private semantic token supports observation and Generator
 DWARF without becoming cursor state or a copyable continuation. Root
-abandonment, traversing/returning function transfer, general close behavior,
-and library representation remain in the planned generator closure.
+abandonment, function results, nonspecialized parameter traversal, general
+close behavior, and library representation remain in the planned generator
+closure.
 Increment 4b3d-m consumes a direct closed `characters` traversal into String by
 retaining its pinned cluster sequence as checking evidence and forwarding the
 once-evaluated immutable source descriptor. This required O0 identity lowering
@@ -265,7 +266,15 @@ single-parameter Unit function and records implicit owned close at its
 statement-free Unit exit. LLVM `fastcc` selects the physical AMD64 argument
 placement; generated close needs no runtime action because the specialization
 owns no continuation state. A debug-only token shadow preserves GDB inspection,
-while traversal, return, general close, and public/library ABI remain planned.
+while traversal outside the next specialization, return, general close, and
+public/library ABI remain planned.
+Increment 4b3d-o transfers retained Character provenance from a top-level call
+into a distinct private instance of a one-parameter Unit function whose sole
+executable body is capture-free foreach. The caller evaluates its String once
+and LLVM `fastcc` transfers the private ownership token; the callee expands the
+exact ordered Characters, exhausts the continuation, and returns Unit.
+Compile-session provenance is restored after checking, nested calls remain
+closed, and no Generator runtime or public ABI is introduced.
 Increment 5a admits only the qualified `generator-closed` vocabulary value as a
 private nominal enum. It deliberately creates no continuation, generator state,
 close result, Error domain, or provenance; all generator execution remains in

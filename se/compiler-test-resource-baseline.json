@@ -1556,6 +1556,16 @@
       "cpu_time_ns": 133780,
       "memory_peak_bytes": 18665472,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/string-character-generator-parameter.t": {
+      "cpu_time_ns": 124569960,
+      "memory_peak_bytes": 41795584,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/string-character-generator-parameter.t": {
+      "cpu_time_ns": 150498,
+      "memory_peak_bytes": 18530304,
+      "samples_per_test": 500
     }
   }
 }
