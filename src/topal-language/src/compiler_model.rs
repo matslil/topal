@@ -486,15 +486,15 @@ pub enum CompilerExpressionKind {
         parameter: CompilerParameter,
         body: Box<CompilerBlock>,
     },
-    CustomSingleYieldGenerator {
+    CustomCharacterGenerator {
         declaration: String,
         declaration_span: Span,
         initial: Box<CompilerExpression>,
-        character: String,
+        characters: Vec<String>,
     },
-    CustomSingleYieldForeach {
+    CustomCharacterForeach {
         source: Box<CompilerExpression>,
-        character: String,
+        characters: Vec<String>,
         parameter: CompilerParameter,
         body: Box<CompilerBlock>,
     },
@@ -789,6 +789,7 @@ struct FunctionSource {
 struct GeneratorSource {
     name: Span,
     span: Span,
+    yield_count: usize,
 }
 
 #[derive(Clone)]
@@ -1063,7 +1064,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         &reserved_names,
         &mut analyzer.functions,
     )?;
-    collect_single_yield_generators(
+    collect_character_generators(
         &source,
         &parsed.statements,
         &reserved_names,
@@ -1783,7 +1784,8 @@ fn collect_functions(
     Ok(())
 }
 
-fn collect_single_yield_generators(
+#[allow(clippy::too_many_lines)] // Exact declaration and every retained yield stay fail-closed together.
+fn collect_character_generators(
     source: &SourceText,
     statements: &[Statement],
     reserved_names: &BTreeSet<String>,
@@ -1838,51 +1840,65 @@ fn collect_single_yield_generators(
             return Err(unsupported(
                 source,
                 *span,
-                "custom generator outside the single Character-yield/Unit-resume/Unit-result subset",
+                "custom generator outside the Character-yield/Unit-resume/Unit-result subset",
             ));
         }
-        let [
-            Statement::Discard {
+        let Some((Statement::Expression(Expression::Unit(_)), yields)) = body.split_last() else {
+            return Err(unsupported(
+                source,
+                *span,
+                "custom generator body without a final Unit",
+            ));
+        };
+        if yields.is_empty() {
+            return Err(unsupported(
+                source,
+                *span,
+                "custom generator body without a yield",
+            ));
+        }
+        for yield_statement in yields {
+            let Statement::Discard {
                 value:
                     Expression::Application {
                         items: yield_items, ..
                     },
                 ..
-            },
-            Statement::Expression(Expression::Unit(_)),
-        ] = body.as_slice()
-        else {
-            return Err(unsupported(
-                source,
-                *span,
-                "custom generator body outside one discarded yield followed by Unit",
-            ));
-        };
-        let [
-            Expression::Identifier(yield_operation),
-            Expression::Identifier(yielded_value),
-        ] = yield_items.as_slice()
-        else {
-            return Err(unsupported(
-                source,
-                *span,
-                "custom generator yield expression",
-            ));
-        };
-        if source.slice(*yield_operation) != "yield"
-            || source.slice(*yielded_value) != source.slice(parameter.name)
-        {
-            return Err(unsupported(
-                source,
-                *span,
-                "custom generator body outside yielding its initial parameter once",
-            ));
+            } = yield_statement
+            else {
+                return Err(unsupported(
+                    source,
+                    *span,
+                    "custom generator body outside discarded yields followed by Unit",
+                ));
+            };
+            let [
+                Expression::Identifier(yield_operation),
+                Expression::Identifier(yielded_value),
+            ] = yield_items.as_slice()
+            else {
+                return Err(unsupported(
+                    source,
+                    *span,
+                    "custom generator yield expression",
+                ));
+            };
+            if source.slice(*yield_operation) != "yield"
+                || source.slice(*yielded_value) != source.slice(parameter.name)
+            {
+                return Err(unsupported(
+                    source,
+                    *span,
+                    "custom generator body outside yielding its initial parameter",
+                ));
+            }
         }
         generators.insert(
             name_text,
             GeneratorSource {
                 name: *name,
                 span: *span,
+                yield_count: yields.len(),
             },
         );
     }
@@ -2724,7 +2740,7 @@ impl Analyzer {
                             | CompilerExpressionKind::GeneratorTakeWhile { .. }
                             | CompilerExpressionKind::UnfoldGenerator { .. }
                             | CompilerExpressionKind::StringCharactersGenerator { .. }
-                            | CompilerExpressionKind::CustomSingleYieldGenerator { .. } => {
+                            | CompilerExpressionKind::CustomCharacterGenerator { .. } => {
                                 Some(value.clone())
                             }
                             _ => None,
@@ -3002,7 +3018,7 @@ impl Analyzer {
             );
         }
         if let Some(CompilerExpression {
-            kind: CompilerExpressionKind::CustomSingleYieldGenerator { character, .. },
+            kind: CompilerExpressionKind::CustomCharacterGenerator { characters, .. },
             ..
         }) = retained_generator
         {
@@ -3016,9 +3032,9 @@ impl Analyzer {
             let (parameter, body) =
                 self.analyze_unit_foreach_body(binding, statements, CompilerType::Character)?;
             return Ok(CompilerExpression {
-                kind: CompilerExpressionKind::CustomSingleYieldForeach {
+                kind: CompilerExpressionKind::CustomCharacterForeach {
                     source: Box::new(source_value),
-                    character,
+                    characters,
                     parameter,
                     body: Box::new(body),
                 },
@@ -8191,12 +8207,13 @@ impl Analyzer {
                 "dynamic Character custom generator input",
             )
         })?;
+        let characters = vec![character; declaration.yield_count];
         Ok(CompilerExpression {
-            kind: CompilerExpressionKind::CustomSingleYieldGenerator {
+            kind: CompilerExpressionKind::CustomCharacterGenerator {
                 declaration: self.source.slice(declaration.name).to_owned(),
                 declaration_span: declaration.span,
                 initial: Box::new(initial),
-                character,
+                characters,
             },
             value_type: character_unit_generator_type(),
             int_range: None,
@@ -11210,8 +11227,8 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::UnfoldGenerator { .. }
         | CompilerExpressionKind::StringCharactersGenerator { .. }
         | CompilerExpressionKind::StringCharactersForeach { .. }
-        | CompilerExpressionKind::CustomSingleYieldGenerator { .. }
-        | CompilerExpressionKind::CustomSingleYieldForeach { .. }
+        | CompilerExpressionKind::CustomCharacterGenerator { .. }
+        | CompilerExpressionKind::CustomCharacterForeach { .. }
         | CompilerExpressionKind::IterateGeneratorForeach { .. }
         | CompilerExpressionKind::GeneratorCollect(_) => false,
         CompilerExpressionKind::IntToModular { value, .. }
@@ -13080,10 +13097,10 @@ mod tests {
                 CompilerStatement::Binding(CompilerBinding {
                     name,
                     value: CompilerExpression {
-                        kind: CompilerExpressionKind::CustomSingleYieldGenerator {
+                        kind: CompilerExpressionKind::CustomCharacterGenerator {
                             declaration,
                             initial,
-                            character,
+                            characters,
                             ..
                         },
                         value_type,
@@ -13092,9 +13109,9 @@ mod tests {
                     ..
                 }),
                 CompilerStatement::Discard(CompilerExpression {
-                    kind: CompilerExpressionKind::CustomSingleYieldForeach {
+                    kind: CompilerExpressionKind::CustomCharacterForeach {
                         source,
-                        character: yielded,
+                        characters: yielded,
                         parameter,
                         ..
                     },
@@ -13104,16 +13121,15 @@ mod tests {
             ] if name == "generated"
                 && declaration == "once"
                 && initial.value_type == CompilerType::Character
-                && character == "T"
+                && characters == &[String::from("T")]
                 && is_character_unit_generator_type(value_type)
                 && matches!(source.kind, CompilerExpressionKind::Local(_))
-                && yielded == "T"
+                && yielded == &[String::from("T")]
                 && parameter.name == "character"
                 && parameter.value_type == CompilerType::Character
         ));
 
         for source in [
-            "use language (version is v0.1)\nonce is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  _ is yield initial\n  ()\ngenerated is once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
             "use language (version is v0.1)\nonce is generator (initial : Character, other : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is once (\"T\", \"U\")\ngenerated foreach { character }\n  _ is String character\n",
             "use language (version is v0.1)\nonce is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  initial\ngenerated is once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
         ] {
@@ -13133,6 +13149,55 @@ mod tests {
             analyze_for_compiler(abandoned).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
+    }
+
+    #[test]
+    fn models_root_multiple_yield_custom_generator() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-MULTIPLE-YIELD-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-multiple-yield-generator.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [
+                CompilerStatement::Binding(CompilerBinding {
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::CustomCharacterGenerator {
+                            declaration,
+                            characters,
+                            ..
+                        },
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterForeach {
+                        characters: yielded,
+                        parameter,
+                        ..
+                    },
+                    value_type: CompilerType::Unit,
+                    ..
+                })
+            ] if declaration == "twice"
+                && characters == &[String::from("T"), String::from("T")]
+                && yielded == &[String::from("T"), String::from("T")]
+                && parameter.value_type == CompilerType::Character
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nempty is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  ()\ngenerated is empty \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\ntwice is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  _ is 1\n  _ is yield initial\n  ()\ngenerated is twice \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]

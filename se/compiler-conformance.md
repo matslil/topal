@@ -81,6 +81,7 @@ evidence.
 | 5e | finite collection of a locally retained `List Int`/`uncons` unfold through an ordered seed/List SSA loop, with no Optional or Generator object/runtime | complete |
 | 5f | root bounded Int `iterate` foreach with exact predicate/body/next order, Unit result, iteration debugging, and no allocation or Generator object/runtime | complete |
 | 5g | root single-yield custom `Generator Character Unit Unit` declaration, application, suspension, local foreach consumption, and debugging through ordered inline lowering | complete |
+| 5h | consecutive custom Character yields with exact action/resume ordering, finite inline expansion, and no continuation object or runtime | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -319,8 +320,15 @@ provenance, while Linux x86-64 lowering evaluates the input once and expands the
 proven suspension, Unit action, resumption, and final Unit in source order. The
 private observation token and DWARF identities require no continuation object,
 state allocation, callback, dispatcher, foreign runtime, or public Generator
-ABI; multiple yields, dynamic provenance, captures, close handling, and general
-state machines remain in increment 5.
+ABI. At 5g, multiple yields, dynamic provenance, captures, close handling, and
+general state machines remained in increment 5. Increment 5h generalizes this
+exact proof to one or more consecutive yields of the same initial Character.
+The checked model retains the ordered finite suspension sequence, while the
+backend emits one direct action block and erased Unit resumption per yield
+before final Unit.
+This ordering is mandatory at O0 and does not depend on LLVM unrolling. Ordinary
+inter-yield statements, distinct or dynamic yielded values, captures, close
+handling, and general continuation state remain in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
