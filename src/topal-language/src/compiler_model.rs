@@ -471,6 +471,12 @@ pub enum CompilerExpressionKind {
     },
     StringEmptyPredicate(Box<CompilerExpression>),
     StringUtf8ByteCount(Box<CompilerExpression>),
+    StringCharactersForeach {
+        text: Box<CompilerExpression>,
+        characters: Vec<String>,
+        parameter: CompilerParameter,
+        body: Box<CompilerBlock>,
+    },
     ErrorCode(u32),
     IntToModular {
         value: Box<CompilerExpression>,
@@ -2624,13 +2630,8 @@ impl Analyzer {
                     body,
                     span,
                 } if kind == BlockKind::TopLevel => {
-                    let value = self.analyze_bounded_int_iterate_foreach(
-                        source,
-                        *binding,
-                        body,
-                        *span,
-                        environment,
-                    )?;
+                    let value =
+                        self.analyze_root_foreach(source, *binding, body, *span, environment)?;
                     if let Some((name, classifier)) = foreach_result {
                         let name_text = self.source.slice(*name).to_owned();
                         if declared.contains(&name_text)
@@ -2774,7 +2775,68 @@ impl Analyzer {
         })
     }
 
-    #[allow(clippy::too_many_lines)] // Keep the exact admitted traversal boundary in one audit-friendly check.
+    fn analyze_root_foreach(
+        &mut self,
+        source: &Expression,
+        binding: Span,
+        statements: &[Statement],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        if let Expression::Application { items, .. } = source
+            && let [Expression::Identifier(operation), text] = items.as_slice()
+            && self.source.slice(*operation) == "characters"
+        {
+            return self.analyze_closed_string_characters_foreach(
+                text,
+                binding,
+                statements,
+                span,
+                environment,
+            );
+        }
+        self.analyze_bounded_int_iterate_foreach(source, binding, statements, span, environment)
+    }
+
+    fn analyze_closed_string_characters_foreach(
+        &mut self,
+        text: &Expression,
+        binding: Span,
+        statements: &[Statement],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let text_value = self.analyze_expression(text, environment)?;
+        require_type(
+            &self.source,
+            text_value.span,
+            &CompilerType::String,
+            &text_value.value_type,
+        )?;
+        let text = Self::known_string_value(&text_value, environment).ok_or_else(|| {
+            unsupported(
+                &self.source,
+                text.span(),
+                "dynamic String Character traversal",
+            )
+        })?;
+        let characters = characters(&text).map(str::to_owned).collect();
+        let (parameter, body) =
+            self.analyze_unit_foreach_body(binding, statements, CompilerType::Character)?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::StringCharactersForeach {
+                text: Box::new(text_value),
+                characters,
+                parameter,
+                body: Box::new(body),
+            },
+            value_type: CompilerType::Unit,
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
     fn analyze_bounded_int_iterate_foreach(
         &mut self,
         source: &Expression,
@@ -2835,11 +2897,32 @@ impl Analyzer {
             ));
         }
 
+        let (parameter, body) =
+            self.analyze_unit_foreach_body(binding, statements, CompilerType::Int)?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::IterateGeneratorForeach {
+                generator: Box::new(generator.clone()),
+                parameter,
+                body: Box::new(body),
+            },
+            value_type: CompilerType::Unit,
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn analyze_unit_foreach_body(
+        &mut self,
+        binding: Span,
+        statements: &[Statement],
+        value_type: CompilerType,
+    ) -> Result<(CompilerParameter, CompilerBlock), Diagnostic> {
         let parameter_name = self.source.slice(binding).to_owned();
         let parameter = CompilerParameter {
             name: parameter_name.clone(),
             discarded: parameter_name == "_",
-            value_type: CompilerType::Int,
+            value_type: value_type.clone(),
             int_range: None,
             span: binding,
         };
@@ -2850,7 +2933,7 @@ impl Analyzer {
                 BindingFacts {
                     storage_name: parameter.name.clone(),
                     runtime_bound: true,
-                    value_type: CompilerType::Int,
+                    value_type,
                     int_range: None,
                     rational_value: None,
                     string_value: None,
@@ -2874,17 +2957,7 @@ impl Analyzer {
             &CompilerType::Unit,
             &body.result.value_type,
         )?;
-        Ok(CompilerExpression {
-            kind: CompilerExpressionKind::IterateGeneratorForeach {
-                generator: Box::new(generator.clone()),
-                parameter,
-                body: Box::new(body),
-            },
-            value_type: CompilerType::Unit,
-            int_range: None,
-            rational_value: None,
-            span,
-        })
+        Ok((parameter, body))
     }
 
     #[allow(clippy::too_many_lines)] // Exhaustive expression admission keeps the subset boundary visible.
@@ -10584,6 +10657,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::IterateGenerator { .. }
         | CompilerExpressionKind::GeneratorTakeWhile { .. }
         | CompilerExpressionKind::UnfoldGenerator { .. }
+        | CompilerExpressionKind::StringCharactersForeach { .. }
         | CompilerExpressionKind::IterateGeneratorForeach { .. }
         | CompilerExpressionKind::GeneratorCollect(_) => false,
         CompilerExpressionKind::IntToModular { value, .. }
@@ -12267,6 +12341,62 @@ mod tests {
         ] {
             assert_eq!(analyze_for_compiler(source).unwrap_err().code, code);
         }
+    }
+
+    #[test]
+    fn models_closed_string_character_foreach() {
+        // TOPAL-STRING-CHARACTERS-COLLECT-001,
+        // TOPAL-STRING-CHARACTERS-FOREACH-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-FOREACH-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/string-character-foreach.t"
+        ))
+        .unwrap();
+        assert_eq!(program.main.result.value_type, CompilerType::Unit);
+        assert!(program.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::StringCharactersForeach {
+                    characters,
+                    parameter,
+                    body,
+                    ..
+                },
+                ..
+            }) if characters == &["a\u{301}", "👩‍🔬", "🇸🇪"]
+                && parameter.name == "character"
+                && parameter.value_type == CompilerType::Character
+                && body.result.value_type == CompilerType::Unit
+        )));
+
+        for (source, code) in [
+            (
+                "use language (version is v0.1)\nidentity is fn (text : String) -> String\n  text\ncharacters (identity \"a\") foreach { character }\n  _ is String character\n",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\noutside is \"x\"\ncharacters \"a\" foreach { character }\n  _ is outside\n",
+                "E-UNBOUND-NAME",
+            ),
+            (
+                "use language (version is v0.1)\ncharacters \"a\" foreach { character }\n  String character\n",
+                "E-TYPE-MISMATCH",
+            ),
+        ] {
+            assert_eq!(analyze_for_compiler(source).unwrap_err().code, code);
+        }
+
+        let empty = analyze_for_compiler(
+            "use language (version is v0.1)\ncharacters \"\" foreach { character }\n  _ is String character\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            &empty.main.statements[0],
+            CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::StringCharactersForeach { characters, .. },
+                ..
+            }) if characters.is_empty()
+        ));
     }
 
     #[test]
