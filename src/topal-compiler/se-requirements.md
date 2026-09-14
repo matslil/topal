@@ -1291,6 +1291,40 @@ type-information runtime, C/C++ runtime, other-language standard library, or
 `topal-native/6` revision is permitted. This realizes
 `TOPAL-COMPILER-TYPE-VALUE-001` for compiler increment 8a.
 
+## TOPAL-COMP-STATIC-INTROSPECTION-001 — Closed static introspection foundation
+
+The checked compiler model shall admit `lang identity` and `lang view` for the
+seven directly named closed fundamental v0.1 Type values. It shall retain an
+object-kind-tagged canonical identity and a kind-preserving primitive Type-view
+value, respectively. `lang context` shall retain `topal`, the active numeric v0.1
+Version, and the exact empty feature set. All three result types shall remain
+static-only: their bindings shall stay out of the runtime/root environments and
+their use or containment at a runtime boundary shall receive a stable checked
+diagnostic. Code generation shall erase them without an instruction, local,
+DWARF type, descriptor, or executable metadata entry.
+
+For directly named admitted fundamental Type operands, `lang same-object` and
+`lang equivalent-type` shall compare canonical semantic identities during
+checking and yield ordinary Boolean constants. Runtime operands and unadmitted
+object kinds shall be rejected. `lang version` shall produce the ordinary
+numeric Version for the active context with immutable Nat `major`, `minor`,
+`patch`, and `build` components and canonical abbreviated display.
+
+The Linux x86-64 backend may materialize this initial Version as a private
+frame-local four-pointer header over the existing immutable Nat carrier. LLVM
+shall own instruction and stack lowering for the target data layout. DWARF and
+the bundled validating GDB renderer shall expose the same four-field Version
+and canonical source spelling. The linked executable shall have no load-time
+relocation, undefined symbol, needed library, reflection/Version runtime,
+foreign runtime, C/C++ standard library, public/foreign/serialized/library
+Version ABI, or `topal-native/6` revision. General introspection, other object
+kinds and relations, later context changes, static-to-runtime conversion, and
+Version operations and function boundaries shall remain unsupported. This
+realizes `TOPAL-COMPILER-STATIC-INTROSPECTION-001`,
+`TOPAL-INTRO-QUALIFIED-001`, `TOPAL-INTRO-STATIC-001`,
+`TOPAL-INTRO-VIEW-001`, `TOPAL-INTRO-CONTEXT-001`, and
+`TOPAL-INTRO-RELATION-001` for compiler increment 8a3.
+
 ## TOPAL-COMP-PATTERN-001 — Positional product and discard inputs
 
 For an admitted ordinary function with multiple scalar parameters, a prefix

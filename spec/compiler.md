@@ -1174,6 +1174,40 @@ the private machine representation. This increment SHALL require no registry,
 allocation, foreign type-information runtime, other-language standard library,
 or native ABI revision.
 
+### TOPAL-COMPILER-STATIC-INTROSPECTION-001 — Closed static introspection foundation
+
+For a v0.1 source context without optional features, the compiler SHALL admit
+`lang identity` and `lang view` over each closed fundamental Type admitted by
+`TOPAL-COMPILER-TYPE-VALUE-001` when named directly. The checked identity SHALL
+retain the `Type` object kind and canonical `type:<name>` identity; the checked
+view SHALL retain
+the typed primitive Type-view form and semantic Type identity. `lang context`
+SHALL retain the exact `topal` language identity, active numeric v0.1 Version,
+and empty feature set. These results SHALL be static-only typed compiler values:
+binding or discarding them SHALL produce no LLVM value, DWARF variable or type,
+descriptor, or executable metadata. Runtime use or containment SHALL be
+rejected.
+
+For two directly named admitted fundamental Type operands, `lang same-object` and
+`lang equivalent-type` SHALL evaluate during checking from canonical semantic
+identity and produce an ordinary Boolean constant. A runtime operand or an
+unadmitted object kind SHALL be rejected rather than assigned a missing or
+textual identity. `lang version` SHALL produce the context's ordinary numeric
+`Version`, containing the four nonnegative `major`, `minor`, `patch`, and
+`build` components and using the canonical abbreviated display.
+
+On Linux x86-64, this initial Version value MAY use a compiler-private pointer
+to four immutable Nat carriers materialized in the current frame. DWARF SHALL
+describe the same four-field Version and the bundled GDB renderer SHALL safely
+produce its canonical source spelling. The executable SHALL remain free of
+load-time relocations, undefined symbols, needed libraries, foreign runtimes,
+C/C++ standard libraries, and reflection or Version runtime helpers. The
+private layout SHALL NOT become a function, public, foreign, serialized, or
+compiled-library ABI, and SHALL NOT revise the native ABI. General Type views,
+other introspection subjects and relations, later context changes, deliberate
+static-to-runtime conversion, and Version operations or function boundaries
+remain unsupported.
+
 ### TOPAL-COMPILER-OPTIONAL-001 — Native Optional values
 
 Within the admitted `Int` and `String` payload subset, `Optional T` SHALL retain

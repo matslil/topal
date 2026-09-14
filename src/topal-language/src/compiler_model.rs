@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use topal_semantics::LanguageVersion;
+use topal_semantics::{LanguageVersion, ObjectKind};
 use topal_source::{
     Diagnostic, SourceText, Span, canonically_equal, case_fold, character_at, character_count,
     characters, lowercase, normalize_nfc, normalize_nfd, uppercase,
@@ -56,6 +56,30 @@ pub struct CompilerEffectRow {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerIdentity {
+    pub kind: ObjectKind,
+    pub canonical: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CompilerTypeViewForm {
+    Primitive,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerTypeView {
+    pub form: CompilerTypeViewForm,
+    pub identity: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerLanguageContext {
+    pub language: String,
+    pub version: LanguageVersion,
+    pub features: Vec<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerFunctionView {
     pub identity: String,
     pub inputs: Vec<String>,
@@ -72,9 +96,13 @@ pub enum CompilerType {
     Type,
     Scope,
     Function,
+    Identity,
+    TypeView,
     FunctionView,
+    LanguageContext,
     Constraint,
     Boolean,
+    Version,
     Int,
     Nat,
     Rational,
@@ -111,6 +139,7 @@ impl CompilerType {
                 | Self::Function
                 | Self::Constraint
                 | Self::Boolean
+                | Self::Version
                 | Self::Int
                 | Self::Nat
                 | Self::Rational
@@ -140,9 +169,13 @@ impl CompilerType {
             Self::Type => "Type".into(),
             Self::Scope => "Scope".into(),
             Self::Function => "Function".into(),
+            Self::Identity => "lang Identity".into(),
+            Self::TypeView => "lang TypeView".into(),
             Self::FunctionView => "lang FunctionView".into(),
+            Self::LanguageContext => "lang LanguageContext".into(),
             Self::Constraint => "Constraint".into(),
             Self::Boolean => "Boolean".into(),
+            Self::Version => "Version".into(),
             Self::Int => "Int".into(),
             Self::Nat => "Nat".into(),
             Self::Rational => "Rational".into(),
@@ -327,9 +360,13 @@ pub enum CompilerExpressionKind {
     TypeValue(u32),
     Root,
     FunctionValue(u32),
+    Identity(CompilerIdentity),
+    TypeView(CompilerTypeView),
     FunctionView(CompilerFunctionView),
+    LanguageContext(CompilerLanguageContext),
     ConstraintValue(u32),
     Boolean(bool),
+    Version(LanguageVersion),
     Int(BigInt),
     Rational(BigRational),
     String(String),
@@ -732,6 +769,8 @@ struct StaticValueFacts {
 
 struct Analyzer {
     source: SourceText,
+    language_version: LanguageVersion,
+    language_features: Vec<String>,
     enums: EnumTypes,
     enum_alternatives: EnumAlternativeBindings,
     sums: SumTypes,
@@ -793,6 +832,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
             "the native compiler increment supports language version v0.1 without optional features",
         ));
     }
+    reject_later_language_selections(&source, &parsed.statements)?;
 
     let (enums, enum_alternatives) = collect_enums(&source, &parsed.statements)?;
     let (sums, sum_alternatives) =
@@ -817,6 +857,8 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     collect_functions(&source, &parsed.statements, &reserved_names, &mut functions)?;
     let mut analyzer = Analyzer {
         source: source.clone(),
+        language_version,
+        language_features: Vec::new(),
         enums,
         enum_alternatives,
         sums,
@@ -854,6 +896,24 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         constraints: analyzer.constraints,
         functions: analyzer.instances,
     })
+}
+
+fn reject_later_language_selections(
+    source: &SourceText,
+    statements: &[Statement],
+) -> Result<(), Diagnostic> {
+    let Some(Statement::LanguageSelection { span, .. }) = statements
+        .iter()
+        .skip(1)
+        .find(|statement| matches!(statement, Statement::LanguageSelection { .. }))
+    else {
+        return Ok(());
+    };
+    Err(unsupported(
+        source,
+        *span,
+        "language-context change after the bootstrap selection",
+    ))
 }
 
 fn require_runtime_main_result(
@@ -1992,7 +2052,7 @@ impl Analyzer {
                     };
                     let facts = BindingFacts {
                         storage_name: storage_name.clone(),
-                        runtime_bound: !compiler_type_is_static_only(&value.value_type),
+                        runtime_bound: !compiler_type_contains_static_only(&value.value_type),
                         value_type: value.value_type.clone(),
                         int_range: value.int_range.clone(),
                         rational_value: value.rational_value.clone(),
@@ -2455,8 +2515,8 @@ impl Analyzer {
                     )
                 })?;
                 if !facts.runtime_bound {
-                    let feature = if facts.value_type == CompilerType::FunctionView {
-                        "runtime use of a static Function view"
+                    let feature = if compiler_type_contains_static_only(&facts.value_type) {
+                        "runtime use of a static introspection value"
                     } else {
                         "nested Function value outside direct application"
                     };
@@ -2566,6 +2626,153 @@ impl Analyzer {
             rational_value: None,
             span,
         })
+    }
+
+    fn analyze_static_introspection(
+        &self,
+        items: &[Expression],
+        span: Span,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        if let Some(value) = self.analyze_static_introspection_prefix(items, span)? {
+            return Ok(Some(value));
+        }
+        self.analyze_static_introspection_relation(items, span)
+    }
+
+    fn analyze_static_introspection_prefix(
+        &self,
+        items: &[Expression],
+        span: Span,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        if let [
+            Expression::Identifier(namespace),
+            Expression::Identifier(operation),
+        ] = items
+            && self.source.slice(*namespace) == "lang"
+        {
+            let value = match self.source.slice(*operation) {
+                "context" => CompilerExpression {
+                    kind: CompilerExpressionKind::LanguageContext(CompilerLanguageContext {
+                        language: "topal".into(),
+                        version: self.language_version,
+                        features: self.language_features.clone(),
+                    }),
+                    value_type: CompilerType::LanguageContext,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                },
+                "version" => CompilerExpression {
+                    kind: CompilerExpressionKind::Version(self.language_version),
+                    value_type: CompilerType::Version,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                },
+                _ => return Ok(None),
+            };
+            return Ok(Some(value));
+        }
+
+        if let [
+            Expression::Identifier(namespace),
+            Expression::Identifier(operation),
+            subject,
+        ] = items
+            && self.source.slice(*namespace) == "lang"
+            && matches!(self.source.slice(*operation), "identity" | "view")
+        {
+            let Expression::Identifier(subject_span) = subject else {
+                return Err(unsupported(
+                    &self.source,
+                    subject.span(),
+                    "static introspection of a runtime value",
+                ));
+            };
+            let identity = self.source.slice(*subject_span);
+            if fundamental_type_value(identity).is_none() {
+                if self.source.slice(*operation) == "view" {
+                    return Ok(None);
+                }
+                return Err(unsupported(
+                    &self.source,
+                    *subject_span,
+                    "lang identity for this static object",
+                ));
+            }
+            let (kind, value_type) = if self.source.slice(*operation) == "identity" {
+                (
+                    CompilerExpressionKind::Identity(CompilerIdentity {
+                        kind: ObjectKind::Type,
+                        canonical: format!("type:{identity}"),
+                    }),
+                    CompilerType::Identity,
+                )
+            } else {
+                (
+                    CompilerExpressionKind::TypeView(CompilerTypeView {
+                        form: CompilerTypeViewForm::Primitive,
+                        identity: identity.into(),
+                    }),
+                    CompilerType::TypeView,
+                )
+            };
+            return Ok(Some(CompilerExpression {
+                kind,
+                value_type,
+                int_range: None,
+                rational_value: None,
+                span,
+            }));
+        }
+
+        Ok(None)
+    }
+
+    fn analyze_static_introspection_relation(
+        &self,
+        items: &[Expression],
+        span: Span,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        if let [
+            left,
+            Expression::Identifier(namespace),
+            Expression::Identifier(operation),
+            right,
+        ] = items
+            && self.source.slice(*namespace) == "lang"
+            && matches!(
+                self.source.slice(*operation),
+                "same-object" | "equivalent-type"
+            )
+        {
+            let (Expression::Identifier(left), Expression::Identifier(right)) = (left, right)
+            else {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "static introspection relation over runtime values",
+                ));
+            };
+            let left = self.source.slice(*left);
+            let right = self.source.slice(*right);
+            if fundamental_type_value(left).is_none() || fundamental_type_value(right).is_none() {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "static introspection relation for these object kinds",
+                ));
+            }
+            return Ok(Some(CompilerExpression {
+                kind: CompilerExpressionKind::Boolean(left == right),
+                value_type: CompilerType::Boolean,
+                int_range: None,
+                rational_value: None,
+                span,
+            }));
+        }
+
+        Ok(None)
     }
 
     fn analyze_function_view(
@@ -2885,6 +3092,9 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Some(value) = self.analyze_static_introspection(items, span)? {
+            return Ok(value);
+        }
         if let Some(view) = self.analyze_function_view(items, span)? {
             return Ok(view);
         }
@@ -8471,7 +8681,13 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
 }
 
 fn compiler_type_is_static_only(value_type: &CompilerType) -> bool {
-    matches!(value_type, CompilerType::FunctionView)
+    matches!(
+        value_type,
+        CompilerType::Identity
+            | CompilerType::TypeView
+            | CompilerType::FunctionView
+            | CompilerType::LanguageContext
+    )
 }
 
 fn compiler_type_contains_static_only(value_type: &CompilerType) -> bool {
@@ -8491,6 +8707,7 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
         CompilerType::Scope
             | CompilerType::Function
             | CompilerType::Constraint
+            | CompilerType::Version
             | CompilerType::Refined { .. }
     ) {
         return false;
@@ -8760,8 +8977,12 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         CompilerType::Refined { base, .. } => compiler_equality_supported(base),
         CompilerType::Scope
         | CompilerType::Function
+        | CompilerType::Identity
+        | CompilerType::TypeView
         | CompilerType::FunctionView
+        | CompilerType::LanguageContext
         | CompilerType::Constraint
+        | CompilerType::Version
         | CompilerType::Error
         | CompilerType::ErrorDomain
         | CompilerType::SourceLocation
@@ -8840,9 +9061,13 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Root
         | CompilerExpressionKind::FunctionValue(_)
+        | CompilerExpressionKind::Identity(_)
+        | CompilerExpressionKind::TypeView(_)
         | CompilerExpressionKind::FunctionView(_)
+        | CompilerExpressionKind::LanguageContext(_)
         | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
+        | CompilerExpressionKind::Version(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
         | CompilerExpressionKind::String(_)
@@ -11620,6 +11845,87 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(runtime_view.code, "E-COMPILER-UNSUPPORTED");
+    }
+
+    #[test]
+    fn models_closed_static_introspection_and_runtime_version() {
+        // TOPAL-INTRO-QUALIFIED-001, TOPAL-INTRO-STATIC-001,
+        // TOPAL-INTRO-VIEW-001, TOPAL-INTRO-CONTEXT-001,
+        // TOPAL-INTRO-RELATION-001, TOPAL-COMPILER-STATIC-INTROSPECTION-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/static-introspection.t"
+        ))
+        .unwrap();
+        let [
+            CompilerStatement::Binding(identity_binding),
+            CompilerStatement::Binding(view_binding),
+            CompilerStatement::Binding(context_binding),
+        ] = program.main.statements.as_slice()
+        else {
+            panic!("the three static values retain checked metadata")
+        };
+        assert_eq!(identity_binding.value.value_type, CompilerType::Identity);
+        let CompilerExpressionKind::Identity(identity) = &identity_binding.value.kind else {
+            panic!("lang identity retains a typed compiler value")
+        };
+        assert_eq!(identity.kind, ObjectKind::Type);
+        assert_eq!(identity.canonical, "type:Int");
+
+        assert_eq!(view_binding.value.value_type, CompilerType::TypeView);
+        let CompilerExpressionKind::TypeView(view) = &view_binding.value.kind else {
+            panic!("lang view retains a typed compiler value")
+        };
+        assert_eq!(view.form, CompilerTypeViewForm::Primitive);
+        assert_eq!(view.identity, "Int");
+
+        assert_eq!(
+            context_binding.value.value_type,
+            CompilerType::LanguageContext
+        );
+        let CompilerExpressionKind::LanguageContext(context) = &context_binding.value.kind else {
+            panic!("lang context retains a typed compiler value")
+        };
+        assert_eq!(context.language, "topal");
+        assert_eq!(context.version, LanguageVersion::DESIGN_0);
+        assert!(context.features.is_empty());
+
+        let CompilerExpressionKind::Tuple(result) = &program.main.result.kind else {
+            panic!("the regression result is a typed Tuple")
+        };
+        assert!(matches!(
+            result[0].kind,
+            CompilerExpressionKind::Boolean(true)
+        ));
+        assert!(matches!(
+            result[1].kind,
+            CompilerExpressionKind::Boolean(false)
+        ));
+        assert!(matches!(
+            result[2].kind,
+            CompilerExpressionKind::Version(LanguageVersion::DESIGN_0)
+        ));
+        assert_eq!(
+            program.main.result.value_type,
+            CompilerType::Tuple(vec![
+                CompilerType::Boolean,
+                CompilerType::Boolean,
+                CompilerType::Version,
+            ])
+        );
+
+        for source in [
+            "use language (version is v0.1)\nidentity is lang identity Int\nidentity\n",
+            "use language (version is v0.1)\nview is lang view Int\nview\n",
+            "use language (version is v0.1)\ncontext is lang context\ncontext\n",
+            "use language (version is v0.1)\nlang identity 42\n",
+            "use language (version is v0.1)\n1 lang same-object 1\n",
+            "use language (version is v0.1)\nuse language (version is v0.1)\nlang version\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]

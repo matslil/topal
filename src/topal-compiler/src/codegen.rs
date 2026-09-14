@@ -49,6 +49,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::ErrorCode
         | CompilerType::ErrorDomain
         | CompilerType::SourceLocation
+        | CompilerType::Version
         | CompilerType::Modular(_)
         | CompilerType::Optional(_)
         | CompilerType::TraversalControl(_) => true,
@@ -71,7 +72,10 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
+        | CompilerType::Identity
+        | CompilerType::TypeView
         | CompilerType::FunctionView
+        | CompilerType::LanguageContext
         | CompilerType::Constraint
         | CompilerType::Boolean
         | CompilerType::Int
@@ -265,9 +269,13 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Root
         | CompilerExpressionKind::FunctionValue(_)
+        | CompilerExpressionKind::Identity(_)
+        | CompilerExpressionKind::TypeView(_)
         | CompilerExpressionKind::FunctionView(_)
+        | CompilerExpressionKind::LanguageContext(_)
         | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
+        | CompilerExpressionKind::Version(_)
         | CompilerExpressionKind::Int(_)
         | CompilerExpressionKind::Rational(_)
         | CompilerExpressionKind::Enum(_)
@@ -412,7 +420,8 @@ impl<'a> Generator<'a> {
                 body.terminator(&format!("ret i8 {value}"), location);
             }
             LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
-            LlValue::Int(value)
+            LlValue::Version { value, .. }
+            | LlValue::Int(value)
             | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
             | LlValue::Error(value)
@@ -928,7 +937,11 @@ impl<'a> Generator<'a> {
         environment: &BTreeMap<String, LlValue>,
     ) -> LlValue {
         match &expression.kind {
-            CompilerExpressionKind::Unit | CompilerExpressionKind::FunctionView(_) => LlValue::Unit,
+            CompilerExpressionKind::Unit
+            | CompilerExpressionKind::Identity(_)
+            | CompilerExpressionKind::TypeView(_)
+            | CompilerExpressionKind::FunctionView(_)
+            | CompilerExpressionKind::LanguageContext(_) => LlValue::Unit,
             CompilerExpressionKind::Completed => LlValue::Completed("0".into()),
             CompilerExpressionKind::Effect => LlValue::Effect("0".into()),
             CompilerExpressionKind::TypeValue(value) => LlValue::Enum {
@@ -948,6 +961,12 @@ impl<'a> Generator<'a> {
                 enumeration: constraint_value_enumeration(self.program),
             },
             CompilerExpressionKind::Boolean(value) => LlValue::Boolean(value.to_string()),
+            CompilerExpressionKind::Version(value) => self.emit_version_literal(
+                [value.major, value.minor, value.patch, value.build],
+                value.to_string(),
+                body,
+                expression.span,
+            ),
             CompilerExpressionKind::Int(value) => self.emit_int_literal(value),
             CompilerExpressionKind::IntToModular { value, modular } => {
                 let value = self.emit_expression(value, body, environment);
@@ -1869,11 +1888,17 @@ impl<'a> Generator<'a> {
                         enumeration: root_scope_enumeration(),
                     },
                     CompilerType::Function
+                    | CompilerType::Identity
+                    | CompilerType::TypeView
                     | CompilerType::FunctionView
+                    | CompilerType::LanguageContext
                     | CompilerType::Constraint
                     | CompilerType::Refined { .. }
                     | CompilerType::TraversalControl(_) => {
                         unreachable!("checked functions do not return this static object kind")
+                    }
+                    CompilerType::Version => {
+                        unreachable!("Version function results are not admitted")
                     }
                     CompilerType::Boolean => LlValue::Boolean(body.instruction(
                         &format!("call fastcc i1 @{symbol}({arguments})"),
@@ -4192,6 +4217,9 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             )),
+            LlValue::Version { .. } => {
+                unreachable!("Version decision results are not admitted")
+            }
             LlValue::Int(_) => LlValue::Int(body.instruction(
                 &format!("phi ptr {}", incoming(LlValue::integer)),
                 span,
@@ -4420,6 +4448,7 @@ impl<'a> Generator<'a> {
                 body.terminator(&format!("br label %{done_label}"), location);
                 body.start_block(&done_label);
             }
+            LlValue::Version { display, .. } => self.emit_write_literal(display, body, span),
             LlValue::Int(value) => body.effect(
                 &format!("call void @topal.runtime.int.print(ptr {value})"),
                 span,
@@ -5002,6 +5031,38 @@ impl<'a> Generator<'a> {
         LlValue::Int(self.emit_int_global(value))
     }
 
+    fn emit_version_literal(
+        &mut self,
+        components: [u64; 4],
+        display: String,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        let fields = components
+            .into_iter()
+            .map(|component| self.emit_int_global(&BigInt::from(component)))
+            .collect::<Vec<_>>();
+        let llvm_type = "{ ptr, ptr, ptr, ptr }";
+        let value = body.instruction(
+            &format!("alloca {llvm_type}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        for (index, field) in fields.iter().enumerate() {
+            let address = body.instruction(
+                &format!("getelementptr {llvm_type}, ptr {value}, i32 0, i32 {index}"),
+                span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!("store ptr {field}, ptr {address}, align 8"),
+                span,
+                &mut self.debug,
+            );
+        }
+        LlValue::Version { value, display }
+    }
+
     fn emit_int_global(&mut self, value: &BigInt) -> String {
         let (sign, limbs) = value.to_u32_digits();
         let negative = usize::from(sign == Sign::Minus);
@@ -5073,6 +5134,10 @@ enum LlValue {
     Completed(String),
     Effect(String),
     Boolean(String),
+    Version {
+        value: String,
+        display: String,
+    },
     Int(String),
     Modular {
         value: String,
@@ -5254,7 +5319,8 @@ impl LlValue {
             Self::Unit => "i8 0".into(),
             Self::Completed(value) | Self::Effect(value) => format!("i8 {value}"),
             Self::Boolean(value) => format!("i1 {value}"),
-            Self::Int(value)
+            Self::Version { value, .. }
+            | Self::Int(value)
             | Self::Modular { value, .. }
             | Self::Rational(value)
             | Self::Error(value)
@@ -5284,6 +5350,9 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Completed => LlValue::Completed("0".into()),
         CompilerType::Effect => LlValue::Effect("0".into()),
         CompilerType::Boolean => LlValue::Boolean("false".into()),
+        CompilerType::Version => {
+            unreachable!("Version sum payloads are not admitted")
+        }
         CompilerType::Int | CompilerType::Nat => LlValue::Int("null".into()),
         CompilerType::Modular(modular) => LlValue::Modular {
             value: "null".into(),
@@ -5353,7 +5422,12 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
                 root_scope_enumeration()
             },
         },
-        CompilerType::Function | CompilerType::FunctionView | CompilerType::Constraint => {
+        CompilerType::Function
+        | CompilerType::Identity
+        | CompilerType::TypeView
+        | CompilerType::FunctionView
+        | CompilerType::LanguageContext
+        | CompilerType::Constraint => {
             unreachable!("static object values are not admitted in sum payloads")
         }
     }
@@ -5506,7 +5580,8 @@ impl FunctionBody {
             LlValue::Unit => "i8 0".into(),
             LlValue::Completed(value) | LlValue::Effect(value) => format!("i8 {value}"),
             LlValue::Boolean(value) => format!("i1 {value}"),
-            LlValue::Int(value)
+            LlValue::Version { value, .. }
+            | LlValue::Int(value)
             | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
             | LlValue::Error(value)
@@ -5564,6 +5639,7 @@ struct DebugInfo {
     unsigned64_type: usize,
     int_type: usize,
     nat_type: usize,
+    version_type: usize,
     rational_type: usize,
     character_type: usize,
     string_type: usize,
@@ -5624,6 +5700,7 @@ impl DebugInfo {
             unsigned64_type: 0,
             int_type: 0,
             nat_type: 0,
+            version_type: 0,
             rational_type: 0,
             character_type: 0,
             string_type: 0,
@@ -5677,6 +5754,7 @@ impl DebugInfo {
             debug.empty
         ));
         let unsigned64 = debug.install_base_integer_types();
+        debug.version_type = debug.install_version_type();
         let numerator = debug.node(format!(
             "!DIDerivedType(tag: DW_TAG_member, name: \"numerator\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
             debug.file, debug.int_type
@@ -5775,6 +5853,40 @@ impl DebugInfo {
             "!DIDerivedType(tag: DW_TAG_typedef, name: \"Nat\", file: !{}, baseType: !{pointer})",
             self.file
         ));
+    }
+
+    fn install_version_type(&mut self) -> usize {
+        let members = ["major", "minor", "patch", "build"]
+            .into_iter()
+            .enumerate()
+            .map(|(index, name)| {
+                self.node(format!(
+                    "!DIDerivedType(tag: DW_TAG_member, name: \"{name}\", file: !{}, baseType: !{}, size: 64, align: 64, offset: {})",
+                    self.file,
+                    self.nat_type,
+                    index * 64
+                ))
+            })
+            .collect::<Vec<_>>();
+        let members = self.node(format!(
+            "!{{{}}}",
+            members
+                .iter()
+                .map(|member| format!("!{member}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalVersionHeader\", file: !{}, size: 256, align: 64, elements: !{members})",
+            self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Version\", file: !{}, baseType: !{pointer})",
+            self.file
+        ))
     }
 
     fn install_string_and_error_types(&mut self, unsigned64: usize) {
@@ -6019,6 +6131,9 @@ impl DebugInfo {
                 .enum_types
                 .get("Function")
                 .expect("checked Function values install their debug type"),
+            CompilerType::Identity | CompilerType::TypeView | CompilerType::LanguageContext => {
+                unreachable!("static-only introspection values have no runtime debug type")
+            }
             CompilerType::FunctionView => {
                 unreachable!("static-only Function views have no runtime debug type")
             }
@@ -6027,6 +6142,7 @@ impl DebugInfo {
                 .get("Constraint")
                 .expect("checked Constraint values install their debug type"),
             CompilerType::Boolean => self.boolean_type,
+            CompilerType::Version => self.version_type,
             CompilerType::Int => self.int_type,
             CompilerType::Nat => self.nat_type,
             CompilerType::Rational => self.rational_type,
@@ -6618,10 +6734,14 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
             size: 32,
             alignment: 32,
         },
-        CompilerType::FunctionView => {
-            unreachable!("static-only Function views have no target value layout")
+        CompilerType::Identity
+        | CompilerType::TypeView
+        | CompilerType::FunctionView
+        | CompilerType::LanguageContext => {
+            unreachable!("static-only introspection values have no target value layout")
         }
-        CompilerType::Int
+        CompilerType::Version
+        | CompilerType::Int
         | CompilerType::Nat
         | CompilerType::Modular(_)
         | CompilerType::Rational
@@ -6695,7 +6815,10 @@ fn align_bits(value: u64, alignment: u64) -> u64 {
 
 fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::FunctionView => false,
+        CompilerType::Identity
+        | CompilerType::TypeView
+        | CompilerType::FunctionView
+        | CompilerType::LanguageContext => false,
         CompilerType::Tuple(fields) => fields.iter().all(private_aggregate_value_supported),
         CompilerType::Record(fields) => fields
             .iter()
@@ -6712,12 +6835,16 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
 
 fn llvm_value_type(value_type: &CompilerType) -> String {
     match value_type {
-        CompilerType::FunctionView => {
-            unreachable!("static-only Function views have no LLVM value type")
+        CompilerType::Identity
+        | CompilerType::TypeView
+        | CompilerType::FunctionView
+        | CompilerType::LanguageContext => {
+            unreachable!("static-only introspection values have no LLVM value type")
         }
         CompilerType::Unit | CompilerType::Completed | CompilerType::Effect => "i8".into(),
         CompilerType::Boolean => "i1".into(),
-        CompilerType::Int
+        CompilerType::Version
+        | CompilerType::Int
         | CompilerType::Nat
         | CompilerType::Modular(_)
         | CompilerType::Rational
@@ -6791,8 +6918,14 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::Function => {
             unreachable!("Function values are not admitted at machine ABI reconstruction points")
         }
-        CompilerType::FunctionView => {
-            unreachable!("static-only Function views have no machine representation")
+        CompilerType::Identity
+        | CompilerType::TypeView
+        | CompilerType::FunctionView
+        | CompilerType::LanguageContext => {
+            unreachable!("static-only introspection values have no machine representation")
+        }
+        CompilerType::Version => {
+            unreachable!("Version function boundaries are not admitted")
         }
         CompilerType::Constraint => {
             unreachable!("Constraint values are not admitted at machine ABI reconstruction points")
@@ -7676,6 +7809,29 @@ mod tests {
         assert!(!llvm.contains("signature"));
         assert!(!llvm.contains("topal.runtime.introspection"));
         assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn erases_static_introspection_and_lowers_numeric_version() {
+        // TOPAL-INTRO-QUALIFIED-001, TOPAL-INTRO-STATIC-001,
+        // TOPAL-INTRO-VIEW-001, TOPAL-INTRO-CONTEXT-001,
+        // TOPAL-INTRO-RELATION-001, TOPAL-COMPILER-STATIC-INTROSPECTION-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/static-introspection.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "static-introspection.t").emit();
+        assert!(llvm.contains("alloca { ptr, ptr, ptr, ptr }, align 8"));
+        assert!(llvm.contains("name: \"Version\""));
+        assert!(llvm.contains("name: \"major\""));
+        assert!(llvm.contains("name: \"minor\""));
+        assert!(llvm.contains("name: \"patch\""));
+        assert!(llvm.contains("name: \"build\""));
+        assert!(!llvm.contains("integer-identity"));
+        assert!(!llvm.contains("integer-view"));
+        assert!(!llvm.contains("current-context"));
+        assert!(!llvm.contains("topal.runtime.introspection"));
+        assert!(!llvm.contains("topal.runtime.version"));
     }
 
     #[test]

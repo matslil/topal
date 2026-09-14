@@ -70,6 +70,40 @@ class _TopalModularPrinter:
         return f"{self._name} {_TopalIntPrinter(self._value).to_string()}"
 
 
+class _TopalVersionPrinter:
+    """Render a numeric Version from its four immutable Nat components."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def to_string(self):
+        address = int(self._value)
+        if address == 0:
+            return "<invalid null Version>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 32))
+        except gdb.MemoryError:
+            return "<unreadable Version>"
+        components = []
+        for index, name in enumerate(("major", "minor", "patch", "build")):
+            component = int.from_bytes(header[index * 8 : index * 8 + 8], "little")
+            if not component:
+                return f"<invalid null Version {name}>"
+            rendered = _TopalIntPrinter(component).to_string()
+            if rendered.startswith("<"):
+                return f"<invalid Version {name}: {rendered}>"
+            if rendered.startswith("-"):
+                return f"<invalid negative Version {name}>"
+            components.append(rendered)
+        major, minor, patch, build = components
+        if build != "0":
+            return f"v{major}.{minor}.{patch}-{build}"
+        if patch != "0":
+            return f"v{major}.{minor}.{patch}"
+        return f"v{major}.{minor}"
+
+
 def _display_string(value):
     if '"' not in value:
         return f'"{value}"'
@@ -503,6 +537,8 @@ class _TopalSumPrinter:
 def _lookup_topal_value(value):
     value_type = str(value.type)
     storage_type = str(value.type.strip_typedefs())
+    if value_type == "Version" or storage_type == "struct TopalVersionHeader *":
+        return _TopalVersionPrinter(value)
     if storage_type.startswith("struct TopalModular."):
         return _TopalModularPrinter(value, value_type)
     if value_type == "Int":

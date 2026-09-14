@@ -4364,6 +4364,132 @@ fn empty_function_effect_bound_is_static_freestanding_and_debuggable() {
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+fn assert_static_introspection_absent_from_dwarf(tools: &LlvmTools, executable: &Path) {
+    let dwarf_tool = tools.directory.join("llvm-dwarfdump");
+    if !dwarf_tool.is_file() {
+        return;
+    }
+    let dwarf = run(Command::new(dwarf_tool).arg("--debug-info").arg(executable));
+    assert!(dwarf.status.success());
+    let dwarf = String::from_utf8_lossy(&dwarf.stdout);
+    for static_name in [
+        "integer-identity",
+        "integer-view",
+        "current-context",
+        "lang Identity",
+        "lang TypeView",
+        "lang LanguageContext",
+    ] {
+        assert!(!dwarf.contains(static_name), "{dwarf}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn static_introspection_is_erased_and_version_is_freestanding_and_debuggable() {
+    // TOPAL-INTRO-QUALIFIED-001, TOPAL-INTRO-STATIC-001,
+    // TOPAL-INTRO-VIEW-001, TOPAL-INTRO-CONTEXT-001,
+    // TOPAL-INTRO-RELATION-001, TOPAL-COMPILER-STATIC-INTROSPECTION-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-static-introspection");
+    let source = directory.join("static-introspection.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/static-introspection.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(true, false, v0.1)\n");
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    assert_static_introspection_absent_from_dwarf(&tools, &executable);
+
+    let debug_source = directory.join("version-debug.t");
+    let debug_executable = directory.join("debug-application");
+    fs::write(
+        &debug_source,
+        "use language (\n  version is v0.1\n)\ncurrent-version is lang version\ncurrent-version\n",
+    )
+    .unwrap();
+    let compiled = run(topalc().args([
+        "-o",
+        debug_executable.to_str().unwrap(),
+        debug_source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break version-debug.t:5",
+            "-ex",
+            "run",
+            "-ex",
+            "next",
+            "-ex",
+            "whatis 'current-version'",
+            "-ex",
+            "print 'current-version'",
+            "-ex",
+            "ptype Version",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&debug_executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = Version"), "{text}");
+    assert!(text.contains("$1 = v0.1"), "{text}");
+    assert!(text.contains("Nat major"), "{text}");
+    assert!(text.contains("Nat minor"), "{text}");
+    assert!(text.contains("Nat patch"), "{text}");
+    assert!(text.contains("Nat build"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
 fn function_input_boundary_is_private_direct_freestanding_and_debuggable() {
     // TOPAL-COMPILER-FUNCTION-PARAMETER-001,

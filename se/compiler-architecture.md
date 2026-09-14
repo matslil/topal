@@ -757,6 +757,23 @@ future compiled-library metadata records canonical semantic identities and lets
 each target lowering choose its private representation. No registry, allocation,
 foreign type-information runtime, or standard library is linked.
 
+The first general static-introspection slice reuses those canonical Type
+identities but keeps the phase boundary explicit. `lang Identity`, primitive
+`lang TypeView`, and the active `lang LanguageContext` are distinct checked
+metadata values tagged by semantic kind; static bindings retain them in compiler
+memory but never enter the runtime/root environment. Exact fundamental-Type
+`same-object` and `equivalent-type` relations fold to ordinary Boolean constants
+before LLVM. Only `lang version` crosses into ordinary execution: its v0.1 value
+is a pointer to a target-private, frame-local header containing the four existing
+immutable Nat carriers. Frame materialization avoids load-time pointer
+relocations, LLVM owns the x86-64 instruction and stack lowering, and matching
+Version DWARF plus the validating GDB renderer expose `major`, `minor`, `patch`,
+and `build` with canonical display. The header is not a public or compiled-
+library ABI. Future library metadata will serialize semantic identities and
+language-context values through a separately versioned schema rather than copy
+this target representation. No reflection table, Version runtime helper,
+foreign runtime, or other-language standard library is introduced.
+
 An admitted named `Constraint` object is likewise split between semantic
 metadata and a private observation value. The checked program model retains
 the root binding identity, primitive base classifier, predicate parameter, and
