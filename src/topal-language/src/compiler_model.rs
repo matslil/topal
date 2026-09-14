@@ -1854,13 +1854,6 @@ fn collect_character_generators(
                 "custom generator body without a final Unit",
             ));
         };
-        if yields.is_empty() {
-            return Err(unsupported(
-                source,
-                *span,
-                "custom generator body without a yield",
-            ));
-        }
         let (local, yielded_name, yields) = if let Some(Statement::Binding {
             name: local_name,
             classifier,
@@ -1882,7 +1875,7 @@ fn collect_character_generators(
         } else {
             (None, parameter.name, yields)
         };
-        if yields.is_empty() {
+        if local.is_some() && yields.is_empty() {
             return Err(unsupported(
                 source,
                 *span,
@@ -8180,7 +8173,7 @@ impl Analyzer {
                 .then_some((index, name.to_owned()))
         });
         if let Some((generator_index, generator_name)) = generator {
-            return self.analyze_single_yield_generator_call(
+            return self.analyze_character_generator_call(
                 items,
                 span,
                 environment,
@@ -8202,7 +8195,7 @@ impl Analyzer {
         self.analyze_resolved_call(items, span, environment, function_index, &function_name)
     }
 
-    fn analyze_single_yield_generator_call(
+    fn analyze_character_generator_call(
         &mut self,
         items: &[Expression],
         span: Span,
@@ -13242,15 +13235,79 @@ mod tests {
                 && parameter.value_type == CompilerType::Character
         ));
 
+        let intervening_statement = "use language (version is v0.1)\ntwice is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  _ is 1\n  _ is yield initial\n  ()\ngenerated is twice \"T\"\ngenerated foreach { character }\n  _ is String character\n";
+        assert_eq!(
+            analyze_for_compiler(intervening_statement)
+                .unwrap_err()
+                .code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_custom_generator_returning_unit_before_yield() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-EARLY-RETURN-001,
+        // TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-EARLY-RETURN-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-early-return.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [
+                CompilerStatement::Binding(CompilerBinding {
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::CustomCharacterGenerator {
+                            declaration,
+                            initial,
+                            characters,
+                            locals,
+                            ..
+                        },
+                        value_type,
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterForeach {
+                        characters: yielded,
+                        locals: traversal_locals,
+                        parameter,
+                        body,
+                        ..
+                    },
+                    value_type: CompilerType::Unit,
+                    ..
+                })
+            ] if declaration == "nothing"
+                && initial.value_type == CompilerType::Character
+                && characters.is_empty()
+                && locals.is_empty()
+                && is_character_unit_generator_type(value_type)
+                && yielded.is_empty()
+                && traversal_locals.is_empty()
+                && parameter.value_type == CompilerType::Character
+                && body.result.value_type == CompilerType::Unit
+        ));
+
         for source in [
-            "use language (version is v0.1)\nempty is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  ()\ngenerated is empty \"T\"\ngenerated foreach { character }\n  _ is String character\n",
-            "use language (version is v0.1)\ntwice is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  _ is 1\n  _ is yield initial\n  ()\ngenerated is twice \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nnothing is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  copy : Character is initial\n  ()\ngenerated is nothing \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nnothing is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is initial\n  ()\ngenerated is nothing \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nnothing is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  initial\ngenerated is nothing \"T\"\ngenerated foreach { character }\n  _ is String character\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+
+        let invalid_action = "use language (version is v0.1)\nnothing is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  ()\ngenerated is nothing \"T\"\ngenerated foreach { character }\n  character\n";
+        assert_eq!(
+            analyze_for_compiler(invalid_action).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
     }
 
     #[test]

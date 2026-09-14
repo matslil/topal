@@ -903,6 +903,17 @@ initializer computation, additional state, mutation, resume values, captures,
 and external boundaries still require canonical state identities and types in
 the suspension graph and compiled-library metadata.
 
+The pre-yield completion slice represents a proved empty suspension sequence,
+not a dormant action or a synthetic yield. Construction still evaluates the
+initial Character once and creates the private linear observation token, while
+the checked provenance records that execution reached final Unit before a
+suspension. Root foreach consumes that token and returns Unit without emitting
+the statically checked action or its debug binding. This behavior is explicit
+in O0 IR and does not rely on LLVM dead-code elimination. No continuation
+storage is needed; a compiled-library form will nevertheless need a canonical
+terminal-before-suspension graph and final-value metadata so another compiler
+can distinguish completion from a suspended state safely.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an
