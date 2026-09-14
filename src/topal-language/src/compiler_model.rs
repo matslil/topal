@@ -593,6 +593,11 @@ pub enum CompilerExpressionKind {
         parameters: Vec<CompilerParameter>,
         predicate: Box<CompilerBlock>,
     },
+    UnfoldGenerator {
+        seed: Box<CompilerExpression>,
+        parameters: Vec<CompilerParameter>,
+        step: Box<CompilerBlock>,
+    },
     GeneratorCollect(Box<CompilerExpression>),
     ErrorField {
         error: Box<CompilerExpression>,
@@ -4380,6 +4385,26 @@ impl Analyzer {
             );
         }
         if let [
+            seed,
+            Expression::Identifier(operation),
+            Expression::AnonymousFunction {
+                parameters,
+                body,
+                span: function_span,
+            },
+        ] = items
+            && self.source.slice(*operation) == "unfold"
+        {
+            return self.analyze_int_list_unfold_generator(
+                seed,
+                parameters,
+                body,
+                *function_span,
+                span,
+                environment,
+            );
+        }
+        if let [
             list,
             Expression::Identifier(operation),
             initial,
@@ -5646,6 +5671,57 @@ impl Analyzer {
                 generator: Box::new(generator),
                 parameters,
                 predicate: Box::new(predicate),
+            },
+            value_type: int_unit_generator_type(),
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn analyze_int_list_unfold_generator(
+        &mut self,
+        seed: &Expression,
+        parameters: &[AnonymousPattern],
+        step_body: &Expression,
+        function_span: Span,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let seed = self.analyze_expression(seed, environment)?;
+        let seed_type = CompilerType::List(Box::new(CompilerType::Int));
+        require_type(&self.source, seed.span, &seed_type, &seed.value_type)?;
+        let consumed_before_body = self.consumed_generators.clone();
+        let (parameters, step) = self.analyze_collection_function(
+            parameters,
+            step_body,
+            std::slice::from_ref(&seed_type),
+            environment,
+            self.static_context,
+            function_span,
+        )?;
+        if self.consumed_generators != consumed_before_body {
+            return Err(unsupported(
+                &self.source,
+                function_span,
+                "generator capture in an unfold operation",
+            ));
+        }
+        let expected = CompilerType::Optional(Box::new(CompilerType::Tuple(vec![
+            CompilerType::Int,
+            seed_type,
+        ])));
+        require_type(
+            &self.source,
+            step.result.span,
+            &expected,
+            &step.result.value_type,
+        )?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::UnfoldGenerator {
+                seed: Box::new(seed),
+                parameters,
+                step: Box::new(step),
             },
             value_type: int_unit_generator_type(),
             int_range: None,
@@ -10243,6 +10319,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ListFold { .. }
         | CompilerExpressionKind::IterateGenerator { .. }
         | CompilerExpressionKind::GeneratorTakeWhile { .. }
+        | CompilerExpressionKind::UnfoldGenerator { .. }
         | CompilerExpressionKind::GeneratorCollect(_) => false,
         CompilerExpressionKind::IntToModular { value, .. }
         | CompilerExpressionKind::ModularReduce { value, .. }
@@ -11861,6 +11938,56 @@ mod tests {
                 analyze_for_compiler(captured).unwrap_err().code,
                 "E-COMPILER-UNSUPPORTED"
             );
+        }
+    }
+
+    #[test]
+    fn models_lazy_list_int_unfold_with_distinct_seed_and_yield_types() {
+        // TOPAL-GENERATOR-UNFOLD-001,
+        // TOPAL-COMPILER-GENERATOR-UNFOLD-CONSTRUCT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/unfold-generator.t"
+        ))
+        .unwrap();
+        assert_eq!(program.main.result.value_type, int_unit_generator_type());
+        assert!(program.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::UnfoldGenerator {
+                        seed,
+                        parameters,
+                        step,
+                    },
+                    ..
+                },
+                ..
+            }) if name == "generated"
+                && matches!(seed.kind, CompilerExpressionKind::Local(_))
+                && parameters.len() == 1
+                && matches!(step.result.kind, CompilerExpressionKind::ListUncons(_))
+        )));
+
+        for (invalid, code) in [
+            (
+                "use language (version is v0.1)\n0 unfold ({ value } value)\n",
+                "E-TYPE-MISMATCH",
+            ),
+            (
+                "use language (version is v0.1)\nvalues : List Int is Entry (1, Empty)\nvalues unfold ({ remaining } remaining)\n",
+                "E-TYPE-MISMATCH",
+            ),
+            (
+                "use language (version is v0.1)\nvalues : List Int is Entry (1, Empty)\ngenerated is values unfold ({ remaining } uncons remaining)\n(generated, generated)\n",
+                "E-GENERATOR-CONSUMED",
+            ),
+            (
+                "use language (version is v0.1)\nvalues : List Int is Entry (1, Empty)\ngenerated is values unfold ({ remaining } uncons remaining)\n()\n",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+        ] {
+            assert_eq!(analyze_for_compiler(invalid).unwrap_err().code, code);
         }
     }
 

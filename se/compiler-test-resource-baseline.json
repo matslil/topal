@@ -1486,6 +1486,16 @@
       "cpu_time_ns": 202454,
       "memory_peak_bytes": 18530304,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/unfold-generator.t": {
+      "cpu_time_ns": 132671900,
+      "memory_peak_bytes": 41619456,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/unfold-generator.t": {
+      "cpu_time_ns": 160270,
+      "memory_peak_bytes": 18522112,
+      "samples_per_test": 500
     }
   }
 }

@@ -150,6 +150,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/type-function-boundary.t",
     "examples/language/type-identity.t",
     "examples/language/type-values.t",
+    "examples/language/unfold-generator.t",
     "examples/language/unicode-identifiers.t",
     "examples/language/unions-and-recursive-products.t",
     "examples/language/unit-effect-value.t",

@@ -3180,7 +3180,7 @@ fn records_lazy_unfold_construction_reversibly() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-GENERATOR-UNFOLD-001"));
-    assert!(stdout.contains("<Generator Value Unit Unit>"));
+    assert!(stdout.contains("<Generator Int Unit Unit>"));
 }
 
 #[test]

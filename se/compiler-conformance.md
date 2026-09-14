@@ -75,6 +75,7 @@ evidence.
 | 5a | qualified `lang generator generator-closed` as a closed nominal value with equality, display, and debugging but no continuation behavior | complete |
 | 5b | lazy `Generator Int Unit Unit` construction from `iterate` and direct `take-while`, with checked dormant bodies, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |
 | 5c | direct bounded Int iterate collection through an ordered generated SSA/List loop, with exact stopping behavior and result debugging but no Generator object or generic runtime | complete |
+| 5d | lazy `Generator Int Unit Unit` construction from a `List Int` seed and an exact `unfold` step, preserving distinct seed/yield types, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -246,8 +247,12 @@ and a compiled-library Generator ABI remain in increment 5. Increment 5c
 specializes direct bounded Int iterate collection as explicit LLVM control flow
 and immutable List construction. It tests before publishing, advances only an
 accepted candidate, and keeps closure captures, indirect Generator operands,
-foreach/unfold/custom generators, resumable state, and library representation
-in increment 5.
+foreach, unfold traversal/collection, custom generators, resumable state, and
+library representation in increment 5. Increment 5d admits exact lazy `unfold`
+construction whose `List Int` seed and Int yield types are deliberately
+distinct. It checks and retains the unary step without invoking it, evaluates
+the seed once, reuses the construction-only debug token and local linearity
+boundary, and leaves traversal plus executable state to increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

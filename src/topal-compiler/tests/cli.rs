@@ -1030,6 +1030,68 @@ fn bounded_iterate_collection_is_freestanding_ordered_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn lazy_unfold_value_is_freestanding_and_debuggable_without_step_execution() {
+    // TOPAL-GENERATOR-UNFOLD-001,
+    // TOPAL-COMPILER-GENERATOR-UNFOLD-CONSTRUCT-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-lazy-unfold-value");
+    let executable = directory.join("application");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/unfold-generator.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"<Generator Int Unit Unit>\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break topal.platform.write_all",
+            "-ex",
+            "run",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis generated",
+            "-ex",
+            "print generated",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = enum Generator Int Unit Unit",
+        "$1 = <Generator Int Unit Unit>",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_renders_exact_range_parameters_and_locals() {
     // TOPAL-COMP-DEBUG-001, TOPAL-COMP-RANGE-001
     let directory = temporary("gdb-range");

@@ -5189,6 +5189,21 @@
       "cpu_time_ns": 4165919,
       "memory_peak_bytes": 18395136,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_lazy_unfold_construction_without_invoking_its_step": {
+      "cpu_time_ns": 4711840,
+      "memory_peak_bytes": 18329600,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::lazy_unfold_value_is_freestanding_and_debuggable_without_step_execution": {
+      "cpu_time_ns": 363678680,
+      "memory_peak_bytes": 58023936,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_lazy_list_int_unfold_with_distinct_seed_and_yield_types": {
+      "cpu_time_ns": 4655419,
+      "memory_peak_bytes": 18386944,
+      "samples_per_test": 50
     }
   }
 }

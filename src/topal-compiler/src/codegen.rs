@@ -130,6 +130,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             predicate,
             ..
         } => expression_uses_extended_debug(generator) || block_uses_extended_debug(predicate),
+        CompilerExpressionKind::UnfoldGenerator { seed, step, .. } => {
+            expression_uses_extended_debug(seed) || block_uses_extended_debug(step)
+        }
         CompilerExpressionKind::GeneratorCollect(generator) => {
             expression_uses_extended_debug(generator)
         }
@@ -1094,6 +1097,16 @@ impl<'a> Generator<'a> {
                 let _ = self.emit_expression(generator, body, environment);
                 let CompilerType::Generator(generator) = &expression.value_type else {
                     unreachable!("checked take-while retains its Generator type")
+                };
+                LlValue::Generator {
+                    value: "0".into(),
+                    generator: generator.clone(),
+                }
+            }
+            CompilerExpressionKind::UnfoldGenerator { seed, .. } => {
+                let _ = self.emit_expression(seed, body, environment);
+                let CompilerType::Generator(generator) = &expression.value_type else {
+                    unreachable!("checked unfold construction retains its Generator type")
                 };
                 LlValue::Generator {
                     value: "0".into(),
@@ -9126,6 +9139,25 @@ mod tests {
         }
         assert!(!llvm.contains("topal.runtime.generator"));
         assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_lazy_unfold_construction_without_invoking_its_step() {
+        // TOPAL-GENERATOR-UNFOLD-001,
+        // TOPAL-COMPILER-GENERATOR-UNFOLD-CONSTRUCT-001
+        let source = include_str!("../../../examples/language/unfold-generator.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "unfold-generator.t").emit();
+
+        assert!(llvm.contains("DW_TAG_enumeration_type, name: \"Generator Int Unit Unit\""));
+        assert!(llvm.contains("DIEnumerator(name: \"<Generator Int Unit Unit>\", value: 0)"));
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        assert!(!main.contains("topal.runtime.list.int.uncons"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
     }
 
     #[test]

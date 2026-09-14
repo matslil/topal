@@ -368,6 +368,34 @@ revision. This realizes
 `TOPAL-GENERATOR-ITERATE-001`, and `TOPAL-GENERATOR-TAKE-WHILE-001` for compiler
 increment 5b.
 
+## TOPAL-COMP-GENERATOR-UNFOLD-CONSTRUCT-001 — Lazy unfold construction
+
+The checked compiler shall admit exact `Generator Int Unit Unit` construction
+from a `List Int` seed expression and a unary anonymous
+`List Int -> Optional (Int, List Int)` step operation. It shall preserve the
+distinction between seed and yield classifiers, evaluate the seed once, retain
+the checked seed and anonymous operation, invoke no step during construction,
+and print the canonical `<Generator Int Unit Unit>` final observation.
+
+The existing one-consumption local Generator boundary shall reject repeated,
+abandoned, or explicitly discarded bindings; product containment; qualified
+access; equality; decision joins; and function or library boundaries. A step
+that captures another Generator shall also be rejected before LLVM. The Linux
+x86-64 backend may reuse the private `i32` construction observation token with
+semantic Generator DWARF. That token shall encode no seed, step, capture,
+continuation, ownership, or stable identity. Future compiled-library metadata
+shall carry the canonical Generator classifier, distinct seed and yield
+classifiers, step signature, captured operations, and evidence independently
+of a target representation adapter.
+
+This increment shall perform no traversal, collection, yield, resume,
+suspension, close delivery, Generator allocation, indirect call, or Generator
+runtime operation. It shall introduce no foreign dependency, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or `topal-native/6` revision. This realizes
+`TOPAL-COMPILER-GENERATOR-UNFOLD-CONSTRUCT-001` and
+`TOPAL-GENERATOR-UNFOLD-001` for compiler increment 5d.
+
 ## TOPAL-COMP-GENERATOR-ITERATE-COLLECT-001 — Finite iterate collection
 
 The checked compiler shall admit unary `collect` only for a syntactically
