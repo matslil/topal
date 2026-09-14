@@ -1238,6 +1238,40 @@ serialized representation, compiled-library metadata format, or native-ABI
 revision. Future library metadata SHALL encode canonical semantic Capability
 identities in a separately versioned schema rather than reuse a target lowering.
 
+### TOPAL-COMPILER-FUNCTION-INTERFACE-001 — Closed direct function-interface conformance
+
+For a source-root v0.1 `Interface` whose uniquely named operations contain only
+ordinary function shapes over admitted private native parameter and result
+classifiers, the checked compiler model SHALL retain the nominal `root.Name`
+interface identity and a canonical operation set containing every operation
+name, parameter classifier sequence, and result classifier. A following direct
+interface construction SHALL contain exactly one ordinary function declaration
+for every operation, no additional declaration, and no duplicate role. Each
+shape SHALL match exactly, and successful conformance SHALL retain a mapping
+from every interface role to its exact root declaration identity. Any admitted
+explicit empty effect bound SHALL remain attached to that declaration evidence;
+an absent bound SHALL NOT be mislabeled as inferred evidence for an unchecked
+body.
+
+The selected functions SHALL use the same private direct LLVM lowering as
+ordinary root functions. The interface and conformance evidence SHALL be
+erased before LLVM: they SHALL produce no runtime interface value, namespace,
+vtable, function pointer, indirect call, dispatcher, tag, descriptor,
+allocation, symbol, relocation, DWARF type, or DWARF variable. DWARF and GDB
+SHALL retain the actual implementation function, parameters, source locations,
+and frames. This behavior SHALL be required at `-O0` and SHALL NOT depend on an
+LLVM optimization.
+
+The executable SHALL remain freestanding and SHALL introduce no undefined
+symbol, needed library, foreign runtime, C/C++ standard library, or native-ABI
+revision. Source visibility SHALL NOT by itself create a native-artifact export.
+Until the separately versioned compiled-library interface/evidence schema is
+implemented, these checked records SHALL NOT populate or reinterpret the
+native artifact's interface digest, export, or evidence fields. Packaged or
+dynamically selected implementations, generator operations, non-root contexts,
+message implementations, v0.2 contracts, and cross-library consumption SHALL
+remain rejected rather than receive a provisional runtime or serialized ABI.
+
 ### TOPAL-COMPILER-OPTIONAL-001 — Native Optional values
 
 Within the admitted `Int` and `String` payload subset, `Optional T` SHALL retain

@@ -15,7 +15,7 @@ use topal_source::{
 };
 use topal_syntax::{
     AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionClauses,
-    FunctionParameter, ProductField, Statement, lex, parse,
+    FunctionParameter, InterfaceFunction, ProductField, Statement, lex, parse,
 };
 
 use crate::source::{
@@ -136,6 +136,32 @@ pub struct CompilerFunctionView {
     pub output: String,
     pub is_static: bool,
     pub declared_effects: Option<CompilerEffectRow>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerInterfaceOperation {
+    pub name: String,
+    pub parameters: Vec<CompilerType>,
+    pub result: CompilerType,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerInterface {
+    pub identity: String,
+    pub operations: Vec<CompilerInterfaceOperation>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerInterfaceOperationEvidence {
+    pub role: String,
+    pub declaration_identity: String,
+    pub declared_effects: Option<CompilerEffectRow>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerInterfaceImplementation {
+    pub interface_identity: String,
+    pub operations: Vec<CompilerInterfaceOperationEvidence>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -678,6 +704,8 @@ pub struct CompilerProgram {
     pub main: CompilerBlock,
     pub function_value_names: Vec<String>,
     pub constraints: Vec<CompilerConstraint>,
+    pub interfaces: Vec<CompilerInterface>,
+    pub interface_implementations: Vec<CompilerInterfaceImplementation>,
     /// Instances are in callee-before-caller order.
     pub functions: Vec<CompilerFunction>,
 }
@@ -714,6 +742,7 @@ type EnumAlternativeBindings = BTreeMap<String, (CompilerEnumType, u32, Span)>;
 type SumTypes = BTreeMap<String, (CompilerSumType, Span)>;
 type SumAlternativeBindings = BTreeMap<String, (CompilerSumType, u32, Span)>;
 type ModularTypes = BTreeMap<String, (CompilerModularType, Span)>;
+type InterfaceTypes = BTreeMap<String, (CompilerInterface, Span)>;
 
 struct EnumSource {
     name: Span,
@@ -732,6 +761,12 @@ struct ModularSource {
     name: Span,
     signed: bool,
     range: Expression,
+    span: Span,
+}
+
+struct InterfaceSource {
+    name: Span,
+    functions: Vec<InterfaceFunction>,
     span: Span,
 }
 
@@ -830,6 +865,8 @@ struct Analyzer {
     sums: SumTypes,
     sum_alternatives: SumAlternativeBindings,
     modulars: ModularTypes,
+    interfaces: InterfaceTypes,
+    interface_implementations: Vec<CompilerInterfaceImplementation>,
     functions: BTreeMap<String, Vec<FunctionSource>>,
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
@@ -843,6 +880,43 @@ struct Analyzer {
     function_values_used: bool,
     static_context: bool,
     next_instance: usize,
+}
+
+impl Analyzer {
+    fn new(
+        source: SourceText,
+        language_version: LanguageVersion,
+        enums: EnumTypes,
+        enum_alternatives: EnumAlternativeBindings,
+        sums: SumTypes,
+        sum_alternatives: SumAlternativeBindings,
+    ) -> Self {
+        Self {
+            source,
+            language_version,
+            language_features: Vec::new(),
+            enums,
+            enum_alternatives,
+            sums,
+            sum_alternatives,
+            modulars: BTreeMap::new(),
+            interfaces: BTreeMap::new(),
+            interface_implementations: Vec::new(),
+            functions: BTreeMap::new(),
+            instances: Vec::new(),
+            active_calls: Vec::new(),
+            active_recursive_functions: BTreeMap::new(),
+            root_bindings: BTreeMap::new(),
+            anonymous_callables: BTreeMap::new(),
+            anonymous_function_value_names: Vec::new(),
+            constraints: Vec::new(),
+            constraint_bindings: BTreeMap::new(),
+            in_function: false,
+            function_values_used: false,
+            static_context: false,
+            next_instance: 0,
+        }
+    }
 }
 
 /// Analyze the currently implemented native-compiler subset.
@@ -863,29 +937,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
             error.message.clone(),
         ));
     }
-    let Some(Statement::LanguageSelection {
-        version, features, ..
-    }) = parsed.statements.first()
-    else {
-        return Err(source_diagnostic(
-            &source,
-            "E-LANGUAGE-CONTEXT",
-            Span::new(0, 0),
-            "a source file begins with `use language ( version is v0.1 )`",
-        ));
-    };
-    let language_version = source
-        .slice(*version)
-        .parse()
-        .map_err(|message| source_diagnostic(&source, "E-LANGUAGE-VERSION", *version, message))?;
-    if language_version != LanguageVersion::DESIGN_0 || !features.is_empty() {
-        return Err(source_diagnostic(
-            &source,
-            "E-COMPILER-UNSUPPORTED",
-            *version,
-            "the native compiler increment supports language version v0.1 without optional features",
-        ));
-    }
+    let language_version = compiler_language_version(&source, &parsed.statements)?;
     reject_later_language_selections(&source, &parsed.statements)?;
 
     let (enums, enum_alternatives) = collect_enums(&source, &parsed.statements)?;
@@ -899,6 +951,15 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         &sums,
         &sum_alternatives,
     )?;
+    let interface_sources = collect_interface_sources(
+        &source,
+        &parsed.statements,
+        &enums,
+        &enum_alternatives,
+        &sums,
+        &sum_alternatives,
+        &modular_sources,
+    )?;
     let reserved_names = compiler_reserved_names(
         &source,
         &enums,
@@ -906,33 +967,25 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         &sums,
         &sum_alternatives,
         &modular_sources,
+        &interface_sources,
     );
-    let mut functions = BTreeMap::new();
-    collect_functions(&source, &parsed.statements, &reserved_names, &mut functions)?;
-    let mut analyzer = Analyzer {
-        source: source.clone(),
+    let mut analyzer = Analyzer::new(
+        source.clone(),
         language_version,
-        language_features: Vec::new(),
         enums,
         enum_alternatives,
         sums,
         sum_alternatives,
-        modulars: BTreeMap::new(),
-        functions,
-        instances: Vec::new(),
-        active_calls: Vec::new(),
-        active_recursive_functions: BTreeMap::new(),
-        root_bindings: BTreeMap::new(),
-        anonymous_callables: BTreeMap::new(),
-        anonymous_function_value_names: Vec::new(),
-        constraints: Vec::new(),
-        constraint_bindings: BTreeMap::new(),
-        in_function: false,
-        function_values_used: false,
-        static_context: false,
-        next_instance: 0,
-    };
+    );
     analyzer.install_modular_types(&modular_sources)?;
+    analyzer.install_interfaces(&interface_sources)?;
+    analyzer.validate_interface_implementations(&parsed.statements)?;
+    collect_functions(
+        &source,
+        &parsed.statements,
+        &reserved_names,
+        &mut analyzer.functions,
+    )?;
     let mut environment = BTreeMap::new();
     let main = analyzer.analyze_block(
         &parsed.statements,
@@ -942,14 +995,51 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     )?;
     require_runtime_main_result(&source, &main)?;
     let function_value_names = compiler_function_value_names(&mut analyzer);
+    let interfaces = analyzer
+        .interfaces
+        .values()
+        .map(|(interface, _)| interface.clone())
+        .collect();
     Ok(CompilerProgram {
         source,
         language_version,
         main,
         function_value_names,
         constraints: analyzer.constraints,
+        interfaces,
+        interface_implementations: analyzer.interface_implementations,
         functions: analyzer.instances,
     })
+}
+
+fn compiler_language_version(
+    source: &SourceText,
+    statements: &[Statement],
+) -> Result<LanguageVersion, Diagnostic> {
+    let Some(Statement::LanguageSelection {
+        version, features, ..
+    }) = statements.first()
+    else {
+        return Err(source_diagnostic(
+            source,
+            "E-LANGUAGE-CONTEXT",
+            Span::new(0, 0),
+            "a source file begins with `use language ( version is v0.1 )`",
+        ));
+    };
+    let language_version = source
+        .slice(*version)
+        .parse()
+        .map_err(|message| source_diagnostic(source, "E-LANGUAGE-VERSION", *version, message))?;
+    if language_version != LanguageVersion::DESIGN_0 || !features.is_empty() {
+        return Err(source_diagnostic(
+            source,
+            "E-COMPILER-UNSUPPORTED",
+            *version,
+            "the native compiler increment supports language version v0.1 without optional features",
+        ));
+    }
+    Ok(language_version)
 }
 
 fn reject_later_language_selections(
@@ -1007,6 +1097,7 @@ fn compiler_reserved_names(
     sums: &SumTypes,
     sum_alternatives: &SumAlternativeBindings,
     modulars: &[ModularSource],
+    interfaces: &BTreeMap<String, InterfaceSource>,
 ) -> BTreeSet<String> {
     enums
         .keys()
@@ -1019,6 +1110,7 @@ fn compiler_reserved_names(
                 .iter()
                 .map(|declaration| source.slice(declaration.name).to_owned()),
         )
+        .chain(interfaces.keys().cloned())
         .chain(["root".to_owned()])
         .collect()
 }
@@ -1220,6 +1312,78 @@ fn modular_declaration(source: &SourceText, statement: &Statement) -> Option<Mod
         range: range.clone(),
         span: Span::new(name.start, span.end),
     })
+}
+
+fn interface_declaration(statement: &Statement) -> Option<InterfaceSource> {
+    let statement = match statement {
+        Statement::Published { declaration, .. } => declaration.as_ref(),
+        statement => statement,
+    };
+    let Statement::Interface {
+        name,
+        functions,
+        span,
+    } = statement
+    else {
+        return None;
+    };
+    Some(InterfaceSource {
+        name: *name,
+        functions: functions.clone(),
+        span: *span,
+    })
+}
+
+#[allow(clippy::too_many_arguments)] // Every existing nominal root namespace is a collision boundary.
+fn collect_interface_sources(
+    source: &SourceText,
+    statements: &[Statement],
+    enums: &EnumTypes,
+    enum_alternatives: &EnumAlternativeBindings,
+    sums: &SumTypes,
+    sum_alternatives: &SumAlternativeBindings,
+    modulars: &[ModularSource],
+) -> Result<BTreeMap<String, InterfaceSource>, Diagnostic> {
+    let modular_names = modulars
+        .iter()
+        .map(|declaration| source.slice(declaration.name))
+        .collect::<BTreeSet<_>>();
+    let mut interfaces = BTreeMap::new();
+    for statement in statements {
+        let Some(declaration) = interface_declaration(statement) else {
+            continue;
+        };
+        let name = source.slice(declaration.name).to_owned();
+        if name == "root"
+            || enums.contains_key(&name)
+            || enum_alternatives.contains_key(&name)
+            || sums.contains_key(&name)
+            || sum_alternatives.contains_key(&name)
+            || modular_names.contains(name.as_str())
+            || interfaces.contains_key(&name)
+        {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-DECLARATION",
+                declaration.name,
+                format!("`{name}` is already declared"),
+            ));
+        }
+        let mut operations = BTreeSet::new();
+        for function in &declaration.functions {
+            let operation = source.slice(function.name);
+            if !operations.insert(operation) {
+                return Err(source_diagnostic(
+                    source,
+                    "E-DUPLICATE-INTERFACE-OPERATION",
+                    function.name,
+                    format!("interface operation `{operation}` is declared twice"),
+                ));
+            }
+        }
+        interfaces.insert(name, declaration);
+    }
+    Ok(interfaces)
 }
 
 fn collect_modular_sources(
@@ -1435,6 +1599,10 @@ fn collect_functions(
     functions: &mut BTreeMap<String, Vec<FunctionSource>>,
 ) -> Result<(), Diagnostic> {
     for statement in statements {
+        if let Statement::InterfaceImplementation { declarations, .. } = statement {
+            collect_functions(source, declarations, reserved_names, functions)?;
+            continue;
+        }
         let declaration = match statement {
             Statement::Function {
                 name,
@@ -1478,7 +1646,8 @@ fn collect_functions(
                         span: *span,
                         is_static: *is_static,
                     })
-                } else if enum_declaration(source, statement).is_some()
+                } else if interface_declaration(statement).is_some()
+                    || enum_declaration(source, statement).is_some()
                     || sum_declaration(source, statement).is_some()
                     || matches!(declaration.as_ref(), Statement::Binding { .. })
                 {
@@ -1645,6 +1814,218 @@ impl Analyzer {
         Ok(())
     }
 
+    fn interface_operation(
+        &self,
+        name: Span,
+        parameters: &[FunctionParameter],
+        result: Span,
+        clauses: &FunctionClauses,
+        span: Span,
+    ) -> Result<CompilerInterfaceOperation, Diagnostic> {
+        if clauses != &FunctionClauses::default() {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "v0.2 interface contract clauses in a v0.1 compilation",
+            ));
+        }
+        let parameters = parameters
+            .iter()
+            .map(|parameter| {
+                if parameter.qualifier.is_some()
+                    || parameter.default.is_some()
+                    || !parameter.fields.is_empty()
+                {
+                    return Err(unsupported(
+                        &self.source,
+                        parameter.name,
+                        "packaged, defaulted, or qualified interface parameter",
+                    ));
+                }
+                let parameter_type = self.parse_classifier(parameter.classifier)?;
+                if !compiler_function_parameter_supported(&parameter_type)
+                    || compiler_type_contains_static_only(&parameter_type)
+                {
+                    return Err(unsupported(
+                        &self.source,
+                        parameter.classifier,
+                        "interface parameter classifier without an admitted native function ABI",
+                    ));
+                }
+                Ok(parameter_type)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let result_type = self.parse_classifier(result)?;
+        if !compiler_function_result_supported(&result_type)
+            || compiler_type_contains_static_only(&result_type)
+        {
+            return Err(unsupported(
+                &self.source,
+                result,
+                "interface result classifier without an admitted native function ABI",
+            ));
+        }
+        Ok(CompilerInterfaceOperation {
+            name: self.source.slice(name).to_owned(),
+            parameters,
+            result: result_type,
+        })
+    }
+
+    fn install_interfaces(
+        &mut self,
+        declarations: &BTreeMap<String, InterfaceSource>,
+    ) -> Result<(), Diagnostic> {
+        for (name, declaration) in declarations {
+            let mut operations = declaration
+                .functions
+                .iter()
+                .map(|function| {
+                    self.interface_operation(
+                        function.name,
+                        &function.parameters,
+                        function.result,
+                        &function.clauses,
+                        function.span,
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            operations.sort_by(|left, right| left.name.cmp(&right.name));
+            self.interfaces.insert(
+                name.clone(),
+                (
+                    CompilerInterface {
+                        identity: format!("root.{name}"),
+                        operations,
+                    },
+                    declaration.span,
+                ),
+            );
+        }
+        Ok(())
+    }
+
+    fn validate_interface_implementations(
+        &mut self,
+        statements: &[Statement],
+    ) -> Result<(), Diagnostic> {
+        for statement in statements {
+            let Statement::InterfaceImplementation {
+                interface,
+                declarations,
+                span,
+            } = statement
+            else {
+                continue;
+            };
+            let implementation =
+                self.validate_interface_implementation(*interface, declarations, *span)?;
+            self.interface_implementations.push(implementation);
+        }
+        Ok(())
+    }
+
+    fn validate_interface_implementation(
+        &self,
+        interface: Span,
+        declarations: &[Statement],
+        span: Span,
+    ) -> Result<CompilerInterfaceImplementation, Diagnostic> {
+        let interface_name = self.source.slice(interface);
+        let (shape, _) = self
+            .interfaces
+            .get(interface_name)
+            .filter(|(_, declaration_span)| declaration_span.end <= interface.start)
+            .ok_or_else(|| {
+                source_diagnostic(
+                    &self.source,
+                    "E-UNKNOWN-INTERFACE",
+                    interface,
+                    format!("`{interface_name}` is not a declared interface"),
+                )
+            })?;
+        let mut supplied = BTreeMap::new();
+        for declaration in declarations {
+            let Statement::Function {
+                name,
+                is_static,
+                parameters,
+                result,
+                effect_bound,
+                clauses,
+                span: function_span,
+                ..
+            } = declaration
+            else {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-INTERFACE-IMPLEMENTATION",
+                    span,
+                    "an interface implementation contains function declarations only",
+                ));
+            };
+            if *is_static {
+                return Err(unsupported(
+                    &self.source,
+                    *function_span,
+                    "static interface implementation function",
+                ));
+            }
+            let declared_effects = compiler_declared_effect_row(&self.source, *effect_bound)?;
+            let actual =
+                self.interface_operation(*name, parameters, *result, clauses, *function_span)?;
+            let operation_name = actual.name.clone();
+            if supplied.contains_key(&operation_name) {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-INTERFACE-IMPLEMENTATION",
+                    *name,
+                    format!("interface operation `{operation_name}` is implemented more than once"),
+                ));
+            }
+            let inputs = parameters
+                .iter()
+                .map(|parameter| compact_classifier(self.source.slice(parameter.classifier)))
+                .collect::<Vec<_>>()
+                .join(",");
+            supplied.insert(
+                operation_name,
+                (
+                    actual,
+                    CompilerInterfaceOperationEvidence {
+                        role: self.source.slice(*name).to_owned(),
+                        declaration_identity: format!(
+                            "root.{}:ordinary({inputs})",
+                            self.source.slice(*name)
+                        ),
+                        declared_effects,
+                    },
+                ),
+            );
+        }
+        if supplied.len() != shape.operations.len()
+            || shape.operations.iter().any(|expected| {
+                supplied
+                    .get(&expected.name)
+                    .is_none_or(|(actual, _)| actual != expected)
+            })
+        {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-INTERFACE-IMPLEMENTATION",
+                span,
+                "implementation operations must exactly match the interface shapes",
+            ));
+        }
+        Ok(CompilerInterfaceImplementation {
+            interface_identity: shape.identity.clone(),
+            operations: supplied
+                .into_values()
+                .map(|(_, evidence)| evidence)
+                .collect(),
+        })
+    }
+
     fn analyze_expression_with_expected(
         &mut self,
         expression: &Expression,
@@ -1768,8 +2149,11 @@ impl Analyzer {
     fn is_declaration(&self, statement: &Statement) -> bool {
         if matches!(
             statement,
-            Statement::LanguageSelection { .. } | Statement::Function { .. }
-        ) || matches!(statement, Statement::Published { declaration, .. } if matches!(declaration.as_ref(), Statement::Function { .. }))
+            Statement::LanguageSelection { .. }
+                | Statement::Function { .. }
+                | Statement::Interface { .. }
+                | Statement::InterfaceImplementation { .. }
+        ) || matches!(statement, Statement::Published { declaration, .. } if matches!(declaration.as_ref(), Statement::Function { .. } | Statement::Interface { .. }))
         {
             return true;
         }
@@ -1924,6 +2308,18 @@ impl Analyzer {
         } else {
             environment.keys().cloned().collect()
         };
+        if kind != BlockKind::TopLevel
+            && let Some(statement) = statements.iter().find(|statement| {
+                interface_declaration(statement).is_some()
+                    || matches!(statement, Statement::InterfaceImplementation { .. })
+            })
+        {
+            return Err(unsupported(
+                &self.source,
+                statement_span(statement),
+                "non-root Interface declaration or implementation",
+            ));
+        }
         if kind == BlockKind::Lexical
             && let Some(declaration) = statements
                 .iter()
@@ -1994,7 +2390,8 @@ impl Analyzer {
                                 || self.enum_alternatives.contains_key(&name_text)
                                 || self.sums.contains_key(&name_text)
                                 || self.sum_alternatives.contains_key(&name_text)
-                                || self.modulars.contains_key(&name_text)))
+                                || self.modulars.contains_key(&name_text)
+                                || self.interfaces.contains_key(&name_text)))
                     {
                         return Err(source_diagnostic(
                             &self.source,
@@ -12181,6 +12578,94 @@ mod tests {
             .unwrap_err()
             .code,
             "E-TYPE-MISMATCH"
+        );
+    }
+
+    #[test]
+    fn retains_and_erases_exact_function_interface_evidence() {
+        // TOPAL-INTERFACE-SHAPE-001, TOPAL-INTERFACE-IMPLEMENTATION-001,
+        // TOPAL-COMPILER-FUNCTION-INTERFACE-001
+        let source = include_str!("../../../examples/language/function-interface.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(program.interfaces.len(), 1);
+        assert_eq!(program.interfaces[0].identity, "root.Parser");
+        assert_eq!(
+            program.interfaces[0].operations,
+            [CompilerInterfaceOperation {
+                name: "parse".into(),
+                parameters: vec![CompilerType::String],
+                result: CompilerType::Boolean,
+            }]
+        );
+        assert_eq!(program.interface_implementations.len(), 1);
+        assert_eq!(
+            program.interface_implementations[0],
+            CompilerInterfaceImplementation {
+                interface_identity: "root.Parser".into(),
+                operations: vec![CompilerInterfaceOperationEvidence {
+                    role: "parse".into(),
+                    declaration_identity: "root.parse:ordinary(String)".into(),
+                    declared_effects: None,
+                }],
+            }
+        );
+        assert_eq!(program.functions.len(), 1);
+        assert_eq!(program.functions[0].source_name, "parse");
+        assert_eq!(program.main.result.value_type, CompilerType::Boolean);
+        let interpreted = crate::source::Session::new()
+            .evaluate_source_file(source, &mut std::io::sink())
+            .unwrap();
+        assert_eq!(interpreted.to_string(), "true");
+
+        let multi_source = "use language (version is v0.1)\nService is Interface\n  zed is fn (value : Int) -> Int\n  alpha is fn (value : String) -> Boolean\nService\n  zed is fn (value : Int) -> Int\n    value\n  alpha is fn (value : String) -> Boolean\n    : Effects ()\n    value = \"ok\"\nalpha \"ok\"\n";
+        let multi = analyze_for_compiler(multi_source).unwrap();
+        assert_eq!(
+            multi.interfaces[0]
+                .operations
+                .iter()
+                .map(|operation| operation.name.as_str())
+                .collect::<Vec<_>>(),
+            ["alpha", "zed"]
+        );
+        assert_eq!(
+            multi.interface_implementations[0]
+                .operations
+                .iter()
+                .map(|operation| operation.role.as_str())
+                .collect::<Vec<_>>(),
+            ["alpha", "zed"]
+        );
+        assert_eq!(
+            multi.interface_implementations[0].operations[0].declared_effects,
+            Some(CompilerEffectRow {
+                identities: Vec::new(),
+            })
+        );
+        assert_eq!(
+            multi.interface_implementations[0].operations[1].declared_effects,
+            None
+        );
+
+        for invalid in [
+            "use language (version is v0.1)\nParser\n  parse is fn (source : String) -> Boolean\n    true\nparse \"ok\"\n",
+            "use language (version is v0.1)\nParser is Interface\n  parse is fn (source : String) -> Boolean\nParser\n  other is fn (source : String) -> Boolean\n    true\nother \"ok\"\n",
+            "use language (version is v0.1)\nParser is Interface\n  parse is fn (source : String) -> Boolean\n  other is fn (source : String) -> Boolean\nParser\n  parse is fn (source : String) -> Boolean\n    true\nparse \"ok\"\n",
+            "use language (version is v0.1)\nParser is Interface\n  parse is fn (source : String) -> Boolean\nParser\n  parse is fn (source : String) -> Boolean\n    true\n  other is fn (source : String) -> Boolean\n    false\nparse \"ok\"\n",
+            "use language (version is v0.1)\nParser is Interface\n  parse is fn (source : String) -> Boolean\nParser\n  parse is fn (source : Int) -> Boolean\n    true\nparse 1\n",
+            "use language (version is v0.1)\nParser is Interface\n  parse is fn (source : String) -> Boolean\nParser\n  parse is fn (source : String) -> Boolean\n    true\n  parse is fn (source : String) -> Boolean\n    false\nparse \"ok\"\n",
+        ] {
+            assert!(
+                matches!(
+                    analyze_for_compiler(invalid).unwrap_err().code.as_str(),
+                    "E-UNKNOWN-INTERFACE" | "E-INTERFACE-IMPLEMENTATION"
+                ),
+                "{invalid}"
+            );
+        }
+        let nested = "use language (version is v0.1)\nconstruct is fn () -> Unit\n  Parser is Interface\n    parse is fn (source : String) -> Boolean\n  ()\nconstruct ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
         );
     }
 

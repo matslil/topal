@@ -7880,6 +7880,30 @@ mod tests {
     }
 
     #[test]
+    fn erases_function_interface_evidence_before_direct_llvm_lowering() {
+        // TOPAL-INTERFACE-SHAPE-001, TOPAL-INTERFACE-IMPLEMENTATION-001,
+        // TOPAL-COMPILER-FUNCTION-INTERFACE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-interface.t"
+        ))
+        .unwrap();
+        assert_eq!(program.interfaces[0].identity, "root.Parser");
+        assert_eq!(
+            program.interface_implementations[0].operations[0].declaration_identity,
+            "root.parse:ordinary(String)"
+        );
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "function-interface.t").emit();
+        assert!(llvm.contains(&format!("define internal fastcc i1 @{symbol}(ptr %arg0)")));
+        assert!(llvm.contains(&format!("call fastcc i1 @{symbol}(ptr %")));
+        assert!(!llvm.contains("root.Parser"));
+        assert!(!llvm.contains("Parser"));
+        assert!(!llvm.contains("Interface"));
+        assert!(!llvm.contains("topal.runtime.interface"));
+        assert!(!llvm.contains("topal.runtime.evidence"));
+    }
+
+    #[test]
     fn emits_named_function_values_with_direct_retained_calls() {
         // TOPAL-COMPILER-NAMED-FUNCTION-VALUE-001, TOPAL-FUNCTION-VALUE-001
         let program = analyze_for_compiler(include_str!(

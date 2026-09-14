@@ -5099,6 +5099,21 @@
       "cpu_time_ns": 4636780,
       "memory_peak_bytes": 18362368,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::erases_function_interface_evidence_before_direct_llvm_lowering": {
+      "cpu_time_ns": 8182140,
+      "memory_peak_bytes": 18386944,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::function_interface_is_direct_freestanding_debuggable_and_statically_erased": {
+      "cpu_time_ns": 324169339,
+      "memory_peak_bytes": 58494976,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::retains_and_erases_exact_function_interface_evidence": {
+      "cpu_time_ns": 8116399,
+      "memory_peak_bytes": 18411520,
+      "samples_per_test": 50
     }
   }
 }
