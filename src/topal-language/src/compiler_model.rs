@@ -593,6 +593,7 @@ pub enum CompilerExpressionKind {
         parameters: Vec<CompilerParameter>,
         predicate: Box<CompilerBlock>,
     },
+    GeneratorCollect(Box<CompilerExpression>),
     ErrorField {
         error: Box<CompilerExpression>,
         field: CompilerErrorField,
@@ -4238,6 +4239,69 @@ impl Analyzer {
                 rational_value: None,
                 span,
             });
+        }
+        if let [Expression::Identifier(operation), generator] = items
+            && self.source.slice(*operation) == "collect"
+        {
+            let direct_bounded = direct_bounded_iterate_functions(&self.source, generator);
+            if let Some((next, predicate)) = direct_bounded {
+                for (parameters, body, function_span, role) in [
+                    (next.0, next.1, next.2, "iterate operation"),
+                    (
+                        predicate.0,
+                        predicate.1,
+                        predicate.2,
+                        "take-while predicate",
+                    ),
+                ] {
+                    if let Some(capture) =
+                        anonymous_body_capture(&self.source, parameters, body, environment)
+                    {
+                        return Err(unsupported(
+                            &self.source,
+                            function_span,
+                            &format!("captured {role} value `{capture}`"),
+                        ));
+                    }
+                }
+            }
+            let generator = self.analyze_expression(generator, environment)?;
+            require_type(
+                &self.source,
+                generator.span,
+                &int_unit_generator_type(),
+                &generator.value_type,
+            )?;
+            match &generator.kind {
+                CompilerExpressionKind::GeneratorTakeWhile {
+                    generator: source, ..
+                } if direct_bounded.is_some()
+                    && matches!(source.kind, CompilerExpressionKind::IterateGenerator { .. }) =>
+                {
+                    return Ok(CompilerExpression {
+                        kind: CompilerExpressionKind::GeneratorCollect(Box::new(generator)),
+                        value_type: CompilerType::List(Box::new(CompilerType::Int)),
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    });
+                }
+                CompilerExpressionKind::IterateGenerator { .. } => {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-UNBOUNDED-GENERATOR-COLLECT",
+                        generator.span,
+                        "collect requires a statically finite generated traversal",
+                    ));
+                }
+                _ => {
+                    return Err(unsupported(
+                        &self.source,
+                        generator.span,
+                        "collection through a non-direct Generator value",
+                    ));
+                }
+            }
         }
         if let [
             initial,
@@ -9632,6 +9696,94 @@ fn compiler_type_contains_generator(value_type: &CompilerType) -> bool {
     }
 }
 
+fn anonymous_body_capture(
+    source: &SourceText,
+    parameters: &[AnonymousPattern],
+    body: &Expression,
+    environment: &BTreeMap<String, BindingFacts>,
+) -> Option<String> {
+    let parameter_names = parameters
+        .iter()
+        .flat_map(|parameter| match parameter {
+            AnonymousPattern::Binding(binding) => vec![source.slice(*binding)],
+            AnonymousPattern::Product { bindings, .. } => bindings
+                .iter()
+                .map(|binding| source.slice(*binding))
+                .collect(),
+        })
+        .collect::<BTreeSet<_>>();
+    environment
+        .keys()
+        .find(|name| {
+            !parameter_names.contains(name.as_str()) && expression_mentions_name(source, body, name)
+        })
+        .cloned()
+}
+
+type AnonymousBodyRef<'a> = (&'a [AnonymousPattern], &'a Expression, Span);
+
+fn direct_bounded_iterate_functions<'a>(
+    source: &SourceText,
+    expression: &'a Expression,
+) -> Option<(AnonymousBodyRef<'a>, AnonymousBodyRef<'a>)> {
+    let Expression::Application { items, .. } = expression else {
+        return None;
+    };
+    if let [
+        _,
+        Expression::Identifier(iterate),
+        Expression::AnonymousFunction {
+            parameters: next_parameters,
+            body: next_body,
+            span: next_span,
+        },
+        Expression::Identifier(take_while),
+        Expression::AnonymousFunction {
+            parameters: predicate_parameters,
+            body: predicate_body,
+            span: predicate_span,
+        },
+    ] = items.as_slice()
+        && source.slice(*iterate) == "iterate"
+        && source.slice(*take_while) == "take-while"
+    {
+        return Some((
+            (next_parameters, next_body, *next_span),
+            (predicate_parameters, predicate_body, *predicate_span),
+        ));
+    }
+    let [iterate, Expression::Identifier(take_while), predicate] = items.as_slice() else {
+        return None;
+    };
+    let Expression::AnonymousFunction {
+        parameters: predicate_parameters,
+        body: predicate_body,
+        span: predicate_span,
+    } = predicate
+    else {
+        return None;
+    };
+    let Expression::Application { items, .. } = iterate else {
+        return None;
+    };
+    let [
+        _,
+        Expression::Identifier(iterate),
+        Expression::AnonymousFunction {
+            parameters: next_parameters,
+            body: next_body,
+            span: next_span,
+        },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    (source.slice(*iterate) == "iterate" && source.slice(*take_while) == "take-while").then_some((
+        (next_parameters, next_body, *next_span),
+        (predicate_parameters, predicate_body, *predicate_span),
+    ))
+}
+
 fn reject_static_value_containment(
     source: &SourceText,
     value: &CompilerExpression,
@@ -10090,7 +10242,8 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ListSelect { .. }
         | CompilerExpressionKind::ListFold { .. }
         | CompilerExpressionKind::IterateGenerator { .. }
-        | CompilerExpressionKind::GeneratorTakeWhile { .. } => false,
+        | CompilerExpressionKind::GeneratorTakeWhile { .. }
+        | CompilerExpressionKind::GeneratorCollect(_) => false,
         CompilerExpressionKind::IntToModular { value, .. }
         | CompilerExpressionKind::ModularReduce { value, .. }
         | CompilerExpressionKind::Negate(value)
@@ -11652,6 +11805,62 @@ mod tests {
             ),
         ] {
             assert_eq!(analyze_for_compiler(source).unwrap_err().code, code);
+        }
+    }
+
+    #[test]
+    fn models_direct_bounded_int_iterate_collection() {
+        // TOPAL-GENERATOR-ITERATE-001, TOPAL-GENERATOR-TAKE-WHILE-001,
+        // TOPAL-GENERATOR-COLLECT-001,
+        // TOPAL-COMPILER-GENERATOR-ITERATE-COLLECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/generated-collect.t"
+        ))
+        .unwrap();
+        assert_eq!(
+            program.main.result.value_type,
+            CompilerType::List(Box::new(CompilerType::Int))
+        );
+        assert!(program.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::GeneratorCollect(generator),
+                    ..
+                },
+                ..
+            }) if name == "digits"
+                && matches!(generator.kind, CompilerExpressionKind::GeneratorTakeWhile {
+                    generator: ref source,
+                    ..
+                } if matches!(source.kind, CompilerExpressionKind::IterateGenerator { .. }))
+        )));
+        analyze_for_compiler(
+            "use language (version is v0.1)\ncollect ((0 iterate ({ value } value + 1)) take-while ({ value } value < 2))\n",
+        )
+        .unwrap();
+
+        let unbounded = analyze_for_compiler(
+            "use language (version is v0.1)\ncollect (0 iterate ({ value } value + 1))\n",
+        )
+        .unwrap_err();
+        assert_eq!(unbounded.code, "E-UNBOUNDED-GENERATOR-COLLECT");
+
+        let indirect = analyze_for_compiler(
+            "use language (version is v0.1)\nnumbers is 0 iterate ({ value } value + 1) take-while ({ value } value < 5)\ncollect numbers\n",
+        )
+        .unwrap_err();
+        assert_eq!(indirect.code, "E-COMPILER-UNSUPPORTED");
+
+        for captured in [
+            "use language (version is v0.1)\nstep is 1\ncollect (0 iterate ({ value } value + step) take-while ({ value } value < 5))\n",
+            "use language (version is v0.1)\nlimit is 5\ncollect (0 iterate ({ value } value + 1) take-while ({ value } value < limit))\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(captured).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
         }
     }
 

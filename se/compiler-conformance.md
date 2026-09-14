@@ -74,6 +74,7 @@ evidence.
 | 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal algorithms and callable forms, traversal-control generalization, and representation-safe reclamation | planned |
 | 5a | qualified `lang generator generator-closed` as a closed nominal value with equality, display, and debugging but no continuation behavior | complete |
 | 5b | lazy `Generator Int Unit Unit` construction from `iterate` and direct `take-while`, with checked dormant bodies, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |
+| 5c | direct bounded Int iterate collection through an ordered generated SSA/List loop, with exact stopping behavior and result debugging but no Generator object or generic runtime | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -241,7 +242,12 @@ increment 5. Increment 5b admits the first exact Generator value through lazy
 the anonymous bodies without invoking them, evaluates the initial value once,
 and enforces a deliberately narrow one-consumption local boundary around a
 private debug token; traversal, close delivery, executable continuation state,
-and a compiled-library Generator ABI remain in increment 5.
+and a compiled-library Generator ABI remain in increment 5. Increment 5c
+specializes direct bounded Int iterate collection as explicit LLVM control flow
+and immutable List construction. It tests before publishing, advances only an
+accepted candidate, and keeps closure captures, indirect Generator operands,
+foreach/unfold/custom generators, resumable state, and library representation
+in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
