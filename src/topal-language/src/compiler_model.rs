@@ -80,6 +80,56 @@ pub struct CompilerLanguageContext {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerCapability {
+    pub alternatives: Vec<Vec<String>>,
+}
+
+impl CompilerCapability {
+    fn atomic(identity: &str) -> Self {
+        Self {
+            alternatives: vec![vec![identity.to_owned()]],
+        }
+    }
+
+    fn and(&self, other: &Self) -> Self {
+        Self::canonical(self.alternatives.iter().flat_map(|left| {
+            other.alternatives.iter().map(move |right| {
+                let mut conjunction = left.clone();
+                conjunction.extend(right.iter().cloned());
+                conjunction
+            })
+        }))
+    }
+
+    fn or(&self, other: &Self) -> Self {
+        Self::canonical(self.alternatives.iter().chain(&other.alternatives).cloned())
+    }
+
+    fn canonical(alternatives: impl IntoIterator<Item = Vec<String>>) -> Self {
+        let alternatives = alternatives
+            .into_iter()
+            .map(|mut conjunction| {
+                conjunction.sort();
+                conjunction.dedup();
+                conjunction
+            })
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        Self { alternatives }
+    }
+
+    #[must_use]
+    pub fn display(&self) -> String {
+        self.alternatives
+            .iter()
+            .map(|conjunction| conjunction.join(" and "))
+            .collect::<Vec<_>>()
+            .join(" or ")
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerFunctionView {
     pub identity: String,
     pub inputs: Vec<String>,
@@ -100,6 +150,7 @@ pub enum CompilerType {
     TypeView,
     FunctionView,
     LanguageContext,
+    Capability,
     Constraint,
     Boolean,
     Version,
@@ -173,6 +224,7 @@ impl CompilerType {
             Self::TypeView => "lang TypeView".into(),
             Self::FunctionView => "lang FunctionView".into(),
             Self::LanguageContext => "lang LanguageContext".into(),
+            Self::Capability => "Capability".into(),
             Self::Constraint => "Constraint".into(),
             Self::Boolean => "Boolean".into(),
             Self::Version => "Version".into(),
@@ -364,6 +416,7 @@ pub enum CompilerExpressionKind {
     TypeView(CompilerTypeView),
     FunctionView(CompilerFunctionView),
     LanguageContext(CompilerLanguageContext),
+    Capability(CompilerCapability),
     ConstraintValue(u32),
     Boolean(bool),
     Version(LanguageVersion),
@@ -694,6 +747,7 @@ struct BindingFacts {
     record_fields: BTreeMap<String, StaticValueFacts>,
     namespace: Option<CompilerNamespaceFacts>,
     callable: Option<CompilerCallableFacts>,
+    static_capability: Option<CompilerCapability>,
 }
 
 #[derive(Clone)]
@@ -920,11 +974,13 @@ fn require_runtime_main_result(
     source: &SourceText,
     main: &CompilerBlock,
 ) -> Result<(), Diagnostic> {
-    if compiler_type_contains_static_only(&main.result.value_type) {
+    if compiler_type_contains_static_only(&main.result.value_type)
+        && !matches!(main.result.kind, CompilerExpressionKind::Capability(_))
+    {
         Err(unsupported(
             source,
             main.result.span,
-            "runtime observation of a static introspection value",
+            "runtime observation of a static compiler value",
         ))
     } else {
         Ok(())
@@ -1846,6 +1902,7 @@ impl Analyzer {
                     declarations: vec![declaration],
                     captures,
                 }),
+                static_capability: None,
             },
         );
         declared.insert(name_text);
@@ -1992,6 +2049,7 @@ impl Analyzer {
                         }
                         require_same_type(&self.source, *classifier, &expected, &value.value_type)?;
                     }
+                    reject_static_value_containment(&self.source, &value)?;
                     let constraint_tag = if value.value_type == CompilerType::Constraint {
                         if kind != BlockKind::TopLevel {
                             return Err(unsupported(
@@ -2045,6 +2103,17 @@ impl Analyzer {
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
                     let callable =
                         self.known_callable(&value, environment, initializer.span().start)?;
+                    let static_capability = match &value.kind {
+                        CompilerExpressionKind::Capability(capability) => Some(capability.clone()),
+                        _ => None,
+                    };
+                    if static_capability.is_some() && kind != BlockKind::TopLevel {
+                        return Err(unsupported(
+                            &self.source,
+                            *name,
+                            "non-root Capability binding",
+                        ));
+                    }
                     let storage_name = if kind == BlockKind::TopLevel {
                         format!("topal.root.{}.{}", name.start, name_text)
                     } else {
@@ -2061,6 +2130,7 @@ impl Analyzer {
                         record_fields,
                         namespace,
                         callable,
+                        static_capability,
                     };
                     environment.insert(name_text.clone(), facts.clone());
                     if let Some(tag) = constraint_tag {
@@ -2087,9 +2157,9 @@ impl Analyzer {
                     }
                 }
                 Statement::Discard { value, .. } => {
-                    lowered.push(CompilerStatement::Discard(
-                        self.analyze_expression(value, environment)?,
-                    ));
+                    let value = self.analyze_expression(value, environment)?;
+                    reject_static_value_containment(&self.source, &value)?;
+                    lowered.push(CompilerStatement::Discard(value));
                     if last {
                         result = Some(unit_expression(statement_span(statement)));
                     }
@@ -2336,6 +2406,35 @@ impl Analyzer {
                 })
             }
             Expression::Identifier(name)
+                if environment
+                    .get(self.source.slice(*name))
+                    .and_then(|facts| facts.static_capability.as_ref())
+                    .is_some() =>
+            {
+                let capability = environment
+                    .get(self.source.slice(*name))
+                    .and_then(|facts| facts.static_capability.clone())
+                    .expect("guard established retained Capability metadata");
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Capability(capability),
+                    value_type: CompilerType::Capability,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Identifier(name) if fundamental_capability(self.source.slice(*name)) => {
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Capability(CompilerCapability::atomic(
+                        self.source.slice(*name),
+                    )),
+                    value_type: CompilerType::Capability,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Identifier(name)
                 if fundamental_type_value(self.source.slice(*name)).is_some() =>
             {
                 Ok(CompilerExpression {
@@ -2516,7 +2615,7 @@ impl Analyzer {
                 })?;
                 if !facts.runtime_bound {
                     let feature = if compiler_type_contains_static_only(&facts.value_type) {
-                        "runtime use of a static introspection value"
+                        "runtime use of a static compiler value"
                     } else {
                         "nested Function value outside direct application"
                     };
@@ -2596,6 +2695,7 @@ impl Analyzer {
                 record_fields: BTreeMap::new(),
                 namespace: None,
                 callable: None,
+                static_capability: None,
             },
         );
         let previous_in_function = self.in_function;
@@ -5553,6 +5653,30 @@ impl Analyzer {
             let value_type = left.value_type.clone();
             return Ok(Self::finish_binary(binary, left, right, value_type, span));
         }
+        if let (
+            CompilerExpressionKind::Capability(left),
+            CompilerExpressionKind::Capability(right),
+        ) = (&left.kind, &right.kind)
+        {
+            let capability = match binary {
+                CompilerBinary::And => left.and(right),
+                CompilerBinary::Or => left.or(right),
+                _ => {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "Capability operator other than and/or",
+                    ));
+                }
+            };
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::Capability(capability),
+                value_type: CompilerType::Capability,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         require_type(
             &self.source,
             left.span,
@@ -5750,6 +5874,7 @@ impl Analyzer {
                             call_environment,
                             argument.span.start,
                         )?,
+                        static_capability: None,
                     },
                 );
             }
@@ -7071,6 +7196,7 @@ impl Analyzer {
                         record_fields: BTreeMap::new(),
                         namespace: scope_arguments[parameter_index].clone(),
                         callable: callable_arguments[parameter_index].clone(),
+                        static_capability: None,
                     },
                 );
             }
@@ -7109,6 +7235,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
+                    static_capability: None,
                 },
             );
             parameters.push(CompilerParameter {
@@ -7142,6 +7269,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
+                    static_capability: None,
                 },
             );
             parameters.push(CompilerParameter {
@@ -7174,6 +7302,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
+                    static_capability: None,
                 },
             );
             parameters.push(CompilerParameter {
@@ -8498,6 +8627,13 @@ fn fundamental_type_value(name: &str) -> Option<u32> {
     }
 }
 
+fn fundamental_capability(name: &str) -> bool {
+    matches!(
+        name,
+        "Equality" | "Ordering" | "Foldable" | "Membership" | "Indexed" | "Keyed"
+    )
+}
+
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
     if let Some(element) = classifier.strip_prefix("List") {
         let element = parse_compact_classifier(element)?;
@@ -8574,6 +8710,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "Type" => Some(CompilerType::Type),
         "Scope" => Some(CompilerType::Scope),
         "Function" => Some(CompilerType::Function),
+        "Capability" => Some(CompilerType::Capability),
         "Constraint" => Some(CompilerType::Constraint),
         "Boolean" => Some(CompilerType::Boolean),
         "Int" => Some(CompilerType::Int),
@@ -8687,18 +8824,50 @@ fn compiler_type_is_static_only(value_type: &CompilerType) -> bool {
             | CompilerType::TypeView
             | CompilerType::FunctionView
             | CompilerType::LanguageContext
+            | CompilerType::Capability
     )
 }
 
 fn compiler_type_contains_static_only(value_type: &CompilerType) -> bool {
     compiler_type_is_static_only(value_type)
         || match value_type {
+            CompilerType::Range(value)
+            | CompilerType::Result(value)
+            | CompilerType::Optional(value)
+            | CompilerType::List(value)
+            | CompilerType::TraversalControl(value)
+            | CompilerType::Refined { base: value, .. } => {
+                compiler_type_contains_static_only(value)
+            }
             CompilerType::Tuple(fields) => fields.iter().any(compiler_type_contains_static_only),
             CompilerType::Record(fields) => fields
                 .iter()
                 .any(|(_, field)| compiler_type_contains_static_only(field)),
+            CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
+                alternative
+                    .payload
+                    .as_ref()
+                    .is_some_and(compiler_type_contains_static_only)
+            }),
             _ => false,
         }
+}
+
+fn reject_static_value_containment(
+    source: &SourceText,
+    value: &CompilerExpression,
+) -> Result<(), Diagnostic> {
+    if compiler_type_contains_static_only(&value.value_type)
+        && !compiler_type_is_static_only(&value.value_type)
+    {
+        Err(unsupported(
+            source,
+            value.span,
+            "containment of a static compiler value",
+        ))
+    } else {
+        Ok(())
+    }
 }
 
 fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
@@ -8706,6 +8875,7 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
         value_type,
         CompilerType::Scope
             | CompilerType::Function
+            | CompilerType::Capability
             | CompilerType::Constraint
             | CompilerType::Version
             | CompilerType::Refined { .. }
@@ -8778,6 +8948,7 @@ fn decision_binding_environment(
             record_fields: BTreeMap::new(),
             namespace: None,
             callable: None,
+            static_capability: None,
         },
     );
     branch
@@ -8981,6 +9152,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::TypeView
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
+        | CompilerType::Capability
         | CompilerType::Constraint
         | CompilerType::Version
         | CompilerType::Error
@@ -9065,6 +9237,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::TypeView(_)
         | CompilerExpressionKind::FunctionView(_)
         | CompilerExpressionKind::LanguageContext(_)
+        | CompilerExpressionKind::Capability(_)
         | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Version(_)
@@ -11926,6 +12099,89 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+    }
+
+    #[test]
+    fn models_closed_static_capability_composition() {
+        // TOPAL-CAPABILITY-EVIDENCE-001, TOPAL-CAPABILITY-COHERENCE-001,
+        // TOPAL-CAPABILITY-COMPOSE-001, TOPAL-COMPILER-CAPABILITY-COMPOSE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/capability-composition.t"
+        ))
+        .unwrap();
+        let [
+            CompilerStatement::Binding(comparable),
+            CompilerStatement::Binding(searchable),
+            CompilerStatement::Binding(alternatives),
+        ] = program.main.statements.as_slice()
+        else {
+            panic!("the three root Capability bindings retain checked metadata")
+        };
+        for binding in [comparable, searchable, alternatives] {
+            assert_eq!(binding.value.value_type, CompilerType::Capability);
+        }
+        let CompilerExpressionKind::Capability(comparable) = &comparable.value.kind else {
+            panic!("Comparable is a checked Capability")
+        };
+        assert_eq!(
+            comparable.alternatives,
+            [vec!["Equality".to_owned(), "Ordering".to_owned()]]
+        );
+        let CompilerExpressionKind::Capability(searchable) = &searchable.value.kind else {
+            panic!("Searchable is a checked Capability")
+        };
+        assert_eq!(
+            searchable.alternatives,
+            [vec!["Foldable".to_owned(), "Membership".to_owned()]]
+        );
+        let CompilerExpressionKind::Capability(result) = &program.main.result.kind else {
+            panic!("the final result retains canonical Capability alternatives")
+        };
+        assert_eq!(
+            result.alternatives,
+            [
+                vec!["Equality".to_owned(), "Ordering".to_owned()],
+                vec!["Foldable".to_owned(), "Membership".to_owned()],
+            ]
+        );
+        assert_eq!(
+            result.display(),
+            "Equality and Ordering or Foldable and Membership"
+        );
+
+        let canonical_source = "use language (version is v0.1)\nSame is Equality and Equality\nRepeated : Capability is Same or Equality\nReversed : Capability is Membership or Repeated\nReversed\n";
+        let idempotent = analyze_for_compiler(canonical_source).unwrap();
+        let CompilerExpressionKind::Capability(result) = &idempotent.main.result.kind else {
+            panic!("the classified alias remains a Capability")
+        };
+        assert_eq!(
+            result.alternatives,
+            [vec!["Equality".to_owned()], vec!["Membership".to_owned()]]
+        );
+        let interpreted = crate::source::Session::new()
+            .evaluate_source_file(canonical_source, &mut std::io::sink())
+            .unwrap();
+        assert_eq!(interpreted.to_string(), result.display());
+
+        for source in [
+            "use language (version is v0.1)\n(Equality, true)\n",
+            "use language (version is v0.1)\nchoose is fn static () -> Capability\n  Equality\nchoose ()\n",
+            "use language (version is v0.1)\nEquality xor Ordering\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED",
+                "{source}"
+            );
+        }
+        assert_eq!(
+            analyze_for_compiler(
+                "use language (version is v0.1)\nvalue : Boolean is Equality\nvalue\n"
+            )
+            .unwrap_err()
+            .code,
+            "E-TYPE-MISMATCH"
+        );
     }
 
     #[test]

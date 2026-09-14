@@ -87,6 +87,7 @@ evidence.
 | 8a1 | root named Constraint objects over primitive bases, checked closed Boolean predicates, classified-copy identity, private display tags, and debugging | complete |
 | 8a2 | closed Int-constraint proof/rejection, dynamic predicate evaluation, refined base operations, existing Result/Error integration, and debugging | complete |
 | 8a3 | closed fundamental-Type identity/view/relations, exact initial language context, numeric Version value, static erasure, and debugging | complete |
+| 8a4 | closed atomic Capability values, canonical conjunction/alternatives, root static binding chains, literal final observation, and complete runtime/debug erasure | complete |
 | 8b | user-defined Type values, native serialization, general introspection and context changes, contracts/evidence, implementation plans, information flow, and remaining `v0.2` assurance behavior | planned |
 | 9 | complete cross-tool rule audit, optimized-level admission, LTO/sanitizer/coverage/PGO dispositions, and whole-core parity qualification | planned |
 
@@ -248,6 +249,9 @@ admits the closed fundamental `Type` identities without runtime reflection;
 storage, and reuses the existing Result/Error path for dynamic validation; and
 8a3 retains closed Type identity/view and initial language-context metadata only
 through checking, folds exact static relations, and materializes the ordinary
-numeric Version without a reflection runtime. 8b retains open-world type and
-introspection metadata, general constraint evidence/application, later context
+numeric Version without a reflection runtime; and 8a4 retains the six closed
+atomic Capability identities and canonical composition only in checked compiler
+metadata, emitting at most a final constant textual observation. 8b retains
+open-world type and introspection metadata, parameterized capability claims and
+operation evidence, general constraint evidence/application, later context
 changes, and the remaining assurance work.
