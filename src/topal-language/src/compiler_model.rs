@@ -2641,7 +2641,14 @@ impl Analyzer {
                     binding,
                     body,
                     span,
-                } if kind == BlockKind::TopLevel => {
+                } if kind == BlockKind::TopLevel
+                    || (kind == BlockKind::Function
+                        && foreach_result.is_none()
+                        && matches!(source, Expression::Identifier(name)
+                            if environment.get(self.source.slice(*name)).is_some_and(|facts|
+                                facts.storage_name == self.source.slice(*name)
+                                    && is_character_unit_generator_type(&facts.value_type)))) =>
+                {
                     let value =
                         self.analyze_root_foreach(source, *binding, body, *span, environment)?;
                     if let Some((name, classifier)) = foreach_result {
@@ -8580,7 +8587,7 @@ impl Analyzer {
             .iter()
             .filter(|parameter| is_character_unit_generator_type(&parameter.value_type))
             .collect::<Vec<_>>();
-        let close_parameter = if generator_parameters.is_empty() {
+        let character_generator_parameter = if generator_parameters.is_empty() {
             None
         } else {
             let parameter = generator_parameters[0];
@@ -8592,10 +8599,44 @@ impl Analyzer {
                 return Err(unsupported(
                     &self.source,
                     parameter.span,
-                    "Generator parameter behavior beyond one ordinary owned close",
+                    "Generator parameter behavior beyond one ordinary owned specialization",
                 ));
             }
             Some(parameter.clone())
+        };
+        let scoped_generator_value = if let Some(parameter) = &character_generator_parameter {
+            if self.in_function {
+                return Err(unsupported(
+                    &self.source,
+                    parameter.span,
+                    "nested Character Generator parameter transfer",
+                ));
+            }
+            let argument = &arguments[0];
+            let CompilerExpressionKind::Local(storage_name) = &argument.kind else {
+                return Err(unsupported(
+                    &self.source,
+                    argument.span,
+                    "non-local Character Generator parameter transfer",
+                ));
+            };
+            let retained = self
+                .generator_values
+                .get(storage_name)
+                .cloned()
+                .ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        argument.span,
+                        "Character Generator parameter without closed provenance",
+                    )
+                })?;
+            let previous = self
+                .generator_values
+                .insert(parameter.name.clone(), retained);
+            Some((parameter.name.clone(), previous))
+        } else {
+            None
         };
         let previous_static_context = self.static_context;
         let previous_in_function = self.in_function;
@@ -8610,41 +8651,58 @@ impl Analyzer {
         );
         self.static_context = previous_static_context;
         self.in_function = previous_in_function;
-        let close_parameter_was_consumed = close_parameter
+        let character_generator_was_consumed = character_generator_parameter
             .as_ref()
             .is_some_and(|parameter| self.consumed_generators.contains(&parameter.name));
-        if close_parameter.is_some() {
+        if character_generator_parameter.is_some() {
             self.consumed_generators = consumed_before_body;
         }
+        if let Some((name, previous)) = scoped_generator_value {
+            if let Some(previous) = previous {
+                self.generator_values.insert(name, previous);
+            } else {
+                self.generator_values.remove(&name);
+            }
+        }
         let mut body = body?;
-        if let Some(parameter) = close_parameter {
-            if close_parameter_was_consumed
-                || !body.statements.is_empty()
-                || !matches!(body.result.kind, CompilerExpressionKind::Unit)
-            {
+        if let Some(parameter) = character_generator_parameter {
+            let traverses_parameter = matches!(
+                body.statements.as_slice(),
+                [CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::StringCharactersForeach { source, .. },
+                    ..
+                })] if matches!(source.kind, CompilerExpressionKind::Local(ref name) if name == &parameter.name)
+            ) && matches!(body.result.kind, CompilerExpressionKind::Unit);
+            let closes_parameter = !character_generator_was_consumed
+                && body.statements.is_empty()
+                && matches!(body.result.kind, CompilerExpressionKind::Unit);
+            if character_generator_was_consumed && traverses_parameter {
+                // Exhaustion consumes the transferred continuation; no close is delivered.
+            } else if closes_parameter {
+                let close_span = body.result.span;
+                body.statements
+                    .push(CompilerStatement::Discard(CompilerExpression {
+                        kind: CompilerExpressionKind::StringCharactersClose(Box::new(
+                            CompilerExpression {
+                                kind: CompilerExpressionKind::Local(parameter.name),
+                                value_type: parameter.value_type,
+                                int_range: None,
+                                rational_value: None,
+                                span: parameter.span,
+                            },
+                        )),
+                        value_type: CompilerType::Unit,
+                        int_range: None,
+                        rational_value: None,
+                        span: close_span,
+                    }));
+            } else {
                 return Err(unsupported(
                     &self.source,
                     parameter.span,
-                    "Generator parameter behavior beyond implicit built-in close",
+                    "Generator parameter behavior beyond one traversal or implicit built-in close",
                 ));
             }
-            let close_span = body.result.span;
-            body.statements
-                .push(CompilerStatement::Discard(CompilerExpression {
-                    kind: CompilerExpressionKind::StringCharactersClose(Box::new(
-                        CompilerExpression {
-                            kind: CompilerExpressionKind::Local(parameter.name),
-                            value_type: parameter.value_type,
-                            int_range: None,
-                            rational_value: None,
-                            span: parameter.span,
-                        },
-                    )),
-                    value_type: CompilerType::Unit,
-                    int_range: None,
-                    rational_value: None,
-                    span: close_span,
-                }));
         }
         if let CompilerType::Result(success_type) = &result_type
             && body.result.value_type == **success_type
@@ -12728,7 +12786,6 @@ mod tests {
         ));
 
         for source in [
-            include_str!("../../../examples/language/string-character-generator-parameter.t"),
             "use language (version is v0.1)\nignore is fn (generated : Generator Character Unit Unit) -> Unit\n  _ is 1\ngenerated is characters \"a\"\nignore generated\n",
             "use language (version is v0.1)\nignore is fn (left : Generator Character Unit Unit, right : Generator Character Unit Unit) -> Unit\n  ()\nleft is characters \"a\"\nright is characters \"b\"\nignore (left, right)\n",
         ] {
@@ -12737,6 +12794,91 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+    }
+
+    #[test]
+    fn models_specialized_string_character_generator_parameter_traversal() {
+        // TOPAL-STRING-CHARACTERS-FOREACH-001,
+        // TOPAL-STRING-CHARACTERS-GENERATOR-001,
+        // TOPAL-STRING-CHARACTERS-PARAMETER-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-PARAMETER-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/string-character-generator-parameter.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("called traversal function is instantiated");
+        assert!(matches!(
+            function.parameters.as_slice(),
+            [CompilerParameter { value_type, .. }]
+                if is_character_unit_generator_type(value_type)
+        ));
+        assert!(matches!(
+            function.body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::StringCharactersForeach {
+                    source,
+                    characters,
+                    parameter,
+                    ..
+                },
+                ..
+            })] if matches!(source.kind, CompilerExpressionKind::Local(ref name) if name == "generated")
+                && characters == &["a\u{301}", "👩‍🔬", "🇸🇪"]
+                && parameter.value_type == CompilerType::Character
+        ));
+        assert!(!function.body.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::StringCharactersClose(_),
+                ..
+            })
+        )));
+
+        let distinct = analyze_for_compiler(
+            "use language (version is v0.1)\nconsume is fn (generated : Generator Character Unit Unit) -> Unit\n  generated foreach { character }\n    _ is String character\nfirst is characters \"a\"\n_ is consume first\nsecond is characters \"🇸🇪\"\nconsume second\n",
+        )
+        .unwrap();
+        let traversals = distinct
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "consume")
+            .map(|function| match &function.body.statements[0] {
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::StringCharactersForeach { characters, .. },
+                    ..
+                }) => characters.clone(),
+                statement => panic!("expected specialized traversal, found {statement:?}"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            traversals,
+            [vec![String::from("a")], vec![String::from("🇸🇪")]]
+        );
+
+        let extra_statement = "use language (version is v0.1)\nconsume is fn (generated : Generator Character Unit Unit) -> Unit\n  _ is 1\n  generated foreach { character }\n    _ is String character\ngenerated is characters \"a\"\nconsume generated\n";
+        assert_eq!(
+            analyze_for_compiler(extra_statement).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let direct_function_traversal = "use language (version is v0.1)\nconsume is fn () -> Unit\n  characters \"a\" foreach { character }\n    _ is String character\nconsume ()\n";
+        assert_eq!(
+            analyze_for_compiler(direct_function_traversal)
+                .unwrap_err()
+                .code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nested_transfer = "use language (version is v0.1)\nconsume is fn (generated : Generator Character Unit Unit) -> Unit\n  generated foreach { character }\n    _ is String character\nouter is fn () -> Unit\n  generated is characters \"a\"\n  consume generated\nouter ()\n";
+        let nested_transfer = analyze_for_compiler(nested_transfer).unwrap_err();
+        assert_eq!(nested_transfer.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            nested_transfer
+                .message
+                .contains("nested Character Generator parameter transfer")
+        );
     }
 
     #[test]

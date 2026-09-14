@@ -479,10 +479,10 @@ Generator token for observation and DWARF; that token never carries a cursor or
 drives traversal. Consuming the local binding transfers its retained evidence
 to the direct expansion, then the checked model rejects every later source use.
 This establishes local linearity without a copyable continuation object.
-Root abandonment plus traversing or returning function parameters remain
-closed until a general owned state and close path exist. Canonical library
-metadata must identify the Generator classifier, pinned segmentation, evidence,
-ownership, and target adapter independently of the private token.
+Root abandonment, function results, and nonspecialized parameter traversal
+remain closed until a general owned state and close path exist. Canonical
+library metadata must identify the Generator classifier, pinned segmentation,
+evidence, ownership, and target adapter independently of the private token.
 
 Closed unchanged Character collection also keeps segmentation in the checked
 frontend, but needs no runtime traversal representation. The checked model
@@ -504,6 +504,18 @@ Topal source semantics, selects AMD64 register placement. A debug-only `i32`
 stack shadow keeps the otherwise unused semantic parameter inspectable. This
 does not establish a public Generator ABI: general traversal, return, state,
 close dispatch, and library metadata remain closed.
+
+A second narrow boundary specializes a single-parameter Unit function whose
+only executable body is capture-free Character foreach. Before checking each
+top-level call instance, the compiler transfers that argument's retained
+cluster sequence under the parameter's local name, then restores the
+compiler-session map and linearity set afterward. Every call has a distinct
+private symbol, so different closed Strings cannot share provenance. The caller
+evaluates the String once and passes the same `fastcc i32` ownership token; the
+callee expands the exact Characters and action inline, exhausts the traversal,
+and returns without close. Nested calls stay closed. This is compile-session
+specialization, not serialized state or a public ABI, and adds no callback,
+indirect call, or Generator runtime.
 
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
