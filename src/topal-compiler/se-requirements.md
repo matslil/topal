@@ -487,6 +487,39 @@ this specialization. This realizes
 `TOPAL-GENERATOR-ITERATE-001`, `TOPAL-GENERATOR-TAKE-WHILE-001`, and
 `TOPAL-GENERATOR-ITERATE-FOREACH-001` for compiler increment 5f.
 
+## TOPAL-COMP-GENERATOR-SINGLE-YIELD-001 — Closed custom suspension
+
+The checked compiler shall admit one root custom generator declaration with
+one ordinary Character input, Character yield, Unit resume, and Unit final
+result when its body is exactly one discarded yield of that input followed by
+Unit. Applying the declaration shall evaluate and classify the initial operand
+once, start a fresh linear Generator, retain the declaration identity and exact
+yield as compile-session provenance, and expose the first suspension before
+later source execution. The admitted exact body has no later computation.
+
+Root foreach shall consume one locally bound instance, invoke its capture-free
+Character-to-Unit action exactly once with the yielded Character, resume with
+Unit, and return the distinct final Unit. The source shall use the existing
+one-consumption local Generator boundary; repeated use and abandonment shall
+remain rejected. Other declaration shapes, overloads, dynamic Character
+provenance, direct traversal without a retained local, non-Unit actions,
+captures, and function or library boundaries shall be rejected before LLVM.
+
+The Linux x86-64 backend shall evaluate the initial Character once, lower the
+proven single suspension and resumption as ordered inline code, and use the
+compiler-private Generator observation token only for ownership and debugging,
+not continuation state. This required O0 source-semantic lowering shall expose
+the Generator and yielded Character bindings through DWARF/GDB. It shall add no
+Generator object, state allocation, dispatcher, callback, indirect call,
+unwind support, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library Generator ABI, or `topal-native/6` revision.
+Future compiled-library metadata shall carry the canonical declaration,
+Generator directions, suspension points, capture/effect evidence, ownership,
+close behavior, and target-adapter identities rather than this specialization.
+This realizes `TOPAL-COMPILER-GENERATOR-SINGLE-YIELD-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5g.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted
