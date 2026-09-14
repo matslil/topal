@@ -2361,6 +2361,97 @@ fn int_list_containment_is_freestanding_and_gdb_renders_exact_entries() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn int_list_removal_is_immutable_freestanding_and_debuggable() {
+    // TOPAL-LIST-REMOVE-FIRST-001, TOPAL-LIST-REMOVE-ALL-001,
+    // TOPAL-COMPILER-LIST-INT-REMOVAL-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-int-list-removal");
+    let source = directory.join("int-list-removal-boundary.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nerase-first is fn (values : List Int, target : Int) -> List Int\n  values remove-first target\nerase-all is fn (values : List Int, target : Int) -> List Int\n  values remove-all target\nvalues : List Int is Entry (-170141183460469231731687303715884105728, Entry (5, Entry (-170141183460469231731687303715884105728, Entry (340282366920938463463374607431768211456, Empty))))\nall-targets : List Int is Entry (5, Entry (5, Empty))\nempty-values : List Int is Empty\nwithout-first is erase-first (values, -170141183460469231731687303715884105728)\nwithout-all is erase-all (values, -170141183460469231731687303715884105728)\nmissing-all is erase-all (values, 9)\nmissing-first is erase-first (values, 9)\nnone-left is erase-all (all-targets, 5)\nempty-first is erase-first (empty-values, 5)\nempty-all is erase-all (empty-values, 5)\n(values, without-first, without-all, missing-all, missing-first, none-left, empty-first, empty-all)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(Entry ( -170141183460469231731687303715884105728, Entry ( 5, Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Empty ) ) ) ), Entry ( 5, Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Empty ) ) ), Entry ( 5, Entry ( 340282366920938463463374607431768211456, Empty ) ), Entry ( -170141183460469231731687303715884105728, Entry ( 5, Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Empty ) ) ) ), Entry ( -170141183460469231731687303715884105728, Entry ( 5, Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Empty ) ) ) ), Empty, Empty, Empty)\n"
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break int-list-removal-boundary.t:3",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis values",
+            "-ex",
+            "print values",
+            "-ex",
+            "print target",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = List Int"), "{text}");
+    assert!(
+        text.contains(
+            "$1 = Entry ( -170141183460469231731687303715884105728, Entry ( 5, Entry ( -170141183460469231731687303715884105728, Entry ( 340282366920938463463374607431768211456, Empty ) ) ) )"
+        ),
+        "{text}"
+    );
+    assert!(
+        text.contains("$2 = -170141183460469231731687303715884105728"),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.erase_2dfirst.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn tuple_result_is_freestanding_and_gdb_exposes_its_source_shape() {
     // TOPAL-COMPILER-TUPLE-RESULT-001,
     // TOPAL-EXEC-COMPLETION-EFFECT-VALUE-001,

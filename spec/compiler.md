@@ -860,6 +860,30 @@ other-language standard library, or native ABI revision. It SHALL NOT imply
 List equality, decisions, other observations or transformations, or another
 element classifier.
 
+### TOPAL-COMPILER-LIST-INT-REMOVAL-001 — Immutable Int List removal
+
+For `List Int`, the compiler SHALL evaluate the complete List operand and then
+the removal value exactly once. `remove-first` SHALL remove only the earliest
+equal entry; if no entry is equal, it SHALL preserve the List unchanged.
+`remove-all` SHALL remove every equal entry. Both operations SHALL retain the
+relative order and exact arbitrary-precision values of all remaining entries,
+preserve the `List Int` classifier, and leave the input List immutable.
+
+The Linux x86-64 lowering SHALL use finite nonrecursive loops and canonical Int
+comparison. It MAY share an unchanged input or suffix and MAY build retained
+nodes in a contiguous Topal-owned allocation, provided every resulting logical
+node retains the private Int-pointer/remaining-pointer shape. Correctness at O0
+SHALL NOT depend on LLVM optimization. Specialized layout and removal fragments
+SHALL be included only when required by checked expressions, without adding a
+foreign allocator, runtime, standard library, undefined symbol, needed library,
+or relocation.
+
+This rule SHALL NOT expose or stabilize the private node or allocation layout;
+revise the native ABI; promise reclamation beyond process lifetime; or imply
+List equality, decisions, another transformation, or another element
+classifier. DWARF and GDB SHALL continue to describe and render the complete
+semantic `List Int` value.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed

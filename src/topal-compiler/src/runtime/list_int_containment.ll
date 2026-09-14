@@ -1,6 +1,4 @@
-; Compiler-selected List Int observations for the private topal-native/6 runtime.
-
-%topal.ListStorage = type { ptr, ptr }
+; Allocation-free List Int containment over the compiler-private node layout.
 
 define internal i1 @topal.runtime.list.int.contains.entry(ptr %list, ptr %value) nounwind noinline {
 entry:

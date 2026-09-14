@@ -357,6 +357,14 @@ pub enum CompilerExpressionKind {
         list: Box<CompilerExpression>,
         pattern: Box<CompilerExpression>,
     },
+    ListRemoveFirst {
+        list: Box<CompilerExpression>,
+        value: Box<CompilerExpression>,
+    },
+    ListRemoveAll {
+        list: Box<CompilerExpression>,
+        value: Box<CompilerExpression>,
+    },
     ErrorField {
         error: Box<CompilerExpression>,
         field: CompilerErrorField,
@@ -2946,6 +2954,44 @@ impl Analyzer {
             return Ok(CompilerExpression {
                 kind,
                 value_type: CompilerType::Boolean,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [list, Expression::Identifier(operation), value] = items
+            && matches!(self.source.slice(*operation), "remove-first" | "remove-all")
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            let list = self.analyze_expression(list, environment)?;
+            let CompilerType::List(element) = &list.value_type else {
+                return Err(unsupported(&self.source, list.span, "List removal subject"));
+            };
+            let element = element.as_ref().clone();
+            let list_type = list.value_type.clone();
+            if element != CompilerType::Int {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "removal for this List element type",
+                ));
+            }
+            let value = self.analyze_expression(value, environment)?;
+            require_same_type(&self.source, value.span, &element, &value.value_type)?;
+            let kind = if operation == "remove-first" {
+                CompilerExpressionKind::ListRemoveFirst {
+                    list: Box::new(list),
+                    value: Box::new(value),
+                }
+            } else {
+                CompilerExpressionKind::ListRemoveAll {
+                    list: Box::new(list),
+                    value: Box::new(value),
+                }
+            };
+            return Ok(CompilerExpression {
+                kind,
+                value_type: list_type,
                 int_range: None,
                 rational_value: None,
                 span,
@@ -7778,6 +7824,14 @@ fn compiler_expression_is_closed_with(
             list: left,
             pattern: right,
         }
+        | CompilerExpressionKind::ListRemoveFirst {
+            list: left,
+            value: right,
+        }
+        | CompilerExpressionKind::ListRemoveAll {
+            list: left,
+            value: right,
+        }
         | CompilerExpressionKind::Binary { left, right, .. } => {
             compiler_expression_is_closed_with(left, bound)
                 && compiler_expression_is_closed_with(right, bound)
@@ -9254,6 +9308,45 @@ mod tests {
             "E-TYPE-MISMATCH"
         );
         let unavailable = "use language (version is v0.1)\nvalues : List Effect is Empty\nvalues contains-entry Effects ()\n";
+        assert_eq!(
+            analyze_for_compiler(unavailable).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_immutable_int_list_removal() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-LIST-REMOVE-FIRST-001,
+        // TOPAL-LIST-REMOVE-ALL-001, TOPAL-COMPILER-LIST-INT-REMOVAL-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/list-removal.t"))
+                .unwrap();
+        let [CompilerStatement::Binding(values)] = program.main.statements.as_slice() else {
+            panic!("shared removal regression binds one List value")
+        };
+        let list_int = CompilerType::List(Box::new(CompilerType::Int));
+        assert_eq!(values.value.value_type, list_int);
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared removal regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 3);
+        assert!(matches!(
+            results[0].kind,
+            CompilerExpressionKind::ListRemoveFirst { .. }
+        ));
+        assert!(
+            results[1..]
+                .iter()
+                .all(|result| matches!(result.kind, CompilerExpressionKind::ListRemoveAll { .. }))
+        );
+        assert!(results.iter().all(|result| result.value_type == list_int));
+
+        let mismatch = "use language (version is v0.1)\nvalues : List Int is Empty\nvalues remove-all \"no\"\n";
+        assert_eq!(
+            analyze_for_compiler(mismatch).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+        let unavailable = "use language (version is v0.1)\nvalues : List Effect is Empty\nvalues remove-first Effects ()\n";
         assert_eq!(
             analyze_for_compiler(unavailable).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
