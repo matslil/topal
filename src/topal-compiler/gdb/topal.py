@@ -375,6 +375,13 @@ class _TopalOptionalPrinter:
             if rendered.startswith("<"):
                 return f"<invalid Optional List payload: {rendered}>"
             return f"Some {rendered}"
+        if self._payload_type.startswith("List("):
+            rendered = _TopalListPrinter(
+                payload, self._payload_type[len("List") :]
+            ).to_string()
+            if rendered.startswith("<"):
+                return f"<invalid Optional List payload: {rendered}>"
+            return f"Some {rendered}"
         if not payload:
             return "<invalid null Some payload>"
         if self._payload_type == "Int":
@@ -452,7 +459,8 @@ class _TopalListPrinter:
         inferior = gdb.selected_inferior()
         entries = []
         visited = set()
-        node_size = 24 if self._element_type == "(Int, Int)" else 16
+        pair_types = ("(Int, Int)", "(Int, String)")
+        node_size = 24 if self._element_type in pair_types else 16
         while address:
             if address in visited:
                 return "<cyclic List>"
@@ -486,6 +494,25 @@ class _TopalListPrinter:
                 if left.startswith("<") or right.startswith("<"):
                     return f"<invalid List (Int, Int) entry: ({left}, {right})>"
                 entries.append(f"({left}, {right})")
+            elif self._element_type == "(Int, String)":
+                left = int.from_bytes(node[0:8], "little")
+                right = int.from_bytes(node[8:16], "little")
+                if not left or not right:
+                    return "<invalid null List (Int, String) field>"
+                left = _TopalIntPrinter(left).to_string()
+                right = _TopalStringPrinter(right).to_string()
+                if left.startswith("<") or right.startswith("<"):
+                    return (
+                        "<invalid List (Int, String) entry: "
+                        f"({left}, {right})>"
+                    )
+                entries.append(f"({left}, {right})")
+            elif self._element_type in ("List (Int, String)", "List(Int, String)"):
+                payload = int.from_bytes(node[0:8], "little")
+                rendered = _TopalListPrinter(payload, "(Int, String)").to_string()
+                if rendered.startswith("<"):
+                    return f"<invalid nested List entry: {rendered}>"
+                entries.append(rendered)
             else:
                 return f"<unsupported List element type {self._element_type}>"
             address = int.from_bytes(node[node_size - 8 : node_size], "little")

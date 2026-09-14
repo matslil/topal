@@ -640,6 +640,23 @@ generic List runtime, type tag, callback, indirect call, or foreign dependency.
 Pair-List function boundaries remain closed, so the executable-local storage
 does not become a compiled-library ABI or revise `topal-native/6`.
 
+The first recursive List specialization composes that inline product approach
+without declaring a generic node. An inner `List (Int, String)` uses three
+words for its exact Int pointer, immutable String pointer, and remaining node;
+an outer `List List (Int, String)` uses two words for its inner-List pointer and
+remaining node. Empty stays null at either level, including as the valid
+payload of a tagged `Some Empty`. Direct private outer-List functions carry one
+opaque pointer in a matching LLVM `fastcc` prototype, leaving AMD64 register
+placement to LLVM. Shape-selected finite loops count and project outer nodes;
+outer equality calls a finite inner loop that uses the canonical exact Int and
+String comparators. Generated display nests its ordinary iterative List
+control-flow regions, and target-derived DWARF plus the bounded GDB renderer
+recover both semantic levels. These exact paths require no host recursion,
+callback, indirect call, runtime type tag, C/C++ support, or generic List ABI at
+O0. Inner pair-List boundaries and general recursive representation metadata
+remain closed until a versioned compiled-library schema and target adapters can
+describe them safely.
+
 Range-selected `List Int` values use a separately conditional private LLVM
 fragment. It visits each immutable node once, asks the exact Range runtime about
 either the stored arbitrary-precision value or an exact Int converted from the

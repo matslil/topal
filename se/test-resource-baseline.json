@@ -5114,6 +5114,21 @@
       "cpu_time_ns": 8116399,
       "memory_peak_bytes": 18411520,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_exact_recursive_int_string_list_nodes_and_core_loops": {
+      "cpu_time_ns": 9787800,
+      "memory_peak_bytes": 18341888,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::recursive_int_string_lists_are_freestanding_and_debuggable": {
+      "cpu_time_ns": 324739260,
+      "memory_peak_bytes": 58408960,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_exact_recursive_int_string_lists": {
+      "cpu_time_ns": 4598759,
+      "memory_peak_bytes": 18407424,
+      "samples_per_test": 50
     }
   }
 }

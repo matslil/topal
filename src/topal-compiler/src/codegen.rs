@@ -293,6 +293,7 @@ enum ListIntRuntimeFragment {
     Removal,
     Core,
     RangeSelection,
+    NestedIntStringCore,
 }
 
 struct Generator<'a> {
@@ -341,7 +342,11 @@ impl<'a> Generator<'a> {
         module.push('\n');
         module.push_str(PLATFORM_RUNTIME);
         module.push('\n');
-        if !self.list_int_runtime_fragments.is_empty() {
+        if self
+            .list_int_runtime_fragments
+            .iter()
+            .any(|fragment| *fragment != ListIntRuntimeFragment::NestedIntStringCore)
+        {
             module.push_str(LIST_INT_LAYOUT);
             module.push('\n');
         }
@@ -371,6 +376,13 @@ impl<'a> Generator<'a> {
             .contains(&ListIntRuntimeFragment::RangeSelection)
         {
             module.push_str(LIST_INT_RANGE_SELECTION_RUNTIME);
+            module.push('\n');
+        }
+        if self
+            .list_int_runtime_fragments
+            .contains(&ListIntRuntimeFragment::NestedIntStringCore)
+        {
+            module.push_str(LIST_NESTED_INT_STRING_CORE_RUNTIME);
             module.push('\n');
         }
         for global in &self.globals {
@@ -1324,10 +1336,14 @@ impl<'a> Generator<'a> {
                 let (allocation_size, next_offset) = match &element {
                     CompilerType::Effect | CompilerType::Int => (16, 8),
                     CompilerType::Tuple(fields)
-                        if fields.as_slice() == [CompilerType::Int, CompilerType::Int] =>
+                        if matches!(
+                            fields.as_slice(),
+                            [CompilerType::Int, CompilerType::Int | CompilerType::String,]
+                        ) =>
                     {
                         (24, 16)
                     }
+                    CompilerType::List(inner) if compiler_int_string_pair(inner) => (16, 8),
                     _ => unreachable!("checked List element has an admitted node layout"),
                 };
                 let node = body.instruction(
@@ -1347,7 +1363,10 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     (CompilerType::Tuple(field_types), LlValue::Tuple(values))
-                        if field_types.as_slice() == [CompilerType::Int, CompilerType::Int] =>
+                        if matches!(
+                            field_types.as_slice(),
+                            [CompilerType::Int, CompilerType::Int | CompilerType::String,]
+                        ) =>
                     {
                         let [left, right] = values.as_slice() else {
                             unreachable!("checked List pair value retains two fields")
@@ -1365,8 +1384,25 @@ impl<'a> Generator<'a> {
                         body.effect(
                             &format!(
                                 "store ptr {}, ptr {right_address}, align 8",
-                                right.integer()
+                                match &field_types[1] {
+                                    CompilerType::Int => right.integer(),
+                                    CompilerType::String => right.string(),
+                                    _ => unreachable!(),
+                                }
                             ),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                    }
+                    (
+                        CompilerType::List(inner),
+                        LlValue::List {
+                            value,
+                            element: value_element,
+                        },
+                    ) if compiler_int_string_pair(inner) && value_element == inner.as_ref() => {
+                        body.effect(
+                            &format!("store ptr {value}, ptr {node}, align 8"),
                             expression.span,
                             &mut self.debug,
                         );
@@ -1561,12 +1597,26 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListEntryCount(value) => {
+                let nested_int_string = matches!(
+                    &value.value_type,
+                    CompilerType::List(element)
+                        if compiler_nested_int_string_list_element(element)
+                );
                 self.list_int_runtime_fragments
-                    .insert(ListIntRuntimeFragment::Core);
+                    .insert(if nested_int_string {
+                        ListIntRuntimeFragment::NestedIntStringCore
+                    } else {
+                        ListIntRuntimeFragment::Core
+                    });
                 let value = self.emit_expression(value, body, environment);
                 LlValue::Int(body.instruction(
                     &format!(
-                        "call ptr @topal.runtime.list.int.entry.count(ptr {})",
+                        "call ptr @topal.runtime.list.{}.entry.count(ptr {})",
+                        if nested_int_string {
+                            "nested.int-string"
+                        } else {
+                            "int"
+                        },
                         value.list_pointer()
                     ),
                     expression.span,
@@ -1584,8 +1634,17 @@ impl<'a> Generator<'a> {
             CompilerExpressionKind::ListFirst(value)
             | CompilerExpressionKind::ListRest(value)
             | CompilerExpressionKind::ListUncons(value) => {
+                let nested_int_string = matches!(
+                    &value.value_type,
+                    CompilerType::List(element)
+                        if compiler_nested_int_string_list_element(element)
+                );
                 self.list_int_runtime_fragments
-                    .insert(ListIntRuntimeFragment::Core);
+                    .insert(if nested_int_string {
+                        ListIntRuntimeFragment::NestedIntStringCore
+                    } else {
+                        ListIntRuntimeFragment::Core
+                    });
                 let operation = match &expression.kind {
                     CompilerExpressionKind::ListFirst(_) => "first",
                     CompilerExpressionKind::ListRest(_) => "rest",
@@ -1599,7 +1658,12 @@ impl<'a> Generator<'a> {
                 LlValue::Optional {
                     value: body.instruction(
                         &format!(
-                            "call ptr @topal.runtime.list.int.{operation}(ptr {})",
+                            "call ptr @topal.runtime.list.{}.{operation}(ptr {})",
+                            if nested_int_string {
+                                "nested.int-string"
+                            } else {
+                                "int"
+                            },
                             value.list_pointer()
                         ),
                         expression.span,
@@ -3736,11 +3800,18 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> String {
         debug_assert_eq!(element, right_element);
-        debug_assert_eq!(element, &CompilerType::Int);
-        self.list_int_runtime_fragments
-            .insert(ListIntRuntimeFragment::Core);
+        let runtime = if compiler_nested_int_string_list_element(element) {
+            self.list_int_runtime_fragments
+                .insert(ListIntRuntimeFragment::NestedIntStringCore);
+            "nested.int-string"
+        } else {
+            debug_assert_eq!(element, &CompilerType::Int);
+            self.list_int_runtime_fragments
+                .insert(ListIntRuntimeFragment::Core);
+            "int"
+        };
         body.instruction(
-            &format!("call i1 @topal.runtime.list.int.equal(ptr {left}, ptr {right})"),
+            &format!("call i1 @topal.runtime.list.{runtime}.equal(ptr {left}, ptr {right})"),
             span,
             &mut self.debug,
         )
@@ -4871,6 +4942,7 @@ impl<'a> Generator<'a> {
         let initial = body.current_block.clone();
         let loop_label = body.label("print.list.loop");
         let entry = body.label("print.list.entry");
+        let advance = body.label("print.list.advance");
         let empty = body.label("print.list.empty");
         let close_loop = body.label("print.list.close.loop");
         let close_one = body.label("print.list.close.one");
@@ -4882,12 +4954,12 @@ impl<'a> Generator<'a> {
         let next_name = format!("%{entry}.next");
         let next_depth_name = format!("%{entry}.depth.next");
         let current = body.instruction(
-            &format!("phi ptr [{value}, %{initial}], [{next_name}, %{entry}]"),
+            &format!("phi ptr [{value}, %{initial}], [{next_name}, %{advance}]"),
             span,
             &mut self.debug,
         );
         let depth = body.instruction(
-            &format!("phi i64 [0, %{initial}], [{next_depth_name}, %{entry}]"),
+            &format!("phi i64 [0, %{initial}], [{next_depth_name}, %{advance}]"),
             span,
             &mut self.debug,
         );
@@ -4921,7 +4993,10 @@ impl<'a> Generator<'a> {
                 8,
             ),
             CompilerType::Tuple(fields)
-                if fields.as_slice() == [CompilerType::Int, CompilerType::Int] =>
+                if matches!(
+                    fields.as_slice(),
+                    [CompilerType::Int, CompilerType::Int | CompilerType::String,]
+                ) =>
             {
                 let left = body.instruction(
                     &format!("load ptr, ptr {current}, align 8"),
@@ -4939,14 +5014,34 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 );
                 (
-                    LlValue::Tuple(vec![LlValue::Int(left), LlValue::Int(right)]),
+                    LlValue::Tuple(vec![
+                        LlValue::Int(left),
+                        match &fields[1] {
+                            CompilerType::Int => LlValue::Int(right),
+                            CompilerType::String => LlValue::String(right),
+                            _ => unreachable!(),
+                        },
+                    ]),
                     16,
                 )
             }
+            CompilerType::List(inner) if compiler_int_string_pair(inner) => (
+                LlValue::List {
+                    value: body.instruction(
+                        &format!("load ptr, ptr {current}, align 8"),
+                        span,
+                        &mut self.debug,
+                    ),
+                    element: inner.as_ref().clone(),
+                },
+                8,
+            ),
             _ => unreachable!("checked List element has an admitted printer"),
         };
         self.emit_print(&payload, body, span);
         self.emit_write_literal(", ", body, span);
+        body.terminator(&format!("br label %{advance}"), location);
+        body.start_block(&advance);
         let next_address = body.instruction(
             &format!("getelementptr i8, ptr {current}, i64 {next_offset}"),
             span,
@@ -6831,6 +6926,21 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
     }
 }
 
+fn compiler_int_string_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::Int, CompilerType::String]
+    )
+}
+
+fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::List(element) if compiler_int_string_pair(element)
+    )
+}
+
 fn align_bits(value: u64, alignment: u64) -> u64 {
     value.div_ceil(alignment) * alignment
 }
@@ -7023,6 +7133,8 @@ const LIST_INT_CONTAINMENT_RUNTIME: &str = include_str!("runtime/list_int_contai
 const LIST_INT_REMOVAL_RUNTIME: &str = include_str!("runtime/list_int_removal.ll");
 const LIST_INT_CORE_RUNTIME: &str = include_str!("runtime/list_int_core.ll");
 const LIST_INT_RANGE_SELECTION_RUNTIME: &str = include_str!("runtime/list_int_range_selection.ll");
+const LIST_NESTED_INT_STRING_CORE_RUNTIME: &str =
+    include_str!("runtime/list_nested_int_string_core.ll");
 
 #[cfg(test)]
 mod tests {
@@ -7082,6 +7194,7 @@ mod tests {
             .expect("module contains the generated source entry")
             .1;
         assert!(!main.contains("topal.runtime.list.int"));
+        assert!(!llvm.contains("topal.runtime.list.nested.int-string"));
         assert!(!llvm.contains("%topal.ListStorage"));
     }
 
@@ -7208,6 +7321,38 @@ mod tests {
         let llvm = Generator::new(&program, "bound-product-pattern.t").emit();
         assert!(llvm.contains("list.map.loop"));
         assert!(llvm.contains("<anonymous fn/1>"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_exact_recursive_int_string_list_nodes_and_core_loops() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-TYPE-LIST-EQUALITY-001,
+        // TOPAL-TYPE-LIST-RECURSIVE-001, TOPAL-LIST-FIRST-001,
+        // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-COMPILER-LIST-RECURSIVE-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/nested-lists.t"))
+                .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "nested-lists.t").emit();
+
+        assert!(llvm.contains(&format!("define internal fastcc ptr @{symbol}(ptr %arg0)")));
+        assert!(llvm.contains(&format!("call fastcc ptr @{symbol}(ptr")));
+        assert!(llvm.contains("call ptr @topal.platform.allocate(i64 24)"));
+        assert!(llvm.contains("call ptr @topal.platform.allocate(i64 16)"));
+        assert!(llvm.contains("define internal ptr @topal.runtime.list.nested.int-string.first"));
+        assert!(
+            llvm.contains("define internal ptr @topal.runtime.list.nested.int-string.entry.count")
+        );
+        assert!(llvm.contains("define internal i1 @topal.runtime.list.nested.int-string.equal"));
+        assert!(llvm.contains("call i1 @topal.runtime.list.int-string.equal"));
+        assert!(llvm.contains("call i32 @topal.runtime.int.compare"));
+        assert!(llvm.contains("call i1 @topal.runtime.string.equal"));
+        assert!(llvm.contains("print.list.advance"));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"List (Int, String)\""));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"List List (Int, String)\""));
+        assert!(llvm.contains("TopalList.(Int, String)"));
+        assert!(llvm.contains("TopalList.List (Int, String)"));
+        assert!(!llvm.contains("%topal.ListStorage"));
         assert!(!llvm.contains("call ptr %"));
     }
 

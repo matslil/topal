@@ -2948,6 +2948,108 @@ fn int_pair_list_product_map_is_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn recursive_int_string_lists_are_freestanding_and_debuggable() {
+    // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-TYPE-LIST-EQUALITY-001,
+    // TOPAL-TYPE-LIST-RECURSIVE-001, TOPAL-LIST-FIRST-001,
+    // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-COMPILER-LIST-RECURSIVE-001,
+    // TOPAL-COMPILER-ABI-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-recursive-int-string-list");
+    let source = directory.join("nested-lists.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/nested-lists.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(Some Entry ( (7, \"seven\"), Empty ), 1, true)\n"
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break nested-lists.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "print values",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis pairs",
+            "-ex",
+            "print pairs",
+            "-ex",
+            "whatis nested",
+            "-ex",
+            "print nested",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(
+        text.contains("$1 = Entry ( Entry ( (7, \"seven\"), Empty ), Empty )"),
+        "{text}"
+    );
+    assert!(text.contains("type = List(Int, String)"), "{text}");
+    assert!(
+        text.contains("$2 = Entry ( (7, \"seven\"), Empty )"),
+        "{text}"
+    );
+    assert!(text.contains("type = List List(Int, String)"), "{text}");
+    assert!(
+        text.contains("$3 = Entry ( Entry ( (7, \"seven\"), Empty ), Empty )"),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.preserve.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn basic_int_list_operations_are_freestanding_and_debuggable() {
     // TOPAL-DECISION-LIST-001, TOPAL-TYPE-LIST-EQUALITY-001,
     // TOPAL-LIST-PREPEND-001, TOPAL-LIST-APPEND-001, TOPAL-LIST-CONCAT-001,

@@ -70,6 +70,7 @@ evidence.
 | 4b3d-g | exact `Range Int` value/index selection over `List Int` plus closed user-perceived-Character index selection over String, without observable slice storage | complete |
 | 4b3d-h | `Continue Int`/`Finish Int` construction and short-circuiting `List Int` fold control through direct LLVM branches, private storage, and semantic debugging | complete |
 | 4b3d-i | contextual `List (Int, Int)` construction and anonymous product-pattern map to `List Int` with inline pair nodes and direct field binding | complete |
+| 4b3d-j | exact `List (Int, String)` and `List List (Int, String)` construction, private outer passage, first/count/equality, nested display, and debugging | complete |
 | 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal algorithms and callable forms, traversal-control generalization, and representation-safe reclamation | planned |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
@@ -224,6 +225,11 @@ Increment 4b3d-i admits the first product-element List only where an anonymous
 two-field pattern maps `List (Int, Int)` to `List Int`. Inline three-word nodes
 and direct field loads preserve exact values without a Tuple allocation,
 generic List runtime, callback, or pair-List function ABI.
+Increment 4b3d-j composes exact private two-word outer nodes with three-word
+`(Int, String)` inner nodes. It admits direct outer function passage, first,
+count, equality, canonical nested output, and semantic debugging through
+shape-specific nonrecursive loops, while leaving inner boundaries and a
+generic or compiled-library List ABI closed.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

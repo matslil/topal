@@ -1205,6 +1205,42 @@ relocation, public/foreign/serialized/persistent/generic List ABI, or
 `TOPAL-COLLECTION-MAP-001`, and `TOPAL-FUNCTION-ANONYMOUS-001` for compiler
 increment 4b3d-i.
 
+## TOPAL-COMP-LIST-RECURSIVE-001 — Exact recursive Int/String Lists
+
+The checked compiler model shall admit contextual `List (Int, String)` and
+`List List (Int, String)` construction and retain both exact classifiers. The
+outer recursive List shall cross ordinary parameter/result boundaries through
+one direct specialization. Its admitted observations shall be `first` with
+`Optional (List (Int, String))`, exact `entry-count`, and structural equality
+that preserves outer and inner order and compares every exact Int and String.
+Construction and observations shall evaluate each source operand once in
+source order; `Some Empty` shall remain distinct from `None`. Direct inner pair-
+List boundaries/equality, outer `rest`/`uncons`, deeper nesting, other shapes,
+and all unlisted List operations shall receive stable checked diagnostics.
+
+The Linux x86-64 backend shall use a private 24-byte inner node containing Int,
+String, and remaining pointers, and a private 16-byte outer node containing
+inner-List and remaining pointers. Empty shall be null at both levels. Nodes
+shall be allocated only through the Topal-owned Linux mapping boundary and
+shall be immutable after complete initialization. Independently selected,
+shape-exact LLVM loops shall implement outer count, first, and equality; the
+inner equality loop shall call the canonical exact Int and String comparators.
+Behavior at O0 shall require no LLVM optimization, host recursion, generic or
+type-erased List runtime, tag, callback, indirect call, or dispatcher.
+
+The outer private function boundary shall use matching LLVM pointer prototypes
+so LLVM owns physical AMD64 lowering. Target-layout-derived DWARF and the
+bounded validating GDB renderer shall preserve and render both recursive List
+types. The executable shall retain no undefined symbol, needed library, or
+dynamic relocation and shall use no foreign allocator, C/C++ runtime, or other-
+language standard library. This increment shall define no public, foreign,
+serialized, persistent, generic, or compiled-library List ABI, stabilize no
+private layout, and make no `topal-native/6` revision. It realizes
+`TOPAL-COMPILER-LIST-RECURSIVE-001`, `TOPAL-TYPE-LIST-CONSTRUCT-001`,
+`TOPAL-TYPE-LIST-RECURSIVE-001`, `TOPAL-TYPE-LIST-EQUALITY-001`,
+`TOPAL-LIST-FIRST-001`, and `TOPAL-LIST-ENTRY-COUNT-001` for compiler increment
+4b3d-j.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when
