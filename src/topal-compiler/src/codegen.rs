@@ -1294,23 +1294,60 @@ impl<'a> Generator<'a> {
                 else {
                     unreachable!("checked Entry tail retains its List classifier")
                 };
-                let node = body.instruction(
-                    "call ptr @topal.platform.allocate(i64 16)",
-                    expression.span,
-                    &mut self.debug,
-                );
-                let (value_type, value, alignment) = match element {
-                    CompilerType::Effect => ("i8", value.singleton(), 1),
-                    CompilerType::Int => ("ptr", value.integer(), 8),
+                let (allocation_size, next_offset) = match &element {
+                    CompilerType::Effect | CompilerType::Int => (16, 8),
+                    CompilerType::Tuple(fields)
+                        if fields.as_slice() == [CompilerType::Int, CompilerType::Int] =>
+                    {
+                        (24, 16)
+                    }
                     _ => unreachable!("checked List element has an admitted node layout"),
                 };
-                body.effect(
-                    &format!("store {value_type} {value}, ptr {node}, align {alignment}"),
+                let node = body.instruction(
+                    &format!("call ptr @topal.platform.allocate(i64 {allocation_size})"),
                     expression.span,
                     &mut self.debug,
                 );
+                match (&element, &value) {
+                    (CompilerType::Effect, LlValue::Effect(value)) => body.effect(
+                        &format!("store i8 {value}, ptr {node}, align 1"),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    (CompilerType::Int, LlValue::Int(value)) => body.effect(
+                        &format!("store ptr {value}, ptr {node}, align 8"),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    (CompilerType::Tuple(field_types), LlValue::Tuple(values))
+                        if field_types.as_slice() == [CompilerType::Int, CompilerType::Int] =>
+                    {
+                        let [left, right] = values.as_slice() else {
+                            unreachable!("checked List pair value retains two fields")
+                        };
+                        body.effect(
+                            &format!("store ptr {}, ptr {node}, align 8", left.integer()),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        let right_address = body.instruction(
+                            &format!("getelementptr i8, ptr {node}, i64 8"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        body.effect(
+                            &format!(
+                                "store ptr {}, ptr {right_address}, align 8",
+                                right.integer()
+                            ),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                    }
+                    _ => unreachable!("checked List element has an admitted node layout"),
+                }
                 let next = body.instruction(
-                    &format!("getelementptr i8, ptr {node}, i64 8"),
+                    &format!("getelementptr i8, ptr {node}, i64 {next_offset}"),
                     expression.span,
                     &mut self.debug,
                 );
@@ -2350,10 +2387,13 @@ impl<'a> Generator<'a> {
         environment: &BTreeMap<String, LlValue>,
         span: Span,
     ) -> LlValue {
-        let source = self
-            .emit_expression(list, body, environment)
-            .list_pointer()
-            .to_owned();
+        let LlValue::List {
+            value: source,
+            element,
+        } = self.emit_expression(list, body, environment)
+        else {
+            unreachable!("checked map subject retains its List classifier")
+        };
         let preheader = body.current_block.clone();
         let loop_label = body.label("list.map.loop");
         let visit = body.label("list.map.visit");
@@ -2394,13 +2434,39 @@ impl<'a> Generator<'a> {
         );
 
         body.start_block(&visit);
-        let value = body.instruction(
-            &format!("load ptr, ptr {current}, align 8"),
-            span,
-            &mut self.debug,
-        );
+        let (values, next_offset) = match &element {
+            CompilerType::Int => {
+                let value = body.instruction(
+                    &format!("load ptr, ptr {current}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                (vec![LlValue::Int(value)], 8)
+            }
+            CompilerType::Tuple(fields)
+                if fields.as_slice() == [CompilerType::Int, CompilerType::Int] =>
+            {
+                let left = body.instruction(
+                    &format!("load ptr, ptr {current}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let right_address = body.instruction(
+                    &format!("getelementptr i8, ptr {current}, i64 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let right = body.instruction(
+                    &format!("load ptr, ptr {right_address}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                (vec![LlValue::Int(left), LlValue::Int(right)], 16)
+            }
+            _ => unreachable!("checked map subject has an admitted List element layout"),
+        };
         let next_address = body.instruction(
-            &format!("getelementptr i8, ptr {current}, i64 8"),
+            &format!("getelementptr i8, ptr {current}, i64 {next_offset}"),
             span,
             &mut self.debug,
         );
@@ -2411,7 +2477,7 @@ impl<'a> Generator<'a> {
             &mut self.debug,
         );
         let mut action_environment =
-            self.emit_collection_environment(parameters, &[LlValue::Int(value)], body, environment);
+            self.emit_collection_environment(parameters, &values, body, environment);
         let mapped = self.emit_block(action, body, &mut action_environment);
         body.define_reserved(
             &node,
@@ -4750,6 +4816,7 @@ impl<'a> Generator<'a> {
         body.start_block(&done);
     }
 
+    #[allow(clippy::too_many_lines)] // Admitted element layouts retain explicit loads and traversal.
     fn emit_print_list(
         &mut self,
         value: &str,
@@ -4792,23 +4859,52 @@ impl<'a> Generator<'a> {
 
         body.start_block(&entry);
         self.emit_write_literal("Entry ( ", body, span);
-        let payload = match element {
-            CompilerType::Effect => LlValue::Effect(body.instruction(
-                &format!("load i8, ptr {current}, align 1"),
-                span,
-                &mut self.debug,
-            )),
-            CompilerType::Int => LlValue::Int(body.instruction(
-                &format!("load ptr, ptr {current}, align 8"),
-                span,
-                &mut self.debug,
-            )),
+        let (payload, next_offset) = match element {
+            CompilerType::Effect => (
+                LlValue::Effect(body.instruction(
+                    &format!("load i8, ptr {current}, align 1"),
+                    span,
+                    &mut self.debug,
+                )),
+                8,
+            ),
+            CompilerType::Int => (
+                LlValue::Int(body.instruction(
+                    &format!("load ptr, ptr {current}, align 8"),
+                    span,
+                    &mut self.debug,
+                )),
+                8,
+            ),
+            CompilerType::Tuple(fields)
+                if fields.as_slice() == [CompilerType::Int, CompilerType::Int] =>
+            {
+                let left = body.instruction(
+                    &format!("load ptr, ptr {current}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let right_address = body.instruction(
+                    &format!("getelementptr i8, ptr {current}, i64 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let right = body.instruction(
+                    &format!("load ptr, ptr {right_address}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                (
+                    LlValue::Tuple(vec![LlValue::Int(left), LlValue::Int(right)]),
+                    16,
+                )
+            }
             _ => unreachable!("checked List element has an admitted printer"),
         };
         self.emit_print(&payload, body, span);
         self.emit_write_literal(", ", body, span);
         let next_address = body.instruction(
-            &format!("getelementptr i8, ptr {current}, i64 8"),
+            &format!("getelementptr i8, ptr {current}, i64 {next_offset}"),
             span,
             &mut self.debug,
         );
@@ -6099,18 +6195,19 @@ impl DebugInfo {
             "!DIDerivedType(tag: DW_TAG_member, name: \"value\", file: !{}, baseType: !{element_type}, size: {}, align: {}, offset: 0)",
             self.file, element_layout.size, element_layout.alignment
         ));
+        let next_offset = align_bits(element_layout.size, 64);
         let opaque_pointer = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{}, size: 64, align: 64)",
             self.unsigned64_type
         ));
         let next = self.node(format!(
-            "!DIDerivedType(tag: DW_TAG_member, name: \"remaining\", file: !{}, baseType: !{opaque_pointer}, size: 64, align: 64, offset: 64)",
-            self.file
+            "!DIDerivedType(tag: DW_TAG_member, name: \"remaining\", file: !{}, baseType: !{opaque_pointer}, size: 64, align: 64, offset: {next_offset})",
+            self.file,
         ));
         let members = self.node(format!("!{{!{payload}, !{next}}}"));
         let storage = self.node(format!(
-            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalList.{}\", file: !{}, size: 128, align: 64, elements: !{members})",
-            llvm_string(&element.name()), self.file
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalList.{}\", file: !{}, size: {}, align: 64, elements: !{members})",
+            llvm_string(&element.name()), self.file, next_offset + 64
         ));
         let pointer = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
@@ -6909,6 +7006,35 @@ mod tests {
         assert!(llvm.contains("call ptr @topal.platform.allocate(i64 16)"));
         assert!(!llvm.contains("topal.fn.anonymous"));
         assert!(!llvm.contains("topal.runtime.list.int.functions"));
+    }
+
+    #[test]
+    fn emits_int_pair_list_product_map_without_a_generic_runtime() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-COLLECTION-MAP-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001,
+        // TOPAL-COMPILER-LIST-INT-PAIR-MAP-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/anonymous-product-pattern.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "anonymous-product-pattern.t").emit();
+
+        assert!(llvm.contains("call ptr @topal.platform.allocate(i64 24)"));
+        assert!(llvm.contains("getelementptr i8, ptr %"));
+        assert!(llvm.contains("i64 16"));
+        assert!(llvm.contains("list.map.loop"));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"List (Int, Int)\""));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalList.(Int, Int)\""));
+        assert!(!llvm.contains("topal.runtime.list.pair"));
+        assert!(!llvm.contains("topal.fn.anonymous"));
+        assert!(!llvm.contains("call ptr %"));
+
+        let bound = "use language (version is v0.1)\ncombine is { (left, right) } left + right\npairs : List (Int, Int) is Entry ((1, 2), Empty)\npairs map combine\n";
+        let program = analyze_for_compiler(bound).unwrap();
+        let llvm = Generator::new(&program, "bound-product-pattern.t").emit();
+        assert!(llvm.contains("list.map.loop"));
+        assert!(llvm.contains("<anonymous fn/1>"));
+        assert!(!llvm.contains("call ptr %"));
     }
 
     #[test]

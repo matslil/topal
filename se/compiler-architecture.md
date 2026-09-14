@@ -625,6 +625,21 @@ boundaries until a versioned compiled-library interface can describe and adapt
 it, so this executable-local layout does not revise `topal-native/6` or become
 a public ABI.
 
+The first product-element List specialization is deliberately limited to
+`List (Int, Int)` consumed by an Int-result map. Its private node expands to
+three words: the two canonical Int pointers occupy the ordinary target-derived
+Tuple field offsets zero and eight, and the remaining-node pointer follows at
+offset sixteen. No separate Tuple object or payload pointer is introduced.
+The checked anonymous product pattern is flattened to two exact Int bindings;
+the generated map loop loads those words directly and reuses the existing
+`List Int` result construction. List DWARF derives its remaining-field offset
+and node size from the element layout, and GDB selects the corresponding
+three-word decoder while preserving source pair spelling. This keeps source
+order, field identity, and LLVM-owned instruction lowering visible without a
+generic List runtime, type tag, callback, indirect call, or foreign dependency.
+Pair-List function boundaries remain closed, so the executable-local storage
+does not become a compiled-library ABI or revise `topal-native/6`.
+
 Range-selected `List Int` values use a separately conditional private LLVM
 fragment. It visits each immutable node once, asks the exact Range runtime about
 either the stored arbitrary-precision value or an exact Int converted from the

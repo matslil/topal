@@ -1142,6 +1142,37 @@ revision. It realizes `TOPAL-COMPILER-TRAVERSAL-CONTROL-001`,
 `TOPAL-EXEC-TRAVERSAL-CONTROL-001`, and `TOPAL-COLLECTION-FOLD-001` for compiler
 increment 4b3d-h.
 
+## TOPAL-COMP-LIST-INT-PAIR-MAP-001 — Int-pair List product map
+
+The checked compiler model shall admit expected `List (Int, Int)` construction
+and map it with a single two-field anonymous product parameter pattern whose
+bindings are both exact Int. The anonymous action may be directly contextual
+or retained in an immutable binding. Each invocation shall bind fields in
+source order and return one Int result. Mapping shall visit every pair exactly
+once in List order, preserve every exact arbitrary-precision value, publish a
+`List Int`, and leave the source unchanged. Duplicate bindings, wrong product
+arity, non-Int fields/results, select/fold use, and unsupported pair-List
+boundaries shall receive stable checked diagnostics.
+
+The Linux x86-64 backend shall store each pair inline as two canonical Int
+pointers followed by the remaining-node pointer in one naturally aligned
+24-byte private node. Construction shall evaluate the pair and remaining List
+before allocating and fully initializing the node. The generated map loop
+shall load both fields directly into the specialized anonymous environment and
+reuse the existing immutable `List Int` result loop. Canonical output, semantic
+DWARF, and the bounded validating GDB renderer shall preserve complete pair
+Lists and mapped results at O0.
+
+This increment shall use only the existing Topal Linux mapping and write
+boundaries. It shall add no tuple payload allocation, generic/type-erased List
+runtime, callback convention, indirect call, foreign allocator, C/C++ runtime,
+other-language standard library, undefined symbol, needed library, dynamic
+relocation, public/foreign/serialized/persistent/generic List ABI, or
+`topal-native/6` revision. It realizes
+`TOPAL-COMPILER-LIST-INT-PAIR-MAP-001`, `TOPAL-TYPE-LIST-CONSTRUCT-001`,
+`TOPAL-COLLECTION-MAP-001`, and `TOPAL-FUNCTION-ANONYMOUS-001` for compiler
+increment 4b3d-i.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when

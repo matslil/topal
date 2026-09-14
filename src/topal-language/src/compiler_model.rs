@@ -3243,11 +3243,16 @@ impl Analyzer {
         {
             let operation = self.source.slice(*operation).to_owned();
             let list = self.analyze_expression(list, environment)?;
-            require_int_list(&self.source, &list, "collection operation subject")?;
+            let parameter_type = if operation == "map" {
+                require_int_or_int_pair_list(&self.source, &list, "map subject")?
+            } else {
+                require_int_list(&self.source, &list, "select subject")?;
+                CompilerType::Int
+            };
             let (parameters, body) = self.analyze_collection_function(
                 parameters,
                 body,
-                &[CompilerType::Int],
+                &[parameter_type],
                 environment,
                 self.static_context,
                 *function_span,
@@ -3346,11 +3351,16 @@ impl Analyzer {
         {
             let operation = self.source.slice(*operation).to_owned();
             let list = self.analyze_expression(list, environment)?;
-            require_int_list(&self.source, &list, "collection operation subject")?;
+            let parameter_type = if operation == "map" {
+                require_int_or_int_pair_list(&self.source, &list, "map subject")?
+            } else {
+                require_int_list(&self.source, &list, "select subject")?;
+                CompilerType::Int
+            };
             let (parameters, body) = self.analyze_collection_function(
                 &parameters,
                 &body,
-                &[CompilerType::Int],
+                &[parameter_type],
                 &captures,
                 static_context,
                 function_span,
@@ -4331,36 +4341,72 @@ impl Analyzer {
         static_context: bool,
         span: Span,
     ) -> Result<(Vec<CompilerParameter>, CompilerBlock), Diagnostic> {
-        if parameters.len() != parameter_types.len() {
-            return Err(source_diagnostic(
-                &self.source,
-                "E-ANONYMOUS-FUNCTION-ARITY",
-                span,
-                format!(
-                    "collection function expects {} parameters, found {}",
-                    parameter_types.len(),
-                    parameters.len()
-                ),
-            ));
-        }
-        let mut environment = outer_environment.clone();
-        let mut lowered = Vec::with_capacity(parameters.len());
-        let mut declared = BTreeSet::new();
-        for (parameter, value_type) in parameters.iter().zip(parameter_types) {
-            let AnonymousPattern::Binding(name_span) = parameter else {
-                return Err(unsupported(
+        let flattened = if let (
+            [
+                AnonymousPattern::Product {
+                    bindings,
+                    span: pattern_span,
+                },
+            ],
+            [CompilerType::Tuple(fields)],
+        ) = (parameters, parameter_types)
+        {
+            if bindings.len() != fields.len() {
+                return Err(source_diagnostic(
                     &self.source,
-                    span,
-                    "collection anonymous product parameter pattern",
+                    "E-ANONYMOUS-FUNCTION-ARITY",
+                    *pattern_span,
+                    format!(
+                        "collection product pattern expects {} fields, found {}",
+                        fields.len(),
+                        bindings.len()
+                    ),
                 ));
-            };
-            let name = self.source.slice(*name_span).to_owned();
+            }
+            bindings
+                .iter()
+                .copied()
+                .zip(fields.iter().cloned())
+                .collect::<Vec<_>>()
+        } else {
+            if parameters.len() != parameter_types.len() {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-ANONYMOUS-FUNCTION-ARITY",
+                    span,
+                    format!(
+                        "collection function expects {} parameters, found {}",
+                        parameter_types.len(),
+                        parameters.len()
+                    ),
+                ));
+            }
+            parameters
+                .iter()
+                .zip(parameter_types)
+                .map(|(parameter, value_type)| {
+                    let AnonymousPattern::Binding(name_span) = parameter else {
+                        return Err(unsupported(
+                            &self.source,
+                            span,
+                            "collection anonymous product parameter pattern",
+                        ));
+                    };
+                    Ok((*name_span, value_type.clone()))
+                })
+                .collect::<Result<Vec<_>, Diagnostic>>()?
+        };
+        let mut environment = outer_environment.clone();
+        let mut lowered = Vec::with_capacity(flattened.len());
+        let mut declared = BTreeSet::new();
+        for (name_span, value_type) in flattened {
+            let name = self.source.slice(name_span).to_owned();
             let discarded = name == "_";
             if !discarded && !declared.insert(name.clone()) {
                 return Err(source_diagnostic(
                     &self.source,
                     "E-DUPLICATE-BINDING",
-                    *name_span,
+                    name_span,
                     format!("`{name}` is already declared in this parameter pattern"),
                 ));
             }
@@ -4370,9 +4416,9 @@ impl Analyzer {
             lowered.push(CompilerParameter {
                 name,
                 discarded,
-                value_type: value_type.clone(),
+                value_type,
                 int_range: None,
-                span: *name_span,
+                span: name_span,
             });
         }
 
@@ -8106,12 +8152,18 @@ fn fundamental_type_value(name: &str) -> Option<u32> {
 }
 
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
-    if let Some(element) = classifier.strip_prefix("List")
-        && matches!(element, "Effect" | "Int")
-    {
-        return Some(CompilerType::List(Box::new(parse_compact_classifier(
-            element,
-        )?)));
+    if let Some(element) = classifier.strip_prefix("List") {
+        let element = parse_compact_classifier(element)?;
+        if matches!(element, CompilerType::Effect | CompilerType::Int)
+            || matches!(
+                &element,
+                CompilerType::Tuple(fields)
+                    if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
+            )
+        {
+            return Some(CompilerType::List(Box::new(element)));
+        }
+        return None;
     }
     if let Some(payload) = classifier.strip_prefix("Optional") {
         return Some(CompilerType::Optional(Box::new(parse_compact_classifier(
@@ -9124,6 +9176,31 @@ fn require_int_list(
     };
     if element.as_ref() == &CompilerType::Int {
         Ok(())
+    } else {
+        Err(unsupported(
+            source,
+            value.span,
+            &format!("{operation} for this List element type"),
+        ))
+    }
+}
+
+fn require_int_or_int_pair_list(
+    source: &SourceText,
+    value: &CompilerExpression,
+    operation: &str,
+) -> Result<CompilerType, Diagnostic> {
+    let CompilerType::List(element) = &value.value_type else {
+        return Err(unsupported(source, value.span, operation));
+    };
+    if element.as_ref() == &CompilerType::Int
+        || matches!(
+            element.as_ref(),
+            CompilerType::Tuple(fields)
+                if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
+        )
+    {
+        Ok(element.as_ref().clone())
     } else {
         Err(unsupported(
             source,
@@ -10432,6 +10509,65 @@ mod tests {
             analyze_for_compiler(wrong_fold).unwrap_err().code,
             "E-ANONYMOUS-FUNCTION-ARITY"
         );
+    }
+
+    #[test]
+    fn models_int_pair_list_product_map_pattern() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-COLLECTION-MAP-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001,
+        // TOPAL-COMPILER-LIST-INT-PAIR-MAP-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/anonymous-product-pattern.t"
+        ))
+        .unwrap();
+        let [CompilerStatement::Binding(pairs)] = program.main.statements.as_slice() else {
+            panic!("shared product-pattern regression binds its pair List")
+        };
+        assert_eq!(
+            pairs.value.value_type,
+            CompilerType::List(Box::new(CompilerType::Tuple(vec![
+                CompilerType::Int,
+                CompilerType::Int,
+            ])))
+        );
+        let CompilerExpressionKind::ListMap {
+            parameters, body, ..
+        } = &program.main.result.kind
+        else {
+            panic!("shared product-pattern regression maps the pair List")
+        };
+        assert_eq!(parameters.len(), 2);
+        assert_eq!(parameters[0].name, "left");
+        assert_eq!(parameters[1].name, "right");
+        assert!(
+            parameters
+                .iter()
+                .all(|parameter| parameter.value_type == CompilerType::Int)
+        );
+        assert!(matches!(
+            body.result.kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Add,
+                ..
+            }
+        ));
+        assert_eq!(
+            program.main.result.value_type,
+            CompilerType::List(Box::new(CompilerType::Int))
+        );
+
+        let wrong_arity = "use language (version is v0.1)\npairs : List (Int, Int) is Entry ((1, 2), Empty)\npairs map { (a, b, c) } a + b\n";
+        assert_eq!(
+            analyze_for_compiler(wrong_arity).unwrap_err().code,
+            "E-ANONYMOUS-FUNCTION-ARITY"
+        );
+        let duplicate = "use language (version is v0.1)\npairs : List (Int, Int) is Entry ((1, 2), Empty)\npairs map { (same, same) } same\n";
+        assert_eq!(
+            analyze_for_compiler(duplicate).unwrap_err().code,
+            "E-DUPLICATE-BINDING"
+        );
+        let bound = "use language (version is v0.1)\ncombine is { (left, right) } left + right\npairs : List (Int, Int) is Entry ((1, 2), Empty)\npairs map combine\n";
+        assert!(analyze_for_compiler(bound).is_ok());
     }
 
     #[test]
