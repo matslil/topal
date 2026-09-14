@@ -5758,7 +5758,7 @@ impl<'a> Generator<'a> {
             body.debug_declare(&address, variable, location);
             address
         });
-        let debug_address = (!parameter.discarded).then(|| {
+        let debug_address = (!characters.is_empty() && !parameter.discarded).then(|| {
             let variable = self.debug.local(
                 &parameter.name,
                 parameter.span,
@@ -9772,6 +9772,33 @@ mod tests {
         assert!(main.contains("#dbg_declare(ptr"));
         assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
         assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_custom_generator_early_unit_return_without_action() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-EARLY-RETURN-001,
+        // TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-EARLY-RETURN-001
+        let source = include_str!("../../../examples/language/custom-generator-early-return.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-early-return.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            1
+        );
+        assert!(main.contains("#dbg_value(i32 0"));
+        assert!(!main.contains("#dbg_declare(ptr"));
+        assert!(!main.contains("store ptr"));
+        assert!(!llvm.contains("DILocalVariable(name: \"character\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
         assert!(!main.contains("generator.foreach.loop"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));

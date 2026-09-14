@@ -501,9 +501,10 @@ Root foreach shall consume one locally bound instance, invoke its capture-free
 Character-to-Unit action exactly once with the yielded Character, resume with
 Unit, and return the distinct final Unit. The source shall use the existing
 one-consumption local Generator boundary; repeated use and abandonment shall
-remain rejected. Other declaration shapes, overloads, dynamic Character
-provenance, direct traversal without a retained local, non-Unit actions,
-captures, and function or library boundaries shall be rejected before LLVM.
+remain rejected. Declaration shapes not covered by a later compiler rule,
+overloads, dynamic Character provenance, direct traversal without a retained
+local, non-Unit actions, captures, and function or library boundaries shall be
+rejected before LLVM.
 
 The Linux x86-64 backend shall evaluate the initial Character once, lower the
 proven single suspension and resumption as ordered inline code, and use the
@@ -533,7 +534,8 @@ Root foreach shall consume one locally bound instance and invoke its
 capture-free Character-to-Unit action exactly once for each yielded value in
 source order. It shall resume with Unit after every action, including the final
 action before returning Unit. Existing repeated-use and abandonment rejection
-shall continue to apply. Zero yields, ordinary statements between yields,
+shall continue to apply. Exact pre-yield Unit completion is governed by
+`TOPAL-COMP-GENERATOR-EARLY-RETURN-001`; ordinary statements between yields,
 different yield expressions, overloads, dynamic Character provenance,
 captures, close handling, and function or library boundaries shall remain
 rejected before LLVM.
@@ -587,6 +589,39 @@ realizes `TOPAL-COMPILER-GENERATOR-LOCAL-BINDING-001`,
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-LOCAL-BINDING-001`,
 `TOPAL-GENERATOR-SUSPEND-001`, and `TOPAL-GENERATOR-FOREACH-001` for compiler
 increment 5i.
+
+## TOPAL-COMP-GENERATOR-EARLY-RETURN-001 — Completion before suspension
+
+The checked compiler shall admit the existing root custom Character generator
+directions when the complete body is exactly final Unit and therefore reaches
+its declared Unit result before any yield. Application shall evaluate and
+classify the initial Character exactly once, create a fresh linear Generator,
+and retain an empty suspension sequence plus completed Unit as compile-session
+provenance. The absence of a yield shall not skip static checking of the
+Character-to-Unit foreach action.
+
+Root foreach shall consume one locally bound admitted instance, invoke the
+action zero times, and produce the generator's final Unit directly. Repeated
+use and abandonment shall remain rejected under the existing local linearity
+boundary. Additional body statements, generator locals, explicit return, other
+input/yield/resume/result classifiers, non-Unit final values, overloads,
+captures, close handling, and function or library boundaries shall remain
+rejected before LLVM unless another compiler rule admits them.
+
+On Linux x86-64, the backend shall evaluate the initial Character once and
+lower the empty suspension sequence and final Unit with no action block or
+action-parameter debug storage. The compiler-private Generator observation
+token may remain for ownership and GDB identity, but shall not represent a
+continuation state. This mandatory O0 lowering shall not depend on dead-code
+elimination or introduce a Generator object, state allocation, dispatcher,
+callback, indirect call, unwind support, C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, public/library Generator ABI, or
+`topal-native/6` revision. Future compiled-library metadata shall encode the
+terminal-before-suspension graph, final value, directions, ownership/close
+behavior, and target adapters canonically. This realizes
+`TOPAL-COMPILER-GENERATOR-EARLY-RETURN-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-EARLY-RETURN-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5j.
 
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
