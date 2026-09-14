@@ -130,6 +130,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             predicate,
             ..
         } => expression_uses_extended_debug(generator) || block_uses_extended_debug(predicate),
+        CompilerExpressionKind::GeneratorCollect(generator) => {
+            expression_uses_extended_debug(generator)
+        }
         CompilerExpressionKind::ListFold {
             list,
             initial,
@@ -1096,6 +1099,9 @@ impl<'a> Generator<'a> {
                     value: "0".into(),
                     generator: generator.clone(),
                 }
+            }
+            CompilerExpressionKind::GeneratorCollect(generator) => {
+                self.emit_iterate_collect(generator, body, environment, expression.span)
             }
             CompilerExpressionKind::Sum { value, payload } => {
                 let CompilerType::Sum(sum) = &expression.value_type else {
@@ -2509,6 +2515,156 @@ impl<'a> Generator<'a> {
             environment.insert(parameter.name.clone(), value.clone());
         }
         environment
+    }
+
+    #[allow(clippy::too_many_lines)] // The loop keeps predicate, publication, and next ordering explicit.
+    fn emit_iterate_collect(
+        &mut self,
+        generator: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let CompilerExpressionKind::GeneratorTakeWhile {
+            generator,
+            parameters: predicate_parameters,
+            predicate,
+        } = &generator.kind
+        else {
+            unreachable!("checked collect retains a bounded iterate generator")
+        };
+        let CompilerExpressionKind::IterateGenerator {
+            initial,
+            parameters: next_parameters,
+            next,
+        } = &generator.kind
+        else {
+            unreachable!("checked collect retains its direct iterate construction")
+        };
+        let initial = self
+            .emit_expression(initial, body, environment)
+            .integer()
+            .to_owned();
+        let preheader = body.current_block.clone();
+        let loop_label = body.label("generator.collect.loop");
+        let accepted = body.label("generator.collect.accepted");
+        let first = body.label("generator.collect.first");
+        let link = body.label("generator.collect.link");
+        let linked = body.label("generator.collect.linked");
+        let done = body.label("generator.collect.done");
+        let next_current = body.reserve_value();
+        let node = body.reserve_value();
+        let next_head = body.reserve_value();
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let current = body.instruction(
+            &format!("phi ptr [{initial}, %{preheader}], [{next_current}, %{linked}]"),
+            span,
+            &mut self.debug,
+        );
+        let head = body.instruction(
+            &format!("phi ptr [null, %{preheader}], [{next_head}, %{linked}]"),
+            span,
+            &mut self.debug,
+        );
+        let previous = body.instruction(
+            &format!("phi ptr [null, %{preheader}], [{node}, %{linked}]"),
+            span,
+            &mut self.debug,
+        );
+        let mut predicate_environment = self.emit_collection_environment(
+            predicate_parameters,
+            &[LlValue::Int(current.clone())],
+            body,
+            environment,
+        );
+        let accepted_value = self
+            .emit_block(predicate, body, &mut predicate_environment)
+            .boolean()
+            .to_owned();
+        body.terminator(
+            &format!("br i1 {accepted_value}, label %{accepted}, label %{done}"),
+            location,
+        );
+
+        body.start_block(&accepted);
+        body.define_reserved(
+            &node,
+            "call ptr @topal.platform.allocate(i64 16)",
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr {current}, ptr {node}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let node_next = body.instruction(
+            &format!("getelementptr i8, ptr {node}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr null, ptr {node_next}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let mut next_environment = self.emit_collection_environment(
+            next_parameters,
+            &[LlValue::Int(current)],
+            body,
+            environment,
+        );
+        let next_value = self
+            .emit_block(next, body, &mut next_environment)
+            .integer()
+            .to_owned();
+        let has_previous = body.instruction(
+            &format!("icmp ne ptr {previous}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {has_previous}, label %{link}, label %{first}"),
+            location,
+        );
+
+        body.start_block(&first);
+        body.terminator(&format!("br label %{linked}"), location);
+        body.start_block(&link);
+        let previous_next = body.instruction(
+            &format!("getelementptr i8, ptr {previous}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr {node}, ptr {previous_next}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{linked}"), location);
+        body.start_block(&linked);
+        body.define_reserved(
+            &next_head,
+            &format!("phi ptr [{node}, %{first}], [{head}, %{link}]"),
+            span,
+            &mut self.debug,
+        );
+        body.define_reserved(
+            &next_current,
+            &format!("phi ptr [{next_value}, %{first}], [{next_value}, %{link}]"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&done);
+        LlValue::List {
+            value: head,
+            element: CompilerType::Int,
+        }
     }
 
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // The loop keeps node publication explicit.
@@ -8946,6 +9102,30 @@ mod tests {
             main.matches("call fastcc ptr @topal.fn.initial.").count(),
             1
         );
+    }
+
+    #[test]
+    fn emits_bounded_iterate_collection_as_an_ordered_list_loop() {
+        // TOPAL-GENERATOR-ITERATE-001, TOPAL-GENERATOR-TAKE-WHILE-001,
+        // TOPAL-GENERATOR-COLLECT-001,
+        // TOPAL-COMPILER-GENERATOR-ITERATE-COLLECT-001
+        let source = include_str!("../../../examples/language/generated-collect.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "generated-collect.t").emit();
+
+        for expected in [
+            "generator.collect.loop",
+            "generator.collect.accepted",
+            "generator.collect.done",
+            "call ptr @topal.platform.allocate(i64 16)",
+            "call ptr @topal.runtime.int.add",
+            "icmp slt i32",
+            "List Int",
+        ] {
+            assert!(llvm.contains(expected), "missing {expected:?}: {llvm}");
+        }
+        assert!(!llvm.contains("topal.runtime.generator"));
+        assert!(!llvm.contains("call ptr %"));
     }
 
     #[test]

@@ -368,6 +368,33 @@ revision. This realizes
 `TOPAL-GENERATOR-ITERATE-001`, and `TOPAL-GENERATOR-TAKE-WHILE-001` for compiler
 increment 5b.
 
+## TOPAL-COMP-GENERATOR-ITERATE-COLLECT-001 — Finite iterate collection
+
+The checked compiler shall admit unary `collect` only for a syntactically
+direct exact `Generator Int Unit Unit` formed by `iterate` and bounded by
+`take-while`. It shall evaluate the initial expression once, test each
+candidate once before publication, append every accepted Int to a fresh
+`List Int` in yield order, and invoke the next operation once afterward. A
+rejected candidate shall neither enter the List nor cause another next
+invocation. The resulting value shall use the already admitted List behavior
+for equality, display, private passage, DWARF, and GDB.
+
+An unbounded iterate, an indirect or stored Generator operand, and an anonymous
+next or predicate body with an outer-value capture shall be rejected before
+LLVM. The Linux x86-64 backend shall carry only the current arbitrary-precision
+Int and private List head/tail as explicit SSA loop state, allocate immutable
+List nodes through the Topal platform allocator, and use direct generated
+control flow. It shall allocate no Generator object, use no construction token
+as executable state, host recursion, indirect call, or generic Generator
+runtime, and introduce no foreign dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library Generator
+ABI, or `topal-native/6` revision. Future compiled-library metadata shall
+describe the canonical operation/evidence composition independently of this
+specialization. This realizes
+`TOPAL-COMPILER-GENERATOR-ITERATE-COLLECT-001`,
+`TOPAL-GENERATOR-ITERATE-001`, `TOPAL-GENERATOR-TAKE-WHILE-001`, and
+`TOPAL-GENERATOR-COLLECT-001` for compiler increment 5c.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted

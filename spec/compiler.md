@@ -298,6 +298,31 @@ SHALL NOT traverse, yield, resume, suspend, close, allocate generator storage,
 emit an indirect call or generator runtime, introduce a foreign dependency or
 other-language standard library, or revise `topal-native/6`.
 
+### TOPAL-COMPILER-GENERATOR-ITERATE-COLLECT-001 — Finite iterate collection
+
+Unary `collect` SHALL consume a syntactically direct
+`Generator Int Unit Unit` produced by `iterate` and bounded by `take-while`.
+The compiler SHALL evaluate the initial expression once, test the predicate
+once for each candidate, append each accepted Int to a fresh `List Int` in
+yield order, and invoke the next operation once after each accepted candidate.
+The first rejected candidate SHALL NOT be appended and its next value SHALL
+NOT be computed. The resulting List SHALL retain ordinary List equality,
+display, private passage, DWARF, and GDB behavior.
+
+The checked boundary SHALL reject collection of an unbounded iterate, an
+indirect or previously stored Generator value, and an anonymous next or
+predicate body that captures an outer value. The backend SHALL lower the
+accepted direct composition as explicit LLVM control flow whose SSA loop state
+contains the current arbitrary-precision Int and the private List head/tail.
+It MAY allocate the immutable List nodes through the Topal-owned Linux platform
+allocator, but SHALL NOT materialize the construction-only Generator token as
+continuation state, allocate a Generator object, use host recursion, emit an
+indirect call or generic Generator runtime, or introduce a foreign dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library Generator ABI, or `topal-native/6` revision. Future
+compiled-library metadata SHALL identify the generator operations and evidence
+canonically rather than describe this executable-local specialization.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve

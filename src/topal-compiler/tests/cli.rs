@@ -963,6 +963,73 @@ fn lazy_iterate_values_are_freestanding_linear_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn bounded_iterate_collection_is_freestanding_ordered_and_debuggable() {
+    // TOPAL-GENERATOR-ITERATE-001, TOPAL-GENERATOR-TAKE-WHILE-001,
+    // TOPAL-GENERATOR-COLLECT-001,
+    // TOPAL-COMPILER-GENERATOR-ITERATE-COLLECT-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-bounded-iterate-collection");
+    let executable = directory.join("application");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/generated-collect.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"Entry ( 0, Entry ( 1, Entry ( 2, Entry ( 3, Entry ( 4, Empty ) ) ) ) )\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break topal.platform.write_all",
+            "-ex",
+            "run",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis digits",
+            "-ex",
+            "print digits",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = List Int"), "{text}");
+    assert!(
+        text.contains(
+            "$1 = Entry ( 0, Entry ( 1, Entry ( 2, Entry ( 3, Entry ( 4, Empty ) ) ) ) )"
+        ),
+        "{text}"
+    );
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_renders_exact_range_parameters_and_locals() {
     // TOPAL-COMP-DEBUG-001, TOPAL-COMP-RANGE-001
     let directory = temporary("gdb-range");

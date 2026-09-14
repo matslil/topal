@@ -723,6 +723,21 @@ executable representation; compiled-library metadata must describe the
 canonical Generator classifier and captured operations/evidence, then select a
 target adapter rather than exporting this private token.
 
+Finite collection bypasses that construction-only token for one exact direct
+composition. The frontend accepts only unary `collect (initial iterate next
+take-while predicate)` at `Generator Int Unit Unit`, with no captured outer
+binding in either anonymous body. The backend carries current Int, List head,
+and previous node as LLVM SSA loop values. It evaluates the predicate before
+the accepted block, allocates and tail-links a fresh immutable 16-byte
+`List Int` node only there, evaluates the next body after acceptance, and feeds
+the next candidate back to the loop. The false edge reaches completion without
+publishing or advancing the rejected candidate. Existing arbitrary-precision
+Int operations, the Topal-owned Linux allocator, List display, semantic DWARF,
+and the bounded GDB renderer are reused without a Generator object, runtime
+dispatcher, callback, indirect call, or host recursion. The specialized loop
+is executable-local and leaves Generator function/library representation and
+canonical captured-operation metadata to a later versioned boundary.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an
