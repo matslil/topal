@@ -1086,6 +1086,43 @@ layout, or native ABI revision. Pair-List function boundaries, other product
 shapes and classifiers, pair-returning transformations, and remaining
 operations over pair Lists SHALL remain rejected pending later increments.
 
+### TOPAL-COMPILER-LIST-RECURSIVE-001 — Exact recursive Int/String Lists
+
+The compiler SHALL admit contextual immutable construction of `List (Int,
+String)` and `List List (Int, String)`. It SHALL admit the outer recursive List
+as an ordinary function parameter and result, and SHALL preserve the complete
+classifier and value through a direct call. For that outer List, `first` SHALL
+produce `Optional (List (Int, String))`, `entry-count` SHALL produce the exact
+finite Int count, and equality SHALL recursively compare outer length and
+order, inner length and order, every arbitrary-precision Int, and every exact
+String. `Some Empty` SHALL remain distinct from `None`. Canonical output SHALL
+match the interpreter's nested `Entry`/`Empty` spelling. Every source operand
+and constructor field SHALL be evaluated exactly once in source order.
+
+On Linux x86-64, an inner pair node SHALL contain the canonical Int pointer at
+offset zero, the immutable String pointer at offset eight, and its remaining-
+node pointer at offset sixteen. An outer node SHALL contain the inner-List
+pointer at offset zero and its remaining-node pointer at offset eight. Empty at
+either level SHALL remain null. Construction SHALL publish only completely
+initialized private nodes allocated through the Topal Linux mapping boundary.
+The compiler SHALL select exact nonrecursive LLVM loops for outer projection,
+counting, and structural equality; inner equality SHALL use the canonical Int
+and String comparators. Correctness at O0 SHALL NOT depend on optimization,
+host recursion, an indirect call, callback, runtime type tag, or generic or
+type-erased List operation.
+
+The outer function definition and call SHALL use one matching module-private
+LLVM pointer prototype and leave physical AMD64 argument/result placement to
+LLVM. Target-layout-derived DWARF and the bounded validating GDB renderer SHALL
+expose both recursive semantic List identities and complete nested values.
+This rule SHALL add no public, foreign, serialized, persistent, or compiled-
+library List layout; stabilized private layout; C/C++ runtime; other-language
+standard library; foreign allocator; undefined symbol; needed library;
+relocation; or native ABI revision. Direct inner pair-List function passage
+and equality, deeper recursion, outer `rest`/`uncons`, other product shapes and
+element classifiers, remaining List algorithms, reclamation beyond process
+lifetime, and versioned library metadata/adapters remain deferred.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed

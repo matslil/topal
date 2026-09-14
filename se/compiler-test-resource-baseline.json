@@ -1366,6 +1366,16 @@
       "cpu_time_ns": 140558,
       "memory_peak_bytes": 18534400,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/nested-lists.t": {
+      "cpu_time_ns": 125697920,
+      "memory_peak_bytes": 41816064,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/nested-lists.t": {
+      "cpu_time_ns": 176448,
+      "memory_peak_bytes": 18534400,
+      "samples_per_test": 500
     }
   }
 }

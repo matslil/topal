@@ -3983,18 +3983,22 @@ impl Analyzer {
                     "List projection operand",
                 ));
             };
-            if element.as_ref() != &CompilerType::Int {
+            if element.as_ref() != &CompilerType::Int
+                && !(operation == "first"
+                    && compiler_nested_int_string_list_element(element.as_ref()))
+            {
                 return Err(unsupported(
                     &self.source,
                     operand.span,
                     "projection for this List element type",
                 ));
             }
+            let element_type = element.as_ref().clone();
             let list_type = operand.value_type.clone();
             let (kind, payload_type) = match operation.as_str() {
                 "first" => (
                     CompilerExpressionKind::ListFirst(Box::new(operand)),
-                    CompilerType::Int,
+                    element_type,
                 ),
                 "rest" => (
                     CompilerExpressionKind::ListRest(Box::new(operand)),
@@ -5140,7 +5144,9 @@ impl Analyzer {
         if operation == "entry-count"
             && let CompilerType::List(element) = &operand_value.value_type
         {
-            if element.as_ref() != &CompilerType::Int {
+            if element.as_ref() != &CompilerType::Int
+                && !compiler_nested_int_string_list_element(element.as_ref())
+            {
                 return Err(unsupported(
                     &self.source,
                     operand_value.span,
@@ -9031,16 +9037,36 @@ fn fundamental_capability(name: &str) -> bool {
     )
 }
 
+fn compiler_int_string_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::Int, CompilerType::String]
+    )
+}
+
+fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::List(element) if compiler_int_string_pair(element)
+    )
+}
+
+fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
+    matches!(value_type, CompilerType::Effect | CompilerType::Int)
+        || matches!(
+            value_type,
+            CompilerType::Tuple(fields)
+                if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
+        )
+        || compiler_int_string_pair(value_type)
+        || compiler_nested_int_string_list_element(value_type)
+}
+
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
     if let Some(element) = classifier.strip_prefix("List") {
         let element = parse_compact_classifier(element)?;
-        if matches!(element, CompilerType::Effect | CompilerType::Int)
-            || matches!(
-                &element,
-                CompilerType::Tuple(fields)
-                    if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
-            )
-        {
+        if compiler_list_node_element_supported(&element) {
             return Some(CompilerType::List(Box::new(element)));
         }
         return None;
@@ -9184,6 +9210,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
         CompilerType::TraversalControl(_) => false,
         CompilerType::List(element) => {
             matches!(element.as_ref(), CompilerType::Effect | CompilerType::Int)
+                || compiler_nested_int_string_list_element(element.as_ref())
         }
         CompilerType::Optional(payload) => {
             matches!(
@@ -9537,7 +9564,10 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
                 CompilerType::Int | CompilerType::Rational | CompilerType::String
             )
         }
-        CompilerType::List(element) => element.as_ref() == &CompilerType::Int,
+        CompilerType::List(element) => {
+            element.as_ref() == &CompilerType::Int
+                || compiler_nested_int_string_list_element(element.as_ref())
+        }
         CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
         CompilerType::Record(fields) => fields
             .iter()
@@ -11517,6 +11547,59 @@ mod tests {
         );
         let bound = "use language (version is v0.1)\ncombine is { (left, right) } left + right\npairs : List (Int, Int) is Entry ((1, 2), Empty)\npairs map combine\n";
         assert!(analyze_for_compiler(bound).is_ok());
+    }
+
+    #[test]
+    fn models_exact_recursive_int_string_lists() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-TYPE-LIST-EQUALITY-001,
+        // TOPAL-TYPE-LIST-RECURSIVE-001, TOPAL-LIST-FIRST-001,
+        // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-COMPILER-LIST-RECURSIVE-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/nested-lists.t"))
+                .unwrap();
+        let pair = CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String]);
+        let inner = CompilerType::List(Box::new(pair));
+        let nested = CompilerType::List(Box::new(inner.clone()));
+        assert_eq!(program.functions[0].parameters[0].value_type, nested);
+        assert_eq!(program.functions[0].result_type, nested);
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared recursive List regression returns a Tuple")
+        };
+        assert!(matches!(
+            results[0].kind,
+            CompilerExpressionKind::ListFirst(_)
+        ));
+        assert_eq!(
+            results[0].value_type,
+            CompilerType::Optional(Box::new(inner))
+        );
+        assert!(matches!(
+            results[1].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+
+        let inner_boundary = "use language (version is v0.1)\npreserve is fn (values : List (Int, String)) -> List (Int, String)\n  values\nvalues : List (Int, String) is Entry ((1, \"one\"), Empty)\npreserve values\n";
+        assert_eq!(
+            analyze_for_compiler(inner_boundary).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let unsupported_rest = "use language (version is v0.1)\nvalues : List (Int, String) is Entry ((1, \"one\"), Empty)\nnested : List List (Int, String) is Entry (values, Empty)\nrest nested\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported_rest).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let deeper = "use language (version is v0.1)\nvalues : List List List (Int, String) is Empty\nvalues\n";
+        assert_eq!(
+            analyze_for_compiler(deeper).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 
     #[test]
