@@ -133,8 +133,11 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::UnfoldGenerator { seed, step, .. } => {
             expression_uses_extended_debug(seed) || block_uses_extended_debug(step)
         }
-        CompilerExpressionKind::StringCharactersForeach { text, body, .. } => {
-            expression_uses_extended_debug(text) || block_uses_extended_debug(body)
+        CompilerExpressionKind::StringCharactersGenerator { text, .. } => {
+            expression_uses_extended_debug(text)
+        }
+        CompilerExpressionKind::StringCharactersForeach { source, body, .. } => {
+            expression_uses_extended_debug(source) || block_uses_extended_debug(body)
         }
         CompilerExpressionKind::IterateGeneratorForeach {
             generator, body, ..
@@ -1078,6 +1081,16 @@ impl<'a> Generator<'a> {
                     expression.span,
                     &mut self.debug,
                 ))
+            }
+            CompilerExpressionKind::StringCharactersGenerator { text, .. } => {
+                let _ = self.emit_expression(text, body, environment);
+                let CompilerType::Generator(generator) = &expression.value_type else {
+                    unreachable!("checked characters construction retains its Generator type")
+                };
+                LlValue::Generator {
+                    value: "0".into(),
+                    generator: generator.clone(),
+                }
             }
             CompilerExpressionKind::StringCharactersForeach { .. } => {
                 self.emit_string_characters_foreach(expression, body, environment)
@@ -5640,7 +5653,7 @@ impl<'a> Generator<'a> {
         environment: &BTreeMap<String, LlValue>,
     ) -> LlValue {
         let CompilerExpressionKind::StringCharactersForeach {
-            text,
+            source,
             characters,
             parameter,
             body: action,
@@ -5649,7 +5662,7 @@ impl<'a> Generator<'a> {
             unreachable!("checked Character foreach retains its traversal")
         };
         let span = traversal.span;
-        let _ = self.emit_expression(text, body, environment);
+        let _ = self.emit_expression(source, body, environment);
         let debug_address = (!parameter.discarded).then(|| {
             let variable = self.debug.local(
                 &parameter.name,
@@ -9553,6 +9566,34 @@ mod tests {
                 .count(),
             1
         );
+    }
+
+    #[test]
+    fn emits_named_string_character_generator_as_a_private_linear_token() {
+        // TOPAL-STRING-CHARACTERS-COLLECT-001,
+        // TOPAL-STRING-CHARACTERS-FOREACH-001,
+        // TOPAL-STRING-CHARACTERS-GENERATOR-001,
+        // TOPAL-STRING-CHARACTERS-CLASSIFIER-001,
+        // TOPAL-STRING-CHARACTERS-LINEAR-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-GENERATOR-001
+        let source = include_str!("../../../examples/language/string-named-character-generator.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "string-named-character-generator.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            4
+        );
+        assert!(main.contains("#dbg_value(i32 0"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
     }
 
     #[test]

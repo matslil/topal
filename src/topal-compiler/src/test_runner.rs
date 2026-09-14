@@ -139,6 +139,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/string-display-delimiters.t",
     "examples/language/string-exact-equality.t",
     "examples/language/string-lowercase.t",
+    "examples/language/string-named-character-generator.t",
     "examples/language/string-normalization-nfd.t",
     "examples/language/string-normalization.t",
     "examples/language/string-uppercase.t",

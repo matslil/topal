@@ -472,6 +472,18 @@ path, while compiled-library boundaries additionally require canonical
 Generator, segmentation, action-evidence, ownership, and target-adapter
 metadata.
 
+A named closed Character generator retains the same ordered cluster evidence
+beside its root binding in compiler-session provenance. Runtime construction
+evaluates the String once and exposes only the existing private semantic
+Generator token for observation and DWARF; that token never carries a cursor or
+drives traversal. Consuming the local binding transfers its retained evidence
+to the direct expansion, then the checked model rejects every later source use.
+This establishes local linearity without a copyable continuation object.
+Abandonment and function/library transfer remain closed until an owned state
+and close path exist, and canonical library metadata can identify the
+Generator classifier, pinned segmentation, evidence, ownership, and target
+adapter independently of the private token.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by

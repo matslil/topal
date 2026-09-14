@@ -471,8 +471,12 @@ pub enum CompilerExpressionKind {
     },
     StringEmptyPredicate(Box<CompilerExpression>),
     StringUtf8ByteCount(Box<CompilerExpression>),
-    StringCharactersForeach {
+    StringCharactersGenerator {
         text: Box<CompilerExpression>,
+        characters: Vec<String>,
+    },
+    StringCharactersForeach {
+        source: Box<CompilerExpression>,
         characters: Vec<String>,
         parameter: CompilerParameter,
         body: Box<CompilerBlock>,
@@ -2573,7 +2577,10 @@ impl Analyzer {
                             }
                             CompilerExpressionKind::IterateGenerator { .. }
                             | CompilerExpressionKind::GeneratorTakeWhile { .. }
-                            | CompilerExpressionKind::UnfoldGenerator { .. } => Some(value.clone()),
+                            | CompilerExpressionKind::UnfoldGenerator { .. }
+                            | CompilerExpressionKind::StringCharactersGenerator { .. } => {
+                                Some(value.clone())
+                            }
                             _ => None,
                         }
                     } else {
@@ -2787,22 +2794,55 @@ impl Analyzer {
             && let [Expression::Identifier(operation), text] = items.as_slice()
             && self.source.slice(*operation) == "characters"
         {
-            return self.analyze_closed_string_characters_foreach(
-                text,
+            let generator =
+                self.analyze_closed_string_characters_generator(text, source.span(), environment)?;
+            let CompilerExpressionKind::StringCharactersGenerator { characters, .. } =
+                &generator.kind
+            else {
+                unreachable!("closed characters construction retains its generator")
+            };
+            return self.finish_string_characters_foreach(
+                generator.clone(),
+                characters.clone(),
                 binding,
                 statements,
                 span,
-                environment,
+            );
+        }
+        let retained_generator = if let Expression::Identifier(name) = source {
+            environment
+                .get(self.source.slice(*name))
+                .and_then(|facts| self.generator_values.get(&facts.storage_name))
+                .cloned()
+        } else {
+            None
+        };
+        if let Some(CompilerExpression {
+            kind: CompilerExpressionKind::StringCharactersGenerator { characters, .. },
+            ..
+        }) = retained_generator
+        {
+            let source_value = self.analyze_expression(source, environment)?;
+            require_type(
+                &self.source,
+                source_value.span,
+                &character_unit_generator_type(),
+                &source_value.value_type,
+            )?;
+            return self.finish_string_characters_foreach(
+                source_value,
+                characters,
+                binding,
+                statements,
+                span,
             );
         }
         self.analyze_bounded_int_iterate_foreach(source, binding, statements, span, environment)
     }
 
-    fn analyze_closed_string_characters_foreach(
+    fn analyze_closed_string_characters_generator(
         &mut self,
         text: &Expression,
-        binding: Span,
-        statements: &[Statement],
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
@@ -2817,15 +2857,35 @@ impl Analyzer {
             unsupported(
                 &self.source,
                 text.span(),
-                "dynamic String Character traversal",
+                "dynamic String Character generator",
             )
         })?;
         let characters = characters(&text).map(str::to_owned).collect();
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::StringCharactersGenerator {
+                text: Box::new(text_value),
+                characters,
+            },
+            value_type: character_unit_generator_type(),
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+    }
+
+    fn finish_string_characters_foreach(
+        &mut self,
+        source: CompilerExpression,
+        characters: Vec<String>,
+        binding: Span,
+        statements: &[Statement],
+        span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
         let (parameter, body) =
             self.analyze_unit_foreach_body(binding, statements, CompilerType::Character)?;
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::StringCharactersForeach {
-                text: Box::new(text_value),
+                source: Box::new(source),
                 characters,
                 parameter,
                 body: Box::new(body),
@@ -3979,6 +4039,11 @@ impl Analyzer {
         }
         if let Some(sum) = self.analyze_sum_construction(items, span, environment)? {
             return Ok(sum);
+        }
+        if let [Expression::Identifier(operation), text] = items
+            && self.source.slice(*operation) == "characters"
+        {
+            return self.analyze_closed_string_characters_generator(text, span, environment);
         }
         if let [Expression::Identifier(name), operand] = items
             && let Some((modular, declaration)) = self.modulars.get(self.source.slice(*name))
@@ -9929,6 +9994,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "SourceLocation" => Some(CompilerType::SourceLocation),
         "Character" => Some(CompilerType::Character),
         "String" => Some(CompilerType::String),
+        "GeneratorCharacterUnitUnit" => Some(character_unit_generator_type()),
         _ => None,
     }
 }
@@ -10336,6 +10402,14 @@ fn int_unit_generator_type() -> CompilerType {
     })
 }
 
+fn character_unit_generator_type() -> CompilerType {
+    CompilerType::Generator(CompilerGeneratorType {
+        yield_type: Box::new(CompilerType::Character),
+        resume_type: Box::new(CompilerType::Unit),
+        result_type: Box::new(CompilerType::Unit),
+    })
+}
+
 fn comparison_binary(kind: CallableKind) -> Option<CompilerBinary> {
     match kind {
         CallableKind::Equal => Some(CompilerBinary::Equal),
@@ -10657,6 +10731,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::IterateGenerator { .. }
         | CompilerExpressionKind::GeneratorTakeWhile { .. }
         | CompilerExpressionKind::UnfoldGenerator { .. }
+        | CompilerExpressionKind::StringCharactersGenerator { .. }
         | CompilerExpressionKind::StringCharactersForeach { .. }
         | CompilerExpressionKind::IterateGeneratorForeach { .. }
         | CompilerExpressionKind::GeneratorCollect(_) => false,
@@ -12397,6 +12472,66 @@ mod tests {
                 ..
             }) if characters.is_empty()
         ));
+    }
+
+    #[test]
+    fn models_named_linear_string_character_generator() {
+        // TOPAL-STRING-CHARACTERS-COLLECT-001,
+        // TOPAL-STRING-CHARACTERS-FOREACH-001,
+        // TOPAL-STRING-CHARACTERS-GENERATOR-001,
+        // TOPAL-STRING-CHARACTERS-CLASSIFIER-001,
+        // TOPAL-STRING-CHARACTERS-LINEAR-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-GENERATOR-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/string-named-character-generator.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            &program.main.statements[0],
+            CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::StringCharactersGenerator {
+                        characters,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(CompilerGeneratorType {
+                        yield_type,
+                        resume_type,
+                        result_type,
+                    }),
+                    ..
+                },
+                ..
+            }) if name == "generated"
+                && characters == &["a\u{301}", "👩‍🔬", "🇸🇪"]
+                && yield_type.as_ref() == &CompilerType::Character
+                && resume_type.as_ref() == &CompilerType::Unit
+                && result_type.as_ref() == &CompilerType::Unit
+        ));
+        assert!(matches!(
+            &program.main.statements[1],
+            CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::StringCharactersForeach {
+                    source,
+                    characters,
+                    ..
+                },
+                ..
+            }) if matches!(source.kind, CompilerExpressionKind::Local(_))
+                && characters == &["a\u{301}", "👩‍🔬", "🇸🇪"]
+        ));
+
+        let consumed_twice = "use language (version is v0.1)\ngenerated : Generator Character Unit Unit is characters \"a\"\ngenerated foreach { character }\n  _ is String character\ngenerated foreach { character }\n  _ is String character\n";
+        assert_eq!(
+            analyze_for_compiler(consumed_twice).unwrap_err().code,
+            "E-GENERATOR-CONSUMED"
+        );
+        let abandoned = "use language (version is v0.1)\ngenerated : Generator Character Unit Unit is characters \"a\"\n";
+        assert_eq!(
+            analyze_for_compiler(abandoned).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 
     #[test]
