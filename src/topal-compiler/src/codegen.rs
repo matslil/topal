@@ -141,11 +141,11 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::GeneratorCollect(generator) => {
             expression_uses_extended_debug(generator)
         }
-        CompilerExpressionKind::CustomSingleYieldGenerator { initial, .. } => {
+        CompilerExpressionKind::CustomCharacterGenerator { initial, .. } => {
             expression_uses_extended_debug(initial)
         }
         CompilerExpressionKind::StringCharactersForeach { source, body, .. }
-        | CompilerExpressionKind::CustomSingleYieldForeach { source, body, .. } => {
+        | CompilerExpressionKind::CustomCharacterForeach { source, body, .. } => {
             expression_uses_extended_debug(source) || block_uses_extended_debug(body)
         }
         CompilerExpressionKind::IterateGeneratorForeach {
@@ -1116,7 +1116,7 @@ impl<'a> Generator<'a> {
             CompilerExpressionKind::StringCharactersForeach { .. } => {
                 self.emit_string_characters_foreach(expression, body, environment)
             }
-            CompilerExpressionKind::CustomSingleYieldGenerator { initial, .. } => {
+            CompilerExpressionKind::CustomCharacterGenerator { initial, .. } => {
                 let _ = self.emit_expression(initial, body, environment);
                 let CompilerType::Generator(generator) = &expression.value_type else {
                     unreachable!("checked custom construction retains its Generator type")
@@ -1126,14 +1126,14 @@ impl<'a> Generator<'a> {
                     generator: generator.clone(),
                 }
             }
-            CompilerExpressionKind::CustomSingleYieldForeach {
+            CompilerExpressionKind::CustomCharacterForeach {
                 source,
-                character,
+                characters,
                 parameter,
                 body: action,
             } => self.emit_character_sequence_foreach(
                 source,
-                std::slice::from_ref(character),
+                characters,
                 parameter,
                 action,
                 body,
@@ -9710,6 +9710,33 @@ mod tests {
             main.matches("call ptr @topal.runtime.string.make").count(),
             2
         );
+        assert!(main.contains("#dbg_value(i32 0"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_multiple_yield_custom_generator_in_source_order() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-MULTIPLE-YIELD-001
+        let source = include_str!("../../../examples/language/custom-multiple-yield-generator.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-multiple-yield-generator.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            3
+        );
+        assert_eq!(main.matches("store ptr").count(), 2);
         assert!(main.contains("#dbg_value(i32 0"));
         assert!(main.contains("#dbg_declare(ptr"));
         assert!(llvm.contains("name: \"Generator Character Unit Unit\""));

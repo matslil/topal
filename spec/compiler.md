@@ -444,6 +444,36 @@ native-ABI revision. Future compiled-library metadata SHALL identify the
 declaration, Generator directions, suspension points, capture/effect evidence,
 linear ownership, close behavior, and target adapter canonically.
 
+### TOPAL-COMPILER-GENERATOR-MULTIPLE-YIELD-001 — Repeated custom suspensions
+
+The compiler SHALL generalize the admitted root Character generator to one or
+more consecutive discarded yields of its sole initial Character followed by
+final Unit. It SHALL retain every yield in source order as compile-session
+provenance. Application SHALL evaluate the initial operand exactly once and
+stop at the first suspension. Each successful Unit resumption SHALL advance to
+the next retained yield or, after the final yield, to the final Unit.
+
+Root `foreach` SHALL consume one locally bound admitted instance and invoke its
+capture-free Character-to-Unit action exactly once for every retained yield in
+source order. It SHALL resume with Unit after every action and return Unit only
+after the final resumption. Zero-yield declarations, ordinary statements
+between yields, different yield expressions, overloads, dynamic Character
+provenance, captures, close handling, and function or library boundaries SHALL
+remain unsupported.
+
+On Linux x86-64, the backend SHALL expand the finite proven sequence into
+ordered inline action blocks with erased Unit resumptions at `-O0`; this
+ordering SHALL NOT depend on LLVM loop unrolling or another optimization pass.
+The compiler-private Generator observation token and debug-only Character
+shadow MAY be reused, but the token SHALL NOT become continuation state. The
+lowering SHALL allocate no Generator object or state, call no dispatcher,
+callback, indirect function, or foreign runtime, and introduce no C/C++
+runtime, other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or native-ABI revision. Future compiled-library
+metadata SHALL identify the ordered suspension graph and its canonical
+declaration/direction, capture/effect, ownership/close, and target-adapter
+evidence.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve
