@@ -75,6 +75,7 @@ pub enum CompilerType {
     Result(Box<Self>),
     Optional(Box<Self>),
     List(Box<Self>),
+    TraversalControl(Box<Self>),
     Refined { constraint: String, base: Box<Self> },
     Character,
     String,
@@ -109,6 +110,7 @@ impl CompilerType {
                 | Self::Result(_)
                 | Self::Optional(_)
                 | Self::List(_)
+                | Self::TraversalControl(_)
                 | Self::Character
                 | Self::String
         ) || matches!(self, Self::Refined { base, .. } if base.machine_scalar())
@@ -143,6 +145,7 @@ impl CompilerType {
             ),
             Self::Optional(payload) => format!("Optional {}", payload.name()),
             Self::List(element) => format!("List {}", element.name()),
+            Self::TraversalControl(payload) => format!("TraversalControl {}", payload.name()),
             Self::Refined { constraint, .. } => constraint.clone(),
             Self::Character => "Character".into(),
             Self::String => "String".into(),
@@ -421,6 +424,10 @@ pub enum CompilerExpressionKind {
         list: Box<CompilerExpression>,
         range: Box<CompilerExpression>,
         indexes: bool,
+    },
+    TraversalControl {
+        finish: bool,
+        value: Box<CompilerExpression>,
     },
     ListFold {
         list: Box<CompilerExpression>,
@@ -2941,6 +2948,28 @@ impl Analyzer {
                 span,
             });
         }
+        if let [Expression::Identifier(constructor), value] = items
+            && matches!(self.source.slice(*constructor), "Continue" | "Finish")
+        {
+            let finish = self.source.slice(*constructor) == "Finish";
+            let value = self.analyze_expression(value, environment)?;
+            require_type(
+                &self.source,
+                value.span,
+                &CompilerType::Int,
+                &value.value_type,
+            )?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::TraversalControl {
+                    finish,
+                    value: Box::new(value),
+                },
+                value_type: CompilerType::TraversalControl(Box::new(CompilerType::Int)),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         if items.len() >= 3
             && items.len() % 2 == 1
             && items.iter().skip(1).step_by(2).all(
@@ -3284,12 +3313,7 @@ impl Analyzer {
                 self.static_context,
                 *function_span,
             )?;
-            require_type(
-                &self.source,
-                body.result.span,
-                &CompilerType::Int,
-                &body.result.value_type,
-            )?;
+            require_int_fold_result(&self.source, &body.result)?;
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::ListFold {
                     list: Box::new(list),
@@ -3398,12 +3422,7 @@ impl Analyzer {
                 static_context,
                 function_span,
             )?;
-            require_type(
-                &self.source,
-                body.result.span,
-                &CompilerType::Int,
-                &body.result.value_type,
-            )?;
+            require_int_fold_result(&self.source, &body.result)?;
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::ListFold {
                     list: Box::new(list),
@@ -8229,6 +8248,7 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
+        CompilerType::TraversalControl(_) => false,
         CompilerType::List(element) => {
             matches!(element.as_ref(), CompilerType::Effect | CompilerType::Int)
         }
@@ -8542,7 +8562,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::SourceLocation
         | CompilerType::Sum(_)
         | CompilerType::Range(_)
-        | CompilerType::Result(_) => false,
+        | CompilerType::Result(_)
+        | CompilerType::TraversalControl(_) => false,
     }
 }
 
@@ -8672,6 +8693,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ListFirst(value)
         | CompilerExpressionKind::ListRest(value)
         | CompilerExpressionKind::ListUncons(value)
+        | CompilerExpressionKind::TraversalControl { value, .. }
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::RecordField { record: value, .. }
@@ -9107,6 +9129,27 @@ fn require_int_list(
             source,
             value.span,
             &format!("{operation} for this List element type"),
+        ))
+    }
+}
+
+fn require_int_fold_result(
+    source: &SourceText,
+    result: &CompilerExpression,
+) -> Result<(), Diagnostic> {
+    if result.value_type == CompilerType::Int
+        || result.value_type == CompilerType::TraversalControl(Box::new(CompilerType::Int))
+    {
+        Ok(())
+    } else {
+        Err(source_diagnostic(
+            source,
+            "E-TYPE-MISMATCH",
+            result.span,
+            format!(
+                "expected Int or TraversalControl Int, found {}",
+                result.value_type.name()
+            ),
         ))
     }
 }
@@ -10433,6 +10476,60 @@ mod tests {
                 }
             ]
         ));
+    }
+
+    #[test]
+    fn models_short_circuiting_int_list_fold_control() {
+        // TOPAL-EXEC-TRAVERSAL-CONTROL-001,
+        // TOPAL-COMPILER-TRAVERSAL-CONTROL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/traversal-control.t"
+        ))
+        .unwrap();
+        let [_, CompilerStatement::Binding(controls), _] = program.main.statements.as_slice()
+        else {
+            panic!("shared traversal regression binds values, controls, and its action")
+        };
+        let CompilerExpressionKind::Tuple(control_values) = &controls.value.kind else {
+            panic!("controls binding retains both constructor values")
+        };
+        assert!(matches!(
+            control_values.as_slice(),
+            [
+                CompilerExpression {
+                    kind: CompilerExpressionKind::TraversalControl { finish: false, .. },
+                    value_type: CompilerType::TraversalControl(_),
+                    ..
+                },
+                CompilerExpression {
+                    kind: CompilerExpressionKind::TraversalControl { finish: true, .. },
+                    value_type: CompilerType::TraversalControl(_),
+                    ..
+                }
+            ]
+        ));
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared traversal regression returns a Tuple")
+        };
+        let CompilerExpressionKind::ListFold { body, .. } = &results[0].kind else {
+            panic!("first result is the controlled fold")
+        };
+        assert_eq!(
+            body.result.value_type,
+            CompilerType::TraversalControl(Box::new(CompilerType::Int))
+        );
+        assert_eq!(results[0].value_type, CompilerType::Int);
+
+        let invalid_constructor = "use language (version is v0.1)\nContinue true\n";
+        assert_eq!(
+            analyze_for_compiler(invalid_constructor).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+        let invalid_fold = "use language (version is v0.1)\nvalues : List Int is one 1\nvalues fold 0 { state, value } true\n";
+        assert_eq!(
+            analyze_for_compiler(invalid_fold).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
     }
 
     #[test]

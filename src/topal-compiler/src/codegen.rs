@@ -50,7 +50,8 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::ErrorDomain
         | CompilerType::SourceLocation
         | CompilerType::Modular(_)
-        | CompilerType::Optional(_) => true,
+        | CompilerType::Optional(_)
+        | CompilerType::TraversalControl(_) => true,
         CompilerType::Range(endpoint)
         | CompilerType::Result(endpoint)
         | CompilerType::List(endpoint) => type_uses_extended_debug(endpoint),
@@ -135,6 +136,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::OptionalSome(value)
+        | CompilerExpressionKind::TraversalControl { value, .. }
         | CompilerExpressionKind::ListReverse(value)
         | CompilerExpressionKind::ListEntryCount(value)
         | CompilerExpressionKind::ListEmptyPredicate(value)
@@ -418,6 +420,7 @@ impl<'a> Generator<'a> {
             | LlValue::Range { value, .. }
             | LlValue::Result { value, .. }
             | LlValue::Optional { value, .. }
+            | LlValue::TraversalControl { value, .. }
             | LlValue::List { value, .. } => {
                 body.terminator(&format!("ret ptr {value}"), location);
             }
@@ -1242,6 +1245,36 @@ impl<'a> Generator<'a> {
                     payload: payload.as_ref().clone(),
                 }
             }
+            CompilerExpressionKind::TraversalControl { finish, value } => {
+                let payload = self.emit_expression(value, body, environment);
+                let control = body.instruction(
+                    "call ptr @topal.platform.allocate(i64 16)",
+                    expression.span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store i64 {}, ptr {control}, align 8", u8::from(*finish)),
+                    expression.span,
+                    &mut self.debug,
+                );
+                let payload_address = body.instruction(
+                    &format!("getelementptr i8, ptr {control}, i64 8"),
+                    expression.span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!(
+                        "store ptr {}, ptr {payload_address}, align 8",
+                        payload.integer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                );
+                LlValue::TraversalControl {
+                    value: control,
+                    payload: CompilerType::Int,
+                }
+            }
             CompilerExpressionKind::ListEmpty => {
                 let CompilerType::List(element) = &expression.value_type else {
                     unreachable!("checked Empty retains its List classifier")
@@ -1798,7 +1831,8 @@ impl<'a> Generator<'a> {
                     },
                     CompilerType::Function
                     | CompilerType::Constraint
-                    | CompilerType::Refined { .. } => {
+                    | CompilerType::Refined { .. }
+                    | CompilerType::TraversalControl(_) => {
                         unreachable!("checked functions do not return this static object kind")
                     }
                     CompilerType::Boolean => LlValue::Boolean(body.instruction(
@@ -2609,7 +2643,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)] // Fold state and enclosing LLVM state remain explicit.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Fold control flow and enclosing LLVM state remain explicit.
     fn emit_list_fold(
         &mut self,
         list: &CompilerExpression,
@@ -2683,18 +2717,70 @@ impl<'a> Generator<'a> {
             environment,
         );
         let value = self.emit_block(action, body, &mut action_environment);
-        body.define_reserved(
-            &next_state,
-            &format!("freeze ptr {}", value.integer()),
-            span,
-            &mut self.debug,
-        );
-        body.terminator(&format!("br label %{advance}"), location);
+        let finished_state = if action.result.value_type
+            == CompilerType::TraversalControl(Box::new(CompilerType::Int))
+        {
+            let control = value.traversal_control().0;
+            let tag = body.instruction(
+                &format!("load i64, ptr {control}, align 8"),
+                action.result.span,
+                &mut self.debug,
+            );
+            let payload_address = body.instruction(
+                &format!("getelementptr i8, ptr {control}, i64 8"),
+                action.result.span,
+                &mut self.debug,
+            );
+            let payload = body.instruction(
+                &format!("load ptr, ptr {payload_address}, align 8"),
+                action.result.span,
+                &mut self.debug,
+            );
+            let finish = body.instruction(
+                &format!("icmp eq i64 {tag}, 1"),
+                action.result.span,
+                &mut self.debug,
+            );
+            let continue_label = body.label("list.fold.continue");
+            let finish_label = body.label("list.fold.finish");
+            body.terminator(
+                &format!("br i1 {finish}, label %{finish_label}, label %{continue_label}"),
+                location,
+            );
+            body.start_block(&continue_label);
+            body.define_reserved(
+                &next_state,
+                &format!("freeze ptr {payload}"),
+                span,
+                &mut self.debug,
+            );
+            body.terminator(&format!("br label %{advance}"), location);
+            body.start_block(&finish_label);
+            body.terminator(&format!("br label %{done}"), location);
+            Some((payload, finish_label))
+        } else {
+            body.define_reserved(
+                &next_state,
+                &format!("freeze ptr {}", value.integer()),
+                span,
+                &mut self.debug,
+            );
+            body.terminator(&format!("br label %{advance}"), location);
+            None
+        };
         body.start_block(&advance);
         body.terminator(&format!("br label %{loop_label}"), location);
 
         body.start_block(&done);
-        LlValue::Int(state)
+        if let Some((finished, predecessor)) = finished_state {
+            LlValue::Int(body.instruction(
+                &format!("phi ptr [{state}, %{loop_label}], [{finished}, %{predecessor}]"),
+                span,
+                &mut self.debug,
+            ))
+        } else {
+            LlValue::Int(state)
+        }
     }
 
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Result alternatives retain bindings and delayed actions explicitly.
@@ -4126,6 +4212,17 @@ impl<'a> Generator<'a> {
                     payload,
                 }
             }
+            LlValue::TraversalControl { payload, .. } => {
+                let payload = payload.clone();
+                LlValue::TraversalControl {
+                    value: body.instruction(
+                        &format!("phi ptr {}", incoming(LlValue::traversal_control_pointer)),
+                        span,
+                        &mut self.debug,
+                    ),
+                    payload,
+                }
+            }
             LlValue::List { element, .. } => {
                 let element = element.clone();
                 LlValue::List {
@@ -4347,6 +4444,9 @@ impl<'a> Generator<'a> {
             }
             LlValue::Optional { value, payload } => {
                 self.emit_print_optional(value, payload, body, span);
+            }
+            LlValue::TraversalControl { value, payload } => {
+                self.emit_print_traversal_control(value, payload, body, span);
             }
             LlValue::List { value, element } => {
                 self.emit_print_list(value, element, body, span);
@@ -4600,6 +4700,52 @@ impl<'a> Generator<'a> {
         body.terminator(&format!("br label %{done}"), location);
         body.start_block(&none);
         self.emit_write_literal("None", body, span);
+        body.terminator(&format!("br label %{done}"), location);
+        body.start_block(&done);
+    }
+
+    fn emit_print_traversal_control(
+        &mut self,
+        value: &str,
+        payload_type: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        let tag = body.instruction(
+            &format!("load i64, ptr {value}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let is_finish = body.instruction(&format!("icmp eq i64 {tag}, 1"), span, &mut self.debug);
+        let payload_address = body.instruction(
+            &format!("getelementptr i8, ptr {value}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        let payload = body.instruction(
+            &format!("load ptr, ptr {payload_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let continue_label = body.label("print.traversal.continue");
+        let finish_label = body.label("print.traversal.finish");
+        let done = body.label("print.traversal.done");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {is_finish}, label %{finish_label}, label %{continue_label}"),
+            location,
+        );
+        body.start_block(&continue_label);
+        self.emit_write_literal("Continue ", body, span);
+        let payload = match payload_type {
+            CompilerType::Int => LlValue::Int(payload.clone()),
+            _ => unreachable!("checked TraversalControl payload has an admitted printer"),
+        };
+        self.emit_print(&payload, body, span);
+        body.terminator(&format!("br label %{done}"), location);
+        body.start_block(&finish_label);
+        self.emit_write_literal("Finish ", body, span);
+        self.emit_print(&payload, body, span);
         body.terminator(&format!("br label %{done}"), location);
         body.start_block(&done);
     }
@@ -4860,6 +5006,10 @@ enum LlValue {
         value: String,
         payload: CompilerType,
     },
+    TraversalControl {
+        value: String,
+        payload: CompilerType,
+    },
     List {
         value: String,
         element: CompilerType,
@@ -4982,6 +5132,17 @@ impl LlValue {
         value
     }
 
+    fn traversal_control(&self) -> (&str, &CompilerType) {
+        let Self::TraversalControl { value, payload } = self else {
+            unreachable!("checked value is TraversalControl")
+        };
+        (value, payload)
+    }
+
+    fn traversal_control_pointer(&self) -> &str {
+        self.traversal_control().0
+    }
+
     fn list_pointer(&self) -> &str {
         let Self::List { value, .. } = self else {
             unreachable!("checked value is List")
@@ -5004,6 +5165,7 @@ impl LlValue {
             | Self::Range { value, .. }
             | Self::Result { value, .. }
             | Self::Optional { value, .. }
+            | Self::TraversalControl { value, .. }
             | Self::List { value, .. } => {
                 format!("ptr {value}")
             }
@@ -5047,6 +5209,10 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
             success: success.as_ref().clone(),
         },
         CompilerType::Optional(payload) => LlValue::Optional {
+            value: "null".into(),
+            payload: payload.as_ref().clone(),
+        },
+        CompilerType::TraversalControl(payload) => LlValue::TraversalControl {
             value: "null".into(),
             payload: payload.as_ref().clone(),
         },
@@ -5251,6 +5417,7 @@ impl FunctionBody {
             | LlValue::Range { value, .. }
             | LlValue::Result { value, .. }
             | LlValue::Optional { value, .. }
+            | LlValue::TraversalControl { value, .. }
             | LlValue::List { value, .. } => {
                 format!("ptr {value}")
             }
@@ -5321,6 +5488,7 @@ struct DebugInfo {
     optional_source_location_type: usize,
     optional_header_pointer_type: usize,
     optional_types: Vec<(CompilerType, usize)>,
+    traversal_control_types: Vec<(CompilerType, usize)>,
     comparison_type: usize,
     boolean_type: usize,
     unit_type: usize,
@@ -5380,6 +5548,7 @@ impl DebugInfo {
             optional_source_location_type: 0,
             optional_header_pointer_type: 0,
             optional_types: Vec::new(),
+            traversal_control_types: Vec::new(),
             comparison_type: 0,
             boolean_type: 0,
             unit_type: 0,
@@ -5825,6 +5994,7 @@ impl DebugInfo {
                 self.optional_source_location_type
             }
             CompilerType::Optional(payload) => self.dynamic_optional_type(payload),
+            CompilerType::TraversalControl(payload) => self.traversal_control_type(payload),
             CompilerType::List(element) => self.list_type(element),
             CompilerType::Refined { constraint, base } => self.refined_type(constraint, base),
             CompilerType::Tuple(fields) => self.tuple_type(fields),
@@ -5877,6 +6047,40 @@ impl DebugInfo {
         }
         let type_id = self.optional_type(&payload.name(), self.optional_header_pointer_type);
         self.optional_types.push((value_type, type_id));
+        type_id
+    }
+
+    fn traversal_control_type(&mut self, payload: &CompilerType) -> usize {
+        let value_type = CompilerType::TraversalControl(Box::new(payload.clone()));
+        if let Some((_, type_id)) = self
+            .traversal_control_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+        let payload_type = self.type_id(payload);
+        let tag = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"is_finish\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.unsigned64_type
+        ));
+        let payload_member = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"value\", file: !{}, baseType: !{payload_type}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let members = self.node(format!("!{{!{tag}, !{payload_member}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalTraversalControl.{}\", file: !{}, size: 128, align: 64, elements: !{members})",
+            llvm_string(&payload.name()), self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"TraversalControl {}\", file: !{}, baseType: !{pointer})",
+            llvm_string(&payload.name()), self.file
+        ));
+        self.traversal_control_types.push((value_type, type_id));
         type_id
     }
 
@@ -6321,6 +6525,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::Range(_)
         | CompilerType::Result(_)
         | CompilerType::Optional(_)
+        | CompilerType::TraversalControl(_)
         | CompilerType::List(_)
         | CompilerType::Character
         | CompilerType::String => TargetValueLayout {
@@ -6414,6 +6619,7 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Range(_)
         | CompilerType::Result(_)
         | CompilerType::Optional(_)
+        | CompilerType::TraversalControl(_)
         | CompilerType::List(_) => "ptr".into(),
         CompilerType::Type
         | CompilerType::Scope
@@ -6504,6 +6710,10 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             success: success.as_ref().clone(),
         },
         CompilerType::Optional(payload) => LlValue::Optional {
+            value,
+            payload: payload.as_ref().clone(),
+        },
+        CompilerType::TraversalControl(payload) => LlValue::TraversalControl {
             value,
             payload: payload.as_ref().clone(),
         },
@@ -6717,6 +6927,28 @@ mod tests {
         assert!(llvm.contains("list.fold.loop"));
         assert!(llvm.contains("<anonymous fn/1>"));
         assert!(llvm.contains("<anonymous fn/2>"));
+        assert!(!llvm.contains("topal.fn.anonymous"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_short_circuiting_int_list_fold_control_inline() {
+        // TOPAL-EXEC-TRAVERSAL-CONTROL-001,
+        // TOPAL-COMPILER-TRAVERSAL-CONTROL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/traversal-control.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "traversal-control.t").emit();
+
+        assert!(llvm.contains("store i64 0, ptr"));
+        assert!(llvm.contains("store i64 1, ptr"));
+        assert!(llvm.contains("list.fold.continue"));
+        assert!(llvm.contains("list.fold.finish"));
+        assert!(llvm.contains("icmp eq i64"));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"TraversalControl Int\""));
+        assert!(llvm.contains("DW_TAG_structure_type, name: \"TopalTraversalControl.Int\""));
+        assert!(!llvm.contains("topal.runtime.traversal.control"));
         assert!(!llvm.contains("topal.fn.anonymous"));
         assert!(!llvm.contains("call ptr %"));
     }

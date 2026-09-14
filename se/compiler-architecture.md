@@ -610,6 +610,21 @@ Consequently this extension preserves lexical snapshots without adding a
 closure object, indirect call, collection dispatcher, callable ABI, or runtime
 dependency.
 
+Traversal-controlled `List Int` folds add a private immutable two-word object:
+an unsigned Continue/Finish tag at offset zero and the existing canonical Int
+pointer at offset eight. Constructor lowering evaluates the payload and fills
+both words through the Topal-owned allocator. After each specialized action,
+the generated loop loads both fields and branches directly: Continue feeds the
+payload into the next state phi, while Finish feeds it into the fold-result phi
+and makes later nodes unreachable. Ordinary Int-result folds keep their
+existing path. This is compiler-generated SSA control flow rather than a
+runtime fragment, dispatcher, callback ABI, or optimization. Semantic DWARF
+describes the private object so the validating GDB printer can recover the two
+constructors. The carrier is deliberately rejected at ordinary function
+boundaries until a versioned compiled-library interface can describe and adapt
+it, so this executable-local layout does not revise `topal-native/6` or become
+a public ABI.
+
 Range-selected `List Int` values use a separately conditional private LLVM
 fragment. It visits each immutable node once, asks the exact Range runtime about
 either the stored arbitrary-precision value or an exact Int converted from the

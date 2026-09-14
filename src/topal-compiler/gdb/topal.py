@@ -372,6 +372,40 @@ class _TopalOptionalPrinter:
         return f"Some {rendered}"
 
 
+class _TopalTraversalControlPrinter:
+    """Render a topal-native Continue or Finish traversal result."""
+
+    def __init__(self, value, payload_type):
+        self._value = value
+        self._payload_type = payload_type
+
+    def to_string(self):
+        address = int(self._value)
+        if address == 0:
+            return "<invalid null TraversalControl>"
+        inferior = gdb.selected_inferior()
+        try:
+            storage = bytes(inferior.read_memory(address, 16))
+        except gdb.MemoryError:
+            return "<unreadable TraversalControl>"
+        tag = int.from_bytes(storage[0:8], "little")
+        payload = int.from_bytes(storage[8:16], "little")
+        if tag not in (0, 1):
+            return f"<invalid TraversalControl tag {tag}>"
+        if not payload:
+            return "<invalid null TraversalControl payload>"
+        if self._payload_type != "Int":
+            return (
+                "<unsupported TraversalControl payload type "
+                f"{self._payload_type}>"
+            )
+        rendered = _TopalIntPrinter(payload).to_string()
+        if rendered.startswith("<"):
+            return f"<invalid TraversalControl payload: {rendered}>"
+        constructor = "Finish" if tag else "Continue"
+        return f"{constructor} {rendered}"
+
+
 class _TopalListPrinter:
     """Render an immutable topal-native List through its element type."""
 
@@ -487,6 +521,13 @@ def _lookup_topal_value(value):
     optional_prefix = "Optional "
     if value_type.startswith(optional_prefix):
         return _TopalOptionalPrinter(value, value_type[len(optional_prefix) :])
+    traversal_prefix = "TraversalControl "
+    if value_type.startswith(traversal_prefix) and storage_type.startswith(
+        "struct TopalTraversalControl."
+    ):
+        return _TopalTraversalControlPrinter(
+            value, value_type[len(traversal_prefix) :]
+        )
     list_prefix = "List "
     if value_type.startswith(list_prefix) and storage_type.startswith(
         "struct TopalList."

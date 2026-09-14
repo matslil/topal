@@ -1112,6 +1112,36 @@ and frame views. This realizes `TOPAL-COMPILER-RANGE-SELECTION-001`,
 `TOPAL-RANGE-VALUE-SELECTION-001`, and `TOPAL-RANGE-INDEX-SELECTION-001` for
 compiler increment 4b3d-g.
 
+## TOPAL-COMP-TRAVERSAL-CONTROL-001 — Short-circuiting Int List fold
+
+The checked compiler model shall admit `Continue Int` and `Finish Int` as
+distinct `TraversalControl Int` values. An admitted `List Int` fold with an
+Int initial state and an anonymous action may return either an ordinary Int
+state or `TraversalControl Int`. Continue shall supply the exact state for the
+next reached entry; Finish shall return its exact payload immediately without
+executing the action for later entries. The List and initial state shall each
+be evaluated once in source order, Empty shall return the initial state, and
+ordinary Int-result folds shall remain unchanged. Other payload, element, and
+state classifiers and traversal-control function boundaries shall retain a
+stable unsupported diagnostic.
+
+The Linux x86-64 backend shall lower each constructor to a private immutable
+16-byte allocation containing a 64-bit Continue/Finish tag followed by the
+canonical Int pointer. The specialized generated fold loop shall load the tag
+and payload and branch directly to its advance or done block. Behavior at O0
+shall require no optimization, callback ABI, indirect call, host recursion,
+runtime traversal dispatcher, or separately linked traversal helper. DWARF and
+the bundled GDB renderer shall identify `TraversalControl Int`, validate its
+private storage, and render both constructors.
+
+This increment shall use only the existing Topal-owned Linux mapping and write
+boundaries and shall add no foreign allocator, C/C++ runtime, other-language
+standard library, undefined symbol, needed library, dynamic relocation,
+public/foreign/serialized/persistent/generic layout, or `topal-native/6`
+revision. It realizes `TOPAL-COMPILER-TRAVERSAL-CONTROL-001`,
+`TOPAL-EXEC-TRAVERSAL-CONTROL-001`, and `TOPAL-COLLECTION-FOLD-001` for compiler
+increment 4b3d-h.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when
