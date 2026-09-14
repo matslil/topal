@@ -581,9 +581,10 @@ library, needed library, dynamic relocation, public/library Generator ABI, or
 
 Unclassified or differently classified locals, non-identity initializers,
 additional statements not admitted by `TOPAL-COMP-GENERATOR-SUSPENSION-001`,
-dynamic Character provenance, captures, resume bindings, close handling, and
-function or library boundaries shall remain rejected before LLVM. Future
-compiled-library metadata shall encode
+dynamic Character provenance, captures, resume bindings other than the exact
+Unit success binding admitted by `TOPAL-COMP-GENERATOR-RESUME-BINDING-001`,
+close handling, and function or library boundaries shall remain rejected
+before LLVM. Future compiled-library metadata shall encode
 canonical local-state identities and types with the declaration, suspension
 graph, directions, captures/effects, ownership/close behavior, and target
 adapters rather than serialize this executable-local debug shadow. This
@@ -679,9 +680,10 @@ only after the last prefix resumption, then observe the local yields in source
 order before final Unit. The local shall remain absent from the caller's
 checked environment. A local without a later yield, a second local, a
 non-identity initializer, a yield of the wrong active value, other ordinary
-statements, dynamic Character provenance, captures, resume bindings, close
-handling, and function or library boundaries shall remain rejected before
-LLVM.
+statements, dynamic Character provenance, captures, resume bindings other than
+the exact Unit success binding admitted by
+`TOPAL-COMP-GENERATOR-RESUME-BINDING-001`, close handling, and function or
+library boundaries shall remain rejected before LLVM.
 
 On Linux x86-64, the backend shall emit the completed prefix action and erased
 Unit resumption before local materialization and its lexical DWARF declaration,
@@ -699,6 +701,41 @@ captures/effects, ownership/close behavior, and target adapters. This realizes
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-BODY-STATEMENT-001`,
 `TOPAL-GENERATOR-LOCAL-BINDING-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
 `TOPAL-GENERATOR-FOREACH-001` for compiler increment 5l.
+
+## TOPAL-COMP-GENERATOR-RESUME-BINDING-001 — Exact Unit resumption
+
+The checked compiler shall admit the root custom
+`Generator Character Unit Unit` subset when its body is exactly one named,
+optionally Unit-classified binding of `yield` applied to the sole initial
+Character, followed by that binding as the final Unit expression. It shall
+retain the yielded Character and a distinct Unit local whose activation follows
+one successful resumption. Starting the generator shall stop at the yield
+without introducing or evaluating the resume binding.
+
+Direct root foreach over one locally bound admitted instance shall consume the
+Generator, invoke its Character-to-Unit action once, resume with Unit, make
+that Unit available under the generator-local name, and only then use it as the
+final result. The name shall remain absent from the caller's checked
+environment. A wrong or discarded binding name, non-Unit classifier, different
+yielded value, additional yield or body statement, different final expression,
+dynamic Character provenance, captures, close handling, and function or
+library boundaries shall remain rejected before LLVM.
+
+On Linux x86-64, the backend shall emit the action before a debug-only `i8`
+shadow for the successfully resumed Unit and expose that binding as Unit to GDB
+at its source line at O0. The erased success value shall not create semantic
+continuation state or conflate ordinary Unit resumption with the distinct
+`generator-closed` close edge. The lowering shall not depend on optimization or
+introduce a Generator object, state machine, dispatcher, callback, indirect
+call, unwind support, C/C++ runtime, other-language standard library, needed
+library, dynamic relocation, public/library Generator ABI, or `topal-native/6`
+revision. Future compiled-library metadata shall encode success and close
+edges, resume-local activation, the declaration and directions, suspension
+identity, captures/effects, ownership/close behavior, and target adapters
+canonically. This realizes `TOPAL-COMPILER-GENERATOR-RESUME-BINDING-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`,
+`TOPAL-GENERATOR-RESUME-BINDING-001`, and `TOPAL-GENERATOR-FOREACH-001` for
+compiler increment 5m.
 
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 

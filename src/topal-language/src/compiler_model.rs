@@ -1863,44 +1863,6 @@ fn collect_character_generators(
                 "custom generator body without an admitted final value",
             ));
         };
-        let final_value = match (source.slice(*result), final_statement) {
-            ("Unit", Statement::Expression(Expression::Unit(span))) => unit_expression(*span),
-            ("Character", Statement::Expression(Expression::String(literal))) => {
-                let value = parse_string(source.slice(*literal)).ok_or_else(|| {
-                    source_diagnostic(
-                        source,
-                        "E-STRING-LITERAL",
-                        *literal,
-                        "invalid string literal delimiter",
-                    )
-                })?;
-                let count = character_count(value);
-                if count != 1 {
-                    return Err(source_diagnostic(
-                        source,
-                        "E-CHARACTER-CLASSIFIER",
-                        *literal,
-                        format!(
-                            "Character requires exactly one user-perceived character, but this String contains {count}"
-                        ),
-                    ));
-                }
-                CompilerExpression {
-                    kind: CompilerExpressionKind::String(value.to_owned()),
-                    value_type: CompilerType::Character,
-                    int_range: None,
-                    rational_value: None,
-                    span: *literal,
-                }
-            }
-            _ => {
-                return Err(unsupported(
-                    source,
-                    *span,
-                    "custom generator final value outside exact Unit or Character literal",
-                ));
-            }
-        };
         let mut local = None;
         let mut yielded_name = parameter.name;
         let mut yield_count = 0;
@@ -1934,6 +1896,54 @@ fn collect_character_generators(
                     activation_after_resumptions: yield_count,
                 });
                 yielded_name = *local_name;
+                continue;
+            }
+
+            if let Statement::Binding {
+                name: local_name,
+                classifier,
+                value:
+                    Expression::Application {
+                        items: yield_items, ..
+                    },
+            } = body_statement
+            {
+                let [
+                    Expression::Identifier(yield_operation),
+                    Expression::Identifier(yielded_value),
+                ] = yield_items.as_slice()
+                else {
+                    return Err(unsupported(
+                        source,
+                        *span,
+                        "custom generator resume binding outside one exact Character yield",
+                    ));
+                };
+                if local.is_some()
+                    || yield_count != 0
+                    || classifier.is_some_and(|classifier| source.slice(classifier) != "Unit")
+                    || source.slice(*local_name) == "_"
+                    || source.slice(*local_name) == source.slice(parameter.name)
+                    || source.slice(*yield_operation) != "yield"
+                    || source.slice(*yielded_value) != source.slice(yielded_name)
+                {
+                    return Err(unsupported(
+                        source,
+                        *span,
+                        "custom generator resume binding outside one exact Character yield",
+                    ));
+                }
+                yield_count += 1;
+                local = Some(CompilerGeneratorLocal {
+                    parameter: CompilerParameter {
+                        name: source.slice(*local_name).to_owned(),
+                        discarded: false,
+                        value_type: CompilerType::Unit,
+                        int_range: None,
+                        span: *local_name,
+                    },
+                    activation_after_resumptions: yield_count,
+                });
                 continue;
             }
 
@@ -1973,16 +1983,70 @@ fn collect_character_generators(
             }
             yield_count += 1;
         }
-        if local
-            .as_ref()
-            .is_some_and(|local| local.activation_after_resumptions == yield_count)
-        {
+        if local.as_ref().is_some_and(|local| {
+            local.parameter.value_type == CompilerType::Character
+                && local.activation_after_resumptions == yield_count
+        }) {
             return Err(unsupported(
                 source,
                 *span,
                 "custom generator local binding without a following yield",
             ));
         }
+        let final_value = match (source.slice(*result), final_statement) {
+            ("Unit", Statement::Expression(Expression::Unit(span)))
+                if local
+                    .as_ref()
+                    .is_none_or(|local| local.parameter.value_type == CompilerType::Character) =>
+            {
+                unit_expression(*span)
+            }
+            ("Unit", Statement::Expression(Expression::Identifier(final_name)))
+                if local.as_ref().is_some_and(|local| {
+                    local.parameter.value_type == CompilerType::Unit
+                        && local.parameter.name == source.slice(*final_name)
+                        && local.activation_after_resumptions == 1
+                        && yield_count == 1
+                }) =>
+            {
+                unit_expression(*final_name)
+            }
+            ("Character", Statement::Expression(Expression::String(literal))) => {
+                let value = parse_string(source.slice(*literal)).ok_or_else(|| {
+                    source_diagnostic(
+                        source,
+                        "E-STRING-LITERAL",
+                        *literal,
+                        "invalid string literal delimiter",
+                    )
+                })?;
+                let count = character_count(value);
+                if count != 1 {
+                    return Err(source_diagnostic(
+                        source,
+                        "E-CHARACTER-CLASSIFIER",
+                        *literal,
+                        format!(
+                            "Character requires exactly one user-perceived character, but this String contains {count}"
+                        ),
+                    ));
+                }
+                CompilerExpression {
+                    kind: CompilerExpressionKind::String(value.to_owned()),
+                    value_type: CompilerType::Character,
+                    int_range: None,
+                    rational_value: None,
+                    span: *literal,
+                }
+            }
+            _ => {
+                return Err(unsupported(
+                    source,
+                    *span,
+                    "custom generator final value outside exact Unit, bound Unit resume, or Character literal",
+                ));
+            }
+        };
         if final_value.value_type == CompilerType::Character
             && (local.is_some() || yield_count != 1)
         {
@@ -13587,6 +13651,72 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+    }
+
+    #[test]
+    fn models_custom_generator_unit_resume_binding() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-RESUME-BINDING-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-RESUME-BINDING-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-resume-binding.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [
+                CompilerStatement::Binding(CompilerBinding {
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::CustomCharacterGenerator {
+                            declaration,
+                            characters,
+                            locals,
+                            ..
+                        },
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterForeach {
+                        characters: yielded,
+                        locals: traversal_locals,
+                        parameter,
+                        body,
+                        ..
+                    },
+                    value_type: CompilerType::Unit,
+                    ..
+                })
+            ] if declaration == "bind-resume"
+                && characters == &[String::from("T")]
+                && locals.len() == 1
+                && locals[0].parameter.name == "resumed"
+                && locals[0].parameter.value_type == CompilerType::Unit
+                && locals[0].activation_after_resumptions == 1
+                && traversal_locals == locals
+                && yielded == characters
+                && parameter.value_type == CompilerType::Character
+                && body.result.value_type == CompilerType::Unit
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nbind-resume is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  resumed : Character is yield initial\n  resumed\ngenerated is bind-resume \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nbind-resume is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  resumed is yield initial\n  ()\ngenerated is bind-resume \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nbind-resume is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  resumed is yield initial\n  other\ngenerated is bind-resume \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nbind-resume is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  resumed is yield initial\n  resumed\ngenerated is bind-resume \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+
+        let escaped = "use language (version is v0.1)\nbind-resume is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  resumed is yield initial\n  resumed\ngenerated is bind-resume \"T\"\ngenerated foreach { character }\n  _ is String character\nresumed\n";
+        assert_eq!(
+            analyze_for_compiler(escaped).unwrap_err().code,
+            "E-UNBOUND-NAME"
+        );
     }
 
     #[test]
