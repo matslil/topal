@@ -479,10 +479,10 @@ Generator token for observation and DWARF; that token never carries a cursor or
 drives traversal. Consuming the local binding transfers its retained evidence
 to the direct expansion, then the checked model rejects every later source use.
 This establishes local linearity without a copyable continuation object.
-Abandonment and function/library transfer remain closed until an owned state
-and close path exist, and canonical library metadata can identify the
-Generator classifier, pinned segmentation, evidence, ownership, and target
-adapter independently of the private token.
+Root abandonment plus traversing or returning function parameters remain
+closed until a general owned state and close path exist. Canonical library
+metadata must identify the Generator classifier, pinned segmentation, evidence,
+ownership, and target adapter independently of the private token.
 
 Closed unchanged Character collection also keeps segmentation in the checked
 frontend, but needs no runtime traversal representation. The checked model
@@ -494,6 +494,16 @@ selected, mapped, stored, or otherwise transformed traversal. It therefore
 adds no intermediate List, concatenation loop, Generator state, Unicode
 runtime, foreign dependency, or ABI surface; library use remains gated on
 canonical traversal evidence and target-adapter metadata.
+
+A narrow built-in close boundary transfers that private token into an ordinary
+single-parameter Unit function whose statement-free Unit body leaves it
+untraversed. The checked model appends an explicit close at scope exit. Since
+the closed Character generator owns no runtime object or live state, generated
+close is a no-op; the private call still uses LLVM `fastcc` so the backend, not
+Topal source semantics, selects AMD64 register placement. A debug-only `i32`
+stack shadow keeps the otherwise unused semantic parameter inspectable. This
+does not establish a public Generator ABI: general traversal, return, state,
+close dispatch, and library metadata remain closed.
 
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked

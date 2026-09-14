@@ -1779,9 +1779,11 @@ Root foreach SHALL transfer one such locally bound Generator into the closed
 Character traversal of `TOPAL-COMPILER-STRING-CHARACTERS-FOREACH-001`, preserve
 the same action order and Unit result, and mark the source binding consumed.
 Any later source use SHALL diagnose the consumed Generator rather than restart
-or copy it. An unconsumed binding SHALL remain rejected until owned close
-delivery exists. Generated DWARF and GDB SHALL expose the binding as
-`Generator Character Unit Unit` through a compiler-private observation token.
+or copy it. An unconsumed root binding SHALL remain rejected; the narrow
+transferred-parameter close is specified separately by
+`TOPAL-COMPILER-STRING-CHARACTERS-CLOSE-001`. Generated DWARF and GDB SHALL
+expose the binding as `Generator Character Unit Unit` through a compiler-private
+observation token.
 
 This executable-local token and retained provenance SHALL introduce no
 Generator object, continuation-state allocation, generic Generator runtime,
@@ -1815,6 +1817,33 @@ library, needed library, dynamic relocation, public/library Generator ABI, or
 Generator collection, and external library boundaries remain rejected pending
 generated Topal Unicode support and canonical traversal, operation/evidence,
 ownership, and target-adapter metadata.
+
+### TOPAL-COMPILER-STRING-CHARACTERS-CLOSE-001 — Owned parameter close
+
+The compiler SHALL admit an ordinary called function with exactly one named
+`Generator Character Unit Unit` parameter, a Unit result, and a statement-free
+Unit body that leaves the parameter untraversed. Passing one locally bound
+closed Character generator SHALL transfer and consume the caller binding. On
+function exit the callee SHALL deliver the intrinsic close to that owned
+built-in continuation and return Unit without yielding another Character.
+
+The checked model SHALL retain an explicit close operation. Because this
+specialization has allocated no continuation object or live traversal state,
+the Linux x86-64 backend SHALL lower close to no runtime action after accepting
+the compiler-private observation token. The private function SHALL use LLVM's
+internal `fastcc` lowering for that `i32` token rather than hard-code System V
+register placement. DWARF and GDB SHALL expose the semantic Generator parameter,
+using debug-only storage when the no-op close otherwise leaves no inspectable
+machine location.
+
+This specialization SHALL add no generic Generator runtime, close dispatcher,
+allocation, callback, indirect call, unwind dependency, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or `topal-native/6`
+revision. Traversing or returning the parameter, multiple or additional
+parameters, static functions, general close handling, and external boundaries
+remain rejected pending canonical Generator classifier, state, ownership,
+close-domain/provenance, and target-adapter metadata.
 
 ### TOPAL-COMPILER-UNICODE-FOLD-001 — Closed pinned-Unicode operations
 

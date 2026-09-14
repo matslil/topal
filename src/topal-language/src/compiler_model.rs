@@ -479,6 +479,7 @@ pub enum CompilerExpressionKind {
         text: Box<CompilerExpression>,
         characters: Vec<String>,
     },
+    StringCharactersClose(Box<CompilerExpression>),
     StringCharactersForeach {
         source: Box<CompilerExpression>,
         characters: Vec<String>,
@@ -8575,8 +8576,30 @@ impl Analyzer {
                 "non-scalar function result",
             ));
         }
+        let generator_parameters = parameters
+            .iter()
+            .filter(|parameter| is_character_unit_generator_type(&parameter.value_type))
+            .collect::<Vec<_>>();
+        let close_parameter = if generator_parameters.is_empty() {
+            None
+        } else {
+            let parameter = generator_parameters[0];
+            if generator_parameters.len() != 1
+                || parameters.len() != 1
+                || parameter.discarded
+                || declaration.is_static
+            {
+                return Err(unsupported(
+                    &self.source,
+                    parameter.span,
+                    "Generator parameter behavior beyond one ordinary owned close",
+                ));
+            }
+            Some(parameter.clone())
+        };
         let previous_static_context = self.static_context;
         let previous_in_function = self.in_function;
+        let consumed_before_body = self.consumed_generators.clone();
         self.static_context = declaration.is_static;
         self.in_function = true;
         let body = self.analyze_block(
@@ -8587,7 +8610,42 @@ impl Analyzer {
         );
         self.static_context = previous_static_context;
         self.in_function = previous_in_function;
+        let close_parameter_was_consumed = close_parameter
+            .as_ref()
+            .is_some_and(|parameter| self.consumed_generators.contains(&parameter.name));
+        if close_parameter.is_some() {
+            self.consumed_generators = consumed_before_body;
+        }
         let mut body = body?;
+        if let Some(parameter) = close_parameter {
+            if close_parameter_was_consumed
+                || !body.statements.is_empty()
+                || !matches!(body.result.kind, CompilerExpressionKind::Unit)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    parameter.span,
+                    "Generator parameter behavior beyond implicit built-in close",
+                ));
+            }
+            let close_span = body.result.span;
+            body.statements
+                .push(CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::StringCharactersClose(Box::new(
+                        CompilerExpression {
+                            kind: CompilerExpressionKind::Local(parameter.name),
+                            value_type: parameter.value_type,
+                            int_range: None,
+                            rational_value: None,
+                            span: parameter.span,
+                        },
+                    )),
+                    value_type: CompilerType::Unit,
+                    int_range: None,
+                    rational_value: None,
+                    span: close_span,
+                }));
+        }
         if let CompilerType::Result(success_type) = &result_type
             && body.result.value_type == **success_type
         {
@@ -10352,6 +10410,7 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
 
 fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Scope | CompilerType::Function)
+        || is_character_unit_generator_type(value_type)
         || compiler_function_result_supported(value_type)
 }
 
@@ -10443,6 +10502,19 @@ fn character_unit_generator_type() -> CompilerType {
         resume_type: Box::new(CompilerType::Unit),
         result_type: Box::new(CompilerType::Unit),
     })
+}
+
+fn is_character_unit_generator_type(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Generator(CompilerGeneratorType {
+            yield_type,
+            resume_type,
+            result_type,
+        }) if yield_type.as_ref() == &CompilerType::Character
+            && resume_type.as_ref() == &CompilerType::Unit
+            && result_type.as_ref() == &CompilerType::Unit
+    )
 }
 
 fn comparison_binary(kind: CallableKind) -> Option<CompilerBinary> {
@@ -10790,6 +10862,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::StringCharactersCollect { text: value, .. }
+        | CompilerExpressionKind::StringCharactersClose(value)
         | CompilerExpressionKind::RecordField { record: value, .. }
         | CompilerExpressionKind::ErrorField { error: value, .. }
         | CompilerExpressionKind::RangeLower(value)
@@ -12608,6 +12681,62 @@ mod tests {
             analyze_for_compiler(abandoned).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
+    }
+
+    #[test]
+    fn models_owned_close_of_transferred_string_character_generator() {
+        // TOPAL-STRING-CHARACTERS-GENERATOR-001,
+        // TOPAL-STRING-CHARACTERS-PARAMETER-001,
+        // TOPAL-STRING-CHARACTERS-CLOSE-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-CLOSE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/string-character-generator-close.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "ignore")
+            .expect("called close function is instantiated");
+        assert!(matches!(
+            function.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type,
+                ..
+            }] if name == "generated" && is_character_unit_generator_type(value_type)
+        ));
+        assert!(matches!(
+            function.body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::StringCharactersClose(generator),
+                value_type: CompilerType::Unit,
+                ..
+            })] if matches!(generator.kind, CompilerExpressionKind::Local(ref name) if name == "generated")
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Call { arguments, .. },
+                value_type: CompilerType::Unit,
+                ..
+            } if matches!(arguments.as_slice(), [CompilerExpression {
+                kind: CompilerExpressionKind::Local(_),
+                value_type,
+                ..
+            }] if is_character_unit_generator_type(value_type))
+        ));
+
+        for source in [
+            include_str!("../../../examples/language/string-character-generator-parameter.t"),
+            "use language (version is v0.1)\nignore is fn (generated : Generator Character Unit Unit) -> Unit\n  _ is 1\ngenerated is characters \"a\"\nignore generated\n",
+            "use language (version is v0.1)\nignore is fn (left : Generator Character Unit Unit, right : Generator Character Unit Unit) -> Unit\n  ()\nleft is characters \"a\"\nright is characters \"b\"\nignore (left, right)\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]
