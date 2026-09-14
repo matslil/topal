@@ -1327,6 +1327,33 @@ type-information runtime, C/C++ runtime, other-language standard library, or
 `topal-native/6` revision is permitted. This realizes
 `TOPAL-COMPILER-TYPE-VALUE-001` for compiler increment 8a.
 
+## TOPAL-COMP-LAYOUT-POLICY-001 — Closed external-layout policy values
+
+The checked compiler model shall recognize `Little` and `Big` as `Endian`;
+`ReadWrite`, `ReadOnly`, `WriteOnly`, and `Reserved` as `Access`;
+`MostSignificantFirst` and `LeastSignificantFirst` as `BitOrder`; `Natural` and
+`Packed` as `Packing`; `Declared` as `FieldOrder`; `AfterTag` and `Overlay` as
+`PayloadPlacement`; and `NoLength` and `NoTerminator` as `LayoutPolicy`. It
+shall preserve these seven nominal identities and declaration orders through
+immutable bindings, decomposed products, same-type equality, canonical output,
+DWARF, and GDB. Cross-family equality shall receive a stable checked type
+diagnostic.
+
+The Linux x86-64 backend may reuse its private declaration-ordered `i32` enum
+tags. The tags shall remain compiler-selected representation rather than
+semantic or serialized identities. This increment shall construct no external
+layout, encode or serialize no data, designate no location or address, grant no
+access authority, and establish no public, foreign, persistent, or compiled-
+library ABI. Future library metadata shall use canonical semantic policy and
+value identities independently of these tags. The executable shall require no
+layout runtime, allocator, foreign dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, or `topal-native/6`
+revision. This realizes `TOPAL-COMPILER-LAYOUT-POLICY-001` and
+`TOPAL-LAYOUT-ENDIAN-001`, `TOPAL-LAYOUT-ACCESS-001`,
+`TOPAL-LAYOUT-BIT-ORDER-001`, `TOPAL-LAYOUT-PACKING-001`,
+`TOPAL-LAYOUT-FIELD-ORDER-001`, `TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001`, and
+`TOPAL-LAYOUT-ABSENCE-POLICY-001` for compiler increment 7b1.
+
 ## TOPAL-COMP-STATIC-INTROSPECTION-001 — Closed static introspection foundation
 
 The checked compiler model shall admit `lang identity` and `lang view` for the

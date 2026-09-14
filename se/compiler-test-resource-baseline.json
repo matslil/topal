@@ -1376,6 +1376,76 @@
       "cpu_time_ns": 176448,
       "memory_peak_bytes": 18534400,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/layout-absence-policies.t": {
+      "cpu_time_ns": 120997519,
+      "memory_peak_bytes": 41209856,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/layout-access.t": {
+      "cpu_time_ns": 123052760,
+      "memory_peak_bytes": 41246720,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/layout-bit-order.t": {
+      "cpu_time_ns": 121665600,
+      "memory_peak_bytes": 41242624,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/layout-endian.t": {
+      "cpu_time_ns": 120883820,
+      "memory_peak_bytes": 41111552,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/layout-field-order.t": {
+      "cpu_time_ns": 121365520,
+      "memory_peak_bytes": 41201664,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/layout-packing.t": {
+      "cpu_time_ns": 121716620,
+      "memory_peak_bytes": 41144320,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/language/layout-payload-placement.t": {
+      "cpu_time_ns": 121597060,
+      "memory_peak_bytes": 41132032,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/layout-absence-policies.t": {
+      "cpu_time_ns": 128546,
+      "memory_peak_bytes": 18661376,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/layout-access.t": {
+      "cpu_time_ns": 131246,
+      "memory_peak_bytes": 18665472,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/layout-bit-order.t": {
+      "cpu_time_ns": 129064,
+      "memory_peak_bytes": 18550784,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/layout-endian.t": {
+      "cpu_time_ns": 133925,
+      "memory_peak_bytes": 18612224,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/layout-field-order.t": {
+      "cpu_time_ns": 131023,
+      "memory_peak_bytes": 18530304,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/layout-packing.t": {
+      "cpu_time_ns": 134152,
+      "memory_peak_bytes": 18481152,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/language/layout-payload-placement.t": {
+      "cpu_time_ns": 130285,
+      "memory_peak_bytes": 18415616,
+      "samples_per_test": 500
     }
   }
 }

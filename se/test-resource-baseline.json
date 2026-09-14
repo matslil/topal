@@ -5129,6 +5129,21 @@
       "cpu_time_ns": 4598759,
       "memory_peak_bytes": 18407424,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_layout_policies_as_closed_nominal_tags_without_a_layout_runtime": {
+      "cpu_time_ns": 9637000,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::layout_policy_values_are_freestanding_and_debuggable": {
+      "cpu_time_ns": 316519640,
+      "memory_peak_bytes": 56950784,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_fundamental_layout_policy_values_as_distinct_nominal_enums": {
+      "cpu_time_ns": 3429700,
+      "memory_peak_bytes": 18407424,
+      "samples_per_test": 50
     }
   }
 }

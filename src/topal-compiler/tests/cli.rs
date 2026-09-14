@@ -30,6 +30,36 @@ fn run(command: &mut Command) -> Output {
     command.output().unwrap()
 }
 
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+fn assert_freestanding_elf_and_valid_dwarf(executable: &Path) {
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+    let dwarf_tool = tools.directory.join("llvm-dwarfdump");
+    if dwarf_tool.is_file() {
+        let dwarf = run(Command::new(dwarf_tool).arg("--verify").arg(executable));
+        assert!(
+            dwarf.status.success(),
+            "{}",
+            String::from_utf8_lossy(&dwarf.stderr)
+        );
+    }
+}
+
 #[test]
 fn compiles_and_executes_shared_regression_with_canonical_metadata() {
     // TOPAL-COMPILER-TEST-001, TOPAL-COMPILER-ARTIFACT-001
@@ -706,6 +736,109 @@ fn gdb_renders_nominal_enum_parameters_and_locals() {
     let text = String::from_utf8_lossy(&debugged.stdout);
     assert!(text.contains("$1 = Green"), "{text}");
     assert!(text.contains("$2 = Green"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn layout_policy_values_are_freestanding_and_debuggable() {
+    // TOPAL-LAYOUT-ENDIAN-001, TOPAL-LAYOUT-ACCESS-001,
+    // TOPAL-LAYOUT-BIT-ORDER-001, TOPAL-LAYOUT-PACKING-001,
+    // TOPAL-LAYOUT-FIELD-ORDER-001, TOPAL-LAYOUT-PAYLOAD-PLACEMENT-001,
+    // TOPAL-LAYOUT-ABSENCE-POLICY-001,
+    // TOPAL-COMPILER-LAYOUT-POLICY-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-layout-policy-values");
+    let source = directory.join("layout-policy-values.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nendian is Big\naccess is Reserved\nbits is LeastSignificantFirst\npacking is Packed\nfields is Declared\npayload is Overlay\nabsence is NoTerminator\n(endian, access, bits, packing, fields, payload, absence)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(Big, Reserved, LeastSignificantFirst, Packed, Declared, Overlay, NoTerminator)\n"
+    );
+
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            "break layout-policy-values.t:9",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis endian",
+            "-ex",
+            "print endian",
+            "-ex",
+            "whatis access",
+            "-ex",
+            "print access",
+            "-ex",
+            "whatis bits",
+            "-ex",
+            "print bits",
+            "-ex",
+            "whatis packing",
+            "-ex",
+            "print packing",
+            "-ex",
+            "whatis fields",
+            "-ex",
+            "print fields",
+            "-ex",
+            "whatis payload",
+            "-ex",
+            "print payload",
+            "-ex",
+            "whatis absence",
+            "-ex",
+            "print absence",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = enum Endian",
+        "$1 = Big",
+        "type = enum Access",
+        "$2 = Reserved",
+        "type = enum BitOrder",
+        "$3 = LeastSignificantFirst",
+        "type = enum Packing",
+        "$4 = Packed",
+        "type = enum FieldOrder",
+        "$5 = Declared",
+        "type = enum PayloadPlacement",
+        "$6 = Overlay",
+        "type = enum LayoutPolicy",
+        "$7 = NoTerminator",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
