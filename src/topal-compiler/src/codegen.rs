@@ -1114,7 +1114,14 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::GeneratorCollect(generator) => {
-                self.emit_iterate_collect(generator, body, environment, expression.span)
+                if matches!(
+                    generator.kind,
+                    CompilerExpressionKind::UnfoldGenerator { .. }
+                ) {
+                    self.emit_unfold_collect(generator, body, environment, expression.span)
+                } else {
+                    self.emit_iterate_collect(generator, body, environment, expression.span)
+                }
             }
             CompilerExpressionKind::Sum { value, payload } => {
                 let CompilerType::Sum(sum) = &expression.value_type else {
@@ -2668,6 +2675,157 @@ impl<'a> Generator<'a> {
         body.define_reserved(
             &next_current,
             &format!("phi ptr [{next_value}, %{first}], [{next_value}, %{link}]"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&done);
+        LlValue::List {
+            value: head,
+            element: CompilerType::Int,
+        }
+    }
+
+    #[allow(clippy::too_many_lines)] // The loop keeps seed elimination and node publication explicit.
+    fn emit_unfold_collect(
+        &mut self,
+        generator: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let CompilerExpressionKind::UnfoldGenerator {
+            seed,
+            parameters,
+            step,
+        } = &generator.kind
+        else {
+            unreachable!("checked collect retains its unfold construction")
+        };
+        debug_assert!(step.statements.is_empty());
+        debug_assert!(matches!(
+            step.result.kind,
+            CompilerExpressionKind::ListUncons(_)
+        ));
+        let initial = self
+            .emit_expression(seed, body, environment)
+            .list_pointer()
+            .to_owned();
+        let preheader = body.current_block.clone();
+        let loop_label = body.label("generator.unfold.collect.loop");
+        let some = body.label("generator.unfold.collect.some");
+        let first = body.label("generator.unfold.collect.first");
+        let link = body.label("generator.unfold.collect.link");
+        let linked = body.label("generator.unfold.collect.linked");
+        let done = body.label("generator.unfold.collect.done");
+        let next_seed = body.reserve_value();
+        let node = body.reserve_value();
+        let next_head = body.reserve_value();
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let current = body.instruction(
+            &format!("phi ptr [{initial}, %{preheader}], [{next_seed}, %{linked}]"),
+            span,
+            &mut self.debug,
+        );
+        let head = body.instruction(
+            &format!("phi ptr [null, %{preheader}], [{next_head}, %{linked}]"),
+            span,
+            &mut self.debug,
+        );
+        let previous = body.instruction(
+            &format!("phi ptr [null, %{preheader}], [{node}, %{linked}]"),
+            span,
+            &mut self.debug,
+        );
+        let _step_environment = self.emit_collection_environment(
+            parameters,
+            &[LlValue::List {
+                value: current.clone(),
+                element: CompilerType::Int,
+            }],
+            body,
+            environment,
+        );
+        let has_value = body.instruction(
+            &format!("icmp ne ptr {current}, null"),
+            step.result.span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {has_value}, label %{some}, label %{done}"),
+            location,
+        );
+
+        body.start_block(&some);
+        let yielded = body.instruction(
+            &format!("load ptr, ptr {current}, align 8"),
+            step.result.span,
+            &mut self.debug,
+        );
+        let seed_next_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 8"),
+            step.result.span,
+            &mut self.debug,
+        );
+        body.define_reserved(
+            &next_seed,
+            &format!("load ptr, ptr {seed_next_address}, align 8"),
+            step.result.span,
+            &mut self.debug,
+        );
+        body.define_reserved(
+            &node,
+            "call ptr @topal.platform.allocate(i64 16)",
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr {yielded}, ptr {node}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let node_next = body.instruction(
+            &format!("getelementptr i8, ptr {node}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr null, ptr {node_next}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let has_previous = body.instruction(
+            &format!("icmp ne ptr {previous}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {has_previous}, label %{link}, label %{first}"),
+            location,
+        );
+
+        body.start_block(&first);
+        body.terminator(&format!("br label %{linked}"), location);
+        body.start_block(&link);
+        let previous_next = body.instruction(
+            &format!("getelementptr i8, ptr {previous}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr {node}, ptr {previous_next}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{linked}"), location);
+        body.start_block(&linked);
+        body.define_reserved(
+            &next_head,
+            &format!("phi ptr [{node}, %{first}], [{head}, %{link}]"),
             span,
             &mut self.debug,
         );
@@ -9156,6 +9314,34 @@ mod tests {
             .expect("module contains generated source entry")
             .1;
         assert!(!main.contains("topal.runtime.list.int.uncons"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_finite_unfold_collection_as_a_seed_and_list_loop() {
+        // TOPAL-GENERATOR-UNFOLD-001, TOPAL-GENERATOR-UNFOLD-COLLECT-001,
+        // TOPAL-COMPILER-GENERATOR-UNFOLD-COLLECT-001
+        let source = include_str!("../../../examples/language/unfold-collect.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "unfold-collect.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        for expected in [
+            "generator.unfold.collect.loop",
+            "phi ptr",
+            "icmp ne ptr",
+            "load ptr, ptr",
+            "call ptr @topal.platform.allocate(i64 16)",
+            "generator.unfold.collect.done",
+        ] {
+            assert!(main.contains(expected), "missing {expected:?}: {main}");
+        }
+        assert!(!main.contains("topal.runtime.list.int.uncons"));
+        assert!(!main.contains("topal.runtime.optional"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }

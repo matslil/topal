@@ -396,6 +396,38 @@ public/library Generator ABI, or `topal-native/6` revision. This realizes
 `TOPAL-COMPILER-GENERATOR-UNFOLD-CONSTRUCT-001` and
 `TOPAL-GENERATOR-UNFOLD-001` for compiler increment 5d.
 
+## TOPAL-COMP-GENERATOR-UNFOLD-COLLECT-001 — Finite unfold collection
+
+The checked compiler shall admit unary `collect` over an exact
+`Generator Int Unit Unit` whose retained construction uses an immutable
+`List Int` seed binding and exactly `uncons` of its unary `List Int` parameter
+as the step. The Generator may be consumed directly or after linear local
+moves. The seed shall have been evaluated once at construction. Collection
+shall append every nonempty seed head to a fresh `List Int` in order, continue
+with the corresponding tail, terminate without an entry at `Empty`, and leave
+the source List unchanged.
+
+An arbitrary step, step statements or captures, a seed whose evaluated
+identity is unavailable to the specialization, and a Generator without local
+construction provenance shall be rejected before LLVM. Provenance retained for
+this proof shall remain compiler-private and shall not enter persistent,
+serialized, public, foreign, or compiled-library metadata.
+
+The Linux x86-64 backend shall use explicit current-seed and result-head/tail
+LLVM SSA loop values and may allocate fresh immutable List nodes through the
+Topal platform allocator. This required O0 semantic lowering shall materialize
+no Optional, call no List `uncons` helper, use no construction token as state,
+allocate no Generator object, and emit no callback, indirect call, or generic
+Generator runtime. It shall introduce no foreign dependency, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or `topal-native/6` revision. Future library
+metadata shall identify the canonical Generator, seed/yield classifiers, exact
+step/evidence, linear ownership, and target adapter independently of this
+specialization. This realizes
+`TOPAL-COMPILER-GENERATOR-UNFOLD-COLLECT-001`,
+`TOPAL-GENERATOR-UNFOLD-001`, and `TOPAL-GENERATOR-UNFOLD-COLLECT-001` for
+compiler increment 5e.
+
 ## TOPAL-COMP-GENERATOR-ITERATE-COLLECT-001 — Finite iterate collection
 
 The checked compiler shall admit unary `collect` only for a syntactically
