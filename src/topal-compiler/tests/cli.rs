@@ -2550,6 +2550,103 @@ fn bound_anonymous_int_list_functions_are_specialized_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn range_selection_is_freestanding_and_debuggable() {
+    // TOPAL-RANGE-VALUE-SELECTION-001, TOPAL-RANGE-INDEX-SELECTION-001,
+    // TOPAL-COMPILER-RANGE-SELECTION-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-range-selection");
+    let source = directory.join("range-selection-boundary.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ninspect is fn (values : List Int, text : String) -> Int\n  _ is text = text\n  entry-count values\nvalues : List Int is Entry (9, Entry (2, Entry (4, Entry (7, Entry (3, Entry (340282366920938463463374607431768211456, Empty))))))\nbounds : Range Int is 2 ..= 4\nindexes : Range Int is 1 .. 4\nchosen is values select bounds\npositions is values select-index indexes\nslice is \"Topal\" select-index indexes\nexact is values select (340282366920938463463374607431768211456 ..= 340282366920938463463374607431768211456)\nnone is values select (8 .. 2)\nno-positions is values select-index (4 <..= 4)\nresult is inspect (chosen, slice)\n(chosen, positions, slice, result, exact, none, no-positions)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(Entry ( 2, Entry ( 4, Entry ( 3, Empty ) ) ), Entry ( 2, Entry ( 4, Entry ( 7, Empty ) ) ), \"opa\", 3, Entry ( 340282366920938463463374607431768211456, Empty ), Empty, Empty)\n"
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break range-selection-boundary.t:3",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis values",
+            "-ex",
+            "print values",
+            "-ex",
+            "whatis text",
+            "-ex",
+            "print text",
+            "-ex",
+            "finish",
+            "-ex",
+            "whatis bounds",
+            "-ex",
+            "print bounds",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = List Int"), "{text}");
+    assert!(text.contains("type = String"), "{text}");
+    assert!(text.contains("type = Range Int"), "{text}");
+    assert!(
+        text.contains("$1 = Entry ( 2, Entry ( 4, Entry ( 3, Empty ) ) )"),
+        "{text}"
+    );
+    assert!(text.contains("$2 = \"opa\""), "{text}");
+    assert!(text.contains("$4 = 2 ..= 4"), "{text}");
+    assert!(text.contains("topal.fn.inspect.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn contextual_int_list_functions_are_freestanding_and_debuggable() {
     // TOPAL-COLLECTION-MAP-001, TOPAL-COLLECTION-SELECT-001,
     // TOPAL-COLLECTION-FOLD-001, TOPAL-FUNCTION-ANONYMOUS-001,

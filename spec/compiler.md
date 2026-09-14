@@ -976,6 +976,35 @@ collection functions; admit other element/result/state classifiers; or add a
 foreign allocator, C/C++ runtime, other-language standard library, undefined
 symbol, needed library, relocation, or native ABI revision.
 
+### TOPAL-COMPILER-RANGE-SELECTION-001 — Private range selection
+
+The compiler SHALL admit `List Int` value selection and zero-based index
+selection by `Range Int`. It SHALL evaluate the List and Range once in source
+order, traverse the finite List once in source order, apply the exact retained
+endpoint inclusivity rules, preserve multiplicity, and return a fresh immutable
+List containing exactly the selected entries. Value selection SHALL compare the
+arbitrary-precision entry; index selection SHALL compare the exact nonnegative
+position. Empty, disjoint, and inverted ranges SHALL produce Empty without
+changing the source List.
+
+The compiler SHALL also admit String index selection when both the String and
+the finite `Range Int` value are closed and compiler-known. It SHALL select by
+the same pinned user-perceived Character segmentation as the language and emit
+the result as an ordinary String. This static semantic evaluation SHALL remain
+correct at O0 and SHALL NOT expose `SelectionOf`, `RangeSelectionOf`, `SliceOf`,
+or a storage representation. Dynamic String range selection SHALL remain an
+explicitly rejected later increment until a freestanding Topal Unicode
+segmentation runtime is available; LLVM provides no equivalent semantic
+facility.
+
+The Linux x86-64 lowering SHALL keep List selection in a conditional private
+runtime fragment backed only by the Topal allocator, exact Int/Range helpers,
+and Linux syscall platform boundary. It SHALL add no foreign allocator, C/C++
+runtime, other-language standard library, undefined symbol, needed library,
+relocation, public/serialized/persistent/generic collection ABI, stabilized
+private layout, or native ABI revision. DWARF and GDB SHALL preserve the source
+List, Range, String, selected values, and user frames.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed
