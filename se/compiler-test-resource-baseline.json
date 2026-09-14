@@ -1626,6 +1626,16 @@
       "cpu_time_ns": 147224,
       "memory_peak_bytes": 18595840,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-suspension.t": {
+      "cpu_time_ns": 123145500,
+      "memory_peak_bytes": 41693184,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-suspension.t": {
+      "cpu_time_ns": 146802,
+      "memory_peak_bytes": 18493440,
+      "samples_per_test": 500
     }
   }
 }

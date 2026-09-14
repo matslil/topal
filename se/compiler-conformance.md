@@ -85,6 +85,7 @@ evidence.
 | 5i | one exact generator-local Character alias retained across admitted yields, caller non-escape, and lexical DWARF inspection without semantic state storage | complete |
 | 5j | exact custom Character generator completion before its first yield, zero action invocations, and direct final Unit without continuation state | complete |
 | 5k | one yielded Character followed by a distinct exact final Character, ordered result materialization, direct root observation, and full-direction debugging | complete |
+| 5l | exact generator-local Character activation after Unit resumption, followed by a second suspension, with stage-ordered DWARF and no continuation state | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -346,6 +347,16 @@ one yielded Character. The frontend retains separate yield and result
 provenance and emits the final descriptor only after the direct action and Unit
 resumption. Dynamic finals, result binding, other directions, captures, close
 handling, and general continuation state remain in increment 5.
+Increment 5l admits one explicitly classified immutable Character alias after
+one or more yielded initial Characters and before one or more yields of the
+alias. The checked model records the successful-resumption count at which the
+local activates; O0 lowering therefore completes the prefix actions and Unit
+resumptions before introducing the local DWARF shadow and continuing to the
+next suspension. This stage evidence remains compiler-private and creates no
+runtime program counter, continuation layout, foreign dependency, or native
+ABI change. General generator body computation, mutable or multiple locals,
+resume bindings, close paths, captures, and external boundaries remain in
+increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

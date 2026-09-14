@@ -7,9 +7,9 @@ use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
     CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerFallible, CompilerFunction, CompilerGeneratorType, CompilerModularType,
-    CompilerParameter, CompilerProgram, CompilerStatement, CompilerSumRule, CompilerSumType,
-    CompilerType, CompilerValidation, display_string_literal,
+    CompilerFallible, CompilerFunction, CompilerGeneratorLocal, CompilerGeneratorType,
+    CompilerModularType, CompilerParameter, CompilerProgram, CompilerStatement, CompilerSumRule,
+    CompilerSumType, CompilerType, CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -5752,7 +5752,7 @@ impl<'a> Generator<'a> {
         &mut self,
         source: &CompilerExpression,
         characters: &[String],
-        generator_local: Option<&CompilerParameter>,
+        generator_local: Option<&CompilerGeneratorLocal>,
         parameter: &CompilerParameter,
         action: &CompilerBlock,
         body: &mut FunctionBody,
@@ -5760,15 +5760,7 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> LlValue {
         let _ = self.emit_expression(source, body, environment);
-        let generator_local_address = generator_local.map(|local| {
-            let variable =
-                self.debug
-                    .local(&local.name, local.span, &local.value_type, body.subprogram);
-            let address = body.instruction("alloca ptr, align 8", local.span, &mut self.debug);
-            let location = self.debug.location(local.span, body.subprogram);
-            body.debug_declare(&address, variable, location);
-            address
-        });
+        let mut generator_local_address = None;
         let debug_address = (!characters.is_empty() && !parameter.discarded).then(|| {
             let variable = self.debug.local(
                 &parameter.name,
@@ -5782,14 +5774,31 @@ impl<'a> Generator<'a> {
             address
         });
         for (index, character) in characters.iter().enumerate() {
+            if let Some(local) = generator_local
+                && local.activation_after_resumptions == index
+            {
+                let parameter = &local.parameter;
+                let variable = self.debug.local(
+                    &parameter.name,
+                    parameter.span,
+                    &parameter.value_type,
+                    body.subprogram,
+                );
+                let address =
+                    body.instruction("alloca ptr, align 8", parameter.span, &mut self.debug);
+                let location = self.debug.location(parameter.span, body.subprogram);
+                body.debug_declare(&address, variable, location);
+                generator_local_address = Some(address);
+            }
             let value = LlValue::String(self.emit_string_value(character, body, span));
             let mut action_environment = environment.clone();
-            if index == 0
-                && let (Some(local), Some(address)) = (generator_local, &generator_local_address)
+            if let Some(local) = generator_local
+                && local.activation_after_resumptions == index
+                && let Some(address) = &generator_local_address
             {
                 body.effect(
                     &format!("store ptr {}, ptr {address}, align 8", value.string()),
-                    local.span,
+                    local.parameter.span,
                     &mut self.debug,
                 );
             }
@@ -9869,6 +9878,45 @@ mod tests {
         assert_eq!(main.matches("#dbg_declare(ptr").count(), 2);
         assert!(llvm.contains("DILocalVariable(name: \"copy\""));
         assert!(llvm.contains("DILexicalBlock("));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_post_resume_local_before_the_next_custom_yield() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-BODY-STATEMENT-001,
+        // TOPAL-GENERATOR-LOCAL-BINDING-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001, TOPAL-COMPILER-GENERATOR-SUSPENSION-001
+        let source = include_str!("../../../examples/language/custom-generator-suspension.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-suspension.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let materializations = main
+            .match_indices("call ptr @topal.runtime.string.make")
+            .map(|(position, _)| position)
+            .collect::<Vec<_>>();
+        let local_declaration = main
+            .match_indices("#dbg_declare(ptr")
+            .nth(1)
+            .expect("post-resume local has a distinct debug declaration")
+            .0;
+        let first_action = main
+            .find("store ptr")
+            .expect("first yield action is invoked");
+
+        assert_eq!(materializations.len(), 3);
+        assert!(materializations[1] < first_action);
+        assert!(first_action < local_declaration);
+        assert!(local_declaration < materializations[2]);
+        assert_eq!(main.matches("#dbg_declare(ptr").count(), 2);
+        assert_eq!(main.matches("store ptr").count(), 3);
+        assert!(llvm.contains("DILocalVariable(name: \"copy\""));
         assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
         assert!(llvm.contains("name: \"Character\""));
         assert!(!main.contains("generator.foreach.loop"));

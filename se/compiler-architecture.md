@@ -928,6 +928,20 @@ value, and no continuation or public Generator layout is introduced. A future
 compiled-library form must identify result classifiers and final-value graph
 nodes canonically alongside suspension and ownership metadata.
 
+The post-resume-local slice replaces the single undifferentiated local list
+with checked activation-stage evidence. A local records how many successful
+Unit resumptions precede its introduction, so construction stops at the first
+yield without evaluating later state and root traversal can expand prefix
+actions, resumptions, local activation, and suffix yields in source order. For
+the admitted immutable Character alias, the executable still needs no semantic
+continuation storage: lowering introduces its lexical DWARF shadow only at the
+recorded stage, after the preceding action/resumption and before the following
+yield action. The stage number is compiler evidence rather than a runtime
+program counter or ABI field. General body computation, mutable or multiple
+locals, captures, close paths, and external boundaries still require canonical
+suspension-graph transitions, environment ownership, cleanup, and target
+adapters in compiled-library metadata.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an
