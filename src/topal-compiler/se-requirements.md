@@ -1016,6 +1016,41 @@ reclamation contract, or `topal-native/6` revision. It realizes
 `TOPAL-LIST-REST-001`, and `TOPAL-LIST-REVERSE-001` for compiler increment
 4b3d-d.
 
+## TOPAL-COMP-LIST-INT-FUNCTIONS-001 — Contextual Int List functions
+
+The checked compiler model shall accept contextual binding-pattern anonymous
+functions for `List Int` map, select, and Int-state fold. It shall infer and
+require exact signatures `Int -> Int`, `Int -> Boolean`, and
+`(Int, Int) -> Int`, respectively. It shall evaluate the List once, evaluate a
+fold initial value once after the List, retain admitted immutable lexical
+captures, diagnose arity or result mismatches, and reject anonymous product
+patterns and other element/state types.
+
+Generated map and select loops shall invoke the checked body exactly once per
+entry in source order. Map shall publish transformed entries in that order;
+select shall retain exactly accepted original Int values in that order. Fold
+shall pass prior state before current entry, return its initial Int for Empty,
+and otherwise return the final exact Int. The source List shall remain
+unchanged. Arbitrary-precision operations inside every body shall reuse the
+canonical Int runtime.
+
+The Linux x86-64 backend shall specialize each body directly into finite LLVM
+control flow. Map and select may allocate and link fresh private 16-byte nodes
+through the Topal-owned mapping boundary while those nodes remain inaccessible;
+published nodes shall be immutable. Fold shall carry its exact Int pointer in
+an LLVM phi. Correctness at O0 shall require no host recursion, Function object,
+callback ABI, indirect call, or traversal dispatcher. Existing List/Int DWARF
+and the bundled GDB renderer shall expose parameters and result bindings.
+
+This increment shall add no public, foreign, serialized, persistent, or
+generic collection/callable ABI, foreign allocator, C/C++ runtime,
+other-language standard library, undefined symbol, needed library, relocation,
+reclamation contract, or `topal-native/6` revision. Traversal control and
+remaining collection algorithms stay deferred. It realizes
+`TOPAL-COMPILER-LIST-INT-FUNCTIONS-001`, `TOPAL-COLLECTION-MAP-001`,
+`TOPAL-COLLECTION-SELECT-001`, `TOPAL-COLLECTION-FOLD-001`, and
+`TOPAL-FUNCTION-ANONYMOUS-001` for compiler increment 4b3d-e.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when

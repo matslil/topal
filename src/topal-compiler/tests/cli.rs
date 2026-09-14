@@ -2452,6 +2452,112 @@ fn int_list_removal_is_immutable_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn contextual_int_list_functions_are_freestanding_and_debuggable() {
+    // TOPAL-COLLECTION-MAP-001, TOPAL-COLLECTION-SELECT-001,
+    // TOPAL-COLLECTION-FOLD-001, TOPAL-FUNCTION-ANONYMOUS-001,
+    // TOPAL-COMPILER-LIST-INT-FUNCTIONS-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-int-list-functions");
+    let source = directory.join("int-list-functions.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\ninspect is fn (values : List Int) -> Int\n  entry-count values\nfactor is 3\nvalues : List Int is Entry (-170141183460469231731687303715884105728, Entry (0, Entry (340282366920938463463374607431768211456, Empty)))\nempty-values is empty List Int\nmapped is values map { value } value * factor\nselected is values select { value } value >= 0\nfolded is values fold 10 { sum, value } sum + value\nempty-mapped is empty-values map { value } value * factor\nempty-selected is empty-values select { value } value >= 0\nempty-folded is empty-values fold 10 { sum, value } sum + value\nresult is inspect mapped\n(mapped, selected, folded, empty-mapped, empty-selected, empty-folded, values)\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(Entry ( -510423550381407695195061911147652317184, Entry ( 0, Entry ( 1020847100762815390390123822295304634368, Empty ) ) ), Entry ( 0, Entry ( 340282366920938463463374607431768211456, Empty ) ), 170141183460469231731687303715884105738, Empty, Empty, 10, Entry ( -170141183460469231731687303715884105728, Entry ( 0, Entry ( 340282366920938463463374607431768211456, Empty ) ) ))\n"
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .arg("--undefined-only")
+        .arg(&executable));
+    assert!(undefined.status.success());
+    assert!(
+        undefined.stdout.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&undefined.stdout)
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--relocations"])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    assert!(inspected.contains("Relocations [\n]"), "{inspected}");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break int-list-functions.t:3",
+            "-ex",
+            "run",
+            "-ex",
+            "print values",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis mapped",
+            "-ex",
+            "print mapped",
+            "-ex",
+            "whatis selected",
+            "-ex",
+            "print selected",
+            "-ex",
+            "whatis folded",
+            "-ex",
+            "print folded",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = List Int"), "{text}");
+    assert!(
+        text.contains(
+            "$2 = Entry ( -510423550381407695195061911147652317184, Entry ( 0, Entry ( 1020847100762815390390123822295304634368, Empty ) ) )"
+        ),
+        "{text}"
+    );
+    assert!(
+        text.contains("$3 = Entry ( 0, Entry ( 340282366920938463463374607431768211456, Empty ) )"),
+        "{text}"
+    );
+    assert!(
+        text.contains("$4 = 170141183460469231731687303715884105738"),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.inspect.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn basic_int_list_operations_are_freestanding_and_debuggable() {
     // TOPAL-DECISION-LIST-001, TOPAL-TYPE-LIST-EQUALITY-001,
     // TOPAL-LIST-PREPEND-001, TOPAL-LIST-APPEND-001, TOPAL-LIST-CONCAT-001,
