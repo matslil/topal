@@ -5399,6 +5399,21 @@
       "cpu_time_ns": 5664160,
       "memory_peak_bytes": 18362368,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_post_resume_local_before_the_next_custom_yield": {
+      "cpu_time_ns": 5616620,
+      "memory_peak_bytes": 18202624,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::custom_generator_suspension_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 324045340,
+      "memory_peak_bytes": 58224640,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_custom_generator_local_activation_after_resume": {
+      "cpu_time_ns": 5807279,
+      "memory_peak_bytes": 18251776,
+      "samples_per_test": 50
     }
   }
 }

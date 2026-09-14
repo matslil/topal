@@ -458,9 +458,10 @@ capture-free Character-to-Unit action exactly once for every retained yield in
 source order. It SHALL resume with Unit after every action and return Unit only
 after the final resumption. Exact pre-yield Unit completion SHALL instead obey
 `TOPAL-COMPILER-GENERATOR-EARLY-RETURN-001`. Ordinary statements between
-yields, different yield expressions, overloads, dynamic Character provenance,
-captures, close handling, and function or library boundaries SHALL remain
-unsupported.
+yields other than the exact local activation admitted by
+`TOPAL-COMPILER-GENERATOR-SUSPENSION-001`, different yield expressions,
+overloads, dynamic Character provenance, captures, close handling, and
+function or library boundaries SHALL remain unsupported.
 
 On Linux x86-64, the backend SHALL expand the finite proven sequence into
 ordered inline action blocks with erased Unit resumptions at `-O0`; this
@@ -497,9 +498,10 @@ allocation, dispatcher, callback, indirect call, foreign runtime,
 other-language standard library, needed library, dynamic relocation,
 public/library Generator ABI, or native-ABI revision.
 
-Other local classifiers or initializers, additional or inter-yield statements,
-dynamic Character provenance, captures, resume bindings, close handling, and
-function or library boundaries SHALL remain unsupported. Future
+Other local classifiers or initializers, additional statements not admitted by
+`TOPAL-COMPILER-GENERATOR-SUSPENSION-001`, dynamic Character provenance,
+captures, resume bindings, close handling, and function or library boundaries
+SHALL remain unsupported. Future
 compiled-library metadata SHALL identify local state canonically with the
 declaration, directions, ordered suspension graph, capture/effect evidence,
 ownership/close behavior, and target adapters rather than expose the
@@ -565,6 +567,40 @@ library, needed library, dynamic relocation, public/library Generator ABI, or
 native-ABI revision. Future compiled-library metadata SHALL encode the result
 classifier and final-value node alongside canonical declaration, direction,
 suspension, effect, ownership/close, and target-adapter evidence.
+
+### TOPAL-COMPILER-GENERATOR-SUSPENSION-001 — Post-resume local activation
+
+The compiler SHALL admit the Unit-final custom Character-generator subset when
+its body contains one or more discarded yields of the sole initial Character,
+then exactly one explicitly classified immutable Character binding initialized
+from that initial parameter, one or more discarded yields of the local, and
+final Unit. The checked plan SHALL retain the local identity, classifier,
+source span, exact Character value, and the number of successful resumptions
+that precede its activation. Starting the generator SHALL stop at the first
+yield and SHALL NOT evaluate the post-yield binding.
+
+Direct root `foreach` over one locally bound admitted instance SHALL consume
+the Generator, invoke its Character-to-Unit action and resume with Unit for
+each retained prefix yield, activate the generator local only after the last
+prefix resumption, and then observe the remaining local yields in source order
+before final Unit. The local SHALL remain absent from the caller environment.
+A local without a later yield, a second local, a non-identity initializer,
+yields of the wrong active value, other ordinary statements, dynamic Character
+provenance, captures, resume bindings, close handling, and function or library
+boundaries SHALL remain unsupported.
+
+On Linux x86-64, O0 lowering SHALL emit the completed prefix action and erased
+Unit resumption before the local materialization and its lexical DWARF
+declaration, and SHALL emit that declaration before the next yield action. The
+checked resumption count SHALL guide source-order expansion but SHALL NOT
+become a runtime program counter or public layout. This lowering SHALL NOT
+depend on optimization or introduce a Generator object, semantic continuation
+state, dispatcher, callback, indirect call, foreign runtime, other-language
+standard library, needed library, dynamic relocation, public/library Generator
+ABI, or native-ABI revision. Future compiled-library metadata SHALL identify
+each local activation transition canonically with the declaration, directions,
+ordered suspension graph, capture/effect evidence, ownership/close behavior,
+and target adapters.
 
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 

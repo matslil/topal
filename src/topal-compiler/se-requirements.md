@@ -535,10 +535,11 @@ capture-free Character-to-Unit action exactly once for each yielded value in
 source order. It shall resume with Unit after every action, including the final
 action before returning Unit. Existing repeated-use and abandonment rejection
 shall continue to apply. Exact pre-yield Unit completion is governed by
-`TOPAL-COMP-GENERATOR-EARLY-RETURN-001`; ordinary statements between yields,
-different yield expressions, overloads, dynamic Character provenance,
-captures, close handling, and function or library boundaries shall remain
-rejected before LLVM.
+`TOPAL-COMP-GENERATOR-EARLY-RETURN-001`; ordinary statements between yields
+other than the exact local activation admitted by
+`TOPAL-COMP-GENERATOR-SUSPENSION-001`, different yield expressions, overloads,
+dynamic Character provenance, captures, close handling, and function or
+library boundaries shall remain rejected before LLVM.
 
 The Linux x86-64 backend shall expand the finite proven sequence as ordered
 inline action blocks with an erased Unit resumption between adjacent blocks.
@@ -579,9 +580,10 @@ library, needed library, dynamic relocation, public/library Generator ABI, or
 `topal-native/6` revision.
 
 Unclassified or differently classified locals, non-identity initializers,
-additional or inter-yield statements, dynamic Character provenance, captures,
-resume bindings, close handling, and function or library boundaries shall
-remain rejected before LLVM. Future compiled-library metadata shall encode
+additional statements not admitted by `TOPAL-COMP-GENERATOR-SUSPENSION-001`,
+dynamic Character provenance, captures, resume bindings, close handling, and
+function or library boundaries shall remain rejected before LLVM. Future
+compiled-library metadata shall encode
 canonical local-state identities and types with the declaration, suspension
 graph, directions, captures/effects, ownership/close behavior, and target
 adapters rather than serialize this executable-local debug shadow. This
@@ -659,6 +661,44 @@ ownership/close, and target-adapter evidence. This realizes
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-FINAL-RETURN-001`,
 `TOPAL-GENERATOR-SUSPEND-001`, and `TOPAL-GENERATOR-FOREACH-001` for compiler
 increment 5k.
+
+## TOPAL-COMP-GENERATOR-SUSPENSION-001 — Post-resume local activation
+
+The checked compiler shall admit the Unit-final custom Character-generator
+subset when its body contains one or more discarded yields of the sole initial
+Character, then exactly one explicitly classified immutable Character binding
+initialized from that initial parameter, one or more discarded yields of the
+local, and final Unit. It shall retain the local identity, classifier, source
+span, exact Character value, and the number of successful resumptions before
+activation. Starting the generator shall stop at its first yield and shall not
+evaluate the post-yield binding.
+
+Direct root foreach over one locally bound admitted instance shall consume the
+Generator, complete each prefix action and Unit resumption, activate the local
+only after the last prefix resumption, then observe the local yields in source
+order before final Unit. The local shall remain absent from the caller's
+checked environment. A local without a later yield, a second local, a
+non-identity initializer, a yield of the wrong active value, other ordinary
+statements, dynamic Character provenance, captures, resume bindings, close
+handling, and function or library boundaries shall remain rejected before
+LLVM.
+
+On Linux x86-64, the backend shall emit the completed prefix action and erased
+Unit resumption before local materialization and its lexical DWARF declaration,
+then emit that declaration before the next yield action at O0. The checked
+resumption count shall guide source-order expansion but shall not become a
+runtime program counter or public layout. This lowering shall not depend on
+optimization or introduce a Generator object, semantic continuation state,
+dispatcher, callback, indirect call, unwind support, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall identify each local activation transition
+canonically with the declaration, directions, ordered suspension graph,
+captures/effects, ownership/close behavior, and target adapters. This realizes
+`TOPAL-COMPILER-GENERATOR-SUSPENSION-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-BODY-STATEMENT-001`,
+`TOPAL-GENERATOR-LOCAL-BINDING-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5l.
 
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
