@@ -254,6 +254,12 @@ use. A compiler-private semantic token supports observation and Generator
 DWARF without becoming cursor state or a copyable continuation. Abandonment,
 function transfer, owned close behavior, and library representation remain in
 the planned generator closure.
+Increment 4b3d-m consumes a direct closed `characters` traversal into String by
+retaining its pinned cluster sequence as checking evidence and forwarding the
+once-evaluated immutable source descriptor. This required O0 identity lowering
+constructs no intermediate List or Generator and introduces no concatenation,
+Unicode, or foreign runtime; dynamic, transformed, stored, and library
+traversals remain in the planned closure.
 Increment 5a admits only the qualified `generator-closed` vocabulary value as a
 private nominal enum. It deliberately creates no continuation, generator state,
 close result, Error domain, or provenance; all generator execution remains in

@@ -135,6 +135,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/string-case-fold.t",
     "examples/language/string-character-at.t",
     "examples/language/string-character-foreach.t",
+    "examples/language/string-character-traversal.t",
     "examples/language/string-construction.t",
     "examples/language/string-display-delimiters.t",
     "examples/language/string-exact-equality.t",

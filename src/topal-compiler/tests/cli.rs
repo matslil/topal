@@ -1556,6 +1556,66 @@ fn gdb_renders_optional_character_parameters() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn closed_string_character_collection_is_freestanding_and_debuggable() {
+    // TOPAL-STRING-CHARACTERS-COLLECT-001,
+    // TOPAL-COMPILER-STRING-CHARACTERS-COLLECT-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-string-character-collection");
+    let source = directory.join("string-character-collection.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nreconstructed : String is characters \"a\u{301}👩‍🔬🇸🇪\" collect String\n_ is reconstructed = reconstructed\nreconstructed\n",
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, "\"a\u{301}👩‍🔬🇸🇪\"\n".as_bytes());
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break string-character-collection.t:3",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis reconstructed",
+            "-ex",
+            "print reconstructed",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in ["type = String", "$1 = \"a\u{301}👩‍🔬🇸🇪\"", "topal.main"] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn closed_string_character_foreach_is_freestanding_and_debuggable() {
     // TOPAL-STRING-CHARACTERS-COLLECT-001,
     // TOPAL-STRING-CHARACTERS-FOREACH-001,

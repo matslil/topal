@@ -475,6 +475,10 @@ pub enum CompilerExpressionKind {
         text: Box<CompilerExpression>,
         characters: Vec<String>,
     },
+    StringCharactersCollect {
+        text: Box<CompilerExpression>,
+        characters: Vec<String>,
+    },
     StringCharactersForeach {
         source: Box<CompilerExpression>,
         characters: Vec<String>,
@@ -4045,6 +4049,34 @@ impl Analyzer {
         {
             return self.analyze_closed_string_characters_generator(text, span, environment);
         }
+        if let [
+            Expression::Identifier(characters),
+            text,
+            Expression::Identifier(operation),
+            Expression::Identifier(target),
+        ] = items
+            && self.source.slice(*characters) == "characters"
+            && self.source.slice(*operation) == "collect"
+            && self.source.slice(*target) == "String"
+        {
+            let generator = self.analyze_closed_string_characters_generator(
+                text,
+                Span::new(characters.start, text.span().end),
+                environment,
+            )?;
+            let CompilerExpressionKind::StringCharactersGenerator { text, characters } =
+                generator.kind
+            else {
+                unreachable!("closed characters construction retains its generator")
+            };
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::StringCharactersCollect { text, characters },
+                value_type: CompilerType::String,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         if let [Expression::Identifier(name), operand] = items
             && let Some((modular, declaration)) = self.modulars.get(self.source.slice(*name))
             && declaration.end <= name.start
@@ -6337,6 +6369,9 @@ impl Analyzer {
                 let mut value = Self::known_string_expression(left, environment)?;
                 value.push_str(&Self::known_string_expression(right, environment)?);
                 Some(value)
+            }
+            CompilerExpressionKind::StringCharactersCollect { text, .. } => {
+                Self::known_string_expression(text, environment)
             }
             CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .and_then(|facts| facts.string_value.clone()),
@@ -10754,6 +10789,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::TraversalControl { value, .. }
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
+        | CompilerExpressionKind::StringCharactersCollect { text: value, .. }
         | CompilerExpressionKind::RecordField { record: value, .. }
         | CompilerExpressionKind::ErrorField { error: value, .. }
         | CompilerExpressionKind::RangeLower(value)
@@ -10931,6 +10967,7 @@ fn exact_string(expression: &CompilerExpression) -> Option<String> {
             value.push_str(&exact_string(right)?);
             Some(value)
         }
+        CompilerExpressionKind::StringCharactersCollect { text, .. } => exact_string(text),
         _ => None,
     }
 }
@@ -12472,6 +12509,45 @@ mod tests {
                 ..
             }) if characters.is_empty()
         ));
+    }
+
+    #[test]
+    fn models_closed_string_character_collection() {
+        // TOPAL-STRING-CHARACTERS-COLLECT-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-COLLECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/string-character-traversal.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::StringCharactersCollect { text, characters },
+                value_type: CompilerType::String,
+                ..
+            } if matches!(text.kind, CompilerExpressionKind::String(_))
+                && characters == &["a\u{301}", "👩‍🔬", "🇸🇪"]
+        ));
+        assert_eq!(
+            exact_string(&program.main.result).as_deref(),
+            Some("a\u{301}👩‍🔬🇸🇪")
+        );
+
+        let empty = analyze_for_compiler(
+            "use language (version is v0.1)\ncharacters \"\" collect String\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            &empty.main.result.kind,
+            CompilerExpressionKind::StringCharactersCollect { characters, .. }
+                if characters.is_empty()
+        ));
+
+        let dynamic = "use language (version is v0.1)\nidentity is fn (text : String) -> String\n  text\ncharacters (identity \"a\") collect String\n";
+        assert_eq!(
+            analyze_for_compiler(dynamic).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 
     #[test]
