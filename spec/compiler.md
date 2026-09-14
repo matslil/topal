@@ -415,6 +415,35 @@ identify the Generator classifier, operation/predicate/body identities and
 evidence, capture layout, linear ownership, and target adapter canonically
 rather than publish this executable-local specialization.
 
+### TOPAL-COMPILER-GENERATOR-SINGLE-YIELD-001 — Closed custom suspension
+
+The compiler SHALL admit a root custom generator declaration with exactly one
+ordinary Character input, Character yield, Unit resume, and Unit final result
+when its body consists of one discarded yield of that input followed by Unit.
+Application SHALL evaluate and classify the initial operand once, create a
+fresh linear Generator, start execution through the first yield, and retain the
+declaration identity and exact yielded Character as compile-session provenance.
+
+Root `foreach` SHALL consume one locally bound admitted instance, invoke its
+capture-free Character-to-Unit action exactly once with the yielded value,
+resume the generator with Unit, and produce its final Unit. Repeated use and
+abandonment SHALL be rejected under the existing local linearity boundary.
+Other declaration shapes, overloads, dynamic Character provenance, direct
+unbound traversal, captures, and function or library boundaries SHALL remain
+unsupported.
+
+On Linux x86-64, the backend SHALL lower the proven yield, action, Unit resume,
+and final Unit as ordered inline code at `-O0`. It MAY use the compiler-private
+Generator observation token for ownership and debugging, but SHALL NOT use the
+token as continuation state. Generated DWARF SHALL expose the Generator and
+yielded Character bindings to GDB. This specialization SHALL allocate no
+Generator object or state, call no dispatcher, callback, indirect function, or
+foreign runtime, and introduce no C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, public/library Generator ABI, or
+native-ABI revision. Future compiled-library metadata SHALL identify the
+declaration, Generator directions, suspension points, capture/effect evidence,
+linear ownership, close behavior, and target adapter canonically.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve

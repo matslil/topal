@@ -860,6 +860,21 @@ and final Unit binding. General captures and traversal need canonical
 operation/predicate/body evidence, an owned continuation layout, cleanup, and
 target-adapted compiled-library metadata.
 
+The first custom-generator slice proves a complete root declaration before
+LLVM: one Character input is yielded once, resumed with Unit, and followed by a
+final Unit. Starting the generator evaluates the initial Character once and
+retains the declaration plus yielded value as compile-session provenance. Root
+foreach consumes that local provenance and expands the single Character action,
+erased Unit resume, and final Unit directly in source order. The existing
+private `i32` observation token preserves linear ownership and semantic DWARF
+without becoming a program counter or continuation layout. This is mandatory
+O0 semantic lowering, leaving instruction selection and physical placement to
+LLVM while adding no Generator allocation, dispatcher, callback, indirect
+call, unwind dependency, foreign runtime, or public ABI. General state machines
+and compiled libraries require canonical declaration/direction/suspension,
+capture/effect, ownership/close, and target-adapter metadata rather than this
+executable-local proof.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an

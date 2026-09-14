@@ -141,7 +141,11 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::GeneratorCollect(generator) => {
             expression_uses_extended_debug(generator)
         }
-        CompilerExpressionKind::StringCharactersForeach { source, body, .. } => {
+        CompilerExpressionKind::CustomSingleYieldGenerator { initial, .. } => {
+            expression_uses_extended_debug(initial)
+        }
+        CompilerExpressionKind::StringCharactersForeach { source, body, .. }
+        | CompilerExpressionKind::CustomSingleYieldForeach { source, body, .. } => {
             expression_uses_extended_debug(source) || block_uses_extended_debug(body)
         }
         CompilerExpressionKind::IterateGeneratorForeach {
@@ -1112,6 +1116,30 @@ impl<'a> Generator<'a> {
             CompilerExpressionKind::StringCharactersForeach { .. } => {
                 self.emit_string_characters_foreach(expression, body, environment)
             }
+            CompilerExpressionKind::CustomSingleYieldGenerator { initial, .. } => {
+                let _ = self.emit_expression(initial, body, environment);
+                let CompilerType::Generator(generator) = &expression.value_type else {
+                    unreachable!("checked custom construction retains its Generator type")
+                };
+                LlValue::Generator {
+                    value: "0".into(),
+                    generator: generator.clone(),
+                }
+            }
+            CompilerExpressionKind::CustomSingleYieldForeach {
+                source,
+                character,
+                parameter,
+                body: action,
+            } => self.emit_character_sequence_foreach(
+                source,
+                std::slice::from_ref(character),
+                parameter,
+                action,
+                body,
+                environment,
+                expression.span,
+            ),
             CompilerExpressionKind::ErrorCode(value) => LlValue::ErrorCode(value.to_string()),
             CompilerExpressionKind::Enum(value) => {
                 let CompilerType::Enum(enumeration) = &expression.value_type else {
@@ -5685,7 +5713,28 @@ impl<'a> Generator<'a> {
         else {
             unreachable!("checked Character foreach retains its traversal")
         };
-        let span = traversal.span;
+        self.emit_character_sequence_foreach(
+            source,
+            characters,
+            parameter,
+            action,
+            body,
+            environment,
+            traversal.span,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)] // The checked traversal pieces remain explicit at lowering.
+    fn emit_character_sequence_foreach(
+        &mut self,
+        source: &CompilerExpression,
+        characters: &[String],
+        parameter: &CompilerParameter,
+        action: &CompilerBlock,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
         let _ = self.emit_expression(source, body, environment);
         let debug_address = (!parameter.discarded).then(|| {
             let variable = self.debug.local(
@@ -9640,6 +9689,32 @@ mod tests {
         assert!(main.contains("#dbg_declare(ptr"));
         assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
         assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_single_yield_custom_generator_without_runtime_state() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-SINGLE-YIELD-001
+        let source = include_str!("../../../examples/language/custom-single-yield-generator.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-single-yield-generator.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert!(main.contains("#dbg_value(i32 0"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("generator.foreach.loop"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }
