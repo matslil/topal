@@ -137,15 +137,16 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::StringCharactersCollect { text, .. } => {
             expression_uses_extended_debug(text)
         }
+        CompilerExpressionKind::StringCharactersClose(generator)
+        | CompilerExpressionKind::GeneratorCollect(generator) => {
+            expression_uses_extended_debug(generator)
+        }
         CompilerExpressionKind::StringCharactersForeach { source, body, .. } => {
             expression_uses_extended_debug(source) || block_uses_extended_debug(body)
         }
         CompilerExpressionKind::IterateGeneratorForeach {
             generator, body, ..
         } => expression_uses_extended_debug(generator) || block_uses_extended_debug(body),
-        CompilerExpressionKind::GeneratorCollect(generator) => {
-            expression_uses_extended_debug(generator)
-        }
         CompilerExpressionKind::ListFold {
             list,
             initial,
@@ -571,6 +572,7 @@ impl<'a> Generator<'a> {
                 parameter.value_type,
                 CompilerType::Scope
                     | CompilerType::Function
+                    | CompilerType::Generator(_)
                     | CompilerType::Tuple(_)
                     | CompilerType::Record(_)
                     | CompilerType::Sum(_)
@@ -1095,6 +1097,10 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::StringCharactersCollect { text, .. } => {
                 self.emit_expression(text, body, environment)
+            }
+            CompilerExpressionKind::StringCharactersClose(generator) => {
+                let _ = self.emit_expression(generator, body, environment);
+                LlValue::Unit
             }
             CompilerExpressionKind::StringCharactersForeach { .. } => {
                 self.emit_string_characters_foreach(expression, body, environment)
@@ -9622,6 +9628,49 @@ mod tests {
         assert!(llvm.contains("name: \"Character\""));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_transferred_string_character_generator_close_without_runtime_state() {
+        // TOPAL-STRING-CHARACTERS-GENERATOR-001,
+        // TOPAL-STRING-CHARACTERS-PARAMETER-001,
+        // TOPAL-STRING-CHARACTERS-CLOSE-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-CLOSE-001
+        let source = include_str!("../../../examples/language/string-character-generator-close.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "ignore")
+            .expect("called close function is instantiated");
+        let llvm = Generator::new(&program, "string-character-generator-close.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let close = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(i32 %arg0)",
+                function.symbol
+            ))
+            .expect("close function has one private ownership token")
+            .1
+            .split_once("}\n")
+            .expect("close function definition terminates")
+            .0;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            1
+        );
+        assert!(main.contains(&format!("call fastcc void @{}(i32 0)", function.symbol)));
+        assert!(close.contains("alloca i32, align 4"));
+        assert!(close.contains("store i32 %arg0"));
+        assert!(close.contains("#dbg_declare(ptr"));
+        assert!(close.contains("ret void"));
+        assert!(!close.contains("call "));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(!llvm.contains("topal.runtime.generator"));
     }
 
     #[test]
