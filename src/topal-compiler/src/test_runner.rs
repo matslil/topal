@@ -70,6 +70,8 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/increasing-int-recursion.t",
     "examples/language/int-checked-construction.t",
     "examples/language/int-euclidean-modulo.t",
+    "examples/language/iterate-generator.t",
+    "examples/language/iterate-take-while.t",
     "examples/language/layout-absence-policies.t",
     "examples/language/layout-access.t",
     "examples/language/layout-bit-order.t",

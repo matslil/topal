@@ -339,6 +339,35 @@ dynamic relocation, or `topal-native/6` revision. This realizes
 `TOPAL-COMPILER-GENERATOR-ERROR-CODE-001` and
 `TOPAL-GENERATOR-ERROR-CODE-001` for compiler increment 5a.
 
+## TOPAL-COMP-GENERATOR-ITERATE-CONSTRUCT-001 — Lazy iterate construction
+
+The checked compiler shall admit exact `Generator Int Unit Unit` construction
+from an `Int` initial expression and unary anonymous `Int -> Int` next
+operation, followed optionally and directly by `take-while` with a unary
+anonymous `Int -> Boolean` predicate. It shall evaluate the initial expression
+once, retain the checked construction and anonymous bodies, invoke neither body
+during construction, and print the canonical `<Generator Int Unit Unit>` final
+observation.
+
+An immutable local Generator binding shall be consumable at most once. Before
+LLVM lowering, the checked boundary shall reject repeated, abandoned, or
+explicitly discarded bindings; product containment; qualified access;
+equality; decision joins; and function or library boundaries. The Linux x86-64
+backend may lower the remaining construction-only binding to a private `i32`
+observation token with semantic Generator DWARF, but that token shall encode no
+seed, operation, capture, continuation, ownership, or stable identity. Future
+compiled-library metadata shall describe the canonical Generator classifier,
+captured operations, and evidence independently of target representation.
+
+This increment shall perform no traversal, yield, resume, suspension, close
+delivery, generator allocation, indirect call, or generator runtime operation.
+It shall introduce no foreign dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, or `topal-native/6`
+revision. This realizes
+`TOPAL-COMPILER-GENERATOR-ITERATE-CONSTRUCT-001`,
+`TOPAL-GENERATOR-ITERATE-001`, and `TOPAL-GENERATOR-TAKE-WHILE-001` for compiler
+increment 5b.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted

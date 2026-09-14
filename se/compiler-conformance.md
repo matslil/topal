@@ -73,6 +73,7 @@ evidence.
 | 4b3d-j | exact `List (Int, String)` and `List List (Int, String)` construction, private outer passage, first/count/equality, nested display, and debugging | complete |
 | 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal algorithms and callable forms, traversal-control generalization, and representation-safe reclamation | planned |
 | 5a | qualified `lang generator generator-closed` as a closed nominal value with equality, display, and debugging but no continuation behavior | complete |
+| 5b | lazy `Generator Int Unit Unit` construction from `iterate` and direct `take-while`, with checked dormant bodies, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -235,7 +236,12 @@ generic or compiled-library List ABI closed.
 Increment 5a admits only the qualified `generator-closed` vocabulary value as a
 private nominal enum. It deliberately creates no continuation, generator state,
 close result, Error domain, or provenance; all generator execution remains in
-increment 5.
+increment 5. Increment 5b admits the first exact Generator value through lazy
+`iterate` construction and directly chained `take-while`. It checks and retains
+the anonymous bodies without invoking them, evaluates the initial value once,
+and enforces a deliberately narrow one-consumption local boundary around a
+private debug token; traversal, close delivery, executable continuation state,
+and a compiled-library Generator ABI remain in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

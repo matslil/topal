@@ -707,6 +707,22 @@ state machine, allocation, or runtime call. Canonical library metadata must
 identify the qualified vocabulary and alternative rather than treating private
 tag zero as an interchange identity.
 
+The first Generator value slice retains the checked `Int` initial expression,
+unary next operation, and optional directly chained `take-while` predicate in
+the compiler model without executing either anonymous body. Generated code
+evaluates the initial expression once and represents only a live
+construction-stage `Generator Int Unit Unit` binding as private `i32` zero.
+That value is an observation token, not a continuation layout: it carries no
+seed, capture, program counter, ownership, or stable identity. Linear checking
+permits one local consumption and closes the aggregate, qualified-member,
+decision, equality, discard, abandonment, function, and library escape paths
+before LLVM. Semantic enum-shaped DWARF lets stock GDB inspect the token using
+the canonical Generator spelling, while ordinary output is still emitted by
+the Topal-owned syscall writer. Traversal will replace this token with an
+executable representation; compiled-library metadata must describe the
+canonical Generator classifier and captured operations/evidence, then select a
+target adapter rather than exporting this private token.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an

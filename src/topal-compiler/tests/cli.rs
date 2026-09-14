@@ -899,6 +899,70 @@ fn generator_error_code_is_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn lazy_iterate_values_are_freestanding_linear_and_debuggable() {
+    // TOPAL-GENERATOR-ITERATE-001, TOPAL-GENERATOR-TAKE-WHILE-001,
+    // TOPAL-COMPILER-GENERATOR-ITERATE-CONSTRUCT-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-lazy-iterate-values");
+    let cases = [
+        ("iterate-generator.t", "numbers"),
+        ("iterate-take-while.t", "digits"),
+    ];
+    for (filename, binding) in cases {
+        let executable = directory.join(filename.trim_end_matches(".t"));
+        let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../examples/language")
+            .join(filename);
+        let compiled =
+            run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+        assert!(
+            compiled.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let executed = run(&mut Command::new(&executable));
+        assert!(executed.status.success());
+        assert_eq!(executed.stdout, b"<Generator Int Unit Unit>\n");
+        assert_freestanding_elf_and_valid_dwarf(&executable);
+
+        let debugged = run(Command::new("gdb")
+            .args([
+                "-q",
+                "--batch",
+                "-ex",
+                "set debuginfod enabled off",
+                "-ex",
+                "set disable-randomization off",
+                "-ex",
+                &format!("break {filename}:8"),
+                "-ex",
+                "run",
+                "-ex",
+                &format!("whatis {binding}"),
+                "-ex",
+                &format!("print {binding}"),
+                "-ex",
+                "backtrace",
+            ])
+            .arg(&executable));
+        assert!(
+            debugged.status.success(),
+            "{}",
+            String::from_utf8_lossy(&debugged.stderr)
+        );
+        let text = String::from_utf8_lossy(&debugged.stdout);
+        for expected in [
+            "type = enum Generator Int Unit Unit",
+            "$1 = <Generator Int Unit Unit>",
+            "topal.main",
+        ] {
+            assert!(text.contains(expected), "missing {expected:?}: {text}");
+        }
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_renders_exact_range_parameters_and_locals() {
     // TOPAL-COMP-DEBUG-001, TOPAL-COMP-RANGE-001
     let directory = temporary("gdb-range");
