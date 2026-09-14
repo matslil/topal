@@ -535,6 +535,37 @@ revision. Future compiled-library metadata SHALL encode the
 terminal-before-suspension graph, final value, directions, ownership/close
 behavior, and target adapters canonically.
 
+### TOPAL-COMPILER-GENERATOR-FINAL-CHARACTER-001 — Distinct final Character
+
+The compiler SHALL admit one root custom generator with Character input,
+Character yield, Unit resume, and Character final result when its body is
+exactly one discarded yield of the initial parameter followed by an exact
+closed Character literal. Application SHALL evaluate the initial Character
+once, retain the yielded value and separate final value as compile-session
+provenance, and stop at the yield without evaluating the final expression.
+
+Direct root `foreach` over one locally bound admitted instance SHALL consume
+the Generator, invoke its checked Character-to-Unit action exactly once with
+the yielded Character, resume with Unit, and only then evaluate and produce the
+distinct final Character. Existing repeated-use and abandonment rejection SHALL
+continue to apply. Binding the non-Unit `foreach` result, zero or multiple
+yields, a local alias, dynamic or non-Character final expressions, other
+directions, overloads, captures, close handling, and function or library
+boundaries SHALL remain unsupported.
+
+On Linux x86-64, the backend SHALL emit the yield/action/resume sequence before
+the final Character materialization at `-O0`. It MAY retain the
+compiler-private Generator observation token and existing debug-only yielded
+Character shadow, but neither SHALL carry the final value or act as
+continuation state. Generated DWARF SHALL expose the full
+`Generator Character Unit Character` direction identity and yielded Character
+to GDB. The lowering SHALL introduce no Generator object, state allocation,
+dispatcher, callback, indirect call, foreign runtime, other-language standard
+library, needed library, dynamic relocation, public/library Generator ABI, or
+native-ABI revision. Future compiled-library metadata SHALL encode the result
+classifier and final-value node alongside canonical declaration, direction,
+suspension, effect, ownership/close, and target-adapter evidence.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve

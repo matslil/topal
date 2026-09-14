@@ -492,6 +492,7 @@ pub enum CompilerExpressionKind {
         initial: Box<CompilerExpression>,
         characters: Vec<String>,
         locals: Vec<CompilerParameter>,
+        result: Box<CompilerExpression>,
     },
     CustomCharacterForeach {
         source: Box<CompilerExpression>,
@@ -500,6 +501,7 @@ pub enum CompilerExpressionKind {
         locals: Vec<CompilerParameter>,
         parameter: CompilerParameter,
         body: Box<CompilerBlock>,
+        result: Box<CompilerExpression>,
     },
     ErrorCode(u32),
     IntToModular {
@@ -794,6 +796,7 @@ struct GeneratorSource {
     span: Span,
     yield_count: usize,
     local: Option<Span>,
+    result: CompilerExpression,
 }
 
 #[derive(Clone)]
@@ -1839,20 +1842,58 @@ fn collect_character_generators(
             || source.slice(parameter.classifier) != "Character"
             || source.slice(*yielded) != "Character"
             || source.slice(*resumed) != "Unit"
-            || source.slice(*result) != "Unit"
+            || !matches!(source.slice(*result), "Unit" | "Character")
         {
             return Err(unsupported(
                 source,
                 *span,
-                "custom generator outside the Character-yield/Unit-resume/Unit-result subset",
+                "custom generator outside the Character-yield/Unit-resume/admitted-result subset",
             ));
         }
-        let Some((Statement::Expression(Expression::Unit(_)), yields)) = body.split_last() else {
+        let Some((final_statement, yields)) = body.split_last() else {
             return Err(unsupported(
                 source,
                 *span,
-                "custom generator body without a final Unit",
+                "custom generator body without an admitted final value",
             ));
+        };
+        let final_value = match (source.slice(*result), final_statement) {
+            ("Unit", Statement::Expression(Expression::Unit(span))) => unit_expression(*span),
+            ("Character", Statement::Expression(Expression::String(literal))) => {
+                let value = parse_string(source.slice(*literal)).ok_or_else(|| {
+                    source_diagnostic(
+                        source,
+                        "E-STRING-LITERAL",
+                        *literal,
+                        "invalid string literal delimiter",
+                    )
+                })?;
+                let count = character_count(value);
+                if count != 1 {
+                    return Err(source_diagnostic(
+                        source,
+                        "E-CHARACTER-CLASSIFIER",
+                        *literal,
+                        format!(
+                            "Character requires exactly one user-perceived character, but this String contains {count}"
+                        ),
+                    ));
+                }
+                CompilerExpression {
+                    kind: CompilerExpressionKind::String(value.to_owned()),
+                    value_type: CompilerType::Character,
+                    int_range: None,
+                    rational_value: None,
+                    span: *literal,
+                }
+            }
+            _ => {
+                return Err(unsupported(
+                    source,
+                    *span,
+                    "custom generator final value outside exact Unit or Character literal",
+                ));
+            }
         };
         let (local, yielded_name, yields) = if let Some(Statement::Binding {
             name: local_name,
@@ -1880,6 +1921,15 @@ fn collect_character_generators(
                 source,
                 *span,
                 "custom generator local binding without a following yield",
+            ));
+        }
+        if final_value.value_type == CompilerType::Character
+            && (local.is_some() || yields.len() != 1)
+        {
+            return Err(unsupported(
+                source,
+                *span,
+                "Character-final custom generator outside one direct initial-parameter yield",
             ));
         }
         for yield_statement in yields {
@@ -1925,6 +1975,7 @@ fn collect_character_generators(
                 span: *span,
                 yield_count: yields.len(),
                 local,
+                result: final_value,
             },
         );
     }
@@ -2835,6 +2886,13 @@ impl Analyzer {
                     let value =
                         self.analyze_root_foreach(source, *binding, body, *span, environment)?;
                     if let Some((name, classifier)) = foreach_result {
+                        if value.value_type != CompilerType::Unit {
+                            return Err(unsupported(
+                                &self.source,
+                                *span,
+                                "binding a non-Unit custom generator final result",
+                            ));
+                        }
                         let name_text = self.source.slice(*name).to_owned();
                         if declared.contains(&name_text)
                             || name_text == "root"
@@ -2888,10 +2946,12 @@ impl Analyzer {
                             value,
                             span: *name,
                         }));
+                    } else if last && value.value_type != CompilerType::Unit {
+                        result = Some(value);
                     } else {
                         lowered.push(CompilerStatement::Discard(value));
                     }
-                    if last {
+                    if last && result.is_none() {
                         result = Some(unit_expression(*span));
                     }
                 }
@@ -3049,16 +3109,18 @@ impl Analyzer {
                     declaration_span,
                     characters,
                     locals,
+                    result,
                     ..
                 },
             ..
         }) = retained_generator
         {
             let source_value = self.analyze_expression(source, environment)?;
+            let result_type = result.value_type.clone();
             require_type(
                 &self.source,
                 source_value.span,
-                &character_unit_generator_type(),
+                &character_generator_type(result_type.clone()),
                 &source_value.value_type,
             )?;
             let (parameter, body) =
@@ -3071,8 +3133,9 @@ impl Analyzer {
                     locals,
                     parameter,
                     body: Box::new(body),
+                    result,
                 },
-                value_type: CompilerType::Unit,
+                value_type: result_type,
                 int_range: None,
                 rational_value: None,
                 span,
@@ -8253,6 +8316,8 @@ impl Analyzer {
                 span,
             })
             .collect();
+        let result = declaration.result;
+        let value_type = character_generator_type(result.value_type.clone());
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::CustomCharacterGenerator {
                 declaration: self.source.slice(declaration.name).to_owned(),
@@ -8260,8 +8325,9 @@ impl Analyzer {
                 initial: Box::new(initial),
                 characters,
                 locals,
+                result: Box::new(result),
             },
-            value_type: character_unit_generator_type(),
+            value_type,
             int_range: None,
             rational_value: None,
             span,
@@ -10930,14 +10996,25 @@ fn int_unit_generator_type() -> CompilerType {
 }
 
 fn character_unit_generator_type() -> CompilerType {
+    character_generator_type(CompilerType::Unit)
+}
+
+fn character_generator_type(result_type: CompilerType) -> CompilerType {
     CompilerType::Generator(CompilerGeneratorType {
         yield_type: Box::new(CompilerType::Character),
         resume_type: Box::new(CompilerType::Unit),
-        result_type: Box::new(CompilerType::Unit),
+        result_type: Box::new(result_type),
     })
 }
 
 fn is_character_unit_generator_type(value_type: &CompilerType) -> bool {
+    is_character_generator_type_with_result(value_type, &CompilerType::Unit)
+}
+
+fn is_character_generator_type_with_result(
+    value_type: &CompilerType,
+    expected_result: &CompilerType,
+) -> bool {
     matches!(
         value_type,
         CompilerType::Generator(CompilerGeneratorType {
@@ -10946,7 +11023,7 @@ fn is_character_unit_generator_type(value_type: &CompilerType) -> bool {
             result_type,
         }) if yield_type.as_ref() == &CompilerType::Character
             && resume_type.as_ref() == &CompilerType::Unit
-            && result_type.as_ref() == &CompilerType::Unit
+            && result_type.as_ref() == expected_result
     )
 }
 
@@ -13308,6 +13385,72 @@ mod tests {
             analyze_for_compiler(invalid_action).unwrap_err().code,
             "E-TYPE-MISMATCH"
         );
+    }
+
+    #[test]
+    fn models_distinct_custom_generator_final_character() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-FINAL-RETURN-001,
+        // TOPAL-GENERATOR-SUSPEND-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-FINAL-CHARACTER-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-final-character.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            (program.main.statements.as_slice(), &program.main.result),
+            (
+                [CompilerStatement::Binding(CompilerBinding {
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::CustomCharacterGenerator {
+                            declaration,
+                            initial,
+                            characters,
+                            result: generated_result,
+                            ..
+                        },
+                        value_type,
+                        ..
+                    },
+                    ..
+                })],
+                CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterForeach {
+                        characters: yielded,
+                        parameter,
+                        body,
+                        result: traversal_result,
+                        ..
+                    },
+                    value_type: CompilerType::Character,
+                    ..
+                }
+            ) if declaration == "yield-then-return"
+                && exact_string(initial).as_deref() == Some("Y")
+                && characters == &[String::from("Y")]
+                && exact_string(generated_result).as_deref() == Some("R")
+                && is_character_generator_type_with_result(value_type, &CompilerType::Character)
+                && yielded == &[String::from("Y")]
+                && parameter.value_type == CompilerType::Character
+                && body.result.value_type == CompilerType::Unit
+                && exact_string(traversal_result).as_deref() == Some("R")
+        ));
+
+        let empty_final = "use language (version is v0.1)\nyield-then-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"\"\ngenerated is yield-then-return \"Y\"\ngenerated foreach { character }\n  _ is String character\n";
+        assert_eq!(
+            analyze_for_compiler(empty_final).unwrap_err().code,
+            "E-CHARACTER-CLASSIFIER"
+        );
+
+        for source in [
+            "use language (version is v0.1)\nyield-then-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  initial\ngenerated is yield-then-return \"Y\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nreturn-only is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  \"R\"\ngenerated is return-only \"Y\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nyield-then-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\ngenerated is yield-then-return \"Y\"\nreturned is generated foreach { character }\n  _ is String character\nreturned\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]
