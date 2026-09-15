@@ -6111,6 +6111,7 @@ impl<'a> Generator<'a> {
                 initial_parameter.value_type,
                 CompilerType::Int
                     | CompilerType::Nat
+                    | CompilerType::Enum(_)
                     | CompilerType::Rational
                     | CompilerType::Optional(_)
                     | CompilerType::Range(_)
@@ -6142,6 +6143,16 @@ impl<'a> Generator<'a> {
                 .debug
                 .location(explicit_return.unwrap_or(result_span), body.subprogram);
             body.debug_declare(&address, variable, location);
+            if matches!(initial_parameter.value_type, CompilerType::Enum(_)) {
+                body.effect(
+                    &format!(
+                        "store {}, ptr {address}, align {alignment}",
+                        initial.argument()
+                    ),
+                    result_span,
+                    &mut self.debug,
+                );
+            }
         } else if initial_parameter.value_type == CompilerType::Boolean {
             body.subprogram = self.debug.lexical_block(declaration_span, body.subprogram);
             let variable = self.debug.local(
@@ -6204,6 +6215,16 @@ impl<'a> Generator<'a> {
                 body.effect(&store, span, &mut self.debug);
                 if parameter.value_type == CompilerType::Boolean {
                     body.effect(&store, parameter.span, &mut self.debug);
+                } else if matches!(parameter.value_type, CompilerType::Enum(_)) {
+                    let action_span =
+                        action
+                            .statements
+                            .first()
+                            .map_or(action.result.span, |statement| match statement {
+                                CompilerStatement::Binding(binding) => binding.span,
+                                CompilerStatement::Discard(value) => value.span,
+                            });
+                    body.effect(&store, action_span, &mut self.debug);
                 } else if parameter.value_type == CompilerType::Unit {
                     body.effect(&store, action.result.span, &mut self.debug);
                 }
@@ -10706,6 +10727,53 @@ mod tests {
         assert!(llvm.contains("DILocalVariable(name: \"value\""));
         assert!(llvm.contains("name: \"Generator Nat Unit Nat\""));
         assert!(llvm.contains("name: \"Nat\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_nominal_enum_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-ENUM-001, TOPAL-COMPILER-GENERATOR-ENUM-001
+        let source = include_str!("../../../examples/language/custom-generator-enum-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-enum-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let debug_stores = main
+            .match_indices("store i32 0")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let action = main
+            .find("icmp eq i32 0, 0")
+            .expect("foreach compares the yielded nominal alternative");
+        let output = main
+            .find("switch i32 1")
+            .expect("the distinct final alternative controls Topal-owned display");
+        assert_eq!(debug_stores.len(), 4);
+        assert!(
+            constructed < debug_stores[0]
+                && debug_stores[0] < debug_stores[1]
+                && debug_stores[1] < action
+                && action < debug_stores[2]
+                && debug_stores[2] < debug_stores[3]
+                && debug_stores[3] < output
+        );
+        assert!(main.contains("alloca i32, align 4"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"choice\""));
+        assert!(llvm.contains("name: \"Generator Choice Unit Choice\""));
+        assert!(llvm.contains("name: \"Choice\""));
+        assert!(llvm.contains("DIEnumerator(name: \"First\", value: 0)"));
+        assert!(llvm.contains("DIEnumerator(name: \"Second\", value: 1)"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }

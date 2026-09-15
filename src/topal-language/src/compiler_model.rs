@@ -1148,6 +1148,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         &source,
         &parsed.statements,
         &reserved_names,
+        &analyzer.enums,
         &analyzer.functions,
         &mut analyzer.generators,
     )?;
@@ -2385,6 +2386,87 @@ fn exact_boolean_value_generator_body(
     })
 }
 
+fn exact_enum_value_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    enumeration: &CompilerEnumType,
+    body: &[Statement],
+    span: Span,
+) -> Result<ExactValueGeneratorBody, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(Expression::Identifier(result_value)),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "Choice-value custom generator outside one initial yield and final Second",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "Choice-value custom generator yield outside its initial parameter",
+        ));
+    };
+    if enumeration.name != "Choice"
+        || enumeration.alternatives != ["First", "Second"]
+        || source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+        || source.slice(*result_value) != "Second"
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "Choice-value custom generator outside yield initial followed by Second",
+        ));
+    }
+    Ok(ExactValueGeneratorBody {
+        yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+        continuations: Vec::new(),
+        explicit_return: None,
+        result: CompilerExpression {
+            kind: CompilerExpressionKind::Enum(1),
+            value_type: CompilerType::Enum(enumeration.clone()),
+            int_range: None,
+            rational_value: None,
+            span: *result_value,
+        },
+    })
+}
+
+fn exact_enum_value_generator_action(parameter: &CompilerParameter, body: &CompilerBlock) -> bool {
+    !parameter.discarded
+        && matches!(
+            body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Equal,
+                    left,
+                    right,
+                },
+                ..
+            })] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                if name == &parameter.name)
+                && matches!(right.kind, CompilerExpressionKind::Enum(0))
+                && right.value_type == parameter.value_type
+        )
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
 fn exact_int_value_generator_body(
     source: &SourceText,
     parameter: &FunctionParameter,
@@ -3217,6 +3299,7 @@ fn collect_character_generators(
     source: &SourceText,
     statements: &[Statement],
     reserved_names: &BTreeSet<String>,
+    enums: &EnumTypes,
     functions: &BTreeMap<String, Vec<FunctionSource>>,
     generators: &mut BTreeMap<String, GeneratorSource>,
 ) -> Result<(), Diagnostic> {
@@ -3268,13 +3351,17 @@ fn collect_character_generators(
             "Rational" => CompilerType::Rational,
             "String" => CompilerType::String,
             "Unit" => CompilerType::Unit,
-            _ => {
-                return Err(unsupported(
-                    source,
-                    *span,
-                    "custom generator outside the admitted Boolean, Character, Int, Nat, Optional Int, Range Int, Rational, String, or Unit initial-input subset",
-                ));
-            }
+            classifier => enums
+                .get(classifier)
+                .filter(|(_, declaration)| declaration.end <= parameter.classifier.start)
+                .map(|(enumeration, _)| CompilerType::Enum(enumeration.clone()))
+                .ok_or_else(|| {
+                    unsupported(
+                        source,
+                        *span,
+                        "custom generator outside the admitted Boolean, Character, Choice Enum, Int, Nat, Optional Int, Range Int, Rational, String, or Unit initial-input subset",
+                    )
+                })?,
         };
         let initial_parameter = CompilerParameter {
             name: source.slice(parameter.name).to_owned(),
@@ -3298,6 +3385,46 @@ fn collect_character_generators(
                 explicit_return,
                 result: final_value,
             } = exact_boolean_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators.insert(
+                name_text,
+                GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    close_handler: None,
+                    result: final_value,
+                },
+            );
+            continue;
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && let CompilerType::Enum(enumeration) = &initial_type
+            && enumeration.name == "Choice"
+            && enumeration.alternatives == ["First", "Second"]
+            && source.slice(*yielded) == "Choice"
+            && source.slice(*resumed) == "Unit"
+            && source.slice(*result) == "Choice"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_enum_value_generator_body(source, parameter, enumeration, body, *span)?;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -5109,6 +5236,15 @@ impl Analyzer {
                     &self.source,
                     span,
                     "Nat-value custom generator foreach action outside discarded value + 1",
+                ));
+            }
+            if matches!(initial_parameter.value_type, CompilerType::Enum(_))
+                && !exact_enum_value_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "Choice-value custom generator foreach action outside discarded choice = First",
                 ));
             }
             if initial_parameter.value_type == CompilerType::Rational
@@ -17626,6 +17762,101 @@ mod tests {
             "use language (version is v0.1)\nnext is generator (initial : Nat)\n  yields Nat\n  resumes Unit\n  -> Nat\n  _ is yield initial\n  initial + 2\ngenerated is next (Nat 7)\ngenerated foreach { value }\n  _ is value + 1\n",
             "use language (version is v0.1)\nnext is generator (initial : Nat)\n  yields Nat\n  resumes Unit\n  -> Nat\n  _ is yield initial\n  initial + 1\ngenerated is next (Nat 7)\ngenerated foreach { value }\n  _ is value + 2\n",
             "use language (version is v0.1)\nnext is generator (initial : Nat)\n  yields Nat\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is next (Nat 7)\ngenerated foreach { value }\n  _ is value + 1\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Accepted nominal graph and rejection matrix stay together.
+    fn models_nominal_enum_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-ENUM-001, TOPAL-COMPILER-GENERATOR-ENUM-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-enum-values.t"
+        ))
+        .unwrap();
+        let choice = CompilerType::Enum(CompilerEnumType {
+            name: "Choice".into(),
+            alternatives: vec!["First".into(), "Second".into()],
+        });
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "choose"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == choice
+                && matches!(initial.kind, CompilerExpressionKind::Enum(0))
+                && initial.value_type == choice
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && matches!(result.kind, CompilerExpressionKind::Enum(1))
+                && result.value_type == choice
+                && *generator_type.yield_type == choice
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == choice
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "choice"
+                && parameter.value_type == choice
+                && matches!(body.statements.as_slice(), [CompilerStatement::Discard(
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Binary {
+                            operation: CompilerBinary::Equal,
+                            left,
+                            right,
+                        },
+                        ..
+                    }
+                )] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "choice")
+                    && left.value_type == choice
+                    && matches!(right.kind, CompilerExpressionKind::Enum(0))
+                    && right.value_type == choice)
+                && matches!(result.kind, CompilerExpressionKind::Enum(1))
+                && result.value_type == choice
+                && value_type == &choice
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nChoice is Enum (First, Second)\nchoose is generator (initial : Choice)\n  yields Choice\n  resumes Unit\n  -> Choice\n  _ is yield Second\n  Second\ngenerated is choose First\ngenerated foreach { choice }\n  _ is choice = First\n",
+            "use language (version is v0.1)\nChoice is Enum (First, Second)\nchoose is generator (initial : Choice)\n  yields Choice\n  resumes Unit\n  -> Choice\n  _ is yield initial\n  _ is yield initial\n  Second\ngenerated is choose First\ngenerated foreach { choice }\n  _ is choice = First\n",
+            "use language (version is v0.1)\nChoice is Enum (First, Second)\nchoose is generator (initial : Choice)\n  yields Choice\n  resumes Unit\n  -> Choice\n  _ is yield initial\n  initial\ngenerated is choose First\ngenerated foreach { choice }\n  _ is choice = First\n",
+            "use language (version is v0.1)\nChoice is Enum (First, Second)\nchoose is generator (initial : Choice)\n  yields Choice\n  resumes Unit\n  -> Choice\n  _ is yield initial\n  First\ngenerated is choose First\ngenerated foreach { choice }\n  _ is choice = First\n",
+            "use language (version is v0.1)\nChoice is Enum (First, Second)\nchoose is generator (initial : Choice)\n  yields Choice\n  resumes Unit\n  -> Choice\n  _ is yield initial\n  Second\ngenerated is choose First\ngenerated foreach { choice }\n  _ is choice = Second\n",
+            "use language (version is v0.1)\nChoice is Enum (First, Second)\nchoose is generator (initial : Choice)\n  yields Choice\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is choose First\ngenerated foreach { choice }\n  _ is choice = First\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,
