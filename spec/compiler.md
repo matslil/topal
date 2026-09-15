@@ -1374,6 +1374,62 @@ state, native-representation identity, and target adapters rather than expose
 the private token, debug slots, Rational/Int object layouts, or checked-program
 node layout.
 
+### TOPAL-COMPILER-GENERATOR-UNIT-001 — Payload-free Unit generator directions
+
+The compiler SHALL admit a root custom generator with one named Unit initial
+parameter and directions `Generator Unit Unit Unit` whose body consists only of
+one discarded `yield initial` followed by `()` as its final expression. One
+currently admitted Unit expression SHALL start the generator, and the fresh
+result SHALL be bound and consumed exactly once by a Unit-to-Unit foreach
+action consisting only of its named yielded parameter as an identity
+expression.
+
+The checked program SHALL retain the Unit initial classifier separately from
+all three Generator directions, the initial-parameter yield and suspension, the
+named identity action, Unit resumption, distinct final Unit, and ownership edge.
+Application SHALL evaluate the initial expression exactly once. Traversal SHALL
+evaluate the action exactly once with the yielded Unit, resume the generator
+with Unit, and only then evaluate the final Unit. This order SHALL hold with
+LLVM optimization disabled and SHALL NOT depend on folding, inlining, or dead-
+code elimination.
+
+Because Unit has exactly one value and no runtime payload, unoptimized semantic
+LLVM IR SHALL introduce no action call, payload operation, allocation, or
+Generator runtime operation. Erasing those payload operations is a compiler
+representation decision, not an LLVM optimization, and SHALL preserve the
+checked action occurrence and source order. Debug LLVM IR SHALL contain two
+aligned private `i8` lifetime slots: one anchors the yield and action sites, and
+one initialized slot anchors the captured initial and final-expression site.
+These slots and their stores SHALL be debug-only and SHALL NOT become semantic
+Generator or Unit state. LLVM MAY eliminate or transform the debug-only
+artifacts when permitted by the selected debug/optimization policy.
+
+On Linux x86-64, Unit SHALL have no semantic native payload while the root-
+local Generator remains a compiler-private `i32` ownership token. LLVM SHALL
+select placement and call lowering from the target triple and data layout; the
+compiler SHALL hard-code no AMD64 register convention. DWARF and GDB SHALL
+expose the complete `Generator Unit Unit Unit` classifier and value, the Unit
+yielded into the foreach action, the captured initial Unit at the final
+expression, ordered yield/action/resumption/final source locations, and the
+Topal entry frame.
+
+Literal or multiple yields; a final expression other than exact `()`;
+additional body statements; an action other than the named identity expression;
+multiple parameters; other input, yield, resume, or final classifiers; close
+handling; nested or ordinary-function construction; Generator parameter/result
+transfer; repeated consumption; abandonment; libraries; and external
+boundaries SHALL remain unsupported. The lowering SHALL introduce no semantic
+Generator object or state allocation, dispatcher, callback, indirect call,
+unwind dependency, C/C++ runtime, other-language standard library, needed
+library, dynamic relocation, public/library calling convention or Generator
+ABI, or native-ABI revision. Output SHALL remain wholly owned by the Topal
+runtime and Linux syscall layer. Future compiled-library metadata SHALL encode
+independent initial and direction classifiers, the zero-payload Unit identity,
+ordered yield/action/resume/final provenance, representation erasure guarantees,
+declaration/construction/action sites, captures/effects, ownership/consumption/
+close state, native-representation identity, and target adapters rather than
+expose the private token, debug slots, or checked-program node layout.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve

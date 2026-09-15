@@ -2688,6 +2688,71 @@ fn exact_one_third_rational_construct(expression: &CompilerExpression) -> bool {
             == Some(&BigRational::new(BigInt::from(1), BigInt::from(3)))
 }
 
+fn exact_unit_value_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<ExactValueGeneratorBody, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(Expression::Unit(result_span)),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "Unit-value custom generator outside one initial yield and final Unit",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "Unit-value custom generator yield outside its initial parameter",
+        ));
+    };
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "Unit-value custom generator outside yield initial followed by ()",
+        ));
+    }
+    Ok(ExactValueGeneratorBody {
+        yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+        continuations: Vec::new(),
+        explicit_return: None,
+        result: unit_expression(*result_span),
+    })
+}
+
+fn exact_unit_value_generator_action(parameter: &CompilerParameter, body: &CompilerBlock) -> bool {
+    !parameter.discarded
+        && body.statements.is_empty()
+        && matches!(
+            body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Local(ref name),
+                value_type: CompilerType::Unit,
+                ..
+            } if name == &parameter.name
+        )
+}
+
 #[allow(clippy::too_many_lines)] // Exact declaration and every retained yield stay fail-closed together.
 fn collect_character_generators(
     source: &SourceText,
@@ -2739,11 +2804,12 @@ fn collect_character_generators(
             "Int" => CompilerType::Int,
             "Rational" => CompilerType::Rational,
             "String" => CompilerType::String,
+            "Unit" => CompilerType::Unit,
             _ => {
                 return Err(unsupported(
                     source,
                     *span,
-                    "custom generator outside the admitted Boolean, Character, Int, Rational, or String initial-input subset",
+                    "custom generator outside the admitted Boolean, Character, Int, Rational, String, or Unit initial-input subset",
                 ));
             }
         };
@@ -2769,6 +2835,44 @@ fn collect_character_generators(
                 explicit_return,
                 result: final_value,
             } = exact_boolean_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators.insert(
+                name_text,
+                GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    close_handler: None,
+                    result: final_value,
+                },
+            );
+            continue;
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == CompilerType::Unit
+            && source.slice(*yielded) == "Unit"
+            && source.slice(*resumed) == "Unit"
+            && source.slice(*result) == "Unit"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_unit_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -4428,6 +4532,15 @@ impl Analyzer {
                     &self.source,
                     span,
                     "Rational-value custom generator foreach action outside discarded value + Rational (1, 3)",
+                ));
+            }
+            if initial_parameter.value_type == CompilerType::Unit
+                && !exact_unit_value_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "Unit-value custom generator foreach action outside its named identity value",
                 ));
             }
             return Ok(CompilerExpression {
@@ -16886,6 +16999,87 @@ mod tests {
             "use language (version is v0.1)\nnext is generator (initial : Rational)\n  yields Rational\n  resumes Unit\n  -> Rational\n  _ is yield initial\n  initial + (Rational (1, 3))\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (1, 2))\n",
             "use language (version is v0.1)\nnext is generator (initial : Rational)\n  yields Rational\n  resumes Unit\n  -> Rational\n  _ is yield initial\n  initial + (Rational (1, 3))\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (2, 6))\n",
             "use language (version is v0.1)\nnext is generator (initial : Rational)\n  yields Rational\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (1, 3))\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    fn models_unit_across_every_custom_generator_direction() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-UNIT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-unit-values.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [
+                CompilerStatement::Binding(CompilerBinding {
+                    name,
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::CustomValueGenerator {
+                            declaration,
+                            initial_parameter,
+                            initial,
+                            yields,
+                            continuations,
+                            explicit_return: None,
+                            result,
+                            ..
+                        },
+                        value_type: CompilerType::Generator(generator_type),
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueForeach {
+                        initial_parameter: traversal_initial_parameter,
+                        yields: traversal_yields,
+                        parameter,
+                        body,
+                        result: traversal_result,
+                        ..
+                    },
+                    value_type: CompilerType::Unit,
+                    ..
+                })
+            ] if name == "generated"
+                && declaration == "pulse"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == CompilerType::Unit
+                && matches!(initial.kind, CompilerExpressionKind::Unit)
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && matches!(result.kind, CompilerExpressionKind::Unit)
+                && *generator_type.yield_type == CompilerType::Unit
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == CompilerType::Unit
+                && traversal_initial_parameter.name == "initial"
+                && traversal_initial_parameter.value_type == CompilerType::Unit
+                && matches!(traversal_yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "signal"
+                && parameter.value_type == CompilerType::Unit
+                && body.statements.is_empty()
+                && matches!(body.result.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "signal")
+                && matches!(traversal_result.kind, CompilerExpressionKind::Unit)
+        ));
+        assert!(matches!(
+            program.main.result.kind,
+            CompilerExpressionKind::Unit
+        ));
+
+        for source in [
+            "use language (version is v0.1)\npulse is generator (initial : Unit)\n  yields Unit\n  resumes Unit\n  -> Unit\n  _ is yield ()\n  ()\ngenerated is pulse ()\ngenerated foreach { signal }\n  signal\n",
+            "use language (version is v0.1)\npulse is generator (initial : Unit)\n  yields Unit\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  _ is yield initial\n  ()\ngenerated is pulse ()\ngenerated foreach { signal }\n  signal\n",
+            "use language (version is v0.1)\npulse is generator (initial : Unit)\n  yields Unit\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  initial\ngenerated is pulse ()\ngenerated foreach { signal }\n  signal\n",
+            "use language (version is v0.1)\npulse is generator (initial : Unit)\n  yields Unit\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is pulse ()\ngenerated foreach { signal }\n  ()\n",
+            "use language (version is v0.1)\npulse is generator (initial : Unit)\n  yields Unit\n  resumes Unit\n  -> Boolean\n  _ is yield initial\n  false\ngenerated is pulse ()\ngenerated foreach { signal }\n  signal\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,

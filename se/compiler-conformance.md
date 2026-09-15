@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5ae | payload-free Unit input, yield, identity action, resumption, and final directions with ordered debug-only lifetime anchors | complete |
 | 5ad | exact canonical Rational input, yield, action, resumption, and final directions with ordered allocation-aware construction/addition and debugging | complete |
 | 5ac | exact arbitrary-precision Int input, yield, action, resumption, and final directions with ordered allocation-aware additions and debugging | complete |
 | 5ab | independent Boolean input, yield, and final directions with ordered action/resumption, private `i1`, and source-level debugging | complete |
@@ -482,6 +483,19 @@ runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
 5.
+Increment 5ae separates payload-free Unit input, yield, and final directions
+through one exact custom `Generator Unit Unit Unit`. The checked graph retains
+the Unit initial, initial-parameter yield, named identity action, Unit
+resumption, final Unit, and ownership edge separately. O0 traversal preserves
+their order while erasing semantic payload operations because Unit has one
+value; two debug-only `i8` lifetime slots keep the yield, action, captured
+initial, and final sites stoppable and inspectable. LLVM owns target placement
+and may transform those debug artifacts under the selected policy. Generator
+and Unit values and the entry frame remain debuggable without allocation,
+semantic Generator state, foreign runtime, other-language standard library,
+public ABI, or native-layout revision. Other shapes, directions, state,
+transfer, close, and libraries remain in increment 5.
+
 Increment 5ad separates exact Rational input, yield, and final directions
 through one exact custom `Generator Rational Unit Rational`. The checked graph
 retains the initial Rational, initial-parameter yield, Unit resumption, action

@@ -6085,7 +6085,28 @@ impl<'a> Generator<'a> {
         traversal_span: Span,
         body: &mut FunctionBody,
     ) {
-        if explicit_return.is_some()
+        if initial_parameter.value_type == CompilerType::Unit {
+            let address = body.instruction("alloca i8, align 1", traversal_span, &mut self.debug);
+            body.effect(
+                &format!("store i8 0, ptr {address}, align 1"),
+                traversal_span,
+                &mut self.debug,
+            );
+            body.subprogram = self.debug.lexical_block(declaration_span, body.subprogram);
+            let variable = self.debug.local(
+                &initial_parameter.name,
+                initial_parameter.span,
+                &initial_parameter.value_type,
+                body.subprogram,
+            );
+            let location = self.debug.location(result_span, body.subprogram);
+            body.debug_declare(&address, variable, location);
+            body.effect(
+                &format!("store i8 0, ptr {address}, align 1"),
+                result_span,
+                &mut self.debug,
+            );
+        } else if explicit_return.is_some()
             || matches!(
                 initial_parameter.value_type,
                 CompilerType::Int | CompilerType::Rational
@@ -6179,6 +6200,8 @@ impl<'a> Generator<'a> {
                 body.effect(&store, span, &mut self.debug);
                 if parameter.value_type == CompilerType::Boolean {
                     body.effect(&store, parameter.span, &mut self.debug);
+                } else if parameter.value_type == CompilerType::Unit {
+                    body.effect(&store, action.result.span, &mut self.debug);
                 }
             }
             let mut action_environment = environment.clone();
@@ -10695,6 +10718,54 @@ mod tests {
         assert!(llvm.contains("name: \"Generator Rational Unit Rational\""));
         assert!(llvm.contains("name: \"Rational\""));
         assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_unit_across_every_custom_generator_direction() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-UNIT-001
+        let source = include_str!("../../../examples/language/custom-generator-unit-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-unit-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let slots = main
+            .match_indices("alloca i8, align 1")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let stores = main
+            .match_indices("store i8 0")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let output = main
+            .find("call void @topal.platform.write_all")
+            .expect("the final Unit controls Topal-owned display");
+        assert_eq!(slots.len(), 2);
+        assert_eq!(stores.len(), 4);
+        assert!(
+            constructed < slots[0]
+                && slots[0] < stores[0]
+                && stores[0] < stores[1]
+                && stores[1] < slots[1]
+                && slots[1] < stores[2]
+                && stores[2] < stores[3]
+                && stores[3] < output
+        );
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"signal\""));
+        assert!(llvm.contains("name: \"Generator Unit Unit Unit\""));
+        assert!(llvm.contains("name: \"Unit\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("topal.platform.allocate"));
         assert!(!main.contains("call ptr %"));
     }
 
