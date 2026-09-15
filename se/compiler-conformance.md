@@ -88,6 +88,7 @@ evidence.
 | 5l | exact generator-local Character activation after Unit resumption, followed by a second suspension, with stage-ordered DWARF and no continuation state | complete |
 | 5m | exact successful Unit resume-result binding after one custom yield/action, used as final Unit with source-lifetime debugging and no continuation state | complete |
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
+| 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -374,6 +375,14 @@ handler, cleanup, effect, or post-yield work, native O0 lowering erases the
 expected close value while preserving ownership and Generator DWARF identity.
 Handled close paths, multiple owners, Generator transfer, dynamic provenance,
 and library boundaries remain in increment 5.
+Increment 5o admits the adjacent bound-yield close handler with complete Error
+and Ok Unit branches. The checked model retains both branches and their binding
+activation, while known abandonment materializes the nominal
+`generator-closed` failure and executes only its Error action. Generator-specific
+Result/Error DWARF preserves the code-set identity in GDB. Qualified code
+matching, non-Unit cleanup/effects, successful traversal through this handler,
+multiple owners or yields, transfer, and library boundaries remain in increment
+5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

@@ -966,6 +966,19 @@ requires canonical success/close edges, lexical close domain, declaration
 provenance, cleanup/effect ordering, environment ownership, and target adapters
 in compiled-library metadata.
 
+The first handled-close slice extends that descriptor with the bound yield
+Result, complete Error/Ok Unit actions, their binding activation and source
+spans, and the nominal generator Error-code set. An exact function-scope close
+materializes `Error(domain = root, code = generator-closed)` through the
+Topal-owned Result/Error allocator path, selects the Error payload directly,
+and runs its Unit action before function completion. The success action remains
+checked metadata but is unreachable on this statically known close edge. DWARF
+uses generator-specific Result/Error types so debugger rendering cannot confuse
+the overlapping private numeric tag with an arithmetic Error code. General
+handler lowering still requires a canonical suspension/branch graph, cleanup
+and effect ordering, code-set identity, environment ownership, and target
+adapters in compiled-library metadata.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an

@@ -651,11 +651,12 @@ boundary before the function returns Unit.
 
 The checked function body SHALL contain an explicit custom close after the
 Generator binding and before its final expression. Root abandonment, multiple
-owned generators, multiple yields, generator locals, close handlers or other
-post-yield work, dynamic Character provenance without call specialization,
-static or anonymous functions, explicit return, non-Unit final results,
-Generator parameter/result transfer, and library boundaries SHALL remain
-unsupported.
+owned generators, multiple yields, generator locals, and close handlers or
+other post-yield work except for the exact handler admitted by
+`TOPAL-COMPILER-GENERATOR-CLOSE-HANDLER-001`, dynamic Character provenance
+without call specialization, static or anonymous functions, explicit return,
+non-Unit final results, Generator parameter/result transfer, and library
+boundaries SHALL remain unsupported.
 
 On Linux x86-64, O0 lowering MAY erase the intrinsic close value and final Unit
 for this handler-free, effect-free body after preserving their checked order;
@@ -669,6 +670,38 @@ public/library Generator ABI, or native-ABI revision. Future compiled-library
 metadata SHALL encode the close site and lexical domain, generator declaration
 provenance, close/success edges, suspension identity, cleanup/effect evidence,
 ownership state, and target adapters canonically.
+
+### TOPAL-COMPILER-GENERATOR-CLOSE-HANDLER-001 — Exact close-result handling
+
+The compiler SHALL generalize the admitted function-local custom close to one
+root generator declaration whose body binds its sole Character yield result and
+immediately selects a complete `Error`/`Ok` decision with Unit actions. The
+checked generator construction SHALL retain the yield-result binding, Error and
+Ok binding identities and spans, both branch actions, and the nominal
+`lang generator GeneratorErrorCode` set containing `generator-closed`.
+
+When the exact generator is abandoned by the admitted ordinary Unit function,
+its checked close SHALL deliver
+`Error(domain = root, code = generator-closed)`, select and execute only the
+Error action, finish the generator boundary, and then return the function's
+final Unit. The successful Unit-resume action SHALL remain explicit metadata
+but SHALL NOT execute on this close edge. Root abandonment, successful foreach,
+qualified close-code patterns, non-Unit handler actions, handler work beyond the
+exact decision, multiple yields or owners, generator locals, dynamic provenance,
+transfer boundaries, and library boundaries SHALL remain unsupported.
+
+On Linux x86-64, O0 lowering SHALL materialize the intrinsic failure through
+Topal-owned Result/Error and allocator primitives, statically select its Error
+payload, and preserve source order independently of LLVM optimization. DWARF
+SHALL expose the yield Result and selected Error with the generator Error-code
+vocabulary so GDB renders `generator-closed`, not an unrelated nominal code.
+The lowering SHALL NOT introduce a Generator object, continuation state, close
+dispatcher, callback, indirect call, unwind dependency, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or native-ABI revision. Future compiled-library
+metadata SHALL encode handler branches and binding activation together with the
+close site/domain, declaration provenance, success/close edges, suspension,
+cleanup/effect evidence, ownership state, and target adapters canonically.
 
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
