@@ -571,6 +571,21 @@ support must serialize canonical transfer/close sites, domain, construction,
 suspension, capture/effect/cleanup, ownership, and target-adapter evidence rather
 than depend on the checked-program node layout.
 
+The same private parameter mapping now preserves a distinct final Character
+when the complete Generator classifier is
+`Generator Character Unit Character`. The caller still transfers only the
+compiler-private `i32` ownership token with LLVM `fastcc`; the callee expands
+the retained yielded Character action, Unit resumption, and final Character in
+that semantic order, then returns the ordinary immutable Character descriptor.
+LLVM's target lowering selects both argument and return placement, so the
+frontend embeds no AMD64 register convention. Generator, yielded-Character,
+and function-result DWARF remain truthful even though no continuation object or
+state machine exists. A compiled library must carry the canonical full
+classifier, declaration, separate yield/final graph, construction/transfer
+sites, action, capture/effect and ownership/close evidence, plus target-adapter
+requirements; neither the private token nor the compile-session provenance map
+is a serializable ABI.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by
