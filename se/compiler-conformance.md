@@ -91,6 +91,7 @@ evidence.
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
 | 5ak | exact successful `Result Rational` input/yield, reflexive action, resumption, and structured division-error final with pointer debugging | complete |
+| 5al | exact nominal `Comparison` input/yield, equality action, resumption, and distinct Greater final with ordered scalar debugging | complete |
 | 5aj | exact `(Int, String)` input, yield, equality action, resumption, and distinct final product with ordered aggregate debugging | complete |
 | 5ai | exact nominal `Choice` input, yield, equality action, resumption, and distinct final alternative with ordered private-value debugging | complete |
 | 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |
@@ -503,6 +504,19 @@ Result propagation, a semantic Generator runtime, foreign dependency, other-
 language standard library, public ABI, or native-layout revision. Other Result
 identities, values, shapes, directions, state, transfer, close, and libraries
 remain in increment 5.
+
+Increment 5al separates the language-defined nominal `Comparison` identity in
+all three directions of one exact `Generator Comparison Unit Comparison`.
+Application evaluates `1 <=> 2` once; traversal reuses that Less value for the
+yield, independently evaluates the action comparison and nominal equality,
+resumes with Unit, and only then evaluates `3 <=> 2` to return Greater. Two
+debug-only aligned `i32` shadows and four source-anchor stores keep yield,
+action, captured initial, and final lines inspectable. Existing Topal-owned
+arbitrary-precision Int comparison, Comparison equality/display, and Linux
+syscall writer are reused without a semantic Generator runtime, foreign
+dependency, other-language standard library, public ABI, or native-layout
+revision. Other Comparison expressions, values, directions, state, transfer,
+close, and libraries remain in increment 5.
 
 Increment 5aj separates positional-product input, yield, and final directions
 through one exact custom `Generator (Int, String) Unit (Int, String)`. The

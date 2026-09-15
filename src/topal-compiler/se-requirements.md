@@ -1704,6 +1704,60 @@ This realizes `TOPAL-COMPILER-GENERATOR-RESULT-001`,
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
 `TOPAL-TYPE-RESULT-001` for compiler increment 5ak.
 
+## TOPAL-COMP-GENERATOR-COMPARISON-001 — Exact Comparison generator directions
+
+The checked compiler shall admit a root custom generator with one named
+`Comparison` initial parameter and directions
+`Generator Comparison Unit Comparison`. Its body shall consist only of one
+discarded `yield initial` followed by `3 <=> 2` as its final expression. The
+shared regression shall start the generator with the exact expression
+`1 <=> 2`; the fresh result shall be bound and consumed exactly once by a
+foreach action consisting only of the discarded
+`comparison = (1 <=> 2)` for its named yielded parameter.
+
+The checked program shall retain the language-defined nominal `Comparison`
+identity separately in all three Generator directions, both ordered Int
+operands and three-way operations, the initial-parameter yield and suspension,
+the exact equality action, Unit resumption, distinct final comparison,
+declaration provenance, and ownership edge. Application shall evaluate
+`1 <=> 2` exactly once. Traversal shall pass that same immutable Less value to
+the action, independently evaluate the action's `1 <=> 2` once and compare the
+two nominal values, resume the generator with Unit, and only then evaluate
+`3 <=> 2` to produce Greater. This order shall hold with LLVM optimization
+disabled and shall not depend on folding, inlining, or dead-code elimination.
+
+On Linux x86-64, `Comparison` shall retain its existing compiler-private signed
+`i32` values for Less, Equal, and Greater, and the root-local Generator shall
+remain a compiler-private `i32` ownership token. LLVM shall derive placement,
+alignment, and call lowering from the target triple and data layout; the
+backend shall hard-code no AMD64 register convention. Two aligned debug-only
+`i32` shadows and four lifetime/source anchor stores shall keep the yielded
+action value and captured initial inspectable. DWARF and GDB shall expose the
+complete `Generator Comparison Unit Comparison` classifier and value, the
+yielded Less value, captured initial Less value, ordered yield/action/
+resumption/final source locations, and the Topal entry frame.
+
+Another input, action, final comparison, operand, direction, yield, or value;
+multiple yields; additional body statements; close handling; nested or
+ordinary-function construction; Generator parameter/result transfer; repeated
+consumption; abandonment; libraries; and external boundaries shall remain
+rejected before LLVM. The lowering shall introduce no semantic Generator
+object or state allocation, dispatcher, callback, indirect call, unwind
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library calling convention or Generator/Comparison
+ABI, or `topal-native/6` revision. Int/Comparison allocation, comparison,
+equality, display, and Linux syscalls shall remain wholly owned by Topal.
+Future compiled-library metadata shall encode independent initial and direction
+classifiers, nominal Comparison identity and ordered alternatives, operand and
+operation provenance, ordered yield/action/resume/final provenance,
+allocation-failure effects, declaration/construction sites, captures/effects,
+ownership/consumption/close state, native-representation identity, and target
+adapters rather than expose the private token, debug slots, scalar tags, or
+checked-program node layout. This realizes
+`TOPAL-COMPILER-GENERATOR-COMPARISON-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-DECISION-COMPARISON-001` for compiler increment 5al.
+
 ## TOPAL-COMP-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The checked compiler shall admit a root custom generator with one named

@@ -2386,6 +2386,156 @@ fn exact_boolean_value_generator_body(
     })
 }
 
+fn exact_int_comparison_expression(
+    source: &SourceText,
+    expression: &Expression,
+    expected_left: i64,
+    expected_right: i64,
+    feature: &str,
+) -> Result<CompilerExpression, Diagnostic> {
+    let Expression::Application { items, span } = expression else {
+        return Err(unsupported(source, expression.span(), feature));
+    };
+    let [
+        Expression::Integer(left_span),
+        Expression::Callable {
+            kind: CallableKind::Compare,
+            ..
+        },
+        Expression::Integer(right_span),
+    ] = items.as_slice()
+    else {
+        return Err(unsupported(source, *span, feature));
+    };
+    let left_value = parse_integer(source.slice(*left_span));
+    let right_value = parse_integer(source.slice(*right_span));
+    if left_value.as_ref() != Some(&BigInt::from(expected_left))
+        || right_value.as_ref() != Some(&BigInt::from(expected_right))
+    {
+        return Err(unsupported(source, *span, feature));
+    }
+    let left = CompilerExpression {
+        kind: CompilerExpressionKind::Int(left_value.expect("checked integer literal exists")),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(BigInt::from(expected_left))),
+        rational_value: None,
+        span: *left_span,
+    };
+    let right = CompilerExpression {
+        kind: CompilerExpressionKind::Int(right_value.expect("checked integer literal exists")),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(BigInt::from(expected_right))),
+        rational_value: None,
+        span: *right_span,
+    };
+    Ok(CompilerExpression {
+        kind: CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Compare,
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        value_type: CompilerType::Comparison,
+        int_range: None,
+        rational_value: None,
+        span: *span,
+    })
+}
+
+fn exact_comparison_value_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<ExactValueGeneratorBody, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(result),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "Comparison-value custom generator outside one initial yield and final 3 <=> 2",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "Comparison-value custom generator yield outside its initial parameter",
+        ));
+    };
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "Comparison-value custom generator outside yield initial followed by 3 <=> 2",
+        ));
+    }
+    let result = exact_int_comparison_expression(
+        source,
+        result,
+        3,
+        2,
+        "Comparison-value custom generator final expression outside 3 <=> 2",
+    )?;
+    Ok(ExactValueGeneratorBody {
+        yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+        continuations: Vec::new(),
+        explicit_return: None,
+        result,
+    })
+}
+
+fn exact_int_comparison_value(expression: &CompilerExpression, left: i64, right: i64) -> bool {
+    expression.value_type == CompilerType::Comparison
+        && matches!(
+            &expression.kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Compare,
+                left: actual_left,
+                right: actual_right,
+            } if exact_int(actual_left).as_ref() == Some(&BigInt::from(left))
+                && exact_int(actual_right).as_ref() == Some(&BigInt::from(right))
+        )
+}
+
+fn exact_comparison_value_generator_action(
+    parameter: &CompilerParameter,
+    body: &CompilerBlock,
+) -> bool {
+    parameter.value_type == CompilerType::Comparison
+        && !parameter.discarded
+        && matches!(
+            body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Equal,
+                    left,
+                    right,
+                },
+                ..
+            })] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                if name == &parameter.name)
+                && left.value_type == CompilerType::Comparison
+                && exact_int_comparison_value(right, 1, 2)
+        )
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
 fn exact_enum_value_generator_body(
     source: &SourceText,
     parameter: &FunctionParameter,
@@ -3667,6 +3817,7 @@ fn collect_character_generators(
         let initial_type = match initial_classifier.as_str() {
             "Boolean" => CompilerType::Boolean,
             "Character" => CompilerType::Character,
+            "Comparison" => CompilerType::Comparison,
             "Int" => CompilerType::Int,
             "Nat" => CompilerType::Nat,
             "OptionalInt" => CompilerType::Optional(Box::new(CompilerType::Int)),
@@ -3688,7 +3839,7 @@ fn collect_character_generators(
                     unsupported(
                         source,
                         *span,
-                        "custom generator outside the admitted Boolean, Character, Choice Enum, Int, Nat, Optional Int, Range Int, Rational, Result Rational, String, Unit, or (Int, String) initial-input subset",
+                        "custom generator outside the admitted Boolean, Character, Comparison, Choice Enum, Int, Nat, Optional Int, Range Int, Rational, Result Rational, String, Unit, or (Int, String) initial-input subset",
                     )
                 })?,
         };
@@ -3714,6 +3865,44 @@ fn collect_character_generators(
                 explicit_return,
                 result: final_value,
             } = exact_boolean_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators.insert(
+                name_text,
+                GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    close_handler: None,
+                    result: final_value,
+                },
+            );
+            continue;
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == CompilerType::Comparison
+            && source.slice(*yielded) == "Comparison"
+            && source.slice(*resumed) == "Unit"
+            && source.slice(*result) == "Comparison"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_comparison_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -5652,6 +5841,15 @@ impl Analyzer {
                     &self.source,
                     span,
                     "Choice-value custom generator foreach action outside discarded choice = First",
+                ));
+            }
+            if initial_parameter.value_type == CompilerType::Comparison
+                && !exact_comparison_value_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "Comparison-value custom generator foreach action outside discarded comparison = (1 <=> 2)",
                 ));
             }
             if initial_parameter.value_type
@@ -14402,6 +14600,15 @@ fn adapt_custom_generator_initial(
     generator_name: &str,
     call_span: Span,
 ) -> Result<CompilerExpression, Diagnostic> {
+    if parameter.value_type == CompilerType::Comparison
+        && !exact_int_comparison_value(argument, 1, 2)
+    {
+        return Err(unsupported(
+            source,
+            argument.span,
+            "Comparison custom generator input outside the exact 1 <=> 2 subset",
+        ));
+    }
     if parameter.value_type == CompilerType::Result(Box::new(CompilerType::Rational))
         && argument.rational_value.as_ref() != Some(&BigRational::from_integer(BigInt::from(1)))
     {
@@ -18537,6 +18744,91 @@ mod tests {
             "use language (version is v0.1)\nattempt is generator (initial : Result (Rational, lang arithmetic ArithmeticErrorCode))\n  yields Result (Rational, lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  initial / (Rational 0)\ngenerated is attempt (Rational 2)\ngenerated foreach { candidate }\n  _ is candidate = candidate\n",
             "use language (version is v0.1)\nattempt is generator (initial : Result (Rational, lang arithmetic ArithmeticErrorCode))\n  yields Result (Rational, lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  initial / (Rational 0)\ngenerated is attempt (Rational 1)\ngenerated foreach { candidate }\n  _ is candidate = candidate\n  _ is candidate = candidate\n",
             "use language (version is v0.1)\nattempt is generator (initial : Result (Rational, lang arithmetic ArithmeticErrorCode))\n  yields Result (Rational, lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is attempt (Rational 1)\ngenerated foreach { candidate }\n  _ is candidate = candidate\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Nominal Comparison graph and rejection matrix stay together.
+    fn models_comparison_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-DECISION-COMPARISON-001, TOPAL-COMPILER-GENERATOR-COMPARISON-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-comparison-values.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "order"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == CompilerType::Comparison
+                && exact_int_comparison_value(initial, 1, 2)
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && exact_int_comparison_value(result, 3, 2)
+                && *generator_type.yield_type == CompilerType::Comparison
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == CompilerType::Comparison
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type: CompilerType::Comparison,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "comparison"
+                && parameter.value_type == CompilerType::Comparison
+                && matches!(body.statements.as_slice(), [CompilerStatement::Discard(
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Binary {
+                            operation: CompilerBinary::Equal,
+                            left,
+                            right,
+                        },
+                        ..
+                    }
+                )] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "comparison")
+                    && exact_int_comparison_value(right, 1, 2))
+                && exact_int_comparison_value(result, 3, 2)
+        ));
+
+        for source in [
+            "use language (version is v0.1)\norder is generator (initial : Comparison)\n  yields Comparison\n  resumes Unit\n  -> Comparison\n  _ is yield (1 <=> 2)\n  3 <=> 2\ngenerated is order (1 <=> 2)\ngenerated foreach { comparison }\n  _ is comparison = (1 <=> 2)\n",
+            "use language (version is v0.1)\norder is generator (initial : Comparison)\n  yields Comparison\n  resumes Unit\n  -> Comparison\n  _ is yield initial\n  _ is yield initial\n  3 <=> 2\ngenerated is order (1 <=> 2)\ngenerated foreach { comparison }\n  _ is comparison = (1 <=> 2)\n",
+            "use language (version is v0.1)\norder is generator (initial : Comparison)\n  yields Comparison\n  resumes Unit\n  -> Comparison\n  _ is yield initial\n  2 <=> 3\ngenerated is order (1 <=> 2)\ngenerated foreach { comparison }\n  _ is comparison = (1 <=> 2)\n",
+            "use language (version is v0.1)\norder is generator (initial : Comparison)\n  yields Comparison\n  resumes Unit\n  -> Comparison\n  _ is yield initial\n  3 <=> 2\ngenerated is order (2 <=> 1)\ngenerated foreach { comparison }\n  _ is comparison = (1 <=> 2)\n",
+            "use language (version is v0.1)\norder is generator (initial : Comparison)\n  yields Comparison\n  resumes Unit\n  -> Comparison\n  _ is yield initial\n  3 <=> 2\ngenerated is order (1 <=> 2)\ngenerated foreach { comparison }\n  _ is comparison = (2 <=> 1)\n",
+            "use language (version is v0.1)\norder is generator (initial : Comparison)\n  yields Comparison\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is order (1 <=> 2)\ngenerated foreach { comparison }\n  _ is comparison = (1 <=> 2)\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,
