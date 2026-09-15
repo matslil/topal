@@ -1483,6 +1483,60 @@ native-representation identity, and target adapters rather than expose the
 private token, debug slots, Optional/Int object layouts, or checked-program
 node layout.
 
+### TOPAL-COMPILER-GENERATOR-RESULT-001 — Exact Result generator directions
+
+The compiler SHALL admit a root custom generator with one named
+`Result (Rational, lang arithmetic ArithmeticErrorCode)` initial parameter and
+matching yield and final directions, with Unit resumption. Its body SHALL
+consist only of one discarded `yield initial` followed by
+`initial / (Rational 0)`. The shared regression SHALL start the generator with
+the exact proven-success expression `Rational 1`; the fresh result SHALL be
+bound and consumed exactly once by a foreach action consisting only of the
+discarded self-equality `candidate = candidate` for its named yielded
+parameter.
+
+The checked program SHALL retain the nominal Result and Rational success
+identities separately in all three Generator directions, the proven-success
+promotion, initial-parameter yield and suspension, reflexive action, Unit
+resumption, structured fallible final division, source-located error
+provenance, declaration provenance, and ownership edge. Application SHALL
+evaluate and promote Rational 1 exactly once. Traversal SHALL pass that same
+immutable successful Result to the action, prove its self-equality without
+inspecting or duplicating the payload, resume with Unit, and only then perform
+the exact division by zero and produce the structured failure Result. This
+order SHALL hold with LLVM optimization disabled and SHALL NOT depend on
+folding, inlining, or dead-code elimination.
+
+On Linux x86-64, Result and Rational SHALL retain their existing Topal-owned
+compiler-private pointer representations, and the root-local Generator SHALL
+remain a compiler-private `i32` ownership token. LLVM SHALL derive placement,
+alignment, and call lowering from the target triple and data layout; the
+compiler SHALL hard-code no AMD64 register convention. Two aligned debug-only
+pointer shadows and four lifetime/source anchor stores SHALL keep the yielded
+action value and captured initial inspectable. DWARF and GDB SHALL expose the
+complete Result-bearing Generator classifier and value, the yielded successful
+Rational 1 Result, captured initial Result, ordered yield/action/resumption/
+final source locations, and the Topal entry frame.
+
+Another Result success/error classifier, input expression or value, direction,
+yield, final operation, divisor, or action; multiple yields; additional body
+statements; general inlined Result projection/propagation; close handling;
+nested or ordinary-function construction; Generator parameter/result transfer;
+repeated consumption; abandonment; libraries; and external boundaries SHALL
+remain unsupported. The lowering SHALL introduce no semantic Generator object
+or state allocation, dispatcher, callback, indirect call, unwind dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library calling convention or Generator/Result ABI, or
+native-ABI revision. Result/Rational storage, allocation, failure construction,
+display, and Linux syscalls SHALL remain wholly owned by Topal. Future compiled-
+library metadata SHALL encode independent initial and direction classifiers,
+nominal Result/success/error identities, success evidence, fallible-operation
+and source-error provenance, ordered yield/action/resume/final provenance,
+allocation-failure effects, declaration/construction sites, captures/effects,
+ownership/consumption/close state, native-representation identity, and target
+adapters rather than expose the private token, debug slots, pointer/object
+layouts, or checked-program node layout.
+
 ### TOPAL-COMPILER-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The compiler SHALL admit a root custom generator with one named `(Int, String)`
