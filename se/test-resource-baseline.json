@@ -5594,6 +5594,21 @@
       "cpu_time_ns": 6870360,
       "memory_peak_bytes": 18374656,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_discarded_computation_between_string_yields": {
+      "cpu_time_ns": 6569980,
+      "memory_peak_bytes": 18104320,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::custom_generator_resume_discard_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 330385399,
+      "memory_peak_bytes": 58368000,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_discarded_computation_between_string_yields": {
+      "cpu_time_ns": 8869980,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 50
     }
   }
 }
