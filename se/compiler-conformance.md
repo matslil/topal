@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5z | exact explicit final String return before any suspension, with zero action invocations and return-site debugging | complete |
 | 5y | one typed discarded String computation after Unit resumption and before the next suspension | complete |
 | 5x | exact distinct final String after String yield/action and Unit resumption | complete |
 | 5w | independent String yield direction with ordered initial/literal suspensions and String action debugging | complete |
@@ -476,6 +477,16 @@ and entry frame remain debuggable without a continuation object, foreign
 runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
+5.
+Increment 5z distinguishes an exact explicit String return before the first
+suspension. The checked graph retains the return marker and result separately
+from its empty yield/continuation lists. Application still evaluates the String
+input once; O0 traversal invokes no action and directly materializes the final
+String. The full Generator, captured initial String, return site, and entry frame
+remain debuggable through a nonsemantic stack shadow without a continuation
+object, foreign runtime, other-language standard library, public ABI, or
+native-layout revision. Implicit zero-yield finals, nonliteral or after-yield
+returns, other directions, transfer, close, and libraries remain in increment
 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in

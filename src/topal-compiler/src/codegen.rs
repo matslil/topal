@@ -6062,6 +6062,7 @@ impl<'a> Generator<'a> {
             initial_parameter,
             yields,
             continuations,
+            explicit_return,
             parameter,
             body: action,
             result,
@@ -6131,7 +6132,27 @@ impl<'a> Generator<'a> {
                 body.subprogram = parent_scope;
             }
         }
-        self.emit_expression(result, body, environment)
+        let parent_scope = body.subprogram;
+        if let Some(return_span) = explicit_return {
+            let address = body.instruction("alloca ptr, align 8", traversal.span, &mut self.debug);
+            body.effect(
+                &format!("store ptr {}, ptr {address}, align 8", initial.string()),
+                traversal.span,
+                &mut self.debug,
+            );
+            body.subprogram = self.debug.lexical_block(*declaration_span, body.subprogram);
+            let variable = self.debug.local(
+                &initial_parameter.name,
+                initial_parameter.span,
+                &initial_parameter.value_type,
+                body.subprogram,
+            );
+            let location = self.debug.location(*return_span, body.subprogram);
+            body.debug_declare(&address, variable, location);
+        }
+        let result = self.emit_expression(result, body, environment);
+        body.subprogram = parent_scope;
+        result
     }
 
     fn emit_int_literal(&mut self, value: &BigInt) -> LlValue {
@@ -10356,6 +10377,51 @@ mod tests {
         assert!(llvm.contains("DILocalVariable(name: \"generated\""));
         assert!(llvm.contains("DILocalVariable(name: \"text\""));
         assert!(llvm.contains("name: \"Generator String Unit Unit\""));
+        assert!(llvm.contains("name: \"String\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_explicit_string_return_without_invoking_the_action() {
+        // TOPAL-GENERATOR-EXPLICIT-RETURN-001, TOPAL-GENERATOR-FINAL-RETURN-001,
+        // TOPAL-GENERATOR-FOREACH-001, TOPAL-COMPILER-GENERATOR-EXPLICIT-RETURN-001
+        let source = include_str!("../../../examples/language/custom-generator-explicit-return.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-explicit-return.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert_eq!(
+            main.matches("call i1 @topal.runtime.string.is.empty")
+                .count(),
+            0
+        );
+        let input = main
+            .find("call ptr @topal.runtime.string.make")
+            .expect("generator application evaluates its String input");
+        let completed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private completed token");
+        let result = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("traversal materializes the explicit String return");
+        let output = main
+            .find("call void @topal.runtime.string.print")
+            .expect("the explicit return becomes the program result");
+        assert!(input < completed && completed < result && result < output);
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(!llvm.contains("DILocalVariable(name: \"text\""));
+        assert!(llvm.contains("name: \"Generator String Unit String\""));
         assert!(llvm.contains("name: \"String\""));
         assert!(!main.contains("generator.foreach.loop"));
         assert!(!main.contains("topal.runtime.generator"));

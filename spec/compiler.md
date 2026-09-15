@@ -1114,6 +1114,51 @@ declaration/suspension/final graph, action, capture/effect evidence,
 ownership/consumption/close state, and target adapters rather than expose the
 private token or checked-program node layout.
 
+### TOPAL-COMPILER-GENERATOR-EXPLICIT-RETURN-001 — Explicit return before suspension
+
+The compiler SHALL admit a root custom generator with one named String initial
+parameter and directions `Generator String Unit String` whose body consists
+only of `return` applied to one exact String literal. One currently admitted
+String expression SHALL start the generator, and the fresh result SHALL be
+bound and consumed exactly once by a String-to-Unit foreach action whose
+expression result is the explicitly returned String.
+
+The checked program SHALL distinguish the explicit-return keyword and source
+site from the typed String result expression, implicit final expressions,
+empty ordered yield/continuation lists, action, and ownership edge. Application
+SHALL evaluate the initial expression exactly once even when the return does
+not reference it. Traversal SHALL recognize completion before the first
+suspension, invoke the foreach action zero times, and directly materialize and
+return the exact String. This order SHALL hold with LLVM optimization disabled
+and SHALL NOT depend on folding, inlining, or dead-code elimination.
+
+On Linux x86-64, the initial and returned values SHALL use the existing
+`topal-native/6` String descriptor while the root-local Generator remains a
+compiler-private `i32` ownership token. A debug-only pointer shadow MAY keep the
+in-scope initial parameter inspectable without becoming semantic Generator
+state. LLVM SHALL select target data layout and instruction placement; the
+compiler SHALL hard-code no AMD64 register convention. DWARF and GDB SHALL
+expose the complete `Generator String Unit String` classifier and value, the
+initial String at the explicit-return source location, and the Topal entry
+frame. They SHALL NOT fabricate a yielded action value when no suspension is
+reached.
+
+Implicit zero-yield final expressions, nonliteral or initial-derived returns,
+explicit return after a suspension, Unit or other return classifiers,
+additional body statements, multiple parameters, other input, yield, or resume
+classifiers, close handling, nested or ordinary-function construction,
+Generator parameter/result transfer, repeated consumption, abandonment,
+libraries, and external boundaries SHALL remain unsupported. The lowering
+SHALL introduce no Generator object or semantic state allocation, dispatcher,
+callback, indirect call, unwind dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library calling
+convention or Generator ABI, or native-ABI revision. Future compiled-library
+metadata SHALL encode explicit versus implicit completion, return expression
+and keyword provenance, reachability and empty-yield evidence, independent
+initial and direction classifiers, declaration/construction/action sites,
+captures/effects, ownership/consumption/close state, and target adapters rather
+than expose the private token, debug shadow, or checked-program node layout.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve
