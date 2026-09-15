@@ -6115,6 +6115,7 @@ impl<'a> Generator<'a> {
                     | CompilerType::Rational
                     | CompilerType::Optional(_)
                     | CompilerType::Range(_)
+                    | CompilerType::Result(_)
                     | CompilerType::Tuple(_)
             )
         {
@@ -6149,7 +6150,7 @@ impl<'a> Generator<'a> {
             body.debug_declare(&address, variable, location);
             if matches!(
                 initial_parameter.value_type,
-                CompilerType::Enum(_) | CompilerType::Tuple(_)
+                CompilerType::Enum(_) | CompilerType::Result(_) | CompilerType::Tuple(_)
             ) {
                 body.effect(
                     &format!("store {initial_operand}, ptr {address}, align {alignment}"),
@@ -6219,7 +6220,7 @@ impl<'a> Generator<'a> {
                     body.effect(&store, parameter.span, &mut self.debug);
                 } else if matches!(
                     parameter.value_type,
-                    CompilerType::Enum(_) | CompilerType::Tuple(_)
+                    CompilerType::Enum(_) | CompilerType::Result(_) | CompilerType::Tuple(_)
                 ) {
                     let action_span =
                         action
@@ -10832,6 +10833,65 @@ mod tests {
         assert!(llvm.contains("name: \"(Int, String)\""));
         assert!(llvm.contains("name: \"_0\""));
         assert!(llvm.contains("name: \"_1\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_result_rational_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-RESULT-001, TOPAL-COMPILER-GENERATOR-RESULT-001
+        let source = include_str!("../../../examples/language/custom-generator-result-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-result-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.rational.from.int")
+                .count(),
+            3
+        );
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.result.success")
+                .count(),
+            1
+        );
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.rational.try.divide")
+                .count(),
+            1
+        );
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let debug_stores = main
+            .match_indices("store ptr")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let division = main
+            .find("call ptr @topal.runtime.rational.try.divide")
+            .expect("the final Result performs the checked division");
+        assert_eq!(debug_stores.len(), 4);
+        assert_eq!(main.matches("alloca ptr, align 8").count(), 2);
+        assert!(
+            constructed < debug_stores[0]
+                && debug_stores[0] < debug_stores[1]
+                && debug_stores[1] < debug_stores[2]
+                && debug_stores[2] < debug_stores[3]
+                && debug_stores[3] < division
+        );
+        assert!(main.contains("@topal.runtime.result.is.error"));
+        assert!(main.contains("@topal.runtime.error.print"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"candidate\""));
+        assert!(llvm.contains("name: \"Generator Result (Rational, lang arithmetic ArithmeticErrorCode) Unit Result (Rational, lang arithmetic ArithmeticErrorCode)\""));
+        assert!(llvm.contains("name: \"Result (Rational, lang arithmetic ArithmeticErrorCode)\""));
+        assert!(!main.contains("result.project"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }
