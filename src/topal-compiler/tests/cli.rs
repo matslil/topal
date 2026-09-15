@@ -2083,6 +2083,86 @@ fn returned_custom_generator_is_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn returned_custom_generator_character_result_is_freestanding_and_debuggable() {
+    // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+    // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-GENERATOR-FOREACH-001,
+    // TOPAL-COMPILER-CUSTOM-GENERATOR-CHARACTER-RESULT-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-custom-generator-character-result-result");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/custom-generator-character-return-result.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"\"R\"\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break custom-generator-character-return-result.t:16",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis initial",
+            "-ex",
+            "print initial",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "finish",
+            "-ex",
+            "whatis $",
+            "-ex",
+            "print $",
+            "-ex",
+            "next",
+            "-ex",
+            "whatis character",
+            "-ex",
+            "print character",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = Character",
+        "$1 = \"Y\"",
+        "make",
+        "Value returned is $2 = <Generator Character Unit Character>",
+        "type = enum Generator Character Unit Character",
+        "$3 = <Generator Character Unit Character>",
+        "$4 = \"Y\"",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn closed_string_character_foreach_is_freestanding_and_debuggable() {
     // TOPAL-STRING-CHARACTERS-COLLECT-001,
     // TOPAL-STRING-CHARACTERS-FOREACH-001,

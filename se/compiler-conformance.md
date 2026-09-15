@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5u | exact custom Generator function result with distinct final Character preserved through caller traversal | complete |
 | 5t | exact custom Generator parameter traversal with distinct final Character preserved as the callee result | complete |
 | 5s | exact unconsumed custom Generator parameter close with retained provenance and O0-erased handler-free delivery | complete |
 | 5r | exact custom single-yield Generator function parameter traversal with private ownership/provenance transfer and parameter debugging | complete |
@@ -423,6 +424,14 @@ placement; Generator, yielded Character, final Character, and both frames remain
 debuggable without a continuation object, state machine, foreign runtime, or
 public Generator ABI. Other classifiers and richer state, bodies, transfer, and
 library boundaries remain in increment 5.
+Increment 5u admits the matching complete classifier as a fresh ordinary
+function result. A private-symbol provenance entry transfers the exact
+declaration, yielded and final Characters, suspension graph, and ownership to
+the caller while the factory returns only an LLVM `fastcc` `i32` token. Caller
+traversal expands the action and Unit resume before its distinct final Character;
+factory and caller values remain debuggable without public continuation state,
+a foreign runtime, or a Generator ABI. Richer factories, composed transfers,
+other classifiers, general state, and libraries remain in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
