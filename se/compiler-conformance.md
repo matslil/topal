@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |
 | 5ag | exact `Range Int` input, yield, membership action, resumption, and narrowed final intersection with ordered private-value debugging | complete |
 | 5af | nominal `Optional Int` input, yield, equality action, resumption, and final directions with ordered private-value debugging | complete |
 | 5ae | payload-free Unit input, yield, identity action, resumption, and final directions with ordered debug-only lifetime anchors | complete |
@@ -485,6 +486,22 @@ runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
 5.
+Increment 5ah separates nominal Nat input, yield, and final directions through
+one exact custom `Generator Nat Unit Nat`. The checked graph retains the Nat
+refinement and underlying exact Int representation, statically proven input,
+initial-parameter yield, exact `value + 1` action, Unit resumption, final
+`initial + 1`, and ownership edge independently. O0 traversal reuses the
+once-evaluated Nat pointer for the action, resumes, and only then performs the
+final addition, with the closed `Nat 7` validation erased by proof. Two debug-
+only aligned pointer shadows keep the yielded Nat and captured initial
+inspectable at their source lifetimes. The existing Topal-owned arbitrary-
+precision integer representation, allocator, addition, display, Linux syscall
+writer, Nat DWARF identity, and GDB printer are reused without a semantic
+Generator runtime, foreign dependency, other-language standard library,
+unsigned machine ABI, public ABI, or native-layout revision. Other Nat
+generator expressions, shapes, directions, state, transfer, close, general Nat
+arithmetic, and libraries remain in increment 5.
+
 Increment 5ag separates exact `Range Int` input, yield, and final directions
 through one custom `Generator Range Int Unit Range Int`. The checked graph
 retains the Range and Int endpoint classifiers, initial-parameter yield, exact
