@@ -427,10 +427,12 @@ declaration identity and exact yielded Character as compile-session provenance.
 Root `foreach` SHALL consume one locally bound admitted instance, invoke its
 capture-free Character-to-Unit action exactly once with the yielded value,
 resume the generator with Unit, and produce its final Unit. Repeated use and
-abandonment SHALL be rejected under the existing local linearity boundary.
+abandonment other than the exact function-scope close admitted by
+`TOPAL-COMPILER-GENERATOR-CLOSE-001` SHALL be rejected under the existing local
+linearity boundary.
 Declaration shapes not covered by a later compiler rule, overloads, dynamic
 Character provenance, direct unbound traversal, captures, and function or
-library boundaries SHALL remain unsupported.
+library transfer boundaries SHALL remain unsupported.
 
 On Linux x86-64, the backend SHALL lower the proven yield, action, Unit resume,
 and final Unit as ordered inline code at `-O0`. It MAY use the compiler-private
@@ -635,6 +637,38 @@ Future compiled-library metadata SHALL encode success and close edges,
 resume-local activation, the declaration and directions, suspension identity,
 capture/effect evidence, ownership/close behavior, and target adapters
 canonically.
+
+### TOPAL-COMPILER-GENERATOR-CLOSE-001 — Exact function-scope abandonment
+
+The compiler SHALL admit one call-specialized ordinary function whose body
+binds one fresh instance of the exact single-yield custom
+`Generator Character Unit Unit` and then reaches final Unit without consuming
+it. The initial Character SHALL retain its exact caller provenance. Function
+scope exit SHALL consume the suspended Generator, deliver
+`generator-closed` with lexical domain `root`, retain the root generator
+declaration as separate provenance, and complete the handler-free generator
+boundary before the function returns Unit.
+
+The checked function body SHALL contain an explicit custom close after the
+Generator binding and before its final expression. Root abandonment, multiple
+owned generators, multiple yields, generator locals, close handlers or other
+post-yield work, dynamic Character provenance without call specialization,
+static or anonymous functions, explicit return, non-Unit final results,
+Generator parameter/result transfer, and library boundaries SHALL remain
+unsupported.
+
+On Linux x86-64, O0 lowering MAY erase the intrinsic close value and final Unit
+for this handler-free, effect-free body after preserving their checked order;
+the expected close signal has no source observer at the generator boundary.
+The compiler-private ownership/debug token SHALL be consumed conceptually and
+SHALL remain visible as `Generator Character Unit Unit` in the function's
+DWARF scope. The lowering SHALL NOT introduce a Generator object, continuation
+state, close dispatcher, callback, indirect call, foreign runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or native-ABI revision. Future compiled-library
+metadata SHALL encode the close site and lexical domain, generator declaration
+provenance, close/success edges, suspension identity, cleanup/effect evidence,
+ownership state, and target adapters canonically.
 
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 

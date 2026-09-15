@@ -138,6 +138,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             expression_uses_extended_debug(text)
         }
         CompilerExpressionKind::StringCharactersClose(generator)
+        | CompilerExpressionKind::CustomCharacterClose(generator)
         | CompilerExpressionKind::GeneratorCollect(generator) => {
             expression_uses_extended_debug(generator)
         }
@@ -1118,7 +1119,8 @@ impl<'a> Generator<'a> {
             CompilerExpressionKind::StringCharactersCollect { text, .. } => {
                 self.emit_expression(text, body, environment)
             }
-            CompilerExpressionKind::StringCharactersClose(generator) => {
+            CompilerExpressionKind::StringCharactersClose(generator)
+            | CompilerExpressionKind::CustomCharacterClose(generator) => {
                 let _ = self.emit_expression(generator, body, environment);
                 LlValue::Unit
             }
@@ -9978,6 +9980,47 @@ mod tests {
         assert!(!main.contains("generator.foreach.loop"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_function_local_custom_generator_close_without_runtime_state() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-CLOSE-001,
+        // TOPAL-GENERATOR-ERROR-CODE-001, TOPAL-COMPILER-GENERATOR-CLOSE-001
+        let source = include_str!("../../../examples/language/custom-generator-close.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "abandon")
+            .expect("called abandon function is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-close.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let close = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("close function has one private Character parameter")
+            .1
+            .split_once("}\n")
+            .expect("close function definition terminates")
+            .0;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            1
+        );
+        assert!(main.contains(&format!("call fastcc void @{}(ptr", function.symbol)));
+        assert!(close.contains("#dbg_value(i32 0"));
+        assert!(close.contains("ret void"));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(!close.contains("topal.runtime.string.make"));
+        assert!(!close.contains("topal.runtime.generator"));
+        assert!(!close.contains("call ptr %"));
     }
 
     #[test]
