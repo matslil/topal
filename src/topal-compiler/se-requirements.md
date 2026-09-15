@@ -1468,6 +1468,71 @@ realizes `TOPAL-COMPILER-GENERATOR-INT-001`,
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
 `TOPAL-GENERATOR-FINAL-RETURN-001` for compiler increment 5ac.
 
+## TOPAL-COMP-GENERATOR-RATIONAL-001 — Exact Rational generator directions
+
+The checked compiler shall admit a root custom generator with one named
+Rational initial parameter and directions `Generator Rational Unit Rational`
+whose body consists only of one discarded `yield initial` followed by
+`initial + (Rational (1, 3))` as its distinct final expression. One currently
+admitted Rational expression shall start the generator, and the fresh result
+shall be bound and consumed exactly once by a Rational-to-Unit foreach action
+consisting only of a discarded `value + (Rational (1, 3))`.
+
+The checked program shall retain the Rational initial classifier separately
+from all three Generator directions, the initial-parameter yield and
+suspension, both typed additions, their exact one-third constructor provenance,
+action, and ownership edge. Application shall evaluate and canonically
+construct the initial expression exactly once. Traversal shall construct the
+action addend and invoke the action addition exactly once with that retained
+Rational, resume the generator with Unit, and only then construct the final
+addend and evaluate the final addition against the captured initial value. All
+constructors and additions shall use the canonical exact Rational and
+arbitrary-precision Int runtime. This order and explicit allocation-failure
+behavior shall hold with LLVM optimization disabled and shall not depend on
+folding, inlining, or dead-code elimination.
+
+Unoptimized LLVM IR shall retain three direct canonical Rational-construction
+calls and two direct Rational-addition calls in source order. LLVM shall not
+omit the discarded action construction or addition: both may allocate and
+therefore can reach the required platform-failure path. LLVM may optimize
+inside or around these calls only when exact canonical values, evaluation
+order, and allocation failure remain observationally equivalent.
+
+On Linux x86-64, every Rational shall retain the existing private immutable
+`topal-native/6` pointer representation containing canonical arbitrary-
+precision Int numerator and positive denominator pointers, while the root-local
+Generator remains a compiler-private `i32` ownership token. LLVM shall select
+pointer placement and call lowering from the target triple and data layout; the
+backend shall hard-code no AMD64 register convention. Two debug-only aligned
+pointer slots may anchor the yielded and captured-initial source lifetimes
+without becoming semantic Generator state. DWARF, the Topal GDB printer, and
+GDB shall expose the complete `Generator Rational Unit Rational` classifier and
+value, the exact yielded Rational in the foreach action scope, the exact
+captured initial Rational at the final expression, and the Topal entry frame.
+
+Literal, converted, computed, or multiple yields; different Rational addends;
+a final expression other than the exact declared addition; additional body
+statements; multiple parameters; other input, yield, resume, or final
+classifiers; close handling; nested or ordinary-function construction;
+Generator parameter/result transfer; repeated consumption; abandonment;
+libraries; and external boundaries shall remain rejected before LLVM. The
+lowering shall introduce no semantic Generator object or state allocation,
+dispatcher, callback, indirect call, unwind dependency, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or `topal-native/6`
+revision. Existing Rational/Int values and arithmetic allocations shall remain
+wholly owned by the Topal runtime and Linux syscall layer. Future compiled-
+library metadata shall encode independent initial and direction classifiers,
+ordered Rational expression and yield/resume/final provenance, exact canonical
+numerator/denominator and constructor requirements,
+declaration/construction/action sites, captures/effects including allocation
+failure, ownership/consumption/close state, native-representation identity, and
+target adapters rather than expose the private token, debug slots,
+Rational/Int object layouts, or checked-program node layout. This realizes
+`TOPAL-COMPILER-GENERATOR-RATIONAL-001`, `TOPAL-COMPILER-EXACT-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FINAL-RETURN-001` for compiler increment 5ad.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted
