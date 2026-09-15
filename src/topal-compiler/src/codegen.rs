@@ -612,9 +612,12 @@ impl<'a> Generator<'a> {
                 parameter.value_type,
                 CompilerType::String | CompilerType::Character
             ) && matches!(&function.result_type, CompilerType::Generator(generator)
-                    if generator.yield_type.as_ref() == &CompilerType::Character
-                        && generator.resume_type.as_ref() == &CompilerType::Unit
-                        && generator.result_type.as_ref() == &CompilerType::Unit);
+            if generator.yield_type.as_ref() == &CompilerType::Character
+                && generator.resume_type.as_ref() == &CompilerType::Unit
+                && matches!(
+                    generator.result_type.as_ref(),
+                    CompilerType::Unit | CompilerType::Character
+                ));
             if retained_character_generator_source
                 || matches!(
                     parameter.value_type,
@@ -10497,6 +10500,69 @@ mod tests {
         assert!(factory.contains("ret i32 0"));
         assert!(!main.contains("generator.foreach.loop"));
         assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.generator"));
+    }
+
+    #[test]
+    fn emits_custom_generator_character_result_function_result_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-CHARACTER-RESULT-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-character-return-result.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("called result-valued custom Generator factory is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-character-return-result.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let factory = llvm
+            .split_once(&format!(
+                "define internal fastcc i32 @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("custom Generator factory has one private Character argument")
+            .1
+            .split_once("}\n")
+            .expect("custom Generator factory definition terminates")
+            .0;
+
+        assert_eq!(main.matches("call fastcc i32").count(), 1);
+        assert!(main.contains(&format!("call fastcc i32 @{}(ptr ", function.symbol)));
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            3
+        );
+        let transfer = main
+            .find("call fastcc i32")
+            .expect("caller receives the private ownership token");
+        let yielded = main[transfer..]
+            .find("call ptr @topal.runtime.string.make")
+            .map(|offset| transfer + offset)
+            .expect("caller materializes the yielded Character after transfer");
+        let returned = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("caller materializes the final Character");
+        let output = main
+            .find("call void @topal.runtime.string.print")
+            .expect("caller prints the final Character");
+        assert!(transfer < yielded && yielded < returned && returned < output);
+        assert!(main.contains("#dbg_value(i32"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(factory.contains("alloca ptr, align 8"));
+        assert!(factory.contains("store ptr %arg0"));
+        assert!(factory.contains("#dbg_declare(ptr"));
+        assert!(factory.contains("ret i32 0"));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!llvm.contains("call ptr %"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Character\""));
         assert!(!llvm.contains("topal.runtime.generator"));
     }
 

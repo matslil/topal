@@ -9259,7 +9259,7 @@ impl Analyzer {
             });
         }
         let result_type = self.parse_classifier(declaration.result)?;
-        let returns_character_generator = is_character_unit_generator_type(&result_type);
+        let returns_character_generator = is_admitted_character_generator_type(&result_type);
         if !compiler_function_result_supported(&result_type) && !returns_character_generator {
             return Err(unsupported(
                 &self.source,
@@ -9514,7 +9514,10 @@ impl Analyzer {
                         && characters.len() == 1
                         && locals.is_empty()
                         && close_handler.is_none()
-                        && matches!(result.kind, CompilerExpressionKind::Unit)
+                        && matches!(
+                            result.value_type,
+                            CompilerType::Unit | CompilerType::Character
+                        )
                 }
                 _ => false,
             };
@@ -14691,6 +14694,119 @@ mod tests {
             unbound_result
                 .message
                 .contains("unbound returned Generator and close delivery")
+        );
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Final-direction provenance and fail-closed factory shapes stay one scenario.
+    fn models_custom_generator_character_result_function_result_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-CHARACTER-RESULT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-character-return-result.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("called result-valued custom Generator factory is instantiated");
+        assert!(matches!(
+            function.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type: CompilerType::Character,
+                ..
+            }] if name == "initial"
+        ));
+        assert!(is_character_generator_type_with_result(
+            &function.result_type,
+            &CompilerType::Character
+        ));
+        assert!(function.body.statements.is_empty());
+        assert!(matches!(
+            &function.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomCharacterGenerator {
+                    declaration,
+                    initial,
+                    characters,
+                    locals,
+                    close_handler: None,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if declaration == "yield-return"
+                && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "initial")
+                && characters == &[String::from("Y")]
+                && locals.is_empty()
+                && exact_string(result).as_deref() == Some("R")
+                && is_character_generator_type_with_result(
+                    value_type,
+                    &CompilerType::Character
+                )
+        ));
+        assert!(matches!(
+            (program.main.statements.as_slice(), &program.main.result),
+            (
+                [CompilerStatement::Binding(CompilerBinding {
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::Call { .. },
+                        value_type,
+                        ..
+                    },
+                    ..
+                })],
+                CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterForeach {
+                        source,
+                        characters,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Character,
+                    ..
+                }
+            ) if is_character_generator_type_with_result(
+                    value_type,
+                    &CompilerType::Character
+                )
+                && matches!(source.kind, CompilerExpressionKind::Local(_))
+                && characters == &[String::from("Y")]
+                && exact_string(result).as_deref() == Some("R")
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn static (initial : Character) -> Generator Character Unit Character\n  yield-return initial\ngenerated is make \"Y\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn (initial : Character, ignored : Int) -> Generator Character Unit Character\n  yield-return initial\ngenerated is make (\"Y\", 0)\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn (initial : Character) -> Generator Character Unit Character\n  yield-return \"Q\"\ngenerated is make \"Y\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn (initial : Character) -> Generator Character Unit Character\n  _ is ()\n  yield-return initial\ngenerated is make \"Y\"\ngenerated foreach { character }\n  _ is String character\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+
+        let unbound_result = analyze_for_compiler(
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn (initial : Character) -> Generator Character Unit Character\n  yield-return initial\nmake \"Y\"\n",
+        )
+        .unwrap_err();
+        assert_eq!(unbound_result.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            unbound_result
+                .message
+                .contains("unbound returned Generator and close delivery")
+        );
+
+        let consumed = "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn (initial : Character) -> Generator Character Unit Character\n  yield-return initial\ngenerated is make \"Y\"\n_ is generated foreach { character }\n  _ is String character\ngenerated foreach { character }\n  _ is String character\n";
+        assert_eq!(
+            analyze_for_compiler(consumed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
         );
     }
 
