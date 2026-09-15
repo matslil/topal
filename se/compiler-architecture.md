@@ -600,6 +600,21 @@ classifier, declaration, construction/result-transfer sites, yield/final graph,
 action, capture/effect, ownership/close, and target-adapter metadata instead of
 the token or map representation.
 
+The next custom-continuation slice makes the initial direction independent by
+accepting a String for `Generator Character Unit Unit`. Its checked provenance
+stores the classified initial parameter and a small ordered pre-suspension
+block separately from the Character yield and Unit resume/final directions.
+At application, O0 lowering evaluates the existing immutable String descriptor
+once, calls the Topal-owned emptiness operation, retains Boolean debug evidence,
+and only then exposes the private `i32` suspension token. Later traversal
+materializes the exact Character action and Unit resume without a continuation
+object or semantic state allocation. LLVM owns target data layout and machine
+instruction selection; neither the frontend nor the Topal syscall runtime
+embeds a System V register rule. Compiled libraries must eventually serialize
+the independent initial classifier, ordered phase/binding and suspension graph,
+construction/action sites, captures/effects, ownership/close state, and target
+adapter requirements instead of the checked-node or private-token encoding.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by
