@@ -1483,6 +1483,56 @@ native-representation identity, and target adapters rather than expose the
 private token, debug slots, Optional/Int object layouts, or checked-program
 node layout.
 
+### TOPAL-COMPILER-GENERATOR-ENUM-001 — Exact nominal Enum generator directions
+
+The compiler SHALL admit the exact prior declaration
+`Choice is Enum (First, Second)` followed by a root custom generator with one
+named `Choice` initial parameter and directions
+`Generator Choice Unit Choice`. Its body SHALL consist only of one discarded
+`yield initial` followed by `Second` as its final expression. The shared
+regression starts the generator with `First`; the fresh result SHALL be bound
+and consumed exactly once by a foreach action consisting only of the discarded
+`choice = First` for its named yielded parameter.
+
+The checked program SHALL retain the nominal Choice identity, ordered First and
+Second alternatives and private tags separately from all three Generator
+directions, the initial-parameter yield and suspension, exact equality action,
+Unit resumption, distinct final alternative, declaration provenance, and
+ownership edge. Application SHALL evaluate its initial expression exactly once.
+Traversal SHALL pass that same immutable Choice value to the action, compare it
+with First once, resume with Unit, and only then produce Second as the final
+Choice value. This order SHALL hold with LLVM optimization disabled and SHALL
+NOT depend on folding, inlining, or dead-code elimination.
+
+On Linux x86-64, Choice SHALL retain its existing compiler-private `i32` tag
+representation, and the root-local Generator SHALL remain a compiler-private
+`i32` ownership token. LLVM SHALL select placement and call lowering from the
+target triple and data layout; the compiler SHALL hard-code no AMD64 register
+convention. Two aligned debug-only `i32` shadow slots and four lifetime/source
+anchor stores SHALL keep the yielded action value and captured initial
+inspectable even when LLVM folds the constant equality and final tag selection.
+DWARF and GDB SHALL expose the complete `Generator Choice Unit Choice`
+classifier and value, the Choice alternatives, yielded First, captured initial
+First, ordered yield/action/resumption/final source locations, and the Topal
+entry frame.
+
+Another Enum declaration, alternatives, order, or direction; literal or
+multiple yields; a final expression or action other than the exact alternatives
+above; additional body statements; close handling; nested or ordinary-function
+construction; Generator parameter/result transfer; repeated consumption;
+abandonment; libraries; and external boundaries SHALL remain unsupported. The
+lowering SHALL introduce no semantic Generator object or state allocation,
+dispatcher, callback, indirect call, unwind dependency, C/C++ runtime, other-
+language standard library, needed library, dynamic relocation, public/library
+calling convention or Generator ABI, or native-ABI revision. Enum comparison,
+display, and Linux syscalls SHALL remain wholly owned by Topal. Future compiled-
+library metadata SHALL encode independent initial and direction classifiers,
+nominal Enum identity, ordered alternative identities and tags, equality
+operands, ordered yield/action/resume/final provenance, declaration/construction
+sites, captures/effects, ownership/consumption/close state, native-
+representation identity, and target adapters rather than expose the private
+token, debug slots, tag layout, or checked-program node layout.
+
 ### TOPAL-COMPILER-GENERATOR-NAT-001 — Exact Nat generator directions
 
 The compiler SHALL admit a root custom generator with one named `Nat` initial
