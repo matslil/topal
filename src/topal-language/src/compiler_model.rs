@@ -2753,6 +2753,103 @@ fn exact_unit_value_generator_action(parameter: &CompilerParameter, body: &Compi
         )
 }
 
+fn exact_optional_int_value_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<ExactValueGeneratorBody, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(Expression::Application {
+            items: result_items,
+            span: result_span,
+        }),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "Optional-Int-value custom generator outside one initial yield and final None Int",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "Optional-Int-value custom generator yield outside its initial parameter",
+        ));
+    };
+    let [
+        Expression::Identifier(none_constructor),
+        Expression::Identifier(none_payload),
+    ] = result_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *result_span,
+            "Optional-Int-value custom generator final value outside None Int",
+        ));
+    };
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+        || source.slice(*none_constructor) != "None"
+        || source.slice(*none_payload) != "Int"
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "Optional-Int-value custom generator outside yield initial followed by None Int",
+        ));
+    }
+    Ok(ExactValueGeneratorBody {
+        yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+        continuations: Vec::new(),
+        explicit_return: None,
+        result: CompilerExpression {
+            kind: CompilerExpressionKind::OptionalNone,
+            value_type: CompilerType::Optional(Box::new(CompilerType::Int)),
+            int_range: None,
+            rational_value: None,
+            span: *result_span,
+        },
+    })
+}
+
+fn exact_optional_int_value_generator_action(
+    parameter: &CompilerParameter,
+    body: &CompilerBlock,
+) -> bool {
+    !parameter.discarded
+        && matches!(
+            body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Equal,
+                    left,
+                    right,
+                },
+                ..
+            })] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                if name == &parameter.name)
+                && matches!(right.kind, CompilerExpressionKind::OptionalSome(ref payload)
+                    if matches!(payload.kind, CompilerExpressionKind::Int(ref value)
+                        if value == &BigInt::from(7)))
+        )
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
 #[allow(clippy::too_many_lines)] // Exact declaration and every retained yield stay fail-closed together.
 fn collect_character_generators(
     source: &SourceText,
@@ -2798,10 +2895,12 @@ fn collect_character_generators(
                 "custom generator with other than one initial parameter",
             ));
         };
-        let initial_type = match source.slice(parameter.classifier) {
+        let initial_classifier = compact_classifier(source.slice(parameter.classifier));
+        let initial_type = match initial_classifier.as_str() {
             "Boolean" => CompilerType::Boolean,
             "Character" => CompilerType::Character,
             "Int" => CompilerType::Int,
+            "OptionalInt" => CompilerType::Optional(Box::new(CompilerType::Int)),
             "Rational" => CompilerType::Rational,
             "String" => CompilerType::String,
             "Unit" => CompilerType::Unit,
@@ -2809,7 +2908,7 @@ fn collect_character_generators(
                 return Err(unsupported(
                     source,
                     *span,
-                    "custom generator outside the admitted Boolean, Character, Int, Rational, String, or Unit initial-input subset",
+                    "custom generator outside the admitted Boolean, Character, Int, Optional Int, Rational, String, or Unit initial-input subset",
                 ));
             }
         };
@@ -2835,6 +2934,44 @@ fn collect_character_generators(
                 explicit_return,
                 result: final_value,
             } = exact_boolean_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators.insert(
+                name_text,
+                GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    close_handler: None,
+                    result: final_value,
+                },
+            );
+            continue;
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == CompilerType::Optional(Box::new(CompilerType::Int))
+            && compact_classifier(source.slice(*yielded)) == "OptionalInt"
+            && source.slice(*resumed) == "Unit"
+            && compact_classifier(source.slice(*result)) == "OptionalInt"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_optional_int_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -4541,6 +4678,15 @@ impl Analyzer {
                     &self.source,
                     span,
                     "Unit-value custom generator foreach action outside its named identity value",
+                ));
+            }
+            if initial_parameter.value_type == CompilerType::Optional(Box::new(CompilerType::Int))
+                && !exact_optional_int_value_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "Optional-Int-value custom generator foreach action outside discarded candidate = Some 7",
                 ));
             }
             return Ok(CompilerExpression {
@@ -17080,6 +17226,117 @@ mod tests {
             "use language (version is v0.1)\npulse is generator (initial : Unit)\n  yields Unit\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  initial\ngenerated is pulse ()\ngenerated foreach { signal }\n  signal\n",
             "use language (version is v0.1)\npulse is generator (initial : Unit)\n  yields Unit\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is pulse ()\ngenerated foreach { signal }\n  ()\n",
             "use language (version is v0.1)\npulse is generator (initial : Unit)\n  yields Unit\n  resumes Unit\n  -> Boolean\n  _ is yield initial\n  false\ngenerated is pulse ()\ngenerated foreach { signal }\n  signal\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Accepted graph and exact rejection matrix stay together.
+    fn models_optional_int_values_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-OPTIONAL-BOUNDARY-001, TOPAL-COMPILER-GENERATOR-OPTIONAL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-optional-values.t"
+        ))
+        .unwrap();
+        let optional_int = CompilerType::Optional(Box::new(CompilerType::Int));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "optional"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == optional_int
+                && matches!(initial.kind, CompilerExpressionKind::OptionalSome(ref payload)
+                    if matches!(payload.kind, CompilerExpressionKind::Int(ref value)
+                        if value == &BigInt::from(7)))
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && matches!(result.kind, CompilerExpressionKind::OptionalNone)
+                && result.value_type == optional_int
+                && *generator_type.yield_type == optional_int
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == optional_int
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "candidate"
+                && parameter.value_type == optional_int
+                && matches!(
+                    body.statements.as_slice(),
+                    [CompilerStatement::Discard(CompilerExpression {
+                        kind: CompilerExpressionKind::Binary {
+                            operation: CompilerBinary::Equal,
+                            left,
+                            right,
+                        },
+                        ..
+                    })] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                        if name == "candidate")
+                        && matches!(right.kind, CompilerExpressionKind::OptionalSome(ref payload)
+                            if matches!(payload.kind, CompilerExpressionKind::Int(ref value)
+                                if value == &BigInt::from(7)))
+                )
+                && matches!(body.result.kind, CompilerExpressionKind::Unit)
+                && matches!(result.kind, CompilerExpressionKind::OptionalNone)
+                && result.value_type == optional_int
+                && value_type == &optional_int
+        ));
+
+        let absent_input = analyze_for_compiler(
+            "use language (version is v0.1)\noptional is generator (initial : Optional Int)\n  yields Optional Int\n  resumes Unit\n  -> Optional Int\n  _ is yield initial\n  None Int\ngenerated is optional (None Int)\ngenerated foreach { candidate }\n  _ is candidate = (Some 7)\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            &absent_input.main.statements[0],
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator { initial, .. },
+                    ..
+                },
+                ..
+            }) if matches!(initial.kind, CompilerExpressionKind::OptionalNone)
+                && initial.value_type == optional_int
+        ));
+
+        for source in [
+            "use language (version is v0.1)\noptional is generator (initial : Optional Int)\n  yields Optional Int\n  resumes Unit\n  -> Optional Int\n  _ is yield (Some 7)\n  None Int\ngenerated is optional (Some 7)\ngenerated foreach { candidate }\n  _ is candidate = (Some 7)\n",
+            "use language (version is v0.1)\noptional is generator (initial : Optional Int)\n  yields Optional Int\n  resumes Unit\n  -> Optional Int\n  _ is yield initial\n  _ is yield initial\n  None Int\ngenerated is optional (Some 7)\ngenerated foreach { candidate }\n  _ is candidate = (Some 7)\n",
+            "use language (version is v0.1)\noptional is generator (initial : Optional Int)\n  yields Optional Int\n  resumes Unit\n  -> Optional Int\n  _ is yield initial\n  initial\ngenerated is optional (Some 7)\ngenerated foreach { candidate }\n  _ is candidate = (Some 7)\n",
+            "use language (version is v0.1)\noptional is generator (initial : Optional Int)\n  yields Optional Int\n  resumes Unit\n  -> Optional Int\n  _ is yield initial\n  Some 8\ngenerated is optional (Some 7)\ngenerated foreach { candidate }\n  _ is candidate = (Some 7)\n",
+            "use language (version is v0.1)\noptional is generator (initial : Optional Int)\n  yields Optional Int\n  resumes Unit\n  -> Optional Int\n  _ is yield initial\n  None Int\ngenerated is optional (Some 7)\ngenerated foreach { candidate }\n  _ is candidate = (Some 8)\n",
+            "use language (version is v0.1)\noptional is generator (initial : Optional Int)\n  yields Optional Int\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is optional (Some 7)\ngenerated foreach { candidate }\n  _ is candidate = (Some 7)\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,
