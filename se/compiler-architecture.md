@@ -954,6 +954,18 @@ edge. A compiled-library form must encode both edge kinds and resume-local
 activation canonically rather than expose the debug shadow or a target-specific
 continuation layout.
 
+The first custom-close slice relies on existing call specialization to retain
+the root caller's exact Character in a function-local single-yield generator.
+The checked function block appends an explicit close after the unconsumed
+Generator binding and before final Unit. Because this exact generator has no
+handler, cleanup, effect, or post-yield work, its intrinsic close error is
+consumed at the generator boundary and both close value and final Unit erase in
+native code. The compiler-private Generator observation token still carries
+ownership and DWARF identity, not continuation state. General close lowering
+requires canonical success/close edges, lexical close domain, declaration
+provenance, cleanup/effect ordering, environment ownership, and target adapters
+in compiled-library metadata.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an

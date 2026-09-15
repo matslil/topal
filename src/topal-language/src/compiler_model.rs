@@ -494,6 +494,7 @@ pub enum CompilerExpressionKind {
         locals: Vec<CompilerGeneratorLocal>,
         result: Box<CompilerExpression>,
     },
+    CustomCharacterClose(Box<CompilerExpression>),
     CustomCharacterForeach {
         source: Box<CompilerExpression>,
         declaration_span: Span,
@@ -2676,6 +2677,7 @@ impl Analyzer {
         let mut lowered = Vec::new();
         let mut generator_bindings = Vec::new();
         let mut result = None;
+        let mut explicit_return = false;
         let mut declared = if kind == BlockKind::Lexical {
             BTreeSet::new()
         } else {
@@ -3074,6 +3076,7 @@ impl Analyzer {
                     ));
                 }
                 Statement::Return { value, .. } if kind == BlockKind::Function => {
+                    explicit_return = true;
                     result = Some(self.analyze_expression_with_expected(
                         value,
                         environment,
@@ -3112,12 +3115,58 @@ impl Analyzer {
                 }
             }
         }
-        if let Some((_, name, span)) = generator_bindings
+        let unconsumed_generators = generator_bindings
             .iter()
-            .find(|(storage, _, _)| !self.consumed_generators.contains(storage))
-        {
-            let feature = format!("unconsumed generator `{name}` and close delivery");
-            return Err(unsupported(&self.source, *span, &feature));
+            .filter(|(storage, _, _)| !self.consumed_generators.contains(storage))
+            .collect::<Vec<_>>();
+        if !unconsumed_generators.is_empty() {
+            let [(storage, name, binding_span)] = unconsumed_generators.as_slice() else {
+                let (_, name, span) = unconsumed_generators[0];
+                let feature = format!("unconsumed generator `{name}` and close delivery");
+                return Err(unsupported(&self.source, *span, &feature));
+            };
+            let closeable = kind == BlockKind::Function
+                && !self.static_context
+                && enclosing_result == Some(&CompilerType::Unit)
+                && !explicit_return
+                && result
+                    .as_ref()
+                    .is_some_and(|result| result.value_type == CompilerType::Unit)
+                && self.generator_values.get(storage).is_some_and(|generator| {
+                    matches!(
+                        &generator.kind,
+                        CompilerExpressionKind::CustomCharacterGenerator {
+                            characters,
+                            locals,
+                            result,
+                            ..
+                        } if characters.len() == 1
+                            && locals.is_empty()
+                            && result.value_type == CompilerType::Unit
+                    )
+                });
+            if !closeable {
+                let feature = format!("unconsumed generator `{name}` and close delivery");
+                return Err(unsupported(&self.source, *binding_span, &feature));
+            }
+            let generator = self
+                .generator_values
+                .remove(storage)
+                .expect("checked close-only generator provenance exists");
+            let close_span = result.as_ref().map_or(*binding_span, |value| value.span);
+            lowered.push(CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::CustomCharacterClose(Box::new(CompilerExpression {
+                    kind: CompilerExpressionKind::Local((*storage).clone()),
+                    value_type: generator.value_type,
+                    int_range: None,
+                    rational_value: None,
+                    span: *binding_span,
+                })),
+                value_type: CompilerType::Unit,
+                int_range: None,
+                rational_value: None,
+                span: close_span,
+            }));
         }
         let result = result.unwrap_or_else(|| unit_expression(Span::new(0, 0)));
         if kind == BlockKind::TopLevel
@@ -11453,6 +11502,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::StringCharactersCollect { text: value, .. }
         | CompilerExpressionKind::StringCharactersClose(value)
+        | CompilerExpressionKind::CustomCharacterClose(value)
         | CompilerExpressionKind::RecordField { record: value, .. }
         | CompilerExpressionKind::ErrorField { error: value, .. }
         | CompilerExpressionKind::RangeLower(value)
@@ -13717,6 +13767,70 @@ mod tests {
             analyze_for_compiler(escaped).unwrap_err().code,
             "E-UNBOUND-NAME"
         );
+    }
+
+    #[test]
+    fn models_function_local_custom_generator_close() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-CLOSE-001,
+        // TOPAL-GENERATOR-ERROR-CODE-001, TOPAL-COMPILER-GENERATOR-CLOSE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-close.t"
+        ))
+        .unwrap();
+        let abandon = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "abandon")
+            .expect("called abandon function is instantiated");
+        assert!(matches!(
+            (abandon.parameters.as_slice(), abandon.body.statements.as_slice()),
+            (
+                [CompilerParameter {
+                    value_type: CompilerType::Character,
+                    ..
+                }],
+                [
+                    CompilerStatement::Binding(CompilerBinding {
+                        name,
+                        value: CompilerExpression {
+                            kind: CompilerExpressionKind::CustomCharacterGenerator {
+                                declaration,
+                                characters,
+                                locals,
+                                result,
+                                ..
+                            },
+                            ..
+                        },
+                        ..
+                    }),
+                    CompilerStatement::Discard(CompilerExpression {
+                        kind: CompilerExpressionKind::CustomCharacterClose(generator),
+                        value_type: CompilerType::Unit,
+                        ..
+                    })
+                ]
+            ) if name == "generated"
+                && declaration == "pause-once"
+                && characters == &[String::from("T")]
+                && locals.is_empty()
+                && result.value_type == CompilerType::Unit
+                && matches!(generator.kind, CompilerExpressionKind::Local(_))
+        ));
+        assert_eq!(abandon.body.result.value_type, CompilerType::Unit);
+
+        for source in [
+            "use language (version is v0.1)\npause-twice is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  _ is yield initial\n  ()\nabandon is fn (initial : Character) -> Unit\n  generated is pause-twice initial\n  ()\nabandon \"T\"\n",
+            "use language (version is v0.1)\ncopy-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  copy : Character is initial\n  _ is yield copy\n  ()\nabandon is fn (initial : Character) -> Unit\n  generated is copy-once initial\n  ()\nabandon \"T\"\n",
+            "use language (version is v0.1)\npause-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nabandon is fn (initial : Character) -> Unit\n  first is pause-once initial\n  second is pause-once initial\n  ()\nabandon \"T\"\n",
+            "use language (version is v0.1)\npause-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nabandon is fn (initial : Character) -> Unit\n  generated is pause-once initial\n  return ()\nabandon \"T\"\n",
+            "use language (version is v0.1)\npause-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nabandon is fn (initial : Character) -> Character\n  generated is pause-once initial\n  initial\n_ is abandon \"T\"\n()\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]

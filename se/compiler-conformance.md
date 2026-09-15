@@ -87,6 +87,7 @@ evidence.
 | 5k | one yielded Character followed by a distinct exact final Character, ordered result materialization, direct root observation, and full-direction debugging | complete |
 | 5l | exact generator-local Character activation after Unit resumption, followed by a second suspension, with stage-ordered DWARF and no continuation state | complete |
 | 5m | exact successful Unit resume-result binding after one custom yield/action, used as final Unit with source-lifetime debugging and no continuation state | complete |
+| 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -366,6 +367,13 @@ unimplemented `generator-closed` edge. No semantic continuation state, foreign
 dependency, public Generator layout, or native ABI revision is introduced.
 General resume classifiers, additional body execution, close handling,
 captures, and external boundaries remain in increment 5.
+Increment 5n admits one call-specialized function-local instance of the exact
+single-yield custom Character generator and closes it at function scope exit.
+The checked block records close before final Unit; because the generator has no
+handler, cleanup, effect, or post-yield work, native O0 lowering erases the
+expected close value while preserving ownership and Generator DWARF identity.
+Handled close paths, multiple owners, Generator transfer, dynamic provenance,
+and library boundaries remain in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
