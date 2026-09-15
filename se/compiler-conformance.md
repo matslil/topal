@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5x | exact distinct final String after String yield/action and Unit resumption | complete |
 | 5w | independent String yield direction with ordered initial/literal suspensions and String action debugging | complete |
 | 5v | independent String initial input with an ordered emptiness prefix before one custom Character suspension | complete |
 | 5u | exact custom Generator function result with distinct final Character preserved through caller traversal | complete |
@@ -454,6 +455,16 @@ yielded Strings remain inspectable without a foreign runtime, other-language
 standard library, public ABI, or native-layout revision. Computed yields, body
 state, other directions, transfer, close, and library boundaries remain in
 increment 5.
+Increment 5x preserves a distinct exact final String through
+`Generator String Unit String`. The checked graph separates that final
+expression from the once-evaluated initial String, yield provenance, and Unit
+resume edge. O0 traversal performs the String action and resumption before
+materializing and returning the final descriptor, which becomes the root output.
+The full classifier, Generator value, yielded String, final source position, and
+entry frame remain debuggable without a continuation object, foreign runtime,
+other-language standard library, public ABI, or native-layout revision.
+Nonliteral finals, other directions, body state, transfer, close, and libraries
+remain in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
