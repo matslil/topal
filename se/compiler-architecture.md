@@ -979,6 +979,18 @@ handler lowering still requires a canonical suspension/branch graph, cleanup
 and effect ordering, code-set identity, environment ownership, and target
 adapters in compiled-library metadata.
 
+The first qualified close-code slice adds an ordered nominal code matcher to
+that checked handler descriptor. Because the admitted abandonment edge is known
+to deliver `lang generator GeneratorErrorCode.generator-closed`, O0 lowering
+selects the qualified Unit action directly after materializing and observing the
+Topal-owned Error; it emits no decision switch and does not activate the generic
+Error fallback binding. This selection depends on code-set identity rather than
+the overlapping private numeric tag, lexical Error domain, or generator
+declaration provenance. General compiled-library handling therefore needs
+canonical ordered code matchers, fallbacks, code-set identities, branch
+activation, and the existing suspension, effect, ownership, and target-adapter
+metadata.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an

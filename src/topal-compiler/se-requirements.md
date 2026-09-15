@@ -790,9 +790,11 @@ its checked close shall deliver
 Error action, finish the generator boundary, and then return the function's
 final Unit. The successful Unit-resume action shall remain explicit metadata but
 shall not execute on this close edge. Root abandonment, successful foreach,
-qualified close-code patterns, non-Unit handler actions, handler work beyond the
-exact decision, multiple yields or owners, generator locals, dynamic provenance,
-transfer boundaries, and library boundaries shall remain rejected before LLVM.
+qualified close-code patterns except for the exact matcher admitted by
+`TOPAL-COMP-GENERATOR-CLOSE-CODE-PATTERN-001`, non-Unit handler actions, handler
+work beyond the exact decision, multiple yields or owners, generator locals,
+dynamic provenance, transfer boundaries, and library boundaries shall remain
+rejected before LLVM.
 
 On Linux x86-64, O0 lowering shall materialize the intrinsic failure through
 Topal-owned Result/Error and allocator primitives, statically select its Error
@@ -809,6 +811,40 @@ edges, suspension, cleanup/effect evidence, ownership state, and target adapters
 canonically. This realizes `TOPAL-COMPILER-GENERATOR-CLOSE-HANDLER-001`,
 `TOPAL-GENERATOR-CLOSE-HANDLER-001`, `TOPAL-GENERATOR-CLOSE-001`, and
 `TOPAL-GENERATOR-ERROR-CODE-001` for compiler increment 5o.
+
+## TOPAL-COMP-GENERATOR-CLOSE-CODE-PATTERN-001 — Qualified close-code selection
+
+The checked compiler shall generalize the admitted exact close handler to one
+qualified `Error ( code is lang generator generator-closed )` Unit rule before
+its generic Error fallback, together with the complete Ok Unit rule. The
+checked handler shall retain the qualified rule's nominal code-set identity,
+alternative, source span, and action separately from the generic Error
+binding/action and Ok binding/action.
+
+For the statically known close edge, the backend shall select and execute only
+the qualified code action. Selection shall use the nominal
+`lang generator GeneratorErrorCode.generator-closed` identity, not the lexical
+Error domain or generator declaration provenance. The generic Error fallback
+binding and Ok binding shall remain inactive. O0 lowering may resolve this known
+selection directly without a runtime decision switch, but shall still
+materialize the Topal-owned Result/Error failure and preserve the nominal code
+observation and action source location for GDB.
+
+Other qualified codes or vocabularies, code rules after the generic Error
+fallback, missing fallbacks, multiple qualified rules, non-Unit actions,
+successful traversal, dynamic close results, multiple yields or owners,
+transfer boundaries, and library boundaries shall remain rejected before LLVM.
+The lowering shall not add a Generator object, continuation state, dispatcher,
+callback, indirect call, unwind dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library Generator
+ABI, or `topal-native/6` revision. Future compiled-library metadata shall
+preserve ordered nominal code matchers and actions together with fallback
+bindings, success/close edges, domain and declaration provenance, suspension,
+cleanup/effect evidence, ownership state, and target adapters canonically. This
+realizes `TOPAL-COMPILER-GENERATOR-CLOSE-CODE-PATTERN-001`,
+`TOPAL-GENERATOR-CLOSE-CODE-PATTERN-001`,
+`TOPAL-GENERATOR-CLOSE-HANDLER-001`, and `TOPAL-DECISION-ERROR-CODE-001` for
+compiler increment 5p.
 
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
